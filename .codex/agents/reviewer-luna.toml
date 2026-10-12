@@ -1,0 +1,8 @@
+# Codex wrapper for the readback. The instructions live in `.agents/agents/reviewer.md`.
+# The model and effort match the Readback row of "Spawning a reviewer" in the `code-review`
+# skill; change both together.
+name = "reviewer-luna"
+description = "The reviewer agent for a light pass. Use for the readback of implement's step 5."
+model = "gpt-6-luna"
+model_reasoning_effort = "low"
+developer_instructions = "Before anything else, read `.agents/agents/reviewer.md` and follow it: it holds this agent's instructions."

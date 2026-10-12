@@ -1,0 +1,24 @@
+allowBuilds:
+  esbuild: true
+  lightningcss: true
+
+# A published version has to sit in the registry for three days before this repo
+# resolves it: most npm supply-chain compromises are caught and unpublished
+# inside that window. Strict on purpose — a version too new fails resolution
+# instead of quietly falling back. For an urgent patch, add a
+# `minimumReleaseAgeExclude` entry per package, with a comment giving the reason
+# and the date to remove it.
+minimumReleaseAge: 4320
+
+# Advisories accepted rather than fixed: `pnpm check:dependency-audit` stops
+# failing on any GHSA listed here. Every entry needs a comment with the reason
+# and when to recheck it.
+audit:
+  ignore: []
+
+# Vite+ bundles its own Vite and Vitest; every package that peers on them must
+# get the same copies (node_modules/vite-plus/README.md, "Manual Installation").
+# Bump both with `vite-plus`: `vp toolchain vitest` prints the bundled version.
+overrides:
+  vite@*: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vitest@*: 5.0.3

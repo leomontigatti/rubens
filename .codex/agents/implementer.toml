@@ -1,0 +1,8 @@
+# Codex wrapper for the implementer agent. The instructions live in
+# `.agents/agents/implementer.md`, shared with Claude Code's `.claude/agents/implementer.md`.
+# Unlike research and reviewer this is no relay: each harness runs it on its own model.
+name = "implementer"
+description = "Builds one sub-issue of a PRD in its own worktree and reports its branch back. Spawned by the implement-spec skill, one per ticket on the frontier; not for one-off tasks."
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+developer_instructions = "Before anything else, read `.agents/agents/implementer.md` and follow it: it holds this agent's instructions."

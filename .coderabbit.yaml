@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Reviews are in English. Rubens holds health data (Ley 25.326, Ley 26.529): the path
+# instructions below name the rules a reviewer must enforce, and their sources
+# (docs/adr/*.md) are loaded as the knowledge base.
+language: en-US
+reviews:
+  auto_review:
+    enabled: true
+    base_branches:
+      - "main"
+  review_status: false
+  high_level_summary: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+  # Findings are fixed by the author or by a deliberate agent, verified against the
+  # source first; CodeRabbit pushing its own fixes would race them.
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    autofix:
+      enabled: false
+    fix_ci:
+      enabled: false
+    resolve_merge_conflict:
+      enabled: false
+    simplify:
+      enabled: false
+  path_filters:
+    - "!pnpm-lock.yaml"
+    # Generated: Drizzle snapshots and the TanStack route tree. The SQL next to them
+    # is reviewed (src/db/migrations/*.sql is deliberately not excluded).
+    - "!src/db/migrations/meta/**"
+    - "!src/routeTree.gen.ts"
+  path_instructions:
+    - path: "**/*"
+      instructions: >-
+        Flag any new or widened directive that disables or suppresses a lint,
+        type-checker or other static-analysis diagnostic (a line comment, a file-level
+        comment or a config entry): each needs a written reason.
+        Flag patient data (names, phone numbers, appointment times, clinical text) in
+        logs, thrown error messages, analytics, alerts, or job payloads that are not
+        stored in our own Postgres (docs/adr/0001-stack.md).
+    - path: "src/db/migrations/**/*.sql"
+      instructions: >-
+        Migrations are immutable once on main: an edit to an applied .sql file, even a
+        comment, is a finding (docs/adr/0002 and scripts/migrations/journal.mjs explain
+        why). New tables that hold tenant data must carry organization_id, enable row
+        level security and add policies for rubens_app. Flag DROP, RENAME, and column
+        type changes that break the still-running previous container (squawk rules),
+        and any lock-heavy ALTER on a populated table without a stated reason.
+    - path: "src/db/schema/**"
+      instructions: >-
+        Every tenant-owned table carries organization_id and a row level security policy;
+        the UI and server functions are not the tenant boundary (docs/adr/0002). Clinical
+        notes are append-only: flag any UPDATE or DELETE path, and any receptionist-visible
+        read of clinical data (docs/adr/0003). Double booking is prevented in the database
+        (exclusion constraint), not only by a check in code.
+    - path: "src/db/**/*.ts"
+      instructions: >-
+        Tenant context is set per transaction, never per session: withTenant() with
+        set_config(..., true). Flag session-level SET, LISTEN, session advisory locks,
+        and long-lived named prepared statements in request code: a transaction pooler
+        would leak them across tenants (docs/adr/0002). Flag any code path that runs as
+        the owner role (DATABASE_DIRECT_URL) from a request handler: RLS does not apply to
+        the owner.
+    - path: "scripts/migrate.mjs"
+      instructions: >-
+        This runs at container start in production. Flag changes that could let a
+        migration failure start the app anyway, log a connection string, or retry a
+        deterministic error.
+    - path: "Dockerfile"
+      instructions: >-
+        The runtime image must not carry dev dependencies, .env files, or the test
+        suite. Flag any base image or action pin that is not exact.
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - docs/adr/*.md
+      - AGENTS.md

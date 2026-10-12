@@ -1,0 +1,23 @@
+# Build context for the Dockerfile. Anything that is local state, secret, or only
+# needed by the developer stays out, so the build layers stay small and cacheable.
+node_modules
+.output
+.nitro
+.tanstack
+.git
+.env
+.env.*
+.vite-hooks/_
+coverage
+tmp
+.DS_Store
+npm-debug.log*
+
+# Agent, editor and docs trees: none of it runs in the image.
+.agents
+.claude
+.codex
+.playwright-cli
+.github
+docs
+tests

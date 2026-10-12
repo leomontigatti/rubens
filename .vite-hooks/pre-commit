@@ -1,0 +1,19 @@
+#!/bin/sh
+# Any failing command stops the commit. Without this, a finding from gitleaks would
+# not block: the hook's exit status is the last command's.
+set -e
+
+# Secrets first: nothing else matters if the commit carries a credential. Config in
+# `.gitleaks.toml`. gitleaks is optional on purpose: it is not a pnpm dependency, so
+# a missing binary warns and lets the commit through. CI's `checks` job runs the
+# same scan blocking.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --no-banner --redact --verbose
+else
+  echo "gitleaks not installed, secret scan skipped; CI still runs it"
+fi
+
+# Staged files only: formatting and lint fixes, from the `staged` block in vite.config.ts.
+vp staged
+# Types over the whole project: a staged-only check cannot see a broken import elsewhere.
+pnpm typecheck

@@ -1,0 +1,53 @@
+# Dependabot version updates: minor and patch only, one grouped PR per ecosystem a
+# week. A major stays a hand-written issue, because it needs its release notes read
+# against this repo (docs/adr/0001-stack.md for the stack choices).
+#
+# `cooldown` keeps a release out of a PR until it is seven days old. It has to be at
+# least the three days of `minimumReleaseAge: 4320` in pnpm-workspace.yaml, or a bump
+# PR would ask the lockfile for a version pnpm refuses to resolve; seven is zizmor's
+# `dependabot-cooldown` floor.
+#
+# `commit-message` gives each PR a title `check:pr-title` accepts: `build(deps): …`
+# for npm, `ci(deps): …` for the action pins.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+      # A better-auth minor can carry a schema migration, so it stays a hand-written
+      # issue; patches flow.
+      - dependency-name: better-auth
+        update-types: [version-update:semver-minor]
+      # Nitro is a beta and pinned to an exact version on purpose (ADR-0001). A bump
+      # is a deliberate change, made by hand after reading its release notes.
+      - dependency-name: nitro
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]

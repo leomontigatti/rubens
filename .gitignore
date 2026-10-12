@@ -1,0 +1,18 @@
+node_modules
+.pnpm-store/
+.DS_Store
+.env
+.env.local
+*.local
+.output
+.nitro
+.tanstack
+.vite-hooks/_
+coverage
+tmp/
+
+# subagent and implement-spec worktrees
+.claude/worktrees/
+
+# playwright-cli scratch: snapshots, console logs, saved login state
+.playwright-cli/

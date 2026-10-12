@@ -1,0 +1,158 @@
+# CI pipeline for Rubens. PR-only: every change reaches `main` through a pull
+# request, and nothing pushes to `main` directly. Two gates, both meant to be
+# required on `main` (branch protection is a repo setting, not a file here, so
+# renaming a job does not update it):
+#   - checks      : secrets scan, format/lint/typecheck, migration checks, dependency
+#                   audit, unit and PGlite database tests, and the production build.
+#                   No Postgres service: `test:db` runs on PGlite (see vite.config.ts).
+#   - actions-gate: zizmor + actionlint over every workflow in this directory, and
+#                   zizmor over .github/dependabot.yml.
+# `pr-title`, from `pr-title.yml`, is the third required context. The full list and
+# how to change it: docs/operations/ci.md.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Every job here only reads the repository: no job comments, labels or pushes.
+# Declared at the top level so each job inherits it and none silently gets the
+# default write-all token (zizmor `excessive-permissions`).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Full history: the gitleaks range is `origin/main..HEAD`, and the
+          # migration checks compare against `origin/main`.
+          fetch-depth: 0
+          persist-credentials: false
+      # Secrets gate, first because nothing else matters if the branch carries a
+      # credential. Rules are in `.gitleaks.toml` (picked up from the repository
+      # root); `.vite-hooks/pre-commit` runs the same scan over the staged diff,
+      # warning instead of failing when the binary is absent.
+      # The binary is pinned as an exact release tarball fetched inline, verified
+      # by checksum as well as by version. Version and checksum are one pin: bump
+      # them together from `gitleaks_<version>_checksums.txt` on the release page.
+      # Scope is `origin/main..HEAD`, the PR's own commits: history before the merge
+      # base is main's problem, and rescanning it on every PR would turn any
+      # pre-existing finding into a permanently red gate.
+      - name: gitleaks (secrets in this PR's commits)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          # Retries: a reset mid-transfer would otherwise turn a required context
+          # red with nothing to fix.
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 \
+            -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check --strict -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          /tmp/gitleaks git --no-banner --redact --verbose --log-opts="origin/main..HEAD"
+      # Vite+ installs Node (from .nvmrc), the pnpm version from `packageManager`,
+      # and caches the package store. The action is pinned to an exact release
+      # commit; the tag it names is in the comment, which is what Dependabot and
+      # zizmor's `ref-version-mismatch` read. Do not use the `v1` tag.
+      - uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          node-version-file: .nvmrc
+          cache: true
+          # Installed below with an explicit frozen lockfile instead of the action's
+          # default install, so the flag is visible in this file.
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: pnpm check
+      # Drift check: `db:generate` is offline (it diffs `src/db/schema` against the
+      # snapshots in `src/db/migrations/meta/`) and must produce nothing new. If it
+      # writes a migration, the schema changed without a committed migration, so
+      # fail. The fix goes in the schema plus a regenerated migration, never by
+      # editing a .sql file that is already on main.
+      - name: drift-check (db:generate leaves no uncommitted migration)
+        run: |
+          pnpm db:generate
+          if [ -n "$(git status --porcelain --untracked-files=all src/db/migrations)" ]; then
+            echo "::error::Schema drift: db:generate produced an uncommitted migration. Commit the schema change together with its migration (see docs/operations/local-development.md)."
+            git status --porcelain --untracked-files=all src/db/migrations
+            git --no-pager diff -- src/db/migrations
+            exit 1
+          fi
+      # Three rules about migrations, invisible to the tests because a fresh database
+      # applies anything in folder order against no running code:
+      #   - order: a migration not newer than every one already on main merges green
+      #     and then never runs in production;
+      #   - immutability: Drizzle hashes the whole .sql file, so editing even a comment
+      #     in an applied migration makes the container refuse to start;
+      #   - safety: squawk over the .sql files this branch adds. A drop or a rename
+      #     breaks the old container, which keeps serving while the new one migrates.
+      # One step, because all three need the same `origin/main` fetch.
+      - name: migration order, immutability and safety (vs. main)
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          pnpm check:migrations
+      # Dependency hygiene: `pnpm audit --prod` over this branch's tree and over
+      # main's, failing only on the high and critical advisories the branch
+      # introduces. Auditing the whole tree would redden every open PR the day a CVE
+      # lands on a dependency nobody here touched.
+      - name: dependency audit (advisories this branch introduces)
+        run: pnpm check:dependency-audit
+      - run: pnpm test:unit
+      # PGlite, in-process: no database service in CI.
+      - run: pnpm test:db
+      - run: pnpm build
+
+  # Every workflow in `.github/workflows/` goes through zizmor (Actions security
+  # posture: pin freshness, trigger safety, permissions, template injection) and
+  # actionlint (syntax, expressions, shellcheck over `run:` blocks). zizmor also
+  # reads `.github/dependabot.yml` for its cooldown.
+  # No `paths:` filter: like `checks` it must report on every PR to be a required
+  # context, and it costs seconds of runner time.
+  # Online audits are on, which needs a token: `known-vulnerable-actions`,
+  # `impostor-commit` and `ref-version-mismatch` are how the SHA pins stay honest.
+  # `github.token` is read-only here and is used for nothing else.
+  # Both tools are version-pinned; bumping them is a manual edit (docs/operations/ci.md).
+  actions-gate:
+    name: actions-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: zizmor (Actions security posture, pin freshness)
+        env:
+          # Online audits; read-only, and scoped to this run.
+          GH_TOKEN: ${{ github.token }}
+        # `pipx run`, not `uvx`: `pipx` is preinstalled on `ubuntu-latest` and `uv` is
+        # not, so `uvx` would exit 127 before auditing anything.
+        run: pipx run zizmor==1.30.1 --format plain .github/workflows/ .github/dependabot.yml
+      - name: actionlint (workflow syntax and expressions)
+        env:
+          # actionlint runs shellcheck over every `run:` block. Only `warning` and above
+          # is actionable here; at `info`/`style` the gate is a wall of SC2016 findings
+          # on correct `jq '...'` filters.
+          SHELLCHECK_OPTS: --severity=warning
+          # Version and checksum are one pin: the checksum comes from
+          # `actionlint_<version>_checksums.txt` on the release page.
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 10 \
+            -o /tmp/actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -color

@@ -1,0 +1,28 @@
+# Pinned so every git worktree shares this one container instead of starting a
+# second Postgres; each worktree keeps its own database inside it
+# (`pnpm db:worktree`, docs/operations/local-development.md).
+name: rubens
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: rubens-postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rubens
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rubens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Runs once, on an empty volume: creates the app role (ADR-0002).
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  postgres_data:

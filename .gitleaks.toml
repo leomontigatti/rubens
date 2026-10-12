@@ -1,0 +1,69 @@
+# Secret detection for this repo. It runs in two places: `.vite-hooks/pre-commit` over
+# the staged diff, and the `checks` job in ci.yml over `origin/main..HEAD`. Both read
+# this file; there is no second configuration.
+#
+# gitleaks is the client-side half of the gate. The server-side half is GitHub secret
+# scanning with push protection, which owns provider tokens. What is here is what this
+# repo can leak that push protection does not cover.
+
+title = "Rubens"
+
+# The upstream ruleset is the baseline; the rules below only add to it.
+[extend]
+useDefault = true
+
+# Provider-specific rules (email, SMS, storage) are added here when each provider is
+# chosen: the upstream defaults only catch those keys through `generic-api-key`, which
+# needs the variable name to contain KEY or SECRET.
+
+# --- Custom rules: gaps in the default ruleset ------------------------------------
+
+# The defaults have no rule for a password embedded in a connection URL, and this
+# repo's DATABASE_URL and DATABASE_DIRECT_URL are exactly that shape (ADR-0002).
+# Local and documentation hosts are allowlisted so the local dev URLs in .env.example
+# and the docs stay quiet.
+[[rules]]
+id = "connection-url-password"
+description = "Password embedded in a connection URL"
+# The username is optional: `redis://:password@host` is Redis's own canonical URL shape.
+regex = '''\b(?i:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis(?:s)?|amqps?|ftp|smtps?|https?)://[^\s:/@]*:([^\s:/@]{4,})@[^\s/]+'''
+secretGroup = 1
+keywords = [
+  "postgres://",
+  "postgresql://",
+  "mysql://",
+  "mongodb://",
+  "mongodb+srv://",
+  "redis://",
+  "rediss://",
+  "amqp://",
+  "amqps://",
+  "ftp://",
+  "smtp://",
+  "smtps://",
+  "http://",
+  "https://",
+]
+
+[[rules.allowlists]]
+description = "Local, container and documentation hosts carry no real password"
+regexTarget = "match"
+# Only hosts that cannot name a real server. `example` is matched as a label, not a
+# substring, so a real host like `db.prod.example-host.net` is still scanned.
+# The bare container names `postgres` and `db` are deliberately not here: they are
+# plausible real hostnames.
+regexes = [
+  '''@(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|host\.docker\.internal|(?:[^\s/@]+\.)?example(?:\.(?:com|net|org))?)(?::\d+)?(?:[/?]|$)''',
+]
+
+[[rules.allowlists]]
+description = "Placeholders and variable interpolation are not passwords"
+regexes = [
+  '''^[<\[{(].*[>\]})]$''',
+  '''^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$''',
+  '''^%[A-Za-z0-9_]+%$''',
+  # The local-only role password and the docker-image default. Exempting the
+  # *password* keeps the host free: exempting bare hosts would hide a real
+  # `postgres://admin:pw@db/app`.
+  '''^(?i:postgres|password|pass|passwd|secret|changeme|your[-_]?password|rubens_app|xxx+|\*+|\.\.\.+)$''',
+]
