@@ -113,8 +113,10 @@ These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
   a session-level `SET`, a `LISTEN`, a session advisory lock or a long-lived named
   prepared statement: a pooler hands the connection to another organization next.
   Lint enforces the entry point: importing the `db` client (`#/db/client.ts`, by
-  alias or relative path) fails outside `src/db/`, `src/lib/auth.ts` (Better Auth's
-  tables are not tenant-owned) and `tests/db/`.
+  alias, relative path or dynamic `import()`) fails outside `src/db/`,
+  `src/lib/auth.ts` (Better Auth's tables are not tenant-owned) and `tests/db/`.
+  Because of that exemption, `src/db/` holds only the client, `withTenant`, the
+  schema and the migrations: a feature's queries live with the feature.
 - **Row-level security is the boundary.** The UI and the server functions are not.
   A test of an RLS policy runs as `rubens_app`, which owns nothing and has no
   `BYPASSRLS`; as the owner it proves nothing.

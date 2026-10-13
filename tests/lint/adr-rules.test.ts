@@ -51,7 +51,8 @@ function restrictedImports(...files: string[]): Diagnostic[] {
   return report.diagnostics.filter((d) => d.code.includes("no-restricted-imports"));
 }
 
-describe("ADR lint rules", () => {
+// Each case spawns a type-aware `vp lint`: well under a second warm, slower cold.
+describe("ADR lint rules", { timeout: 30_000 }, () => {
   it("reject pgTable outside the rubens schema (ADR-0004)", () => {
     const file = probe(
       "public-table.ts",
@@ -64,7 +65,7 @@ describe("ADR lint rules", () => {
     expect(found.map(text).join()).toContain("ADR-0004");
   });
 
-  it("reject the raw db client in feature code, by alias or relative path (ADR-0002)", () => {
+  it("reject the raw db client in feature code: alias, relative path, dynamic import (ADR-0002)", () => {
     const byAlias = probe(
       "tenant-bypass.ts",
       `import { db } from "#/db/client.ts";\n\nexport const leak = db;\n`,
@@ -73,10 +74,14 @@ describe("ADR lint rules", () => {
       "tenant-bypass-relative.ts",
       `import { db } from "../../../src/db/client.ts";\n\nexport const leak = db;\n`,
     );
+    const byDynamicImport = probe(
+      "tenant-bypass-dynamic.ts",
+      `export async function leak() {\n  const { db } = await import("#/db/client.ts");\n  return db;\n}\n`,
+    );
 
-    const found = restrictedImports(byAlias, byPath);
+    const found = restrictedImports(byAlias, byPath, byDynamicImport);
 
-    expect(found).toHaveLength(2);
+    expect(found).toHaveLength(3);
     expect(found.every((d) => text(d).includes("ADR-0002"))).toBe(true);
   });
 

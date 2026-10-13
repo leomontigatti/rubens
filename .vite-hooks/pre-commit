@@ -18,5 +18,11 @@ vp staged
 # Types over the whole project: a staged-only check cannot see a broken import elsewhere.
 pnpm typecheck
 # Dead code and unused dependencies this branch adds, against origin/main
-# (docs/agents/fallow.md). About a second.
+# (docs/agents/fallow.md). About a second. It reads the working tree, like
+# typecheck, not only what is staged.
+if ! git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
+  echo "pre-commit: origin/main is missing, so fallow cannot judge this branch." >&2
+  echo "Run 'git fetch origin main' and commit again (docs/agents/fallow.md)." >&2
+  exit 1
+fi
 pnpm check:fallow
