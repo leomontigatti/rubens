@@ -5,7 +5,7 @@ import { Pool } from "pg";
 import * as schema from "./schema/index.ts";
 
 export type Schema = typeof schema;
-export type Database = NodePgDatabase<Schema>;
+type Database = NodePgDatabase<Schema>;
 
 let poolInstance: Pool | undefined;
 let dbInstance: Database | undefined;

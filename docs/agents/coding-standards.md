@@ -112,6 +112,11 @@ These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
   else. It sets the tenant with `set_config(..., true)`, transaction-local. Never
   a session-level `SET`, a `LISTEN`, a session advisory lock or a long-lived named
   prepared statement: a pooler hands the connection to another organization next.
+  Lint enforces the entry point: importing the `db` client (`#/db/client.ts`, by
+  alias, relative path or dynamic `import()`) fails outside `src/db/`,
+  `src/lib/auth.ts` (Better Auth's tables are not tenant-owned) and `tests/db/`.
+  Because of that exemption, `src/db/` holds only the client, `withTenant`, the
+  schema and the migrations: a feature's queries live with the feature.
 - **Row-level security is the boundary.** The UI and the server functions are not.
   A test of an RLS policy runs as `rubens_app`, which owns nothing and has no
   `BYPASSRLS`; as the owner it proves nothing.
@@ -126,7 +131,7 @@ These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
   edited.
 - **Tables and enums live in the `rubens` schema, unprefixed** (ADR-0004): declare
   them with `rubens.table()` and `rubens.enum()` from `src/db/schema/schema.ts`,
-  never `pgTable()` or `pgEnum()`. Raw SQL qualifies every name (`rubens.user`)
+  never `pgTable()` or `pgEnum()` (lint rejects both). Raw SQL qualifies every name (`rubens.user`)
   instead of relying on `search_path`, and code that matches a constraint by name
   (a unique violation, say) is covered by a test, because typecheck cannot see it.
 

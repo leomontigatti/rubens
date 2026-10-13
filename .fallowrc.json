@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // `shadcn` is a CLI run by hand to add components (docs/agents/shadcn.md);
+  // nothing imports it.
+  "ignoreDependencies": ["shadcn"],
+  "duplicates": {
+    // Pair-only clones are hidden; widespread copy-paste is what is worth a refactor.
+    "minOccurrences": 3
+  },
+  "rules": {
+    // ADR-0001 dependencies land before the features that import them (zod,
+    // date-fns, TanStack Form...). Reported, not failed; the list empties as
+    // features arrive, and anything still on it later is a candidate to remove.
+    "unused-dependencies": "warn"
+  }
+}

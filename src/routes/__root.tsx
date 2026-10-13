@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 
-export interface RouterContext {
+interface RouterContext {
   queryClient: QueryClient;
 }
 

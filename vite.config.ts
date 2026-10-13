@@ -10,6 +10,21 @@ const port = Number(loadEnv("development", process.cwd(), "").PORT) || 3000;
 
 const generated = ["src/routeTree.gen.ts", "src/db/migrations/**"];
 
+// ADR-0004: tables and enums live in the `rubens` schema, so the helpers that
+// declare them in `public` are banned everywhere.
+const publicSchemaImports = {
+  name: "drizzle-orm/pg-core",
+  importNames: ["pgTable", "pgEnum"],
+  message: "Use rubens.table() / rubens.enum() from #/db/schema/schema.ts (ADR-0004).",
+};
+
+// ADR-0002: tenant-owned tables are queried only inside withTenant(). Matched by
+// specifier, so a relative path to the client is caught as well as the alias.
+const rawDbClient = {
+  group: ["#/db/client*", "**/db/client*"],
+  message: "Query tenant-owned tables through withTenant() from #/db/tenant.ts (ADR-0002).",
+};
+
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   server: { port, strictPort: true },
@@ -27,7 +42,18 @@ export default defineConfig({
       "import/no-cycle": "error",
       "typescript/no-floating-promises": ["error", { checkThenables: true }],
       "typescript/no-misused-promises": ["error", { checksVoidReturn: { attributes: false } }],
+      "no-restricted-imports": ["error", { paths: [publicSchemaImports], patterns: [rawDbClient] }],
     },
+    overrides: [
+      {
+        // Where tenancy is implemented (`src/db`), where the tables are not
+        // tenant-owned (Better Auth's), and the DB test harness.
+        files: ["src/db/**", "src/lib/auth.ts", "tests/db/**"],
+        rules: {
+          "no-restricted-imports": ["error", { paths: [publicSchemaImports] }],
+        },
+      },
+    ],
   },
 
   fmt: {
@@ -47,7 +73,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+          include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts", "tests/lint/**/*.test.ts"],
           exclude: ["**/*.db.test.ts", "node_modules/**"],
           environment: "node",
         },

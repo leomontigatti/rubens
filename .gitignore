@@ -16,3 +16,7 @@ tmp/
 
 # playwright-cli scratch: snapshots, console logs, saved login state
 .playwright-cli/
+
+# lint probes tests/lint/adr-rules.test.ts writes and removes; a killed run can
+# leave them behind, and they break the rules on purpose
+tests/lint/.probes-*/

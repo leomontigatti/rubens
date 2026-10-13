@@ -40,6 +40,7 @@ Codex, "call the Skill tool with X" means open `.agents/skills/X/SKILL.md` and f
 - **Domain**: [domain.md](docs/agents/domain.md); the rules in [docs/domain/](docs/domain/README.md);
   decisions in [docs/adr/](docs/adr/README.md).
 - **CI**, **dependencies**: [ci.md](docs/operations/ci.md).
+- **Fallow** (dead code, unused dependencies, duplication): [fallow.md](docs/agents/fallow.md).
 - **Agent configuration** (skills, hooks, subagent wiring):
   [agent-configuration.md](docs/agents/agent-configuration.md).
 - **Local database, auth and dev server**: [local-development.md](docs/operations/local-development.md).
