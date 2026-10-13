@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { withTenant } from "#/db/tenant.ts";
+import { TENANT_SETTING, withTenant } from "#/db/tenant.ts";
 
 import { createTestDatabase, rowsOf } from "./harness.ts";
 import type { TestDatabase } from "./harness.ts";
@@ -21,7 +21,8 @@ afterEach(async () => {
   await client.close();
 });
 
-const tenantQuery = sql`select current_setting('app.organization_id', true) as tenant`;
+// The same name RLS policies read: `current_setting('app.organization_id', true)`.
+const tenantQuery = sql`select current_setting(${TENANT_SETTING}, true) as tenant`;
 
 describe("withTenant", () => {
   it("sets app.organization_id inside the transaction", async () => {

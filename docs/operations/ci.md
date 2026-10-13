@@ -25,24 +25,29 @@ current `main`.
 
 ## What `checks` does, in order
 
-1. **gitleaks** over `origin/main..HEAD` (the PR's own commits). Rules in
+1. **Fetch `origin/main`** with full history, once, for every step below that
+   compares against it. Never `--depth=1`: fallow needs the merge base.
+2. **gitleaks** over `origin/main..HEAD` (the PR's own commits). Rules in
    `.gitleaks.toml`. The same scan runs locally as the first line of
    `.vite-hooks/pre-commit`, where it is optional; CI is the blocking half.
-2. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
+3. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
    Node from `.nvmrc` and pnpm from `packageManager`.
-3. **`pnpm check`** (`vp check`): format, lint and typecheck.
-4. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
+4. **`pnpm check`** (`vp check`): format, lint and typecheck.
+5. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
    `src/db/migrations`. If it does, the schema changed without its migration. The fix
    is to commit the migration that `db:generate` writes, never to edit a `.sql` file
    already on `main`.
-5. **`pnpm check:migrations`** against `origin/main`, after fetching it. Three rules:
+6. **`pnpm check:migrations`** against `origin/main`. Three rules:
    order (a new migration must be newer than every migration on `main`), immutability
    (no applied `.sql` file may change), and safety (squawk over the new `.sql` files).
    Why each one exists: `scripts/migrations/journal.mjs`.
-6. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+7. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
    branch introduces, compared with `origin/main`.
-7. **`pnpm test:unit`** and **`pnpm test:db`**.
-8. **`pnpm build`**: the production build the Dockerfile runs.
+8. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+   branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
+   run) fails the job too.
+9. **`pnpm test:unit`** and **`pnpm test:db`**.
+10. **`pnpm build`**: the production build the Dockerfile runs.
 
 ## Waiting on CI from a session
 

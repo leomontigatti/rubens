@@ -33,6 +33,8 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
   `origin/main`. Fetch that ref first. CI runs it.
 - `check:dependency-audit`: fails on high and critical advisories this branch
   introduces, against `origin/main`. CI runs it.
+- `check:fallow`: `fallow audit` gated on what this branch adds against `origin/main`
+  ([fallow.md](../agents/fallow.md)). The pre-commit hook and CI run it.
 - `check:pr-title`: the conventional-commit prefix and English subject rule, over the
   `PR_TITLE` environment variable. CI runs it on PR events.
 
