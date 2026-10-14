@@ -44,10 +44,10 @@ On acceptance, for what the user named:
   is the point), then `git branch -d <branch>` for its local branch;
 - `git branch -d <branch>` for each branch of step 2 (`-D` only when the user has said the
   commits are not needed);
-- `git worktree prune`, then `pnpm db:worktree prune --apply`: it drops every database whose
-  worktree is gone, the ones step 3 listed and those of the worktrees just removed. When the
-  user spared a database, drop the others one at a time instead
-  (`docker exec rubens-postgres dropdb -U postgres <database>`).
+- `docker exec rubens-postgres dropdb --force -U postgres <database>` for each database the
+  report listed. Not `pnpm db:worktree prune --apply`: it drops whatever is orphaned when it
+  runs, including the database of a worktree T3 removed after the report.
+- `git worktree prune` at the end.
 
 Report what was removed, anything that errored, every worktree kept with its reason, and the
 worktrees left to T3.

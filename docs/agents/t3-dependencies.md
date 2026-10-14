@@ -22,7 +22,7 @@ Status of an entry:
   (`packages/contracts/src/t3ProjectFile.ts`).
 - **Used by:** `docs/agents/workflows.md` § Branches, worktrees and T3 Code threads;
   `.agents/agents/implementer.md` step 2 (the by-hand copy of this script, for worktrees T3 did not create)
-- **Breaks if:** T3 stops applying `defaultThreadEnvMode` or runs create-time scripts,
+- **Breaks if:** T3 stops applying `defaultThreadEnvMode` or running create-time scripts,
   or starts the agent before an `async: false` script exits.
 
 ### t3-leaves-hand-made-worktrees-alone
@@ -51,8 +51,11 @@ Status of an entry:
   T3, and sweeps their branches and orphaned databases); `docs/agents/workflows.md` §
   Branches, worktrees and T3 Code threads (rule "Leaving a worktree behind is fine")
 - **Breaks if:** the settings are reset or the rules turned off (finished worktrees pile up
-  and nothing removes them); T3 moves its managed folder, so `housekeeping` would take T3's
-  worktrees for its own; or the Last run report moves or stops giving a reason.
+  and nothing removes them); `worktreeAfterDays` or `worktreeUnchanged` is turned on, since
+  T3 then removes a live thread's worktree and recreates it on resume, and the sweep would
+  drop its database and, with a closed PR, its branch; T3 moves its managed folder, so
+  `housekeeping` would take T3's worktrees for its own; or the Last run report moves or
+  stops giving a reason.
 
 ### pr-linked-by-tool
 
@@ -180,8 +183,5 @@ None.
   accepted the list (`git worktree remove`).
 - **Met in:** 0.0.46-nightly.20261014.3105 (https://github.com/pingdotgg/t3code/pull/17563,
   merged 2026-10-10; closes pingdotgg/t3code#13836)
-- **Adopted:** this PR. Storage cleanup is on (Settings → Storage: "Delete merged
-  worktrees", delete with the thread, "Keep worktrees with local changes" on "Uncommitted
-  changes"). `housekeeping` no longer removes a worktree under `~/.t3/worktrees/rubens/`; it
-  keeps branch deletion, the `rubens-wt-` database drop (`pnpm db:worktree prune`) and the
-  worktrees T3 does not manage. Now relied on as `storage-cleanup-removes-thread-worktrees`.
+- **Adopted:** this PR, with storage cleanup turned on; what the sweep relies on since is
+  `storage-cleanup-removes-thread-worktrees`.

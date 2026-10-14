@@ -245,8 +245,9 @@ export function prune(dryRun: boolean, livePaths = worktreePaths()) {
     console.log(`${dryRun ? "Would drop" : "Dropping"} ${database}`);
 
     if (!dryRun) {
-      psql(`select pg_terminate_backend(pid) from pg_stat_activity where datname = '${database}'`);
-      run("docker", ["exec", CONTAINER, "dropdb", "-U", "postgres", database]);
+      // --force ends its sessions in the same step, so a client that reconnects
+      // cannot make the drop fail halfway through the list.
+      run("docker", ["exec", CONTAINER, "dropdb", "--force", "-U", "postgres", database]);
     }
   }
 }
