@@ -183,5 +183,5 @@ None.
   accepted the list (`git worktree remove`).
 - **Met in:** 0.0.46-nightly.20261014.3105 (https://github.com/pingdotgg/t3code/pull/17563,
   merged 2026-10-10; closes pingdotgg/t3code#13836)
-- **Adopted:** this PR, with storage cleanup turned on; what the sweep relies on since is
+- **Adopted:** leomontigatti/rubens#2, with storage cleanup turned on; what the sweep relies on since is
   `storage-cleanup-removes-thread-worktrees`.
