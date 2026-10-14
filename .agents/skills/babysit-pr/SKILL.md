@@ -7,7 +7,8 @@ description: "See an open PR through CI, and CodeRabbit's review if it gets one,
 
 You own one PR from its last push to **ready to merge**: checks green, the in-session
 review (step 5 of the `implement` skill) run, every finding fixed or answered. The
-merge is the user's.
+merge is the user's, or the launching thread's when the user hands it over
+([workflows.md](../../../docs/agents/workflows.md#branches-worktrees-and-t3-code-threads)).
 
 CodeRabbit is optional. If it reviews the PR, its findings are triaged like any other;
 if it does not, that is not a reason to wait. A rate limit, a skipped review or a
@@ -26,19 +27,37 @@ not own. Done when `git status` is clean and `HEAD` is the PR head.
 
 With T3 Code, call the `watch_pull_request` tool (`mcp__t3-code__watch_pull_request`)
 for this PR and end your turn; it reports back when a round needs you. Without it, run
-`gh pr checks <n> --watch` with Bash, `run_in_background: true`, and end your turn: the
-command re-invokes you when it exits. No `sleep` loops and no subagent.
+the **background wait** below and end your turn: the command re-invokes you when it
+exits. The waiting stays out of the foreground: no `sleep` there, and no subagent.
+
+The **background wait** is this command, with Bash, `run_in_background: true` and a
+timeout of 1500000 ms:
+
+```sh
+until [ "$(gh pr view <n> --json statusCheckRollup --jq '.statusCheckRollup | length')" -gt 0 ]; do sleep 10; done
+gh pr checks <n> --watch
+```
+
+The loop is for a fresh push (yours or `gh pr update-branch`): until GitHub registers
+the head's first check, `gh pr checks --watch` exits at once with "no checks reported",
+and running it again fails the same way.
 
 On every wake, first bring the local branch level with GitHub:
 `git fetch origin <branch> && git merge --ff-only origin/<branch>`. Then read the state
-with `gh pr view <n> --json mergeStateStatus,reviewDecision,statusCheckRollup`.
+with `gh pr view <n> --json mergeStateStatus,reviewDecision,statusCheckRollup`. The
+first row that holds decides:
 
-| State                                           | Do               |
-| ----------------------------------------------- | ---------------- |
-| checks green, nothing unresolved                | Step 5 as READY. |
-| a check red, or a review thread or finding open | Step 3.          |
-| checks still running                            | Wait again.      |
-| `BEHIND` or `CONFLICTS` on `main`               | Step 4b.         |
+| State                                                                                   | Do                                       |
+| --------------------------------------------------------------------------------------- | ---------------------------------------- |
+| a check red, or a review thread or finding open                                         | Step 3.                                  |
+| a check still running, a required one not reported yet, or `mergeStateStatus` `UNKNOWN` | The background wait, then read it again. |
+| `BEHIND` or `CONFLICTS` on `main`                                                       | Step 4b.                                 |
+| checks green, nothing unresolved                                                        | Step 5 as READY.                         |
+
+Every required check must be in the rollup and finished before READY: on a fresh push
+the rollup is empty, and "checks green" holds of an empty list. The required checks
+are the contexts branch protection lists:
+`gh api repos/leomontigatti/rubens/branches/main/protection --jq '.required_status_checks.contexts'`.
 
 ## 3. Triage the round
 
@@ -90,6 +109,9 @@ round is otherwise clean.
 Either one counts as a push toward the three.
 
 ## 5. Report
+
+In T3 Code, first call `unwatch_pull_request` on the PR: the thread then returns to the
+user's inbox and stops waking on new comments or edits.
 
 Report to the user in this shape:
 

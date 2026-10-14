@@ -72,6 +72,16 @@ Rules for a session:
 - **One thread, one branch, one PR.** After `gh pr create`, register the PR with
   the thread through the `link_pull_request` tool so T3 shows its status. The PR
   body is written with the [`pr` skill](../../.agents/skills/pr/SKILL.md).
+- **A launched thread reports to its own inbox.** A thread started with
+  `t3_thread_launch` babysits its own PR and hands back to the user; its
+  `unwatch_pull_request` wakes nobody else, so the launcher never hears that the
+  PR is ready. When the user hands the merge to the launcher, the child still
+  babysits and the launcher owns only the wait: `list_thread_pull_requests` with
+  the child's `threadId` gives the child's PR, the launcher calls
+  `watch_pull_request` on it, and merges when its own read of the round (the
+  `babysit-pr` state table) says READY. That list is the only source for a child
+  PR's state or watch. A launcher turn that ends before a child has opened its PR
+  names that child in its report, since nothing will wake the launcher for it.
 - **Leaving a worktree behind is fine; abandoning a branch is not.** Push the
   branch or delete it. T3's storage cleanup removes a thread's worktree once its PR
   merges or its last thread is deleted; the branch, the worktree's database and any

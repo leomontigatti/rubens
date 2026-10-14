@@ -34,7 +34,9 @@ to motion or interaction carries a short GIF instead.
 
 Seeing a PR through CI and review is the [`babysit-pr` skill](../../.agents/skills/babysit-pr/SKILL.md).
 The session that opened the PR watches its checks, fixes what holds, answers the
-rest with a reason, and stops at ready to merge. The merge is the user's.
+rest with a reason, and stops at ready to merge. The merge is the user's, or the
+launching thread's when the user hands it over
+([workflows.md](./workflows.md#branches-worktrees-and-t3-code-threads)).
 
 Branch protection requires a branch current with `main`. The babysit updates it
 once, when being behind is all that is left.

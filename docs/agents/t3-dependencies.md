@@ -72,11 +72,16 @@ Status of an entry:
 
 - **Relies on:** `watch_pull_request` links the PR if needed, has T3 check it about every
   two minutes, and wakes the thread on a failed check, passed required checks, a new
-  comment or review, or a conflict with the base. Only comments posted after the call
-  wake the thread. A subagent thread cannot call it.
-- **Used by:** `.agents/skills/babysit-pr/SKILL.md` § 2; `.agents/skills/implement/SKILL.md` § 7
+  or edited comment or review, or a conflict with the base. Only comments posted after
+  the call wake the thread. A subagent thread cannot call it. `unwatch_pull_request`
+  ends the watch and returns the thread to the user's inbox; it wakes no other thread.
+  `list_thread_pull_requests` with another thread's `threadId` lists that thread's PRs.
+- **Used by:** `.agents/skills/babysit-pr/SKILL.md` § 2 and § 5;
+  `.agents/skills/implement/SKILL.md` § 7; `docs/agents/workflows.md` § Branches,
+  worktrees and T3 Code threads (rule "A launched thread reports to its own inbox")
 - **Breaks if:** a wake event is dropped, or a wake no longer ends the turn, so the
-  session has to poll or sleep to wait.
+  session has to poll or sleep to wait; `unwatch_pull_request` stops returning the
+  thread to the inbox; or `list_thread_pull_requests` stops taking another thread's id.
 
 ### renamed-branch-in-thread
 
@@ -158,6 +163,18 @@ Status of an entry:
   and for a closing menu before a click, so they can run the loop in § UI verification.
   Not tried yet: needs a trial. No upstream issue found.
 - **Watch:** `apps/server/src/mcp/toolkits/preview/tools.ts`
+
+### pr-watch-unreported-checks
+
+- **Workaround:** `babysit-pr` reads the state on every wake and treats a required check
+  not reported yet, a check still running or `mergeStateStatus` `UNKNOWN` as not ready,
+  then waits on a fresh push with the background `gh pr checks --watch` loop. A PR behind
+  `main` is found the same way, by reading the state.
+- **Used by:** `.agents/skills/babysit-pr/SKILL.md` § 2 (the background wait and the
+  state table)
+- **Would improve if:** `watch_pull_request` wakes the thread when a required check has
+  not reported, and when the branch falls behind its base. Today it wakes on neither.
+- **Watch:** pingdotgg/t3code#17831 (closed without merging on 2026-10-14; it added both)
 
 ### pr-auto-link
 
