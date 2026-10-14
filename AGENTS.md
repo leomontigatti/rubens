@@ -46,3 +46,5 @@ Codex, "call the Skill tool with X" means open `.agents/skills/X/SKILL.md` and f
 - **Local database, auth and dev server**: [local-development.md](docs/operations/local-development.md).
 - **Production infrastructure**: [infrastructure.md](docs/operations/infrastructure.md).
 - **Upstream skills**: [vendored-skills.md](docs/agents/vendored-skills.md).
+- **T3 Code dependencies** (what the workflows assume about T3; read by the
+  `t3-update-review` skill): [t3-dependencies.md](docs/agents/t3-dependencies.md).

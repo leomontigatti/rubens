@@ -14,6 +14,7 @@
       "Bash(pnpm dev)",
       "Bash(pnpm dev:stop)",
       "Bash(pnpm db:worktree)",
+      "Bash(pnpm db:worktree prune)",
       "Bash(pnpm db:studio)",
       "Bash(playwright-cli:*)",
       "Bash(gh issue list:*)",

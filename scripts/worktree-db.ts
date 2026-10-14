@@ -11,8 +11,9 @@ import { fileURLToPath } from "node:url";
 //
 // `ensure` (run ahead of `pnpm dev` and `db:migrate`) sets it up on first use,
 // so a thread that never needs data never gets a database; with no argument
-// (`pnpm db:worktree`) it re-runs the setup. `prune` drops the databases of
-// removed worktrees; no script calls it yet.
+// (`pnpm db:worktree`) it re-runs the setup. `prune` lists the databases of
+// removed worktrees, and `prune --apply` drops them; the `housekeeping` skill
+// runs it.
 //
 // Two URLs, as in ADR-0002: `DATABASE_URL` is the app role (`rubens_app`, the
 // one RLS applies to) and `DATABASE_DIRECT_URL` is the owner role used by
@@ -244,8 +245,9 @@ export function prune(dryRun: boolean, livePaths = worktreePaths()) {
     console.log(`${dryRun ? "Would drop" : "Dropping"} ${database}`);
 
     if (!dryRun) {
-      psql(`select pg_terminate_backend(pid) from pg_stat_activity where datname = '${database}'`);
-      run("docker", ["exec", CONTAINER, "dropdb", "-U", "postgres", database]);
+      // --force ends its sessions in the same step, so a client that reconnects
+      // cannot make the drop fail halfway through the list.
+      run("docker", ["exec", CONTAINER, "dropdb", "--force", "-U", "postgres", database]);
     }
   }
 }
@@ -254,6 +256,8 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   try {
     if (process.argv.includes("ensure")) {
       ensure();
+    } else if (process.argv.includes("prune")) {
+      prune(!process.argv.includes("--apply"));
     } else {
       setUp(git(["rev-parse", "--show-toplevel"]));
     }

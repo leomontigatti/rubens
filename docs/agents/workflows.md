@@ -73,8 +73,10 @@ Rules for a session:
   the thread through the `link_pull_request` tool so T3 shows its status. The PR
   body is written with the [`pr` skill](../../.agents/skills/pr/SKILL.md).
 - **Leaving a worktree behind is fine; abandoning a branch is not.** Push the
-  branch or delete it. Finished worktrees are cleaned up as the
-  [`housekeeping` skill](../../.agents/skills/housekeeping/SKILL.md) says.
+  branch or delete it. T3's storage cleanup removes a thread's worktree once its PR
+  merges or its last thread is deleted; the branch, the worktree's database and any
+  worktree T3 did not create go with the
+  [`housekeeping` skill](../../.agents/skills/housekeeping/SKILL.md).
 - **Never commit without being asked.** A session commits when the run started
   from an issue, the user asked for a commit or a PR, or the run is unattended.
 
