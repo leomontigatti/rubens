@@ -57,11 +57,11 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
 - `db:studio` ⚠️ runs `drizzle-kit studio` on the owner URL (`DATABASE_DIRECT_URL`),
   which bypasses row-level security. It is a read-write web UI over the data. Use it
   against a local or worktree database only.
-- `db:worktree`: `scripts/worktree-db.ts`. With no argument, sets up this worktree's
+- `db:worktree` ⚠️ runs `scripts/worktree-db.ts`. With no argument, sets up this worktree's
   database and `.env.local` (its own database name and port). With `ensure`, the same
-  setup, skipped when it is already done. The `prune` function that drops the databases
-  of removed worktrees exists, but no CLI calls it, so this script never drops a
-  database.
+  setup, skipped when it is already done. With `prune`, lists the `rubens-wt-` databases
+  whose worktree is gone from `git worktree list`; `prune --apply` drops them. The
+  `housekeeping` skill runs it.
 
 ## Lifecycle
 

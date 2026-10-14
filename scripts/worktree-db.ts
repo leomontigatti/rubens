@@ -11,8 +11,9 @@ import { fileURLToPath } from "node:url";
 //
 // `ensure` (run ahead of `pnpm dev` and `db:migrate`) sets it up on first use,
 // so a thread that never needs data never gets a database; with no argument
-// (`pnpm db:worktree`) it re-runs the setup. `prune` drops the databases of
-// removed worktrees; no script calls it yet.
+// (`pnpm db:worktree`) it re-runs the setup. `prune` lists the databases of
+// removed worktrees, and `prune --apply` drops them; the `housekeeping` skill
+// runs it.
 //
 // Two URLs, as in ADR-0002: `DATABASE_URL` is the app role (`rubens_app`, the
 // one RLS applies to) and `DATABASE_DIRECT_URL` is the owner role used by
@@ -254,6 +255,8 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   try {
     if (process.argv.includes("ensure")) {
       ensure();
+    } else if (process.argv.includes("prune")) {
+      prune(!process.argv.includes("--apply"));
     } else {
       setUp(git(["rev-parse", "--show-toplevel"]));
     }
