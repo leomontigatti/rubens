@@ -7,7 +7,8 @@ description: "See an open PR through CI, and CodeRabbit's review if it gets one,
 
 You own one PR from its last push to **ready to merge**: checks green, the in-session
 review (step 5 of the `implement` skill) run, every finding fixed or answered. The
-merge is the user's.
+merge is the user's, or the launching thread's when the user hands it over
+([workflows.md](../../../docs/agents/workflows.md#branches-worktrees-and-t3-code-threads)).
 
 CodeRabbit is optional. If it reviews the PR, its findings are triaged like any other;
 if it does not, that is not a reason to wait. A rate limit, a skipped review or a
