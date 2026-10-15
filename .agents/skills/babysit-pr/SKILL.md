@@ -91,12 +91,13 @@ Write every reply to a file and pass it with `-F body=@<file>`, so review text n
 reaches the shell. The GraphQL mutations are in [coderabbit-triage.md](coderabbit-triage.md#commands).
 
 Then go back to step 2, unless an **ask** is open (step 5 as NEEDS YOU, after pushing
-the rest), or this was the third push (step 5 as NEEDS YOU, listing what is still open).
+the rest), or this was the third round of fixes (step 5 as NEEDS YOU, listing what is still open).
 
 ## 4b. Bring the branch up to date
 
 Branch protection wants the branch current with `main`. The check is done once the
-round is otherwise clean.
+round is otherwise clean; a `main` that moves while CI runs brings it back, so it can
+take more than one update.
 
 - **`BEHIND`**: `gh pr update-branch <n>`, then the fast-forward of step 2 so the local
   checkout matches the new head.
@@ -106,21 +107,24 @@ round is otherwise clean.
   area of [coderabbit-triage.md](coderabbit-triage.md) is an **ask**: `git merge --abort`
   and go to step 5 as NEEDS YOU.
 
-Either one counts as a push toward the three.
+A clean `update-branch` is not a round of fixes: it never counts toward the three. A
+`CONFLICTS` merge does, since resolving it is a change you made.
 
 ## 5. Report
 
 In T3 Code, first call `unwatch_pull_request` on the PR: the thread then returns to the
 user's inbox and stops waking on new comments or edits.
 
-Report to the user in this shape:
+Report to the user as plain markdown in the reply, so long lines wrap, in this shape
+(a line with nothing to list is left out):
 
-```
-Verdict: READY | NEEDS YOU | BLOCKED | MERGED — one line why
-PR: #<n> at <short sha>; checks <green | what is red>; CodeRabbit: <n reviews | not reviewed: why>
-Needs you: <each ask, with the finding and the options>   (omit when empty)
-Fixed: <finding> → <sha>                                  (one line each)
-Declined: <finding> — <reason>                            (one line each)
+```markdown
+**READY | NEEDS YOU | BLOCKED | MERGED:** one sentence why.
+
+- **PR:** #<n> at `<short sha>`, checks <green | what is red>, CodeRabbit <n reviews | not reviewed: why>
+- **Needs you:** each ask, with the finding and the options
+- **Fixed:** <finding> → `<sha>`, one bullet each
+- **Declined:** <finding>: <reason>, one bullet each
 ```
 
 A PR that CodeRabbit did not review is READY when its checks are green and the
