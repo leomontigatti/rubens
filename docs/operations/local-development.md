@@ -21,7 +21,7 @@ From a fresh clone to a running dev server, with a database, migrations and the 
 pnpm install                       # runs `prepare`, which installs the git hooks
 cp .env.example .env               # then set BETTER_AUTH_SECRET
 openssl rand -base64 32            # paste the output as BETTER_AUTH_SECRET
-docker compose up -d               # Postgres 17 as rubens-postgres, host port 5434
+docker compose up -d --no-recreate  # Postgres 17 as rubens-postgres, host port 5434; never replaces a running one
 pnpm db:migrate                    # applies the migrations to the `rubens` database
 pnpm dev                           # http://localhost:3000
 ```
