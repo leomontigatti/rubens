@@ -3,14 +3,6 @@
 Issues, PRDs and wayfinding maps live as GitHub issues. Use the `gh` CLI for every
 operation; the local `gh` auth is the source of truth.
 
-## The repository has no remote
-
-Rubens has no git remote yet, so nothing below can run against GitHub today: `gh`
-infers the repository from `git remote -v`. Until a remote exists, a session that
-needs an issue asks the user for the issue text or a file, and does not invent a
-number. When the remote is added, the rest of this page applies unchanged, and the
-label set in [Labels](#labels) is created on GitHub first.
-
 ## Conventions
 
 - **Create**: `gh issue create --title "..." --body-file <file>`. Write multi-line
@@ -33,7 +25,7 @@ first step of any issue work.
   `wayfinder:grilling`, `wayfinder:task`: the [wayfinding](#wayfinding-operations)
   labels. They are the only labels a map or its tickets carry.
 
-Create these labels on GitHub with `gh label create` when the remote exists.
+Create a missing label with `gh label create` before its first use.
 
 ## Closing an issue
 

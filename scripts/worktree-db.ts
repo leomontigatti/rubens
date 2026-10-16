@@ -209,7 +209,10 @@ function setUp(root: string) {
   const envLocalPath = path.join(root, ENV_LOCAL);
   const port = pickPort(root, envLocalPath, database);
 
-  run("docker", ["compose", "up", "-d", "--wait", "postgres"]);
+  // Every worktree mounts its own copy of init.sql, so compose sees a changed
+  // config from each one and would recreate the shared container under the
+  // others; --no-recreate starts the existing one as it is.
+  run("docker", ["compose", "up", "-d", "--wait", "--no-recreate", "postgres"]);
 
   const created = psql(`select 1 from pg_database where datname = '${database}'`) !== "1";
 
