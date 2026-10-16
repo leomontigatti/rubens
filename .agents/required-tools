@@ -1,0 +1,6 @@
+# Commands a session in this project needs on PATH, one per line, beside the shared ones.
+# Read by the shared check-tool-path hook. node and pnpm come from fnm, playwright-cli from
+# pnpm's global bin: both directories go in ~/.profile (docs/agents/agent-configuration.md).
+node
+pnpm
+playwright-cli

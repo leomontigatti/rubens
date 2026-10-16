@@ -1,7 +1,7 @@
 # Architecture Decisions
 
 Read ADRs selectively: start with the topic that matches the change. Format and
-when to write one: `.agents/skills/domain-modeling/ADR-FORMAT.md`.
+when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 
 `docs/adr/*.md` is live decisions only. A superseded ADR moves to
 `docs/adr/superseded/`, kept for its rationale.

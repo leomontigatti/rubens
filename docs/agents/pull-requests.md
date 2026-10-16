@@ -1,47 +1,46 @@
 # Pull requests
 
-How a PR is written here. The body is written with the
-[`pr` skill](../../.agents/skills/pr/SKILL.md), which has the template, the rules
-and the one-way doors. The title rule is enforced by `pnpm check:pr-title`. Branches
-and linking a PR to its T3 thread are in [workflows.md](./workflows.md#branches-worktrees-and-t3-code-threads).
+What Rubens adds to the shared `pr` and `babysit-pr` skills, which hold the body template, the
+title rule, the one-way doors, stacking and the babysit loop.
 
-PRs are squash-merged, so the title becomes the commit subject. Title, subject and
-body are English.
+PRs are squash-merged, so the title becomes the commit subject. Title, subject and body are
+English. Check a title with `pnpm check:pr-title "<title>"` before `gh pr create`; CI runs the
+same check (`pr-title`) on every PR.
+
+## Base branch
+
+- A PR targets `main`, unless it is a layer of a stack (the `pr` skill's § Stacked PRs).
+- Branch protection on `main` requires the `checks`, `actions-gate` and `pr-title` contexts
+  ([ci.md](../operations/ci.md#required-contexts)), and a branch current with `main`. The babysit
+  updates it once, when being behind is all that is left.
 
 ## PRD PRs
 
-One PR carries every sub-issue of a PRD. Its body lists each sub-issue as a
-checkbox with its own closing keyword (`- [ ] Closes #N <title>`), so that GitHub
-closes the sub-issue on merge. The PR is a **draft** until the chain has landed and
-been reviewed. The session ticks each box when its slice lands on the branch, so the
-body is the progress record.
+One PR carries every sub-issue of a PRD. Its body lists each sub-issue as a checkbox with its own
+closing keyword (`- [ ] Closes #N <title>`), so that GitHub closes the sub-issue on merge. The PR
+is a **draft** until the chain has landed and been reviewed. The session ticks each box when its
+slice lands on the branch, so the body is the progress record.
 
-## UI evidence
+## Evidence
 
-A PR that changes what a screen looks like carries a before and an after image. A change
-to motion or interaction carries a short GIF instead.
+Before and after images, and where they go: [verification.md](./verification.md#evidence).
 
-- Capture against data the worktree's own database holds, never a copy of production:
-  screenshots show names and appointments. The browser loop is in
-  [workflows.md](./workflows.md#ui-verification).
-- `gh` cannot attach files to a PR. Drag the images into the PR body on GitHub,
-  under `## Evidence`, labelled Before and After.
-- **If the repository is public, every image is public.** Never put a real patient's
-  data on screen for a capture.
-- Never commit evidence images to the repo.
+## Blast radius
 
-## Babysitting a PR
+What a wrong change breaks here, to name in the body's **Blast Radius**: the agenda of every
+office, the booking form, the reminder queue, one organization's data seen by another.
 
-Seeing a PR through CI and review is the [`babysit-pr` skill](../../.agents/skills/babysit-pr/SKILL.md).
-The session that opened the PR watches its checks, fixes what holds, answers the
-rest with a reason, and stops at ready to merge. The merge is the user's, or the
-launching thread's when the user hands it over
-([workflows.md](./workflows.md#branches-worktrees-and-t3-code-threads)).
+## Review bot
 
-Branch protection requires a branch current with `main`. The babysit updates it
-once, when being behind is all that is left.
+CodeRabbit, configured in `.coderabbit.yaml`; its login starts with `coderabbitai`.
 
-CodeRabbit is optional. If it reviews a PR, its findings are checked against the
-source like any other finding: it has the diff and the standards, not the issue or
-the domain. The in-session review (the correctness axis of `implement`'s review)
-does not depend on it.
+- **When to ask**: never by default. It reviews every non-draft PR into `main` on its own
+  (`auto_review`), with the diff, the ADRs and `AGENTS.md` as its knowledge base. Ask with a
+  `@coderabbitai review` comment (through `--body-file`) only when a PR left draft got no review,
+  or a push cancelled one.
+- **How to read it**: its findings are in review threads and in the review body (outside-diff
+  comments, nitpicks). It has the diff and the standards, not the issue or the domain, so each
+  claim is checked against the source. `review_status` is off, so a skipped review may post
+  nothing: no reply after the checks finish is a skip, reported as such.
+- **Optional.** It has not reviewed any PR yet (#1 to #5). A rate limit, a skip or silence is
+  reported and the PR goes ahead; the in-session review does not depend on it.
