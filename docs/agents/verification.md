@@ -8,9 +8,11 @@ validation command, and CI does not run it.
 
 ## Launch
 
-1. `docker compose up -d --wait postgres`. The local Postgres container, `rubens-postgres`, is
-   shared by every worktree; `pnpm dev` starts it only on a worktree's first run, so start it
-   yourself every time.
+1. `docker compose up -d --wait --no-recreate postgres`. The local Postgres container,
+   `rubens-postgres`, is shared by every worktree; `pnpm dev` starts it only on a worktree's
+   first run, so start it yourself every time. `--no-recreate` keeps a running container: its
+   bind mount resolves to each worktree's own path, so a plain `up` from another worktree
+   recreates it and drops every other worktree's sessions.
 2. `pnpm dev`. On its first run in a worktree it creates the worktree's own database and port
    (`pnpm db:worktree ensure`, [local-development.md](../operations/local-development.md#one-database-per-worktree)),
    and writes both to the gitignored `.env.local`. Run `pnpm db:migrate` when the branch adds a
