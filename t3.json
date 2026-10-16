@@ -4,7 +4,7 @@
   "scripts": [
     {
       "name": "Setup worktree",
-      "command": "if [ \"$(pwd -P)\" = \"$(cd \"$T3CODE_PROJECT_ROOT\" && pwd -P)\" ]; then echo \"Main checkout: no worktree to set up.\"; else ln -sf \"$T3CODE_PROJECT_ROOT/.env\" .env && pnpm install --frozen-lockfile; fi",
+      "command": "root=\"${T3CODE_PROJECT_ROOT:?T3CODE_PROJECT_ROOT is not set}\" && root=\"$(cd \"$root\" && pwd -P)\" && if [ \"$(pwd -P)\" = \"$root\" ]; then echo \"Main checkout: no worktree to set up.\"; else ln -sf \"$root/.env\" .env && pnpm install --frozen-lockfile; fi",
       "icon": "configure",
       "runOnWorktreeCreate": true,
       "async": false

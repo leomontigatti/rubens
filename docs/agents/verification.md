@@ -8,8 +8,9 @@ validation command, and CI does not run it.
 
 ## Launch
 
-1. Docker is running. The local Postgres container, `rubens-postgres`, is shared by every
-   worktree; `pnpm dev` starts it when it is down (`docker compose up -d --wait postgres`).
+1. `docker compose up -d --wait postgres`. The local Postgres container, `rubens-postgres`, is
+   shared by every worktree; `pnpm dev` starts it only on a worktree's first run, so start it
+   yourself every time.
 2. `pnpm dev`. On its first run in a worktree it creates the worktree's own database and port
    (`pnpm db:worktree ensure`, [local-development.md](../operations/local-development.md#one-database-per-worktree)),
    and writes both to the gitignored `.env.local`. Run `pnpm db:migrate` when the branch adds a
@@ -24,7 +25,7 @@ script yet: create the accounts and rows the screen needs by hand, with made-up 
 
 When the launch fails, check in this order:
 
-- **No database**: `docker compose ps postgres` shows it healthy; if not, start it as above. A
+- **No database**: `docker compose ps postgres` shows it healthy; if not, start it as § Launch says. A
   migration error on `pnpm dev` is the branch's to fix, never a reason to drop the database.
 - **No `.env`**: the worktree's `.env` is a link to the main checkout's (`t3.json`). A missing
   `BETTER_AUTH_SECRET` is the user's to set there.

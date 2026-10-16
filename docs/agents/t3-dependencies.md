@@ -26,8 +26,8 @@ Status of an entry:
   `pnpm install --frozen-lockfile`.
 - **Used by:** `t3.json`
 - **Breaks if:** T3 runs the script from another directory, or stops passing
-  `T3CODE_PROJECT_ROOT` (the script then skips setup everywhere and a new worktree starts with
-  no `.env` and no `node_modules`).
+  `T3CODE_PROJECT_ROOT` (the script then fails on purpose, and a new worktree starts with no
+  `.env` and no `node_modules`).
 
 ### worktree-folder-names-unique
 

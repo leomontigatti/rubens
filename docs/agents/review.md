@@ -20,7 +20,7 @@ terms and destructive scripts the shared skill always sends there:
 The paths, for `review.py`:
 
 ```review-paths
-full patient data: (^|/)(clinical|patients?)[^/]*(/|\.)
+full patient data: (^|/)(clinical|patients?|pacientes?|historias?|evolucion(es)?)[^/]*(/|\.)
 full tenancy: ^src/db/(tenant|client)\.ts$
 full tenancy: ^src/db/schema/
 full tenancy: ^docker/postgres/
