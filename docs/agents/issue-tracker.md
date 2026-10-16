@@ -101,8 +101,7 @@ The `wayfinder` skill uses this section.
 
 ### Research tickets
 
-A research ticket is resolved by the `research` agent
-([`.agents/agents/research.md`](../../.agents/agents/research.md)): spawn it with the
+A research ticket is resolved by the shared `research` agent: spawn it with the
 ticket's question, in parallel for each research ticket, as
 [agent-configuration.md](./agent-configuration.md#delegating-to-subagents) says. The
 agent reports as text and leaves git and the tracker alone, so the session posts the

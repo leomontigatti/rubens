@@ -21,7 +21,8 @@ process, through the same functions the app calls.
 Every test names the bug it catches: the wrong implementation that would make it
 fail. Tests that cannot name one are not written. The anti-patterns (tautological,
 pass-through, restating text, implementation-coupled) and the rules on fixtures and
-redundant tests are in the [`tdd` skill](../../.agents/skills/tdd/SKILL.md). A test never
+redundant tests are in the shared `tdd` skill, and this stack's test notes in
+[tdd-db.md](./tdd-db.md) and [tdd-frontend.md](./tdd-frontend.md). A test never
 asserts that a document contains fixed text; it checks structure against something
 outside the document (a link resolves, an index matches its files).
 
@@ -43,7 +44,7 @@ something observable follows. Keep reducers, state machines, validation, formatt
 and label logic in pure modules, tested without React, and render-test only a user
 flow whose outcome matters (what is submitted, what the user is told, what becomes
 disabled) or an accessibility contract (focus, labels, roles). What a component
-looks like is checked in the browser ([UI verification](./workflows.md#ui-verification)).
+looks like is checked in the browser ([verification.md](./verification.md)).
 
 A regression test for a real bug stays even when its assertion looks like markup:
 the bug is why it exists, and its name should say so.

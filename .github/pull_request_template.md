@@ -15,4 +15,10 @@
 
 **Blast Radius:** <!-- what breaks, and for whom, if this is wrong. Touches a migration, RLS, or clinical data? Say so. -->
 
+## Review
+
+Tier: <!-- what `review.py tier` printed, or higher -->, reviewed <!-- short sha -->
+
+- <!-- axis (model): findings, fixed, declined -->
+
 Closes #

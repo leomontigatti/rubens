@@ -19,6 +19,15 @@ into `tail` or `head`, which hides the failure.
 
 Run `pnpm typecheck` and `pnpm build` one after the other, never in parallel.
 
+## As you go
+
+Each time a slice goes green, check that slice alone:
+
+```sh
+pnpm typecheck                  # types only, faster than `pnpm check`
+pnpm test:unit <path>           # or `pnpm test:db <path>`: the one test file of the slice
+```
+
 ## Ownership
 
 | Command or gate                     | Owns                                                                                                                                                                                                                                                                                      |
@@ -41,12 +50,14 @@ exist in `package.json` or in that index; check before running a guessed one.
 
 ## Hooks inside the session
 
-The agent hooks ([agent-configuration.md](./agent-configuration.md#session-hooks))
-run three of these checks for you:
+The project's agent hooks ([agent-configuration.md](./agent-configuration.md#session-hooks))
+run two of these checks for you:
 
 - every file the agent writes is formatted;
-- the end of a turn is blocked while `pnpm check`'s lint or type check is red;
-- `pkill -f` is refused in favour of `pnpm dev:stop`.
+- the end of a turn is blocked while `pnpm check`'s lint or type check is red.
+
+The shared workflow's hooks, installed at user level, add one more: `pkill -f` is
+refused, in favour of `pnpm dev:stop` ([verification.md](./verification.md#cleanup)).
 
 The `Stop` hook is a backstop, not a substitute for running `pnpm check` yourself.
 `SKIP_STOP_CHECKS=1` turns it off for local work, never to get a red branch
@@ -55,8 +66,8 @@ committed.
 ## Browser checks
 
 Anything the dev server renders is checked in a browser, following
-[UI verification](./workflows.md#ui-verification). A browser check is not a
-validation command, and CI does not run it.
+[verification.md](./verification.md). A browser check is not a validation command,
+and CI does not run it.
 
 ## Why not `pnpm test`
 

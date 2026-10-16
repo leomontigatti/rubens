@@ -1,8 +1,0 @@
-# Codex wrapper for the reviewer agent. The instructions live in `.agents/agents/reviewer.md`.
-# The model and effort match the Standards and Spec rows of "Spawning a reviewer" in the
-# `code-review` skill; change both together.
-name = "reviewer"
-description = "Reviews a diff against the brief it is given and reports back. Use for the Standards and Spec axes of code-review and for the correctness axis; the readback goes to reviewer-luna."
-model = "gpt-6.1-sol"
-model_reasoning_effort = "medium"
-developer_instructions = "Before anything else, read `.agents/agents/reviewer.md` and follow it: it holds this agent's instructions."
