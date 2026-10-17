@@ -32,7 +32,6 @@ full migration: ^drizzle\.config\.ts$
 full production start: ^(Dockerfile|scripts/docker-entrypoint\.sh)$
 full destructive script: ^scripts/worktree-db\.ts$
 full glossary: ^GLOSSARY\.md$
-quiet: ^\.coderabbit\.yaml$
 quiet: ^\.fallowrc\.json$
 quiet: ^\.vite-hooks/
 quiet: ^\.github/(dependabot\.yml|pull_request_template\.md)$

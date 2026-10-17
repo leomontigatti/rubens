@@ -17,7 +17,8 @@ protection, so changing the list is a human step in the repo settings.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
   over `.github/dependabot.yml`.
 - `pr-title` (`pr-title.yml`): `pnpm check:pr-title` over the PR title. It lives in its
-  own file because it needs the `edited` event, which fires on a body edit too.
+  own file because it needs the `edited` event, which fires on a body edit too; a
+  body-only edit skips the job, and a skipped job reports the context as success.
 
 Also required, in branch protection: direct pushes to `main` forbidden, and
 "require branches to be up to date" on, so each required context runs against the
