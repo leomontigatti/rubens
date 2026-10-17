@@ -16,9 +16,10 @@ protection, so changing the list is a human step in the repo settings.
   runs on PGlite.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
   over `.github/dependabot.yml`.
-- `pr-title` (`pr-title.yml`): `pnpm check:pr-title` over the PR title. It lives in its
-  own file because it needs the `edited` event, which fires on a body edit too; a
-  body-only edit skips the job, and a skipped job reports the context as success.
+- `pr-title` (`pr-title.yml`): the `check:pr-title` script over the PR title, under
+  plain Node with no install. It lives in its own file because it needs the `edited`
+  event, which fires on a body edit too; it runs then as well, since a skipped job
+  would report the context as success over a failed title.
 
 Also required, in branch protection: direct pushes to `main` forbidden, and
 "require branches to be up to date" on, so each required context runs against the

@@ -5,8 +5,10 @@
 # Its own workflow rather than a job in `ci.yml`, for one reason: it needs `edited`,
 # so renaming a title re-runs the gate instead of leaving a red check on a title
 # that is now fine. `edited` also fires on body edits, and adding it to `ci.yml`
-# would re-run the whole suite on every description change. A body edit skips the
-# job (its `if:` below): the title it checked has not changed.
+# would re-run the whole suite on every description change. Every run checks the
+# title, body edits included: a skipped job reports the required context as
+# success, so skipping a body edit would turn a failed title green. Instead the job
+# is cheap: no install, Node alone runs the script.
 #
 # Branch protection: `pr-title` is a required context on `main`, alongside `checks`
 # and `actions-gate` from `ci.yml`. That is a repo setting outside this repo; this
@@ -25,36 +27,31 @@ on:
 permissions:
   contents: read
 
-# A body-only edit gets a group of its own, so its skipped run never cancels a run
-# that is still checking the title: a cancelled run followed by a skipped one would
-# leave the required context green on a title nobody checked.
 concurrency:
-  group: pr-title-${{ github.event.pull_request.number }}${{ github.event.action == 'edited' && github.event.changes.title == null && format('-body-{0}', github.run_id) || '' }}
+  group: pr-title-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   pr-title:
     name: pr-title
-    # An `edited` payload carries `changes.title.from` only when the title changed.
-    # A skipped job still reports the `pr-title` context, as success.
-    if: github.event.action != 'edited' || github.event.changes.title != null
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
           fetch-depth: 1
-      # The install is needed: the script is TypeScript and runs under `tsx`.
+      # No install: the script imports only `node:` builtins, and the Node in
+      # `.nvmrc` strips its TypeScript types natively. `pnpm check:pr-title` runs it
+      # under `tsx` locally; this is the same file.
       - uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
         with:
           node-version-file: .nvmrc
-          cache: true
+          cache: false
           run-install: false
-      - run: vp install --frozen-lockfile
       - name: check:pr-title (conventional prefix, English subject)
         env:
           # Through the environment, never interpolated into `run:`: the title is
           # attacker-controlled text, and `${{ … }}` inside a shell script is the
           # `template-injection` zizmor fails on.
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: pnpm check:pr-title
+        run: node scripts/check-pr-title.ts
