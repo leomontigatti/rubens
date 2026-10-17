@@ -60,14 +60,13 @@ missing outside T3, stop and tell the user.
 
 ## Evidence
 
-A PR that changes what a screen looks like carries a before and an after image, same screen,
-account and size; a change to motion or interaction carries a short recording instead.
+A change to what a screen looks like is shown as a before and an after image, same screen,
+account and size; a change to motion or interaction as a short recording instead.
 
-- `gh` cannot attach files to a PR. Drag the images into the PR body on GitHub, under
-  `## Evidence`, labelled Before and After. Upload the files: a T3 capture path stops resolving
-  once T3 deletes it.
-- **If the repository is public, every image is public.** Screenshots show names and
-  appointments: never put a real patient's data on screen for a capture.
+- **Approved in the thread, never uploaded.** Show the captures to the user in the reply, each
+  embedded by its absolute path, for approval before the PR opens. The PR carries no images.
+- **Made-up data only.** Screenshots show names and appointments: never put a real patient's data
+  on screen for a capture.
 - Never commit evidence images to the repo.
 
 ## Cleanup
