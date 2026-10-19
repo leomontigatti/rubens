@@ -21,6 +21,13 @@ from the `Dockerfile` and run as a container, and Postgres 17 run by Coolify as 
 managed database in the same network. Deploys are manual: a person triggers the build
 from Coolify, and it builds whatever `main` points to at that moment.
 
+The hosts underneath (access, firewalls, Tailscale, a new device's first login) are
+described in the private [`leomontigatti/infra`](https://github.com/leomontigatti/infra)
+repository, checked out at `~/.t3/projects/infra`, not here: read its `README.md` and
+`AGENTS.md` before touching a server, and add the host's page there when one is
+provisioned. Commands that reach a host name its user (`ssh root@<host>`), so they work
+from any admin device on the tailnet with no `~/.ssh/config` entry.
+
 The app container is one process: `node .output/server/index.mjs` on port 3000, with
 migrations applied first by the entrypoint (below).
 
