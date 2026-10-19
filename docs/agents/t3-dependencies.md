@@ -19,11 +19,12 @@ Status of an entry:
 ### setup-script-cwd
 
 - **Relies on:** T3 runs the `runOnWorktreeCreate` script with the thread's worktree as its
-  working directory, or the project root for a thread with no worktree, and with
-  `T3CODE_PROJECT_ROOT` set to the main checkout. `t3.json`'s script tells the two apart by
-  comparing `pwd -P` with `T3CODE_PROJECT_ROOT`: in the main checkout it does nothing, since
-  linking `.env` onto itself fails; in a worktree it links the main checkout's `.env` and runs
-  `pnpm install --frozen-lockfile`.
+  working directory, and with `T3CODE_PROJECT_ROOT` set to the main checkout. A thread with no
+  worktree runs no setup at all (pingdotgg/t3code#18891); the one case that runs the script in
+  the main checkout is a thread launched as `existing_worktree` on the project root.
+  `t3.json`'s script tells the two apart by comparing `pwd -P` with `T3CODE_PROJECT_ROOT`: in
+  the main checkout it does nothing, since linking `.env` onto itself fails; in a worktree it
+  links the main checkout's `.env` and runs `pnpm install --frozen-lockfile`.
 - **Used by:** `t3.json`
 - **Breaks if:** T3 runs the script from another directory, or stops passing
   `T3CODE_PROJECT_ROOT` (the script then fails on purpose, and a new worktree starts with no
