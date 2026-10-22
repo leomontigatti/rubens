@@ -4,7 +4,7 @@ From a fresh clone to a running dev server, with a database, migrations and the 
 
 ## Prerequisites
 
-- **Node 22.23.2**, from `.nvmrc` (`fnm use` or `nvm use` reads it).
+- **Node 22.23.4**, from `.nvmrc` (`fnm use` or `nvm use` reads it).
 - **pnpm**, the version in `packageManager`. Run `corepack enable` once, and pnpm
   picks the right version from the repo.
 - **Vite+ (`vp`)** is a dev dependency, so `pnpm <script>` and `pnpm exec vp` find it.
