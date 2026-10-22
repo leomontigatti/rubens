@@ -71,7 +71,7 @@ hand-written issue.
 | `GITLEAKS_VERSION` + `GITLEAKS_SHA256`     | `ci.yml`, `checks` job                       | `gitleaks_<version>_checksums.txt` on the release   |
 | `ACTIONLINT_VERSION` + `ACTIONLINT_SHA256` | `ci.yml`, `actions-gate` job                 | `actionlint_<version>_checksums.txt` on the release |
 | `zizmor==<version>`                        | `ci.yml`, `actions-gate` job (`pipx run`)    | the PyPI release                                    |
-| Node                                       | `.nvmrc` and the `FROM` line of `Dockerfile` | both must match; see below                          |
+| Node                                       | `.nvmrc`, `engines.node` and `Dockerfile`    | all three must match; see below                     |
 | pnpm                                       | `packageManager` in `package.json`           | the pnpm release                                    |
 
 ### How to bump
