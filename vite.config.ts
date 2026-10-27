@@ -84,12 +84,11 @@ export default defineConfig({
           name: "db",
           include: ["src/**/*.db.test.ts", "tests/db/**/*.db.test.ts"],
           environment: "node",
-          // One PGlite instance per file; files run in parallel, tests in a
-          // file run serially (tests/db/README.md).
+          // Each createTestDatabase() is its own PGlite, loaded from the one
+          // migrated in globalSetup; files run in parallel, tests in a file
+          // run serially (tests/db/README.md).
           fileParallelism: true,
-          // A fresh PGlite with every migration takes 3 to 5 s on its own, and
-          // several files create theirs at once, past the default 10 s.
-          hookTimeout: 60_000,
+          globalSetup: ["tests/db/global-setup.ts"],
         },
       },
     ],

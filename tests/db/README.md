@@ -1,10 +1,14 @@
 # DB tests
 
 `pnpm test:db` runs the `*.db.test.ts` files under `src/` and `tests/db/`
-against PGlite, an in-process Postgres. Each file gets its own instance with
-every migration in `src/db/migrations` applied, so files run in parallel and
-need no server.
+against PGlite, an in-process Postgres. Every `createTestDatabase()` call is
+its own instance with every migration in `src/db/migrations` applied, so tests
+and files are isolated, files run in parallel, and nothing needs a server.
 
+- `global-setup.ts` migrates one instance before the run and saves its data
+  directory; `createTestDatabase` loads that copy (about 0.7 s) instead of
+  migrating from scratch (3 to 5 s). A new migration is picked up on the next
+  run, with nothing to regenerate.
 - `harness.ts` creates the instance (`createTestDatabase`), loads `btree_gist`
   because migration 0000 needs it, and runs a callback as the app role
   (`asAppRole`, `SET LOCAL ROLE rubens_app`, which ends with the transaction).

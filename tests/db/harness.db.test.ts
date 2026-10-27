@@ -33,3 +33,18 @@ describe("asAppRole", () => {
     expect(rows[0]?.role).not.toBe("rubens_app");
   });
 });
+
+describe("createTestDatabase", () => {
+  it("gives each caller its own database, so one test's rows never reach another", async () => {
+    await db.execute(sql`insert into rubens.organization (id, name, slug, created_at)
+      values ('org-a', 'A', 'a', now())`);
+
+    const other = await createTestDatabase();
+    const rows = rowsOf<{ count: number }>(
+      await other.db.execute(sql`select count(*)::int as count from rubens.organization`),
+    );
+    await other.client.close();
+
+    expect(rows[0]?.count).toBe(0);
+  });
+});
