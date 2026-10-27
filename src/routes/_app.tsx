@@ -55,6 +55,13 @@ function AppShell() {
           >
             Sedes
           </Link>
+          <Link
+            to="/horarios"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Horarios
+          </Link>
           {viewer.roles.includes("admin") && (
             <Link
               to="/personal"

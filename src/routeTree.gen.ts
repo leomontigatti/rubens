@@ -13,6 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
+import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
 import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
 import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
@@ -38,6 +40,17 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHorariosIndexRoute = AppHorariosIndexRouteImport.update({
+  id: '/horarios/',
+  path: '/horarios/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHorariosPractitionerIdRoute =
+  AppHorariosPractitionerIdRouteImport.update({
+    id: '/horarios/$practitionerId',
+    path: '/horarios/$practitionerId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
   id: '/personal/',
   path: '/personal/',
@@ -68,9 +81,11 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/horarios/': typeof AppHorariosIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
 }
@@ -78,9 +93,11 @@ export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
+  '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/horarios': typeof AppHorariosIndexRoute
   '/personal': typeof AppPersonalIndexRoute
   '/sedes': typeof AppSedesIndexRoute
 }
@@ -90,9 +107,11 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/horarios/': typeof AppHorariosIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
 }
@@ -102,9 +121,11 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/horarios/$practitionerId'
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
+    | '/horarios/'
     | '/personal/'
     | '/sedes/'
   fileRoutesByTo: FileRoutesByTo
@@ -112,9 +133,11 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/'
+    | '/horarios/$practitionerId'
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
+    | '/horarios'
     | '/personal'
     | '/sedes'
   id:
@@ -123,9 +146,11 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
+    | '/_app/horarios/$practitionerId'
     | '/_app/personal/$memberId'
     | '/_app/sedes/$officeId'
     | '/api/auth/$'
+    | '/_app/horarios/'
     | '/_app/personal/'
     | '/_app/sedes/'
   fileRoutesById: FileRoutesById
@@ -164,6 +189,20 @@ declare module '@tanstack/react-router' {
       path: '/cambiar-contrasena'
       fullPath: '/cambiar-contrasena'
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/horarios/': {
+      id: '/_app/horarios/'
+      path: '/horarios'
+      fullPath: '/horarios/'
+      preLoaderRoute: typeof AppHorariosIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/horarios/$practitionerId': {
+      id: '/_app/horarios/$practitionerId'
+      path: '/horarios/$practitionerId'
+      fullPath: '/horarios/$practitionerId'
+      preLoaderRoute: typeof AppHorariosPractitionerIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/personal/': {
@@ -207,8 +246,10 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppHorariosIndexRoute: typeof AppHorariosIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
 }
@@ -216,8 +257,10 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppHorariosIndexRoute: AppHorariosIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
 }

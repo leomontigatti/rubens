@@ -60,5 +60,7 @@ export const room = rubens.table(
       foreignColumns: [office.id, office.organizationId],
     }),
     check("room_capacity_check", sql`${table.capacity} >= 1`),
+    // The target of the schedule's composite key.
+    unique().on(table.id, table.organizationId),
   ],
 );

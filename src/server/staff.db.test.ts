@@ -133,6 +133,7 @@ describe("changing roles", () => {
           displayName: "Dr. Gómez",
           specialty: "Ortodoncia",
           keepsClinicalRecords: false,
+          gridMinutes: 20,
         },
         tx,
       ),
@@ -148,7 +149,7 @@ describe("changing roles", () => {
       ok: true,
       member: {
         roles: ["receptionist", "practitioner"],
-        practitioner: { displayName: "Juan Gómez", keepsClinicalRecords: true },
+        practitioner: { displayName: "Juan Gómez", keepsClinicalRecords: true, gridMinutes: 15 },
       },
     });
     expect(removed).toMatchObject({
@@ -163,6 +164,7 @@ describe("changing roles", () => {
           displayName: "Dr. Gómez",
           specialty: "Ortodoncia",
           keepsClinicalRecords: false,
+          gridMinutes: 20,
         },
       },
     });
@@ -183,6 +185,7 @@ describe("changing roles", () => {
             displayName: "X",
             specialty: "",
             keepsClinicalRecords: true,
+            gridMinutes: 15,
           },
           tx,
         ),
@@ -321,7 +324,7 @@ describe("refusals", () => {
       await changeRoles(nonAdmin, { memberId, roles: ["admin"] }, tx),
       await updatePractitioner(
         nonAdmin,
-        { memberId, displayName: "X", specialty: "", keepsClinicalRecords: false },
+        { memberId, displayName: "X", specialty: "", keepsClinicalRecords: false, gridMinutes: 15 },
         tx,
       ),
       await setMemberActive(nonAdmin, { memberId: adminMemberId, active: false }, tx),

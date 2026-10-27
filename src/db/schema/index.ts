@@ -10,3 +10,4 @@ export * from "#/db/schema/schema.ts";
 export * from "#/db/schema/auth.ts";
 export * from "#/db/schema/offices.ts";
 export * from "#/db/schema/staff.ts";
+export * from "#/db/schema/schedules.ts";

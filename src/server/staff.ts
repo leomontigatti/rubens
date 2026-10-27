@@ -36,6 +36,7 @@ export interface PractitionerSettings {
   displayName: string;
   specialty: string | null;
   keepsClinicalRecords: boolean;
+  gridMinutes: number;
 }
 
 export interface StaffMember {
@@ -73,6 +74,7 @@ const staffColumns = {
   displayName: practitioner.displayName,
   specialty: practitioner.specialty,
   keepsClinicalRecords: practitioner.keepsClinicalRecords,
+  gridMinutes: practitioner.gridMinutes,
 };
 
 async function selectStaff(tx: Transaction, actor: Actor, memberId?: string) {
@@ -89,13 +91,18 @@ async function selectStaff(tx: Transaction, actor: Actor, memberId?: string) {
     )
     .orderBy(asc(user.name), asc(user.email));
   return rows.map(
-    ({ role, displayName, specialty, keepsClinicalRecords, ...row }): StaffMember => ({
+    ({ role, displayName, specialty, keepsClinicalRecords, gridMinutes, ...row }): StaffMember => ({
       ...row,
       roles: parseRoles(role),
       practitioner:
         displayName === null
           ? null
-          : { displayName, specialty, keepsClinicalRecords: keepsClinicalRecords ?? true },
+          : {
+              displayName,
+              specialty,
+              keepsClinicalRecords: keepsClinicalRecords ?? true,
+              gridMinutes: gridMinutes ?? 15,
+            },
     }),
   );
 }

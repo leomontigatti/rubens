@@ -1,4 +1,5 @@
-import { boolean, foreignKey, text, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, check, foreignKey, integer, text, unique, uuid } from "drizzle-orm/pg-core";
 
 import { member, organization } from "#/db/schema/auth.ts";
 import { rubens, timestamps } from "#/db/schema/schema.ts";
@@ -18,6 +19,8 @@ export const practitioner = rubens.table(
     displayName: text("display_name").notNull(),
     specialty: text("specialty"),
     keepsClinicalRecords: boolean("keeps_clinical_records").notNull().default(true),
+    // Free times start every this many minutes, counted from local midnight.
+    gridMinutes: integer("grid_minutes").notNull().default(15),
     ...timestamps,
   },
   (table) => [
@@ -32,5 +35,6 @@ export const practitioner = rubens.table(
       columns: [table.memberId, table.organizationId],
       foreignColumns: [member.id, member.organizationId],
     }),
+    check("practitioner_grid_minutes_check", sql`${table.gridMinutes} between 5 and 120`),
   ],
 );
