@@ -4,7 +4,8 @@
 
 Messages go by WhatsApp to patients with WhatsApp consent, and by email otherwise.
 A patient with neither gets none. The text comes from templates Meta approves, so
-an appointment type picks a template; it does not write free text.
+an appointment type picks a template; it does not write free text. The templates
+are in [whatsapp-templates.md](../operations/whatsapp-templates.md).
 
 Each appointment type sets:
 
