@@ -12,8 +12,8 @@ import {
 
 import { defaultTimeZone } from "#/lib/offices.ts";
 
-import { organization } from "./auth.ts";
-import { rubens, timestamps } from "./schema.ts";
+import { organization } from "#/db/schema/auth.ts";
+import { rubens, timestamps } from "#/db/schema/schema.ts";
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migration (raw SQL, 0003), as for every table with that column.

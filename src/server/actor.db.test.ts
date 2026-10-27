@@ -10,7 +10,7 @@ import {
 } from "#/test-support/organization.ts";
 
 import { createTestDatabase } from "../../tests/db/harness.ts";
-import { authorize } from "./actor.ts";
+import { authorize } from "#/server/actor.ts";
 
 let client: PGlite;
 let auth: Auth;

@@ -16,8 +16,8 @@ import {
   setMemberActive,
   setStartingPassword,
   updatePractitioner,
-} from "./staff.ts";
-import { withActor } from "./with-actor.ts";
+} from "#/server/staff.ts";
+import { withActor } from "#/server/with-actor.ts";
 
 // The services validate their input and refuse non-admins themselves, so each
 // validator here only names the type. Requiring the admin role as well refuses

@@ -1,7 +1,7 @@
 import { boolean, foreignKey, text, unique, uuid } from "drizzle-orm/pg-core";
 
-import { member, organization } from "./auth.ts";
-import { rubens, timestamps } from "./schema.ts";
+import { member, organization } from "#/db/schema/auth.ts";
+import { rubens, timestamps } from "#/db/schema/schema.ts";
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migration (raw SQL, 0004), as for every table with that column.

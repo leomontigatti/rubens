@@ -6,7 +6,7 @@
 // `mustChangePassword` and the member's `active` get `.notNull()`, and `member`
 // gets the `member_id_organization_id_key` unique constraint `practitioner`'s
 // composite key targets. Regenerate after adding an auth plugin or a field.
-export * from "./schema.ts";
-export * from "./auth.ts";
-export * from "./offices.ts";
-export * from "./staff.ts";
+export * from "#/db/schema/schema.ts";
+export * from "#/db/schema/auth.ts";
+export * from "#/db/schema/offices.ts";
+export * from "#/db/schema/staff.ts";

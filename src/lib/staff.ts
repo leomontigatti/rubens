@@ -1,7 +1,7 @@
 import * as z from "zod";
 
-import { parseRoles } from "./access.ts";
-import type { Role } from "./access.ts";
+import { parseRoles } from "#/lib/access.ts";
+import type { Role } from "#/lib/access.ts";
 
 const roleSchema = z.enum(["admin", "receptionist", "practitioner"] satisfies Role[]);
 

@@ -6,8 +6,8 @@ import type { Auth } from "#/lib/auth.ts";
 import { createOrganization, startingPassword } from "#/test-support/organization.ts";
 
 import { createTestDatabase } from "../../tests/db/harness.ts";
-import { changeOwnPassword } from "./accounts.ts";
-import { authorize } from "./actor.ts";
+import { changeOwnPassword } from "#/server/accounts.ts";
+import { authorize } from "#/server/actor.ts";
 
 let client: PGlite;
 let auth: Auth;

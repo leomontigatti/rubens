@@ -12,7 +12,7 @@ import {
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { authorize } from "./actor.ts";
+import { authorize } from "#/server/actor.ts";
 import {
   changeRoles,
   createStaffMember,
@@ -21,7 +21,7 @@ import {
   setMemberActive,
   setStartingPassword,
   updatePractitioner,
-} from "./staff.ts";
+} from "#/server/staff.ts";
 
 // Every service call runs as the app role, so row-level security applies as in
 // the app. Sign-in and sessions go through Better Auth on the same database.

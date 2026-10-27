@@ -16,7 +16,7 @@ import {
   setRoomActive,
   updateOffice,
   updateRoom,
-} from "./offices.ts";
+} from "#/server/offices.ts";
 
 // Every call runs as the app role, so row-level security applies as in the app.
 

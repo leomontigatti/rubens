@@ -23,8 +23,8 @@ import {
   fieldMessage,
 } from "#/components/admin-form.tsx";
 
-import { RefusalAlert, useAction } from "./-shared.tsx";
-import type { ActionResult } from "./-shared.tsx";
+import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
+import type { ActionResult } from "#/routes/_app/sedes/-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/$officeId")({
   validateSearch: z.object({ inactivos: z.boolean().optional() }),

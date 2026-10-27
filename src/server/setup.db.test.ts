@@ -6,7 +6,7 @@ import type { Auth } from "#/lib/auth.ts";
 
 import { createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { setupOrganization } from "./setup.ts";
+import { setupOrganization } from "#/server/setup.ts";
 
 let client: PGlite;
 let db: TestDatabase;

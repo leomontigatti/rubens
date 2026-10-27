@@ -21,8 +21,8 @@ import type {
   StartingPasswordChange,
 } from "#/lib/staff.ts";
 
-import { assignStartingPassword, createAccount } from "./accounts.ts";
-import type { CreateAccountResult } from "./accounts.ts";
+import { assignStartingPassword, createAccount } from "#/server/accounts.ts";
+import type { CreateAccountResult } from "#/server/accounts.ts";
 
 // The staff of the actor's organization: their accounts, roles and practitioner
 // settings. Only an admin reads or changes them. Nothing is deleted: a

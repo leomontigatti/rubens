@@ -3,9 +3,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { auth } from "#/lib/auth.ts";
 import { passwordChangeSchema } from "#/lib/password-change.ts";
 
-import { changeOwnPassword } from "./accounts.ts";
-import { loadViewer } from "./viewer.ts";
-import { withActor } from "./with-actor.ts";
+import { changeOwnPassword } from "#/server/accounts.ts";
+import { loadViewer } from "#/server/viewer.ts";
+import { withActor } from "#/server/with-actor.ts";
 
 // Both run for a member who must still change the starting password: the shell
 // has to load to show them the form that clears it.

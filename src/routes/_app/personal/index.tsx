@@ -10,7 +10,13 @@ import type { StaffInput } from "#/lib/staff.ts";
 import { addStaffMember, getStaff } from "#/server/staff.functions.ts";
 import type { StaffMember } from "#/server/staff.ts";
 
-import { RefusalAlert, RoleCheckboxes, formRoles, rolesLabel, useAction } from "./-shared.tsx";
+import {
+  RefusalAlert,
+  RoleCheckboxes,
+  formRoles,
+  rolesLabel,
+  useAction,
+} from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/")({
   head: () => ({ meta: [{ title: "Personal · Rubens" }] }),

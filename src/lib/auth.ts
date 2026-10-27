@@ -9,7 +9,7 @@ import { db } from "#/db/client.ts";
 import * as schema from "#/db/schema/index.ts";
 import type { AnyDatabase } from "#/db/tenant.ts";
 
-import { ac, roles } from "./access.ts";
+import { ac, roles } from "#/lib/access.ts";
 
 /**
  * Better Auth on one database: the app's (`auth` below), the owner connection

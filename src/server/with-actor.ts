@@ -3,8 +3,8 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import type { Actor } from "#/lib/access.ts";
 import { auth } from "#/lib/auth.ts";
 
-import { authorize } from "./actor.ts";
-import type { Refusal, Requirement } from "./actor.ts";
+import { authorize } from "#/server/actor.ts";
+import type { Refusal, Requirement } from "#/server/actor.ts";
 
 /**
  * The shared step in front of every server function: resolves the actor from

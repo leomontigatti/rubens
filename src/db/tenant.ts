@@ -3,8 +3,8 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import type { Actor } from "#/lib/access.ts";
 
-import { db } from "./client.ts";
-import type { Schema } from "./client.ts";
+import { db } from "#/db/client.ts";
+import type { Schema } from "#/db/client.ts";
 
 // Any drizzle Postgres database: the node-postgres one the app uses, or the
 // PGlite one the DB tests use (tests/db/harness.ts). The tenant rule is the same

@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { text, timestamp, boolean, index, unique } from "drizzle-orm/pg-core";
 
-import { rubens } from "./schema.ts";
+import { rubens } from "#/db/schema/schema.ts";
 
 export const user = rubens.table("user", {
   id: text("id").primaryKey(),

@@ -19,7 +19,12 @@ import {
 } from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/server/staff.ts";
 
-import { RefusalAlert, RoleCheckboxes, formRoles, useAction } from "./-shared.tsx";
+import {
+  RefusalAlert,
+  RoleCheckboxes,
+  formRoles,
+  useAction,
+} from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),

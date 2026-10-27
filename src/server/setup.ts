@@ -1,7 +1,7 @@
 import type { Auth } from "#/lib/auth.ts";
 
-import { createAccount } from "./accounts.ts";
-import type { CreateAccountResult } from "./accounts.ts";
+import { createAccount } from "#/server/accounts.ts";
+import type { CreateAccountResult } from "#/server/accounts.ts";
 
 export interface SetupInput {
   organizationName: string;
