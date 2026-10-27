@@ -28,30 +28,46 @@ export const migratedDataDirKey = "migratedDataDir" as never;
  */
 export default async function setup(project: TestProject) {
   const directory = await mkdtemp(path.join(tmpdir(), "rubens-pglite-"));
+  const removeDirectory = () => rm(directory, { recursive: true, force: true });
   const file = path.join(directory, "migrated.tar");
   let builtFrom = await migrationsFingerprint();
-  await writeMigratedDataDir(file);
+  try {
+    await writeMigratedDataDir(file);
+  } catch (error) {
+    await removeDirectory();
+    throw error;
+  }
   project.provide(migratedDataDirKey, file as never);
 
   project.onTestsRerun(async () => {
     const current = await migrationsFingerprint();
-    if (current !== builtFrom) {
+    if (current === builtFrom) {
+      return;
+    }
+    // A throw here would abort the rerun outside Vitest's error reporting.
+    // Instead the stale template goes, so every test fails on the missing
+    // file rather than passing against the old schema; the next rerun retries.
+    try {
       await writeMigratedDataDir(file);
       builtFrom = current;
+    } catch (error) {
+      console.error("[db global-setup] migrations failed; fix them and rerun", error);
+      await rm(file, { force: true });
     }
   });
 
-  return async () => {
-    await rm(directory, { recursive: true, force: true });
-  };
+  return removeDirectory;
 }
 
 async function writeMigratedDataDir(file: string) {
   const client = await PGlite.create({ extensions: { btree_gist } });
-  await migrate(drizzle(client), { migrationsFolder });
-  const dump = await client.dumpDataDir("none");
-  await client.close();
-  await writeFile(file, Buffer.from(await dump.arrayBuffer()));
+  try {
+    await migrate(drizzle(client), { migrationsFolder });
+    const dump = await client.dumpDataDir("none");
+    await writeFile(file, Buffer.from(await dump.arrayBuffer()));
+  } finally {
+    await client.close();
+  }
 }
 
 /** Every migration file's path, size and modification time, as one string. */
