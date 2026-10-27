@@ -68,4 +68,11 @@ describe("setupOrganization", () => {
     expect(await db.query.organization.findMany()).toHaveLength(1);
     expect(await db.query.user.findMany()).toHaveLength(1);
   });
+
+  it("refuses a name with no letters or digits for its slug, writing nothing", async () => {
+    const result = await setupOrganization(auth, { ...input, organizationName: "---" });
+
+    expect(result).toEqual({ ok: false, reason: "invalidOrganizationName" });
+    expect(await db.query.user.findMany()).toHaveLength(0);
+  });
 });

@@ -14,7 +14,10 @@ export type SetupResult =
   | { ok: true; organizationId: string; userId: string }
   | {
       ok: false;
-      reason: "organizationExists" | Extract<CreateAccountResult, { ok: false }>["reason"];
+      reason:
+        | "invalidOrganizationName"
+        | "organizationExists"
+        | Extract<CreateAccountResult, { ok: false }>["reason"];
     };
 
 /**
@@ -25,6 +28,9 @@ export type SetupResult =
 export async function setupOrganization(auth: Auth, input: SetupInput): Promise<SetupResult> {
   const context = await auth.$context;
   const slug = slugify(input.organizationName);
+  if (slug === "") {
+    return { ok: false, reason: "invalidOrganizationName" };
+  }
   const existing = await context.adapter.findOne({
     model: "organization",
     where: [{ field: "slug", value: slug }],

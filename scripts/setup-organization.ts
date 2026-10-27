@@ -52,6 +52,9 @@ try {
     console.log(`created organization ${result.organizationId} with admin ${result.userId}`);
   } else if (result.reason === "organizationExists") {
     console.log(`organization "${organization}" already exists; nothing changed`);
+  } else if (result.reason === "invalidOrganizationName") {
+    console.error(`setup refused: "${organization}" needs a letter or digit for its slug`);
+    process.exitCode = 1;
   } else {
     console.error(`setup refused: ${result.reason}`);
     process.exitCode = 1;
