@@ -110,10 +110,14 @@ async function isLastActiveAdmin(tx: Transaction, actor: Actor, target: StaffMem
   if (!target.active || !target.roles.includes("admin")) {
     return false;
   }
+  // `for update` locks the organization's active members until the change
+  // commits, so two admins demoting or deactivating each other at once are
+  // serialised: the second sees the first's change and is refused.
   const active = await tx
     .select({ role: member.role })
     .from(member)
-    .where(and(eq(member.organizationId, actor.organizationId), eq(member.active, true)));
+    .where(and(eq(member.organizationId, actor.organizationId), eq(member.active, true)))
+    .for("update");
   return active.filter((row) => parseRoles(row.role).includes("admin")).length <= 1;
 }
 
