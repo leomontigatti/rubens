@@ -5,7 +5,7 @@ import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
-import { staffInputSchema } from "#/lib/staff.ts";
+import { rolesLabel, staffInputSchema } from "#/lib/staff.ts";
 import type { StaffInput } from "#/lib/staff.ts";
 import { addStaffMember, getStaff } from "#/server/staff.functions.ts";
 import type { StaffMember } from "#/server/staff.ts";
@@ -14,7 +14,6 @@ import {
   RefusalAlert,
   RoleCheckboxes,
   formRoles,
-  rolesLabel,
   useAction,
 } from "#/routes/_app/personal/-shared.tsx";
 

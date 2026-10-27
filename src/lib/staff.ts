@@ -11,6 +11,16 @@ const rolesSchema = z
   .min(1)
   .transform((roles) => parseRoles(roles.join(",")));
 
+export const roleLabels: Record<Role, string> = {
+  admin: "Administrador",
+  receptionist: "Recepcionista",
+  practitioner: "Profesional",
+};
+
+export function rolesLabel(roles: readonly Role[]): string {
+  return roles.map((role) => roleLabels[role]).join(", ");
+}
+
 const memberId = z.string().min(1);
 
 /**

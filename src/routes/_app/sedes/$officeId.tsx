@@ -7,7 +7,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
-import { roomUpdateSchema } from "#/lib/offices.ts";
+import { capacityLabel, roomUpdateSchema } from "#/lib/offices.ts";
 import {
   addRoom,
   changeRoomActive,
@@ -129,10 +129,6 @@ function RoomList({ rooms, isAdmin }: { rooms: Room[]; isAdmin: boolean }) {
       ))}
     </ul>
   );
-}
-
-function capacityLabel(capacity: number): string {
-  return capacity === 1 ? "1 profesional a la vez" : `${capacity} profesionales a la vez`;
 }
 
 function RoomItem({ room, isAdmin }: { room: Room; isAdmin: boolean }) {

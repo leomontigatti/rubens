@@ -2,6 +2,7 @@ import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import type { Role } from "#/lib/access.ts";
+import { roleLabels } from "#/lib/staff.ts";
 
 // The pieces the staff screens share: refusal copy and the role checkboxes.
 
@@ -26,16 +27,6 @@ export function useAction() {
 
 export function RefusalAlert({ reason }: { reason: RefusalReason }) {
   return <RefusalMessage message={refusalMessages[reason]} />;
-}
-
-const roleLabels: Record<Role, string> = {
-  admin: "Administrador",
-  receptionist: "Recepcionista",
-  practitioner: "Profesional",
-};
-
-export function rolesLabel(roles: readonly Role[]): string {
-  return roles.map((role) => roleLabels[role]).join(", ");
 }
 
 /** The roles a form submitted through `RoleCheckboxes`. */
