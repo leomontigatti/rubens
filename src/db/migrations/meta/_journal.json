@@ -22,6 +22,13 @@
       "when": 1793130081841,
       "tag": "0002_must_change_password",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793131285198,
+      "tag": "0003_offices_and_rooms",
+      "breakpoints": true
     }
   ]
 }

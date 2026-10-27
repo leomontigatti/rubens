@@ -43,9 +43,18 @@ function AppShell() {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="flex items-center justify-between border-b px-6 py-3">
-        <Link to="/" className="font-semibold">
-          {viewer.organizationName}
-        </Link>
+        <nav className="flex items-center gap-6">
+          <Link to="/" className="font-semibold">
+            {viewer.organizationName}
+          </Link>
+          <Link
+            to="/sedes"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Sedes
+          </Link>
+        </nav>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost">

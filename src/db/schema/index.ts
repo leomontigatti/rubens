@@ -7,3 +7,4 @@
 // or a user field.
 export * from "./schema.ts";
 export * from "./auth.ts";
+export * from "./offices.ts";

@@ -13,6 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
+import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const AppRoute = AppRouteImport.update({
@@ -34,6 +36,16 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSedesIndexRoute = AppSedesIndexRouteImport.update({
+  id: '/sedes/',
+  path: '/sedes/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSedesOfficeIdRoute = AppSedesOfficeIdRouteImport.update({
+  id: '/sedes/$officeId',
+  path: '/sedes/$officeId',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -44,13 +56,17 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/sedes/': typeof AppSedesIndexRoute
 }
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
+  '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/sedes': typeof AppSedesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +74,36 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/sedes/': typeof AppSedesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ingresar' | '/cambiar-contrasena' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/ingresar'
+    | '/cambiar-contrasena'
+    | '/sedes/$officeId'
+    | '/api/auth/$'
+    | '/sedes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/ingresar' | '/cambiar-contrasena' | '/' | '/api/auth/$'
+  to:
+    | '/ingresar'
+    | '/cambiar-contrasena'
+    | '/'
+    | '/sedes/$officeId'
+    | '/api/auth/$'
+    | '/sedes'
   id:
     | '__root__'
     | '/_app'
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
+    | '/_app/sedes/$officeId'
     | '/api/auth/$'
+    | '/_app/sedes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -110,6 +142,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sedes/': {
+      id: '/_app/sedes/'
+      path: '/sedes'
+      fullPath: '/sedes/'
+      preLoaderRoute: typeof AppSedesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sedes/$officeId': {
+      id: '/_app/sedes/$officeId'
+      path: '/sedes/$officeId'
+      fullPath: '/sedes/$officeId'
+      preLoaderRoute: typeof AppSedesOfficeIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -123,11 +169,15 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppSedesIndexRoute: typeof AppSedesIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppSedesIndexRoute: AppSedesIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

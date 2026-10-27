@@ -1,4 +1,4 @@
-import type { Actor } from "#/lib/access.ts";
+import type { Actor, Role } from "#/lib/access.ts";
 import type { Auth } from "#/lib/auth.ts";
 
 export interface Viewer {
@@ -6,6 +6,7 @@ export interface Viewer {
   email: string;
   organizationName: string;
   mustChangePassword: boolean;
+  roles: readonly Role[];
 }
 
 /** Who is signed in, and for which organization: what the app shell shows. */
@@ -29,5 +30,6 @@ export async function loadViewer(auth: Auth, actor: Actor): Promise<Viewer> {
     email: user.email,
     organizationName: organization.name,
     mustChangePassword: user.mustChangePassword,
+    roles: actor.roles,
   };
 }
