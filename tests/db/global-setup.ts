@@ -30,8 +30,9 @@ export default async function setup(project: TestProject) {
   const directory = await mkdtemp(path.join(tmpdir(), "rubens-pglite-"));
   const removeDirectory = () => rm(directory, { recursive: true, force: true });
   const file = path.join(directory, "migrated.tar");
-  let builtFrom = await migrationsFingerprint();
+  let builtFrom: string | undefined;
   try {
+    builtFrom = await migrationsFingerprint();
     await writeMigratedDataDir(file);
   } catch (error) {
     await removeDirectory();
@@ -39,20 +40,21 @@ export default async function setup(project: TestProject) {
   }
   project.provide(migratedDataDirKey, file as never);
 
+  // A throw here would abort the rerun outside Vitest's error reporting.
+  // Instead a failure removes the template and forgets what it was built from,
+  // so every test fails on the missing file rather than passing against the
+  // old schema, and the next rerun rebuilds whatever the migrations are then.
   project.onTestsRerun(async () => {
-    const current = await migrationsFingerprint();
-    if (current === builtFrom) {
-      return;
-    }
-    // A throw here would abort the rerun outside Vitest's error reporting.
-    // Instead the stale template goes, so every test fails on the missing
-    // file rather than passing against the old schema; the next rerun retries.
     try {
-      await writeMigratedDataDir(file);
-      builtFrom = current;
+      const current = await migrationsFingerprint();
+      if (current !== builtFrom) {
+        await writeMigratedDataDir(file);
+        builtFrom = current;
+      }
     } catch (error) {
       console.error("[db global-setup] migrations failed; fix them and rerun", error);
-      await rm(file, { force: true });
+      builtFrom = undefined;
+      await rm(file, { force: true }).catch(() => undefined);
     }
   });
 
