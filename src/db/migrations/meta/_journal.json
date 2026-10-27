@@ -15,6 +15,27 @@
       "when": 1791820091748,
       "tag": "0001_app_role",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793130081841,
+      "tag": "0002_must_change_password",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793136060953,
+      "tag": "0003_offices_and_rooms",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793136066797,
+      "tag": "0004_staff",
+      "breakpoints": true
     }
   ]
 }

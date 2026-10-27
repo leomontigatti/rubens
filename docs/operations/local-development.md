@@ -23,8 +23,14 @@ cp .env.example .env               # then set BETTER_AUTH_SECRET
 openssl rand -base64 32            # paste the output as BETTER_AUTH_SECRET
 docker compose up -d --no-recreate  # Postgres 17 as rubens-postgres, host port 5434; never replaces a running one
 pnpm db:migrate                    # applies the migrations to the `rubens` database
+pnpm setup:organization --organization "Consultorios Prueba" \
+  --name "Ana Prueba" --email ana@example.com --password starting-password
 pnpm dev                           # http://localhost:3000
 ```
+
+There is no sign-up page: `setup:organization` creates the organization and its first
+admin, who signs in at `/ingresar` and must replace the starting password first. Use
+made-up names. A linked worktree runs it once against its own database.
 
 `.env` is gitignored. `.env.example` lists every variable the app reads.
 

@@ -87,6 +87,9 @@ export default defineConfig({
           // One PGlite instance per file; files run in parallel, tests in a
           // file run serially (tests/db/README.md).
           fileParallelism: true,
+          // A fresh PGlite with every migration takes 3 to 5 s on its own, and
+          // several files create theirs at once, past the default 10 s.
+          hookTimeout: 60_000,
         },
       },
     ],

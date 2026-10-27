@@ -3,6 +3,13 @@
 Three roles, and a member can hold any combination of them: admin, receptionist
 and practitioner.
 
+- **Staff accounts are created by an admin**, with a starting password the member
+  must replace at their first sign-in; the first admin comes from the setup
+  script. There are no invitations, now or later, and no public sign-up.
+- **An admin changes roles, and deactivates a member** who left: deactivation
+  ends their open sessions and refuses their sign-in, and deletes nothing. The
+  last active admin can neither lose the role nor be deactivated.
+
 | Who          | Schedules      | Appointments | Patients | Clinical records |
 | ------------ | -------------- | ------------ | -------- | ---------------- |
 | Admin        | edit all       | all          | all      | copies only      |

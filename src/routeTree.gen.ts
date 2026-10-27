@@ -9,13 +9,54 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as IngresarRouteImport } from './routes/ingresar'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
+import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
+import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
+import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IngresarRoute = IngresarRouteImport.update({
+  id: '/ingresar',
+  path: '/ingresar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
+  id: '/cambiar-contrasena',
+  path: '/cambiar-contrasena',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
+  id: '/personal/',
+  path: '/personal/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalMemberIdRoute = AppPersonalMemberIdRouteImport.update({
+  id: '/personal/$memberId',
+  path: '/personal/$memberId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSedesIndexRoute = AppSedesIndexRouteImport.update({
+  id: '/sedes/',
+  path: '/sedes/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSedesOfficeIdRoute = AppSedesOfficeIdRouteImport.update({
+  id: '/sedes/$officeId',
+  path: '/sedes/$officeId',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -24,39 +65,134 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/ingresar': typeof IngresarRoute
+  '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/personal/': typeof AppPersonalIndexRoute
+  '/sedes/': typeof AppSedesIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/ingresar': typeof IngresarRoute
+  '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/': typeof AppIndexRoute
+  '/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/personal': typeof AppPersonalIndexRoute
+  '/sedes': typeof AppSedesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/ingresar': typeof IngresarRoute
+  '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/personal/': typeof AppPersonalIndexRoute
+  '/_app/sedes/': typeof AppSedesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/ingresar'
+    | '/cambiar-contrasena'
+    | '/personal/$memberId'
+    | '/sedes/$officeId'
+    | '/api/auth/$'
+    | '/personal/'
+    | '/sedes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/auth/$'
+  to:
+    | '/ingresar'
+    | '/cambiar-contrasena'
+    | '/'
+    | '/personal/$memberId'
+    | '/sedes/$officeId'
+    | '/api/auth/$'
+    | '/personal'
+    | '/sedes'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/ingresar'
+    | '/_app/cambiar-contrasena'
+    | '/_app/'
+    | '/_app/personal/$memberId'
+    | '/_app/sedes/$officeId'
+    | '/api/auth/$'
+    | '/_app/personal/'
+    | '/_app/sedes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  IngresarRoute: typeof IngresarRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ingresar': {
+      id: '/ingresar'
+      path: '/ingresar'
+      fullPath: '/ingresar'
+      preLoaderRoute: typeof IngresarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/cambiar-contrasena': {
+      id: '/_app/cambiar-contrasena'
+      path: '/cambiar-contrasena'
+      fullPath: '/cambiar-contrasena'
+      preLoaderRoute: typeof AppCambiarContrasenaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personal/': {
+      id: '/_app/personal/'
+      path: '/personal'
+      fullPath: '/personal/'
+      preLoaderRoute: typeof AppPersonalIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personal/$memberId': {
+      id: '/_app/personal/$memberId'
+      path: '/personal/$memberId'
+      fullPath: '/personal/$memberId'
+      preLoaderRoute: typeof AppPersonalMemberIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sedes/': {
+      id: '/_app/sedes/'
+      path: '/sedes'
+      fullPath: '/sedes/'
+      preLoaderRoute: typeof AppSedesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sedes/$officeId': {
+      id: '/_app/sedes/$officeId'
+      path: '/sedes/$officeId'
+      fullPath: '/sedes/$officeId'
+      preLoaderRoute: typeof AppSedesOfficeIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -68,8 +204,29 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteChildren {
+  AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
+  AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppPersonalIndexRoute: typeof AppPersonalIndexRoute
+  AppSedesIndexRoute: typeof AppSedesIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
+  AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppPersonalIndexRoute: AppPersonalIndexRoute,
+  AppSedesIndexRoute: AppSedesIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  IngresarRoute: IngresarRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

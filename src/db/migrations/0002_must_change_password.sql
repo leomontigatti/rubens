@@ -1,0 +1,1 @@
+ALTER TABLE "rubens"."user" ADD COLUMN "must_change_password" boolean DEFAULT true NOT NULL;

@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
-import { text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { text, timestamp, boolean, index, unique } from "drizzle-orm/pg-core";
 
-import { rubens } from "./schema.ts";
+import { rubens } from "#/db/schema/schema.ts";
 
 export const user = rubens.table("user", {
   id: text("id").primaryKey(),
@@ -14,6 +14,7 @@ export const user = rubens.table("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  mustChangePassword: boolean("must_change_password").default(true).notNull(),
 });
 
 export const session = rubens.table(
@@ -97,10 +98,12 @@ export const member = rubens.table(
       .references(() => user.id, { onDelete: "cascade" }),
     role: text("role").default("member").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    active: boolean("active").default(true).notNull(),
   },
   (table) => [
     index("member_organizationId_idx").on(table.organizationId),
     index("member_userId_idx").on(table.userId),
+    unique().on(table.id, table.organizationId),
   ],
 );
 
