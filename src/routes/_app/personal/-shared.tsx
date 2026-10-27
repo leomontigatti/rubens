@@ -40,7 +40,10 @@ export function RoleCheckboxes(props: { idPrefix: string; initial: readonly Role
       <legend className="mb-2 text-sm font-medium">Roles</legend>
       {Object.entries(roleLabels).map(([role, label]) => (
         <div key={role} className="flex items-center gap-2">
+          {/* Keyed on the saved value: Base UI warns when an uncontrolled
+              checkbox's default changes, as it does after a save reloads. */}
           <Checkbox
+            key={String(props.initial.includes(role as Role))}
             id={`${props.idPrefix}-role-${role}`}
             name="roles"
             value={role}
