@@ -106,14 +106,18 @@ function ShowInactiveRooms() {
   const { inactivos } = Route.useSearch();
   const { officeId } = Route.useParams();
   return (
-    <Button variant="outline" asChild>
-      <Link
-        to="/sedes/$officeId"
-        params={{ officeId }}
-        search={{ inactivos: inactivos ? undefined : true }}
-      >
-        {inactivos ? "Ocultar inactivos" : "Mostrar inactivos"}
-      </Link>
+    <Button
+      variant="outline"
+      nativeButton={false}
+      render={
+        <Link
+          to="/sedes/$officeId"
+          params={{ officeId }}
+          search={{ inactivos: inactivos ? undefined : true }}
+        />
+      }
+    >
+      {inactivos ? "Ocultar inactivos" : "Mostrar inactivos"}
     </Button>
   );
 }

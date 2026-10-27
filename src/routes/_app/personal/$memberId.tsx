@@ -166,7 +166,10 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
           <Input id="specialty" name="specialty" defaultValue={settings.specialty ?? ""} />
         </div>
         <div className="flex items-center gap-2">
+          {/* Keyed on the saved value: Base UI warns when an uncontrolled
+              checkbox's default changes, as it does after a save reloads. */}
           <Checkbox
+            key={String(settings.keepsClinicalRecords)}
             id="keepsClinicalRecords"
             name="keepsClinicalRecords"
             defaultChecked={settings.keepsClinicalRecords}

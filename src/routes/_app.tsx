@@ -5,6 +5,7 @@ import { Button } from "#/components/ui/button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -65,21 +66,21 @@ function AppShell() {
           )}
         </nav>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost">
-              {viewer.name}
-              <ChevronDownIcon />
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" />}>
+            {viewer.name}
+            <ChevronDownIcon />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-muted-foreground font-normal">
-              {viewer.email}
-            </DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-auto">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-muted-foreground font-normal">
+                {viewer.email}
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to={passwordChangePath}>Cambiar contraseña</Link>
+            <DropdownMenuItem render={<Link to={passwordChangePath} />}>
+              Cambiar contraseña
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void signOut()}>Cerrar sesión</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void signOut()}>Cerrar sesión</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

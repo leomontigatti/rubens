@@ -16,7 +16,7 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 ## Decisions
 
 - [ADR-0001: Application stack](./0001-stack.md) - TanStack Start on Vite+,
-  Drizzle on Postgres, Better Auth, pg-boss; why each over its alternative.
+  Drizzle on Postgres, Better Auth, pg-boss, shadcn/ui on Base UI; why each over its alternative.
 - [ADR-0002: Tenancy, row-level security and database connections](./0002-tenancy-and-database-connections.md) -
   one organization per professional, RLS as the boundary, and the rules that keep
   a connection pooler a config change (`withTenant`, two URLs, no session state).
