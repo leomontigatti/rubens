@@ -7,8 +7,8 @@ database. The loop, and what not to test, are the skill's.
   run against a real database. Assert on what it returns and on the rows it leaves; never on the
   SQL it builds or on intermediate state.
 - **The database is PGlite, in process**: a `*.db.test.ts` file beside the code, or a
-  cross-cutting test under `tests/db/`, run with `pnpm test:db <path>`. Each file gets its own
-  instance with every migration applied ([tests/db/README.md](../../tests/db/README.md)).
+  cross-cutting test under `tests/db/`, run with `pnpm test:db <path>`. Each
+  `createTestDatabase()` is a fresh instance with every migration applied ([tests/db/README.md](../../tests/db/README.md)).
 - **Test as the app role.** A test of a row-level security policy, or of anything tenant-scoped,
   runs as `rubens_app` through the harness's `asAppRole`. As the owner it proves nothing: the
   owner bypasses RLS (ADR-0002).
