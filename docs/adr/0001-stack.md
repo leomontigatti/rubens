@@ -2,7 +2,9 @@
 
 **Status**: accepted
 
-Date: 2026-10-12
+Date: 2026-10-12. Amended 2026-10-27:
+
+- The shadcn/ui components are built on Base UI (the `base-nova` style), not Radix.
 
 Rubens is a booking app for a health care business: receptionists and
 professionals, several offices, rooms that are shared or exclusive, and — for the
@@ -20,7 +22,7 @@ was chosen for that shape, not inherited wholesale from En Escena.
 | Validation      | Zod 4                                                     |
 | Background jobs | pg-boss, in the same Postgres                             |
 | Dates           | `date-fns` 4 and `@date-fns/tz`; `rrule` for availability |
-| UI              | shadcn/ui on Tailwind 4                                   |
+| UI              | shadcn/ui on Base UI and Tailwind 4                       |
 
 ## Why each, where it was a real trade-off
 
@@ -45,4 +47,8 @@ was chosen for that shape, not inherited wholesale from En Escena.
   booking and its reminder be enqueued in one transaction.
 - **TanStack Form over React Hook Form.** Fits Start's server functions; one Zod
   schema validates on both sides.
+- **Base UI under shadcn/ui, not Radix.** shadcn 4's CLI defaults to Base UI
+  (`base-nova`); the bootstrap had taken the pre-4.0 Radix style `new-york` without
+  a decision. Moving with seven components in the tree was cheap; later it would
+  mean rewriting every `asChild` call site.
 - **Nitro 3 is a beta** and is pinned to an exact version for that reason.

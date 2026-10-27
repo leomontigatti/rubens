@@ -78,10 +78,12 @@ function Offices() {
 function ShowInactiveOffices() {
   const { inactivas } = Route.useSearch();
   return (
-    <Button variant="outline" asChild>
-      <Link to="/sedes" search={{ inactivas: inactivas ? undefined : true }}>
-        {inactivas ? "Ocultar inactivas" : "Mostrar inactivas"}
-      </Link>
+    <Button
+      variant="outline"
+      nativeButton={false}
+      render={<Link to="/sedes" search={{ inactivas: inactivas ? undefined : true }} />}
+    >
+      {inactivas ? "Ocultar inactivas" : "Mostrar inactivas"}
     </Button>
   );
 }
