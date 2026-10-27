@@ -7,7 +7,7 @@ CREATE TABLE "rubens"."office" (
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "office_id_organization_id_key" UNIQUE("id","organization_id")
+	CONSTRAINT "office_id_organization_id_unique" UNIQUE("id","organization_id")
 );
 --> statement-breakpoint
 CREATE TABLE "rubens"."room" (
@@ -24,7 +24,7 @@ CREATE TABLE "rubens"."room" (
 --> statement-breakpoint
 ALTER TABLE "rubens"."office" ADD CONSTRAINT "office_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "rubens"."organization"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rubens"."room" ADD CONSTRAINT "room_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "rubens"."organization"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "rubens"."room" ADD CONSTRAINT "room_office_fk" FOREIGN KEY ("office_id","organization_id") REFERENCES "rubens"."office"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rubens"."room" ADD CONSTRAINT "room_office_id_organization_id_office_id_organization_id_fk" FOREIGN KEY ("office_id","organization_id") REFERENCES "rubens"."office"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "office_organization_id_idx" ON "rubens"."office" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "room_office_id_idx" ON "rubens"."room" USING btree ("office_id");--> statement-breakpoint
 -- Row-level security, the tenant boundary (ADR-0002). Forced, so it applies to

@@ -103,7 +103,7 @@ export const member = rubens.table(
   (table) => [
     index("member_organizationId_idx").on(table.organizationId),
     index("member_userId_idx").on(table.userId),
-    unique("member_id_organization_id_key").on(table.id, table.organizationId),
+    unique().on(table.id, table.organizationId),
   ],
 );
 

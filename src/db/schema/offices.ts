@@ -33,7 +33,7 @@ export const office = rubens.table(
   (table) => [
     index("office_organization_id_idx").on(table.organizationId),
     // The target of the room's composite key below.
-    unique("office_id_organization_id_key").on(table.id, table.organizationId),
+    unique().on(table.id, table.organizationId),
   ],
 );
 
@@ -56,7 +56,6 @@ export const room = rubens.table(
     // matched with the organization too: a room can never sit in another
     // organization's office.
     foreignKey({
-      name: "room_office_fk",
       columns: [table.officeId, table.organizationId],
       foreignColumns: [office.id, office.organizationId],
     }),

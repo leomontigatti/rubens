@@ -23,10 +23,11 @@ export const practitioner = rubens.table(
   (table) => [
     // The target of the composite keys later tables (schedules, appointments)
     // point at.
-    unique("practitioner_id_organization_id_key").on(table.id, table.organizationId),
+    unique().on(table.id, table.organizationId),
     // A key check bypasses row-level security, so the member is matched with the
     // organization too: a practitioner can never be another organization's member.
     foreignKey({
+      // Drizzle's default name is 67 bytes, past Postgres's 63-byte limit.
       name: "practitioner_member_fk",
       columns: [table.memberId, table.organizationId],
       foreignColumns: [member.id, member.organizationId],

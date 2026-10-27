@@ -1,6 +1,6 @@
 {
-  "id": "53c6f5fd-32d4-4a28-a058-c28b3b77c6ec",
-  "prevId": "74939ab4-3a0c-4aa9-9a16-5213bcc3af1b",
+  "id": "81520455-843f-43aa-a91c-dc026ba6730a",
+  "prevId": "25edcc89-c22e-4366-954d-a3667bf2679c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -357,8 +357,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "member_id_organization_id_key": {
-          "name": "member_id_organization_id_key",
+        "member_id_organization_id_unique": {
+          "name": "member_id_organization_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id",
@@ -767,8 +767,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "office_id_organization_id_key": {
-          "name": "office_id_organization_id_key",
+        "office_id_organization_id_unique": {
+          "name": "office_id_organization_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id",
@@ -870,8 +870,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "room_office_fk": {
-          "name": "room_office_fk",
+        "room_office_id_organization_id_office_id_organization_id_fk": {
+          "name": "room_office_id_organization_id_office_id_organization_id_fk",
           "tableFrom": "room",
           "tableTo": "office",
           "schemaTo": "rubens",
@@ -997,8 +997,8 @@
             "member_id"
           ]
         },
-        "practitioner_id_organization_id_key": {
-          "name": "practitioner_id_organization_id_key",
+        "practitioner_id_organization_id_unique": {
+          "name": "practitioner_id_organization_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id",

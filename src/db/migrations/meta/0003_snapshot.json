@@ -1,5 +1,5 @@
 {
-  "id": "74939ab4-3a0c-4aa9-9a16-5213bcc3af1b",
+  "id": "25edcc89-c22e-4366-954d-a3667bf2679c",
   "prevId": "2fa385b2-c8af-4ce8-9db4-02b9a790d745",
   "version": "7",
   "dialect": "postgresql",
@@ -751,8 +751,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "office_id_organization_id_key": {
-          "name": "office_id_organization_id_key",
+        "office_id_organization_id_unique": {
+          "name": "office_id_organization_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id",
@@ -854,8 +854,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "room_office_fk": {
-          "name": "room_office_fk",
+        "room_office_id_organization_id_office_id_organization_id_fk": {
+          "name": "room_office_id_organization_id_office_id_organization_id_fk",
           "tableFrom": "room",
           "tableTo": "office",
           "schemaTo": "rubens",
