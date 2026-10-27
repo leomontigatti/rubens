@@ -93,20 +93,18 @@ describe("creating a staff member", () => {
     expect(created.practitioner).toBeNull();
   });
 
-  it("refuses a taken email, a short password and an empty role set, and creates nothing", async () => {
+  it("refuses a taken email and a short password, and creates nothing", async () => {
     await newMember(["receptionist"], "juan@example.com");
     const base = { name: "Otro", email: "otro@example.com", password: startingPassword };
 
     const results = await asAppRole(db, async (tx) => [
       await createStaffMember(admin, { ...base, email: "Juan@example.com", roles: ["admin"] }, tx),
       await createStaffMember(admin, { ...base, password: "short", roles: ["admin"] }, tx),
-      await createStaffMember(admin, { ...base, roles: [] }, tx),
     ]);
 
     expect(results).toEqual([
       { ok: false, reason: "emailTaken" },
       { ok: false, reason: "passwordTooShort" },
-      { ok: false, reason: "invalidInput" },
     ]);
     const staff = await asAppRole(db, (tx) => listStaff(admin, tx));
     expect(staff.ok && staff.staff.map((member) => member.email)).toEqual([

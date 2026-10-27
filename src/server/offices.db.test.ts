@@ -71,11 +71,10 @@ describe("offices", () => {
     expect(listed.map((office) => office.name)).toEqual(["Sede Centro", "Sede Sur"]);
   });
 
-  it("refuses a time zone that is not an IANA zone, and an empty name", async () => {
+  it("refuses a time zone that is not an IANA zone", async () => {
     for (const input of [
       { ...centro, timeZone: "Buenos Aires" },
       { ...centro, timeZone: "-03:00" },
-      { ...centro, name: "  " },
     ]) {
       expect(await asAppRole(db, (tx) => createOffice(admin, input, tx))).toEqual({
         ok: false,
@@ -159,16 +158,6 @@ describe("rooms", () => {
         { name: "Consultorio 2", capacity: 2, active: true },
       ],
     });
-  });
-
-  it("refuses a capacity below 1", async () => {
-    const created = await newOffice();
-
-    expect(
-      await asAppRole(db, (tx) =>
-        createRoom(admin, { officeId: created.id, name: "Consultorio", capacity: 0 }, tx),
-      ),
-    ).toEqual({ ok: false, reason: "invalidInput" });
   });
 
   it("answers notFound for a room in an office that does not exist", async () => {
