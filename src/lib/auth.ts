@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins/organization";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -43,12 +44,19 @@ export function createAuth(database: AnyDatabase) {
       session: {
         create: {
           // A member belongs to exactly one organization (ADR-0002), so every
-          // session starts in it and no screen asks which one to use.
+          // session starts in it and no screen asks which one to use. A
+          // deactivated member gets no session: sign-in answers 403.
           before: async (session) => {
             const membership = await database.query.member.findFirst({
-              columns: { organizationId: true },
+              columns: { organizationId: true, active: true },
               where: eq(schema.member.userId, session.userId),
             });
+            if (membership && !membership.active) {
+              throw APIError.from("FORBIDDEN", {
+                code: "MEMBER_INACTIVE",
+                message: "This member is deactivated.",
+              });
+            }
             return {
               data: { ...session, activeOrganizationId: membership?.organizationId ?? null },
             };
@@ -62,6 +70,14 @@ export function createAuth(database: AnyDatabase) {
         roles,
         creatorRole: "admin",
         allowUserToCreateOrganization: false,
+        // Deactivating a member (src/server/staff.ts) keeps the row.
+        schema: {
+          member: {
+            additionalFields: {
+              active: { type: "boolean", required: false, defaultValue: true, input: false },
+            },
+          },
+        },
       }),
       tanstackStartCookies(),
     ],

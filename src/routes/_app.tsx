@@ -54,6 +54,15 @@ function AppShell() {
           >
             Sedes
           </Link>
+          {viewer.roles.includes("admin") && (
+            <Link
+              to="/personal"
+              className="text-muted-foreground hover:text-foreground text-sm"
+              activeProps={{ className: "text-foreground" }}
+            >
+              Personal
+            </Link>
+          )}
         </nav>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

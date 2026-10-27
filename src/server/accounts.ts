@@ -105,3 +105,24 @@ export async function changeOwnPassword(
   await context.internalAdapter.updateUser(userId, { mustChangePassword: false });
   return { ok: true };
 }
+
+export type StartingPasswordResult = { ok: true } | { ok: false; reason: PasswordRefusal };
+
+/**
+ * An admin gives a member a new starting password, which the member must
+ * replace again at their next sign-in, as with a new account.
+ */
+export async function assignStartingPassword(
+  auth: Auth,
+  userId: string,
+  password: string,
+): Promise<StartingPasswordResult> {
+  const context = await auth.$context;
+  const refusal = checkPassword(context.password.config, password);
+  if (refusal) {
+    return { ok: false, reason: refusal };
+  }
+  await context.internalAdapter.updatePassword(userId, await context.password.hash(password));
+  await context.internalAdapter.updateUser(userId, { mustChangePassword: true });
+  return { ok: true };
+}

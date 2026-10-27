@@ -13,6 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
+import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -36,6 +38,16 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
+  id: '/personal/',
+  path: '/personal/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalMemberIdRoute = AppPersonalMemberIdRouteImport.update({
+  id: '/personal/$memberId',
+  path: '/personal/$memberId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSedesIndexRoute = AppSedesIndexRouteImport.update({
   id: '/sedes/',
   path: '/sedes/',
@@ -56,16 +68,20 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/personal/': typeof AppPersonalIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
 }
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
+  '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/personal': typeof AppPersonalIndexRoute
   '/sedes': typeof AppSedesIndexRoute
 }
 export interface FileRoutesById {
@@ -74,8 +90,10 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
 }
 export interface FileRouteTypes {
@@ -84,16 +102,20 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
+    | '/personal/'
     | '/sedes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/'
+    | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
+    | '/personal'
     | '/sedes'
   id:
     | '__root__'
@@ -101,8 +123,10 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
+    | '/_app/personal/$memberId'
     | '/_app/sedes/$officeId'
     | '/api/auth/$'
+    | '/_app/personal/'
     | '/_app/sedes/'
   fileRoutesById: FileRoutesById
 }
@@ -142,6 +166,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/personal/': {
+      id: '/_app/personal/'
+      path: '/personal'
+      fullPath: '/personal/'
+      preLoaderRoute: typeof AppPersonalIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personal/$memberId': {
+      id: '/_app/personal/$memberId'
+      path: '/personal/$memberId'
+      fullPath: '/personal/$memberId'
+      preLoaderRoute: typeof AppPersonalMemberIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sedes/': {
       id: '/_app/sedes/'
       path: '/sedes'
@@ -169,14 +207,18 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
 }
 

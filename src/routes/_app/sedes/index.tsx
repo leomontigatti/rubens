@@ -16,16 +16,15 @@ import {
   getOffices,
 } from "#/server/offices.functions.ts";
 import type { Office } from "#/server/offices.ts";
-
 import {
   AdminControls,
   CreatePanel,
   ErrorAlert,
   FormActions,
-  RefusalAlert,
   fieldMessage,
-  useAction,
-} from "./-shared.tsx";
+} from "#/components/admin-form.tsx";
+
+import { RefusalAlert, useAction } from "./-shared.tsx";
 import type { ActionResult } from "./-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/")({

@@ -34,12 +34,14 @@ export async function authorize(
       model: "user",
       where: [{ field: "id", value: userId }],
     }),
-    context.adapter.findOne<{ organizationId: string; role: string }>({
+    context.adapter.findOne<{ organizationId: string; role: string; active: boolean }>({
       model: "member",
       where: [{ field: "userId", value: userId }],
     }),
   ]);
-  if (!user || !member) {
+  // A deactivated member is treated as signed out: deactivation already ended
+  // their sessions, so this only catches a request already in flight.
+  if (!user || !member || !member.active) {
     return { ok: false, reason: "unauthenticated" };
   }
   if (user.mustChangePassword && requirement.passwordChange !== "allowed") {

@@ -6,7 +6,6 @@ import {
   index,
   integer,
   text,
-  timestamp,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -14,15 +13,7 @@ import {
 import { defaultTimeZone } from "#/lib/offices.ts";
 
 import { organization } from "./auth.ts";
-import { rubens } from "./schema.ts";
-
-const timestamps = {
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-};
+import { rubens, timestamps } from "./schema.ts";
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migration (raw SQL, 0003), as for every table with that column.
