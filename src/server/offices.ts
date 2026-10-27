@@ -222,11 +222,14 @@ export async function createRoom(
       const [parent] = await tx
         .select({ active: office.active })
         .from(office)
-        .where(eq(office.id, parsed.data.officeId));
+        .where(eq(office.id, parsed.data.officeId))
+        // Holds off a concurrent deactivation until the room is in.
+        .for("share");
       if (!parent) {
         return notFound;
       }
-      // A deactivated office keeps its rooms as they were, but gets no new ones.
+      // A deactivated office keeps its rooms as they were, reactivating one
+      // included, but gets no new ones.
       if (!parent.active) {
         return officeInactive;
       }

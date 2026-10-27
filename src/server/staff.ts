@@ -107,18 +107,18 @@ async function findStaffMember(tx: Transaction, actor: Actor, memberId: string) 
 
 /** Whether `target` is the only active admin, so it must stay one. */
 async function isLastActiveAdmin(tx: Transaction, actor: Actor, target: StaffMember) {
-  if (!target.active || !target.roles.includes("admin")) {
-    return false;
-  }
   // `for update` locks the organization's active members until the change
-  // commits, so two admins demoting or deactivating each other at once are
-  // serialised: the second sees the first's change and is refused.
+  // commits, so concurrent role and activation changes are serialised. The
+  // target is judged from these locked rows, never from `target` as read
+  // before the lock: another change may have made it an admin since.
   const active = await tx
-    .select({ role: member.role })
+    .select({ id: member.id, role: member.role })
     .from(member)
     .where(and(eq(member.organizationId, actor.organizationId), eq(member.active, true)))
+    .orderBy(member.id)
     .for("update");
-  return active.filter((row) => parseRoles(row.role).includes("admin")).length <= 1;
+  const admins = active.filter((row) => parseRoles(row.role).includes("admin"));
+  return admins.length <= 1 && admins.some((row) => row.id === target.memberId);
 }
 
 /** Creates the member's practitioner row, unless one survives from before. */
