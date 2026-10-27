@@ -53,7 +53,7 @@ A finding in one of these areas is the user's call unless the issue already sett
 
 Where this codebase gets hurt, for the correctness brief:
 
-two appointments that overlap, or one that falls outside its room block or its office's hours;
+two appointments that overlap without being an overbooking, or one outside its schedule or office hours;
 an instant stored or shown in the wrong time zone, or a bare `timestamp` where `timestamptz`
 belongs; a query on a tenant table outside `withTenant()`, or a path that leaves a session
 setting behind for the next request (a session-level `SET`, `LISTEN`, a session advisory lock, a
