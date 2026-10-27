@@ -7,22 +7,30 @@ Spanish term the user sees. How to read it is in
 [docs/agents/coding-standards.md](docs/agents/coding-standards.md#code-language).
 The detailed rules live in [docs/domain/](docs/domain/).
 
-## Tenancy
+## People
 
 **`organization`** — ui: "Organización"
 The business that owns everything in the app. Every tenant-owned row carries its
 organization, and row-level security enforces the boundary.
 _Avoid_: tenant, account, clinic
 
-**`practitioner`** — ui: "Profesional"
-A health professional who works in exactly one `organization`. Some practitioners
-keep a `clinicalRecord` for their patients, depending on their specialty.
-_Avoid_: doctor, provider, staff, medic
+**`admin`** — ui: "Administrador"
+A member who configures the `organization`: its `office`s, `room`s, staff and
+`appointmentType`s. The first admin is the owner; there is no separate owner role.
+_Avoid_: owner, manager, superuser
 
 **`receptionist`** — ui: "Recepcionista"
-A person who books and moves `appointment`s for the practitioners of an
-`organization`. A receptionist cannot read `clinicalNote`s.
+A member who books and moves `appointment`s and keeps the `patient` registry for
+every `practitioner`. A receptionist never reads clinical content.
 _Avoid_: secretary, front desk, staff
+
+**`practitioner`** — ui: "Profesional"
+A health professional who works in exactly one `organization`. A practitioner who
+keeps clinical records writes `clinicalNote`s; today every practitioner does.
+_Avoid_: doctor, dentist, provider, staff, medic
+
+A member can hold several of these roles at once, such as a practitioner who is
+also the admin.
 
 ## Places
 
@@ -32,46 +40,132 @@ derived from that zone; instants are stored in UTC.
 _Avoid_: branch, clinic, site
 
 **`room`** — ui: "Consultorio"
-A room inside an `office` where a `practitioner` sees a `patient`. A room is
-shared or exclusive. A shared room has a capacity.
-_Avoid_: box, cubicle, chair
+A room inside an `office` where a `practitioner` sees a `patient`. Its capacity is
+how many practitioners can use it at the same moment, 1 unless set otherwise.
+_Avoid_: box, cubicle, chair, shared room, exclusive room
 
-**`roomBlock`** — ui: "Bloque de consultorio"
-A practitioner's hold on a `room` for a time range, such as "room 2, Monday 9 to
-13". `appointment`s fall inside a block. Blocks are what keep a shared room from
-being double-booked.
-_Avoid_: reservation, room booking, slot
+## Scheduling
+
+**`schedule`** — ui: "Horario"
+A practitioner's weekly hold on one `room` of one `office`, such as "Monday 9 to
+13, consultorio 2", valid between two dates. A room is shared by giving several
+practitioners schedules in it at different times.
+_Avoid_: room block, calendar, timetable, agenda
+
+**`timeOff`** — ui: "Licencia"
+A one-off range when a `practitioner` does not work, such as a vacation or an
+illness, overriding their `schedule`s.
+_Avoid_: absence, leave, exception, vacation
+
+**`closure`** — ui: "Cierre"
+A one-off range when an `office`, or the whole `organization`, is closed, such as a
+national holiday.
+_Avoid_: holiday, exception, blackout
+
+**`availability`** — ui: "Disponibilidad"
+The concrete free times that can still be booked: `schedule`s expanded inside a
+bounded window, minus `timeOff`, `closure`s and booked `appointment`s.
+_Avoid_: free time, open slots, vacancies
 
 ## Booking
 
+**`appointmentType`** — ui: "Tipo de turno"
+A kind of visit a `practitioner` offers, such as a first consultation. It sets the
+default duration and the patient messages for its `appointment`s.
+_Avoid_: service, visit type, event type
+
 **`appointment`** — ui: "Turno"
-A `patient`'s booked time with one `practitioner`, in one `room`. Its time is a
-`tstzrange`, and a practitioner cannot have two overlapping active appointments.
+A `patient`'s booked time with one `practitioner`, in one `room`, of one
+`appointmentType`. Rescheduling moves the same appointment.
 _Avoid_: booking, cita, reservation, event
 
+**`overbooking`** — ui: "Sobreturno"
+An `appointment` booked on purpose over another of the same `practitioner`, or
+outside their `schedule`s. Only staff book one, and patients never see one.
+_Avoid_: double booking, extra appointment
+
+**`appointmentStatus`** — ui: "Estado"
+Where an `appointment` stands: `booked` ("Reservado"), `confirmed` ("Confirmado"),
+`checkedIn` ("En sala"), `attended` ("Atendido"), `noShow` ("Ausente") or
+`cancelled` ("Cancelado").
+_Avoid_: pending, done, missed, arrived
+
+**`toReschedule`** — ui: "Turnos a reprogramar"
+The `appointment`s a new `timeOff`, `closure` or `schedule` change left outside
+working time, listed for reception to move. They are never cancelled on their own.
+_Avoid_: conflicts, affected appointments
+
+## Patients
+
 **`patient`** — ui: "Paciente"
-The person a `practitioner` sees. A patient is an identity inside one `organization`,
-with contact details kept as personal data.
+A person the `practitioner`s of an `organization` see, in one registry shared by
+the whole organization. A patient is deactivated, never deleted.
 _Avoid_: client, customer, cliente, user
 
-**`schedule`** — ui: "Agenda"
-A recurring working time of a `practitioner` or a `room` in an `office`, written as
-an RRULE plus exceptions. It is the source of `availability`, not a list of bookings.
-_Avoid_: calendar, timetable
+**`guardian`** — ui: "Responsable"
+An adult responsible for a `patient`, usually a minor's parent. A guardian can be
+the patient's contact for messages and signs their `consentForm`s.
+_Avoid_: tutor, parent, contact person
 
-**`availability`** — ui: "Disponibilidad"
-The concrete slots that can still be booked, expanded from `schedule`s inside a
-bounded window and net of `appointment`s and `roomBlock`s.
-_Avoid_: free time, open slots, vacancies
+**`whatsappConsent`** — ui: "Acepta WhatsApp"
+Whether a `patient` may be messaged by WhatsApp. It is on from registration and is
+turned off only when the patient asks.
+_Avoid_: opt-in, subscription
+
+## Messages
+
+**`reminder`** — ui: "Recordatorio"
+A message to a `patient` some time before an `appointment`, as its
+`appointmentType` sets. A reminder can ask the patient to confirm.
+_Avoid_: notification, alert
+
+**`bookingConfirmation`** — ui: "Confirmación de turno"
+The message a `patient` gets when an `appointment` is booked.
+_Avoid_: receipt, booking notification
+
+**`rescheduleLink`** — ui: "Reprogramar turno"
+A personal link, sent from a `reminder`, where a `patient` can move or cancel one
+`appointment` or ask to be contacted.
+_Avoid_: magic link, booking page, portal
+
+**`contactRequest`** — ui: "Necesito que se comuniquen conmigo"
+A patient's request, made from a `rescheduleLink`, that reception call them.
+_Avoid_: callback, call me
+
+**`notification`** — ui: "Notificación"
+An event shown to staff in the app, such as a cancellation. Telegram and WhatsApp
+copies of it are extra deliveries of the same notification.
+_Avoid_: alert, message, inbox item
 
 ## Clinical records
 
 **`clinicalRecord`** — ui: "Historia clínica"
-The clinical history of one `patient` kept by one `practitioner`, for practitioners
-whose specialty keeps one. Its notes are the record.
+The clinical history of one `patient` in an `organization`: their signed
+`clinicalNote`s, `addendum`s and `attachment`s, readable by every practitioner who
+keeps clinical records.
 _Avoid_: medical record, HC, ficha, chart
 
 **`clinicalNote`** — ui: "Evolución"
-One entry in a `clinicalRecord`. A note is never updated or deleted: a correction
-is a new version that supersedes the old one, and the old one stays in the record.
+One entry in a `clinicalRecord`, written by one `practitioner` and optionally tied
+to an `appointment`. It is a draft until its author signs it, and never changes
+after that.
 _Avoid_: note, nota, progress note, entry
+
+**`addendum`** — ui: "Adenda"
+A signed correction or addition to a signed `clinicalNote`, shown next to it. The
+original stays as it was.
+_Avoid_: edit, version, amendment
+
+**`attachment`** — ui: "Adjunto"
+A file in a `clinicalRecord`, such as an X-ray, a photo or a scanned
+`consentForm`.
+_Avoid_: document, upload, file
+
+**`consentForm`** — ui: "Consentimiento informado"
+A signed informed-consent document, kept as an `attachment` with who signed it:
+the `patient` or a `guardian`.
+_Avoid_: consent, waiver
+
+**`clinicalRecordCopy`** — ui: "Copia de historia clínica"
+A PDF of a `clinicalRecord` handed to a `patient` who asks for it.
+_Avoid_: export, report, printout

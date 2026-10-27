@@ -21,7 +21,7 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
   one organization per professional, RLS as the boundary, and the rules that keep
   a connection pooler a config change (`withTenant`, two URLs, no session state).
 - [ADR-0003: Scheduling integrity and clinical records](./0003-scheduling-and-clinical-records.md) -
-  proposed: exclusion constraints and room blocks against double booking;
-  append-only, audited clinical notes.
+  exclusion constraints and schedules against double booking; append-only,
+  audited clinical notes readable by every practitioner who keeps them.
 - [ADR-0004: App tables live in a dedicated `rubens` schema, unprefixed](./0004-dedicated-postgres-schema.md) -
   learned from en-escena#506: no `public`, no name prefix, qualified raw SQL.
