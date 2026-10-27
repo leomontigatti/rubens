@@ -14,6 +14,7 @@ import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
+import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
 import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
 import { Route as AppLicenciasIndexRouteImport } from './routes/_app/licencias/index'
@@ -45,6 +46,11 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
 const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
   id: '/cierres/',
   path: '/cierres/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDisponibilidadIndexRoute = AppDisponibilidadIndexRouteImport.update({
+  id: '/disponibilidad/',
+  path: '/disponibilidad/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppHorariosIndexRoute = AppHorariosIndexRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/cierres/': typeof AppCierresIndexRoute
+  '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
   '/licencias/': typeof AppLicenciasIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/cierres': typeof AppCierresIndexRoute
+  '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
   '/licencias': typeof AppLicenciasIndexRoute
   '/personal': typeof AppPersonalIndexRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
+  '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
   '/_app/licencias/': typeof AppLicenciasIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/sedes/$officeId'
     | '/api/auth/$'
     | '/cierres/'
+    | '/disponibilidad/'
     | '/horarios/'
     | '/licencias/'
     | '/personal/'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/sedes/$officeId'
     | '/api/auth/$'
     | '/cierres'
+    | '/disponibilidad'
     | '/horarios'
     | '/licencias'
     | '/personal'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/_app/sedes/$officeId'
     | '/api/auth/$'
     | '/_app/cierres/'
+    | '/_app/disponibilidad/'
     | '/_app/horarios/'
     | '/_app/licencias/'
     | '/_app/personal/'
@@ -220,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/cierres'
       fullPath: '/cierres/'
       preLoaderRoute: typeof AppCierresIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/disponibilidad/': {
+      id: '/_app/disponibilidad/'
+      path: '/disponibilidad'
+      fullPath: '/disponibilidad/'
+      preLoaderRoute: typeof AppDisponibilidadIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/horarios/': {
@@ -288,6 +307,7 @@ interface AppRouteChildren {
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
+  AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
   AppLicenciasIndexRoute: typeof AppLicenciasIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
@@ -301,6 +321,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
+  AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,
   AppLicenciasIndexRoute: AppLicenciasIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,

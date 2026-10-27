@@ -63,6 +63,13 @@ function AppShell() {
             Horarios
           </Link>
           <Link
+            to="/disponibilidad"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Disponibilidad
+          </Link>
+          <Link
             to="/licencias"
             className="text-muted-foreground hover:text-foreground text-sm"
             activeProps={{ className: "text-foreground" }}

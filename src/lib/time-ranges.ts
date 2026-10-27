@@ -32,7 +32,7 @@ export interface TimeRange {
 }
 
 /** The instant a local `YYYY-MM-DD` date at `HH:MM` falls on in `timeZone`. */
-function instantOf(date: string, time: string, timeZone: string): Date {
+export function instantOf(date: string, time: string, timeZone: string): Date {
   const [year, month, day] = date.split("-").map(Number);
   const [hours, minutes] = time.split(":").map(Number);
   return new Date(+new TZDate(year!, month! - 1, day!, hours!, minutes!, timeZone));
