@@ -11,3 +11,4 @@ export * from "#/db/schema/auth.ts";
 export * from "#/db/schema/offices.ts";
 export * from "#/db/schema/staff.ts";
 export * from "#/db/schema/schedules.ts";
+export * from "#/db/schema/time-off-and-closures.ts";

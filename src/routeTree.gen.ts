@@ -13,8 +13,10 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
 import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
+import { Route as AppLicenciasIndexRouteImport } from './routes/_app/licencias/index'
 import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
 import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
@@ -40,6 +42,11 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
+  id: '/cierres/',
+  path: '/cierres/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHorariosIndexRoute = AppHorariosIndexRouteImport.update({
   id: '/horarios/',
   path: '/horarios/',
@@ -51,6 +58,11 @@ const AppHorariosPractitionerIdRoute =
     path: '/horarios/$practitionerId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppLicenciasIndexRoute = AppLicenciasIndexRouteImport.update({
+  id: '/licencias/',
+  path: '/licencias/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
   id: '/personal/',
   path: '/personal/',
@@ -85,7 +97,9 @@ export interface FileRoutesByFullPath {
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/cierres/': typeof AppCierresIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
+  '/licencias/': typeof AppLicenciasIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
 }
@@ -97,7 +111,9 @@ export interface FileRoutesByTo {
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/cierres': typeof AppCierresIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
+  '/licencias': typeof AppLicenciasIndexRoute
   '/personal': typeof AppPersonalIndexRoute
   '/sedes': typeof AppSedesIndexRoute
 }
@@ -111,7 +127,9 @@ export interface FileRoutesById {
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/cierres/': typeof AppCierresIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
+  '/_app/licencias/': typeof AppLicenciasIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
 }
@@ -125,7 +143,9 @@ export interface FileRouteTypes {
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
+    | '/cierres/'
     | '/horarios/'
+    | '/licencias/'
     | '/personal/'
     | '/sedes/'
   fileRoutesByTo: FileRoutesByTo
@@ -137,7 +157,9 @@ export interface FileRouteTypes {
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
+    | '/cierres'
     | '/horarios'
+    | '/licencias'
     | '/personal'
     | '/sedes'
   id:
@@ -150,7 +172,9 @@ export interface FileRouteTypes {
     | '/_app/personal/$memberId'
     | '/_app/sedes/$officeId'
     | '/api/auth/$'
+    | '/_app/cierres/'
     | '/_app/horarios/'
+    | '/_app/licencias/'
     | '/_app/personal/'
     | '/_app/sedes/'
   fileRoutesById: FileRoutesById
@@ -191,6 +215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/cierres/': {
+      id: '/_app/cierres/'
+      path: '/cierres'
+      fullPath: '/cierres/'
+      preLoaderRoute: typeof AppCierresIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/horarios/': {
       id: '/_app/horarios/'
       path: '/horarios'
@@ -203,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/horarios/$practitionerId'
       fullPath: '/horarios/$practitionerId'
       preLoaderRoute: typeof AppHorariosPractitionerIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/licencias/': {
+      id: '/_app/licencias/'
+      path: '/licencias'
+      fullPath: '/licencias/'
+      preLoaderRoute: typeof AppLicenciasIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/personal/': {
@@ -249,7 +287,9 @@ interface AppRouteChildren {
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppCierresIndexRoute: typeof AppCierresIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
+  AppLicenciasIndexRoute: typeof AppLicenciasIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
 }
@@ -260,7 +300,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppCierresIndexRoute: AppCierresIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,
+  AppLicenciasIndexRoute: AppLicenciasIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
 }

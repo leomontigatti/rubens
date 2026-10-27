@@ -137,10 +137,10 @@ function toSchedule(row: ScheduleRow): Schedule {
 
 /**
  * The practitioner with their member's status, and whether the actor may
- * change their schedules. `lock` takes the practitioner row for the rest of
+ * change their schedules (and their time off). `lock` takes the practitioner row for the rest of
  * the transaction, so two saves for one practitioner run one after the other.
  */
-async function findPractitioner(
+export async function findPractitioner(
   tx: Transaction,
   actor: Actor,
   practitionerId: string,
