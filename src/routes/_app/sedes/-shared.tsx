@@ -9,6 +9,7 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos esa sede o ese consultorio.",
+  officeInactive: "La sede está desactivada. Reactivala para agregarle consultorios.",
 };
 
 export type RefusalReason = keyof typeof refusalMessages;

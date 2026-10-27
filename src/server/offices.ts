@@ -56,13 +56,14 @@ export interface Room {
   active: boolean;
 }
 
-type Refusal = "forbidden" | "invalidInput" | "notFound";
+type Refusal = "forbidden" | "invalidInput" | "notFound" | "officeInactive";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
+const officeInactive = { ok: false, reason: "officeInactive" } as const;
 
 function isAdmin(actor: Actor): boolean {
   return actor.roles.includes("admin");
@@ -219,11 +220,15 @@ export async function createRoom(
     actor,
     async (tx) => {
       const [parent] = await tx
-        .select({ id: office.id })
+        .select({ active: office.active })
         .from(office)
         .where(eq(office.id, parsed.data.officeId));
       if (!parent) {
         return notFound;
+      }
+      // A deactivated office keeps its rooms as they were, but gets no new ones.
+      if (!parent.active) {
+        return officeInactive;
       }
       const [created] = await tx
         .insert(room)

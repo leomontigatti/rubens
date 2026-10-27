@@ -172,6 +172,21 @@ describe("rooms", () => {
     ).toEqual({ ok: false, reason: "notFound" });
   });
 
+  it("refuses a new room in a deactivated office, and adds none", async () => {
+    const created = await newOffice();
+    await asAppRole(db, (tx) => setOfficeActive(admin, { id: created.id, active: false }, tx));
+
+    const result = await asAppRole(db, (tx) =>
+      createRoom(admin, { officeId: created.id, name: "Consultorio 1" }, tx),
+    );
+    const office = await asAppRole(db, (tx) =>
+      getOffice(admin, { officeId: created.id, includeInactive: true }, tx),
+    );
+
+    expect(result).toEqual({ ok: false, reason: "officeInactive" });
+    expect(office).toMatchObject({ ok: true, rooms: [] });
+  });
+
   it("edits a room", async () => {
     const created = await newOffice();
     const room = await newRoom(created.id);

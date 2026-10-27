@@ -65,7 +65,7 @@ function OfficeRooms() {
         <h2 className="text-lg font-semibold">Consultorios</h2>
         <ShowInactiveRooms />
       </div>
-      <CreatePanel isAdmin={isAdmin} label="Nuevo consultorio">
+      <CreatePanel isAdmin={isAdmin && result.office.active} label="Nuevo consultorio">
         {(close) => (
           <RoomForm
             idPrefix="new"
