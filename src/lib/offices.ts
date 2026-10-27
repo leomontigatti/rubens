@@ -22,25 +22,32 @@ function isTimeZone(value: string): boolean {
 }
 
 const name = z.string().trim().min(1).max(200);
+const timeZone = z.string().trim().refine(isTimeZone);
+const capacity = z.int().min(1).max(100);
 
 /** An office's fields, shared by the form and the services. */
 export const officeInputSchema = z.object({
   name,
   address: z.string().trim().min(1).max(500),
-  timeZone: z.string().trim().refine(isTimeZone).default(defaultTimeZone),
+  timeZone: timeZone.default(defaultTimeZone),
 });
 
-export const officeUpdateSchema = officeInputSchema.extend({ officeId: z.uuid() });
+// An update leaves out what it does not change, so its fields carry no defaults.
+export const officeUpdateSchema = officeInputSchema.extend({
+  officeId: z.uuid(),
+  timeZone: timeZone.optional(),
+});
 
 /** A room's fields, shared by the form and the services. */
 export const roomInputSchema = z.object({
   officeId: z.uuid(),
   name,
-  capacity: z.int().min(1).max(100).default(1),
+  capacity: capacity.default(1),
 });
 
 export const roomUpdateSchema = roomInputSchema.omit({ officeId: true }).extend({
   roomId: z.uuid(),
+  capacity: capacity.optional(),
 });
 
 export const activeChangeSchema = z.object({ id: z.uuid(), active: z.boolean() });

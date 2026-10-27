@@ -101,6 +101,16 @@ describe("offices", () => {
     });
   });
 
+  it("keeps the time zone when an edit leaves it out", async () => {
+    const created = await newOffice({ ...centro, timeZone: "UTC" });
+
+    const result = await asAppRole(db, (tx) =>
+      updateOffice(admin, { officeId: created.id, name: "Sede Norte", address: "Cabildo 1" }, tx),
+    );
+
+    expect(result).toMatchObject({ ok: true, office: { name: "Sede Norte", timeZone: "UTC" } });
+  });
+
   it("drops a deactivated office from the default list, shows it on request, and reactivates it", async () => {
     const created = await newOffice();
 
@@ -179,6 +189,18 @@ describe("rooms", () => {
 
     const result = await asAppRole(db, (tx) =>
       updateRoom(admin, { roomId: room.id, name: "Consultorio A", capacity: 3 }, tx),
+    );
+
+    expect(result).toMatchObject({ ok: true, room: { name: "Consultorio A", capacity: 3 } });
+  });
+
+  it("keeps the capacity when an edit leaves it out", async () => {
+    const created = await newOffice();
+    const room = await newRoom(created.id);
+    await asAppRole(db, (tx) => updateRoom(admin, { roomId: room.id, name: "A", capacity: 3 }, tx));
+
+    const result = await asAppRole(db, (tx) =>
+      updateRoom(admin, { roomId: room.id, name: "Consultorio A" }, tx),
     );
 
     expect(result).toMatchObject({ ok: true, room: { name: "Consultorio A", capacity: 3 } });
