@@ -21,7 +21,9 @@ validation command, and CI does not run it.
    port another server holds fails loudly instead of moving.
 
 Data comes from the worktree's own database, never from a copy of production. Rubens has no seed
-script yet: create the accounts and rows the screen needs by hand, with made-up names.
+script yet: `pnpm setup:organization` creates an organization and its first admin
+([scripts.md](../operations/scripts.md#database)); create the other rows the screen needs
+by hand, with made-up names.
 
 ## Doctor
 
@@ -81,9 +83,8 @@ account and size; a change to motion or interaction as a short recording instead
 
 Which flow proves which area. The app is a skeleton today; add a row when a screen lands.
 
-| Area                                               | Flow that proves it                                                                                                                   |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Document shell, theme (`__root.tsx`, `styles.css`) | Open `/`, at 1440 and 1280, light and dark; no console error.                                                                         |
-| Home (`src/routes/index.tsx`)                      | Open `/` and read the rendered page.                                                                                                  |
-| Auth (`src/lib/auth*.ts`, `api/auth`)              | No screen yet: `curl` sign-up, sign-in and sign-out on `/api/auth/*` with a made-up account; the session cookie is set, then cleared. |
-| A UI component (`src/components/ui/`)              | Every screen that uses it, in each state the change touches.                                                                          |
+| Area                                                                                                            | Flow that proves it                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document shell, theme (`__root.tsx`, `styles.css`)                                                              | Open `/`, at 1440 and 1280, light and dark; no console error.                                                                                                                                                                                                                                         |
+| Sign-in and app shell (`ingresar.tsx`, `_app.tsx`, `_app/index.tsx`, `src/lib/auth*.ts`, `src/server/actor.ts`) | Signed out, `/` lands on `/ingresar`. Sign in as an admin from `setup:organization`: held on `/cambiar-contrasena` until the starting password is replaced, then `/` shows the organization name. The user menu changes the password and signs out. `curl` `POST /api/auth/sign-up/email` is refused. |
+| A UI component (`src/components/ui/`)                                                                           | Every screen that uses it, in each state the change touches.                                                                                                                                                                                                                                          |

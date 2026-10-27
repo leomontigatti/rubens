@@ -14,6 +14,7 @@ export const user = rubens.table("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  mustChangePassword: boolean("must_change_password").default(true).notNull(),
 });
 
 export const session = rubens.table(

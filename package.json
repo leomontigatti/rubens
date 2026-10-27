@@ -32,6 +32,7 @@
     "db:migrate": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/worktree-db.ts ensure && node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs",
     "db:studio": "node --env-file-if-exists=.env --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs studio",
     "db:worktree": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/worktree-db.ts",
+    "setup:organization": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/setup-organization.ts",
     "prepare": "vp config --no-agent || true"
   },
   "dependencies": {

@@ -57,6 +57,12 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
 - `db:studio` ⚠️ runs `drizzle-kit studio` on the owner URL (`DATABASE_DIRECT_URL`),
   which bypasses row-level security. It is a read-write web UI over the data. Use it
   against a local or worktree database only.
+- `setup:organization` ⚠️ runs `scripts/setup-organization.ts`: creates an organization
+  and its first admin, with `--organization "<name>" --name "<admin name>" --email <email>
+  --password <starting password>`. It writes through `DATABASE_DIRECT_URL`, the owner
+  connection. There is no public sign-up, so this is how a business comes to exist. A
+  second run for the same organization name changes nothing and says so. The admin must
+  replace the starting password at first sign-in.
 - `db:worktree` ⚠️ runs `scripts/worktree-db.ts`. With no argument, sets up this worktree's
   database and `.env.local` (its own database name and port). With `ensure`, the same
   setup, skipped when it is already done. With `prune`, lists the `rubens-wt-` databases
