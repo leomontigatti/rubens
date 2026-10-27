@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { findFreeStarts, freeStartsByDay } from "#/lib/availability.ts";
+import {
+  availabilityQuerySchema,
+  availabilityViewOf,
+  findFreeStarts,
+  freeStartsByDay,
+  freeTimesQueryOf,
+} from "#/lib/availability.ts";
 import type { AvailabilityInput, AvailabilitySchedule } from "#/lib/availability.ts";
 
 // Buenos Aires is UTC-3 all year, so 09:00 there is 12:00Z. 2099-01-05 is a Monday.
@@ -140,10 +146,35 @@ describe("time off, closures and busy ranges", () => {
       end: new Date("2099-01-05T15:00:00Z"),
     };
 
-    expect(starts({ closures: [officeClosed, organizationClosed] })).toEqual([
-      "2099-01-05T12:15:00.000Z",
-      "2099-01-05T12:30:00.000Z",
-    ]);
+    expect(
+      starts({
+        closures: [
+          { during: officeClosed, officeId: "office-centro" },
+          { during: organizationClosed, officeId: null },
+        ],
+      }),
+    ).toEqual(["2099-01-05T12:15:00.000Z", "2099-01-05T12:30:00.000Z"]);
+  });
+
+  it("applies an office's closure only to that office's schedules", () => {
+    const norte = {
+      ...morning,
+      officeId: "office-norte",
+      roomId: "room-n",
+      startTime: "10:00",
+      endTime: "10:30",
+    };
+    const wholeDay = {
+      start: new Date("2099-01-05T03:00:00Z"),
+      end: new Date("2099-01-06T03:00:00Z"),
+    };
+
+    expect(
+      starts({
+        schedules: [morning, norte],
+        closures: [{ during: wholeDay, officeId: "office-centro" }],
+      }),
+    ).toEqual(["2099-01-05T13:00:00.000Z", "2099-01-05T13:15:00.000Z"]);
   });
 
   it("skips busy ranges, and a range that only touches the span leaves it free", () => {
@@ -262,5 +293,63 @@ describe("free starts by day", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("the query", () => {
+  const query = {
+    practitionerId: "6f1c9a2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
+    firstDate: "2099-01-01",
+    lastDate: "2099-01-31",
+    durationMinutes: 30,
+  };
+
+  it("accepts up to 31 days, both ends included, and refuses a longer window", () => {
+    expect(availabilityQuerySchema.safeParse(query).success).toBe(true);
+    expect(availabilityQuerySchema.safeParse({ ...query, lastDate: "2099-02-01" }).success).toBe(
+      false,
+    );
+  });
+
+  it("accepts any whole number of minutes from 1 to 720", () => {
+    const accepts = (durationMinutes: number) =>
+      availabilityQuerySchema.safeParse({ ...query, durationMinutes }).success;
+
+    expect([0, 1, 7, 720, 721, 7.5].map(accepts)).toEqual([false, true, true, true, false, false]);
+  });
+});
+
+describe("the screen's view", () => {
+  const practitioners = [{ id: "practitioner-1" }];
+
+  it("defaults to the only practitioner, today, one day and 30 minutes", () => {
+    expect(availabilityViewOf({}, practitioners, "2099-01-05")).toEqual({
+      practitionerId: "practitioner-1",
+      firstDate: "2099-01-05",
+      durationMinutes: 30,
+      week: false,
+    });
+  });
+
+  it("leaves the practitioner unchosen when there are several, and asks for nothing", () => {
+    const view = availabilityViewOf({}, [...practitioners, { id: "practitioner-2" }], "2099-01-05");
+
+    expect(view.practitionerId).toBeUndefined();
+    expect(freeTimesQueryOf(view)).toBeNull();
+  });
+
+  it("asks for seven days from the date in the week view", () => {
+    const view = availabilityViewOf(
+      { profesional: "practitioner-2", fecha: "2099-01-05", vista: "semana", duracion: 45 },
+      practitioners,
+      "2099-01-01",
+    );
+
+    expect(freeTimesQueryOf(view)).toEqual({
+      practitionerId: "practitioner-2",
+      firstDate: "2099-01-05",
+      lastDate: "2099-01-11",
+      durationMinutes: 45,
+    });
   });
 });

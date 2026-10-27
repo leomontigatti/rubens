@@ -4,7 +4,11 @@ import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { closureInputSchema, closureUpdateSchema } from "#/lib/time-ranges.ts";
+import {
+  closureInputSchema,
+  closureOfficeOptions,
+  closureUpdateSchema,
+} from "#/lib/time-ranges.ts";
 import {
   addClosure,
   editClosure,
@@ -96,7 +100,7 @@ function ClosureList() {
                 >
                   <OfficeSelect
                     idPrefix={item.id}
-                    offices={result.offices}
+                    offices={closureOfficeOptions(result.offices, item)}
                     initial={item.officeId}
                   />
                 </EntryForm>

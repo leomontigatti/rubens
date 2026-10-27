@@ -11,12 +11,12 @@ import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
-  formatLocalDate,
   scheduleChangeSchema,
   scheduleEndSchema,
   scheduleInputSchema,
   scheduleState,
   today,
+  validityLabel,
   weekdayLabels,
   weekdaysLabel,
 } from "#/lib/schedules.ts";
@@ -115,13 +115,6 @@ function PractitionerSchedules() {
   );
 }
 
-function validity(schedule: Schedule): string {
-  const from = `Desde el ${formatLocalDate(schedule.firstDate)}`;
-  return schedule.lastDate === null
-    ? `${from}, sin fecha de fin`
-    : `${from} hasta el ${formatLocalDate(schedule.lastDate)}`;
-}
-
 type Mode = "view" | "change" | "end";
 
 function ScheduleItem(props: { schedule: Schedule; rooms: RoomOption[]; canEdit: boolean }) {
@@ -190,7 +183,7 @@ function ScheduleSummary(props: { schedule: Schedule; ended: boolean; children: 
           {schedule.roomName} · {schedule.officeName}
         </span>
         <span className="text-muted-foreground text-sm">
-          {validity(schedule)}
+          {validityLabel(schedule)}
           {props.ended && " · Terminado"}
         </span>
       </div>

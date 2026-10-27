@@ -146,6 +146,10 @@ describe("free times for stored data", () => {
 
   it("ignores another practitioner's time off and another office's closures", async () => {
     await addSchedule({ endTime: "10:00" });
+    // The practitioner also works at the closed office that afternoon, and
+    // loses only those starts.
+    const norteRoom = await world.addRoom(otherOffice.id, "Consultorio Norte");
+    await addSchedule({ roomId: norteRoom.id, startTime: "14:00", endTime: "15:00" });
     await world.addStaff("Lucía Díaz");
     const otherId = await practitionerIdOf("Lucía Díaz");
     await asAppRole(db, (tx) =>

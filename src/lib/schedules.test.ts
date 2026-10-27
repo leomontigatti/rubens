@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { scheduleState } from "#/lib/schedules.ts";
+import { collisionLabel, scheduleState, validityLabel } from "#/lib/schedules.ts";
 
 // What a schedule's screen offers depends on where today falls in its dates.
 
@@ -31,5 +31,26 @@ describe("a schedule's state on a given day", () => {
       endDefault: "2026-10-30",
     });
     expect(scheduleState(closing, "2026-10-31")).toMatchObject({ ended: true });
+  });
+});
+
+describe("a schedule's labels", () => {
+  it("tells the dates a schedule applies, open or bounded", () => {
+    expect(validityLabel(open)).toBe("Desde el 02/11/2026, sin fecha de fin");
+    expect(validityLabel({ firstDate: "2026-10-05", lastDate: "2026-10-30" })).toBe(
+      "Desde el 05/10/2026 hasta el 30/10/2026",
+    );
+  });
+
+  it("tells the schedule a save collides with", () => {
+    expect(
+      collisionLabel({
+        practitionerName: "Lucía Díaz",
+        roomName: "Consultorio 1",
+        weekday: 3,
+        startTime: "09:00",
+        endTime: "10:30",
+      }),
+    ).toBe("Choca con el horario de Lucía Díaz en Consultorio 1, los miércoles de 09:00 a 10:30.");
   });
 });

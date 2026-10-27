@@ -391,16 +391,26 @@ export async function createSchedule(
  * Past weeks are judged by today's date in the schedule's office's zone.
  */
 async function findEditable(tx: Transaction, actor: Actor, scheduleId: string) {
-  const [found] = await selectSchedules(tx).where(eq(schedule.id, scheduleId));
-  if (!found) {
+  // The schedule is read only once its practitioner is locked, so a change
+  // committed while this call waited for the lock is the one it sees. A
+  // schedule's practitioner never changes, so it can be read before.
+  const [target] = await tx
+    .select({ practitionerId: schedule.practitionerId })
+    .from(schedule)
+    .where(eq(schedule.id, scheduleId));
+  if (!target) {
     return notFound;
   }
-  const owner = await findPractitioner(tx, actor, found.practitionerId, true);
+  const owner = await findPractitioner(tx, actor, target.practitionerId, true);
   if (!owner) {
     return notFound;
   }
   if (!owner.canEdit) {
     return forbidden;
+  }
+  const [found] = await selectSchedules(tx).where(eq(schedule.id, scheduleId));
+  if (!found) {
+    return notFound;
   }
   return { ok: true as const, found, owner, today: today(found.timeZone) };
 }

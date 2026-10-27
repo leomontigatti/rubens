@@ -1,5 +1,5 @@
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { weekdayLabels } from "#/lib/schedules.ts";
+import { collisionLabel } from "#/lib/schedules.ts";
 import type { Collision } from "#/server/schedules.ts";
 
 // The refusal copy the schedule screens share, collisions included.
@@ -27,14 +27,6 @@ export type ActionResult =
   | { ok: false; reason: RefusalReason }
   | { ok: false; reason: "roomFull" | "practitionerBusy"; collision: Collision };
 
-function collisionMessage(reason: "roomFull" | "practitionerBusy", collision: Collision) {
-  const day = weekdayLabels[collision.weekday]!.toLowerCase();
-  return (
-    `${refusalMessages[reason]} Choca con el horario de ${collision.practitionerName} ` +
-    `en ${collision.roomName}, los ${day} de ${collision.startTime} a ${collision.endTime}.`
-  );
-}
-
 /** The shared submit step, with a collision told as the schedule it meets. */
 export function useAction() {
   const action = useFormAction(refusalMessages);
@@ -44,7 +36,7 @@ export function useAction() {
     const ok = await action.run(async () => {
       const result = await work();
       if (!result.ok && "collision" in result) {
-        collision = collisionMessage(result.reason, result.collision);
+        collision = `${refusalMessages[result.reason]} ${collisionLabel(result.collision)}`;
       }
       return result;
     });

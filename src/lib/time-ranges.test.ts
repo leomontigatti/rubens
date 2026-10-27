@@ -2,7 +2,13 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 
-import { rangeEntryLabel, rangeEntrySchema, toRangeEntry, toTimeRange } from "#/lib/time-ranges.ts";
+import {
+  closureOfficeOptions,
+  rangeEntryLabel,
+  rangeEntrySchema,
+  toRangeEntry,
+  toTimeRange,
+} from "#/lib/time-ranges.ts";
 
 // Time off and closures are entered as whole days or as hours, local to a zone,
 // and stored as instants.
@@ -103,5 +109,22 @@ describe("an entry as the screens show it", () => {
     ],
   ])("shows %o as %s", (entry, label) => {
     expect(rangeEntryLabel(entry)).toBe(label);
+  });
+});
+
+describe("the offices a closure's form offers", () => {
+  const offices = [{ id: "office-centro", name: "Sede Centro" }];
+
+  it("offers the active offices for a closure of the whole organization", () => {
+    expect(closureOfficeOptions(offices, { officeId: null, officeName: null })).toEqual(offices);
+  });
+
+  it("keeps a closure's own office, even once deactivated, so editing does not move it", () => {
+    expect(
+      closureOfficeOptions(offices, { officeId: "office-norte", officeName: "Sede Norte" }),
+    ).toEqual([...offices, { id: "office-norte", name: "Sede Norte" }]);
+    expect(
+      closureOfficeOptions(offices, { officeId: "office-centro", officeName: "Sede Centro" }),
+    ).toEqual(offices);
   });
 });

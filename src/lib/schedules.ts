@@ -87,7 +87,7 @@ export function shiftDate(date: string, days: number): string {
 }
 
 /** The ISO weekday of a local date. */
-function weekdayOf(date: string): number {
+export function weekdayOf(date: string): number {
   return utcMidnight(date).getUTCDay() || 7;
 }
 
@@ -170,6 +170,29 @@ export function weekdaysLabel(days: readonly number[]): string {
 export function formatLocalDate(date: string): string {
   const [year, month, day] = date.split("-");
   return `${day}/${month}/${year}`;
+}
+
+/** The dates a schedule applies, as its screen shows them. */
+export function validityLabel(dates: { firstDate: string; lastDate: string | null }): string {
+  const from = `Desde el ${formatLocalDate(dates.firstDate)}`;
+  return dates.lastDate === null
+    ? `${from}, sin fecha de fin`
+    : `${from} hasta el ${formatLocalDate(dates.lastDate)}`;
+}
+
+/** The schedule a save collides with, told after the refusal. */
+export function collisionLabel(collision: {
+  practitionerName: string;
+  roomName: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+}): string {
+  const day = weekdayLabels[collision.weekday]!.toLowerCase();
+  return (
+    `Choca con el horario de ${collision.practitionerName} en ${collision.roomName}, ` +
+    `los ${day} de ${collision.startTime} a ${collision.endTime}.`
+  );
 }
 
 /**

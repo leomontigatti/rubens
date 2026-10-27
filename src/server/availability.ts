@@ -154,7 +154,7 @@ export async function getAvailability(
         .where(and(eq(timeOff.practitionerId, found.id), meets(timeOff.during, reach)));
       const officeIds = [...new Set(schedules.map((row) => row.officeId))];
       const closureRows = await tx
-        .select({ during: closure.during })
+        .select({ during: closure.during, officeId: closure.officeId })
         .from(closure)
         .where(
           and(
@@ -168,7 +168,7 @@ export async function getAvailability(
       const free = findFreeStarts({
         schedules,
         timeOff: timeOffRows.map((row) => row.during),
-        closures: closureRows.map((row) => row.during),
+        closures: closureRows,
         busy: [],
         gridMinutes: found.gridMinutes,
         window,

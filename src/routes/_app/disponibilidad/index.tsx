@@ -8,13 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.t
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { freeStartsByDay } from "#/lib/availability.ts";
+import {
+  availabilityViewOf,
+  durationMinutesSchema,
+  freeStartsByDay,
+  freeTimesQueryOf,
+} from "#/lib/availability.ts";
+import type { AvailabilityView } from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { shiftDate, today } from "#/lib/schedules.ts";
+import { today } from "#/lib/schedules.ts";
 import type { AvailableStart } from "#/server/availability.ts";
 import { getAvailabilityPractitioners, getFreeTimes } from "#/server/availability.functions.ts";
-
-const defaultDuration = 30;
 
 // What is being viewed lives in the URL, so a view can be reloaded and shared.
 // A value that does not parse falls back to its default.
@@ -22,7 +26,7 @@ const searchSchema = z.object({
   profesional: z.uuid().optional().catch(undefined),
   fecha: z.iso.date().optional().catch(undefined),
   vista: z.enum(["dia", "semana"]).optional().catch(undefined),
-  duracion: z.int().min(5).max(720).optional().catch(undefined),
+  duracion: durationMinutesSchema.optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_app/disponibilidad/")({
@@ -34,8 +38,8 @@ export const Route = createFileRoute("/_app/disponibilidad/")({
     if (!listed.ok) {
       return listed;
     }
-    const query = queryOf(deps, listed.practitioners);
-    const window = windowOf(query);
+    const query = availabilityViewOf(deps, listed.practitioners, today(defaultTimeZone));
+    const window = freeTimesQueryOf(query);
     return {
       ok: true as const,
       practitioners: listed.practitioners,
@@ -45,37 +49,6 @@ export const Route = createFileRoute("/_app/disponibilidad/")({
   },
   component: Availability,
 });
-
-type Query = {
-  practitionerId: string | undefined;
-  firstDate: string;
-  durationMinutes: number;
-  week: boolean;
-};
-
-/** What the URL asks for, with its defaults: the only practitioner, today, a day, 30 minutes. */
-function queryOf(search: z.infer<typeof searchSchema>, practitioners: { id: string }[]): Query {
-  return {
-    practitionerId: search.profesional ?? onlyId(practitioners),
-    firstDate: search.fecha ?? today(defaultTimeZone),
-    durationMinutes: search.duracion ?? defaultDuration,
-    week: search.vista === "semana",
-  };
-}
-
-function onlyId(practitioners: { id: string }[]): string | undefined {
-  return practitioners.length === 1 ? practitioners[0]!.id : undefined;
-}
-
-/** The service's query, once a practitioner is chosen. */
-function windowOf(query: Query) {
-  const { practitionerId, firstDate, durationMinutes } = query;
-  if (!practitionerId) {
-    return null;
-  }
-  const lastDate = query.week ? shiftDate(firstDate, 6) : firstDate;
-  return { practitionerId, firstDate, lastDate, durationMinutes };
-}
 
 /** The copy for every refusal the availability server functions return. */
 const refusalMessages = {
@@ -118,7 +91,10 @@ function FreeTimesResult(props: {
   return <FreeTimes starts={props.result.freeStarts} />;
 }
 
-function QueryForm(props: { practitioners: { id: string; displayName: string }[]; query: Query }) {
+function QueryForm(props: {
+  practitioners: { id: string; displayName: string }[];
+  query: AvailabilityView;
+}) {
   const navigate = useNavigate();
   const { query } = props;
 
@@ -184,9 +160,8 @@ function QueryForm(props: { practitioners: { id: string; displayName: string }[]
               id="durationMinutes"
               name="durationMinutes"
               type="number"
-              min={5}
+              min={1}
               max={720}
-              step={5}
               defaultValue={query.durationMinutes}
               required
             />

@@ -101,6 +101,25 @@ export const closureUpdateSchema = closureInputSchema.extend({ closureId: id });
 
 export const closureDeleteSchema = z.object({ closureId: id });
 
+/**
+ * The offices a closure's form offers: the active ones, plus the closure's own
+ * office when it has since been deactivated, so editing keeps it.
+ */
+export function closureOfficeOptions<T extends { id: string; name: string }>(
+  activeOffices: readonly T[],
+  editing: { officeId: string | null; officeName: string | null },
+): { id: string; name: string }[] {
+  const options: { id: string; name: string }[] = [...activeOffices];
+  if (
+    editing.officeId !== null &&
+    editing.officeName !== null &&
+    !options.some((office) => office.id === editing.officeId)
+  ) {
+    options.push({ id: editing.officeId, name: editing.officeName });
+  }
+  return options;
+}
+
 export type TimeOffInput = z.input<typeof timeOffInputSchema>;
 export type TimeOffUpdate = z.input<typeof timeOffUpdateSchema>;
 export type TimeOffDelete = z.input<typeof timeOffDeleteSchema>;

@@ -26,7 +26,9 @@ export function readRangeEntry(form: FormData): unknown {
   return { kind: "days", firstDate: form.get("firstDate"), lastDate: form.get("lastDate") };
 }
 
-const fieldMessages: Record<string, string> = {
+type EntryField = "practitionerId" | "officeId" | "firstDate" | "lastDate" | "start" | "end";
+
+const fieldMessages: Record<EntryField, string> = {
   practitionerId: "Elegí un profesional.",
   officeId: "Elegí una sede.",
   firstDate: "Ingresá el primer día.",
@@ -38,7 +40,9 @@ const fieldMessages: Record<string, string> = {
 /** The copy for the first field a time-off or closure schema refused. */
 function entryErrorMessage(error: z.ZodError): string {
   const field = error.issues[0]?.path.at(-1);
-  return fieldMessages[String(field)] ?? "Revisá los datos ingresados.";
+  return typeof field === "string" && Object.hasOwn(fieldMessages, field)
+    ? fieldMessages[field as EntryField]
+    : "Revisá los datos ingresados.";
 }
 
 /**

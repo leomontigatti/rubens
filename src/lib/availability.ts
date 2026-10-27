@@ -2,7 +2,13 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
-import { formatLocalDate, shiftDate, shortTime, weekdayLabels } from "#/lib/schedules.ts";
+import {
+  formatLocalDate,
+  shiftDate,
+  shortTime,
+  weekdayLabels,
+  weekdayOf,
+} from "#/lib/schedules.ts";
 import type { WeeklySlot } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -18,11 +24,17 @@ export interface AvailabilitySchedule extends WeeklySlot {
   timeZone: string;
 }
 
+/** A closure of one office, or of the whole organization when `officeId` is null. */
+export interface AvailabilityClosure {
+  during: TimeRange;
+  officeId: string | null;
+}
+
 export interface AvailabilityInput {
   schedules: readonly AvailabilitySchedule[];
   timeOff: readonly TimeRange[];
   /** The closures of the practitioner's offices and of the whole organization. */
-  closures: readonly TimeRange[];
+  closures: readonly AvailabilityClosure[];
   /** Booked appointments; none until booking exists. */
   busy: readonly TimeRange[];
   gridMinutes: number;
@@ -36,6 +48,12 @@ export interface FreeStart {
   roomId: string;
 }
 
+/** An appointment's length in minutes: any whole number, the grid sets none. */
+export const durationMinutesSchema = z.int().min(1).max(720);
+
+/** The most days one query covers; the screens ask for a day or a week. */
+const maxWindowDays = 31;
+
 /**
  * What the free-times screen asks for: a practitioner, local dates in the
  * organization's default zone (both inclusive) and a duration in minutes.
@@ -45,23 +63,60 @@ export const availabilityQuerySchema = z
     practitionerId: z.uuid(),
     firstDate: z.iso.date(),
     lastDate: z.iso.date(),
-    durationMinutes: z.int().min(5).max(720),
+    durationMinutes: durationMinutesSchema,
   })
   .refine((query) => query.firstDate <= query.lastDate, {
     path: ["lastDate"],
     message: "lastBeforeFirst",
+  })
+  .refine((query) => query.lastDate < shiftDate(query.firstDate, maxWindowDays), {
+    path: ["lastDate"],
+    message: "windowTooLong",
   });
 
 export type AvailabilityQuery = z.input<typeof availabilityQuerySchema>;
+
+const defaultDuration = 30;
+
+/** What the free-times screen's URL asks for, each value already parsed. */
+export interface AvailabilitySearch {
+  profesional?: string;
+  fecha?: string;
+  vista?: "dia" | "semana";
+  duracion?: number;
+}
+
+/** What the screen shows, with its defaults: the only practitioner, today, a day, 30 minutes. */
+export function availabilityViewOf(
+  search: AvailabilitySearch,
+  practitioners: readonly { id: string }[],
+  today: string,
+) {
+  return {
+    practitionerId:
+      search.profesional ?? (practitioners.length === 1 ? practitioners[0]!.id : undefined),
+    firstDate: search.fecha ?? today,
+    durationMinutes: search.duracion ?? defaultDuration,
+    week: search.vista === "semana",
+  };
+}
+
+export type AvailabilityView = ReturnType<typeof availabilityViewOf>;
+
+/** The service's query for a view, once a practitioner is chosen. */
+export function freeTimesQueryOf(view: AvailabilityView): AvailabilityQuery | null {
+  const { practitionerId, firstDate, durationMinutes } = view;
+  if (!practitionerId) {
+    return null;
+  }
+  const lastDate = view.week ? shiftDate(firstDate, 6) : firstDate;
+  return { practitionerId, firstDate, lastDate, durationMinutes };
+}
 
 const minute = 60_000;
 
 function localDate(instant: Date, timeZone: string): string {
   return format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
-}
-
-function weekdayOf(date: string): number {
-  return new Date(`${date}T00:00:00Z`).getUTCDay() || 7;
 }
 
 function minutesOf(time: string): number {
@@ -130,19 +185,25 @@ function gridSpans(
  */
 export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
   const { window } = input;
-  const blocked = [...input.timeOff, ...input.closures, ...input.busy];
-  const isFree = (span: TimeRange) =>
-    span.start >= window.start &&
-    span.start < window.end &&
-    !blocked.some((range) => intersects(range, span));
   return input.schedules
-    .flatMap((schedule) =>
-      datesIn(window, schedule.timeZone)
+    .flatMap((schedule) => {
+      const blocked = [
+        ...input.timeOff,
+        ...input.closures
+          .filter(({ officeId }) => officeId === null || officeId === schedule.officeId)
+          .map(({ during }) => during),
+        ...input.busy,
+      ];
+      const isFree = (span: TimeRange) =>
+        span.start >= window.start &&
+        span.start < window.end &&
+        !blocked.some((range) => intersects(range, span));
+      return datesIn(window, schedule.timeZone)
         .filter((date) => appliesOn(schedule, date))
         .flatMap((date) => gridSpans(schedule, date, input.gridMinutes, input.durationMinutes))
         .filter(isFree)
-        .map(({ start }) => ({ start, officeId: schedule.officeId, roomId: schedule.roomId })),
-    )
+        .map(({ start }) => ({ start, officeId: schedule.officeId, roomId: schedule.roomId }));
+    })
     .sort((a, b) => +a.start - +b.start);
 }
 
