@@ -1,22 +1,24 @@
-import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 
 import { PGlite } from "@electric-sql/pglite";
 import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { sql } from "drizzle-orm";
 import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
+import { inject } from "vite-plus/test";
 
 import * as schema from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 
+import { migratedDataDirKey } from "./global-setup.ts";
+
 export type TestDatabase = PgliteDatabase<typeof schema>;
 
-const migrationsFolder = fileURLToPath(new URL("../../src/db/migrations", import.meta.url));
+let migratedDataDir: Promise<Blob> | undefined;
 
 /**
- * A fresh in-process Postgres (PGlite) with every migration applied. One per
- * test file: the db project runs files in parallel, and each file's instance
- * is its own database.
+ * A fresh in-process Postgres (PGlite) with every migration applied, loaded
+ * from the data directory `global-setup.ts` migrated once for the whole run.
+ * Each call is its own database, so tests and files stay isolated.
  *
  * `btree_gist` is loaded as a contrib extension because migration 0000 creates
  * it, and PGlite only has the extensions it is handed.
@@ -25,10 +27,14 @@ export async function createTestDatabase(): Promise<{
   client: PGlite;
   db: TestDatabase;
 }> {
-  const client = await PGlite.create({ extensions: { btree_gist } });
+  migratedDataDir ??= readFile(inject(migratedDataDirKey) as string).then(
+    (bytes) => new Blob([bytes]),
+  );
+  const client = await PGlite.create({
+    loadDataDir: await migratedDataDir,
+    extensions: { btree_gist },
+  });
   const db = drizzle(client, { schema });
-
-  await migrate(db, { migrationsFolder });
 
   return { client, db };
 }
