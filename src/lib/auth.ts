@@ -27,9 +27,8 @@ export function createAuth(database: AnyDatabase) {
       disableSignUp: true,
     },
     // A password change goes through `changeOwnPassword`, which also clears
-    // `mustChangePassword`. A member never leaves the organization on their
-    // own: an admin deactivates them.
-    disabledPaths: ["/change-password", "/organization/leave"],
+    // `mustChangePassword`.
+    disabledPaths: ["/change-password"],
     user: {
       additionalFields: {
         mustChangePassword: {
@@ -87,3 +86,19 @@ export function createAuth(database: AnyDatabase) {
 export type Auth = ReturnType<typeof createAuth>;
 
 export const auth = createAuth(db);
+
+/**
+ * Serves Better Auth over HTTP (`/api/auth/*`), except the organization
+ * plugin's endpoints. Its member endpoints treat every admin as the creator,
+ * so they would skip the staff services' rules, and its read endpoints show
+ * every member to any member. The app calls the plugin only through
+ * `auth.api` on the server, so every `/organization/*` path, present or
+ * future, answers 404.
+ */
+export function handleAuthRequest(auth: Auth, request: Request) {
+  const { pathname } = new URL(request.url);
+  if (pathname.startsWith("/api/auth/organization/")) {
+    return Promise.resolve(new Response(null, { status: 404 }));
+  }
+  return auth.handler(request);
+}

@@ -7,9 +7,10 @@ import { defaultStatements } from "better-auth/plugins/organization/access";
  * default `owner` and `member` roles are not used: the first admin is the
  * owner (GLOSSARY.md).
  *
- * No role holds the plugin's `member`, `invitation`, `team` or `ac`
- * permissions: staff accounts are created by our own services, never through
- * the plugin's invitation and member endpoints.
+ * No role is granted the plugin's `member`, `invitation`, `team` or `ac`
+ * permissions, but `creatorRole: "admin"` lets an admin pass every plugin
+ * permission check. Staff are managed by our own services; the plugin's
+ * endpoints are refused over HTTP (`handleAuthRequest` in `src/lib/auth.ts`).
  */
 export const ac = createAccessControl(defaultStatements);
 
