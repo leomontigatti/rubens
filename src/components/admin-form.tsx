@@ -35,8 +35,12 @@ export function useFormAction<R extends string>(messages: Record<R, string>) {
   ): Promise<boolean> {
     setPending(true);
     setError(null);
-    const result = await action();
-    setPending(false);
+    let result: Awaited<ReturnType<typeof action>>;
+    try {
+      result = await action();
+    } finally {
+      setPending(false);
+    }
     if (!result.ok) {
       setError(messages[result.reason]);
       return false;
