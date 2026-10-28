@@ -1,5 +1,6 @@
-import { Link, Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { ChevronDownIcon } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu.tsx";
 import { authClient } from "#/lib/auth-client.ts";
+import { onSessionChange, startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
 
 const passwordChangePath = "/cambiar-contrasena";
@@ -34,13 +36,14 @@ export const Route = createFileRoute("/_app")({
 
 function AppShell() {
   const { viewer } = Route.useRouteContext();
-  const router = useRouter();
+
+  // Another tab signed out or in: this tab's screen and caches are the
+  // previous user's.
+  useEffect(() => onSessionChange(() => window.location.reload()), []);
 
   async function signOut() {
     await authClient.signOut();
-    await router.navigate({ to: "/ingresar" });
-    // Cached answers belong to the user who just left.
-    router.options.context.queryClient.clear();
+    startNewSession("/ingresar");
   }
 
   return (

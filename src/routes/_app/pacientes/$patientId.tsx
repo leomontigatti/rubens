@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -23,6 +24,7 @@ import {
   MinorPrompt,
   NewGuardianForm,
 } from "#/components/patient-guardians.tsx";
+import { patientSearchQueries } from "#/components/patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -154,17 +156,21 @@ function PatientBadges({ patient }: { patient: Patient }) {
 /** The admin's deactivate or reactivate button. */
 function ActiveToggle({ patient }: { patient: Patient }) {
   const toggle = useAction();
+  const queryClient = useQueryClient();
+
+  async function changeActive() {
+    const changed = await toggle.run(() =>
+      changePatientActive({ data: { id: patient.id, active: !patient.active } }),
+    );
+    if (changed) {
+      // A search cached before the change would still list the patient as they were.
+      await queryClient.invalidateQueries({ queryKey: patientSearchQueries });
+    }
+  }
+
   return (
     <div className="flex flex-col items-end gap-3">
-      <Button
-        variant="outline"
-        disabled={toggle.pending}
-        onClick={() =>
-          void toggle.run(() =>
-            changePatientActive({ data: { id: patient.id, active: !patient.active } }),
-          )
-        }
-      >
+      <Button variant="outline" disabled={toggle.pending} onClick={() => void changeActive()}>
         {patient.active ? "Desactivar" : "Reactivar"}
       </Button>
       <ErrorAlert message={toggle.error} />
