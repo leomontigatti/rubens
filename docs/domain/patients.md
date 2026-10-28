@@ -3,17 +3,51 @@
 ## One registry
 
 The organization keeps one patient registry, shared by every practitioner and
-receptionist. A patient's insurance (obra social or prepaga, and member number)
-belongs to the patient.
+receptionist. Reception, admins and practitioners all edit a patient's details;
+only an admin deactivates a patient. Every change to a patient's details goes to
+the audit log with who, when, and the values before and after, so a patient can
+learn who changed their data (Ley 25.326).
+
+## Registering
+
+A patient can be registered with only a first name, a last name and a phone, so a
+first booking by phone is quick. Such a patient is incomplete until the rest is
+filled in at the first visit; the birth date is what completes the record,
+because it says whether the patient is a minor. Forcing every field up front
+only gets invented data.
+
+A patient may have a chosen name, which the app shows everywhere in place of the
+legal name (Ley 26.743). The legal name stays on documents and on the
+clinical-record copy.
+
+Phones are typed the local way ("0351 15…", "351…") and stored in international
+format, the one WhatsApp needs. A number that cannot be read as a valid Argentine
+number, or a foreign one with its country prefix, is refused when typed, because
+a misformatted mobile silently loses its reminders.
+
+Allergies and medical alerts are not registration data: they are clinical and
+live in the clinical record ([clinical-records.md](./clinical-records.md)).
+
+## Coverage
+
+A patient has zero or more coverages, each an insurer from the organization's
+list (obra social or prepaga, kept by an admin), a plan and a member number. One
+is primary. A patient with none is private ("Particular").
 
 ## Identity
 
 A patient has an optional identity document: a type (DNI, passport, other) and a
 number, unique within the organization when present. It is optional so a baby
-without a DNI yet, or a foreign patient, can still be registered. Reception
-searches by document, name or phone. Without a document, duplicates can happen;
-merging two patients is a later admin tool, and it moves records, never deletes
-them.
+without a DNI yet, or a foreign patient, can still be registered.
+
+Reception finds a patient from one search box: by name, ignoring accents, case
+and word order ("perez juan" finds "Juan Pérez"), by document number, or by phone
+digits. Deactivated patients appear only on request.
+
+Registering warns about likely duplicates (the same phone, or the same name and
+birth date) and offers the existing patient; only the same document blocks.
+Siblings share phones, so a phone match cannot block. Merging two patients is a
+later admin tool, and it moves records, never deletes them.
 
 ## Never deleted
 
@@ -23,9 +57,15 @@ leaves the search results; their data stays.
 
 ## Guardians
 
-A patient can have one or more guardians, usually a minor's parents. One guardian,
-or the patient, is the contact that messages go to; the patient's own phone is the
+A patient can have one or more guardians, usually a minor's parents. A guardian is
+a contact kept on the patient (name, relationship, document, phone, email), not a
+link to another patient, even when the parent is a patient too. One guardian, or
+the patient, is the contact that messages go to; the patient's own phone is the
 default. A guardian signs consent forms while the patient is a minor.
+
+A patient under 18 by birth date shows as a minor, and the app asks for a
+guardian without requiring one: a teenager may book for themselves. The
+guardian's signature is enforced where it matters, on a minor's consent form.
 
 ## WhatsApp consent
 
