@@ -64,6 +64,23 @@ describe("laying out one column's day", () => {
     ]);
   });
 
+  it("gives a faded block the full width and no lane, so the blocks it overlaps keep theirs", () => {
+    const placed = layoutColumn(
+      [
+        block("active", "09:00", "10:00"),
+        { ...block("cancelled", "09:00", "09:30"), faded: true },
+        block("next", "09:30", "10:30"),
+      ],
+      day,
+    );
+
+    expect(placed).toEqual([
+      { id: "cancelled", top: 60, height: 30, lane: 0, lanes: 1 },
+      { id: "active", top: 60, height: 60, lane: 0, lanes: 2 },
+      { id: "next", top: 90, height: 60, lane: 1, lanes: 2 },
+    ]);
+  });
+
   it("keeps blocks that touch end to start in one lane", () => {
     const placed = layoutColumn([block("a", "09:00", "09:30"), block("b", "09:30", "10:00")], day);
 

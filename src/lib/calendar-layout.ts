@@ -10,6 +10,8 @@ import type { TimeRange } from "#/lib/time-ranges.ts";
 
 export interface LayoutBlock extends TimeRange {
   id: string;
+  /** Drawn faded under the others (a cancelled or no-show appointment): it takes no lane. */
+  faded?: boolean;
 }
 
 export interface PlacedBlock {
@@ -27,20 +29,43 @@ export interface PlacedBlock {
 const minute = 60_000;
 
 /**
- * Every block inside `day`, clipped to it, in start order. Blocks that
- * overlap, directly or through a chain, form a group that shares the width:
- * each takes the first lane free at its start. Touching blocks do not overlap.
+ * Every block inside `day`, clipped to it, in start order, faded blocks first
+ * at the full width. The other blocks that overlap, directly or through a
+ * chain, form a group that shares the width: each takes the first lane free at
+ * its start. Touching blocks do not overlap.
  */
 export function layoutColumn(blocks: readonly LayoutBlock[], day: TimeRange): PlacedBlock[] {
   const inside = blocks
     .filter((block) => block.start < day.end && block.end > day.start)
     .map((block) => ({
       id: block.id,
+      faded: block.faded === true,
       start: Math.max(+block.start, +day.start),
       end: Math.min(+block.end, +day.end),
     }))
     .sort((a, b) => a.start - b.start || a.end - b.end);
+  const fullWidth = inside
+    .filter((block) => block.faded)
+    .map((block) => ({
+      id: block.id,
+      top: (block.start - +day.start) / minute,
+      height: (block.end - block.start) / minute,
+      lane: 0,
+      lanes: 1,
+    }));
+  return [
+    ...fullWidth,
+    ...layoutLanes(
+      inside.filter((block) => !block.faded),
+      day,
+    ),
+  ];
+}
 
+function layoutLanes(
+  inside: readonly { id: string; start: number; end: number }[],
+  day: TimeRange,
+): PlacedBlock[] {
   const placed: PlacedBlock[] = [];
   let group: PlacedBlock[] = [];
   let laneEnds: number[] = [];

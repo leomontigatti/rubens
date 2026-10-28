@@ -1,6 +1,6 @@
 import { tz } from "@date-fns/tz";
 import { cn } from "cn";
-import { ZapIcon } from "lucide-react";
+import { SquareArrowOutUpRightIcon, ZapIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -10,6 +10,7 @@ import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { medicalServiceColorClasses } from "#/lib/medical-services.ts";
 import { layoutCells, layoutColumn } from "#/lib/calendar-layout.ts";
+import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 import type { DayAppointment, DayColumn } from "#/server/appointments.ts";
 
@@ -112,7 +113,10 @@ export function PractitionerColumn(props: {
 }) {
   const { column, view, timeZone, practitioner } = props;
   const appointments = new Map(column.appointments.map((booked) => [booked.id, booked]));
-  const placed = layoutColumn(column.appointments, view);
+  const placed = layoutColumn(
+    column.appointments.map((booked) => ({ ...booked, faded: isFaded(booked) })),
+    view,
+  );
   const cells = layoutCells(view, column.freeStarts);
 
   return (
@@ -163,11 +167,16 @@ export function PractitionerColumn(props: {
   );
 }
 
+/** A cancelled or no-show appointment leaves its time free: the card is drawn faded. */
+function isFaded(booked: DayAppointment) {
+  return !(activeAppointmentStatuses as readonly string[]).includes(booked.status);
+}
+
 /**
  * One appointment card on the calendar, in its lane, styled and marked by its
  * status; an overbooking is dashed and marked. A cancelled or no-show card,
  * shown only when asked for, is faded and lets clicks through to the cell
- * under it but for its patient's name.
+ * under it but for the small button in its corner that opens it.
  */
 function AppointmentBlock(props: {
   block: ReturnType<typeof layoutColumn>[number];
@@ -175,7 +184,7 @@ function AppointmentBlock(props: {
   timeZone: string;
   onOpen: (appointment: DayAppointment) => void;
 }) {
-  const { block, appointment: booked, timeZone } = props;
+  const { block, appointment: booked } = props;
   return (
     <div
       className={cn(
@@ -194,23 +203,59 @@ function AppointmentBlock(props: {
       title={booked.receptionNote ?? undefined}
     >
       <div className={cn("w-1 shrink-0", medicalServiceColorClasses[booked.color])} />
-      <div className="flex min-w-0 flex-col items-start px-1.5 py-0.5">
-        <Button
-          variant="link"
-          size="xs"
-          className="pointer-events-auto max-w-full justify-start"
-          onClick={() => props.onOpen(booked)}
-        >
-          <StatusIcon status={booked.status} />
-          {booked.overbooking && <ZapIcon aria-label="Sobreturno" />}
-          <span className="truncate">
-            {localTime(booked.start, timeZone)} {booked.patientName}
-          </span>
-        </Button>
+      <div className="flex min-w-0 flex-1 flex-col items-start px-1.5 py-0.5">
+        <CardHeading appointment={booked} timeZone={props.timeZone} onOpen={props.onOpen} />
         <span className="text-muted-foreground truncate">
           {booked.medicalServiceName} · {booked.roomName}
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * The card's status, time and patient: the button that opens it, or on a
+ * faded card plain text and a small open button in the card's corner.
+ */
+function CardHeading(props: {
+  appointment: DayAppointment;
+  timeZone: string;
+  onOpen: (appointment: DayAppointment) => void;
+}) {
+  const { appointment: booked } = props;
+  const label = (
+    <>
+      <StatusIcon status={booked.status} />
+      {booked.overbooking && <ZapIcon aria-label="Sobreturno" />}
+      <span className="truncate">
+        {localTime(booked.start, props.timeZone)} {booked.patientName}
+      </span>
+    </>
+  );
+  if (!isFaded(booked)) {
+    return (
+      <Button
+        variant="link"
+        size="xs"
+        className="max-w-full justify-start"
+        onClick={() => props.onOpen(booked)}
+      >
+        {label}
+      </Button>
+    );
+  }
+  return (
+    <>
+      <span className="flex max-w-full items-center gap-1 [&_svg]:size-3">{label}</span>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        className="pointer-events-auto absolute top-0 right-0"
+        aria-label={`Abrir el turno de ${booked.patientName}`}
+        onClick={() => props.onOpen(booked)}
+      >
+        <SquareArrowOutUpRightIcon />
+      </Button>
+    </>
   );
 }
