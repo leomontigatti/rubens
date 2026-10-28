@@ -277,24 +277,26 @@ const hiddenFields = new Set(["insurerId", "patientId"]);
 
 /**
  * An audit entry's changed fields, labelled and formatted for the change
- * history: ids by their `names`, an appointment's times in its `timeZone`.
+ * history: ids by their `names`, an appointment's times on each side in that
+ * side's zone of `timeZones`.
  */
 export function historyChanges(
   entry: {
     before: Record<string, HistoryValue> | null;
     after: Record<string, HistoryValue> | null;
-    timeZone?: string | null;
+    timeZones?: { before: string; after: string } | null;
   },
   names: Readonly<Record<string, string>> = {},
 ): FieldChange[] {
-  const context = { names, timeZone: entry.timeZone ?? defaultTimeZone };
+  const before = { names, timeZone: entry.timeZones?.before ?? defaultTimeZone };
+  const after = { names, timeZone: entry.timeZones?.after ?? defaultTimeZone };
   // The log's JSON keeps no key order, so the form's order is restored here.
   const fields = Object.keys({ ...entry.before, ...entry.after })
     .filter((field) => !hiddenFields.has(field))
     .sort((a, b) => fieldRank(a) - fieldRank(b));
   return fields.map((field) => ({
     field: fieldLabels[field] ?? field,
-    before: formatValue(field, entry.before?.[field], context),
-    after: formatValue(field, entry.after?.[field], context),
+    before: formatValue(field, entry.before?.[field], before),
+    after: formatValue(field, entry.after?.[field], after),
   }));
 }

@@ -15,6 +15,7 @@ import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import type { AuditValues } from "#/server/audit.ts";
 
 import { booksForSome } from "#/server/appointments.ts";
@@ -120,10 +121,17 @@ export async function listPatientAppointments(
 // The ids an appointment's audit entry may hold, each shown by its name.
 const namedFields = ["practitionerId", "medicalServiceId", "roomId"] as const;
 
+/** The zones an appointment entry's times are shown in, one per side. */
+export interface HistoryTimeZones {
+  before: string;
+  after: string;
+}
+
 /**
  * What the change history needs to show appointment entries without ids:
- * each appointment's office zone, and the names of the practitioners, medical
- * services and rooms the entries point at, by id.
+ * each entry's zones, and the names of the practitioners, medical services
+ * and rooms the entries point at, by id. A side's times are in the zone of
+ * the office of the room that side names, else of the appointment's office now.
  */
 export async function appointmentHistoryContext(
   tx: Transaction,
@@ -133,7 +141,10 @@ export async function appointmentHistoryContext(
     before: AuditValues | null;
     after: AuditValues | null;
   }[],
-): Promise<{ timeZones: Map<string, string>; names: Record<string, string> }> {
+): Promise<{
+  timeZonesOf: (entry: (typeof entries)[number]) => HistoryTimeZones | null;
+  names: Record<string, string>;
+}> {
   const appointmentEntries = entries.filter((entry) => entry.entityType === "appointment");
   const idsOf = (field: (typeof namedFields)[number]) => [
     ...new Set(
@@ -164,10 +175,24 @@ export async function appointmentHistoryContext(
       .where(inArray(medicalService.id, ids)),
   );
   const rooms = await selectWhereIn(idsOf("roomId"), (ids) =>
-    tx.select({ id: room.id, name: room.name }).from(room).where(inArray(room.id, ids)),
+    tx
+      .select({ id: room.id, name: room.name, timeZone: office.timeZone })
+      .from(room)
+      .innerJoin(office, eq(office.id, room.officeId))
+      .where(inArray(room.id, ids)),
   );
+  const currentZones = new Map(zones.map((row) => [row.id, row.timeZone]));
+  const roomZones = new Map(rooms.map((row) => [row.id, row.timeZone]));
   return {
-    timeZones: new Map(zones.map((row) => [row.id, row.timeZone])),
+    timeZonesOf: (entry) => {
+      if (entry.entityType !== "appointment") {
+        return null;
+      }
+      const current = currentZones.get(entry.entityId) ?? defaultTimeZone;
+      const zoneOf = (values: AuditValues | null) =>
+        roomZones.get(String(values?.roomId)) ?? current;
+      return { before: zoneOf(entry.before), after: zoneOf(entry.after) };
+    },
     names: Object.fromEntries(
       [...practitioners, ...services, ...rooms].map((row) => [row.id, row.name]),
     ),

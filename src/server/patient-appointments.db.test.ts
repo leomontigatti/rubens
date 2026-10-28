@@ -1,15 +1,19 @@
 import type { PGlite } from "@electric-sql/pglite";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { office } from "#/db/schema/index.ts";
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
+import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { listPatientAppointments } from "#/server/patient-appointments.ts";
 import { getPatientHistory } from "#/server/patients.ts";
 import type { Actor } from "#/lib/access.ts";
+import { historyChanges } from "#/lib/patients.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3). Juan and "Lucía" work Mondays from 09:00 to 11:00 (12:00Z to 14:00Z),
@@ -123,7 +127,10 @@ describe("an appointment in the patient's change history", () => {
     }
     const booking = result.entries.find((entry) => entry.entityType === "appointment");
     expect(booking).toMatchObject({
-      timeZone: "America/Argentina/Buenos_Aires",
+      timeZones: {
+        before: "America/Argentina/Buenos_Aires",
+        after: "America/Argentina/Buenos_Aires",
+      },
       after: { start: "2099-01-05T12:00:00.000Z" },
     });
     expect(result.names).toEqual({
@@ -132,7 +139,48 @@ describe("an appointment in the patient's change history", () => {
       [world.room.id]: "Consultorio 1",
     });
     expect(result.entries.find((entry) => entry.entityType === "patient")).toMatchObject({
-      timeZone: null,
+      timeZones: null,
     });
+  });
+
+  it("shows each side of a move to another office's zone in the zone of its own room's office", async () => {
+    const north = await world.addOffice("Sede Norte");
+    const northRoom = await world.addRoom(north.id, "Norte 1");
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      roomId: northRoom.id,
+      startTime: "14:00",
+      endTime: "16:00",
+    });
+    const id = await book(world.juan.id, "2099-01-05T12:00:00Z");
+    const moved = await asAppRole(db, (tx) =>
+      rescheduleAppointment(
+        world.receptionist,
+        { appointmentId: id, start: new Date("2099-01-05T17:00:00Z"), durationMinutes: 30 },
+        tx,
+      ),
+    );
+    expect(moved).toEqual({ ok: true });
+    // A practitioner's schedules share one zone, so the other zone is set
+    // straight on the office: 17:00Z is 12:00 in Lima (UTC-5).
+    await db.update(office).set({ timeZone: "America/Lima" }).where(eq(office.id, north.id));
+
+    const result = await asAppRole(db, (tx) =>
+      getPatientHistory(world.admin, { patientId: maria.id }, tx),
+    );
+
+    if (!result.ok) {
+      throw new Error(`getPatientHistory failed: ${result.reason}`);
+    }
+    const move = result.entries.find((entry) => entry.action === "update");
+    expect(move!.timeZones).toEqual({
+      before: "America/Argentina/Buenos_Aires",
+      after: "America/Lima",
+    });
+    expect(historyChanges(move!, result.names)).toEqual([
+      { field: "Inicio", before: "05/01/2099 09:00", after: "05/01/2099 12:00" },
+      { field: "Fin", before: "05/01/2099 09:30", after: "05/01/2099 12:30" },
+      { field: "Consultorio", before: "Consultorio 1", after: "Norte 1" },
+    ]);
   });
 });

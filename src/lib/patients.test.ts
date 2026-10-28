@@ -94,13 +94,16 @@ describe("historyChanges", () => {
       "practitioner-1": "Juan Gómez",
       "service-1": "Consulta",
     };
-    const timeZone = "America/Argentina/Buenos_Aires";
+    const timeZones = {
+      before: "America/Argentina/Buenos_Aires",
+      after: "America/Argentina/Buenos_Aires",
+    };
 
     it("shows a booking's fields by name and its times in the office's zone, never the patient's id", () => {
       expect(
         historyChanges(
           {
-            timeZone,
+            timeZones,
             before: null,
             after: {
               patientId: "patient-1",
@@ -126,11 +129,21 @@ describe("historyChanges", () => {
       ]);
     });
 
+    it("shows each side's times in that side's zone", () => {
+      expect(
+        historyChanges({
+          timeZones: { before: "America/Argentina/Buenos_Aires", after: "America/Lima" },
+          before: { start: "2099-01-05T12:00:00.000Z" },
+          after: { start: "2099-01-05T14:00:00.000Z" },
+        }),
+      ).toEqual([{ field: "Inicio", before: "05/01/2099 09:00", after: "05/01/2099 09:00" }]);
+    });
+
     it("shows a room move and an overbooking by name and in Spanish", () => {
       expect(
         historyChanges(
           {
-            timeZone,
+            timeZones,
             before: { roomId: "room-1", overbooking: false },
             after: { roomId: "room-2", overbooking: true },
           },
@@ -146,7 +159,7 @@ describe("historyChanges", () => {
       expect(
         historyChanges(
           {
-            timeZone,
+            timeZones,
             before: { status: "confirmed", cancelledBy: null, cancellationReason: null },
             after: { status: "cancelled", cancelledBy: "patient", cancellationReason: "Viaje" },
           },
@@ -162,7 +175,7 @@ describe("historyChanges", () => {
     it("never shows an id it has no name for", () => {
       expect(
         historyChanges(
-          { timeZone, before: { roomId: "room-gone" }, after: { roomId: "room-1" } },
+          { timeZones, before: { roomId: "room-gone" }, after: { roomId: "room-1" } },
           names,
         ),
       ).toEqual([{ field: "Consultorio", before: "Desconocido", after: "Consultorio 1" }]);
