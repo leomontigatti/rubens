@@ -26,6 +26,7 @@ import { getOffices } from "#/server/offices.functions.ts";
 import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
 import type { PickedAppointment } from "#/routes/_app/agenda/-appointment.tsx";
 import { BookingDialog } from "#/routes/_app/agenda/-booking.tsx";
+import { StatusIcon, statusBlockClasses } from "#/routes/_app/agenda/-status.tsx";
 import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
 // Reception's main screen: one office's day, a column per practitioner. What
@@ -34,6 +35,7 @@ import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booki
 const searchSchema = z.object({
   sede: z.uuid().optional().catch(undefined),
   fecha: z.iso.date().optional().catch(undefined),
+  cancelados: z.boolean().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_app/agenda/")({
@@ -57,14 +59,18 @@ export const Route = createFileRoute("/_app/agenda/")({
       offices: offices.offices,
       practitioners: practitioners.practitioners,
       ...view,
-      day: await dayOf(view),
+      showCancelled: deps.cancelados === true,
+      day: await dayOf({ ...view, includeCancelled: deps.cancelados === true }),
     };
   },
   component: Agenda,
 });
 
-function dayOf({ officeId, date }: { officeId: string | null; date: string }) {
-  return officeId === null ? null : getOfficeDayView({ data: { officeId, date } });
+function dayOf(view: { officeId: string | null; date: string; includeCancelled: boolean }) {
+  const { officeId, date, includeCancelled } = view;
+  return officeId === null
+    ? null
+    : getOfficeDayView({ data: { officeId, date, includeCancelled } });
 }
 
 const refusalMessages = {
@@ -110,7 +116,12 @@ function Agenda() {
       {result.officeId === null ? (
         <p className="text-muted-foreground">Todavía no hay sedes.</p>
       ) : (
-        <DayPicker offices={result.offices} officeId={result.officeId} date={result.date} />
+        <DayPicker
+          offices={result.offices}
+          officeId={result.officeId}
+          date={result.date}
+          showCancelled={result.showCancelled}
+        />
       )}
       <DayResult
         day={result.day}
@@ -185,6 +196,7 @@ function DayPicker(props: {
   offices: { id: string; name: string }[];
   officeId: string;
   date: string;
+  showCancelled: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -194,11 +206,16 @@ function DayPicker(props: {
     const search = searchSchema.parse({
       sede: form.get("officeId") || undefined,
       fecha: form.get("date") || undefined,
+      cancelados: props.showCancelled || undefined,
     });
     void navigate({ to: "/agenda", search });
   }
 
-  const linkTo = (date: string) => ({ sede: props.officeId, fecha: date });
+  const linkTo = (date: string, showCancelled = props.showCancelled) => ({
+    sede: props.officeId,
+    fecha: date,
+    cancelados: showCancelled || undefined,
+  });
 
   return (
     <form
@@ -243,6 +260,13 @@ function DayPicker(props: {
           Día siguiente
         </Button>
       </div>
+      <Button
+        variant="ghost"
+        nativeButton={false}
+        render={<Link to="/agenda" search={linkTo(props.date, !props.showCancelled)} />}
+      >
+        {props.showCancelled ? "Ocultar cancelados" : "Mostrar cancelados"}
+      </Button>
     </form>
   );
 }
@@ -392,7 +416,10 @@ function PractitionerColumn(props: {
   );
 }
 
-/** One appointment on the day view, in its lane; a sobreturno is dashed and marked. */
+/**
+ * One appointment on the day view, in its lane, styled and marked by its
+ * status; a sobreturno is dashed and marked.
+ */
 function AppointmentBlock(props: {
   block: ReturnType<typeof layoutColumn>[number];
   appointment: DayAppointment;
@@ -403,7 +430,8 @@ function AppointmentBlock(props: {
   return (
     <div
       className={cn(
-        "bg-background absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs",
+        "absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs",
+        statusBlockClasses[booked.status],
         booked.overbooking && "border-dashed",
       )}
       style={
@@ -424,6 +452,7 @@ function AppointmentBlock(props: {
           className="max-w-full justify-start"
           onClick={() => props.onOpen(booked)}
         >
+          <StatusIcon status={booked.status} />
           {booked.overbooking && <ZapIcon aria-label="Sobreturno" />}
           <span className="truncate">
             {localTime(booked.start, timeZone)} {booked.patientName}

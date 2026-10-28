@@ -1,5 +1,5 @@
 import { tz } from "@date-fns/tz";
-import { useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -18,11 +18,17 @@ import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.
 import { changeAppointmentRoom } from "#/server/appointments.functions.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
 
+import { activeAppointmentStatuses } from "#/lib/appointments.ts";
+import type { AppointmentStatus } from "#/lib/appointments.ts";
+
+import { StatusSection } from "#/routes/_app/agenda/-appointment-status.tsx";
 import { roomFullMessage } from "#/routes/_app/agenda/-booking.tsx";
+import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
-// An appointment clicked on the day view: what it is, a move to another room
-// of the office, and a sobreturno over it.
+// An appointment clicked on the day view: what it is and its status, the
+// status changes, rescheduling, a move to another room of the office, and a
+// sobreturno over it.
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -35,6 +41,8 @@ const refusalMessages = {
   roomInactive: "Ese consultorio está desactivado.",
   officeInactive: "La sede de ese consultorio está desactivada.",
 };
+
+const activeStatuses: ReadonlySet<AppointmentStatus> = new Set(activeAppointmentStatuses);
 
 function localTime(instant: Date, timeZone: string) {
   return format(instant, "HH:mm", { in: tz(timeZone) });
@@ -60,6 +68,8 @@ export function AppointmentDialog(props: {
       <DialogContent className="sm:max-w-md">
         {picked && office && (
           <AppointmentDetails
+            // A new appointment starts the dialog over.
+            key={picked.appointment.id}
             picked={picked}
             office={office}
             onClose={props.onClose}
@@ -79,13 +89,7 @@ function AppointmentDetails(props: {
 }) {
   const { picked } = props;
   const { timeZone } = props.office;
-  const overbookingSlot = {
-    practitionerId: picked.practitioner.id,
-    practitionerName: picked.practitioner.displayName,
-    start: picked.appointment.start,
-    roomName: picked.appointment.roomName,
-    timeZone,
-  };
+  const [rescheduling, setRescheduling] = useState(false);
   return (
     <>
       <DialogHeader>
@@ -97,17 +101,71 @@ function AppointmentDetails(props: {
           {picked.appointment.overbooking && " · Sobreturno"}
         </DialogDescription>
       </DialogHeader>
-      <RoomMoveForm
-        // A new appointment starts the form over.
-        key={picked.appointment.id}
-        appointment={picked.appointment}
-        rooms={props.office.rooms}
-        timeZone={timeZone}
-        onDone={props.onClose}
-      />
-      <div>
+      {rescheduling ? (
+        <RescheduleForm
+          appointment={picked.appointment}
+          practitionerId={picked.practitioner.id}
+          timeZone={timeZone}
+          onDone={props.onClose}
+          onBack={() => setRescheduling(false)}
+        />
+      ) : (
+        <AppointmentActions
+          picked={picked}
+          office={props.office}
+          onClose={props.onClose}
+          onOverbook={props.onOverbook}
+          onReschedule={() => setRescheduling(true)}
+        />
+      )}
+    </>
+  );
+}
+
+/** What can be done to the appointment: its status, its room, rescheduling and a sobreturno. */
+function AppointmentActions(props: {
+  picked: PickedAppointment;
+  office: OverbookingOffice;
+  onClose: () => void;
+  onOverbook: (slot: BookingSlot) => void;
+  onReschedule: () => void;
+}) {
+  const { appointment, practitioner } = props.picked;
+  const { timeZone } = props.office;
+  const overbookingSlot = {
+    practitionerId: practitioner.id,
+    practitionerName: practitioner.displayName,
+    start: appointment.start,
+    roomName: appointment.roomName,
+    timeZone,
+  };
+  return (
+    <>
+      <StatusSection appointment={appointment} onDone={props.onClose} />
+      {activeStatuses.has(appointment.status) && (
+        <RoomMoveForm
+          appointment={appointment}
+          rooms={props.office.rooms}
+          timeZone={timeZone}
+          onDone={props.onClose}
+        />
+      )}
+      <div className="flex flex-wrap gap-2">
+        {/* Rescheduling is open to whoever may cancel: a booked or confirmed appointment. */}
+        {appointment.actions.includes("cancelled") && (
+          <Button type="button" variant="outline" onClick={props.onReschedule}>
+            Reprogramar
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={() => props.onOverbook(overbookingSlot)}>
           Dar sobreturno a esta hora
+        </Button>
+        <Button
+          variant="ghost"
+          nativeButton={false}
+          render={<Link to="/pacientes/$patientId" params={{ patientId: appointment.patientId }} />}
+        >
+          Ver paciente
         </Button>
       </div>
     </>

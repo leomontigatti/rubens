@@ -1,6 +1,6 @@
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
-import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 import {
@@ -144,14 +144,19 @@ export type FreeTimeSchedule = AvailabilitySchedule & { officeName: string; room
  * The practitioner's free starts of `durationMinutes` inside `window`, and the
  * schedules they come from. With `officeId`, only that office's schedules
  * count. Busy ranges are the practitioner's active appointments, overbookings
- * included.
+ * included, but for `excludeAppointmentId`, the one being rescheduled.
  */
 export async function findFreeTimes(
   tx: Transaction,
   practitioner: { id: string; gridMinutes: number },
-  options: { window: TimeRange; durationMinutes: number; officeId?: string },
+  options: {
+    window: TimeRange;
+    durationMinutes: number;
+    officeId?: string;
+    excludeAppointmentId?: string;
+  },
 ): Promise<{ free: FreeStart[]; schedules: FreeTimeSchedule[] }> {
-  const { window, durationMinutes, officeId } = options;
+  const { window, durationMinutes, officeId, excludeAppointmentId } = options;
   // A start near the window's end runs past it by up to the duration.
   const reach = { start: window.start, end: new Date(+window.end + durationMinutes * 60_000) };
   // An office in another zone than the default one sees the window a day
@@ -193,6 +198,7 @@ export async function findFreeTimes(
         eq(appointment.practitionerId, practitioner.id),
         inArray(appointment.status, [...activeAppointmentStatuses]),
         meets(appointment.during, reach),
+        excludeAppointmentId === undefined ? undefined : ne(appointment.id, excludeAppointmentId),
       ),
     );
   const free = findFreeStarts({
@@ -239,7 +245,7 @@ export async function getAvailability(
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
-  const { practitionerId, firstDate, lastDate, durationMinutes } = parsed.data;
+  const { practitionerId, firstDate, lastDate, durationMinutes, appointmentId } = parsed.data;
   const window = toTimeRange({ kind: "days", firstDate, lastDate }, defaultTimeZone);
   return withTenant(
     actor,
@@ -251,7 +257,11 @@ export async function getAvailability(
       if (!readsEveryone(actor) && !found.canEdit) {
         return forbidden;
       }
-      const { free, schedules } = await findFreeTimes(tx, found, { window, durationMinutes });
+      const { free, schedules } = await findFreeTimes(tx, found, {
+        window,
+        durationMinutes,
+        excludeAppointmentId: appointmentId,
+      });
       return {
         ok: true as const,
         practitioner: { id: found.id, displayName: found.displayName },

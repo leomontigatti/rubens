@@ -263,6 +263,7 @@ function BookingForm(props: {
           warnings={draft.warnings}
           pending={pending}
           onConfirm={() => void book(true)}
+          confirmLabel="Dar turno igual"
         />
         <ErrorAlert message={draft.error} />
         <div className="flex gap-2">
@@ -649,7 +650,7 @@ function FreeStartsOfWeek(props: {
   );
 }
 
-function FreeStartList(props: {
+export function FreeStartList(props: {
   starts: AvailableStart[];
   picked: PickedStart | null;
   onPick: (start: PickedStart) => void;
@@ -705,10 +706,11 @@ function TimeTaken(props: { starts: AvailableStart[] | null; dispatch: Dispatch 
 }
 
 /** The patient's other appointments that day, which the user confirms past. */
-function PatientWarnings(props: {
+export function PatientWarnings(props: {
   warnings: BookingWarning[] | null;
   pending: boolean;
   onConfirm: () => void;
+  confirmLabel: string;
 }) {
   if (!props.warnings) {
     return null;
@@ -734,7 +736,7 @@ function PatientWarnings(props: {
               disabled={props.pending}
               onClick={props.onConfirm}
             >
-              Dar turno igual
+              {props.confirmLabel}
             </Button>
           </div>
         </div>

@@ -180,3 +180,26 @@ export function freeStartsQueryOf(
     durationMinutes: duration.data,
   };
 }
+
+/**
+ * Rescheduling's free starts for the practitioner and duration, a week from a
+ * date, with the appointment's own time counted free; `null` while the
+ * duration is not a valid one.
+ */
+export function rescheduleQueryOf(
+  appointment: { id: string; practitionerId: string },
+  firstDate: string,
+  durationMinutes: number,
+): AvailabilityQuery | null {
+  const duration = durationMinutesSchema.safeParse(durationMinutes);
+  if (!duration.success) {
+    return null;
+  }
+  return {
+    practitionerId: appointment.practitionerId,
+    firstDate,
+    lastDate: shiftDate(firstDate, 6),
+    durationMinutes: duration.data,
+    appointmentId: appointment.id,
+  };
+}

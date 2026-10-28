@@ -181,7 +181,7 @@ async function checkWorkingTime(
  * The room a sobreturno goes in: the one picked, or else the schedule's it
  * falls inside, when that room has space and the practitioner works then.
  */
-async function placeOverbooking(
+export async function placeOverbooking(
   tx: Transaction,
   practitioner: { id: string; gridMinutes: number },
   span: TimeRange,

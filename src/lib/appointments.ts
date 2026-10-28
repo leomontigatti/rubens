@@ -71,7 +71,12 @@ export interface WarningConfirmation {
 }
 
 /** The office and the local date the day view shows. */
-export const officeDayQuerySchema = z.object({ officeId: z.uuid(), date: z.iso.date() });
+export const officeDayQuerySchema = z.object({
+  officeId: z.uuid(),
+  date: z.iso.date(),
+  /** Cancelled appointments are hidden unless asked for. */
+  includeCancelled: z.boolean().default(false),
+});
 
 export type OfficeDayQuery = z.input<typeof officeDayQuerySchema>;
 
@@ -89,3 +94,49 @@ export function agendaViewOf(
 ): { officeId: string | null; date: string } {
   return { officeId: search.sede ?? offices[0]?.id ?? null, date: search.fecha ?? today };
 }
+
+/** The status changes made by a button: every one but cancelling, which says who cancelled. */
+export const statusChangeSchema = z.object({
+  appointmentId: z.uuid(),
+  status: z.enum(["confirmed", "checkedIn", "attended", "noShow"]),
+});
+
+export type StatusChangeInput = z.input<typeof statusChangeSchema>;
+
+/** The longest cancellation reason. */
+export const cancellationReasonMaxLength = 200;
+
+/** Cancelling: who cancelled, the patient or the business, and an optional reason. */
+export const cancellationSchema = z.object({
+  appointmentId: z.uuid(),
+  cancelledBy: z.enum(appointmentCancellers),
+  reason: z
+    .string()
+    .trim()
+    .max(cancellationReasonMaxLength)
+    .transform((reason) => reason || null)
+    .nullable()
+    .default(null),
+});
+
+export type CancellationInput = z.input<typeof cancellationSchema>;
+
+/** One appointment, named by its id. */
+export const appointmentIdSchema = z.object({ appointmentId: z.uuid() });
+
+export type AppointmentIdInput = z.input<typeof appointmentIdSchema>;
+
+/**
+ * Moving an appointment to a new time, and so maybe a new room or office: at
+ * a free start, which takes its schedule's room, or as a sobreturno, placed
+ * as booking one is.
+ */
+export const rescheduleSchema = z.object({
+  appointmentId: z.uuid(),
+  start: z.coerce.date(),
+  durationMinutes: durationMinutesSchema,
+  overbooking: z.boolean().default(false),
+  roomId: z.uuid().nullable().default(null),
+});
+
+export type RescheduleInput = z.input<typeof rescheduleSchema>;

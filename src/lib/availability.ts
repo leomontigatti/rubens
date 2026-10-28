@@ -64,6 +64,8 @@ export const availabilityQuerySchema = z
     firstDate: z.iso.date(),
     lastDate: z.iso.date(),
     durationMinutes: durationMinutesSchema,
+    /** The appointment being rescheduled: its own time counts as free. */
+    appointmentId: z.uuid().optional(),
   })
   .refine((query) => query.firstDate <= query.lastDate, {
     path: ["lastDate"],

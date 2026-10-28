@@ -16,6 +16,8 @@ import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
+import { decideUndo, statusActionsFor } from "#/lib/appointment-statuses.ts";
+import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
 import type { AppointmentTypeColor } from "#/lib/appointment-types.ts";
 import {
   activeAppointmentStatuses,
@@ -122,11 +124,36 @@ export async function insertAppointment(
   }
 }
 
+/**
+ * Updates an appointment in a savepoint, as `insertAppointment` inserts one:
+ * a change that would make it overlap another active one is "timeTaken".
+ */
+export async function updateAppointment(
+  tx: Transaction,
+  appointmentId: string,
+  values: Partial<typeof appointment.$inferInsert>,
+): Promise<{ ok: true } | { ok: false; reason: "timeTaken" }> {
+  try {
+    await tx.transaction((savepoint) =>
+      savepoint
+        .update(appointment)
+        .set({ ...values, updatedAt: new Date() })
+        .where(eq(appointment.id, appointmentId)),
+    );
+    return { ok: true };
+  } catch (error) {
+    if (violates(error, overlapConstraint)) {
+      return { ok: false, reason: "timeTaken" };
+    }
+    throw error;
+  }
+}
+
 function localDate(instant: Date, timeZone: string): string {
   return format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
 }
 
-function localDay(instant: Date, timeZone: string): TimeRange {
+export function localDay(instant: Date, timeZone: string): TimeRange {
   const date = localDate(instant, timeZone);
   return toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
 }
@@ -135,12 +162,16 @@ function intersects(a: TimeRange, b: TimeRange): boolean {
   return a.start < b.end && b.start < a.end;
 }
 
-/** The patient's active appointments on the local day of `span`, as warnings. */
+/**
+ * The patient's active appointments on the local day of `span`, as warnings,
+ * but for `excludeId`, the one being rescheduled.
+ */
 export async function findPatientWarnings(
   tx: Transaction,
   patientId: string,
   span: TimeRange,
   timeZone: string,
+  excludeId?: string,
 ): Promise<PatientWarning[]> {
   const rows = await tx
     .select({
@@ -157,6 +188,7 @@ export async function findPatientWarnings(
         eq(appointment.patientId, patientId),
         inArray(appointment.status, [...activeAppointmentStatuses]),
         meets(appointment.during, localDay(span.start, timeZone)),
+        excludeId === undefined ? undefined : ne(appointment.id, excludeId),
       ),
     )
     .orderBy(asc(appointment.during));
@@ -316,9 +348,16 @@ export async function bookAppointment(
 /** An appointment as the day view draws it. */
 export interface DayAppointment {
   id: string;
+  patientId: string;
   start: Date;
   end: Date;
   status: AppointmentStatus;
+  /** The status changes the viewer may make now. */
+  actions: StatusAction[];
+  /** The status an undo would go back to, when the viewer may undo now. */
+  undoStatus: AppointmentStatus | null;
+  cancelledBy: "patient" | "business" | null;
+  cancellationReason: string | null;
   overbooking: boolean;
   patientName: string;
   typeName: string;
@@ -326,6 +365,21 @@ export interface DayAppointment {
   roomId: string;
   roomName: string;
   receptionNote: string | null;
+}
+
+/** The status an undo would restore, when the viewer may undo now. */
+function undoStatusOf(
+  booked: {
+    status: AppointmentStatus;
+    previousStatus: AppointmentStatus | null;
+    statusChangedAt: Date;
+  },
+  timeZone: string,
+  viewer: StatusActor,
+  now: Date,
+): AppointmentStatus | null {
+  const decided = decideUndo({ ...booked, timeZone }, viewer, now);
+  return decided.ok ? decided.status : null;
 }
 
 /** One practitioner's column of the office day view. */
@@ -341,8 +395,9 @@ export interface DayColumn {
 
 /**
  * One office's local day: a column per practitioner with a schedule or an
- * appointment there that day, by name. Cancelled appointments are left out. A
- * practitioner who neither books for anyone sees only their own column.
+ * appointment there that day, by name. Cancelled appointments are left out
+ * unless asked for. A practitioner who neither books for anyone sees only
+ * their own column.
  */
 export async function getOfficeDay(
   actor: Actor,
@@ -366,7 +421,7 @@ export async function getOfficeDay(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { officeId, date } = parsed.data;
+  const { officeId, date, includeCancelled } = parsed.data;
   return withTenant(
     actor,
     async (tx) => {
@@ -402,9 +457,14 @@ export async function getOfficeDay(
       const appointmentRows = await tx
         .select({
           id: appointment.id,
+          patientId: appointment.patientId,
           practitionerId: appointment.practitionerId,
           during: appointment.during,
           status: appointment.status,
+          previousStatus: appointment.previousStatus,
+          statusChangedAt: appointment.statusChangedAt,
+          cancelledBy: appointment.cancelledBy,
+          cancellationReason: appointment.cancellationReason,
           overbooking: appointment.overbooking,
           firstName: patient.firstName,
           lastName: patient.lastName,
@@ -422,7 +482,7 @@ export async function getOfficeDay(
         .where(
           and(
             eq(room.officeId, found.id),
-            ne(appointment.status, "cancelled"),
+            includeCancelled ? undefined : ne(appointment.status, "cancelled"),
             meets(appointment.during, day),
           ),
         )
@@ -459,8 +519,10 @@ export async function getOfficeDay(
           .orderBy(asc(practitioner.displayName))
       ).filter((row) => booksForAnyone(actor) || row.userId === actor.userId);
 
+      const now = new Date();
       const columns: DayColumn[] = [];
       for (const row of practitioners) {
+        const viewer = { roles: actor.roles, own: row.userId === actor.userId };
         const bookable = row.active && parseRoles(row.role).includes("practitioner");
         const { free, schedules } = bookable
           ? await findFreeTimes(tx, row, {
@@ -485,9 +547,18 @@ export async function getOfficeDay(
             .filter((booked) => booked.practitionerId === row.id)
             .map((booked) => ({
               id: booked.id,
+              patientId: booked.patientId,
               start: booked.during.start,
               end: booked.during.end,
               status: booked.status,
+              actions: statusActionsFor(
+                { status: booked.status, start: booked.during.start },
+                viewer,
+                now,
+              ),
+              undoStatus: undoStatusOf(booked, found.timeZone, viewer, now),
+              cancelledBy: booked.cancelledBy,
+              cancellationReason: booked.cancellationReason,
               overbooking: booked.overbooking,
               patientName: patientName(booked),
               typeName: booked.typeName,

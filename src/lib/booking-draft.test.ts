@@ -6,6 +6,7 @@ import {
   freeStartsQueryOf,
   initialBookingDraft,
   overbookingRequestOf,
+  rescheduleQueryOf,
 } from "#/lib/booking-draft.ts";
 import type { BookingDraft, BookingEvent } from "#/lib/booking-draft.ts";
 
@@ -153,5 +154,24 @@ describe("the free times a new booking asks for", () => {
         "2099-01-05",
       ),
     ).toBeNull();
+  });
+});
+
+describe("the reschedule picker's query", () => {
+  const moved = { id: "appointment-1", practitionerId: "juan" };
+
+  it("asks a week of free times with the appointment's own time counted free", () => {
+    expect(rescheduleQueryOf(moved, "2099-01-05", 45)).toEqual({
+      practitionerId: "juan",
+      firstDate: "2099-01-05",
+      lastDate: "2099-01-11",
+      durationMinutes: 45,
+      appointmentId: "appointment-1",
+    });
+  });
+
+  it("asks nothing while the duration is not a valid one", () => {
+    expect(rescheduleQueryOf(moved, "2099-01-05", 0)).toBeNull();
+    expect(rescheduleQueryOf(moved, "2099-01-05", Number.NaN)).toBeNull();
   });
 });

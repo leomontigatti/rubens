@@ -9,6 +9,7 @@ import type { BookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
+import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
 import { setAppointmentTypeActive } from "#/server/appointment-types.ts";
 import { createBookingWorld } from "#/server/appointments.test-support.ts";
 import type { BookingWorld } from "#/server/appointments.test-support.ts";
@@ -378,6 +379,40 @@ describe("the office day view", () => {
     );
 
     expect(day).toMatchObject({ ok: true, columns: [] });
+  });
+
+  it("hides cancelled appointments unless asked for", async () => {
+    const { id } = await booked();
+    await asAppRole(db, (tx) =>
+      cancelAppointment(world.receptionist, { appointmentId: id, cancelledBy: "business" }, tx),
+    );
+
+    expect((await dayOf(world.receptionist)).columns[0]!.appointments).toEqual([]);
+    const withCancelled = await asAppRole(db, (tx) =>
+      getOfficeDay(
+        world.receptionist,
+        { officeId: world.office.id, date: "2099-01-05", includeCancelled: true },
+        tx,
+      ),
+    );
+    expect(withCancelled.ok && withCancelled.columns[0]!.appointments).toEqual([
+      expect.objectContaining({ id, status: "cancelled", cancelledBy: "business" }),
+    ]);
+  });
+
+  it("offers each viewer the status changes and the undo they may make", async () => {
+    const { id } = await booked();
+    await asAppRole(db, (tx) =>
+      changeAppointmentStatus(world.receptionist, { appointmentId: id, status: "confirmed" }, tx),
+    );
+
+    const forReception = (await dayOf(world.receptionist)).columns[0]!.appointments[0]!;
+    expect(forReception).toMatchObject({
+      actions: ["checkedIn", "attended", "cancelled"],
+      undoStatus: "booked",
+    });
+    const forJuan = (await dayOf(world.juan.actor)).columns[0]!.appointments[0]!;
+    expect(forJuan).toMatchObject({ actions: ["attended", "cancelled"], undoStatus: "booked" });
   });
 
   it("shows a practitioner only their own column", async () => {
