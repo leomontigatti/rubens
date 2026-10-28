@@ -133,4 +133,20 @@ describe("whether two time zones keep the same clock", () => {
     );
     expect(sameClock(...zones, { firstDate: "9999-12-30", lastDate: null }, day)).toBe(true);
   });
+
+  it("compares the clocks from today on, since past dates never collide again", () => {
+    // Cordoba kept a clock of its own until 1991, and Moscow left Samara's in October 2014.
+    const sinceYearOne = { firstDate: "0001-01-01", lastDate: null };
+    expect(
+      sameClock("America/Argentina/Cordoba", "America/Argentina/Buenos_Aires", sinceYearOne, day),
+    ).toBe(true);
+    expect(
+      sameClock(
+        "Europe/Moscow",
+        "Europe/Samara",
+        { firstDate: "2012-01-02", lastDate: "2015-01-05" },
+        "2012-01-02",
+      ),
+    ).toBe(true);
+  });
 });

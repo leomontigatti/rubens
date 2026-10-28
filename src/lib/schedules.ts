@@ -129,21 +129,22 @@ export function sharedDates(a: Dates, b: Dates): Dates | null {
 const dayMs = 24 * 60 * 60 * 1000;
 
 /**
- * Whether two time zones show the same clock every week of `dates`, up to a
- * year past `today` or the first date, so their local times mean the same
- * moments: two names for one clock, as Argentina's provinces are, count as one.
+ * Whether two time zones show the same clock every week of `dates` from
+ * `today`, or from the first date if later, for a year at most, so their local
+ * times mean the same moments: two names for one clock, as Argentina's
+ * provinces are, count as one. Past dates never collide again.
  */
 export function sameClock(zoneA: string, zoneB: string, dates: Dates, today: string): boolean {
   if (zoneA === zoneB) {
     return true;
   }
   // Milliseconds, not date strings: a date past year 9999 no longer sorts as one.
-  const first = utcMidnight(dates.firstDate).getTime();
-  const yearOn = Math.max(first, utcMidnight(today).getTime()) + 371 * dayMs;
+  const from = Math.max(utcMidnight(dates.firstDate).getTime(), utcMidnight(today).getTime());
+  const yearOn = from + 371 * dayMs;
   const until =
     dates.lastDate === null ? yearOn : Math.min(utcMidnight(dates.lastDate).getTime(), yearOn);
   const moments = [until];
-  for (let moment = first; moment < until; moment += 7 * dayMs) {
+  for (let moment = from; moment < until; moment += 7 * dayMs) {
     moments.push(moment);
   }
   return moments.every((moment) => {
