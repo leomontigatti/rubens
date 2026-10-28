@@ -13,7 +13,10 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
+import { Route as AppAgendaConsultoriosRouteImport } from './routes/_app/agenda/consultorios'
+import { Route as AppAgendaSemanaRouteImport } from './routes/_app/agenda/semana'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
 import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
@@ -49,9 +52,24 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAReprogramarIndexRoute = AppAReprogramarIndexRouteImport.update({
+  id: '/a-reprogramar/',
+  path: '/a-reprogramar/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
   id: '/agenda/',
   path: '/agenda/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaConsultoriosRoute = AppAgendaConsultoriosRouteImport.update({
+  id: '/agenda/consultorios',
+  path: '/agenda/consultorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaSemanaRoute = AppAgendaSemanaRouteImport.update({
+  id: '/agenda/semana',
+  path: '/agenda/semana',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
@@ -136,12 +154,15 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/agenda/consultorios': typeof AppAgendaConsultoriosRoute
+  '/agenda/semana': typeof AppAgendaSemanaRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
@@ -157,12 +178,15 @@ export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
+  '/agenda/consultorios': typeof AppAgendaConsultoriosRoute
+  '/agenda/semana': typeof AppAgendaSemanaRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
@@ -180,12 +204,15 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/agenda/consultorios': typeof AppAgendaConsultoriosRoute
+  '/_app/agenda/semana': typeof AppAgendaSemanaRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/_app/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/_app/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
@@ -203,12 +230,15 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/agenda/consultorios'
+    | '/agenda/semana'
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
+    | '/a-reprogramar/'
     | '/agenda/'
     | '/cierres/'
     | '/disponibilidad/'
@@ -224,12 +254,15 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/'
+    | '/agenda/consultorios'
+    | '/agenda/semana'
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
+    | '/a-reprogramar'
     | '/agenda'
     | '/cierres'
     | '/disponibilidad'
@@ -246,12 +279,15 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
+    | '/_app/agenda/consultorios'
+    | '/_app/agenda/semana'
     | '/_app/horarios/$practitionerId'
     | '/_app/pacientes/$patientId'
     | '/_app/personal/$memberId'
     | '/_app/sedes/$officeId'
     | '/_app/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
+    | '/_app/a-reprogramar/'
     | '/_app/agenda/'
     | '/_app/cierres/'
     | '/_app/disponibilidad/'
@@ -300,11 +336,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/a-reprogramar/': {
+      id: '/_app/a-reprogramar/'
+      path: '/a-reprogramar'
+      fullPath: '/a-reprogramar/'
+      preLoaderRoute: typeof AppAReprogramarIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/agenda/': {
       id: '/_app/agenda/'
       path: '/agenda'
       fullPath: '/agenda/'
       preLoaderRoute: typeof AppAgendaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/consultorios': {
+      id: '/_app/agenda/consultorios'
+      path: '/agenda/consultorios'
+      fullPath: '/agenda/consultorios'
+      preLoaderRoute: typeof AppAgendaConsultoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/semana': {
+      id: '/_app/agenda/semana'
+      path: '/agenda/semana'
+      fullPath: '/agenda/semana'
+      preLoaderRoute: typeof AppAgendaSemanaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/cierres/': {
@@ -418,11 +475,14 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAgendaConsultoriosRoute: typeof AppAgendaConsultoriosRoute
+  AppAgendaSemanaRoute: typeof AppAgendaSemanaRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppPacientesPatientIdRoute: typeof AppPacientesPatientIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
   AppTiposDeTurnoPractitionerIdRoute: typeof AppTiposDeTurnoPractitionerIdRoute
+  AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
@@ -438,11 +498,14 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAgendaConsultoriosRoute: AppAgendaConsultoriosRoute,
+  AppAgendaSemanaRoute: AppAgendaSemanaRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppPacientesPatientIdRoute: AppPacientesPatientIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
   AppTiposDeTurnoPractitionerIdRoute: AppTiposDeTurnoPractitionerIdRoute,
+  AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,

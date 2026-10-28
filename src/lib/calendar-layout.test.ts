@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { layoutColumn, visibleHours } from "#/lib/calendar-layout.ts";
+import { layoutColumn, visibleHours, visibleWeekHours } from "#/lib/calendar-layout.ts";
 
 // A day from 08:00 to 20:00 UTC; blocks are given as "HH:MM" on that day.
 const day = { start: at("08:00"), end: at("20:00") };
@@ -118,5 +118,31 @@ describe("the hours a day view shows", () => {
         zone,
       ),
     ).toEqual({ start: local("08:00"), end: new Date("2099-01-06T00:00:00-03:00") });
+  });
+});
+
+describe("the hours a week view shows", () => {
+  const zone = "America/Argentina/Buenos_Aires";
+  const local = (date: string, time: string) => new Date(`${date}T${time}:00-03:00`);
+
+  it("shows every day from the earliest start to the latest end of any day", () => {
+    expect(
+      visibleWeekHours(
+        [
+          {
+            date: "2099-01-05",
+            ranges: [{ start: local("2099-01-05", "07:30"), end: local("2099-01-05", "09:00") }],
+          },
+          {
+            date: "2099-01-06",
+            ranges: [{ start: local("2099-01-06", "19:00"), end: local("2099-01-06", "21:00") }],
+          },
+        ],
+        zone,
+      ),
+    ).toEqual([
+      { start: local("2099-01-05", "07:00"), end: local("2099-01-05", "21:00") },
+      { start: local("2099-01-06", "07:00"), end: local("2099-01-06", "21:00") },
+    ]);
   });
 });

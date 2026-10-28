@@ -113,7 +113,11 @@ function StatusLine({ appointment }: { appointment: DayAppointment }) {
   );
 }
 
-function CancelForm(props: { appointmentId: string; onDone: () => void; onBack: () => void }) {
+export function CancelForm(props: {
+  appointmentId: string;
+  onDone: () => void;
+  onBack: () => void;
+}) {
   const { run, pending, error } = useFormAction(refusalMessages);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

@@ -80,6 +80,24 @@ export const officeDayQuerySchema = z.object({
 
 export type OfficeDayQuery = z.input<typeof officeDayQuerySchema>;
 
+/**
+ * The practitioner and the first local date, in the organization's default
+ * zone, of the seven days the week view shows.
+ */
+export const practitionerWeekQuerySchema = z.object({
+  practitionerId: z.uuid(),
+  date: z.iso.date(),
+  /** Cancelled appointments are hidden unless asked for. */
+  includeCancelled: z.boolean().default(false),
+});
+
+export type PractitionerWeekQuery = z.input<typeof practitionerWeekQuerySchema>;
+
+/** The office and the local date the room view shows. */
+export const roomDayQuerySchema = officeDayQuerySchema.pick({ officeId: true, date: true });
+
+export type RoomDayQuery = z.input<typeof roomDayQuerySchema>;
+
 /** What the day view's URL asks for, each value already parsed. */
 export interface AgendaSearch {
   sede?: string;
@@ -93,6 +111,29 @@ export function agendaViewOf(
   today: string,
 ): { officeId: string | null; date: string } {
   return { officeId: search.sede ?? offices[0]?.id ?? null, date: search.fecha ?? today };
+}
+
+/** What the week view's URL asks for, each value already parsed. */
+export interface WeekSearch {
+  profesional?: string;
+  fecha?: string;
+  cancelados?: boolean;
+}
+
+/**
+ * The practitioner and first date the week view shows, with their defaults:
+ * the first practitioner, today, cancelled appointments hidden.
+ */
+export function weekViewOf(
+  search: WeekSearch,
+  practitioners: readonly { id: string }[],
+  today: string,
+): { practitionerId: string | null; date: string; includeCancelled: boolean } {
+  return {
+    practitionerId: search.profesional ?? practitioners[0]?.id ?? null,
+    date: search.fecha ?? today,
+    includeCancelled: search.cancelados === true,
+  };
 }
 
 /** The status changes made by a button: every one but cancelling, which says who cancelled. */

@@ -178,6 +178,42 @@ export function coveringSchedule<T extends AvailabilitySchedule>(
   );
 }
 
+/** What decides whether a practitioner's span is working time. */
+export interface WorkingTime {
+  schedules: readonly AvailabilitySchedule[];
+  timeOff: readonly TimeRange[];
+  /** The closures of the span's office and of the whole organization; others are ignored. */
+  closures: readonly AvailabilityClosure[];
+}
+
+/** Why a span is outside working time. */
+export type OutsideWorkingTime = "timeOff" | "closure" | "outsideSchedules";
+
+/**
+ * Why `span`, in the office `officeId`, is outside working time; `null` when
+ * it is inside: one occurrence of a schedule in that office holds it whole,
+ * and it meets no time off and no closure of the office or the organization.
+ */
+export function outsideWorkingTime(
+  span: TimeRange,
+  officeId: string,
+  workingTime: WorkingTime,
+): OutsideWorkingTime | null {
+  if (workingTime.timeOff.some((range) => intersects(range, span))) {
+    return "timeOff";
+  }
+  const closed = workingTime.closures.some(
+    (closure) =>
+      (closure.officeId === null || closure.officeId === officeId) &&
+      intersects(closure.during, span),
+  );
+  if (closed) {
+    return "closure";
+  }
+  const inOffice = workingTime.schedules.filter((schedule) => schedule.officeId === officeId);
+  return coveringSchedule(inOffice, span) ? null : "outsideSchedules";
+}
+
 /**
  * The spans of `durationMinutes` that start on the grid inside one occurrence
  * of `schedule`, on `date`, and end by its end.

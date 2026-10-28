@@ -57,6 +57,7 @@ export async function createBookingWorld(db: TestDatabase) {
     if (!result.ok) {
       throw new Error(`createSchedule failed: ${result.reason}`);
     }
+    return result.schedule;
   }
 
   async function addPatient(firstName: string, phone: string) {

@@ -103,6 +103,26 @@ export function visibleHours(
   return { start, end };
 }
 
+/**
+ * The span each local date of a week view shows, so the days line up: every
+ * day from the earliest hour any day needs to the latest, as `visibleHours`
+ * widens one day.
+ */
+export function visibleWeekHours(
+  days: readonly { date: string; ranges: readonly TimeRange[] }[],
+  timeZone: string,
+): TimeRange[] {
+  const midnights = days.map(({ date }) => instantOf(date, "00:00", timeZone));
+  const views = days.map(({ date, ranges }) => visibleHours(ranges, date, timeZone));
+  const fromMidnight = (instant: Date, index: number) => +instant - +midnights[index]!;
+  const first = Math.min(...views.map((view, index) => fromMidnight(view.start, index)));
+  const last = Math.max(...views.map((view, index) => fromMidnight(view.end, index)));
+  return midnights.map((midnight) => ({
+    start: new Date(+midnight + first),
+    end: new Date(+midnight + last),
+  }));
+}
+
 function floorToHour(instant: Date, timeZone: string): Date {
   const local = format(instant, "yyyy-MM-dd HH", { in: tz(timeZone) });
   const [date, hour] = local.split(" ");

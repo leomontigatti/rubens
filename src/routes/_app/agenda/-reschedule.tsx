@@ -49,12 +49,15 @@ interface Answer {
 
 const noAnswer: Answer = { warnings: null, error: null };
 
-function minutesOf(appointment: DayAppointment): number {
+/** The appointment being moved: only its id and its time are read. */
+type Rescheduled = Pick<DayAppointment, "id" | "start" | "end">;
+
+function minutesOf(appointment: Rescheduled): number {
   return (+appointment.end - +appointment.start) / 60_000;
 }
 
 export function RescheduleForm(props: {
-  appointment: DayAppointment;
+  appointment: Rescheduled;
   practitionerId: string;
   timeZone: string;
   onDone: () => void;

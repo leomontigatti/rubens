@@ -364,6 +364,8 @@ export interface DayAppointment {
   color: AppointmentTypeColor;
   roomId: string;
   roomName: string;
+  /** The office of the room, whose rooms a move can pick from. */
+  officeId: string;
   receptionNote: string | null;
 }
 
@@ -380,6 +382,69 @@ function undoStatusOf(
 ): AppointmentStatus | null {
   const decided = decideUndo({ ...booked, timeZone }, viewer, now);
   return decided.ok ? decided.status : null;
+}
+
+const dayAppointmentColumns = {
+  id: appointment.id,
+  patientId: appointment.patientId,
+  practitionerId: appointment.practitionerId,
+  during: appointment.during,
+  status: appointment.status,
+  previousStatus: appointment.previousStatus,
+  statusChangedAt: appointment.statusChangedAt,
+  cancelledBy: appointment.cancelledBy,
+  cancellationReason: appointment.cancellationReason,
+  overbooking: appointment.overbooking,
+  firstName: patient.firstName,
+  lastName: patient.lastName,
+  chosenName: patient.chosenName,
+  typeName: appointmentType.name,
+  color: appointmentType.color,
+  roomId: appointment.roomId,
+  roomName: room.name,
+  officeId: office.id,
+  timeZone: office.timeZone,
+  receptionNote: appointment.receptionNote,
+};
+
+/** The calendar's reading of appointments, joined to their room, office, patient and type. */
+export function selectDayAppointments(tx: Transaction) {
+  return tx
+    .select(dayAppointmentColumns)
+    .from(appointment)
+    .innerJoin(room, eq(room.id, appointment.roomId))
+    .innerJoin(office, eq(office.id, room.officeId))
+    .innerJoin(patient, eq(patient.id, appointment.patientId))
+    .innerJoin(appointmentType, eq(appointmentType.id, appointment.appointmentTypeId));
+}
+
+type DayAppointmentRow = Awaited<ReturnType<typeof selectDayAppointments>>[number];
+
+/** An appointment as the calendar draws it, with what `viewer` may do to it at `now`. */
+export function toDayAppointment(
+  booked: DayAppointmentRow,
+  viewer: StatusActor,
+  now: Date,
+): DayAppointment {
+  return {
+    id: booked.id,
+    patientId: booked.patientId,
+    start: booked.during.start,
+    end: booked.during.end,
+    status: booked.status,
+    actions: statusActionsFor({ status: booked.status, start: booked.during.start }, viewer, now),
+    undoStatus: undoStatusOf(booked, booked.timeZone, viewer, now),
+    cancelledBy: booked.cancelledBy,
+    cancellationReason: booked.cancellationReason,
+    overbooking: booked.overbooking,
+    patientName: patientName(booked),
+    typeName: booked.typeName,
+    color: booked.color,
+    roomId: booked.roomId,
+    roomName: booked.roomName,
+    officeId: booked.officeId,
+    receptionNote: booked.receptionNote,
+  };
 }
 
 /** One practitioner's column of the office day view. */
@@ -454,31 +519,7 @@ export async function getOfficeDay(
           .innerJoin(room, and(eq(room.id, schedule.roomId), eq(room.active, true)))
           .where(eq(room.officeId, found.id))
       ).filter((row) => appliesOn(row, date));
-      const appointmentRows = await tx
-        .select({
-          id: appointment.id,
-          patientId: appointment.patientId,
-          practitionerId: appointment.practitionerId,
-          during: appointment.during,
-          status: appointment.status,
-          previousStatus: appointment.previousStatus,
-          statusChangedAt: appointment.statusChangedAt,
-          cancelledBy: appointment.cancelledBy,
-          cancellationReason: appointment.cancellationReason,
-          overbooking: appointment.overbooking,
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          chosenName: patient.chosenName,
-          typeName: appointmentType.name,
-          color: appointmentType.color,
-          roomId: appointment.roomId,
-          roomName: room.name,
-          receptionNote: appointment.receptionNote,
-        })
-        .from(appointment)
-        .innerJoin(room, eq(room.id, appointment.roomId))
-        .innerJoin(patient, eq(patient.id, appointment.patientId))
-        .innerJoin(appointmentType, eq(appointmentType.id, appointment.appointmentTypeId))
+      const appointmentRows = await selectDayAppointments(tx)
         .where(
           and(
             eq(room.officeId, found.id),
@@ -545,28 +586,7 @@ export async function getOfficeDay(
             .sort((a, b) => +a.start - +b.start),
           appointments: appointmentRows
             .filter((booked) => booked.practitionerId === row.id)
-            .map((booked) => ({
-              id: booked.id,
-              patientId: booked.patientId,
-              start: booked.during.start,
-              end: booked.during.end,
-              status: booked.status,
-              actions: statusActionsFor(
-                { status: booked.status, start: booked.during.start },
-                viewer,
-                now,
-              ),
-              undoStatus: undoStatusOf(booked, found.timeZone, viewer, now),
-              cancelledBy: booked.cancelledBy,
-              cancellationReason: booked.cancellationReason,
-              overbooking: booked.overbooking,
-              patientName: patientName(booked),
-              typeName: booked.typeName,
-              color: booked.color,
-              roomId: booked.roomId,
-              roomName: booked.roomName,
-              receptionNote: booked.receptionNote,
-            })),
+            .map((booked) => toDayAppointment(booked, viewer, now)),
           freeStarts: free.map((slot) => ({
             start: slot.start,
             roomId: slot.roomId,

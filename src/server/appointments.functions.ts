@@ -6,7 +6,9 @@ import type {
   CancellationInput,
   OfficeDayQuery,
   OverbookingInput,
+  PractitionerWeekQuery,
   RescheduleInput,
+  RoomDayQuery,
   RoomMove,
   StatusChangeInput,
   WarningConfirmation,
@@ -21,6 +23,9 @@ import {
 } from "#/server/appointment-statuses.ts";
 import { bookAppointment, getOfficeDay } from "#/server/appointments.ts";
 import { listPatientAppointments } from "#/server/patient-appointments.ts";
+import { getPractitionerWeek } from "#/server/practitioner-week.ts";
+import { getRoomDay } from "#/server/room-day.ts";
+import { countToReschedule, listToReschedule } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
 
 // The services validate their input and decide for whom the actor may book, so
@@ -63,3 +68,20 @@ export const moveAppointment = createServerFn({ method: "POST" })
 export const getPatientAppointments = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
   .handler(({ data }) => withActor(bookers, (actor) => listPatientAppointments(actor, data)));
+
+export const getPractitionerWeekView = createServerFn({ method: "GET" })
+  .validator((data: PractitionerWeekQuery) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => getPractitionerWeek(actor, data)));
+
+/** The room view is open to every staff role, who are the booking roles. */
+export const getRoomDayView = createServerFn({ method: "GET" })
+  .validator((data: RoomDayQuery) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => getRoomDay(actor, data)));
+
+export const getToReschedule = createServerFn({ method: "GET" }).handler(() =>
+  withActor(bookers, (actor) => listToReschedule(actor)),
+);
+
+export const getToRescheduleCount = createServerFn({ method: "GET" }).handler(() =>
+  withActor(bookers, (actor) => countToReschedule(actor)),
+);
