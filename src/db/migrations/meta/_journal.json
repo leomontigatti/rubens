@@ -36,6 +36,20 @@
       "when": 1793136066797,
       "tag": "0004_staff",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793142332618,
+      "tag": "0005_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793143900794,
+      "tag": "0006_time_off_and_closures",
+      "breakpoints": true
     }
   ]
 }

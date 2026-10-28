@@ -2,7 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
-import { ErrorAlert } from "#/components/admin-form.tsx";
+import { ErrorAlert, fieldMessage } from "#/components/admin-form.tsx";
 import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -10,6 +10,7 @@ import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { practitionerUpdateSchema, rolesChangeSchema } from "#/lib/staff.ts";
+import type { PractitionerUpdate } from "#/lib/staff.ts";
 import {
   changeMemberActive,
   editPractitioner,
@@ -133,6 +134,14 @@ function RolesSection({ member }: { member: StaffMember }) {
   );
 }
 
+const practitionerFieldMessages: Record<keyof PractitionerUpdate, string> = {
+  memberId: "No encontramos a esa persona.",
+  displayName: "Ingresá el nombre a mostrar.",
+  specialty: "La especialidad es demasiado larga.",
+  keepsClinicalRecords: "Revisá los datos ingresados.",
+  gridMinutes: "El intervalo tiene que ser un número de minutos entre 5 y 120.",
+};
+
 function PractitionerSection(props: { memberId: string; settings: PractitionerSettings }) {
   const action = useAction();
   const { settings } = props;
@@ -145,9 +154,11 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
       displayName: form.get("displayName") as string,
       specialty: form.get("specialty") as string,
       keepsClinicalRecords: form.get("keepsClinicalRecords") === "on",
+      gridMinutes: Number(form.get("gridMinutes")),
     };
-    if (!practitionerUpdateSchema.safeParse(update).success) {
-      action.setError("Ingresá el nombre a mostrar.");
+    const parsed = practitionerUpdateSchema.safeParse(update);
+    if (!parsed.success) {
+      action.setError(fieldMessage(practitionerFieldMessages, parsed.error));
       return;
     }
     await action.run(() => editPractitioner({ data: update }));
@@ -164,6 +175,22 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
         <div className="flex flex-col gap-2">
           <Label htmlFor="specialty">Especialidad</Label>
           <Input id="specialty" name="specialty" defaultValue={settings.specialty ?? ""} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="gridMinutes">Intervalo de turnos (minutos)</Label>
+          <Input
+            id="gridMinutes"
+            name="gridMinutes"
+            type="number"
+            min={5}
+            max={120}
+            defaultValue={settings.gridMinutes}
+            required
+            className="w-32"
+          />
+          <p className="text-muted-foreground text-sm">
+            Los horarios libres empiezan cada tantos minutos, contados desde la medianoche.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Keyed on the saved value: Base UI warns when an uncontrolled

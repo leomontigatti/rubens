@@ -47,6 +47,8 @@ export const practitionerUpdateSchema = z.object({
     .max(200)
     .transform((value) => value || null),
   keepsClinicalRecords: z.boolean(),
+  /** Free times start every this many minutes, counted from local midnight. */
+  gridMinutes: z.int().min(5).max(120),
 });
 
 export const memberActiveChangeSchema = z.object({ memberId, active: z.boolean() });

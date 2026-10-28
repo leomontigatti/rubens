@@ -55,6 +55,34 @@ function AppShell() {
           >
             Sedes
           </Link>
+          <Link
+            to="/horarios"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Horarios
+          </Link>
+          <Link
+            to="/disponibilidad"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Disponibilidad
+          </Link>
+          <Link
+            to="/licencias"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Licencias
+          </Link>
+          <Link
+            to="/cierres"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Cierres
+          </Link>
           {viewer.roles.includes("admin") && (
             <Link
               to="/personal"
