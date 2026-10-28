@@ -38,7 +38,10 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
 - `check:pr-title`: the conventional-commit prefix and English subject rule, over the
   `PR_TITLE` environment variable. CI runs it on PR events.
 - `check:labels`: fails when a workflow, a script or a doc under `docs/agents/` names
-  a label `.github/labels.json` does not hold. CI runs it.
+  a label `.github/labels.json` does not hold. It reads a label in a `gh` `--label`
+  flag (in a doc, inside code only), a workflow condition, a jq `==` and any
+  `priority:` or `wayfinder:` name; a bare `bug` or `question` is prose to it. CI
+  runs it.
 
 ## Repository
 

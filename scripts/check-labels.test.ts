@@ -64,6 +64,9 @@ describe("label references", () => {
     expect(
       read("Then run it:\n\n```bash\ngh issue edit 1 --add-label needs-triage\n```\n"),
     ).toEqual(["needs-triage"]);
+    // Two code spans are two commands: the prose between them does not join
+    // a flag in one to a word in the next.
+    expect(read("Use `--label` to filter a `gh issue list` command.")).toEqual([]);
     // Prose still reports the line the code sits on.
     expect(
       findLabelReferencesInSource({

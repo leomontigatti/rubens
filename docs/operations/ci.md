@@ -11,8 +11,8 @@ are a repo setting, not a file here: renaming or adding a job does not update
 protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
-  `pnpm check:labels`, `db:generate` drift check, `pnpm check:migrations`, `pnpm check:dependency-audit`,
-  `pnpm test:unit`, `pnpm test:db` and `pnpm build`. No database service: `test:db`
+  `pnpm check:labels`, `db:generate` drift check, `pnpm check:migrations`,
+  `pnpm check:dependency-audit`, `pnpm test:unit`, `pnpm test:db` and `pnpm build`. No database service: `test:db`
   runs on PGlite.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
   over `.github/dependabot.yml`.
@@ -35,7 +35,8 @@ current `main`.
 3. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
    Node from `.nvmrc` and pnpm from `packageManager`.
 4. **`pnpm check`** (`vp check`): format, lint and typecheck.
-5. **`pnpm check:labels`**: every label a workflow, script or agent doc names is in
+5. **`pnpm check:labels`**: every label a workflow, script or agent doc names in a
+   `--label` flag, a workflow condition or a `priority:`/`wayfinder:` name is in
    `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#labels)).
 6. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
    `src/db/migrations`. If it does, the schema changed without its migration. The fix

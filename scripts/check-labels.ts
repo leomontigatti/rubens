@@ -64,9 +64,12 @@ type LabelReference = {
  * as the label `when`, and CI then fails a doc edit over a word in a sentence.
  * Inside a code span the same text is a command, so the backtick the docs
  * already put around every label name and every `gh` line is the signal. Blanks
- * are spaces, one per character, so offsets and line numbers still line up.
+ * are one character each, so offsets and line numbers still line up, and they
+ * are not whitespace, so a flag at the end of one code span is never read
+ * together with the first word of the next.
  */
 function keepOnlyMarkdownCode(contents: string): string {
+  const blank = (length: number) => "\0".repeat(length);
   let insideFence = false;
 
   return contents
@@ -74,7 +77,7 @@ function keepOnlyMarkdownCode(contents: string): string {
     .map((line) => {
       if (/^\s*(```|~~~)/.test(line)) {
         insideFence = !insideFence;
-        return " ".repeat(line.length);
+        return blank(line.length);
       }
       if (insideFence) {
         return line;
@@ -88,10 +91,10 @@ function keepOnlyMarkdownCode(contents: string): string {
         const close = open === -1 ? -1 : line.indexOf("`", open + 1);
 
         if (close === -1) {
-          return kept + " ".repeat(line.length - index);
+          return kept + blank(line.length - index);
         }
         // The backticks themselves are blanked with the prose around them.
-        kept += `${" ".repeat(open - index + 1)}${line.slice(open + 1, close)} `;
+        kept += `${blank(open - index + 1)}${line.slice(open + 1, close)}${blank(1)}`;
         index = close + 1;
       }
 

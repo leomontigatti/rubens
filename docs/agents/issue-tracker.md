@@ -22,7 +22,8 @@ first step of any issue work.
 The list of labels (name, colour, description) is [`.github/labels.json`](../../.github/labels.json);
 this section says what they mean. Add or change a label in the JSON, run `pnpm labels:sync`,
 then describe it here. `pnpm check:labels` fails CI when a workflow, a script or a doc in this
-directory names a label the file does not hold ([scripts.md](../operations/scripts.md)).
+directory names a label the file does not hold in a `--label` flag or a `priority:` or
+`wayfinder:` name ([scripts.md](../operations/scripts.md)), so write label commands in full.
 
 The shared skills speak of a few triage roles; each maps to a label here:
 
