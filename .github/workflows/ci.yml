@@ -2,8 +2,8 @@
 # request, and nothing pushes to `main` directly. Two gates, both meant to be
 # required on `main` (branch protection is a repo setting, not a file here, so
 # renaming a job does not update it):
-#   - checks      : secrets scan, format/lint/typecheck, migration checks, dependency
-#                   audit, unit and PGlite database tests, and the production build.
+#   - checks      : secrets scan, format/lint/typecheck, label check, migration
+#                   checks, dependency audit, unit and PGlite database tests, and the production build.
 #                   No Postgres service: `test:db` runs on PGlite (see vite.config.ts).
 #   - actions-gate: zizmor + actionlint over every workflow in this directory, and
 #                   zizmor over .github/dependabot.yml.
@@ -80,6 +80,10 @@ jobs:
           run-install: false
       - run: vp install --frozen-lockfile
       - run: pnpm check
+      # Every label a workflow, script or agent doc names is in `.github/labels.json`.
+      # Labels match as exact strings, and a typo in an `--add-label` otherwise
+      # surfaces only as a refused edit when the command runs.
+      - run: pnpm check:labels
       # Drift check: `db:generate` is offline (it diffs `src/db/schema` against the
       # snapshots in `src/db/migrations/meta/`) and must produce nothing new. If it
       # writes a migration, the schema changed without a committed migration, so
