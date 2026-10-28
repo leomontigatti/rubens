@@ -95,7 +95,13 @@ the same mistake as a Spanish identifier. A thrown `Error` is engineering prose,
 so its message is English. A user-facing refusal is a structured result, never a
 thrown `Error`.
 
-Do not translate existing comments you are not otherwise touching.
+`pnpm check:comment-language` enforces this over the whole tree, docs included:
+in code, double-quote UI copy and backtick a name; in markdown, backtick both.
+`docs/adr/`, `docs/research/` and the WhatsApp templates are records and exempt.
+
+A source file under `src/` stays below about 5,500 tokens (22 KB), the size an
+agent reads whole; `pnpm check:file-tokens` fails one above it. Split at a module
+boundary, not by moving half the functions to a `-2` file.
 
 ## Errors and catches
 

@@ -2,8 +2,8 @@
 
 # rubens
 
-Gestión de turnos e historias clínicas para un centro de salud: recepcionistas y
-profesionales, varias sedes, consultorios compartidos o exclusivos.
+Appointments and clinical records for a health care practice: receptionists and
+practitioners, several offices, shared or exclusive rooms.
 
 Stack and the reasons for it: [ADR-0001](docs/adr/0001-stack.md). Tenancy and
 database connection rules: [ADR-0002](docs/adr/0002-tenancy-and-database-connections.md).

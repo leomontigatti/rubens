@@ -31,8 +31,8 @@ live in the clinical record ([clinical-records.md](./clinical-records.md)).
 ## Coverage
 
 A patient has zero or more coverages, each an insurer from the organization's
-list (obra social or prepaga, kept by an admin), a plan and a member number. One
-is primary. A patient with none is private ("Particular").
+list (`obra social` or `prepaga`, kept by an admin), a plan and a member number. One
+is primary. A patient with none is private (`Particular`).
 
 ## Identity
 
@@ -41,7 +41,7 @@ number, unique within the organization when present. It is optional so a baby
 without a DNI yet, or a foreign patient, can still be registered.
 
 Reception finds a patient from one search box: by name, ignoring accents, case
-and word order ("perez juan" finds "Juan Pérez"), by document number, or by phone
+and word order (`perez juan` finds `Juan Pérez`), by document number, or by phone
 digits. Deactivated patients appear only on request.
 
 Registering warns about likely duplicates (the same phone, or the same name and

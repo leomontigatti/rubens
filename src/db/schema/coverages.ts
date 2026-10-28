@@ -12,7 +12,7 @@ import { rubens, timestamps } from "#/db/schema/schema.ts";
 
 export const insurerKind = rubens.enum("insurer_kind", insurerKinds);
 
-/** An obra social or prepaga (ui: "Obra social / prepaga") on the organization's list. */
+/** An `obra social` or `prepaga` (ui: "Obra social / prepaga") on the organization's list. */
 export const insurer = rubens.table(
   "insurer",
   {
