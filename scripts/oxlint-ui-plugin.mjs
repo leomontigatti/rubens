@@ -1,0 +1,106 @@
+// The `ui` oxlint JS plugin: the clauses of docs/agents/style-guide.md that a
+// machine can judge and `@shadcn/lint` does not. `vite.config.ts` decides which
+// files it runs on; its tests are tests/lint/ui-rules.test.ts.
+//
+// - `no-raw-form-element`: a raw form element where a ui component exists.
+
+const REPLACEMENTS = new Map([
+  ["button", "Button"],
+  ["select", "NativeSelect"],
+  ["textarea", "Textarea"],
+]);
+
+const INPUT_REPLACEMENTS = new Map([
+  ["checkbox", "Checkbox"],
+  ["radio", "RadioGroup"],
+]);
+
+// An attribute's value is a literal or `{literal}`; the container holds it in `expression`.
+const unwrap = (value) => value?.expression ?? value;
+
+function stringAttribute(openingElement, name) {
+  const value = openingElement.attributes.find((item) => item.name?.name === name)?.value;
+  const literal = unwrap(value);
+  return literal?.type === "Literal" ? literal.value : undefined;
+}
+
+// The ui component to use instead of the element, or none when it is not a form
+// element or is a hidden input, which has no look.
+function replacementFor(openingElement) {
+  const element = openingElement.name.name;
+  if (element !== "input") return REPLACEMENTS.get(element);
+  const type = stringAttribute(openingElement, "type");
+  return type === "hidden" ? undefined : (INPUT_REPLACEMENTS.get(type) ?? "Input");
+}
+
+// What lies between a value and the attribute it is: `{…}`, and a callback that
+// returns the value, directly or from a branch.
+const PASS_THROUGH = new Set([
+  "JSXExpressionContainer",
+  "ArrowFunctionExpression",
+  "FunctionExpression",
+  "ReturnStatement",
+  "BlockStatement",
+  "IfStatement",
+  "ConditionalExpression",
+  "LogicalExpression",
+  "ParenthesizedExpression",
+]);
+
+// The node an element is the value of: an attribute when it is one, directly or
+// as what a callback returns. An element held in a variable stops at the variable.
+function jsxOwner(openingElement) {
+  let node = openingElement.parent.parent;
+  while (PASS_THROUGH.has(node?.type)) node = node.parent;
+  return node;
+}
+
+// `<Button render={<button type="submit" />}>`, or a callback returning it: Base UI
+// renders the element with the component's look, so the raw element is right.
+function isRenderedByComponent(openingElement) {
+  const owner = jsxOwner(openingElement);
+  return owner?.type === "JSXAttribute" && owner.name.name === "render";
+}
+
+// `<input type="file" className="sr-only">` under a styled `<label>`: the element
+// is only the picker behind a drop zone, so it has no look to drift. A
+// `not-sr-only` under any variant (`sm:`, `focus:`) shows it again.
+function isVisuallyHidden(openingElement) {
+  const tokens = (stringAttribute(openingElement, "className") ?? "").split(/\s+/);
+  return (
+    tokens.includes("sr-only") && !tokens.some((token) => token.split(":").pop() === "not-sr-only")
+  );
+}
+
+// A raw element with no look of its own to drift.
+const isExempt = (openingElement) =>
+  isRenderedByComponent(openingElement) || isVisuallyHidden(openingElement);
+
+const noRawFormElement = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Use the components under src/components/ui instead of raw form elements.",
+    },
+    messages: {
+      raw: "Use {{replacement}} from #/components/ui instead of a raw <{{element}}>: the component owns the look, so a raw element drifts from it. If it is not there yet, add it with the shadcn CLI (docs/agents/shadcn.md).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        if (node.name.type !== "JSXIdentifier") return;
+        const replacement = replacementFor(node);
+        if (!replacement || isExempt(node)) return;
+        const data = { element: node.name.name, replacement };
+        context.report({ node, messageId: "raw", data });
+      },
+    };
+  },
+};
+
+export default {
+  meta: { name: "ui" },
+  rules: { "no-raw-form-element": noRawFormElement },
+};

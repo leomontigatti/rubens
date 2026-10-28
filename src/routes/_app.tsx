@@ -100,9 +100,7 @@ function AppShell() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-auto">
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-muted-foreground font-normal">
-                {viewer.email}
-              </DropdownMenuLabel>
+              <DropdownMenuLabel>{viewer.email}</DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link to={passwordChangePath} />}>

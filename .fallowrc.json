@@ -2,7 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   // `shadcn` is a CLI run by hand to add components (docs/agents/shadcn.md);
   // nothing imports it.
-  "ignoreDependencies": ["shadcn"],
+  // `@shadcn/lint` is an Oxlint JS plugin `vite.config.ts` loads by name.
+  "ignoreDependencies": ["shadcn", "@shadcn/lint"],
+  // The repo's own Oxlint JS plugin, loaded by path from `vite.config.ts`.
+  "entry": ["scripts/oxlint-ui-plugin.mjs"],
   // shadcn components are vendored whole (docs/agents/shadcn.md): a screen uses
   // some of a component's parts, and trimming the rest would fight every re-sync.
   "ignoreExports": [{ "file": "src/components/ui/**", "exports": ["*"] }],

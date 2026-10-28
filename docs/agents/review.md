@@ -72,6 +72,9 @@ job's log line or payload outside our own Postgres.
 - **Tenancy.** Every query on a tenant-owned table runs inside `withTenant()`, the organization
   id comes from the session and never from the request body, and no request path sets session
   state ([ADR-0002](../adr/0002-tenancy-and-database-connections.md)).
+- **Interface.** A new component, variant or token is checked against what `src/components/`
+  already has: lint catches a restyle or an off-theme class, not a second component doing the
+  job of an existing one ([style-guide.md](./style-guide.md)).
 - **Docs.** The documentation rules are [workflows.md](./workflows.md#documentation).
 
 ## One-way doors

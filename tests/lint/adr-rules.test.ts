@@ -1,55 +1,13 @@
-import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vite-plus/test";
 
-import { afterAll, describe, expect, it } from "vite-plus/test";
+import { lint, lintProbes, text } from "./lint.test-support.ts";
 
-// The lint rules that enforce ADR-0002 and ADR-0004, tested through `vp lint`
-// itself so the rule, its message and its file overrides are all exercised.
-//
-// A probe that breaks a rule cannot be committed (it would fail every lint run),
-// and `--no-ignore` does not lift the config's own ignore patterns. So each probe
-// is written here, linted, and removed when the file's tests end.
+// The lint rules that enforce ADR-0002 and ADR-0004.
 
-const root = fileURLToPath(new URL("../..", import.meta.url));
-const probeDir = path.join("tests", "lint", `.probes-${process.pid}`);
+const probe = lintProbes("adr");
 
-afterAll(() => {
-  rmSync(path.join(root, probeDir), { recursive: true, force: true });
-});
-
-function probe(name: string, source: string): string {
-  mkdirSync(path.join(root, probeDir), { recursive: true });
-  const file = path.join(probeDir, name);
-  writeFileSync(path.join(root, file), source);
-  return file;
-}
-
-interface Diagnostic {
-  code: string;
-  message: string;
-  help?: string;
-}
-
-// Oxlint puts a rule's custom message in `help`, beside its generic `message`.
-const text = (d: Diagnostic) => `${d.message} ${d.help ?? ""}`;
-
-function restrictedImports(...files: string[]): Diagnostic[] {
-  const result = spawnSync("node_modules/.bin/vp", ["lint", "--format", "json", ...files], {
-    cwd: root,
-    encoding: "utf8",
-    // `vp` fails to start on an inherited non-TTY stdin; a pipe is fine.
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  const report = JSON.parse(result.stdout.slice(result.stdout.indexOf("{"))) as {
-    diagnostics: Diagnostic[];
-    number_of_files: number;
-  };
-  // Guards the test itself: zero files linted would read as zero findings.
-  expect(report.number_of_files).toBe(files.length);
-  return report.diagnostics.filter((d) => d.code.includes("no-restricted-imports"));
-}
+const restrictedImports = (...files: string[]) =>
+  lint(...files).filter((d) => d.code.includes("no-restricted-imports"));
 
 // Each case spawns a type-aware `vp lint`: well under a second warm, slower cold.
 describe("ADR lint rules", { timeout: 30_000 }, () => {
