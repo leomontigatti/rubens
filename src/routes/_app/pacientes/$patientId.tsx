@@ -12,10 +12,10 @@ import {
   PatientFields,
   PatientSaveFeedback,
   patientFieldMessage,
-  patientRefusalMessages,
   readPatientForm,
   usePatientSave,
 } from "#/components/patient-form.tsx";
+import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { CoverageList, NewCoverageForm } from "#/components/patient-coverages.tsx";
 import {
   GuardianList,

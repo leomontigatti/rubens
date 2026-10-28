@@ -1,10 +1,16 @@
 import { useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
+import {
+  initialSaveState,
+  patientRefusalMessages,
+  saveReducer,
+} from "#/components/patient-save.ts";
+import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
@@ -13,46 +19,10 @@ import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/pat
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { addPatient } from "#/server/patients.functions.ts";
-import type { DuplicateCandidate, DuplicateRefusal, Patient } from "#/server/patients.ts";
+import type { Patient } from "#/server/patients.ts";
 
 // The patient's registration fields, shared by quick registration (embedded
 // by the patient list, and later by booking) and the patient page's edit.
-
-/** The copy for every refusal the patient server functions return. */
-export const patientRefusalMessages = {
-  unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
-  forbidden: "Solo un administrador puede desactivar pacientes y ver su historial de cambios.",
-  mustChangePassword: "Elegí una contraseña nueva para continuar.",
-  invalidInput: "Revisá los datos ingresados.",
-  notFound: "No encontramos ese paciente.",
-};
-
-type PatientRefusal = keyof typeof patientRefusalMessages;
-
-/** What registering or editing a patient answers. */
-type SaveResult =
-  | { ok: true; patient: Patient }
-  | { ok: false; reason: PatientRefusal }
-  | DuplicateRefusal;
-
-/** What the form shows after a save was refused: one of the three at most. */
-interface RefusalState {
-  error: string | null;
-  holder: Patient | null;
-  candidates: DuplicateCandidate[];
-}
-
-const noRefusal: RefusalState = { error: null, holder: null, candidates: [] };
-
-function refusalState(result: Exclude<SaveResult, { ok: true }>): RefusalState {
-  if (result.reason === "documentTaken") {
-    return { ...noRefusal, holder: result.patient };
-  }
-  if (result.reason === "possibleDuplicates") {
-    return { ...noRefusal, candidates: result.candidates };
-  }
-  return { ...noRefusal, error: patientRefusalMessages[result.reason] };
-}
 
 /**
  * The submit step of the registration and edit forms. `send` saves the input;
@@ -64,18 +34,18 @@ export function usePatientSave<I extends object>(
   onSaved: (patient: Patient) => void,
 ) {
   const router = useRouter();
-  const [refusal, setRefusal] = useState(noRefusal);
-  const [pending, setPending] = useState(false);
-  const [input, setInput] = useState<I | null>(null);
+  const [state, dispatch] = useReducer(saveReducer<I>, undefined, initialSaveState<I>);
 
   async function save(next: I, confirmDuplicates: boolean) {
-    setInput(next);
-    setPending(true);
-    setRefusal(noRefusal);
-    const result = await send({ ...next, confirmDuplicates });
-    setPending(false);
+    dispatch({ type: "sent", input: next });
+    let result: SaveResult;
+    try {
+      result = await send({ ...next, confirmDuplicates });
+    } finally {
+      dispatch({ type: "settled" });
+    }
     if (!result.ok) {
-      setRefusal(refusalState(result));
+      dispatch({ type: "refused", result });
       return;
     }
     await router.invalidate();
@@ -83,12 +53,11 @@ export function usePatientSave<I extends object>(
   }
 
   return {
-    ...refusal,
-    pending,
-    setError: (error: string) => setRefusal({ ...noRefusal, error }),
+    ...state,
+    setError: (message: string) => dispatch({ type: "invalid", message }),
     submit: (next: I) => save(next, false),
-    confirm: () => input && save(input, true),
-    dismiss: () => setRefusal(noRefusal),
+    confirm: () => state.input && save(state.input, true),
+    dismiss: () => dispatch({ type: "dismissed" }),
   };
 }
 
