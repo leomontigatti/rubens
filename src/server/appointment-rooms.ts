@@ -124,7 +124,9 @@ async function findPresences(tx: Transaction, roomId: string, span: TimeRange, t
 /**
  * Whether the room has space for the practitioner during `span`. Locks the
  * room row for the rest of the transaction, so two checks of one room run one
- * after the other.
+ * after the other. `no key update` leaves the key-share lock an appointment's
+ * foreign key takes free: a plain booking never waits on this lock, which
+ * would close a deadlock with the exclusion constraint.
  */
 export async function checkRoomSpace(
   tx: Transaction,
@@ -132,7 +134,7 @@ export async function checkRoomSpace(
   practitionerId: string,
   span: TimeRange,
 ): Promise<{ ok: true; officeId: string; timeZone: string } | RoomRefusal> {
-  await tx.select({ id: room.id }).from(room).where(eq(room.id, roomId)).for("update");
+  await tx.select({ id: room.id }).from(room).where(eq(room.id, roomId)).for("no key update");
   const [target] = await tx
     .select({
       officeId: room.officeId,

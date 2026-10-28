@@ -164,12 +164,13 @@ export async function findPractitioner(
 ) {
   if (lock) {
     // A lock of its own: drizzle qualifies `for update of` with the schema,
-    // which Postgres refuses.
+    // which Postgres refuses. `no key update`, as for the room
+    // (`checkRoomSpace`): an appointment's foreign key never waits on it.
     await tx
       .select({ id: practitioner.id })
       .from(practitioner)
       .where(eq(practitioner.id, practitionerId))
-      .for("update");
+      .for("no key update");
   }
   const [found] = await tx
     .select({
@@ -298,7 +299,11 @@ async function checkCandidate(
   candidate: Candidate,
   replacing: string | null,
 ): Promise<{ ok: true; timeZone: string } | { ok: false; reason: Refusal } | CollisionRefusal> {
-  await tx.select({ id: room.id }).from(room).where(eq(room.id, candidate.roomId)).for("update");
+  await tx
+    .select({ id: room.id })
+    .from(room)
+    .where(eq(room.id, candidate.roomId))
+    .for("no key update");
   const [target] = await tx
     .select({
       name: room.name,
