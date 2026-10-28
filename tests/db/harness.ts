@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 
 import { PGlite } from "@electric-sql/pglite";
-import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { sql } from "drizzle-orm";
 import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
 import { inject } from "vite-plus/test";
@@ -9,6 +8,7 @@ import { inject } from "vite-plus/test";
 import * as schema from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 
+import { testExtensions } from "./extensions.ts";
 import { migratedDataDirKey } from "./global-setup.ts";
 
 export type TestDatabase = PgliteDatabase<typeof schema>;
@@ -20,8 +20,9 @@ let migratedDataDir: Promise<Blob> | undefined;
  * from the data directory `global-setup.ts` migrated once for the whole run.
  * Each call is its own database, so tests and files stay isolated.
  *
- * `btree_gist` is loaded as a contrib extension because migration 0000 creates
- * it, and PGlite only has the extensions it is handed.
+ * `btree_gist`, `unaccent` and `pg_trgm` are loaded as contrib extensions
+ * because the migrations create them (0001, 0008), and PGlite only has the
+ * extensions it is handed.
  */
 export async function createTestDatabase(): Promise<{
   client: PGlite;
@@ -32,7 +33,7 @@ export async function createTestDatabase(): Promise<{
   );
   const client = await PGlite.create({
     loadDataDir: await migratedDataDir,
-    extensions: { btree_gist },
+    extensions: testExtensions,
   });
   const db = drizzle(client, { schema });
 

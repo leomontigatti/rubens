@@ -7,16 +7,24 @@ import { PatientRegistrationForm, patientRefusalMessages } from "#/components/pa
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
+import { Input } from "#/components/ui/input.tsx";
 import { patientName } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
-import { getPatients } from "#/server/patients.functions.ts";
+import { findPatients, getPatients } from "#/server/patients.functions.ts";
 import type { Patient } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/")({
   head: () => ({ meta: [{ title: "Pacientes · Rubens" }] }),
-  validateSearch: z.object({ inactivos: z.boolean().optional() }),
-  loaderDeps: ({ search }) => ({ includeInactive: search.inactivos ?? false }),
-  loader: ({ deps }) => getPatients({ data: deps }),
+  validateSearch: z.object({ inactivos: z.boolean().optional(), q: z.string().optional() }),
+  loaderDeps: ({ search }) => ({
+    includeInactive: search.inactivos ?? false,
+    query: search.q ?? "",
+  }),
+  // The whole list until something is typed in the search box.
+  loader: ({ deps }) =>
+    deps.query.trim()
+      ? findPatients({ data: deps })
+      : getPatients({ data: { includeInactive: deps.includeInactive } }),
   component: Patients,
 });
 
@@ -34,6 +42,7 @@ function Patients() {
         <ShowInactivePatients />
       </div>
       <RegisterPanel />
+      <SearchBox />
       <PatientList patients={result.patients} />
     </div>
   );
@@ -45,7 +54,12 @@ function ShowInactivePatients() {
     <Button
       variant="outline"
       nativeButton={false}
-      render={<Link to="/pacientes" search={{ inactivos: inactivos ? undefined : true }} />}
+      render={
+        <Link
+          to="/pacientes"
+          search={(previous) => ({ ...previous, inactivos: inactivos ? undefined : true })}
+        />
+      }
     >
       {inactivos ? "Ocultar inactivos" : "Mostrar inactivos"}
     </Button>
@@ -55,6 +69,8 @@ function ShowInactivePatients() {
 function RegisterPanel() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const showPatient = (patient: Patient) =>
+    void navigate({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
 
   if (!open) {
     return (
@@ -71,18 +87,45 @@ function RegisterPanel() {
       <CardContent>
         <PatientRegistrationForm
           onCancel={() => setOpen(false)}
-          onRegistered={(patient) =>
-            void navigate({ to: "/pacientes/$patientId", params: { patientId: patient.id } })
-          }
+          onRegistered={showPatient}
+          onUseExisting={showPatient}
         />
       </CardContent>
     </Card>
   );
 }
 
+/** Results as the user types: each change replaces the query in the address. */
+function SearchBox() {
+  const { q } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const [value, setValue] = useState(q ?? "");
+  return (
+    <Input
+      type="search"
+      aria-label="Buscar paciente"
+      placeholder="Buscar por nombre, documento o teléfono"
+      value={value}
+      onChange={(event) => {
+        const query = event.target.value;
+        setValue(query);
+        void navigate({
+          search: (previous) => ({ ...previous, q: query || undefined }),
+          replace: true,
+        });
+      }}
+    />
+  );
+}
+
 function PatientList({ patients }: { patients: Patient[] }) {
+  const { q } = Route.useSearch();
   if (patients.length === 0) {
-    return <p className="text-muted-foreground">Todavía no hay pacientes.</p>;
+    return (
+      <p className="text-muted-foreground">
+        {q?.trim() ? "Ningún paciente coincide con la búsqueda." : "Todavía no hay pacientes."}
+      </p>
+    );
   }
   return (
     <ul className="flex flex-col gap-3">

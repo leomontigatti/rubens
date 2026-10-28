@@ -12,7 +12,8 @@ src/
 │   └── api/auth/$.ts  Better Auth's HTTP handler
 ├── components/        shared pieces: `admin-form.tsx` (the admin screens' submit step and
 │   │                  controls), `range-entry.tsx` (the time-off and closure forms and rows),
-│   │                  `patient-form.tsx` (patient registration, for any screen that registers one)
+│   │                  `patient-form.tsx` (patient registration, for any screen that registers one),
+│   │                  `patient-duplicates.tsx` (the duplicate check's refusal and warning)
 │   └── ui/            shadcn/ui components (see shadcn.md); add with the CLI, edit by hand
 ├── db/
 │   ├── client.ts      the `db` client (lazy; `DATABASE_URL`, the app role)

@@ -57,6 +57,13 @@
       "when": 1793202278319,
       "tag": "0007_patients_and_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793203410096,
+      "tag": "0008_patient_search",
+      "breakpoints": true
     }
   ]
 }

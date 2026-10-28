@@ -1,17 +1,19 @@
+import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type * as z from "zod";
 
-import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
+import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
+import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
-import type { DocumentType, PatientInput } from "#/lib/patients.ts";
+import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { addPatient } from "#/server/patients.functions.ts";
-import type { Patient } from "#/server/patients.ts";
+import type { DuplicateCandidate, DuplicateRefusal, Patient } from "#/server/patients.ts";
 
 // The patient's registration fields, shared by quick registration (embedded
 // by the patient list, and later by booking) and the patient page's edit.
@@ -23,8 +25,95 @@ export const patientRefusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos ese paciente.",
-  documentTaken: "Ya hay un paciente con ese documento.",
 };
+
+type PatientRefusal = keyof typeof patientRefusalMessages;
+
+/** What registering or editing a patient answers. */
+type SaveResult =
+  | { ok: true; patient: Patient }
+  | { ok: false; reason: PatientRefusal }
+  | DuplicateRefusal;
+
+/** What the form shows after a save was refused: one of the three at most. */
+interface RefusalState {
+  error: string | null;
+  holder: Patient | null;
+  candidates: DuplicateCandidate[];
+}
+
+const noRefusal: RefusalState = { error: null, holder: null, candidates: [] };
+
+function refusalState(result: Exclude<SaveResult, { ok: true }>): RefusalState {
+  if (result.reason === "documentTaken") {
+    return { ...noRefusal, holder: result.patient };
+  }
+  if (result.reason === "possibleDuplicates") {
+    return { ...noRefusal, candidates: result.candidates };
+  }
+  return { ...noRefusal, error: patientRefusalMessages[result.reason] };
+}
+
+/**
+ * The submit step of the registration and edit forms. `send` saves the input;
+ * a likely duplicate holds it back until `confirm` sends it again, confirmed.
+ * Reloads the route's data and calls `onSaved` once it is saved.
+ */
+export function usePatientSave<I extends object>(
+  send: (input: I & DuplicateConfirmation) => Promise<SaveResult>,
+  onSaved: (patient: Patient) => void,
+) {
+  const router = useRouter();
+  const [refusal, setRefusal] = useState(noRefusal);
+  const [pending, setPending] = useState(false);
+  const [input, setInput] = useState<I | null>(null);
+
+  async function save(next: I, confirmDuplicates: boolean) {
+    setInput(next);
+    setPending(true);
+    setRefusal(noRefusal);
+    const result = await send({ ...next, confirmDuplicates });
+    setPending(false);
+    if (!result.ok) {
+      setRefusal(refusalState(result));
+      return;
+    }
+    await router.invalidate();
+    onSaved(result.patient);
+  }
+
+  return {
+    ...refusal,
+    pending,
+    setError: (error: string) => setRefusal({ ...noRefusal, error }),
+    submit: (next: I) => save(next, false),
+    confirm: () => input && save(input, true),
+    dismiss: () => setRefusal(noRefusal),
+  };
+}
+
+/** The error, the document refusal and the duplicate warning of a patient form. */
+export function PatientSaveFeedback(props: {
+  save: RefusalState & { pending: boolean; confirm: () => unknown; dismiss: () => void };
+  confirmLabel: string;
+  onUse: (patient: Patient) => void;
+}) {
+  const { save } = props;
+  return (
+    <>
+      <ErrorAlert message={save.error} />
+      <DocumentTakenAlert holder={save.holder} />
+      <DuplicateWarning
+        candidates={save.candidates}
+        confirmLabel={props.confirmLabel}
+        pending={save.pending}
+        onUse={props.onUse}
+        onConfirm={() => void save.confirm()}
+        onCancel={save.dismiss}
+      />
+    </>
+  );
+}
 
 const fieldMessages: Record<string, string> = {
   firstName: "Ingresá el nombre.",
@@ -200,9 +289,14 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
  */
 export function PatientRegistrationForm(props: {
   onRegistered: (patient: Patient) => void;
+  /** The user picked an existing patient the duplicate warning offered. */
+  onUseExisting: (patient: Patient) => void;
   onCancel: () => void;
 }) {
-  const action = useFormAction(patientRefusalMessages);
+  const save = usePatientSave(
+    (data: PatientInput & DuplicateConfirmation) => addPatient({ data }),
+    props.onRegistered,
+  );
   const [full, setFull] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -210,25 +304,15 @@ export function PatientRegistrationForm(props: {
     const raw = readPatientForm(new FormData(event.currentTarget));
     const parsed = patientInputSchema.safeParse(raw);
     if (!parsed.success) {
-      action.setError(patientFieldMessage(parsed.error));
+      save.setError(patientFieldMessage(parsed.error));
       return;
     }
-    let registered: Patient | undefined;
-    const ok = await action.run(async () => {
-      const result = await addPatient({ data: raw });
-      if (result.ok) {
-        registered = result.patient;
-      }
-      return result;
-    });
-    if (ok && registered) {
-      props.onRegistered(registered);
-    }
+    await save.submit(raw);
   }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <ErrorAlert message={action.error} />
+      <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
       <PatientFields idPrefix="new-patient" full={full} />
       {!full && (
         <div>
@@ -238,7 +322,7 @@ export function PatientRegistrationForm(props: {
         </div>
       )}
       <FormActions
-        pending={action.pending}
+        pending={save.pending}
         submitLabel="Registrar paciente"
         onCancel={props.onCancel}
       />

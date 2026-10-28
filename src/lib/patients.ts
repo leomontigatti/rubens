@@ -93,6 +93,14 @@ export const whatsappConsentChangeSchema = z.object({
 export const patientActiveChangeSchema = z.object({ id: z.uuid(), active: z.boolean() });
 
 export type PatientInput = z.input<typeof patientInputSchema>;
+
+/**
+ * Sent with a registration or an edit to save it although the duplicate check
+ * warned of a likely duplicate, as siblings sharing a phone are.
+ */
+export interface DuplicateConfirmation {
+  confirmDuplicates?: boolean;
+}
 export type PatientUpdate = z.input<typeof patientUpdateSchema>;
 export type WhatsappConsentChange = z.input<typeof whatsappConsentChangeSchema>;
 export type PatientActiveChange = z.input<typeof patientActiveChangeSchema>;

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import * as z from "zod";
 
 import { auditLog, patient, user } from "#/db/schema/index.ts";
@@ -11,8 +11,10 @@ import {
   patientUpdateSchema,
   whatsappConsentChangeSchema,
 } from "#/lib/patients.ts";
+import { parsePhone } from "#/lib/phones.ts";
 import type {
   DocumentType,
+  DuplicateConfirmation,
   PatientActiveChange,
   PatientInput,
   PatientUpdate,
@@ -25,8 +27,9 @@ import type { AuditAction, AuditValues } from "#/server/audit.ts";
 // The organization's patient registry. Reception, admins and practitioners
 // register and edit patients; only an admin deactivates one or reads a
 // patient's change history. Nothing is deleted. Every change is written to the
-// audit log in its own transaction. `database` is for tests, which pass a
-// transaction running as the app role.
+// audit log in its own transaction. Registering, and an edit to a patient's
+// names, phone, document or birth date, run the duplicate check first.
+// `database` is for tests, which pass a transaction running as the app role.
 
 export interface Patient {
   id: string;
@@ -61,14 +64,29 @@ export interface HistoryEntry {
   createdAt: Date;
 }
 
-type Refusal = "forbidden" | "invalidInput" | "notFound" | "documentTaken";
+/** Why a registration or an edit matched an existing patient. */
+export type DuplicateMatch = "phone" | "nameAndBirthDate";
+
+export interface DuplicateCandidate {
+  patient: Patient;
+  matches: DuplicateMatch[];
+}
+
+type Refusal = "forbidden" | "invalidInput" | "notFound";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
+
+/**
+ * The duplicate check's answers: the document blocks, naming its holder; a
+ * phone or a name and birth date only warn, until the caller confirms.
+ */
+export type DuplicateRefusal =
+  | { ok: false; reason: "documentTaken"; patient: Patient }
+  | { ok: false; reason: "possibleDuplicates"; candidates: DuplicateCandidate[] };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
-const documentTaken = { ok: false, reason: "documentTaken" } as const;
 
 const patientIdSchema = z.uuid();
 
@@ -120,38 +138,81 @@ function auditedValues({
   return values;
 }
 
-/** Whether `error` is the unique index on a patient's document refusing a repeat. */
-function isDocumentTaken(error: unknown): boolean {
-  const cause = error instanceof Error ? error.cause : undefined;
-  return (
-    typeof cause === "object" &&
-    cause !== null &&
-    "constraint" in cause &&
-    cause.constraint === "patient_document_unique"
-  );
-}
-
-/**
- * Runs `work` under a savepoint, so a repeated document rolls back only the
- * write and the service can answer with a refusal; `null` then.
- */
-async function unlessDocumentTaken<T>(
-  tx: Transaction,
-  work: (savepoint: Transaction) => Promise<T>,
-): Promise<T | null> {
-  try {
-    return await tx.transaction(work);
-  } catch (error) {
-    if (isDocumentTaken(error)) {
-      return null;
-    }
-    throw error;
-  }
-}
-
 async function findPatient(tx: Transaction, patientId: string) {
   const [found] = await tx.select(patientColumns).from(patient).where(eq(patient.id, patientId));
   return found;
+}
+
+/** The fields the duplicate check reads, as the patient schemas output them. */
+interface DuplicateFields {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  documentType: DocumentType | null;
+  documentNumber: string | null;
+  birthDate: string | null;
+}
+
+/** Whether an edit changes a field the duplicate check reads. */
+function changesDuplicateFields(before: DuplicateFields, after: DuplicateFields): boolean {
+  return (
+    ["firstName", "lastName", "phone", "documentType", "documentNumber", "birthDate"] as const
+  ).some((field) => before[field] !== after[field]);
+}
+
+/**
+ * Runs the duplicate check for `fields`, leaving out the patient `exceptId`
+ * (the one being edited). The unique index on the document backs the first
+ * step; this lookup is what names the holder.
+ */
+async function checkDuplicates(
+  tx: Transaction,
+  fields: DuplicateFields,
+  options: { exceptId?: string; confirmed: boolean },
+): Promise<DuplicateRefusal | null> {
+  const others = options.exceptId ? ne(patient.id, options.exceptId) : undefined;
+  if (fields.documentType && fields.documentNumber) {
+    const [holder] = await tx
+      .select(patientColumns)
+      .from(patient)
+      .where(
+        and(
+          others,
+          eq(patient.documentType, fields.documentType),
+          eq(patient.documentNumber, fields.documentNumber),
+        ),
+      );
+    if (holder) {
+      return { ok: false, reason: "documentTaken", patient: toPatient(holder) };
+    }
+  }
+  if (options.confirmed) {
+    return null;
+  }
+  const samePhone = eq(patient.phone, fields.phone);
+  const sameName =
+    fields.birthDate === null
+      ? sql`false`
+      : sql`(${patient.birthDate} = ${fields.birthDate} and rubens.normalize_text(${patient.firstName} || ' ' || ${patient.lastName}) = rubens.normalize_text(${`${fields.firstName} ${fields.lastName}`}))`;
+  const rows = await tx
+    .select({
+      ...patientColumns,
+      samePhone: sql<boolean>`${samePhone}`,
+      sameName: sql<boolean>`${sameName}`,
+    })
+    .from(patient)
+    .where(and(others, or(samePhone, sameName)))
+    .orderBy(asc(patient.lastName), asc(patient.firstName));
+  if (rows.length === 0) {
+    return null;
+  }
+  const candidates = rows.map(({ samePhone: phone, sameName: name, ...row }) => ({
+    patient: toPatient(row),
+    matches: [phone && "phone", name && "nameAndBirthDate"].filter(
+      (match): match is DuplicateMatch => typeof match === "string",
+    ),
+  }));
+  return { ok: false, reason: "possibleDuplicates", candidates };
 }
 
 export interface ListOptions {
@@ -174,6 +235,91 @@ export async function listPatients(
         .from(patient)
         .where(options.includeInactive ? undefined : eq(patient.active, true))
         .orderBy(asc(patient.lastName), asc(patient.firstName));
+      return { ok: true as const, patients: rows.map(toPatient) };
+    },
+    database,
+  );
+}
+
+export const searchLimit = 20;
+
+const searchOptionsSchema = z.object({
+  query: z.string().max(200),
+  includeInactive: z.boolean(),
+});
+
+export type SearchOptions = z.input<typeof searchOptionsSchema>;
+
+/** The names a search matches, normalized as the index on them (0008). */
+const searchName = sql`rubens.patient_search_name(${patient.firstName}, ${patient.lastName}, ${patient.chosenName})`;
+
+/**
+ * What a typed query looks for: its words, matched against the names; and,
+ * when it is only digits and separators, those digits and the phone it reads
+ * as. Words keep only letters and digits, so none is a `like` wildcard.
+ */
+function searchTerms(query: string) {
+  const words = query.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const digits = query.replace(/[\s.()+-]/g, "");
+  if (!/^\d+$/.test(digits)) {
+    return { words, digits: null, phone: null };
+  }
+  const phone = parsePhone(query);
+  return { words, digits, phone: phone.ok ? phone.phone : null };
+}
+
+/**
+ * Finds patients as reception types: every word of the query in any of their
+ * names, in any order and with or without accents, a near miss included;
+ * digits in their document or phone too. Best matches first.
+ */
+export async function searchPatients(
+  actor: Actor,
+  options: SearchOptions,
+  database?: AnyDatabase,
+): Promise<Result<{ patients: Patient[] }>> {
+  if (!canEdit(actor)) {
+    return forbidden;
+  }
+  const parsed = searchOptionsSchema.safeParse(options);
+  if (!parsed.success) {
+    return invalidInput;
+  }
+  const { words, digits, phone } = searchTerms(parsed.data.query);
+  if (words.length === 0) {
+    return { ok: true, patients: [] };
+  }
+  const nameMatches = and(
+    ...words.map(
+      (word) =>
+        sql`(${searchName} like '%' || rubens.normalize_text(${word}) || '%' or rubens.normalize_text(${word}) operator(public.<%) ${searchName})`,
+    ),
+  );
+  const digitMatches = digits
+    ? or(
+        like(patient.documentNumber, `%${digits}%`),
+        like(patient.phone, `%${digits}%`),
+        phone ? eq(patient.phone, phone) : undefined,
+      )
+    : undefined;
+  const exact = digits
+    ? sql`${patient.documentNumber} = ${digits} or ${patient.phone} = ${phone ?? digits}`
+    : sql`false`;
+  const score = sql`case when ${exact} then 1 else public.similarity(rubens.normalize_text(${words.join(" ")}), ${searchName}) end`;
+  return withTenant(
+    actor,
+    async (tx) => {
+      const rows = await tx
+        .select(patientColumns)
+        .from(patient)
+        .where(
+          and(
+            parsed.data.includeInactive ? undefined : eq(patient.active, true),
+            or(nameMatches, digitMatches),
+          ),
+        )
+        .orderBy(desc(score), asc(patient.lastName), asc(patient.firstName))
+        .limit(searchLimit);
       return { ok: true as const, patients: rows.map(toPatient) };
     },
     database,
@@ -204,9 +350,9 @@ export async function getPatient(
 
 export async function registerPatient(
   actor: Actor,
-  input: PatientInput,
+  input: PatientInput & DuplicateConfirmation,
   database?: AnyDatabase,
-): Promise<Result<{ patient: Patient }>> {
+): Promise<Result<{ patient: Patient }> | DuplicateRefusal> {
   if (!canEdit(actor)) {
     return forbidden;
   }
@@ -217,41 +363,44 @@ export async function registerPatient(
   return withTenant(
     actor,
     async (tx) => {
-      const created = await unlessDocumentTaken(tx, async (savepoint) => {
-        const [row] = await savepoint
-          .insert(patient)
-          .values({
-            ...parsed.data,
-            organizationId: actor.organizationId,
-            whatsappConsentAt: new Date(),
-            whatsappConsentBy: actor.userId,
-          })
-          .returning(patientColumns);
-        return row!;
+      const duplicates = await checkDuplicates(tx, parsed.data, {
+        confirmed: input.confirmDuplicates === true,
       });
-      if (!created) {
-        return documentTaken;
+      if (duplicates) {
+        return duplicates;
       }
+      const [created] = await tx
+        .insert(patient)
+        .values({
+          ...parsed.data,
+          organizationId: actor.organizationId,
+          whatsappConsentAt: new Date(),
+          whatsappConsentBy: actor.userId,
+        })
+        .returning(patientColumns);
       await recordAudit(tx, actor, {
         action: "create",
         entityType: "patient",
-        entityId: created.id,
-        patientId: created.id,
+        entityId: created!.id,
+        patientId: created!.id,
         before: null,
-        after: createdFields(auditedValues(created)),
+        after: createdFields(auditedValues(created!)),
       });
-      return { ok: true as const, patient: toPatient(created) };
+      return { ok: true as const, patient: toPatient(created!) };
     },
     database,
   );
 }
 
-/** Replaces a patient's registration data with `input`'s. */
+/**
+ * Replaces a patient's registration data with `input`'s. An edit that changes
+ * a field the duplicate check reads is checked again.
+ */
 export async function updatePatient(
   actor: Actor,
-  input: PatientUpdate,
+  input: PatientUpdate & DuplicateConfirmation,
   database?: AnyDatabase,
-): Promise<Result<{ patient: Patient }>> {
+): Promise<Result<{ patient: Patient }> | DuplicateRefusal> {
   if (!canEdit(actor)) {
     return forbidden;
   }
@@ -267,19 +416,22 @@ export async function updatePatient(
       if (!current) {
         return notFound;
       }
-      const updated = await unlessDocumentTaken(tx, async (savepoint) => {
-        const [row] = await savepoint
-          .update(patient)
-          .set(fields)
-          .where(eq(patient.id, patientId))
-          .returning(patientColumns);
-        return row!;
-      });
-      if (!updated) {
-        return documentTaken;
+      if (changesDuplicateFields(current, fields)) {
+        const duplicates = await checkDuplicates(tx, fields, {
+          exceptId: patientId,
+          confirmed: input.confirmDuplicates === true,
+        });
+        if (duplicates) {
+          return duplicates;
+        }
       }
-      await auditUpdate(tx, actor, current, updated);
-      return { ok: true as const, patient: toPatient(updated) };
+      const [updated] = await tx
+        .update(patient)
+        .set(fields)
+        .where(eq(patient.id, patientId))
+        .returning(patientColumns);
+      await auditUpdate(tx, actor, current, updated!);
+      return { ok: true as const, patient: toPatient(updated!) };
     },
     database,
   );

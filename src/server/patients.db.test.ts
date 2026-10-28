@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import type { Actor } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
+import { patientName } from "#/lib/patients.ts";
 import { createOrganization } from "#/test-support/organization.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
@@ -12,6 +13,8 @@ import {
   getPatientHistory,
   listPatients,
   registerPatient,
+  searchLimit,
+  searchPatients,
   setPatientActive,
   setWhatsappConsent,
   updatePatient,
@@ -135,7 +138,7 @@ describe("registering in full", () => {
       ),
     );
 
-    expect(result).toEqual({ ok: false, reason: "documentTaken" });
+    expect(result).toMatchObject({ ok: false, reason: "documentTaken" });
     const listed = await asAppRole(db, (tx) => listPatients(admin, { includeInactive: true }, tx));
     expect(listed.ok && listed.patients.map((row) => row.firstName)).toEqual(["Juan"]);
   });
@@ -143,9 +146,14 @@ describe("registering in full", () => {
   it("accepts the same number as another type of document, and patients with no document", async () => {
     await register(receptionist, complete);
 
-    await register(receptionist, { ...juan, documentType: "passport", documentNumber: "30123456" });
-    await register(receptionist, juan);
-    await register(receptionist, juan);
+    const sibling = { ...juan, confirmDuplicates: true };
+    await register(receptionist, {
+      ...sibling,
+      documentType: "passport",
+      documentNumber: "30123456",
+    });
+    await register(receptionist, sibling);
+    await register(receptionist, sibling);
 
     const listed = await asAppRole(db, (tx) => listPatients(admin, { includeInactive: true }, tx));
     expect(listed.ok && listed.patients).toHaveLength(4);
@@ -197,15 +205,20 @@ describe("editing a patient", () => {
   });
 
   it("refuses to give a patient a document another patient has", async () => {
-    await register(receptionist, complete);
-    const other = await register(receptionist);
+    const holder = await register(receptionist, complete);
+    const other = await register(receptionist, { ...juan, phone: "011 15 4444-9876" });
 
     const result = await edit(receptionist, other.id, {
+      phone: "011 15 4444-9876",
       documentType: "dni",
       documentNumber: "30123456",
     });
 
-    expect(result).toEqual({ ok: false, reason: "documentTaken" });
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "documentTaken",
+      patient: { id: holder.id },
+    });
     expect(await historyOf(other.id)).toHaveLength(1);
   });
 
@@ -318,6 +331,225 @@ describe("permissions", () => {
     ).toEqual({
       ok: false,
       reason: "forbidden",
+    });
+  });
+});
+
+async function search(query: string, includeInactive = false) {
+  const result = await asAppRole(db, (tx) =>
+    searchPatients(receptionist, { query, includeInactive }, tx),
+  );
+  if (!result.ok) {
+    throw new Error(`searchPatients failed: ${result.reason}`);
+  }
+  return result.patients.map(patientName);
+}
+
+describe("searching patients", () => {
+  beforeEach(async () => {
+    await register(receptionist, {
+      ...juan,
+      documentType: "dni",
+      documentNumber: "30123456",
+    });
+    await register(receptionist, {
+      firstName: "María José",
+      lastName: "Núñez",
+      chosenName: "Majo",
+      phone: "011 15 4444-9876",
+    });
+    await register(receptionist, {
+      firstName: "Pedro",
+      lastName: "Gómez Pereyra",
+      phone: "0261 15 666-7788",
+      documentType: "passport",
+      documentNumber: "AB123",
+    });
+  });
+
+  it("finds a name ignoring accents, case and word order", async () => {
+    expect(await search("perez juan")).toEqual(["Juan Pérez"]);
+    expect(await search("NUÑEZ")).toEqual(["Majo Núñez"]);
+    expect(await search("jose nunez maria")).toEqual(["Majo Núñez"]);
+  });
+
+  it("finds a name with a letter wrong", async () => {
+    expect(await search("gomes pedro")).toEqual(["Pedro Gómez Pereyra"]);
+  });
+
+  it("finds a patient by their chosen name", async () => {
+    expect(await search("majo")).toEqual(["Majo Núñez"]);
+  });
+
+  it("finds a patient by digits of their document or their phone", async () => {
+    expect(await search("30123456")).toEqual(["Juan Pérez"]);
+    expect(await search("30.123.456")).toEqual(["Juan Pérez"]);
+    expect(await search("4444 9876")).toEqual(["Majo Núñez"]);
+    expect(await search("0261 15 666-7788")).toEqual(["Pedro Gómez Pereyra"]);
+  });
+
+  it("puts the best match first", async () => {
+    await register(receptionist, {
+      firstName: "Juan",
+      lastName: "Pereyra",
+      phone: "0351 15 777-0000",
+    });
+
+    expect(await search("juan pere")).toEqual(["Juan Pérez", "Juan Pereyra"]);
+    expect(await search("pereyra")).toEqual(["Juan Pereyra", "Pedro Gómez Pereyra"]);
+  });
+
+  it("finds nothing for a name no patient has, or an empty query", async () => {
+    expect(await search("rodríguez")).toEqual([]);
+    expect(await search("  ")).toEqual([]);
+  });
+
+  it("leaves deactivated patients out unless asked for", async () => {
+    const all = await asAppRole(db, (tx) => listPatients(admin, { includeInactive: false }, tx));
+    const majo = all.ok ? all.patients.find((row) => row.chosenName === "Majo") : undefined;
+    await asAppRole(db, (tx) => setPatientActive(admin, { id: majo!.id, active: false }, tx));
+
+    expect(await search("majo")).toEqual([]);
+    expect(await search("majo", true)).toEqual(["Majo Núñez"]);
+  });
+
+  it("returns a limited number of results", async () => {
+    for (let index = 0; index < searchLimit + 5; index += 1) {
+      await register(receptionist, {
+        firstName: `Ana${index}`,
+        lastName: "Sosa",
+        phone: `0351 15 500-${String(1000 + index)}`,
+      });
+    }
+
+    expect(await search("sosa")).toHaveLength(searchLimit);
+  });
+});
+
+describe("the duplicate check", () => {
+  const sibling = { firstName: "Lucía", lastName: "Pérez", phone: juan.phone };
+
+  it("names the patient who already has the document", async () => {
+    const holder = await register(receptionist, complete);
+
+    const result = await asAppRole(db, (tx) =>
+      registerPatient(
+        receptionist,
+        { ...sibling, documentType: "dni", documentNumber: "30123456", confirmDuplicates: true },
+        tx,
+      ),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "documentTaken",
+      patient: { id: holder.id, firstName: "Juan" },
+    });
+  });
+
+  it("warns about a patient with the same phone, and registers a sibling once confirmed", async () => {
+    const first = await register(receptionist);
+
+    const warned = await asAppRole(db, (tx) => registerPatient(receptionist, sibling, tx));
+    const confirmed = await asAppRole(db, (tx) =>
+      registerPatient(receptionist, { ...sibling, confirmDuplicates: true }, tx),
+    );
+
+    expect(warned).toEqual({
+      ok: false,
+      reason: "possibleDuplicates",
+      candidates: [{ patient: expect.objectContaining({ id: first.id }), matches: ["phone"] }],
+    });
+    expect(confirmed).toMatchObject({ ok: true, patient: { firstName: "Lucía" } });
+    const listed = await asAppRole(db, (tx) => listPatients(admin, { includeInactive: true }, tx));
+    expect(listed.ok && listed.patients).toHaveLength(2);
+  });
+
+  it("warns about the same name, however it is written, and the same birth date", async () => {
+    const first = await register(receptionist, { ...juan, birthDate: "1990-04-12" });
+
+    const sameName = await asAppRole(db, (tx) =>
+      registerPatient(
+        receptionist,
+        {
+          firstName: " juan ",
+          lastName: "PEREZ",
+          phone: "011 15 4444-9876",
+          birthDate: "1990-04-12",
+        },
+        tx,
+      ),
+    );
+    const otherBirthDate = await asAppRole(db, (tx) =>
+      registerPatient(
+        receptionist,
+        {
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "011 15 4444-9876",
+          birthDate: "1991-04-12",
+        },
+        tx,
+      ),
+    );
+
+    expect(sameName).toMatchObject({
+      ok: false,
+      reason: "possibleDuplicates",
+      candidates: [{ patient: { id: first.id }, matches: ["nameAndBirthDate"] }],
+    });
+    expect(otherBirthDate).toMatchObject({ ok: true });
+  });
+
+  it("re-checks an edit that changes the phone, and not one that leaves it", async () => {
+    const first = await register(receptionist);
+    const other = await register(receptionist, {
+      firstName: "Ana",
+      lastName: "Sosa",
+      phone: "011 15 4444-9876",
+    });
+
+    const changedPhone = await edit(receptionist, other.id, {
+      firstName: "Ana",
+      lastName: "Sosa",
+      phone: juan.phone,
+    });
+    const confirmed = await asAppRole(db, (tx) =>
+      updatePatient(
+        receptionist,
+        {
+          firstName: "Ana",
+          lastName: "Sosa",
+          phone: juan.phone,
+          patientId: other.id,
+          confirmDuplicates: true,
+        },
+        tx,
+      ),
+    );
+    const sameFields = await edit(receptionist, other.id, {
+      firstName: "Ana",
+      lastName: "Sosa",
+      phone: juan.phone,
+      email: "ana@example.com",
+    });
+
+    expect(changedPhone).toMatchObject({
+      ok: false,
+      reason: "possibleDuplicates",
+      candidates: [{ patient: { id: first.id }, matches: ["phone"] }],
+    });
+    expect(confirmed).toMatchObject({ ok: true, patient: { phone: "+5493515551234" } });
+    expect(sameFields).toMatchObject({ ok: true, patient: { email: "ana@example.com" } });
+  });
+
+  it("does not warn a patient about themselves", async () => {
+    const patient = await register(receptionist, { ...juan, birthDate: "1990-04-12" });
+
+    expect(
+      await edit(receptionist, patient.id, { birthDate: "1990-04-12", lastName: "Perez" }),
+    ).toMatchObject({
+      ok: true,
     });
   });
 });

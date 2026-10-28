@@ -9,8 +9,9 @@ and files are isolated, files run in parallel, and nothing needs a server.
   directory; `createTestDatabase` loads that copy (about 0.7 s) instead of
   migrating from scratch (3 to 5 s). A new migration is picked up on the next
   run, with nothing to regenerate.
-- `harness.ts` creates the instance (`createTestDatabase`), loads `btree_gist`
-  because migration 0000 needs it, and runs a callback as the app role
+- `harness.ts` creates the instance (`createTestDatabase`), loads the contrib
+  extensions the migrations create (`extensions.ts`: `btree_gist`, `unaccent`,
+  `pg_trgm`), and runs a callback as the app role
   (`asAppRole`, `SET LOCAL ROLE rubens_app`, which ends with the transaction).
 - Row-level security is only tested as `rubens_app`. The owner role bypasses
   RLS (ADR-0002), so a test that runs as the owner proves nothing about it.

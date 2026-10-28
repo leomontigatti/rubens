@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
@@ -10,9 +10,11 @@ import {
 } from "#/components/admin-form.tsx";
 import {
   PatientFields,
+  PatientSaveFeedback,
   patientFieldMessage,
   patientRefusalMessages,
   readPatientForm,
+  usePatientSave,
 } from "#/components/patient-form.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -34,6 +36,7 @@ import {
   getPatientChanges,
   getPatientDetails,
 } from "#/server/patients.functions.ts";
+import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import type { HistoryEntry, Patient } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
@@ -78,8 +81,10 @@ function PatientScreen() {
   }
   const { patient } = details;
 
+  // Keyed by patient: a link to another patient (from the duplicate warning)
+  // stays on this route, and must not carry an open edit form over.
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div key={patient.id} className="mx-auto flex max-w-3xl flex-col gap-6">
       <PatientHeading patient={patient} isAdmin={viewer.roles.includes("admin")} />
       <DetailsSection patient={patient} />
       <WhatsappSection patient={patient} />
@@ -194,26 +199,34 @@ function DetailsSection({ patient }: { patient: Patient }) {
 }
 
 function PatientEditForm({ patient, onDone }: { patient: Patient; onDone: () => void }) {
-  const action = useAction();
+  const navigate = useNavigate();
+  const save = usePatientSave(
+    (data: PatientUpdate & DuplicateConfirmation) => editPatient({ data }),
+    onDone,
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const update = { ...readPatientForm(new FormData(event.currentTarget)), patientId: patient.id };
     const parsed = patientUpdateSchema.safeParse(update);
     if (!parsed.success) {
-      action.setError(patientFieldMessage(parsed.error));
+      save.setError(patientFieldMessage(parsed.error));
       return;
     }
-    if (await action.run(() => editPatient({ data: update }))) {
-      onDone();
-    }
+    await save.submit(update);
   }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <ErrorAlert message={action.error} />
+      <PatientSaveFeedback
+        save={save}
+        confirmLabel="Guardar igual"
+        onUse={(other) =>
+          void navigate({ to: "/pacientes/$patientId", params: { patientId: other.id } })
+        }
+      />
       <PatientFields idPrefix={patient.id} full initial={patient} />
-      <FormActions pending={action.pending} submitLabel="Guardar" onCancel={onDone} />
+      <FormActions pending={save.pending} submitLabel="Guardar" onCancel={onDone} />
     </form>
   );
 }

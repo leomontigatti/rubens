@@ -4,10 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
-import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import type { TestProject } from "vite-plus/test/node";
+
+import { testExtensions } from "./extensions.ts";
 
 const migrationsFolder = fileURLToPath(new URL("../../src/db/migrations", import.meta.url));
 
@@ -62,7 +63,7 @@ export default async function setup(project: TestProject) {
 }
 
 async function writeMigratedDataDir(file: string) {
-  const client = await PGlite.create({ extensions: { btree_gist } });
+  const client = await PGlite.create({ extensions: testExtensions });
   try {
     await migrate(drizzle(client), { migrationsFolder });
     const dump = await client.dumpDataDir("none");

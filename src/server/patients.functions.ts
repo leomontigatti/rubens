@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import type {
+  DuplicateConfirmation,
   PatientActiveChange,
   PatientInput,
   PatientUpdate,
@@ -12,11 +13,12 @@ import {
   getPatientHistory,
   listPatients,
   registerPatient,
+  searchPatients,
   setPatientActive,
   setWhatsappConsent,
   updatePatient,
 } from "#/server/patients.ts";
-import type { ListOptions } from "#/server/patients.ts";
+import type { ListOptions, SearchOptions } from "#/server/patients.ts";
 import { withActor } from "#/server/with-actor.ts";
 
 // The services validate their input and check the actor's roles themselves, so
@@ -31,6 +33,10 @@ export const getPatients = createServerFn({ method: "GET" })
     withActor(editors, (actor) => listPatients(actor, { includeInactive: data.includeInactive })),
   );
 
+export const findPatients = createServerFn({ method: "GET" })
+  .validator((data: SearchOptions) => data)
+  .handler(({ data }) => withActor(editors, (actor) => searchPatients(actor, data)));
+
 export const getPatientDetails = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
   .handler(({ data }) => withActor(editors, (actor) => getPatient(actor, data)));
@@ -40,11 +46,11 @@ export const getPatientChanges = createServerFn({ method: "GET" })
   .handler(({ data }) => withActor(adminOnly, (actor) => getPatientHistory(actor, data)));
 
 export const addPatient = createServerFn({ method: "POST" })
-  .validator((data: PatientInput) => data)
+  .validator((data: PatientInput & DuplicateConfirmation) => data)
   .handler(({ data }) => withActor(editors, (actor) => registerPatient(actor, data)));
 
 export const editPatient = createServerFn({ method: "POST" })
-  .validator((data: PatientUpdate) => data)
+  .validator((data: PatientUpdate & DuplicateConfirmation) => data)
   .handler(({ data }) => withActor(editors, (actor) => updatePatient(actor, data)));
 
 export const changeWhatsappConsent = createServerFn({ method: "POST" })
