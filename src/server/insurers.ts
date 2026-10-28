@@ -65,7 +65,7 @@ async function isNameTaken(tx: Transaction, name: string, exceptId?: string): Pr
     .from(insurer)
     .where(
       and(
-        eq(sql`lower(${insurer.name})`, name.toLowerCase()),
+        sql`lower(${insurer.name}) = lower(${name})`,
         exceptId === undefined ? undefined : ne(insurer.id, exceptId),
       ),
     );

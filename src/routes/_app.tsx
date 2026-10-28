@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu.tsx";
 import { authClient } from "#/lib/auth-client.ts";
-import { onSessionChange, startNewSession } from "#/lib/session-change.ts";
+import { reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
 
 const passwordChangePath = "/cambiar-contrasena";
@@ -31,15 +31,18 @@ export const Route = createFileRoute("/_app")({
     }
     return { viewer: result.viewer };
   },
+  // A signed-in page holds the viewer's data, patients' included: the browser
+  // keeps no copy, so Back after a sign-out cannot show it to the next person.
+  headers: () => ({ "Cache-Control": "no-store" }),
   component: AppShell,
 });
 
 function AppShell() {
   const { viewer } = Route.useRouteContext();
 
-  // Another tab signed out or in: this tab's screen and caches are the
-  // previous user's.
-  useEffect(() => onSessionChange(() => window.location.reload()), []);
+  // A sign-out or sign-in since this page loaded: its screen and caches are
+  // the previous user's.
+  useEffect(() => reloadOnSessionChange(), []);
 
   async function signOut() {
     await authClient.signOut();
