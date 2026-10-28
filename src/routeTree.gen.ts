@@ -18,6 +18,9 @@ import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/dispon
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
 import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
 import { Route as AppLicenciasIndexRouteImport } from './routes/_app/licencias/index'
+import { Route as AppObrasSocialesIndexRouteImport } from './routes/_app/obras-sociales/index'
+import { Route as AppPacientesIndexRouteImport } from './routes/_app/pacientes/index'
+import { Route as AppPacientesPatientIdRouteImport } from './routes/_app/pacientes/$patientId'
 import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
 import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
@@ -69,6 +72,21 @@ const AppLicenciasIndexRoute = AppLicenciasIndexRouteImport.update({
   path: '/licencias/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppObrasSocialesIndexRoute = AppObrasSocialesIndexRouteImport.update({
+  id: '/obras-sociales/',
+  path: '/obras-sociales/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPacientesIndexRoute = AppPacientesIndexRouteImport.update({
+  id: '/pacientes/',
+  path: '/pacientes/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPacientesPatientIdRoute = AppPacientesPatientIdRouteImport.update({
+  id: '/pacientes/$patientId',
+  path: '/pacientes/$patientId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
   id: '/personal/',
   path: '/personal/',
@@ -100,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
+  '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -107,6 +126,8 @@ export interface FileRoutesByFullPath {
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
   '/licencias/': typeof AppLicenciasIndexRoute
+  '/obras-sociales/': typeof AppObrasSocialesIndexRoute
+  '/pacientes/': typeof AppPacientesIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
 }
@@ -115,6 +136,7 @@ export interface FileRoutesByTo {
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
+  '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -122,6 +144,8 @@ export interface FileRoutesByTo {
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
   '/licencias': typeof AppLicenciasIndexRoute
+  '/obras-sociales': typeof AppObrasSocialesIndexRoute
+  '/pacientes': typeof AppPacientesIndexRoute
   '/personal': typeof AppPersonalIndexRoute
   '/sedes': typeof AppSedesIndexRoute
 }
@@ -132,6 +156,7 @@ export interface FileRoutesById {
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
+  '/_app/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -139,6 +164,8 @@ export interface FileRoutesById {
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
   '/_app/licencias/': typeof AppLicenciasIndexRoute
+  '/_app/obras-sociales/': typeof AppObrasSocialesIndexRoute
+  '/_app/pacientes/': typeof AppPacientesIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
 }
@@ -149,6 +176,7 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/horarios/$practitionerId'
+    | '/pacientes/$patientId'
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
@@ -156,6 +184,8 @@ export interface FileRouteTypes {
     | '/disponibilidad/'
     | '/horarios/'
     | '/licencias/'
+    | '/obras-sociales/'
+    | '/pacientes/'
     | '/personal/'
     | '/sedes/'
   fileRoutesByTo: FileRoutesByTo
@@ -164,6 +194,7 @@ export interface FileRouteTypes {
     | '/cambiar-contrasena'
     | '/'
     | '/horarios/$practitionerId'
+    | '/pacientes/$patientId'
     | '/personal/$memberId'
     | '/sedes/$officeId'
     | '/api/auth/$'
@@ -171,6 +202,8 @@ export interface FileRouteTypes {
     | '/disponibilidad'
     | '/horarios'
     | '/licencias'
+    | '/obras-sociales'
+    | '/pacientes'
     | '/personal'
     | '/sedes'
   id:
@@ -180,6 +213,7 @@ export interface FileRouteTypes {
     | '/_app/cambiar-contrasena'
     | '/_app/'
     | '/_app/horarios/$practitionerId'
+    | '/_app/pacientes/$patientId'
     | '/_app/personal/$memberId'
     | '/_app/sedes/$officeId'
     | '/api/auth/$'
@@ -187,6 +221,8 @@ export interface FileRouteTypes {
     | '/_app/disponibilidad/'
     | '/_app/horarios/'
     | '/_app/licencias/'
+    | '/_app/obras-sociales/'
+    | '/_app/pacientes/'
     | '/_app/personal/'
     | '/_app/sedes/'
   fileRoutesById: FileRoutesById
@@ -262,6 +298,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLicenciasIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/obras-sociales/': {
+      id: '/_app/obras-sociales/'
+      path: '/obras-sociales'
+      fullPath: '/obras-sociales/'
+      preLoaderRoute: typeof AppObrasSocialesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/': {
+      id: '/_app/pacientes/'
+      path: '/pacientes'
+      fullPath: '/pacientes/'
+      preLoaderRoute: typeof AppPacientesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/$patientId': {
+      id: '/_app/pacientes/$patientId'
+      path: '/pacientes/$patientId'
+      fullPath: '/pacientes/$patientId'
+      preLoaderRoute: typeof AppPacientesPatientIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/personal/': {
       id: '/_app/personal/'
       path: '/personal'
@@ -304,12 +361,15 @@ interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
+  AppPacientesPatientIdRoute: typeof AppPacientesPatientIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
   AppLicenciasIndexRoute: typeof AppLicenciasIndexRoute
+  AppObrasSocialesIndexRoute: typeof AppObrasSocialesIndexRoute
+  AppPacientesIndexRoute: typeof AppPacientesIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
 }
@@ -318,12 +378,15 @@ const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
+  AppPacientesPatientIdRoute: AppPacientesPatientIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,
   AppLicenciasIndexRoute: AppLicenciasIndexRoute,
+  AppObrasSocialesIndexRoute: AppObrasSocialesIndexRoute,
+  AppPacientesIndexRoute: AppPacientesIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
 }

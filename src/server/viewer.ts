@@ -2,6 +2,8 @@ import type { Actor, Role } from "#/lib/access.ts";
 import type { Auth } from "#/lib/auth.ts";
 
 export interface Viewer {
+  userId: string;
+  organizationId: string;
   name: string;
   email: string;
   organizationName: string;
@@ -26,6 +28,8 @@ export async function loadViewer(auth: Auth, actor: Actor): Promise<Viewer> {
     throw new Error(`viewer ${actor.userId} has no user or organization row`);
   }
   return {
+    userId: actor.userId,
+    organizationId: actor.organizationId,
     name: user.name,
     email: user.email,
     organizationName: organization.name,

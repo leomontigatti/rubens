@@ -51,7 +51,7 @@ describe("migrations on PGlite", () => {
     expect(count[0]?.count).toBe(0);
   });
 
-  it("create the app role and the btree_gist extension", async () => {
+  it("create the app role and the extensions in public", async () => {
     const role = rowsOf(
       await db.execute(sql`
         select rolname from pg_roles where rolname = 'rubens_app'
@@ -59,11 +59,19 @@ describe("migrations on PGlite", () => {
     );
     const extension = rowsOf(
       await db.execute(sql`
-        select extname from pg_extension where extname = 'btree_gist'
+        select e.extname, n.nspname as schema
+        from pg_catalog.pg_extension e
+        join pg_catalog.pg_namespace n on n.oid = e.extnamespace
+        where e.extname in ('btree_gist', 'unaccent', 'pg_trgm')
+        order by e.extname
       `),
     );
 
     expect(role).toHaveLength(1);
-    expect(extension).toHaveLength(1);
+    expect(extension).toEqual([
+      { extname: "btree_gist", schema: "public" },
+      { extname: "pg_trgm", schema: "public" },
+      { extname: "unaccent", schema: "public" },
+    ]);
   });
 });

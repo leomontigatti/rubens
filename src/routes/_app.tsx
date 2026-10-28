@@ -1,5 +1,6 @@
-import { Link, Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { ChevronDownIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu.tsx";
 import { authClient } from "#/lib/auth-client.ts";
+import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
 
 const passwordChangePath = "/cambiar-contrasena";
@@ -29,16 +31,67 @@ export const Route = createFileRoute("/_app")({
     }
     return { viewer: result.viewer };
   },
+  // A signed-in page holds the viewer's data, patients' included: the browser
+  // keeps no copy, so Back after a sign-out cannot show it to the next person.
+  headers: () => ({ "Cache-Control": "no-store" }),
   component: AppShell,
 });
 
+const recheckMs = 5000;
+
+/**
+ * Reloads the page once its screen and caches belong to a user other than the
+ * one now signed in: when another tab signs in or out, when a link click finds
+ * another user signed in, and, for a page that was still loading when another
+ * tab's message went out, when a check after mounting says so. A failed check
+ * is retried rather than reloaded, so a failing server causes no reload loop.
+ */
+function useSessionGuard(userId: string) {
+  const loadedAs = useRef(userId);
+
+  useEffect(() => reloadOnSessionChange(), []);
+
+  useEffect(() => {
+    if (userId !== loadedAs.current) {
+      window.location.reload();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    let stopped = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    async function check() {
+      const result = await getViewer().catch((error: unknown) => {
+        console.warn("[session-guard] could not check who is signed in; retrying", error);
+        return null;
+      });
+      if (stopped) {
+        return;
+      }
+      if (result === null) {
+        retry = setTimeout(() => void check(), recheckMs);
+        return;
+      }
+      if (!isSignedInAs(result, loadedAs.current)) {
+        window.location.reload();
+      }
+    }
+    void check();
+    return () => {
+      stopped = true;
+      clearTimeout(retry);
+    };
+  }, []);
+}
+
 function AppShell() {
   const { viewer } = Route.useRouteContext();
-  const router = useRouter();
+
+  useSessionGuard(viewer.userId);
 
   async function signOut() {
     await authClient.signOut();
-    await router.navigate({ to: "/ingresar" });
+    startNewSession("/ingresar");
   }
 
   return (
@@ -47,6 +100,13 @@ function AppShell() {
         <nav className="flex items-center gap-6">
           <Link to="/" className="font-semibold">
             {viewer.organizationName}
+          </Link>
+          <Link
+            to="/pacientes"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Pacientes
           </Link>
           <Link
             to="/sedes"
@@ -83,6 +143,15 @@ function AppShell() {
           >
             Cierres
           </Link>
+          {viewer.roles.includes("admin") && (
+            <Link
+              to="/obras-sociales"
+              className="text-muted-foreground hover:text-foreground text-sm"
+              activeProps={{ className: "text-foreground" }}
+            >
+              Obras sociales
+            </Link>
+          )}
           {viewer.roles.includes("admin") && (
             <Link
               to="/personal"

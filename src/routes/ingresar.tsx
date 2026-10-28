@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.t
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { authClient } from "#/lib/auth-client.ts";
+import { startNewSession } from "#/lib/session-change.ts";
 import { signInErrorMessage } from "#/lib/sign-in.ts";
 import { getViewer } from "#/server/account.functions.ts";
 
@@ -26,7 +27,6 @@ export const Route = createFileRoute("/ingresar")({
 const credentialsSchema = z.object({ email: z.string(), password: z.string() });
 
 function SignIn() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -43,7 +43,7 @@ function SignIn() {
       setError(signInErrorMessage(signInError.status));
       return;
     }
-    await router.navigate({ to: "/" });
+    startNewSession("/");
   }
 
   return (
