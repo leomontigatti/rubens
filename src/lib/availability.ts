@@ -72,6 +72,8 @@ export const availabilityQuerySchema = z
   .refine((query) => query.lastDate < shiftDate(query.firstDate, maxWindowDays), {
     path: ["lastDate"],
     message: "windowTooLong",
+    // Calendar arithmetic throws on a malformed date, so it waits for the dates to parse.
+    when: (payload) => payload.issues.length === 0,
   });
 
 export type AvailabilityQuery = z.input<typeof availabilityQuerySchema>;

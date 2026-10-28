@@ -311,6 +311,13 @@ describe("the query", () => {
     );
   });
 
+  it("refuses a malformed date instead of throwing", () => {
+    expect(availabilityQuerySchema.safeParse({ ...query, firstDate: "" }).success).toBe(false);
+    expect(availabilityQuerySchema.safeParse({ ...query, lastDate: "31/01/2099" }).success).toBe(
+      false,
+    );
+  });
+
   it("accepts any whole number of minutes from 1 to 720", () => {
     const accepts = (durationMinutes: number) =>
       availabilityQuerySchema.safeParse({ ...query, durationMinutes }).success;
