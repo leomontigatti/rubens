@@ -61,7 +61,7 @@ function overbooking(overrides: Partial<OverbookingInput> = {}): OverbookingInpu
   return {
     patientId: pedro.id,
     practitionerId: world.juan.id,
-    appointmentTypeId: juanType.id,
+    medicalServiceId: juanType.id,
     start: at("12:10"),
     durationMinutes: 30,
     roomId: null,
@@ -91,7 +91,7 @@ async function bookedForJuan() {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        appointmentTypeId: juanType.id,
+        medicalServiceId: juanType.id,
         start: at("12:00"),
         durationMinutes: 30,
       },
@@ -238,7 +238,7 @@ describe("an overbooking outside the practitioner's schedules", () => {
     await overbooked(
       overbooking({
         practitionerId: world.lucia.id,
-        appointmentTypeId: luciaType.id,
+        medicalServiceId: luciaType.id,
         patientId: maria.id,
         start: at("15:00"),
         roomId: third.id,
@@ -327,7 +327,7 @@ describe("a schedule saved in a room an appointment holds", () => {
     await overbooked(
       overbooking({
         practitionerId: world.lucia.id,
-        appointmentTypeId: luciaType.id,
+        medicalServiceId: luciaType.id,
         start: at("15:00"),
         roomId: third.id,
       }),
@@ -350,7 +350,7 @@ describe("a schedule saved in a room an appointment holds", () => {
     const cancelled = await overbooked(
       overbooking({
         practitionerId: world.lucia.id,
-        appointmentTypeId: luciaType.id,
+        medicalServiceId: luciaType.id,
         start: at("15:00"),
         roomId: third.id,
       }),

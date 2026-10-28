@@ -5,7 +5,7 @@ import { createOrganization, startingPassword } from "#/test-support/organizatio
 
 import { asAppRole } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { createAppointmentType } from "#/server/appointment-types.ts";
+import { createMedicalService } from "#/server/medical-services.ts";
 import { createOffice, createRoom } from "#/server/offices.ts";
 import { registerPatient } from "#/server/patients.ts";
 import { createSchedule, listSchedulePractitioners } from "#/server/schedules.ts";
@@ -77,16 +77,16 @@ export async function createBookingWorld(db: TestDatabase) {
 
   async function addType(practitionerId: string, durationMinutes = 30) {
     const result = await asAppRole(db, (tx) =>
-      createAppointmentType(
+      createMedicalService(
         world.admin,
         { practitionerId, name: "Consulta", durationMinutes, color: "color1" },
         tx,
       ),
     );
     if (!result.ok) {
-      throw new Error(`createAppointmentType failed: ${result.reason}`);
+      throw new Error(`createMedicalService failed: ${result.reason}`);
     }
-    return result.appointmentType;
+    return result.medicalService;
   }
 
   async function addSchedule(input: Partial<ScheduleInput> & { practitionerId: string }) {

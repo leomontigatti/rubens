@@ -50,7 +50,7 @@ async function book(start: Date, receptionNote = "trae radiografías") {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        appointmentTypeId: juanType.id,
+        medicalServiceId: juanType.id,
         start,
         durationMinutes: 30,
         receptionNote,
@@ -129,7 +129,7 @@ describe("the room view", () => {
         {
           patientId: maria.id,
           practitionerId: world.juan.id,
-          appointmentTypeId: juanType.id,
+          medicalServiceId: juanType.id,
           start: at("21:00"),
           durationMinutes: 30,
           roomId: world.otherRoom.id,

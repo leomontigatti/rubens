@@ -10,7 +10,7 @@ import type { BookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
-import { setAppointmentTypeActive } from "#/server/appointment-types.ts";
+import { setMedicalServiceActive } from "#/server/medical-services.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment, getOfficeDay, insertAppointment } from "#/server/appointments.ts";
@@ -51,7 +51,7 @@ function booking(overrides: Partial<BookingInput> = {}): BookingInput {
   return {
     patientId: maria.id,
     practitionerId: world.juan.id,
-    appointmentTypeId: juanType.id,
+    medicalServiceId: juanType.id,
     start: at("12:00"),
     durationMinutes: 30,
     ...overrides,
@@ -107,7 +107,7 @@ describe("booking an appointment", () => {
     expect(await rowOf(created.id)).toMatchObject({
       patientId: maria.id,
       practitionerId: world.juan.id,
-      appointmentTypeId: juanType.id,
+      medicalServiceId: juanType.id,
       roomId: world.room.id,
       during: { start: at("12:00"), end: at("12:45") },
       status: "booked",
@@ -160,14 +160,14 @@ describe("booking an appointment", () => {
   });
 
   it("refuses another practitioner's type and a deactivated one", async () => {
-    expect(await book(world.receptionist, booking({ appointmentTypeId: luciaType.id }))).toEqual({
+    expect(await book(world.receptionist, booking({ medicalServiceId: luciaType.id }))).toEqual({
       ok: false,
       reason: "notFound",
     });
     await asAppRole(db, (tx) =>
-      setAppointmentTypeActive(world.admin, { id: juanType.id, active: false }, tx),
+      setMedicalServiceActive(world.admin, { id: juanType.id, active: false }, tx),
     );
-    expect(await book()).toEqual({ ok: false, reason: "appointmentTypeInactive" });
+    expect(await book()).toEqual({ ok: false, reason: "medicalServiceInactive" });
   });
 
   it("writes the booking to the audit log, about the patient", async () => {
@@ -202,7 +202,7 @@ describe("the patient warning", () => {
   it("warns when the patient has an overlapping appointment, and books once confirmed", async () => {
     await booked(
       world.receptionist,
-      booking({ practitionerId: world.lucia.id, appointmentTypeId: luciaType.id }),
+      booking({ practitionerId: world.lucia.id, medicalServiceId: luciaType.id }),
     );
 
     const warned = await book(world.receptionist, booking({ start: at("12:15") }));
@@ -230,7 +230,7 @@ describe("the patient warning", () => {
       world.receptionist,
       booking({
         practitionerId: world.lucia.id,
-        appointmentTypeId: luciaType.id,
+        medicalServiceId: luciaType.id,
         start: at("13:00"),
       }),
     );
@@ -262,7 +262,7 @@ describe("who books", () => {
     expect(await book(world.admin)).toMatchObject({ ok: true });
     expect(
       await book(world.lucia.actor, {
-        ...booking({ practitionerId: world.lucia.id, appointmentTypeId: luciaType.id }),
+        ...booking({ practitionerId: world.lucia.id, medicalServiceId: luciaType.id }),
         confirmWarnings: true,
       }),
     ).toMatchObject({ ok: true });

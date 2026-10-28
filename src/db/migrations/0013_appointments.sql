@@ -5,7 +5,7 @@ CREATE TABLE "rubens"."appointment" (
 	"organization_id" text NOT NULL,
 	"patient_id" uuid NOT NULL,
 	"practitioner_id" uuid NOT NULL,
-	"appointment_type_id" uuid NOT NULL,
+	"medical_service_id" uuid NOT NULL,
 	"room_id" uuid NOT NULL,
 	"during" "tstzrange" NOT NULL,
 	"status" "rubens"."appointment_status" DEFAULT 'booked' NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE "rubens"."appointment" (
 ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "rubens"."organization"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_patient_fk" FOREIGN KEY ("patient_id","organization_id") REFERENCES "rubens"."patient"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_practitioner_fk" FOREIGN KEY ("practitioner_id","organization_id") REFERENCES "rubens"."practitioner"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_type_fk" FOREIGN KEY ("appointment_type_id","organization_id") REFERENCES "rubens"."appointment_type"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_medical_service_fk" FOREIGN KEY ("medical_service_id","organization_id") REFERENCES "rubens"."medical_service"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_room_fk" FOREIGN KEY ("room_id","organization_id") REFERENCES "rubens"."room"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "appointment_patient_id_idx" ON "rubens"."appointment" USING btree ("patient_id");--> statement-breakpoint
 CREATE INDEX "appointment_room_id_idx" ON "rubens"."appointment" USING btree ("room_id");--> statement-breakpoint

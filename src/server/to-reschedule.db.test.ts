@@ -63,7 +63,7 @@ async function book(
       {
         patientId,
         practitionerId: practitioner.id,
-        appointmentTypeId: typeId,
+        medicalServiceId: typeId,
         start,
         durationMinutes,
         confirmWarnings: true,
@@ -199,7 +199,7 @@ describe("the to-reschedule list", () => {
         {
           patientId: maria.id,
           practitionerId: world.juan.id,
-          appointmentTypeId: juanType.id,
+          medicalServiceId: juanType.id,
           start: at("15:00"),
           durationMinutes: 30,
           roomId: world.room.id,

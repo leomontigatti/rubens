@@ -3,7 +3,7 @@ import * as z from "zod";
 
 import {
   appointment,
-  appointmentType,
+  medicalService,
   member,
   office,
   patient,
@@ -78,7 +78,7 @@ export async function listPatientAppointments(
           status: appointment.status,
           overbooking: appointment.overbooking,
           practitionerName: practitioner.displayName,
-          typeName: appointmentType.name,
+          typeName: medicalService.name,
           officeName: office.name,
           roomName: room.name,
           timeZone: office.timeZone,
@@ -94,7 +94,7 @@ export async function listPatientAppointments(
             eq(member.organizationId, actor.organizationId),
           ),
         )
-        .innerJoin(appointmentType, eq(appointmentType.id, appointment.appointmentTypeId))
+        .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
         .innerJoin(room, eq(room.id, appointment.roomId))
         .innerJoin(office, eq(office.id, room.officeId))
         .where(

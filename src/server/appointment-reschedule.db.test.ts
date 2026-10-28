@@ -69,7 +69,7 @@ async function book(
       {
         patientId,
         practitionerId: practitioner.id,
-        appointmentTypeId: typeId,
+        medicalServiceId: typeId,
         start,
         durationMinutes: 30,
         confirmWarnings: true,

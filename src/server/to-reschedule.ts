@@ -2,7 +2,7 @@ import { and, asc, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   appointment,
-  appointmentType,
+  medicalService,
   closure,
   member,
   office,
@@ -16,7 +16,7 @@ import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
-import type { AppointmentTypeColor } from "#/lib/appointment-types.ts";
+import type { MedicalServiceColor } from "#/lib/medical-services.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { outsideWorkingTime } from "#/lib/availability.ts";
 import type { OutsideWorkingTime } from "#/lib/availability.ts";
@@ -50,7 +50,7 @@ export interface ToRescheduleEntry {
   end: Date;
   status: AppointmentStatus;
   typeName: string;
-  color: AppointmentTypeColor;
+  color: MedicalServiceColor;
   officeName: string;
   roomName: string;
   /** The office's zone, to show the appointment in local time. */
@@ -75,8 +75,8 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       firstName: patient.firstName,
       lastName: patient.lastName,
       chosenName: patient.chosenName,
-      typeName: appointmentType.name,
-      color: appointmentType.color,
+      typeName: medicalService.name,
+      color: medicalService.color,
       officeId: office.id,
       officeName: office.name,
       roomName: room.name,
@@ -89,7 +89,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       and(eq(member.id, practitioner.memberId), eq(member.organizationId, actor.organizationId)),
     )
     .innerJoin(patient, eq(patient.id, appointment.patientId))
-    .innerJoin(appointmentType, eq(appointmentType.id, appointment.appointmentTypeId))
+    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .innerJoin(room, eq(room.id, appointment.roomId))
     .innerJoin(office, eq(office.id, room.officeId))
     .where(

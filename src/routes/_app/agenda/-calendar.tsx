@@ -8,7 +8,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { appointmentTypeColorClasses } from "#/lib/appointment-types.ts";
+import { medicalServiceColorClasses } from "#/lib/medical-services.ts";
 import { layoutColumn } from "#/lib/calendar-layout.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 import type { DayAppointment, DayColumn } from "#/server/appointments.ts";
@@ -223,7 +223,7 @@ function AppointmentBlock(props: {
       }
       title={booked.receptionNote ?? undefined}
     >
-      <div className={cn("w-1 shrink-0", appointmentTypeColorClasses[booked.color])} />
+      <div className={cn("w-1 shrink-0", medicalServiceColorClasses[booked.color])} />
       <div className="flex min-w-0 flex-col items-start px-1.5 py-0.5">
         <Button
           variant="link"

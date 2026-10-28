@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
   appointment,
-  appointmentType,
+  medicalService,
   auditLog,
   closure,
   coverage,
@@ -79,7 +79,7 @@ beforeEach(async () => {
       firstDate: "2026-01-05",
     });
     const [createdType] = await db
-      .insert(appointmentType)
+      .insert(medicalService)
       .values({
         organizationId,
         practitionerId: createdPractitioner!.id,
@@ -134,7 +134,7 @@ beforeEach(async () => {
       organizationId,
       patientId: createdPatient!.id,
       practitionerId: createdPractitioner!.id,
-      appointmentTypeId: createdType!.id,
+      medicalServiceId: createdType!.id,
       roomId: createdRoom!.id,
       during: appointmentDuring,
       createdBy: userId,
@@ -178,7 +178,7 @@ describe("row-level security on tenant tables", () => {
           insurers: await tenant.select().from(insurer),
           coverages: await tenant.select().from(coverage),
           guardians: await tenant.select().from(guardian),
-          appointmentTypes: await tenant.select().from(appointmentType),
+          medicalServices: await tenant.select().from(medicalService),
           appointments: await tenant.select().from(appointment),
         }),
         tx,
@@ -196,7 +196,7 @@ describe("row-level security on tenant tables", () => {
     expect(seen.insurers.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.coverages.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.guardians.map((row) => row.organizationId)).toEqual(["org-a"]);
-    expect(seen.appointmentTypes.map((row) => row.organizationId)).toEqual(["org-a"]);
+    expect(seen.medicalServices.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.appointments.map((row) => row.organizationId)).toEqual(["org-a"]);
   });
 
@@ -214,7 +214,7 @@ describe("row-level security on tenant tables", () => {
         insurers: number;
         coverages: number;
         guardians: number;
-        appointmentTypes: number;
+        medicalServices: number;
         appointments: number;
       }>(
         await tx.execute(sql`
@@ -230,7 +230,7 @@ describe("row-level security on tenant tables", () => {
             (select count(*)::int from rubens.insurer) as insurers,
             (select count(*)::int from rubens.coverage) as coverages,
             (select count(*)::int from rubens.guardian) as guardians,
-            (select count(*)::int from rubens.appointment_type) as "appointmentTypes",
+            (select count(*)::int from rubens.medical_service) as "medicalServices",
             (select count(*)::int from rubens.appointment) as appointments
         `),
       ),
@@ -248,7 +248,7 @@ describe("row-level security on tenant tables", () => {
       insurers: 0,
       coverages: 0,
       guardians: 0,
-      appointmentTypes: 0,
+      medicalServices: 0,
       appointments: 0,
     });
   });
@@ -270,8 +270,8 @@ describe("row-level security on tenant tables", () => {
           await tenant.delete(closure);
           await tenant.update(room).set({ name: "Cambiado" });
           await tenant.delete(room);
-          await tenant.update(appointmentType).set({ name: "Cambiado" });
-          await tenant.delete(appointmentType);
+          await tenant.update(medicalService).set({ name: "Cambiado" });
+          await tenant.delete(medicalService);
           await tenant.update(practitioner).set({ displayName: "Cambiado" });
           await tenant.delete(practitioner);
           await tenant.update(patient).set({ firstName: "Cambiada" });
@@ -321,10 +321,10 @@ describe("row-level security on tenant tables", () => {
       (row) => row.organizationId === "org-b",
     );
     expect(guardiansB.map((row) => row.name)).toEqual(["Laura Paz"]);
-    const appointmentTypesB = (await db.select().from(appointmentType)).filter(
+    const medicalServicesB = (await db.select().from(medicalService)).filter(
       (row) => row.organizationId === "org-b",
     );
-    expect(appointmentTypesB.map((row) => row.name)).toEqual(["Primera consulta"]);
+    expect(medicalServicesB.map((row) => row.name)).toEqual(["Primera consulta"]);
     const appointmentsB = (await db.select().from(appointment)).filter(
       (row) => row.organizationId === "org-b",
     );

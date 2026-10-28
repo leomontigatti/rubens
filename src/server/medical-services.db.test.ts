@@ -5,17 +5,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
-import type { AppointmentTypeInput } from "#/lib/appointment-types.ts";
+import type { MedicalServiceInput } from "#/lib/medical-services.ts";
 import { createSchedulingWorld } from "#/test-support/scheduling.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import {
-  createAppointmentType,
-  listAppointmentTypes,
-  setAppointmentTypeActive,
-  updateAppointmentType,
-} from "#/server/appointment-types.ts";
+  createMedicalService,
+  listMedicalServices,
+  setMedicalServiceActive,
+  updateMedicalService,
+} from "#/server/medical-services.ts";
 import { listSchedulePractitioners } from "#/server/schedules.ts";
 import { setMemberActive } from "#/server/staff.ts";
 
@@ -45,7 +45,7 @@ afterEach(async () => {
   await client.close();
 });
 
-function firstVisit(overrides: Partial<AppointmentTypeInput> = {}): AppointmentTypeInput {
+function firstVisit(overrides: Partial<MedicalServiceInput> = {}): MedicalServiceInput {
   return {
     practitionerId,
     name: "Primera consulta",
@@ -55,24 +55,24 @@ function firstVisit(overrides: Partial<AppointmentTypeInput> = {}): AppointmentT
   };
 }
 
-function create(actor: Actor, input: AppointmentTypeInput = firstVisit()) {
-  return asAppRole(db, (tx) => createAppointmentType(actor, input, tx));
+function create(actor: Actor, input: MedicalServiceInput = firstVisit()) {
+  return asAppRole(db, (tx) => createMedicalService(actor, input, tx));
 }
 
-async function created(actor: Actor = world.admin, input: AppointmentTypeInput = firstVisit()) {
+async function created(actor: Actor = world.admin, input: MedicalServiceInput = firstVisit()) {
   const result = await create(actor, input);
   if (!result.ok) {
-    throw new Error(`createAppointmentType failed: ${result.reason}`);
+    throw new Error(`createMedicalService failed: ${result.reason}`);
   }
-  return result.appointmentType;
+  return result.medicalService;
 }
 
 async function typesOf(actor: Actor, includeInactive: boolean, id = practitionerId) {
   const result = await asAppRole(db, (tx) =>
-    listAppointmentTypes(actor, { practitionerId: id, includeInactive }, tx),
+    listMedicalServices(actor, { practitionerId: id, includeInactive }, tx),
   );
   if (!result.ok) {
-    throw new Error(`listAppointmentTypes failed: ${result.reason}`);
+    throw new Error(`listMedicalServices failed: ${result.reason}`);
   }
   return result;
 }
@@ -87,24 +87,24 @@ async function entriesFor(entityId: string) {
   );
 }
 
-describe("managing appointment types", () => {
+describe("managing medical services", () => {
   it("lets an admin create and edit a practitioner's types, listed by name", async () => {
     const first = await created();
     await created(world.admin, firstVisit({ name: "Control", durationMinutes: 20 }));
     const edited = await asAppRole(db, (tx) =>
-      updateAppointmentType(
+      updateMedicalService(
         world.admin,
-        { appointmentTypeId: first.id, name: "Primera vez", durationMinutes: 45, color: "color2" },
+        { medicalServiceId: first.id, name: "Primera vez", durationMinutes: 45, color: "color2" },
         tx,
       ),
     );
 
     expect(edited).toMatchObject({
       ok: true,
-      appointmentType: { name: "Primera vez", durationMinutes: 45, color: "color2", active: true },
+      medicalService: { name: "Primera vez", durationMinutes: 45, color: "color2", active: true },
     });
-    const { appointmentTypes } = await typesOf(receptionist, false);
-    expect(appointmentTypes.map((type) => type.name)).toEqual(["Control", "Primera vez"]);
+    const { medicalServices } = await typesOf(receptionist, false);
+    expect(medicalServices.map((type) => type.name)).toEqual(["Control", "Primera vez"]);
   });
 
   it("lets a practitioner manage their own types and no one else's", async () => {
@@ -115,14 +115,14 @@ describe("managing appointment types", () => {
       firstVisit({ practitionerId: otherPractitionerId }),
     );
     const editOthers = await asAppRole(db, (tx) =>
-      updateAppointmentType(
+      updateMedicalService(
         practitioner,
-        { appointmentTypeId: othersType.id, name: "Otro", durationMinutes: 30, color: "color1" },
+        { medicalServiceId: othersType.id, name: "Otro", durationMinutes: 30, color: "color1" },
         tx,
       ),
     );
     const deactivateOthers = await asAppRole(db, (tx) =>
-      setAppointmentTypeActive(practitioner, { id: othersType.id, active: false }, tx),
+      setMedicalServiceActive(practitioner, { id: othersType.id, active: false }, tx),
     );
 
     expect(own.ok).toBe(true);
@@ -139,7 +139,7 @@ describe("managing appointment types", () => {
     expect(await create(receptionist)).toEqual({ ok: false, reason: "forbidden" });
     expect(
       await asAppRole(db, (tx) =>
-        setAppointmentTypeActive(receptionist, { id: type.id, active: false }, tx),
+        setMedicalServiceActive(receptionist, { id: type.id, active: false }, tx),
       ),
     ).toEqual({ ok: false, reason: "forbidden" });
     expect((await typesOf(receptionist, true)).canEdit).toBe(false);
@@ -174,12 +174,12 @@ describe("deactivating a type", () => {
   it("drops it from the booking list and keeps it on the types screen", async () => {
     const type = await created();
     const result = await asAppRole(db, (tx) =>
-      setAppointmentTypeActive(world.admin, { id: type.id, active: false }, tx),
+      setMedicalServiceActive(world.admin, { id: type.id, active: false }, tx),
     );
 
     expect(result).toEqual({ ok: true });
-    expect((await typesOf(receptionist, false)).appointmentTypes).toEqual([]);
-    expect((await typesOf(world.admin, true)).appointmentTypes).toMatchObject([
+    expect((await typesOf(receptionist, false)).medicalServices).toEqual([]);
+    expect((await typesOf(world.admin, true)).medicalServices).toMatchObject([
       { id: type.id, active: false },
     ]);
   });
@@ -187,13 +187,13 @@ describe("deactivating a type", () => {
   it("brings it back on reactivation", async () => {
     const type = await created();
     await asAppRole(db, (tx) =>
-      setAppointmentTypeActive(world.admin, { id: type.id, active: false }, tx),
+      setMedicalServiceActive(world.admin, { id: type.id, active: false }, tx),
     );
     await asAppRole(db, (tx) =>
-      setAppointmentTypeActive(world.admin, { id: type.id, active: true }, tx),
+      setMedicalServiceActive(world.admin, { id: type.id, active: true }, tx),
     );
 
-    expect((await typesOf(receptionist, false)).appointmentTypes).toMatchObject([
+    expect((await typesOf(receptionist, false)).medicalServices).toMatchObject([
       { id: type.id, active: true },
     ]);
   });
@@ -203,10 +203,10 @@ describe("auditing types", () => {
   it("records the creation, each edit and the deactivation", async () => {
     const type = await created(practitioner);
     await asAppRole(db, (tx) =>
-      updateAppointmentType(
+      updateMedicalService(
         world.admin,
         {
-          appointmentTypeId: type.id,
+          medicalServiceId: type.id,
           name: "Primera consulta",
           durationMinutes: 60,
           color: "color1",
@@ -215,7 +215,7 @@ describe("auditing types", () => {
       ),
     );
     await asAppRole(db, (tx) =>
-      setAppointmentTypeActive(world.admin, { id: type.id, active: false }, tx),
+      setMedicalServiceActive(world.admin, { id: type.id, active: false }, tx),
     );
 
     const entries = await entriesFor(type.id);
@@ -231,7 +231,7 @@ describe("auditing types", () => {
     ).toEqual([
       {
         action: "create",
-        entityType: "appointmentType",
+        entityType: "medicalService",
         userId: practitioner.userId,
         patientId: null,
         before: null,
@@ -239,7 +239,7 @@ describe("auditing types", () => {
       },
       {
         action: "update",
-        entityType: "appointmentType",
+        entityType: "medicalService",
         userId: world.admin.userId,
         patientId: null,
         before: { durationMinutes: 40 },
@@ -247,7 +247,7 @@ describe("auditing types", () => {
       },
       {
         action: "deactivate",
-        entityType: "appointmentType",
+        entityType: "medicalService",
         userId: world.admin.userId,
         patientId: null,
         before: { active: true },

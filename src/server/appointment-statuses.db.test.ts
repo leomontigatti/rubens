@@ -58,7 +58,7 @@ async function book(patientId = maria.id, start = at("12:00")) {
       {
         patientId,
         practitionerId: world.juan.id,
-        appointmentTypeId: juanType.id,
+        medicalServiceId: juanType.id,
         start,
         durationMinutes: 30,
       },
@@ -270,7 +270,7 @@ describe("undo", () => {
     const luciaType = await world.addType(world.lucia.id);
     const overbook = async (
       practitionerId: string,
-      appointmentTypeId: string,
+      medicalServiceId: string,
       patientId: string,
     ) => {
       const result = await asAppRole(db, (tx) =>
@@ -279,7 +279,7 @@ describe("undo", () => {
           {
             patientId,
             practitionerId,
-            appointmentTypeId,
+            medicalServiceId,
             start: at("15:00"),
             durationMinutes: 30,
             roomId: world.otherRoom.id,

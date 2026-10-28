@@ -17,50 +17,50 @@ import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
-  appointmentTypeColorClasses,
-  appointmentTypeColorLabels,
-  appointmentTypeColors,
-  appointmentTypeInputSchema,
-} from "#/lib/appointment-types.ts";
-import type { AppointmentTypeColor, AppointmentTypeFields } from "#/lib/appointment-types.ts";
+  medicalServiceColorClasses,
+  medicalServiceColorLabels,
+  medicalServiceColors,
+  medicalServiceInputSchema,
+} from "#/lib/medical-services.ts";
+import type { MedicalServiceColor, MedicalServiceFields } from "#/lib/medical-services.ts";
 import {
-  addAppointmentType,
-  changeAppointmentTypeActive,
-  editAppointmentType,
-  getAppointmentTypes,
-} from "#/server/appointment-types.functions.ts";
-import type { AppointmentType } from "#/server/appointment-types.ts";
+  addMedicalService,
+  changeMedicalServiceActive,
+  editMedicalService,
+  getMedicalServices,
+} from "#/server/medical-services.functions.ts";
+import type { MedicalService } from "#/server/medical-services.ts";
 
-import { refusalMessages } from "#/routes/_app/tipos-de-turno/-shared.ts";
-import type { RefusalReason } from "#/routes/_app/tipos-de-turno/-shared.ts";
+import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
+import type { RefusalReason } from "#/routes/_app/prestaciones/-shared.ts";
 
-export const Route = createFileRoute("/_app/tipos-de-turno/$practitionerId")({
+export const Route = createFileRoute("/_app/prestaciones/$practitionerId")({
   loader: ({ params }) =>
-    getAppointmentTypes({
+    getMedicalServices({
       data: { practitionerId: params.practitionerId, includeInactive: true },
     }),
   head: ({ loaderData }) => ({
     meta: [
       {
         title: loaderData?.ok
-          ? `Tipos de turno de ${loaderData.practitioner.displayName} · Rubens`
-          : "Tipos de turno · Rubens",
+          ? `Prestaciones de ${loaderData.practitioner.displayName} · Rubens`
+          : "Prestaciones · Rubens",
       },
     ],
   }),
-  component: PractitionerAppointmentTypes,
+  component: PractitionerMedicalServices,
 });
 
 type ActionResult = { ok: true } | { ok: false; reason: RefusalReason };
 
-const fieldMessages: Record<keyof AppointmentTypeFields | "practitionerId", string> = {
+const fieldMessages: Record<keyof MedicalServiceFields | "practitionerId", string> = {
   practitionerId: "No encontramos ese profesional.",
   name: "Ingresá el nombre.",
   durationMinutes: "La duración tiene que ser de 1 a 720 minutos.",
   color: "Elegí un color.",
 };
 
-const newAppointmentType: AppointmentTypeFields = {
+const newMedicalService: MedicalServiceFields = {
   name: "",
   durationMinutes: 30,
   color: "color1",
@@ -70,47 +70,47 @@ function useAction() {
   return useFormAction(refusalMessages);
 }
 
-function PractitionerAppointmentTypes() {
+function PractitionerMedicalServices() {
   const result = Route.useLoaderData();
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
-  const { practitioner, appointmentTypes, canEdit } = result;
+  const { practitioner, medicalServices, canEdit } = result;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link
-          to="/tipos-de-turno"
+          to="/prestaciones"
           className="text-muted-foreground text-sm underline-offset-4 hover:underline"
         >
-          Tipos de turno
+          Prestaciones
         </Link>
         <h1 className="text-2xl font-semibold">{practitioner.displayName}</h1>
       </div>
-      <CreatePanel isAdmin={canEdit} label="Nuevo tipo de turno">
+      <CreatePanel isAdmin={canEdit} label="Nueva prestación">
         {(close) => (
-          <AppointmentTypeForm
+          <MedicalServiceForm
             idPrefix="new"
-            initial={newAppointmentType}
+            initial={newMedicalService}
             submitLabel="Crear"
             onCancel={close}
             onSubmit={(fields) =>
-              addAppointmentType({ data: { ...fields, practitionerId: practitioner.id } })
+              addMedicalService({ data: { ...fields, practitionerId: practitioner.id } })
             }
             onDone={close}
           />
         )}
       </CreatePanel>
-      {appointmentTypes.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no tiene tipos de turno.</p>
+      {medicalServices.length === 0 ? (
+        <p className="text-muted-foreground">Todavía no tiene prestaciones.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {appointmentTypes.map((appointmentType) => (
-            <AppointmentTypeItem
-              key={appointmentType.id}
-              appointmentType={appointmentType}
+          {medicalServices.map((medicalService) => (
+            <MedicalServiceItem
+              key={medicalService.id}
+              medicalService={medicalService}
               canEdit={canEdit}
             />
           ))}
@@ -120,17 +120,17 @@ function PractitionerAppointmentTypes() {
   );
 }
 
-function ColorSwatch({ color }: { color: AppointmentTypeColor }) {
+function ColorSwatch({ color }: { color: MedicalServiceColor }) {
   return (
     <span
       aria-hidden
-      className={`size-4 shrink-0 rounded-full ${appointmentTypeColorClasses[color]}`}
+      className={`size-4 shrink-0 rounded-full ${medicalServiceColorClasses[color]}`}
     />
   );
 }
 
-function AppointmentTypeItem(props: { appointmentType: AppointmentType; canEdit: boolean }) {
-  const { appointmentType } = props;
+function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: boolean }) {
+  const { medicalService } = props;
   const [editing, setEditing] = useState(false);
   const toggle = useAction();
 
@@ -139,14 +139,14 @@ function AppointmentTypeItem(props: { appointmentType: AppointmentType; canEdit:
       <li>
         <Card>
           <CardContent>
-            <AppointmentTypeForm
-              idPrefix={appointmentType.id}
-              initial={appointmentType}
+            <MedicalServiceForm
+              idPrefix={medicalService.id}
+              initial={medicalService}
               submitLabel="Guardar"
               onCancel={() => setEditing(false)}
               onSubmit={(fields) =>
-                editAppointmentType({
-                  data: { ...fields, appointmentTypeId: appointmentType.id },
+                editMedicalService({
+                  data: { ...fields, medicalServiceId: medicalService.id },
                 })
               }
               onDone={() => setEditing(false)}
@@ -162,25 +162,25 @@ function AppointmentTypeItem(props: { appointmentType: AppointmentType; canEdit:
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <ColorSwatch color={appointmentType.color} />
+            <ColorSwatch color={medicalService.color} />
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-2 font-medium">
-                {appointmentType.name}
-                {!appointmentType.active && <Badge variant="outline">Inactivo</Badge>}
+                {medicalService.name}
+                {!medicalService.active && <Badge variant="outline">Inactiva</Badge>}
               </span>
               <span className="text-muted-foreground text-sm">
-                {appointmentType.durationMinutes} min
+                {medicalService.durationMinutes} min
               </span>
             </div>
           </div>
           <AdminControls
             isAdmin={props.canEdit}
-            active={appointmentType.active}
+            active={medicalService.active}
             onEdit={() => setEditing(true)}
             onToggleActive={() =>
               void toggle.run(() =>
-                changeAppointmentTypeActive({
-                  data: { id: appointmentType.id, active: !appointmentType.active },
+                changeMedicalServiceActive({
+                  data: { id: medicalService.id, active: !medicalService.active },
                 }),
               )
             }
@@ -192,25 +192,25 @@ function AppointmentTypeItem(props: { appointmentType: AppointmentType; canEdit:
   );
 }
 
-interface AppointmentTypeFormProps {
+interface MedicalServiceFormProps {
   idPrefix: string;
-  initial: AppointmentTypeFields;
+  initial: MedicalServiceFields;
   submitLabel: string;
   onCancel: () => void;
-  onSubmit: (fields: AppointmentTypeFields) => Promise<ActionResult>;
+  onSubmit: (fields: MedicalServiceFields) => Promise<ActionResult>;
   onDone: () => void;
 }
 
-const fieldsSchema = appointmentTypeInputSchema.omit({ practitionerId: true });
+const fieldsSchema = medicalServiceInputSchema.omit({ practitionerId: true });
 
-function AppointmentTypeForm({
+function MedicalServiceForm({
   idPrefix,
   initial,
   submitLabel,
   onCancel,
   onSubmit,
   onDone,
-}: AppointmentTypeFormProps) {
+}: MedicalServiceFormProps) {
   const action = useAction();
   const [color, setColor] = useState(initial.color);
 
@@ -258,11 +258,11 @@ function AppointmentTypeForm({
             id={`${idPrefix}-color`}
             name="color"
             value={color}
-            onChange={(event) => setColor(event.target.value as AppointmentTypeColor)}
+            onChange={(event) => setColor(event.target.value as MedicalServiceColor)}
           >
-            {appointmentTypeColors.map((option) => (
+            {medicalServiceColors.map((option) => (
               <NativeSelectOption key={option} value={option}>
-                {appointmentTypeColorLabels[option]}
+                {medicalServiceColorLabels[option]}
               </NativeSelectOption>
             ))}
           </NativeSelect>

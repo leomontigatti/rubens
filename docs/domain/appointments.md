@@ -1,14 +1,14 @@
 # Appointments
 
-## Types
+## Medical services
 
-Each practitioner offers appointment types. A type sets the default duration, which
+Each practitioner offers medical services. A medical service sets the default duration, which
 the booking can change, and the patient messages for its appointments
 ([messages.md](./messages.md)): the booking confirmation, the reminders, and how
 late the patient may reschedule.
 
-Admins, and each practitioner for their own, manage appointment types: a name, a
-default duration, a colour, and the message settings. A type in use is
+Admins, and each practitioner for their own, manage medical services: a name, a
+default duration, a colour, and the message settings. A medical service in use is
 deactivated, never deleted.
 
 Appointments are booked one at a time. A series, such as monthly orthodontic
@@ -18,7 +18,7 @@ check-ups, is booked one appointment after the other.
 
 Reception books from a free time clicked on the calendar, which fills in the
 practitioner, time and room, or from `Nuevo turno`: patient, practitioner and
-appointment type, then the free times for that type's duration. The type comes
+medical service, then the free times for that service's duration. The service comes
 before the time because its duration decides which times fit; the duration can
 still be adjusted. The patient is found with the search box, or registered on
 the spot with the quick registration.
@@ -90,7 +90,7 @@ A week view of one practitioner answers "when can she come next week". A
 practitioner gets the same two views limited to their own appointments. There is
 no month view: at 15-minute granularity it is unreadable.
 
-An appointment block is coloured by its appointment type, which is what reception
+An appointment block is coloured by its medical service, which is what reception
 scans for. Its status is an icon and a style: booked outlined, confirmed solid,
 checked in highlighted, attended dimmed, no-show striped, cancelled hidden unless
 asked for. An overbooking has its own mark.

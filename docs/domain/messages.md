@@ -4,10 +4,10 @@
 
 Messages go by WhatsApp to patients with WhatsApp consent, and by email otherwise.
 A patient with neither gets none. The text comes from templates Meta approves, so
-an appointment type picks a template; it does not write free text. The templates
+a medical service picks a template; it does not write free text. The templates
 are in [whatsapp-templates.md](../operations/whatsapp-templates.md).
 
-Each appointment type sets:
+Each medical service sets:
 
 - **The booking confirmation**, sent when the appointment is booked, or not at all.
 - **Its reminders**: each one a time before the appointment (such as 48 h and
@@ -25,7 +25,7 @@ A reminder that asks for confirmation offers three answers:
 ## The reschedule link
 
 A personal, signed link for one appointment, valid until the appointment starts.
-Its page shows the free times of the same practitioner and appointment type, at
+Its page shows the free times of the same practitioner and medical service, at
 any office where the practitioner works, over the next few weeks. On it the
 patient can:
 
@@ -34,7 +34,7 @@ patient can:
 - **ask to be contacted** (`Necesito que se comuniquen conmigo`), which gives
   reception a contact request.
 
-Moving is allowed until the type's cutoff, and once per appointment. Later changes
+Moving is allowed until the medical service's cutoff, and once per appointment. Later changes
 go through reception. The cutoff leaves time to fill a freed slot; the once-only
 rule stops a patient from pushing an appointment back forever. Cancelling and
 asking for contact stay open until the appointment starts.

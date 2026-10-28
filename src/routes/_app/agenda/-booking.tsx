@@ -35,7 +35,7 @@ import type {
   PickedStart,
 } from "#/lib/booking-draft.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { getAppointmentTypes } from "#/server/appointment-types.functions.ts";
+import { getMedicalServices } from "#/server/medical-services.functions.ts";
 import type { RoomOccupant } from "#/server/appointment-rooms.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
 import { getFreeTimes } from "#/server/availability.functions.ts";
@@ -60,10 +60,10 @@ const refusalMessages = {
   forbidden: "Solo recepción, un administrador o el propio profesional pueden dar turnos.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá la duración y la nota de recepción.",
-  notFound: "No encontramos el paciente, el profesional o el tipo de turno.",
+  notFound: "No encontramos el paciente, el profesional o la prestación.",
   practitionerInactive: "Ese profesional está inactivo.",
   patientInactive: "Ese paciente está inactivo.",
-  appointmentTypeInactive: "Ese tipo de turno está desactivado.",
+  medicalServiceInactive: "Esa prestación está desactivada.",
   notFree: "Ese horario ya no está libre para esa duración. Elegí otro.",
   roomRequired: "Ese horario está fuera de los horarios del profesional: elegí un consultorio.",
   timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",
@@ -417,7 +417,7 @@ function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
 
 /** The type picker's empty option, once the types have loaded or before. */
 function typePlaceholder(types: readonly unknown[] | undefined): string {
-  return types?.length === 0 ? "Este profesional no tiene tipos de turno" : "Elegí un tipo";
+  return types?.length === 0 ? "Este profesional no tiene prestaciones" : "Elegí una prestación";
 }
 
 function TypeField(props: {
@@ -427,25 +427,25 @@ function TypeField(props: {
 }) {
   const { viewer } = useRouteContext({ from: "/_app" });
   const { data } = useQuery({
-    queryKey: ["appointmentTypes", viewer.organizationId, viewer.userId, props.practitionerId],
+    queryKey: ["medicalServices", viewer.organizationId, viewer.userId, props.practitionerId],
     queryFn: () =>
-      getAppointmentTypes({
+      getMedicalServices({
         data: { practitionerId: props.practitionerId, includeInactive: false },
       }),
-    select: (result) => (result.ok ? result.appointmentTypes : []),
+    select: (result) => (result.ok ? result.medicalServices : []),
   });
   const options = data ?? [];
 
   function choose(id: string) {
     props.dispatch({
       type: "typeChosen",
-      appointmentType: options.find((option) => option.id === id),
+      medicalService: options.find((option) => option.id === id),
     });
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor="booking-type">Tipo de turno</Label>
+      <Label htmlFor="booking-type">Prestación</Label>
       <NativeSelect
         id="booking-type"
         value={props.value?.id ?? ""}

@@ -27,10 +27,10 @@ import { Route as AppPacientesIndexRouteImport } from './routes/_app/pacientes/i
 import { Route as AppPacientesPatientIdRouteImport } from './routes/_app/pacientes/$patientId'
 import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
 import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
+import { Route as AppPrestacionesIndexRouteImport } from './routes/_app/prestaciones/index'
+import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app/prestaciones/$practitionerId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
-import { Route as AppTiposDeTurnoIndexRouteImport } from './routes/_app/tipos-de-turno/index'
-import { Route as AppTiposDeTurnoPractitionerIdRouteImport } from './routes/_app/tipos-de-turno/$practitionerId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const AppRoute = AppRouteImport.update({
@@ -123,6 +123,17 @@ const AppPersonalMemberIdRoute = AppPersonalMemberIdRouteImport.update({
   path: '/personal/$memberId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPrestacionesIndexRoute = AppPrestacionesIndexRouteImport.update({
+  id: '/prestaciones/',
+  path: '/prestaciones/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPrestacionesPractitionerIdRoute =
+  AppPrestacionesPractitionerIdRouteImport.update({
+    id: '/prestaciones/$practitionerId',
+    path: '/prestaciones/$practitionerId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSedesIndexRoute = AppSedesIndexRouteImport.update({
   id: '/sedes/',
   path: '/sedes/',
@@ -133,17 +144,6 @@ const AppSedesOfficeIdRoute = AppSedesOfficeIdRouteImport.update({
   path: '/sedes/$officeId',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTiposDeTurnoIndexRoute = AppTiposDeTurnoIndexRouteImport.update({
-  id: '/tipos-de-turno/',
-  path: '/tipos-de-turno/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTiposDeTurnoPractitionerIdRoute =
-  AppTiposDeTurnoPractitionerIdRouteImport.update({
-    id: '/tipos-de-turno/$practitionerId',
-    path: '/tipos-de-turno/$practitionerId',
-    getParentRoute: () => AppRoute,
-  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -159,8 +159,8 @@ export interface FileRoutesByFullPath {
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
-  '/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
@@ -171,8 +171,8 @@ export interface FileRoutesByFullPath {
   '/obras-sociales/': typeof AppObrasSocialesIndexRoute
   '/pacientes/': typeof AppPacientesIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
+  '/prestaciones/': typeof AppPrestacionesIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
-  '/tipos-de-turno/': typeof AppTiposDeTurnoIndexRoute
 }
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
@@ -183,8 +183,8 @@ export interface FileRoutesByTo {
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
-  '/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
@@ -195,8 +195,8 @@ export interface FileRoutesByTo {
   '/obras-sociales': typeof AppObrasSocialesIndexRoute
   '/pacientes': typeof AppPacientesIndexRoute
   '/personal': typeof AppPersonalIndexRoute
+  '/prestaciones': typeof AppPrestacionesIndexRoute
   '/sedes': typeof AppSedesIndexRoute
-  '/tipos-de-turno': typeof AppTiposDeTurnoIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,8 +209,8 @@ export interface FileRoutesById {
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/_app/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
-  '/_app/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
@@ -221,8 +221,8 @@ export interface FileRoutesById {
   '/_app/obras-sociales/': typeof AppObrasSocialesIndexRoute
   '/_app/pacientes/': typeof AppPacientesIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
+  '/_app/prestaciones/': typeof AppPrestacionesIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
-  '/_app/tipos-de-turno/': typeof AppTiposDeTurnoIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -235,8 +235,8 @@ export interface FileRouteTypes {
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
+    | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
-    | '/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
     | '/a-reprogramar/'
     | '/agenda/'
@@ -247,8 +247,8 @@ export interface FileRouteTypes {
     | '/obras-sociales/'
     | '/pacientes/'
     | '/personal/'
+    | '/prestaciones/'
     | '/sedes/'
-    | '/tipos-de-turno/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/ingresar'
@@ -259,8 +259,8 @@ export interface FileRouteTypes {
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
+    | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
-    | '/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
     | '/a-reprogramar'
     | '/agenda'
@@ -271,8 +271,8 @@ export interface FileRouteTypes {
     | '/obras-sociales'
     | '/pacientes'
     | '/personal'
+    | '/prestaciones'
     | '/sedes'
-    | '/tipos-de-turno'
   id:
     | '__root__'
     | '/_app'
@@ -284,8 +284,8 @@ export interface FileRouteTypes {
     | '/_app/horarios/$practitionerId'
     | '/_app/pacientes/$patientId'
     | '/_app/personal/$memberId'
+    | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
-    | '/_app/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
@@ -296,8 +296,8 @@ export interface FileRouteTypes {
     | '/_app/obras-sociales/'
     | '/_app/pacientes/'
     | '/_app/personal/'
+    | '/_app/prestaciones/'
     | '/_app/sedes/'
-    | '/_app/tipos-de-turno/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -434,6 +434,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPersonalMemberIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/prestaciones/': {
+      id: '/_app/prestaciones/'
+      path: '/prestaciones'
+      fullPath: '/prestaciones/'
+      preLoaderRoute: typeof AppPrestacionesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/prestaciones/$practitionerId': {
+      id: '/_app/prestaciones/$practitionerId'
+      path: '/prestaciones/$practitionerId'
+      fullPath: '/prestaciones/$practitionerId'
+      preLoaderRoute: typeof AppPrestacionesPractitionerIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sedes/': {
       id: '/_app/sedes/'
       path: '/sedes'
@@ -446,20 +460,6 @@ declare module '@tanstack/react-router' {
       path: '/sedes/$officeId'
       fullPath: '/sedes/$officeId'
       preLoaderRoute: typeof AppSedesOfficeIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/tipos-de-turno/': {
-      id: '/_app/tipos-de-turno/'
-      path: '/tipos-de-turno'
-      fullPath: '/tipos-de-turno/'
-      preLoaderRoute: typeof AppTiposDeTurnoIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/tipos-de-turno/$practitionerId': {
-      id: '/_app/tipos-de-turno/$practitionerId'
-      path: '/tipos-de-turno/$practitionerId'
-      fullPath: '/tipos-de-turno/$practitionerId'
-      preLoaderRoute: typeof AppTiposDeTurnoPractitionerIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -480,8 +480,8 @@ interface AppRouteChildren {
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppPacientesPatientIdRoute: typeof AppPacientesPatientIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
+  AppPrestacionesPractitionerIdRoute: typeof AppPrestacionesPractitionerIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
-  AppTiposDeTurnoPractitionerIdRoute: typeof AppTiposDeTurnoPractitionerIdRoute
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
@@ -491,8 +491,8 @@ interface AppRouteChildren {
   AppObrasSocialesIndexRoute: typeof AppObrasSocialesIndexRoute
   AppPacientesIndexRoute: typeof AppPacientesIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
+  AppPrestacionesIndexRoute: typeof AppPrestacionesIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
-  AppTiposDeTurnoIndexRoute: typeof AppTiposDeTurnoIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -503,8 +503,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppPacientesPatientIdRoute: AppPacientesPatientIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
+  AppPrestacionesPractitionerIdRoute: AppPrestacionesPractitionerIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
-  AppTiposDeTurnoPractitionerIdRoute: AppTiposDeTurnoPractitionerIdRoute,
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
@@ -514,8 +514,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppObrasSocialesIndexRoute: AppObrasSocialesIndexRoute,
   AppPacientesIndexRoute: AppPacientesIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,
+  AppPrestacionesIndexRoute: AppPrestacionesIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
-  AppTiposDeTurnoIndexRoute: AppTiposDeTurnoIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

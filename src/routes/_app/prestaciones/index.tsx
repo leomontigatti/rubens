@@ -2,17 +2,17 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
-import { getAppointmentTypePractitioners } from "#/server/appointment-types.functions.ts";
+import { getMedicalServicePractitioners } from "#/server/medical-services.functions.ts";
 
-import { refusalMessages } from "#/routes/_app/tipos-de-turno/-shared.ts";
+import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
 
-export const Route = createFileRoute("/_app/tipos-de-turno/")({
-  head: () => ({ meta: [{ title: "Tipos de turno · Rubens" }] }),
-  loader: () => getAppointmentTypePractitioners(),
-  component: AppointmentTypePractitioners,
+export const Route = createFileRoute("/_app/prestaciones/")({
+  head: () => ({ meta: [{ title: "Prestaciones · Rubens" }] }),
+  loader: () => getMedicalServicePractitioners(),
+  component: MedicalServicePractitioners,
 });
 
-function AppointmentTypePractitioners() {
+function MedicalServicePractitioners() {
   const result = Route.useLoaderData();
 
   if (!result.ok) {
@@ -21,7 +21,7 @@ function AppointmentTypePractitioners() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Tipos de turno</h1>
+      <h1 className="text-2xl font-semibold">Prestaciones</h1>
       {result.practitioners.length === 0 ? (
         <p className="text-muted-foreground">Todavía no hay profesionales.</p>
       ) : (
@@ -31,7 +31,7 @@ function AppointmentTypePractitioners() {
               <Card>
                 <CardContent>
                   <Link
-                    to="/tipos-de-turno/$practitionerId"
+                    to="/prestaciones/$practitionerId"
                     params={{ practitionerId: practitioner.id }}
                     className="font-medium underline-offset-4 hover:underline"
                   >

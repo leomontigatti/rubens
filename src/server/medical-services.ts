@@ -1,35 +1,35 @@
 import { and, asc, eq } from "drizzle-orm";
 
-import { appointmentType } from "#/db/schema/index.ts";
+import { medicalService } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import {
-  appointmentTypeActiveChangeSchema,
-  appointmentTypeInputSchema,
-  appointmentTypeUpdateSchema,
-} from "#/lib/appointment-types.ts";
+  medicalServiceActiveChangeSchema,
+  medicalServiceInputSchema,
+  medicalServiceUpdateSchema,
+} from "#/lib/medical-services.ts";
 import type {
-  AppointmentTypeActiveChange,
-  AppointmentTypeColor,
-  AppointmentTypeInput,
-  AppointmentTypeUpdate,
-} from "#/lib/appointment-types.ts";
+  MedicalServiceActiveChange,
+  MedicalServiceColor,
+  MedicalServiceInput,
+  MedicalServiceUpdate,
+} from "#/lib/medical-services.ts";
 
 import { changedFields, createdFields, recordAudit } from "#/server/audit.ts";
 import { findPractitioner } from "#/server/schedules.ts";
 
-// Practitioners' appointment types. Everyone reads them, since booking picks
+// Practitioners' medical services. Everyone reads them, since booking picks
 // from them; an admin changes anyone's and a practitioner their own. Nothing is
 // deleted: a deactivated type drops out of the booking list and stays on the
 // types screen. Every change is written to the audit log, about no patient.
 // `database` is for tests, which pass a transaction running as the app role.
 
-export interface AppointmentType {
+export interface MedicalService {
   id: string;
   name: string;
   durationMinutes: number;
-  color: AppointmentTypeColor;
+  color: MedicalServiceColor;
   active: boolean;
 }
 
@@ -47,33 +47,33 @@ function mayEditSome(actor: Actor): boolean {
   return actor.roles.includes("admin") || actor.roles.includes("practitioner");
 }
 
-const appointmentTypeColumns = {
-  id: appointmentType.id,
-  name: appointmentType.name,
-  durationMinutes: appointmentType.durationMinutes,
-  color: appointmentType.color,
-  active: appointmentType.active,
+const medicalServiceColumns = {
+  id: medicalService.id,
+  name: medicalService.name,
+  durationMinutes: medicalService.durationMinutes,
+  color: medicalService.color,
+  active: medicalService.active,
 };
 
-export interface AppointmentTypeListOptions {
+export interface MedicalServiceListOptions {
   practitionerId: string;
   /** The types screen shows deactivated types; booking does not. */
   includeInactive: boolean;
 }
 
 /** A practitioner's types, by name, and whether the actor may change them. */
-export async function listAppointmentTypes(
+export async function listMedicalServices(
   actor: Actor,
-  options: AppointmentTypeListOptions,
+  options: MedicalServiceListOptions,
   database?: AnyDatabase,
 ): Promise<
   Result<{
     practitioner: { id: string; displayName: string; canEdit: boolean; active: boolean };
-    appointmentTypes: AppointmentType[];
+    medicalServices: MedicalService[];
     canEdit: boolean;
   }>
 > {
-  const parsed = appointmentTypeInputSchema.shape.practitionerId.safeParse(options.practitionerId);
+  const parsed = medicalServiceInputSchema.shape.practitionerId.safeParse(options.practitionerId);
   if (!parsed.success) {
     return notFound;
   }
@@ -85,15 +85,15 @@ export async function listAppointmentTypes(
         return notFound;
       }
       const rows = await tx
-        .select(appointmentTypeColumns)
-        .from(appointmentType)
+        .select(medicalServiceColumns)
+        .from(medicalService)
         .where(
           and(
-            eq(appointmentType.practitionerId, found.id),
-            options.includeInactive ? undefined : eq(appointmentType.active, true),
+            eq(medicalService.practitionerId, found.id),
+            options.includeInactive ? undefined : eq(medicalService.active, true),
           ),
         )
-        .orderBy(asc(appointmentType.name));
+        .orderBy(asc(medicalService.name));
       return {
         ok: true as const,
         practitioner: {
@@ -102,7 +102,7 @@ export async function listAppointmentTypes(
           canEdit: found.canEdit,
           active: found.active,
         },
-        appointmentTypes: rows,
+        medicalServices: rows,
         canEdit: found.canEdit && found.active,
       };
     },
@@ -110,15 +110,15 @@ export async function listAppointmentTypes(
   );
 }
 
-export async function createAppointmentType(
+export async function createMedicalService(
   actor: Actor,
-  input: AppointmentTypeInput,
+  input: MedicalServiceInput,
   database?: AnyDatabase,
-): Promise<Result<{ appointmentType: AppointmentType }>> {
+): Promise<Result<{ medicalService: MedicalService }>> {
   if (!mayEditSome(actor)) {
     return forbidden;
   }
-  const parsed = appointmentTypeInputSchema.safeParse(input);
+  const parsed = medicalServiceInputSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
@@ -136,43 +136,43 @@ export async function createAppointmentType(
         return practitionerInactive;
       }
       const [created] = await tx
-        .insert(appointmentType)
+        .insert(medicalService)
         .values({ ...parsed.data, organizationId: actor.organizationId })
-        .returning(appointmentTypeColumns);
+        .returning(medicalServiceColumns);
       await recordAudit(tx, actor, {
         action: "create",
-        entityType: "appointmentType",
+        entityType: "medicalService",
         entityId: created!.id,
         patientId: null,
         before: null,
         after: createdFields(parsed.data),
       });
-      return { ok: true as const, appointmentType: created! };
+      return { ok: true as const, medicalService: created! };
     },
     database,
   );
 }
 
-export async function updateAppointmentType(
+export async function updateMedicalService(
   actor: Actor,
-  input: AppointmentTypeUpdate,
+  input: MedicalServiceUpdate,
   database?: AnyDatabase,
-): Promise<Result<{ appointmentType: AppointmentType }>> {
+): Promise<Result<{ medicalService: MedicalService }>> {
   if (!mayEditSome(actor)) {
     return forbidden;
   }
-  const parsed = appointmentTypeUpdateSchema.safeParse(input);
+  const parsed = medicalServiceUpdateSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { appointmentTypeId, ...fields } = parsed.data;
+  const { medicalServiceId, ...fields } = parsed.data;
   return withTenant(
     actor,
     async (tx) => {
       const [current] = await tx
-        .select({ ...appointmentTypeColumns, practitionerId: appointmentType.practitionerId })
-        .from(appointmentType)
-        .where(eq(appointmentType.id, appointmentTypeId))
+        .select({ ...medicalServiceColumns, practitionerId: medicalService.practitionerId })
+        .from(medicalService)
+        .where(eq(medicalService.id, medicalServiceId))
         .for("update");
       if (!current) {
         return notFound;
@@ -182,35 +182,35 @@ export async function updateAppointmentType(
         return forbidden;
       }
       const [updated] = await tx
-        .update(appointmentType)
+        .update(medicalService)
         .set(fields)
-        .where(eq(appointmentType.id, appointmentTypeId))
-        .returning(appointmentTypeColumns);
+        .where(eq(medicalService.id, medicalServiceId))
+        .returning(medicalServiceColumns);
       const changed = changedFields(current, fields);
       if (changed) {
         await recordAudit(tx, actor, {
           action: "update",
-          entityType: "appointmentType",
-          entityId: appointmentTypeId,
+          entityType: "medicalService",
+          entityId: medicalServiceId,
           patientId: null,
           ...changed,
         });
       }
-      return { ok: true as const, appointmentType: updated! };
+      return { ok: true as const, medicalService: updated! };
     },
     database,
   );
 }
 
-export async function setAppointmentTypeActive(
+export async function setMedicalServiceActive(
   actor: Actor,
-  input: AppointmentTypeActiveChange,
+  input: MedicalServiceActiveChange,
   database?: AnyDatabase,
 ): Promise<Result<object>> {
   if (!mayEditSome(actor)) {
     return forbidden;
   }
-  const parsed = appointmentTypeActiveChangeSchema.safeParse(input);
+  const parsed = medicalServiceActiveChangeSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
@@ -219,9 +219,9 @@ export async function setAppointmentTypeActive(
     actor,
     async (tx) => {
       const [current] = await tx
-        .select({ active: appointmentType.active, practitionerId: appointmentType.practitionerId })
-        .from(appointmentType)
-        .where(eq(appointmentType.id, id))
+        .select({ active: medicalService.active, practitionerId: medicalService.practitionerId })
+        .from(medicalService)
+        .where(eq(medicalService.id, id))
         .for("update");
       if (!current) {
         return notFound;
@@ -233,10 +233,10 @@ export async function setAppointmentTypeActive(
       if (current.active === active) {
         return { ok: true as const };
       }
-      await tx.update(appointmentType).set({ active }).where(eq(appointmentType.id, id));
+      await tx.update(medicalService).set({ active }).where(eq(medicalService.id, id));
       await recordAudit(tx, actor, {
         action: active ? "reactivate" : "deactivate",
-        entityType: "appointmentType",
+        entityType: "medicalService",
         entityId: id,
         patientId: null,
         before: { active: !active },

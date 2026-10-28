@@ -11,7 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import { appointmentTypeColors } from "#/lib/appointment-types.ts";
+import { medicalServiceColors } from "#/lib/medical-services.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 
 import { organization } from "#/db/schema/auth.ts";
@@ -23,11 +23,11 @@ import { practitioner } from "#/db/schema/staff.ts";
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migrations (raw SQL, 0012 and 0013), as for every table with that column.
 
-export const appointmentTypeColor = rubens.enum("appointment_type_color", appointmentTypeColors);
+export const medicalServiceColor = rubens.enum("medical_service_color", medicalServiceColors);
 
-/** A kind of visit a practitioner offers (ui: "Tipo de turno"). */
-export const appointmentType = rubens.table(
-  "appointment_type",
+/** A kind of visit a practitioner offers (ui: "Prestación"). */
+export const medicalService = rubens.table(
+  "medical_service",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     organizationId: text("organization_id")
@@ -36,26 +36,26 @@ export const appointmentType = rubens.table(
     practitionerId: uuid("practitioner_id").notNull(),
     name: text("name").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
-    color: appointmentTypeColor("color").notNull(),
+    color: medicalServiceColor("color").notNull(),
     // A type in use is deactivated, never deleted: it drops out of booking and
     // stays on its appointments.
     active: boolean("active").notNull().default(true),
     ...timestamps,
   },
   (table) => [
-    index("appointment_type_practitioner_id_idx").on(table.practitionerId),
+    index("medical_service_practitioner_id_idx").on(table.practitionerId),
     // The target of the appointment's composite key.
     unique().on(table.id, table.organizationId),
     // A key check bypasses row-level security, so the practitioner is matched
     // with the organization too.
     foreignKey({
-      name: "appointment_type_practitioner_fk",
+      name: "medical_service_practitioner_fk",
       columns: [table.practitionerId, table.organizationId],
       foreignColumns: [practitioner.id, practitioner.organizationId],
     }),
     // The bounds of `durationMinutesSchema`.
     check(
-      "appointment_type_duration_minutes_check",
+      "medical_service_duration_minutes_check",
       sql`${table.durationMinutes} between 1 and 720`,
     ),
   ],
@@ -80,7 +80,7 @@ export const appointment = rubens.table(
       .references(() => organization.id),
     patientId: uuid("patient_id").notNull(),
     practitionerId: uuid("practitioner_id").notNull(),
-    appointmentTypeId: uuid("appointment_type_id").notNull(),
+    medicalServiceId: uuid("medical_service_id").notNull(),
     roomId: uuid("room_id").notNull(),
     during: timeRange("during").notNull(),
     status: appointmentStatus("status").notNull().default("booked"),
@@ -112,9 +112,9 @@ export const appointment = rubens.table(
       foreignColumns: [practitioner.id, practitioner.organizationId],
     }),
     foreignKey({
-      name: "appointment_type_fk",
-      columns: [table.appointmentTypeId, table.organizationId],
-      foreignColumns: [appointmentType.id, appointmentType.organizationId],
+      name: "appointment_medical_service_fk",
+      columns: [table.medicalServiceId, table.organizationId],
+      foreignColumns: [medicalService.id, medicalService.organizationId],
     }),
     foreignKey({
       name: "appointment_room_fk",

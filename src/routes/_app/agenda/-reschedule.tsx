@@ -28,7 +28,7 @@ const refusalMessages = {
   notFound: "Solo se reprograma un turno reservado o confirmado.",
   practitionerInactive: "Ese profesional está inactivo.",
   patientInactive: "Ese paciente está inactivo.",
-  appointmentTypeInactive: "Ese tipo de turno está desactivado.",
+  medicalServiceInactive: "Esa prestación está desactivada.",
   notFree: "Ese horario ya no está libre para esa duración. Elegí otro.",
   roomRequired: "Ese horario está fuera de los horarios del profesional.",
   timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",

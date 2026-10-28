@@ -2192,8 +2192,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "appointment_type_id": {
-          "name": "appointment_type_id",
+        "medical_service_id": {
+          "name": "medical_service_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -2358,13 +2358,13 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "appointment_type_fk": {
-          "name": "appointment_type_fk",
+        "appointment_medical_service_fk": {
+          "name": "appointment_medical_service_fk",
           "tableFrom": "appointment",
-          "tableTo": "appointment_type",
+          "tableTo": "medical_service",
           "schemaTo": "rubens",
           "columnsFrom": [
-            "appointment_type_id",
+            "medical_service_id",
             "organization_id"
           ],
           "columnsTo": [
@@ -2410,8 +2410,8 @@
       },
       "isRLSEnabled": false
     },
-    "rubens.appointment_type": {
-      "name": "appointment_type",
+    "rubens.medical_service": {
+      "name": "medical_service",
       "schema": "rubens",
       "columns": {
         "id": {
@@ -2447,7 +2447,7 @@
         },
         "color": {
           "name": "color",
-          "type": "appointment_type_color",
+          "type": "medical_service_color",
           "typeSchema": "rubens",
           "primaryKey": false,
           "notNull": true
@@ -2475,8 +2475,8 @@
         }
       },
       "indexes": {
-        "appointment_type_practitioner_id_idx": {
-          "name": "appointment_type_practitioner_id_idx",
+        "medical_service_practitioner_id_idx": {
+          "name": "medical_service_practitioner_id_idx",
           "columns": [
             {
               "expression": "practitioner_id",
@@ -2492,9 +2492,9 @@
         }
       },
       "foreignKeys": {
-        "appointment_type_organization_id_organization_id_fk": {
-          "name": "appointment_type_organization_id_organization_id_fk",
-          "tableFrom": "appointment_type",
+        "medical_service_organization_id_organization_id_fk": {
+          "name": "medical_service_organization_id_organization_id_fk",
+          "tableFrom": "medical_service",
           "tableTo": "organization",
           "schemaTo": "rubens",
           "columnsFrom": [
@@ -2506,9 +2506,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "appointment_type_practitioner_fk": {
-          "name": "appointment_type_practitioner_fk",
-          "tableFrom": "appointment_type",
+        "medical_service_practitioner_fk": {
+          "name": "medical_service_practitioner_fk",
+          "tableFrom": "medical_service",
           "tableTo": "practitioner",
           "schemaTo": "rubens",
           "columnsFrom": [
@@ -2525,8 +2525,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "appointment_type_id_organization_id_unique": {
-          "name": "appointment_type_id_organization_id_unique",
+        "medical_service_id_organization_id_unique": {
+          "name": "medical_service_id_organization_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id",
@@ -2536,9 +2536,9 @@
       },
       "policies": {},
       "checkConstraints": {
-        "appointment_type_duration_minutes_check": {
-          "name": "appointment_type_duration_minutes_check",
-          "value": "\"rubens\".\"appointment_type\".\"duration_minutes\" between 1 and 720"
+        "medical_service_duration_minutes_check": {
+          "name": "medical_service_duration_minutes_check",
+          "value": "\"rubens\".\"medical_service\".\"duration_minutes\" between 1 and 720"
         }
       },
       "isRLSEnabled": false
@@ -2582,8 +2582,8 @@
         "cancelled"
       ]
     },
-    "rubens.appointment_type_color": {
-      "name": "appointment_type_color",
+    "rubens.medical_service_color": {
+      "name": "medical_service_color",
       "schema": "rubens",
       "values": [
         "color1",

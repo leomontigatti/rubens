@@ -157,11 +157,11 @@ function AppShell() {
             Horarios
           </Link>
           <Link
-            to="/tipos-de-turno"
+            to="/prestaciones"
             className="text-muted-foreground hover:text-foreground text-sm"
             activeProps={{ className: "text-foreground" }}
           >
-            Tipos de turno
+            Prestaciones
           </Link>
           <Link
             to="/disponibilidad"

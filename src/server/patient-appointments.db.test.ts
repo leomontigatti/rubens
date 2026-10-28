@@ -46,7 +46,7 @@ async function book(practitionerId: string, start: string) {
       {
         patientId: maria.id,
         practitionerId,
-        appointmentTypeId: types.get(practitionerId)!,
+        medicalServiceId: types.get(practitionerId)!,
         start: new Date(start),
         durationMinutes: 30,
         confirmWarnings: true,

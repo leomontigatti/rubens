@@ -55,7 +55,7 @@ export type OverbookingResult =
         | "notFound"
         | "practitionerInactive"
         | "patientInactive"
-        | "appointmentTypeInactive"
+        | "medicalServiceInactive"
         | "roomRequired"
         | "timeOff"
         | "closed";
@@ -229,7 +229,7 @@ export async function bookOverbooking(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { patientId, practitionerId, appointmentTypeId, start, durationMinutes, receptionNote } =
+  const { patientId, practitionerId, medicalServiceId, start, durationMinutes, receptionNote } =
     parsed.data;
   const span = { start, end: new Date(+start + durationMinutes * 60_000) };
   return withTenant(
@@ -239,7 +239,7 @@ export async function bookOverbooking(
       if (!found.ok) {
         return found;
       }
-      const refused = await checkTypeAndPatient(tx, found.id, appointmentTypeId, patientId);
+      const refused = await checkTypeAndPatient(tx, found.id, medicalServiceId, patientId);
       if (refused) {
         return refused;
       }
@@ -259,7 +259,7 @@ export async function bookOverbooking(
       const values = {
         patientId,
         practitionerId: found.id,
-        appointmentTypeId,
+        medicalServiceId,
         roomId,
         overbooking: true,
         receptionNote,

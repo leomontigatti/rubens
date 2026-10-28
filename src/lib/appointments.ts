@@ -44,7 +44,7 @@ const receptionNoteSchema = z
 export const bookingInputSchema = z.object({
   patientId: z.uuid(),
   practitionerId: z.uuid(),
-  appointmentTypeId: z.uuid(),
+  medicalServiceId: z.uuid(),
   start: z.coerce.date(),
   durationMinutes: durationMinutesSchema,
   receptionNote: receptionNoteSchema,

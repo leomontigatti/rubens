@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, ne } from "drizzle-orm";
 
 import {
   appointment,
-  appointmentType,
+  medicalService,
   member,
   office,
   patient,
@@ -18,7 +18,7 @@ import { actsForEveryone, parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import { decideUndo, statusActionsFor } from "#/lib/appointment-statuses.ts";
 import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
-import type { AppointmentTypeColor } from "#/lib/appointment-types.ts";
+import type { MedicalServiceColor } from "#/lib/medical-services.ts";
 import {
   activeAppointmentStatuses,
   bookingInputSchema,
@@ -57,7 +57,7 @@ type Refusal =
   | "notFound"
   | "practitionerInactive"
   | "patientInactive"
-  | "appointmentTypeInactive"
+  | "medicalServiceInactive"
   | "notFree";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
@@ -231,19 +231,19 @@ export async function findBookablePractitioner(
 export async function checkTypeAndPatient(
   tx: Transaction,
   practitionerId: string,
-  appointmentTypeId: string,
+  medicalServiceId: string,
   patientId: string,
 ): Promise<{
   ok: false;
-  reason: "notFound" | "appointmentTypeInactive" | "patientInactive";
+  reason: "notFound" | "medicalServiceInactive" | "patientInactive";
 } | null> {
   const [type] = await tx
-    .select({ active: appointmentType.active })
-    .from(appointmentType)
+    .select({ active: medicalService.active })
+    .from(medicalService)
     .where(
       and(
-        eq(appointmentType.id, appointmentTypeId),
-        eq(appointmentType.practitionerId, practitionerId),
+        eq(medicalService.id, medicalServiceId),
+        eq(medicalService.practitionerId, practitionerId),
       ),
     );
   const [patientRow] = await tx
@@ -254,7 +254,7 @@ export async function checkTypeAndPatient(
     return notFound;
   }
   if (!type.active) {
-    return { ok: false, reason: "appointmentTypeInactive" };
+    return { ok: false, reason: "medicalServiceInactive" };
   }
   return patientRow.active ? null : { ok: false, reason: "patientInactive" };
 }
@@ -275,7 +275,7 @@ export async function bookAppointment(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { patientId, practitionerId, appointmentTypeId, start, durationMinutes, receptionNote } =
+  const { patientId, practitionerId, medicalServiceId, start, durationMinutes, receptionNote } =
     parsed.data;
   const span = { start, end: new Date(+start + durationMinutes * 60_000) };
   return withTenant(
@@ -285,7 +285,7 @@ export async function bookAppointment(
       if (!found.ok) {
         return found;
       }
-      const refused = await checkTypeAndPatient(tx, found.id, appointmentTypeId, patientId);
+      const refused = await checkTypeAndPatient(tx, found.id, medicalServiceId, patientId);
       if (refused) {
         return refused;
       }
@@ -311,7 +311,7 @@ export async function bookAppointment(
       const values = {
         patientId,
         practitionerId: found.id,
-        appointmentTypeId,
+        medicalServiceId,
         roomId: slot.roomId,
         during: span,
         receptionNote,
@@ -368,7 +368,7 @@ export interface DayAppointment {
   overbooking: boolean;
   patientName: string;
   typeName: string;
-  color: AppointmentTypeColor;
+  color: MedicalServiceColor;
   roomId: string;
   roomName: string;
   /** The office of the room, whose rooms a move can pick from. */
@@ -405,8 +405,8 @@ const dayAppointmentColumns = {
   firstName: patient.firstName,
   lastName: patient.lastName,
   chosenName: patient.chosenName,
-  typeName: appointmentType.name,
-  color: appointmentType.color,
+  typeName: medicalService.name,
+  color: medicalService.color,
   roomId: appointment.roomId,
   roomName: room.name,
   officeId: office.id,
@@ -422,7 +422,7 @@ export function selectDayAppointments(tx: Transaction) {
     .innerJoin(room, eq(room.id, appointment.roomId))
     .innerJoin(office, eq(office.id, room.officeId))
     .innerJoin(patient, eq(patient.id, appointment.patientId))
-    .innerJoin(appointmentType, eq(appointmentType.id, appointment.appointmentTypeId));
+    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId));
 }
 
 type DayAppointmentRow = Awaited<ReturnType<typeof selectDayAppointments>>[number];

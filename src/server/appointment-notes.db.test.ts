@@ -34,7 +34,7 @@ beforeEach(async () => {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        appointmentTypeId: type.id,
+        medicalServiceId: type.id,
         start: new Date("2099-01-05T12:00:00Z"),
         durationMinutes: 30,
         receptionNote: "Trae estudios",

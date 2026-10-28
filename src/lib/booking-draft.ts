@@ -47,7 +47,7 @@ export type BookingEvent =
   | { type: "practitionerChosen"; practitionerId: string }
   | {
       type: "typeChosen";
-      appointmentType: { id: string; durationMinutes: number } | null | undefined;
+      medicalService: { id: string; durationMinutes: number } | null | undefined;
     }
   | { type: "durationChanged"; durationMinutes: number }
   | { type: "startPicked"; start: PickedStart | null }
@@ -98,8 +98,8 @@ export function bookingReducer(draft: BookingDraft, event: BookingEvent): Bookin
       return {
         ...draft,
         ...answered,
-        type: event.appointmentType ?? null,
-        durationMinutes: event.appointmentType?.durationMinutes ?? null,
+        type: event.medicalService ?? null,
+        durationMinutes: event.medicalService?.durationMinutes ?? null,
       };
     case "durationChanged":
       return { ...draft, ...answered, durationMinutes: event.durationMinutes };
@@ -121,7 +121,7 @@ function partialInputOf(draft: BookingDraft) {
   return {
     patientId: draft.patientId,
     practitionerId: draft.practitionerId,
-    appointmentTypeId: draft.type?.id,
+    medicalServiceId: draft.type?.id,
     durationMinutes: draft.durationMinutes,
     receptionNote: draft.receptionNote,
   };
