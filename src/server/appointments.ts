@@ -230,7 +230,7 @@ export async function findBookablePractitioner(
 }
 
 /** Why the medical service, one of the practitioner's, or the patient cannot be booked; `null` when both can. */
-export async function checkTypeAndPatient(
+export async function checkServiceAndPatient(
   tx: Transaction,
   practitionerId: string,
   medicalServiceId: string,
@@ -287,7 +287,7 @@ export async function bookAppointment(
       if (!found.ok) {
         return found;
       }
-      const refused = await checkTypeAndPatient(tx, found.id, medicalServiceId, patientId);
+      const refused = await checkServiceAndPatient(tx, found.id, medicalServiceId, patientId);
       if (refused) {
         return refused;
       }

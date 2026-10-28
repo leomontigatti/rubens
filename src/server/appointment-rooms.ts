@@ -16,7 +16,7 @@ import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import {
   booksForSome,
-  checkTypeAndPatient,
+  checkServiceAndPatient,
   findBookablePractitioner,
   findPatientWarnings,
   lockAppointment,
@@ -239,7 +239,7 @@ export async function bookOverbooking(
       if (!found.ok) {
         return found;
       }
-      const refused = await checkTypeAndPatient(tx, found.id, medicalServiceId, patientId);
+      const refused = await checkServiceAndPatient(tx, found.id, medicalServiceId, patientId);
       if (refused) {
         return refused;
       }

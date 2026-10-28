@@ -67,7 +67,7 @@ async function created(actor: Actor = world.admin, input: MedicalServiceInput = 
   return result.medicalService;
 }
 
-async function typesOf(actor: Actor, includeInactive: boolean, id = practitionerId) {
+async function servicesOf(actor: Actor, includeInactive: boolean, id = practitionerId) {
   const result = await asAppRole(db, (tx) =>
     listMedicalServices(actor, { practitionerId: id, includeInactive }, tx),
   );
@@ -103,34 +103,34 @@ describe("managing medical services", () => {
       ok: true,
       medicalService: { name: "Primera vez", durationMinutes: 45, color: "color2", active: true },
     });
-    const { medicalServices } = await typesOf(receptionist, false);
+    const { medicalServices } = await servicesOf(receptionist, false);
     expect(medicalServices.map((service) => service.name)).toEqual(["Control", "Primera vez"]);
   });
 
   it("lets a practitioner manage their own medical services and no one else's", async () => {
     const own = await create(practitioner);
     const others = await create(practitioner, firstVisit({ practitionerId: otherPractitionerId }));
-    const othersType = await created(
+    const othersService = await created(
       world.admin,
       firstVisit({ practitionerId: otherPractitionerId }),
     );
     const editOthers = await asAppRole(db, (tx) =>
       updateMedicalService(
         practitioner,
-        { medicalServiceId: othersType.id, name: "Otro", durationMinutes: 30, color: "color1" },
+        { medicalServiceId: othersService.id, name: "Otro", durationMinutes: 30, color: "color1" },
         tx,
       ),
     );
     const deactivateOthers = await asAppRole(db, (tx) =>
-      setMedicalServiceActive(practitioner, { id: othersType.id, active: false }, tx),
+      setMedicalServiceActive(practitioner, { id: othersService.id, active: false }, tx),
     );
 
     expect(own.ok).toBe(true);
     expect(others).toEqual({ ok: false, reason: "forbidden" });
     expect(editOthers).toEqual({ ok: false, reason: "forbidden" });
     expect(deactivateOthers).toEqual({ ok: false, reason: "forbidden" });
-    expect((await typesOf(practitioner, true)).canEdit).toBe(true);
-    expect((await typesOf(practitioner, true, otherPractitionerId)).canEdit).toBe(false);
+    expect((await servicesOf(practitioner, true)).canEdit).toBe(true);
+    expect((await servicesOf(practitioner, true, otherPractitionerId)).canEdit).toBe(false);
   });
 
   it("refuses a receptionist's changes, with a structured result", async () => {
@@ -142,7 +142,7 @@ describe("managing medical services", () => {
         setMedicalServiceActive(receptionist, { id: service.id, active: false }, tx),
       ),
     ).toEqual({ ok: false, reason: "forbidden" });
-    expect((await typesOf(receptionist, true)).canEdit).toBe(false);
+    expect((await servicesOf(receptionist, true)).canEdit).toBe(false);
   });
 
   it("saves the longest duration, which the database's check allows too", async () => {
@@ -178,8 +178,8 @@ describe("deactivating a medical service", () => {
     );
 
     expect(result).toEqual({ ok: true });
-    expect((await typesOf(receptionist, false)).medicalServices).toEqual([]);
-    expect((await typesOf(world.admin, true)).medicalServices).toMatchObject([
+    expect((await servicesOf(receptionist, false)).medicalServices).toEqual([]);
+    expect((await servicesOf(world.admin, true)).medicalServices).toMatchObject([
       { id: service.id, active: false },
     ]);
   });
@@ -193,7 +193,7 @@ describe("deactivating a medical service", () => {
       setMedicalServiceActive(world.admin, { id: service.id, active: true }, tx),
     );
 
-    expect((await typesOf(receptionist, false)).medicalServices).toMatchObject([
+    expect((await servicesOf(receptionist, false)).medicalServices).toMatchObject([
       { id: service.id, active: true },
     ]);
   });

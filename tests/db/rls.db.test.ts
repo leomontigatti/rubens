@@ -78,7 +78,7 @@ beforeEach(async () => {
       endTime: "13:00",
       firstDate: "2026-01-05",
     });
-    const [createdType] = await db
+    const [createdService] = await db
       .insert(medicalService)
       .values({
         organizationId,
@@ -134,7 +134,7 @@ beforeEach(async () => {
       organizationId,
       patientId: createdPatient!.id,
       practitionerId: createdPractitioner!.id,
-      medicalServiceId: createdType!.id,
+      medicalServiceId: createdService!.id,
       roomId: createdRoom!.id,
       during: appointmentDuring,
       createdBy: userId,
