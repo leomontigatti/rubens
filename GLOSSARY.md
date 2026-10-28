@@ -102,6 +102,25 @@ A person the `practitioner`s of an `organization` see, in one registry shared by
 the whole organization. A patient is deactivated, never deleted.
 _Avoid_: client, customer, cliente, user
 
+**`chosenName`** — ui: "Nombre autopercibido"
+The name a `patient` chooses to be called by, shown in place of the legal name
+wherever the app names them.
+_Avoid_: nickname, alias, preferred name
+
+**`incompletePatient`** — ui: "Datos incompletos"
+A `patient` registered with only a name and a phone, missing at least their birth
+date, to be completed at the first visit.
+_Avoid_: draft patient, pending patient, quick patient
+
+**`coverage`** — ui: "Cobertura"
+A `patient`'s membership of an `insurer`: the insurer, a plan and a member number.
+A patient with none is private ("Particular").
+_Avoid_: insurance, obra social, prepaga, plan
+
+**`insurer`** — ui: "Obra social / prepaga"
+An obra social or prepaga on the `organization`'s list, which an admin keeps.
+_Avoid_: insurance company, payer, provider
+
 **`guardian`** — ui: "Responsable"
 An adult responsible for a `patient`, usually a minor's parent. A guardian can be
 the patient's contact for messages and signs their `consentForm`s.
@@ -155,6 +174,11 @@ _Avoid_: note, nota, progress note, entry
 A signed correction or addition to a signed `clinicalNote`, shown next to it. The
 original stays as it was.
 _Avoid_: edit, version, amendment
+
+**`medicalAlert`** — ui: "Alerta médica"
+An allergy or condition a `practitioner` must know before treating a `patient`,
+such as an allergy to penicillin, shown at the top of the `clinicalRecord`.
+_Avoid_: allergy, warning, flag
 
 **`attachment`** — ui: "Adjunto"
 A file in a `clinicalRecord`, such as an X-ray, a photo or a scanned
