@@ -92,7 +92,10 @@ function useSessionGuard(userId: string) {
   }, []);
 }
 
-/** The menu's link to the "to reschedule" list, with how many it holds; none when refused. */
+/**
+ * The menu's link to the "to reschedule" list, with how many it holds in red
+ * when any; no link when refused.
+ */
 function ToRescheduleLink({ count }: { count: number | null }) {
   if (count === null) {
     return null;
@@ -104,7 +107,7 @@ function ToRescheduleLink({ count }: { count: number | null }) {
       activeProps={{ className: "text-foreground" }}
     >
       A reprogramar
-      <Badge variant={count > 0 ? "destructive" : "secondary"}>{count}</Badge>
+      {count > 0 && <Badge variant="destructive">{count}</Badge>}
     </Link>
   );
 }
