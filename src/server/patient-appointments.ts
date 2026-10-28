@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import * as z from "zod";
 
 import {
@@ -11,10 +11,11 @@ import {
   room,
 } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
-import type { AnyDatabase } from "#/db/tenant.ts";
+import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
+import type { AuditValues } from "#/server/audit.ts";
 
 import { booksForSome } from "#/server/appointments.ts";
 
@@ -114,4 +115,69 @@ export async function listPatientAppointments(
     },
     database,
   );
+}
+
+// The ids an appointment's audit entry may hold, each shown by its name.
+const namedFields = ["practitionerId", "medicalServiceId", "roomId"] as const;
+
+/**
+ * What the change history needs to show appointment entries without ids:
+ * each appointment's office zone, and the names of the practitioners, medical
+ * services and rooms the entries point at, by id.
+ */
+export async function appointmentHistoryContext(
+  tx: Transaction,
+  entries: readonly {
+    entityType: string;
+    entityId: string;
+    before: AuditValues | null;
+    after: AuditValues | null;
+  }[],
+): Promise<{ timeZones: Map<string, string>; names: Record<string, string> }> {
+  const appointmentEntries = entries.filter((entry) => entry.entityType === "appointment");
+  const idsOf = (field: (typeof namedFields)[number]) => [
+    ...new Set(
+      appointmentEntries
+        .flatMap((entry) => [entry.before?.[field], entry.after?.[field]])
+        .filter((value): value is string => typeof value === "string"),
+    ),
+  ];
+  const appointmentIds = [...new Set(appointmentEntries.map((entry) => entry.entityId))];
+  const zones = await selectWhereIn(appointmentIds, (ids) =>
+    tx
+      .select({ id: appointment.id, timeZone: office.timeZone })
+      .from(appointment)
+      .innerJoin(room, eq(room.id, appointment.roomId))
+      .innerJoin(office, eq(office.id, room.officeId))
+      .where(inArray(appointment.id, ids)),
+  );
+  const practitioners = await selectWhereIn(idsOf("practitionerId"), (ids) =>
+    tx
+      .select({ id: practitioner.id, name: practitioner.displayName })
+      .from(practitioner)
+      .where(inArray(practitioner.id, ids)),
+  );
+  const services = await selectWhereIn(idsOf("medicalServiceId"), (ids) =>
+    tx
+      .select({ id: medicalService.id, name: medicalService.name })
+      .from(medicalService)
+      .where(inArray(medicalService.id, ids)),
+  );
+  const rooms = await selectWhereIn(idsOf("roomId"), (ids) =>
+    tx.select({ id: room.id, name: room.name }).from(room).where(inArray(room.id, ids)),
+  );
+  return {
+    timeZones: new Map(zones.map((row) => [row.id, row.timeZone])),
+    names: Object.fromEntries(
+      [...practitioners, ...services, ...rooms].map((row) => [row.id, row.name]),
+    ),
+  };
+}
+
+/** The rows `select` finds for `ids`, with no query when there are none. */
+async function selectWhereIn<T>(
+  ids: string[],
+  select: (ids: string[]) => Promise<T[]>,
+): Promise<T[]> {
+  return ids.length === 0 ? [] : select(ids);
 }

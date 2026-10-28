@@ -114,7 +114,7 @@ function PatientScreen() {
       <GuardianSection patient={patient} guardians={guardians} />
       <WhatsappSection patient={patient} />
       <AppointmentsSection appointments={appointments} />
-      {history?.ok && <HistorySection entries={history.entries} />}
+      {history?.ok && <HistorySection entries={history.entries} names={history.names} />}
     </div>
   );
 }
@@ -473,7 +473,8 @@ const entityLabels: Record<string, string> = {
   guardian: " de responsable",
 };
 
-function HistorySection({ entries }: { entries: HistoryEntry[] }) {
+function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, string> }) {
+  const { entries, names } = props;
   return (
     <Section title="Historial de cambios">
       <ol className="flex flex-col gap-4">
@@ -490,7 +491,7 @@ function HistorySection({ entries }: { entries: HistoryEntry[] }) {
               </span>
             </p>
             <ul className="text-muted-foreground text-sm">
-              {historyChanges(entry).map((change) => (
+              {historyChanges(entry, names).map((change) => (
                 <li key={change.field}>
                   {change.field}: {change.before} → {change.after}
                 </li>

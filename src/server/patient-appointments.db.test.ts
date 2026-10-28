@@ -8,6 +8,7 @@ import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { listPatientAppointments } from "#/server/patient-appointments.ts";
+import { getPatientHistory } from "#/server/patients.ts";
 import type { Actor } from "#/lib/access.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
@@ -106,5 +107,32 @@ describe("a patient's appointments", () => {
         listPatientAppointments(world.receptionist, { patientId: crypto.randomUUID() }, tx),
       ),
     ).toEqual({ ok: false, reason: "notFound" });
+  });
+});
+
+describe("an appointment in the patient's change history", () => {
+  it("comes with its office's zone and the names of its practitioner, medical service and room", async () => {
+    await book(world.juan.id, "2099-01-05T12:00:00Z");
+
+    const result = await asAppRole(db, (tx) =>
+      getPatientHistory(world.admin, { patientId: maria.id }, tx),
+    );
+
+    if (!result.ok) {
+      throw new Error(`getPatientHistory failed: ${result.reason}`);
+    }
+    const booking = result.entries.find((entry) => entry.entityType === "appointment");
+    expect(booking).toMatchObject({
+      timeZone: "America/Argentina/Buenos_Aires",
+      after: { start: "2099-01-05T12:00:00.000Z" },
+    });
+    expect(result.names).toEqual({
+      [world.juan.id]: "Juan Gómez",
+      [types.get(world.juan.id)!]: "Consulta",
+      [world.room.id]: "Consultorio 1",
+    });
+    expect(result.entries.find((entry) => entry.entityType === "patient")).toMatchObject({
+      timeZone: null,
+    });
   });
 });
