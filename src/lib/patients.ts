@@ -65,8 +65,9 @@ interface DocumentFields {
 }
 
 /**
- * A document is a type and a number together, or neither. A DNI is kept as its
- * digits, so "30.123.456" and "30123456" are the same document.
+ * A document is a type and a number together, or neither. A number is kept
+ * without separators and in capitals, so "30.123.456" and "30123456", or
+ * "aa 123.456" and "AA123456", are the same document; a DNI is only digits.
  */
 export function normalizeDocument<T extends DocumentFields>(
   fields: T,
@@ -76,15 +77,19 @@ export function normalizeDocument<T extends DocumentFields>(
     context.addIssue({ code: "custom", path: ["documentNumber"], message: "documentIncomplete" });
     return z.NEVER;
   }
-  if (fields.documentType === "dni" && fields.documentNumber !== null) {
-    const digits = fields.documentNumber.replace(/[.\s-]/g, "");
-    if (!/^\d{6,9}$/.test(digits)) {
-      context.addIssue({ code: "custom", path: ["documentNumber"], message: "invalidDni" });
-      return z.NEVER;
-    }
-    return { ...fields, documentNumber: digits };
+  if (fields.documentNumber === null) {
+    return fields;
   }
-  return fields;
+  const documentNumber = fields.documentNumber.replace(/[.\s-]/g, "").toUpperCase();
+  if (fields.documentType === "dni" && !/^\d{6,9}$/.test(documentNumber)) {
+    context.addIssue({ code: "custom", path: ["documentNumber"], message: "invalidDni" });
+    return z.NEVER;
+  }
+  if (documentNumber === "") {
+    context.addIssue({ code: "custom", path: ["documentNumber"], message: "documentIncomplete" });
+    return z.NEVER;
+  }
+  return { ...fields, documentNumber };
 }
 
 /**

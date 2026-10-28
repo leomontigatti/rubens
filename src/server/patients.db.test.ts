@@ -142,6 +142,30 @@ describe("registering in full", () => {
     expect(listed.ok && listed.patients.map((row) => row.firstName)).toEqual(["Juan"]);
   });
 
+  it("refuses a passport another patient has, whatever its case and separators", async () => {
+    await register(receptionist, {
+      ...complete,
+      documentType: "passport",
+      documentNumber: "aa 123.456",
+    });
+
+    const result = await asAppRole(db, (tx) =>
+      registerPatient(
+        receptionist,
+        {
+          firstName: "Otro",
+          lastName: "Paciente",
+          phone: "11 5555 1234",
+          documentType: "passport",
+          documentNumber: "AA123456",
+        },
+        tx,
+      ),
+    );
+
+    expect(result).toMatchObject({ ok: false, reason: "documentTaken" });
+  });
+
   it("accepts the same number as another type of document, and patients with no document", async () => {
     await register(receptionist, complete);
 
