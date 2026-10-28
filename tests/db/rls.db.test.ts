@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
+  appointmentType,
   auditLog,
   closure,
   coverage,
@@ -75,6 +76,13 @@ beforeEach(async () => {
       startTime: "09:00",
       endTime: "13:00",
       firstDate: "2026-01-05",
+    });
+    await db.insert(appointmentType).values({
+      organizationId,
+      practitionerId: createdPractitioner!.id,
+      name: "Primera consulta",
+      durationMinutes: 40,
+      color: "color1",
     });
     await db
       .insert(timeOff)
@@ -152,6 +160,7 @@ describe("row-level security on tenant tables", () => {
           insurers: await tenant.select().from(insurer),
           coverages: await tenant.select().from(coverage),
           guardians: await tenant.select().from(guardian),
+          appointmentTypes: await tenant.select().from(appointmentType),
         }),
         tx,
       ),
@@ -168,6 +177,7 @@ describe("row-level security on tenant tables", () => {
     expect(seen.insurers.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.coverages.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.guardians.map((row) => row.organizationId)).toEqual(["org-a"]);
+    expect(seen.appointmentTypes.map((row) => row.organizationId)).toEqual(["org-a"]);
   });
 
   it("shows nothing to the app role without a tenant setting", async () => {
@@ -184,6 +194,7 @@ describe("row-level security on tenant tables", () => {
         insurers: number;
         coverages: number;
         guardians: number;
+        appointmentTypes: number;
       }>(
         await tx.execute(sql`
           select
@@ -197,7 +208,8 @@ describe("row-level security on tenant tables", () => {
             (select count(*)::int from rubens.audit_log) as "auditLog",
             (select count(*)::int from rubens.insurer) as insurers,
             (select count(*)::int from rubens.coverage) as coverages,
-            (select count(*)::int from rubens.guardian) as guardians
+            (select count(*)::int from rubens.guardian) as guardians,
+            (select count(*)::int from rubens.appointment_type) as "appointmentTypes"
         `),
       ),
     );
@@ -214,6 +226,7 @@ describe("row-level security on tenant tables", () => {
       insurers: 0,
       coverages: 0,
       guardians: 0,
+      appointmentTypes: 0,
     });
   });
 
@@ -232,6 +245,8 @@ describe("row-level security on tenant tables", () => {
           await tenant.delete(closure);
           await tenant.update(room).set({ name: "Cambiado" });
           await tenant.delete(room);
+          await tenant.update(appointmentType).set({ name: "Cambiado" });
+          await tenant.delete(appointmentType);
           await tenant.update(practitioner).set({ displayName: "Cambiado" });
           await tenant.delete(practitioner);
           await tenant.update(patient).set({ firstName: "Cambiada" });
@@ -281,6 +296,10 @@ describe("row-level security on tenant tables", () => {
       (row) => row.organizationId === "org-b",
     );
     expect(guardiansB.map((row) => row.name)).toEqual(["Laura Paz"]);
+    const appointmentTypesB = (await db.select().from(appointmentType)).filter(
+      (row) => row.organizationId === "org-b",
+    );
+    expect(appointmentTypesB.map((row) => row.name)).toEqual(["Primera consulta"]);
   });
 
   it("refuses to write a row into another organization", async () => {
