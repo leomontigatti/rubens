@@ -114,33 +114,37 @@ function coversDate(slot: WeeklySlot, date: string): boolean {
   return slot.firstDate <= date && (slot.lastDate === null || date <= slot.lastDate);
 }
 
-/** Whether two schedules share at least one date, whatever their weekdays. */
-export function datesMeet(
-  a: Pick<WeeklySlot, "firstDate" | "lastDate">,
-  b: Pick<WeeklySlot, "firstDate" | "lastDate">,
-): boolean {
-  return (
-    (a.lastDate === null || b.firstDate <= a.lastDate) &&
-    (b.lastDate === null || a.firstDate <= b.lastDate)
-  );
+type Dates = Pick<WeeklySlot, "firstDate" | "lastDate">;
+
+/** The dates two schedules both run on, whatever their weekdays; `null` when none. */
+export function sharedDates(a: Dates, b: Dates): Dates | null {
+  const firstDate = a.firstDate > b.firstDate ? a.firstDate : b.firstDate;
+  const lastDate =
+    a.lastDate === null || (b.lastDate !== null && b.lastDate < a.lastDate)
+      ? b.lastDate
+      : a.lastDate;
+  return lastDate === null || firstDate <= lastDate ? { firstDate, lastDate } : null;
 }
 
 /**
- * Whether two time zones show the same clock every week for a year from
- * `from`, so their local times mean the same moments: two names for one
- * clock, as Argentina's provinces are, count as one zone.
+ * Whether two time zones show the same clock every week of `dates`, the first
+ * year of them at most, so their local times mean the same moments: two names
+ * for one clock, as Argentina's provinces are, count as one zone.
  */
-export function sameClock(zoneA: string, zoneB: string, from: string): boolean {
+export function sameClock(zoneA: string, zoneB: string, dates: Dates): boolean {
   if (zoneA === zoneB) {
     return true;
   }
-  for (let week = 0; week <= 53; week++) {
-    const moment = utcMidnight(shiftDate(from, week * 7));
-    if (tzOffset(zoneA, moment) !== tzOffset(zoneB, moment)) {
-      return false;
-    }
+  const yearOn = shiftDate(dates.firstDate, 371);
+  const until = dates.lastDate !== null && dates.lastDate < yearOn ? dates.lastDate : yearOn;
+  const days = [dates.firstDate, until];
+  for (let day = shiftDate(dates.firstDate, 7); day < until; day = shiftDate(day, 7)) {
+    days.push(day);
   }
-  return true;
+  return days.every((day) => {
+    const moment = utcMidnight(day);
+    return tzOffset(zoneA, moment) === tzOffset(zoneB, moment);
+  });
 }
 
 function coversTime(slot: WeeklySlot, time: string): boolean {

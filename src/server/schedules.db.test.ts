@@ -291,6 +291,17 @@ describe("practitioner overlap", () => {
       await create(world.admin, mondayMorning({ ...tuesday, firstDate: "2099-02-24" })),
     ).toMatchObject({ ok: true });
   });
+
+  it("compares the clocks over the dates two schedules share, not from the new one's start", async () => {
+    // San Luis kept a clock of its own in 2009, and has kept Buenos Aires' since.
+    const office = await world.addOffice("Sede San Luis", "America/Argentina/San_Luis");
+    const sanLuis = await world.addRoom(office.id, "Consultorio 2");
+    await create(world.admin, mondayMorning({ roomId: sanLuis.id, weekdays: [2] }));
+
+    expect(await create(world.admin, mondayMorning({ firstDate: "2009-01-05" }))).toMatchObject({
+      ok: true,
+    });
+  });
 });
 
 describe("changing a schedule from a date", () => {

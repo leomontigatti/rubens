@@ -2,9 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   collisionLabel,
-  datesMeet,
   sameClock,
   scheduleState,
+  sharedDates,
   validityLabel,
 } from "#/lib/schedules.ts";
 
@@ -61,28 +61,47 @@ describe("a schedule's labels", () => {
   });
 });
 
-describe("whether two schedules share a date", () => {
-  it("meets on a shared last and first date, and not on the day after", () => {
+describe("the dates two schedules share", () => {
+  it("shares a last and first date in common, and nothing from the day after", () => {
     const ending = { firstDate: "2026-11-02", lastDate: "2026-11-30" };
 
-    expect(datesMeet(ending, { firstDate: "2026-11-30", lastDate: null })).toBe(true);
-    expect(datesMeet(ending, { firstDate: "2026-12-01", lastDate: null })).toBe(false);
-    expect(datesMeet({ firstDate: "2026-12-01", lastDate: null }, ending)).toBe(false);
-    expect(datesMeet(open, { firstDate: "2020-01-06", lastDate: null })).toBe(true);
+    expect(sharedDates(ending, { firstDate: "2026-11-30", lastDate: null })).toEqual({
+      firstDate: "2026-11-30",
+      lastDate: "2026-11-30",
+    });
+    expect(sharedDates(ending, { firstDate: "2026-12-01", lastDate: null })).toBeNull();
+    expect(sharedDates({ firstDate: "2026-12-01", lastDate: null }, ending)).toBeNull();
+    expect(sharedDates(open, { firstDate: "2020-01-06", lastDate: null })).toEqual(open);
   });
 });
 
 describe("whether two time zones keep the same clock", () => {
+  const nextYear = { firstDate: "2026-11-02", lastDate: null };
+
   it("matches zones by their clocks, not their names", () => {
-    expect(
-      sameClock("America/Argentina/Buenos_Aires", "America/Argentina/Cordoba", "2026-11-02"),
-    ).toBe(true);
-    expect(sameClock("America/Argentina/Buenos_Aires", "Europe/Madrid", "2026-11-02")).toBe(false);
+    expect(sameClock("America/Argentina/Buenos_Aires", "America/Argentina/Cordoba", nextYear)).toBe(
+      true,
+    );
+    expect(sameClock("America/Argentina/Buenos_Aires", "Europe/Madrid", nextYear)).toBe(false);
   });
 
   it("tells apart zones that share a clock only part of the year", () => {
     // Accra keeps London's winter clock all year, but not its summer one.
-    expect(sameClock("Europe/London", "Europe/Lisbon", "2026-11-02")).toBe(true);
-    expect(sameClock("Europe/London", "Africa/Accra", "2026-11-02")).toBe(false);
+    expect(sameClock("Europe/London", "Europe/Lisbon", nextYear)).toBe(true);
+    expect(sameClock("Europe/London", "Africa/Accra", nextYear)).toBe(false);
+  });
+
+  it("compares the clocks only over the dates given", () => {
+    // Santiago keeps Buenos Aires' clock in its summer, and Moscow kept Samara's until 2014.
+    const summer = { firstDate: "2026-11-02", lastDate: "2027-03-15" };
+    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", summer)).toBe(true);
+    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", nextYear)).toBe(false);
+    expect(
+      sameClock("Europe/Moscow", "Europe/Samara", {
+        firstDate: "2012-01-02",
+        lastDate: "2012-12-31",
+      }),
+    ).toBe(true);
+    expect(sameClock("Europe/Moscow", "Europe/Samara", nextYear)).toBe(false);
   });
 });

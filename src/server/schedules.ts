@@ -6,13 +6,13 @@ import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import {
-  datesMeet,
   findCollision,
   sameClock,
   scheduleChangeSchema,
   scheduleDeleteSchema,
   scheduleEndSchema,
   scheduleInputSchema,
+  sharedDates,
   shiftDate,
   shortTime,
   today,
@@ -324,12 +324,14 @@ async function checkCandidate(
 
   // The collision check compares local times, which only means one moment within
   // one clock, so a practitioner works on a single clock at a time.
-  const abroad = others.some(
-    (row) =>
+  const abroad = others.some((row) => {
+    const shared = sharedDates(row, candidate);
+    return (
       row.practitionerId === candidate.practitionerId &&
-      datesMeet(row, candidate) &&
-      !sameClock(row.timeZone, target.timeZone, candidate.firstDate),
-  );
+      shared !== null &&
+      !sameClock(row.timeZone, target.timeZone, shared)
+    );
+  });
   if (abroad) {
     return { ok: false, reason: "otherTimeZone" };
   }
