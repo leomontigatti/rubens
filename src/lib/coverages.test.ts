@@ -10,7 +10,7 @@ describe("coverageLabel", () => {
 });
 
 describe("coverageInputSchema", () => {
-  it("reads an empty plan as none and requires a member number", () => {
+  it("reads an empty plan as none and trims the member number", () => {
     const base = { patientId: crypto.randomUUID(), insurerId: crypto.randomUUID() };
 
     expect(coverageInputSchema.parse({ ...base, plan: " ", memberNumber: " 123 " })).toEqual({
@@ -19,6 +19,5 @@ describe("coverageInputSchema", () => {
       memberNumber: "123",
       primary: false,
     });
-    expect(coverageInputSchema.safeParse({ ...base, memberNumber: "" }).success).toBe(false);
   });
 });

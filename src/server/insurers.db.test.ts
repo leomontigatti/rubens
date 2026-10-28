@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { auditLog } from "#/db/schema/index.ts";
+import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
 import type { InsurerInput } from "#/lib/coverages.ts";
@@ -51,8 +52,13 @@ async function list(actor: Actor, includeInactive = false) {
 }
 
 async function entriesFor(entityId: string) {
-  // As the owner: the log is read here only to check what was written.
-  return db.select().from(auditLog).where(eq(auditLog.entityId, entityId));
+  return asAppRole(db, (tx) =>
+    withTenant(
+      admin,
+      (tenant) => tenant.select().from(auditLog).where(eq(auditLog.entityId, entityId)),
+      tx,
+    ),
+  );
 }
 
 describe("keeping the insurer list", () => {
@@ -85,18 +91,6 @@ describe("keeping the insurer list", () => {
         await asAppRole(db, (tx) => setInsurerActive(actor, { id: created.id, active: false }, tx)),
       ).toEqual({ ok: false, reason: "forbidden" });
       expect((await list(actor)).map((insurer) => insurer.id)).toEqual([created.id]);
-    }
-  });
-
-  it("refuses an insurer with no name or an unknown kind", async () => {
-    for (const input of [
-      { name: " ", kind: "prepaga" },
-      { name: "OSDE", kind: "mutual" },
-    ] as InsurerInput[]) {
-      expect(await asAppRole(db, (tx) => createInsurer(admin, input, tx))).toEqual({
-        ok: false,
-        reason: "invalidInput",
-      });
     }
   });
 

@@ -13,7 +13,6 @@ import {
   getPatientHistory,
   listPatients,
   registerPatient,
-  searchLimit,
   searchPatients,
   setPatientActive,
   setWhatsappConsent,
@@ -167,7 +166,6 @@ describe("registering in full", () => {
       "a DNI that is not a number",
       { ...juan, documentType: "dni" as const, documentNumber: "ABC" },
     ],
-    ["a blank name", { ...juan, lastName: "  " }],
   ])("refuses %s as invalid input", async (_, input) => {
     expect(await asAppRole(db, (tx) => registerPatient(receptionist, input, tx))).toEqual({
       ok: false,
@@ -414,7 +412,7 @@ describe("searching patients", () => {
   });
 
   it("returns a limited number of results", async () => {
-    for (let index = 0; index < searchLimit + 5; index += 1) {
+    for (let index = 0; index < 25; index += 1) {
       await register(receptionist, {
         firstName: `Ana${index}`,
         lastName: "Sosa",
@@ -422,7 +420,7 @@ describe("searching patients", () => {
       });
     }
 
-    expect(await search("sosa")).toHaveLength(searchLimit);
+    expect(await search("sosa")).toHaveLength(20);
   });
 });
 

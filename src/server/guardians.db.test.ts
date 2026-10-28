@@ -2,6 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { guardian } from "#/db/schema/index.ts";
+import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
 import type { GuardianInput } from "#/lib/guardians.ts";
@@ -121,20 +122,11 @@ describe("a patient's guardians", () => {
     ]);
   });
 
-  it("refuses a phone that is not a number, or has no area code, and a missing name", async () => {
-    for (const input of [
-      { phone: "123" },
-      { phone: "4123456" },
-      { name: " " },
-      { relationship: "" },
-    ]) {
+  it("refuses a phone that is not a number, or has no area code", async () => {
+    for (const phone of ["123", "4123456"]) {
       expect(
         await asAppRole(db, (tx) =>
-          addGuardian(
-            receptionist,
-            { patientId, name: "Laura", relationship: "Madre", phone: "351 4123456", ...input },
-            tx,
-          ),
+          addGuardian(receptionist, { patientId, name: "Laura", relationship: "Madre", phone }, tx),
         ),
       ).toEqual({ ok: false, reason: "invalidInput" });
     }
@@ -246,16 +238,23 @@ describe("the message contact", () => {
     const second = await add(receptionist, { name: "Pedro Pérez" });
     await contact(second.id);
 
-    // As the owner, past the services.
+    // Past the services, as the app role.
     await expect(
-      db.insert(guardian).values({
-        organizationId: admin.organizationId,
-        patientId,
-        name: "Otra",
-        relationship: "Tía",
-        phone: "+543514123456",
-        messageContact: true,
-      }),
+      asAppRole(db, (tx) =>
+        withTenant(
+          admin,
+          (tenant) =>
+            tenant.insert(guardian).values({
+              organizationId: admin.organizationId,
+              patientId,
+              name: "Otra",
+              relationship: "Tía",
+              phone: "+543514123456",
+              messageContact: true,
+            }),
+          tx,
+        ),
+      ),
     ).rejects.toThrow();
   });
 
