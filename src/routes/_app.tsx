@@ -49,6 +49,13 @@ function AppShell() {
             {viewer.organizationName}
           </Link>
           <Link
+            to="/pacientes"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Pacientes
+          </Link>
+          <Link
             to="/sedes"
             className="text-muted-foreground hover:text-foreground text-sm"
             activeProps={{ className: "text-foreground" }}

@@ -1,0 +1,286 @@
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+
+import {
+  ErrorAlert,
+  FormActions,
+  RefusalMessage,
+  useFormAction,
+} from "#/components/admin-form.tsx";
+import {
+  PatientFields,
+  patientFieldMessage,
+  patientRefusalMessages,
+  readPatientForm,
+} from "#/components/patient-form.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
+import { Button } from "#/components/ui/button.tsx";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
+import { defaultTimeZone } from "#/lib/offices.ts";
+import {
+  documentLabel,
+  historyChanges,
+  legalName,
+  patientName,
+  patientUpdateSchema,
+} from "#/lib/patients.ts";
+import { formatPhone } from "#/lib/phones.ts";
+import { formatLocalDate } from "#/lib/schedules.ts";
+import {
+  changePatientActive,
+  changeWhatsappConsent,
+  editPatient,
+  getPatientChanges,
+  getPatientDetails,
+} from "#/server/patients.functions.ts";
+import type { HistoryEntry, Patient } from "#/server/patients.ts";
+
+export const Route = createFileRoute("/_app/pacientes/$patientId")({
+  loader: async ({ params, context }) => {
+    const data = { patientId: params.patientId };
+    const [details, history] = await Promise.all([
+      getPatientDetails({ data }),
+      context.viewer.roles.includes("admin") ? getPatientChanges({ data }) : null,
+    ]);
+    return { details, history };
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      {
+        title: loaderData?.details.ok
+          ? `${patientName(loaderData.details.patient)} · Rubens`
+          : "Pacientes · Rubens",
+      },
+    ],
+  }),
+  component: PatientScreen,
+});
+
+function useAction() {
+  return useFormAction(patientRefusalMessages);
+}
+
+// Instants are shown in the organization's zone; offices are all in Argentina.
+const instantFormat = new Intl.DateTimeFormat("es-AR", {
+  dateStyle: "short",
+  timeStyle: "short",
+  hourCycle: "h23",
+  timeZone: defaultTimeZone,
+});
+
+function PatientScreen() {
+  const { viewer } = Route.useRouteContext();
+  const { details, history } = Route.useLoaderData();
+
+  if (!details.ok) {
+    return <RefusalMessage message={patientRefusalMessages[details.reason]} />;
+  }
+  const { patient } = details;
+
+  return (
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <PatientHeading patient={patient} isAdmin={viewer.roles.includes("admin")} />
+      <DetailsSection patient={patient} />
+      <WhatsappSection patient={patient} />
+      {history?.ok && <HistorySection entries={history.entries} />}
+    </div>
+  );
+}
+
+function PatientHeading({ patient, isAdmin }: { patient: Patient; isAdmin: boolean }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-2">
+        <Link
+          to="/pacientes"
+          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+        >
+          Pacientes
+        </Link>
+        <h1 className="text-2xl font-semibold">
+          {patientName(patient)}
+          {!patient.active && (
+            <span className="text-muted-foreground font-normal"> · Inactivo</span>
+          )}
+        </h1>
+        {patient.incomplete && (
+          <div>
+            <Badge variant="outline">Datos incompletos</Badge>
+          </div>
+        )}
+      </div>
+      {isAdmin && <ActiveToggle patient={patient} />}
+    </div>
+  );
+}
+
+/** The admin's deactivate or reactivate button. */
+function ActiveToggle({ patient }: { patient: Patient }) {
+  const toggle = useAction();
+  return (
+    <div className="flex flex-col items-end gap-3">
+      <Button
+        variant="outline"
+        disabled={toggle.pending}
+        onClick={() =>
+          void toggle.run(() =>
+            changePatientActive({ data: { id: patient.id, active: !patient.active } }),
+          )
+        }
+      >
+        {patient.active ? "Desactivar" : "Reactivar"}
+      </Button>
+      <ErrorAlert message={toggle.error} />
+    </div>
+  );
+}
+
+function Section(props: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{props.title}</CardTitle>
+        {props.action && <CardAction>{props.action}</CardAction>}
+      </CardHeader>
+      <CardContent>{props.children}</CardContent>
+    </Card>
+  );
+}
+
+function Detail(props: { label: string; value: string | null }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-muted-foreground text-sm">{props.label}</dt>
+      <dd>{props.value ?? "—"}</dd>
+    </div>
+  );
+}
+
+function DetailsSection({ patient }: { patient: Patient }) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <Section title="Datos">
+        <PatientEditForm patient={patient} onDone={() => setEditing(false)} />
+      </Section>
+    );
+  }
+
+  return (
+    <Section
+      title="Datos"
+      action={
+        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+          Editar
+        </Button>
+      }
+    >
+      <dl className="grid gap-4 sm:grid-cols-2">
+        <Detail label="Nombre legal" value={legalName(patient)} />
+        <Detail label="Nombre autopercibido" value={patient.chosenName} />
+        <Detail label="Documento" value={documentLabel(patient)} />
+        <Detail
+          label="Fecha de nacimiento"
+          value={patient.birthDate && formatLocalDate(patient.birthDate)}
+        />
+        <Detail label="Teléfono" value={formatPhone(patient.phone)} />
+        <Detail label="Correo electrónico" value={patient.email} />
+        <Detail label="Dirección" value={patient.address} />
+      </dl>
+    </Section>
+  );
+}
+
+function PatientEditForm({ patient, onDone }: { patient: Patient; onDone: () => void }) {
+  const action = useAction();
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const update = { ...readPatientForm(new FormData(event.currentTarget)), patientId: patient.id };
+    const parsed = patientUpdateSchema.safeParse(update);
+    if (!parsed.success) {
+      action.setError(patientFieldMessage(parsed.error));
+      return;
+    }
+    if (await action.run(() => editPatient({ data: update }))) {
+      onDone();
+    }
+  }
+
+  return (
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      <ErrorAlert message={action.error} />
+      <PatientFields idPrefix={patient.id} full initial={patient} />
+      <FormActions pending={action.pending} submitLabel="Guardar" onCancel={onDone} />
+    </form>
+  );
+}
+
+function WhatsappSection({ patient }: { patient: Patient }) {
+  const action = useAction();
+  const consent = !patient.whatsappConsent;
+  return (
+    <Section title="WhatsApp">
+      <div className="flex flex-col gap-4">
+        <ErrorAlert message={action.error} />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p>
+            {patient.whatsappConsent
+              ? `Acepta WhatsApp desde el ${instantFormat.format(patient.whatsappConsentAt)}.`
+              : "No acepta WhatsApp: no se le envían mensajes."}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={action.pending}
+            onClick={() =>
+              void action.run(() =>
+                changeWhatsappConsent({
+                  data: { patientId: patient.id, whatsappConsent: consent },
+                }),
+              )
+            }
+          >
+            {consent ? "Volver a aceptar WhatsApp" : "Dejar de enviar por WhatsApp"}
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+const actionLabels: Record<HistoryEntry["action"], string> = {
+  create: "Alta",
+  update: "Cambio",
+  deactivate: "Desactivación",
+  reactivate: "Reactivación",
+};
+
+function HistorySection({ entries }: { entries: HistoryEntry[] }) {
+  return (
+    <Section title="Historial de cambios">
+      <ol className="flex flex-col gap-4">
+        {entries.map((entry) => (
+          <li key={entry.id} className="flex flex-col gap-1">
+            <p className="text-sm">
+              <span className="font-medium">{actionLabels[entry.action]}</span>
+              <span className="text-muted-foreground">
+                {" · "}
+                {instantFormat.format(entry.createdAt)} · {entry.userName ?? "Usuario eliminado"}
+              </span>
+            </p>
+            <ul className="text-muted-foreground text-sm">
+              {historyChanges(entry).map((change) => (
+                <li key={change.field}>
+                  {change.field}: {change.before} → {change.after}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </Section>
+  );
+}
