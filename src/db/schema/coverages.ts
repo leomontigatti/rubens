@@ -29,6 +29,9 @@ export const insurer = rubens.table(
   },
   (table) => [
     index("insurer_organization_id_idx").on(table.organizationId),
+    // One insurer per name in the organization, whatever its case; the
+    // services refuse a repeat before it reaches this index.
+    uniqueIndex("insurer_name_unique").on(table.organizationId, sql`lower(${table.name})`),
     // The target of the coverage's composite key.
     unique().on(table.id, table.organizationId),
   ],

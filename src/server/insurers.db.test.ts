@@ -74,6 +74,26 @@ describe("keeping the insurer list", () => {
     expect((await list(admin)).map((insurer) => insurer.name)).toEqual(["Apross", "OSDE Binario"]);
   });
 
+  it("refuses a name another insurer of the organization has, whatever its case", async () => {
+    const created = await create();
+    const other = await create({ name: "Apross", kind: "obraSocial" });
+
+    expect(
+      await asAppRole(db, (tx) => createInsurer(admin, { ...osde, name: "osde" }, tx)),
+    ).toEqual({ ok: false, reason: "nameTaken" });
+    expect(
+      await asAppRole(db, (tx) =>
+        updateInsurer(admin, { insurerId: other.id, name: "Osde", kind: "prepaga" }, tx),
+      ),
+    ).toEqual({ ok: false, reason: "nameTaken" });
+    expect(
+      await asAppRole(db, (tx) =>
+        updateInsurer(admin, { insurerId: created.id, name: "OSDE", kind: "obraSocial" }, tx),
+      ),
+    ).toMatchObject({ ok: true, insurer: { kind: "obraSocial" } });
+    expect((await list(admin, true)).map((insurer) => insurer.name)).toEqual(["Apross", "OSDE"]);
+  });
+
   it("refuses insurer changes to anyone but an admin, and lets them read the list", async () => {
     const created = await create();
 

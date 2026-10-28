@@ -41,6 +41,7 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos esa obra social o prepaga.",
+  nameTaken: "Ya hay una obra social o prepaga con ese nombre.",
 };
 
 type ActionResult = { ok: true } | { ok: false; reason: keyof typeof refusalMessages };

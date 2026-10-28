@@ -1,8 +1,8 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { insurer } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
-import type { AnyDatabase } from "#/db/tenant.ts";
+import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import type { Actor, Role } from "#/lib/access.ts";
 import {
   insurerActiveChangeSchema,
@@ -32,13 +32,14 @@ export interface Insurer {
   active: boolean;
 }
 
-type Refusal = "forbidden" | "invalidInput" | "notFound";
+type Refusal = "forbidden" | "invalidInput" | "notFound" | "nameTaken";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
+const nameTaken = { ok: false, reason: "nameTaken" } as const;
 
 const readerRoles: readonly Role[] = ["admin", "receptionist", "practitioner"];
 
@@ -56,6 +57,20 @@ const insurerColumns = {
   kind: insurer.kind,
   active: insurer.active,
 };
+
+/** Whether another insurer of the organization has `name`, whatever its case (`insurer_name_unique`). */
+async function isNameTaken(tx: Transaction, name: string, exceptId?: string): Promise<boolean> {
+  const [found] = await tx
+    .select({ id: insurer.id })
+    .from(insurer)
+    .where(
+      and(
+        eq(sql`lower(${insurer.name})`, name.toLowerCase()),
+        exceptId === undefined ? undefined : ne(insurer.id, exceptId),
+      ),
+    );
+  return found !== undefined;
+}
 
 export interface InsurerListOptions {
   includeInactive: boolean;
@@ -98,6 +113,9 @@ export async function createInsurer(
   return withTenant(
     actor,
     async (tx) => {
+      if (await isNameTaken(tx, parsed.data.name)) {
+        return nameTaken;
+      }
       const [created] = await tx
         .insert(insurer)
         .values({ ...parsed.data, organizationId: actor.organizationId })
@@ -139,6 +157,9 @@ export async function updateInsurer(
         .for("update");
       if (!current) {
         return notFound;
+      }
+      if (await isNameTaken(tx, fields.name, insurerId)) {
+        return nameTaken;
       }
       const [updated] = await tx
         .update(insurer)

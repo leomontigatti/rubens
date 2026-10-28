@@ -334,13 +334,13 @@ describe("a patient's coverages", () => {
     );
   });
 
-  it("writes a switch between two insurers of the same name to the history", async () => {
-    const otherOsde = await insurer("OSDE", "obraSocial");
+  it("writes a switch of insurer to the history, by name", async () => {
+    const swiss = await insurer("Swiss Medical", "prepaga");
     const added = await add(receptionist);
     await asAppRole(db, (tx) =>
       updateCoverage(
         receptionist,
-        { coverageId: added.id, insurerId: otherOsde, memberNumber: "123" },
+        { coverageId: added.id, insurerId: swiss, memberNumber: "123" },
         tx,
       ),
     );
@@ -351,11 +351,11 @@ describe("a patient's coverages", () => {
         action: "update",
         userId: "receptionist",
         before: { insurerId: osde, insurer: "OSDE" },
-        after: { insurerId: otherOsde, insurer: "OSDE" },
+        after: { insurerId: swiss, insurer: "Swiss Medical" },
       },
     ]);
     expect(historyChanges(updates[0]!)).toEqual([
-      { field: "Obra social / prepaga", before: "OSDE", after: "OSDE" },
+      { field: "Obra social / prepaga", before: "OSDE", after: "Swiss Medical" },
     ]);
   });
 });
