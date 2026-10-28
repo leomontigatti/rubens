@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useReducer, useState } from "react";
 import type { FocusEvent, FormEvent } from "react";
@@ -10,6 +11,7 @@ import {
   patientRefusalMessages,
   saveReducer,
 } from "#/components/patient-save.ts";
+import { patientSearchQueries } from "#/components/patient-search.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -27,13 +29,14 @@ import type { Patient } from "#/server/patients.ts";
 /**
  * The submit step of the registration and edit forms. `send` saves the input;
  * a likely duplicate holds it back until `confirm` sends it again, confirmed.
- * Reloads the route's data and calls `onSaved` once it is saved.
+ * Reloads the route's data and the patient searches, and calls `onSaved` once it is saved.
  */
 export function usePatientSave<I extends object>(
   send: (input: I & DuplicateConfirmation) => Promise<SaveResult>,
   onSaved: (patient: Patient) => void,
 ) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(saveReducer<I>, undefined, initialSaveState<I>);
 
   async function save(next: I, confirmDuplicates: boolean) {
@@ -48,7 +51,10 @@ export function usePatientSave<I extends object>(
       dispatch({ type: "refused", result });
       return;
     }
-    await router.invalidate();
+    await Promise.all([
+      router.invalidate(),
+      queryClient.invalidateQueries({ queryKey: patientSearchQueries }),
+    ]);
     onSaved(result.patient);
   }
 

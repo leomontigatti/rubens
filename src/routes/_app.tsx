@@ -39,6 +39,8 @@ function AppShell() {
   async function signOut() {
     await authClient.signOut();
     await router.navigate({ to: "/ingresar" });
+    // Cached answers belong to the user who just left.
+    router.options.context.queryClient.clear();
   }
 
   return (

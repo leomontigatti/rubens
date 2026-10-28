@@ -43,6 +43,8 @@ function SignIn() {
       setError(signInErrorMessage(signInError.status));
       return;
     }
+    // Nothing cached before this sign-in belongs to this user.
+    router.options.context.queryClient.clear();
     await router.navigate({ to: "/" });
   }
 

@@ -6,6 +6,7 @@ import * as z from "zod";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
+import { patientSearchKey } from "#/components/patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -110,9 +111,10 @@ function RegisterPanel() {
  */
 function SearchResults({ query }: { query: string }) {
   const { inactivos } = Route.useSearch();
+  const { viewer } = Route.useRouteContext();
   const search = { query, includeInactive: inactivos ?? false };
   const { data } = useQuery({
-    queryKey: ["patients", "search", search],
+    queryKey: patientSearchKey(viewer, search),
     queryFn: () => findPatients({ data: search }),
     placeholderData: keepPreviousData,
   });
