@@ -93,33 +93,21 @@ describe("whether two time zones keep the same clock", () => {
   });
 
   it("compares the clocks only over the dates given", () => {
-    // Santiago keeps Buenos Aires' clock in its summer, and Moscow kept Samara's until 2014.
+    // Santiago keeps Buenos Aires' clock in its summer only.
+    const zones = ["America/Santiago", "America/Argentina/Buenos_Aires"] as const;
     const summer = { firstDate: "2026-11-02", lastDate: "2027-03-15" };
-    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", summer, day)).toBe(true);
-    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", nextYear, day)).toBe(
-      false,
-    );
-    expect(
-      sameClock(
-        "Europe/Moscow",
-        "Europe/Samara",
-        {
-          firstDate: "2012-01-02",
-          lastDate: "2012-12-31",
-        },
-        day,
-      ),
-    ).toBe(true);
-    expect(sameClock("Europe/Moscow", "Europe/Samara", nextYear, day)).toBe(false);
+
+    expect(sameClock(...zones, summer, day)).toBe(true);
+    expect(sameClock(...zones, nextYear, day)).toBe(false);
   });
 
-  it("compares every week of a long range, and an open one through a year from today", () => {
-    // Moscow left Samara's clock in October 2014.
-    const since2012 = { firstDate: "2012-01-02", lastDate: null };
-    expect(sameClock("Europe/Moscow", "Europe/Samara", since2012, day)).toBe(false);
-    expect(
-      sameClock("Europe/Moscow", "Europe/Samara", { ...since2012, lastDate: "2015-01-05" }, day),
-    ).toBe(false);
+  it("compares every week between the ends of a range", () => {
+    // Both ends fall in Santiago's summer, its winter in between.
+    const yearRound = { firstDate: "2026-11-02", lastDate: "2027-10-04" };
+
+    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", yearRound, day)).toBe(
+      false,
+    );
   });
 
   it("compares a far range only through a year past today, up to the last date accepted", () => {
@@ -136,17 +124,23 @@ describe("whether two time zones keep the same clock", () => {
 
   it("compares the clocks from today on, since past dates never collide again", () => {
     // Cordoba kept a clock of its own until 1991, and Moscow left Samara's in October 2014.
+    const moscow = ["Europe/Moscow", "Europe/Samara"] as const;
     const sinceYearOne = { firstDate: "0001-01-01", lastDate: null };
+
     expect(
       sameClock("America/Argentina/Cordoba", "America/Argentina/Buenos_Aires", sinceYearOne, day),
     ).toBe(true);
+    expect(sameClock(...moscow, { firstDate: "2012-01-02", lastDate: "2015-01-05" }, day)).toBe(
+      true,
+    );
+    expect(sameClock(...moscow, { firstDate: "2012-01-02", lastDate: null }, day)).toBe(false);
+  });
+
+  it("compares a year at most, from today", () => {
+    const moscow = ["Europe/Moscow", "Europe/Samara"] as const;
+
     expect(
-      sameClock(
-        "Europe/Moscow",
-        "Europe/Samara",
-        { firstDate: "2012-01-02", lastDate: "2015-01-05" },
-        "2012-01-02",
-      ),
+      sameClock(...moscow, { firstDate: "2012-01-02", lastDate: "2015-01-05" }, "2012-01-02"),
     ).toBe(true);
   });
 });

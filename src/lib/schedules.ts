@@ -143,6 +143,9 @@ export function sameClock(zoneA: string, zoneB: string, dates: Dates, today: str
   const yearOn = from + 371 * dayMs;
   const until =
     dates.lastDate === null ? yearOn : Math.min(utcMidnight(dates.lastDate).getTime(), yearOn);
+  if (until < from) {
+    return true;
+  }
   const moments = [until];
   for (let moment = from; moment < until; moment += 7 * dayMs) {
     moments.push(moment);
