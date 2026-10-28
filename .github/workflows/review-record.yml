@@ -1,0 +1,49 @@
+# Review-record gate. A PR body carries a `## Review` section naming the review
+# tier, the commit the in-session review covered, and one line per reviewer (the
+# shared `pr` skill). The shared `review-record` action derives the tier from the
+# diff and the `review-paths` block of `docs/agents/review.md`, fails a record
+# missing a reviewer that tier requires, and fails a code commit pushed after the
+# reviewed one. Dependabot's PRs pass without a record. The rules are
+# `skills/implement/scripts/review.py` in leomontigatti/agent-workflow; why they
+# exist is step 5 of its `implement` skill.
+#
+# Its own workflow, like `pr-title.yml`, because it needs `edited`: updating the
+# record re-runs the gate without re-running the full suite.
+#
+# Branch protection: `review-record` is a required context on `main`, by its job
+# name; renaming the job means updating the repo setting.
+name: Review record
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+# Reads the repository and nothing else (zizmor `excessive-permissions`).
+permissions:
+  contents: read
+
+concurrency:
+  group: review-record-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-record:
+    name: review-record
+    # A draft is not reviewed yet: a PRD PR records its review when it is marked
+    # ready, and `ready_for_review` runs the gate then. A draft cannot merge, so the
+    # skip reporting success never lets one through.
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          # The check walks the branch's commits since the reviewed one and diffs
+          # against the base, so it needs the whole history.
+          fetch-depth: 0
+      # Pinned like every other action, to a release tag's commit: a branch in the
+      # comment fails zizmor once the branch moves. Dependabot proposes each new
+      # tag, which is how a change to the shared rules arrives.
+      - uses: leomontigatti/agent-workflow/actions/review-record@9c9b98fcfdc20c644b9d0158eceb7f039ee47a04 # v1.1.0

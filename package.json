@@ -28,6 +28,8 @@
     "check:dependency-audit": "node scripts/check-dependency-audit.mjs",
     "check:pr-title": "node --import tsx scripts/check-pr-title.ts",
     "check:labels": "node --import tsx scripts/check-labels.ts",
+    "check:comment-language": "node --import tsx scripts/check-comment-language.ts",
+    "check:file-tokens": "node --import tsx scripts/check-file-tokens.ts",
     "check:fallow": "fallow audit --quiet --gate-marker agent --base origin/main",
     "db:generate": "node --env-file-if-exists=.env --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs generate",
     "db:migrate": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/worktree-db.ts ensure && node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/migrate.mjs",

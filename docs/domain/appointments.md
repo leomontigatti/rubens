@@ -17,7 +17,7 @@ check-ups, is booked one appointment after the other.
 ## Booking
 
 Reception books from a free time clicked on the calendar, which fills in the
-practitioner, time and room, or from "Nuevo turno": patient, practitioner and
+practitioner, time and room, or from `Nuevo turno`: patient, practitioner and
 appointment type, then the free times for that type's duration. The type comes
 before the time because its duration decides which times fit; the duration can
 still be adjusted. The patient is found with the search box, or registered on
@@ -34,7 +34,7 @@ Booking warns, without blocking, when the patient already has an appointment tha
 overlaps, or one the same day with another practitioner: back-to-back visits with
 two practitioners are legitimate; booking the same person twice is the mistake.
 
-An appointment can carry a short reception note ("trae radiografías"), read by
+An appointment can carry a short reception note (`trae radiografías`), read by
 every staff member who sees the appointment. Clinical information goes in the
 clinical record, and the form says so; without a note field, such notes end up in
 the patient's name.

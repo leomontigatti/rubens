@@ -42,6 +42,14 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
   flag (in a doc, inside code only), a workflow condition, a jq `==` and any
   `priority:` or `wayfinder:` name; a bare `bug` or `question` is prose to it. CI
   runs it.
+- `check:comment-language`: fails on Spanish prose in comments, test names, thrown
+  `Error` messages, shell stderr, `#` and SQL `--` comments, and markdown, over the whole tree.
+  Spanish marked as data (double-quoted in code, backticked in markdown) passes;
+  `docs/adr/`, `docs/research/` and `docs/operations/whatsapp-templates.md` are
+  exempt. CI runs it.
+- `check:file-tokens`: fails on a tracked `.ts`/`.tsx` file under `src/` above
+  5,500 estimated tokens (bytes / 4). Tests and generated files are exempt. CI
+  runs it.
 
 ## Repository
 

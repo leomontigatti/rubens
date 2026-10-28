@@ -31,7 +31,7 @@ patient can:
 
 - **pick a new time**, which moves the appointment and frees the old time;
 - **cancel** the appointment, when no time suits them;
-- **ask to be contacted** ("Necesito que se comuniquen conmigo"), which gives
+- **ask to be contacted** (`Necesito que se comuniquen conmigo`), which gives
   reception a contact request.
 
 Moving is allowed until the type's cutoff, and once per appointment. Later changes

@@ -6,12 +6,13 @@ is the index.
 
 ## Required contexts
 
-Three contexts should be required on `main` in branch protection. Required contexts
+Four contexts should be required on `main` in branch protection. Required contexts
 are a repo setting, not a file here: renaming or adding a job does not update
 protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
-  `pnpm check:labels`, `db:generate` drift check, `pnpm check:migrations`,
+  `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
+  `db:generate` drift check, `pnpm check:migrations`,
   `pnpm check:dependency-audit`, `pnpm test:unit`, `pnpm test:db` and `pnpm build`. No database service: `test:db`
   runs on PGlite.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
@@ -20,6 +21,12 @@ protection, so changing the list is a human step in the repo settings.
   plain Node with no install. It lives in its own file because it needs the `edited`
   event, which fires on a body edit too; it runs then as well, since a skipped job
   would report the context as success over a failed title.
+- `review-record` (`review-record.yml`): the shared `review-record` action from
+  `leomontigatti/agent-workflow` over the PR body's `## Review` record. It fails a
+  record missing a reviewer the diff's tier needs (the tier comes from the
+  `review-paths` block of [review.md](../agents/review.md)) and a code commit pushed
+  after the reviewed one. Dependabot's PRs pass without one; a draft is skipped
+  until it is marked ready. Its own file for the same `edited` reason as `pr-title`.
 
 Also required, in branch protection: direct pushes to `main` forbidden, and
 "require branches to be up to date" on, so each required context runs against the
@@ -38,21 +45,25 @@ current `main`.
 5. **`pnpm check:labels`**: every label a workflow, script or agent doc names in a
    `--label` flag, a workflow condition or a `priority:`/`wayfinder:` name is in
    `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#labels)).
-6. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
+6. **`pnpm check:comment-language`**: no Spanish engineering prose anywhere in the
+   tree ([coding-standards.md](../agents/coding-standards.md#code-language)).
+7. **`pnpm check:file-tokens`**: no source file under `src/` above the
+   estimated-token ceiling.
+8. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
    `src/db/migrations`. If it does, the schema changed without its migration. The fix
    is to commit the migration that `db:generate` writes, never to edit a `.sql` file
    already on `main`.
-7. **`pnpm check:migrations`** against `origin/main`. Three rules:
+9. **`pnpm check:migrations`** against `origin/main`. Three rules:
    order (a new migration must be newer than every migration on `main`), immutability
    (no applied `.sql` file may change), and safety (squawk over the new `.sql` files).
    Why each one exists: `scripts/migrations/journal.mjs`.
-8. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
-   branch introduces, compared with `origin/main`.
-9. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
-   branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
-   run) fails the job too.
-10. **`pnpm test:unit`** and **`pnpm test:db`**.
-11. **`pnpm build`**: the production build the Dockerfile runs.
+10. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+    branch introduces, compared with `origin/main`.
+11. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+    branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
+    run) fails the job too.
+12. **`pnpm test:unit`** and **`pnpm test:db`**.
+13. **`pnpm build`**: the production build the Dockerfile runs.
 
 ## Waiting on CI from a session
 
@@ -71,6 +82,7 @@ hand-written issue.
 | ------------------------------------------ | -------------------------------------------- | --------------------------------------------------- |
 | `setup-vp`                                 | `ci.yml`, `pr-title.yml` (SHA + `# v1.21.2`) | the release tag's commit, `gh api`                  |
 | `actions/checkout`                         | all jobs (SHA + `# v5`)                      | the tag's commit                                    |
+| `agent-workflow/actions/review-record`     | `review-record.yml` (SHA + `# v1.1.0`)       | the release tag's commit, `gh api`                  |
 | `GITLEAKS_VERSION` + `GITLEAKS_SHA256`     | `ci.yml`, `checks` job                       | `gitleaks_<version>_checksums.txt` on the release   |
 | `ACTIONLINT_VERSION` + `ACTIONLINT_SHA256` | `ci.yml`, `actions-gate` job                 | `actionlint_<version>_checksums.txt` on the release |
 | `zizmor==<version>`                        | `ci.yml`, `actions-gate` job (`pipx run`)    | the PyPI release                                    |

@@ -47,8 +47,8 @@ _Avoid_: box, cubicle, chair, shared room, exclusive room
 ## Scheduling
 
 **`schedule`** — ui: "Horario"
-A practitioner's weekly hold on one `room` of one `office`, such as "Monday 9 to
-13, consultorio 2", valid between two dates. A room is shared by giving several
+A practitioner's weekly hold on one `room` of one `office`, such as Monday 9 to
+13 in room 2, valid between two dates. A room is shared by giving several
 practitioners schedules in it at different times.
 _Avoid_: room block, calendar, timetable, agenda
 
@@ -91,8 +91,8 @@ Where an `appointment` stands: `booked` ("Reservado"), `confirmed` ("Confirmado"
 _Avoid_: pending, done, missed, arrived
 
 **`receptionNote`** — ui: "Nota de recepción"
-A short practical note on an `appointment` for staff, such as "trae
-radiografías". Never clinical.
+A short practical note on an `appointment` for staff, such as `trae
+radiografías`. Never clinical.
 _Avoid_: comment, observation, reason, motivo
 
 **`toReschedule`** — ui: "Turnos a reprogramar"
@@ -120,10 +120,10 @@ _Avoid_: draft patient, pending patient, quick patient
 **`coverage`** — ui: "Cobertura"
 A `patient`'s membership of an `insurer`: the insurer, a plan and a member number.
 A patient with none is private ("Particular").
-_Avoid_: insurance, obra social, prepaga, plan
+_Avoid_: insurance, `obra social`, `prepaga`, plan
 
 **`insurer`** — ui: "Obra social / prepaga"
-An obra social or prepaga on the `organization`'s list, which an admin keeps.
+An `obra social` or `prepaga` on the `organization`'s list, which an admin keeps.
 _Avoid_: insurance company, payer, provider
 
 **`guardian`** — ui: "Responsable"
@@ -173,7 +173,7 @@ _Avoid_: medical record, HC, ficha, chart
 One entry in a `clinicalRecord`, written by one `practitioner` and optionally tied
 to an `appointment`. It is a draft until its author signs it, and never changes
 after that.
-_Avoid_: note, nota, progress note, entry
+_Avoid_: note, `nota`, progress note, entry
 
 **`addendum`** — ui: "Adenda"
 A signed correction or addition to a signed `clinicalNote`, shown next to it. The
