@@ -18,7 +18,7 @@ src/
 │   ├── tenant.ts      `withTenant()`: the only way to query tenant-owned tables
 │   ├── schema/        Drizzle schema; `auth.ts` is generated, `index.ts` re-exports
 │   └── migrations/    SQL migrations and drizzle's journal (`meta/`); generated, applied ones are frozen
-├── lib/               shared helpers: `auth.ts` (server), `auth-client.ts`, `access.ts` (roles, `Actor`), `utils.ts` (`cn`)
+├── lib/               shared helpers: `auth.ts` (server), `auth-client.ts`, `access.ts` (roles, `Actor`)
 ├── server/            server-only modules that are not routes: services, `*.functions.ts` (server
 │                      functions), `with-actor.ts` (the step in front of each), `jobs.ts` (pg-boss)
 ├── test-support/      fixtures shared across modules' tests

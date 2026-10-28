@@ -11,11 +11,14 @@ from it.
 - **Add with the CLI, then check the diff.** `pnpm exec shadcn add <name> --diff`
   shows what would change. Read the output and apply it by hand when the local file
   has changed; a blind `--overwrite` discards local edits.
+- **Class merging is the `cn` package**, shadcn's own replacement for `clsx` +
+  `tailwind-merge`. Components import it as the CLI writes it, `import { cn } from "cn"`,
+  so an `add` needs no fix-up; there is no `src/lib/utils.ts`. An item from another
+  registry that still imports `cn` from the `utils` alias gets that import pointed at
+  `cn`.
 - **Check `package.json` after an `add`.** The CLI may install a dependency a component
-  needs; it does not remove what it added by mistake. shadcn 4.21 with our `#/` alias
-  writes `import { cn } from "cn"` and installs the unrelated `cn` package: point the
-  import at `#/lib/utils.ts` (with the extension) and `pnpm remove cn`. It also does not
-  install `@base-ui/react` itself.
+  needs; it does not remove what it added by mistake. It does not install
+  `@base-ui/react` itself.
 - **Toasts are the `toast` component**, built on Base UI's Toast like the rest of the
   kit, not shadcn's `sonner` item, which adds the `sonner` and `next-themes` packages.
 - **Base UI's API, not Radix's.** Compose with `render`, not `asChild`:
