@@ -10,11 +10,11 @@ and practitioner.
   ends their open sessions and refuses their sign-in, and deletes nothing. The
   last active admin can neither lose the role nor be deactivated.
 
-| Who          | Schedules      | Appointments | Patients | Clinical records     |
-| ------------ | -------------- | ------------ | -------- | -------------------- |
-| Admin        | edit all       | all          | all      | copies, voided files |
-| Receptionist | read           | all          | all      | no                   |
-| Practitioner | edit their own | their own    | all      | see below            |
+| Who          | Schedules      | Appointments | Patients | Clinical records |
+| ------------ | -------------- | ------------ | -------- | ---------------- |
+| Admin        | edit all       | all          | all      | copies, voiding  |
+| Receptionist | read           | all          | all      | no               |
+| Practitioner | edit their own | their own    | all      | see below        |
 
 - **Clinical records** are readable by every practitioner who keeps clinical
   records, for every patient of the organization. Patients move between
@@ -23,8 +23,9 @@ and practitioner.
 - **Receptionists never see clinical content.** The admin role alone grants no
   reading in the app either: an admin can only produce a patient's copy of their record
   ([clinical-records.md](./clinical-records.md#copies-for-the-patient)), which is
-  audited, and delete a file a practitioner voided, seeing its name and the reason
-  but not its content. A practitioner who is also the admin reads records as a practitioner.
+  audited, and void a note or file whose author left, or delete what was voided,
+  seeing its date, author, file names and reason but not its text
+  ([clinical-records.md](./clinical-records.md#voiding)). A practitioner who is also the admin reads records as a practitioner.
 - **A practitioner sees only their own appointments.** An appointment already says
   something about a patient's health, so the schedule shows no more than the work
   needs. The room view, open to all staff, shows who holds each room and when,

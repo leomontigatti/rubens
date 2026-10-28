@@ -32,7 +32,8 @@ optional, and shown next to the author's name on screen and in copies.
 
 Allergies, conditions and medications a practitioner must know before treating
 (allergic to penicillin, on anticoagulants, diabetic) are a list at the top of the
-record, not part of a note, and never shown to reception or on appointments. An alert has a type
+record, not part of a note, and never shown to reception or on appointments. An
+alert has a type
 (`Alergia`, `Condición` or `Medicación`), a short text and an optional detail. Any
 practitioner who keeps records adds one or resolves it with a reason; a resolved
 alert leaves the active list and keeps its history.
@@ -45,12 +46,20 @@ a computer or a phone's camera. Radiographs come in as images or PDFs; there is 
 DICOM viewer.
 
 While a file is on a note, its author can remove it by editing the note; the
-version history keeps that it was there. A file that should not be in the record
-at all, such as one on the wrong patient, is voided by the note's author with a
-reason. An admin reviews voided files and can delete one for good: it is another
-person's data, or none. Deleting removes the file's content only: the attachment
-stays in the note's versions as a deleted entry with its name and the reason, and
-the audit log keeps who voided and deleted it, and when. The off-site backups keep
+version history keeps that it was there.
+
+## Voiding
+
+A note or a file that should not be in the record at all, such as one written on
+the wrong patient, is voided (`Anulado`) with a reason. Editing cannot do it, since
+every version is kept. The author voids their own; an admin voids one whose author
+is no longer active, seeing only its date, author and file names. A voided note or
+file leaves the record and the patient's copy; the record keeps a placeholder with
+who voided it, when and why.
+
+An admin reviews what was voided and can delete its content for good: it is another
+person's data, or none. The placeholder, the note's versions with the text removed,
+and the audit entries of who voided and deleted it stay. The off-site backups keep
 the content until they expire.
 
 ## Consent forms
@@ -64,18 +73,18 @@ counsel.
 ## Copies for the patient
 
 A patient may ask for a copy of their record, and Ley 26.529 gives the practice
-48 hours to hand it over. A practitioner or an admin produces it as a PDF, built
-when asked and not stored:
+48 hours to hand it over. A practitioner or an admin produces it as one download,
+built when asked and not stored: a PDF of the record and every file attached to
+it. The PDF holds:
 
 - a header with the organization, the patient's name, document and birth date, the
   date of issue and who issued it;
 - the active medical alerts;
-- the notes in date order, each with its author, licence number and date, marked
-  `Editado el …` when edited, with its current text;
-- the list of attached files by note; the files themselves are handed over apart
-  if asked.
+- the notes in date order, each with its author, licence number and date, its
+  current text, and, when edited, its earlier versions with their dates;
+- the files attached to each note, by name.
 
-Voided files are left out. The audit entry records who issued it and when. The
+Voided notes and files are left out. The audit entry records who issued it and when. The
 notes as of that moment can be rebuilt from their versions.
 
 ## Audit and retention
@@ -87,5 +96,6 @@ time a record is opened, each file viewed or downloaded and each copy produced, 
 one per change. A clinical entry names what was read or changed by its id and never
 holds clinical text: the note versions keep the text. The patient's change history
 that admins see leaves clinical entries out, and there is no screen for them yet;
-they are queried when a patient asks who saw their record. Nothing in a record is deleted except a voided file:
+they are queried when a patient asks who saw their record. Nothing in a record is
+deleted except the content of what was voided:
 deactivating a patient hides them from search and keeps the record.
