@@ -124,6 +124,9 @@ const fieldMessages: Record<string, string> = {
   birthDate: "La fecha de nacimiento no es válida.",
   email: "El correo electrónico no es válido.",
   address: "La dirección es demasiado larga.",
+  // A guardian's.
+  name: "Ingresá el nombre.",
+  relationship: "Ingresá la relación con el paciente.",
   // The phone and the document carry their own refusal as the issue's message.
   missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.",
   invalidPhone: "El teléfono no es válido. Si es del exterior, empezá con + y el código del país.",
@@ -162,7 +165,7 @@ export function readPatientForm(form: FormData): PatientInput {
   };
 }
 
-function Field(props: {
+export function Field(props: {
   id: string;
   name: string;
   label: string;
@@ -186,9 +189,45 @@ function Field(props: {
   );
 }
 
+export const phoneHint =
+  "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.";
+
 /** What the inputs start with: nothing for a registration, the patient's data for an edit. */
 function formValues(initial: Patient | undefined): Partial<Patient> {
   return initial ? { ...initial, phone: formatPhone(initial.phone) } : {};
+}
+
+/** The optional document's type and number, a patient's or a guardian's. */
+export function DocumentInputs(props: {
+  idPrefix: string;
+  initial: { documentType?: DocumentType | null; documentNumber?: string | null };
+}) {
+  const id = (name: string) => `${props.idPrefix}-${name}`;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={id("documentType")}>Tipo de documento</Label>
+        <NativeSelect
+          id={id("documentType")}
+          name="documentType"
+          defaultValue={props.initial.documentType ?? ""}
+        >
+          <NativeSelectOption value="">Sin documento</NativeSelectOption>
+          {documentTypes.map((type) => (
+            <NativeSelectOption key={type} value={type}>
+              {documentTypeLabels[type]}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </div>
+      <Field
+        id={id("documentNumber")}
+        name="documentNumber"
+        label="Número de documento"
+        defaultValue={props.initial.documentNumber}
+      />
+    </div>
+  );
 }
 
 /**
@@ -223,7 +262,7 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
         type="tel"
         defaultValue={values.phone}
         required
-        hint="Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país."
+        hint={phoneHint}
       />
       {props.full && (
         <>
@@ -234,29 +273,7 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
             defaultValue={values.chosenName}
             hint="Si la persona usa otro nombre, la app la llama así."
           />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={id("documentType")}>Tipo de documento</Label>
-              <NativeSelect
-                id={id("documentType")}
-                name="documentType"
-                defaultValue={values.documentType ?? ""}
-              >
-                <NativeSelectOption value="">Sin documento</NativeSelectOption>
-                {documentTypes.map((type) => (
-                  <NativeSelectOption key={type} value={type}>
-                    {documentTypeLabels[type]}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <Field
-              id={id("documentNumber")}
-              name="documentNumber"
-              label="Número de documento"
-              defaultValue={values.documentNumber}
-            />
-          </div>
+          <DocumentInputs idPrefix={props.idPrefix} initial={values} />
           <Field
             id={id("birthDate")}
             name="birthDate"

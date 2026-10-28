@@ -17,6 +17,12 @@ import {
   usePatientSave,
 } from "#/components/patient-form.tsx";
 import { CoverageList, NewCoverageForm } from "#/components/patient-coverages.tsx";
+import {
+  GuardianList,
+  MessageContactChoice,
+  MinorPrompt,
+  NewGuardianForm,
+} from "#/components/patient-guardians.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -25,6 +31,7 @@ import {
   documentLabel,
   historyChanges,
   legalName,
+  patientBadges,
   patientName,
   patientUpdateSchema,
 } from "#/lib/patients.ts";
@@ -32,6 +39,8 @@ import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
 import { getCoverages } from "#/server/coverages.functions.ts";
 import type { Coverage } from "#/server/coverages.ts";
+import { getGuardians } from "#/server/guardians.functions.ts";
+import type { Guardian } from "#/server/guardians.ts";
 import { getInsurers } from "#/server/insurers.functions.ts";
 import type { Insurer } from "#/server/insurers.ts";
 import {
@@ -47,13 +56,14 @@ import type { HistoryEntry, Patient } from "#/server/patients.ts";
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
   loader: async ({ params, context }) => {
     const data = { patientId: params.patientId };
-    const [details, coverages, insurers, history] = await Promise.all([
+    const [details, coverages, guardians, insurers, history] = await Promise.all([
       getPatientDetails({ data }),
       getCoverages({ data }),
+      getGuardians({ data }),
       getInsurers({ data: { includeInactive: false } }),
       context.viewer.roles.includes("admin") ? getPatientChanges({ data }) : null,
     ]);
-    return { details, coverages, insurers, history };
+    return { details, coverages, guardians, insurers, history };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -81,7 +91,7 @@ const instantFormat = new Intl.DateTimeFormat("es-AR", {
 
 function PatientScreen() {
   const { viewer } = Route.useRouteContext();
-  const { details, coverages, insurers, history } = Route.useLoaderData();
+  const { details, coverages, guardians, insurers, history } = Route.useLoaderData();
 
   if (!details.ok) {
     return <RefusalMessage message={patientRefusalMessages[details.reason]} />;
@@ -95,6 +105,7 @@ function PatientScreen() {
       <PatientHeading patient={patient} isAdmin={viewer.roles.includes("admin")} />
       <DetailsSection patient={patient} />
       <CoverageSection patientId={patient.id} coverages={coverages} insurers={insurers} />
+      <GuardianSection patient={patient} guardians={guardians} />
       <WhatsappSection patient={patient} />
       {history?.ok && <HistorySection entries={history.entries} />}
     </div>
@@ -117,13 +128,25 @@ function PatientHeading({ patient, isAdmin }: { patient: Patient; isAdmin: boole
             <span className="text-muted-foreground font-normal"> · Inactivo</span>
           )}
         </h1>
-        {patient.incomplete && (
-          <div>
-            <Badge variant="outline">Datos incompletos</Badge>
-          </div>
-        )}
+        <PatientBadges patient={patient} />
       </div>
       {isAdmin && <ActiveToggle patient={patient} />}
+    </div>
+  );
+}
+
+function PatientBadges({ patient }: { patient: Patient }) {
+  const badges = patientBadges(patient);
+  if (badges.length === 0) {
+    return null;
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {badges.map((badge) => (
+        <Badge key={badge} variant="outline">
+          {badge}
+        </Badge>
+      ))}
     </div>
   );
 }
@@ -286,6 +309,37 @@ function CoverageCard(props: { patientId: string; coverages: Coverage[]; insurer
   );
 }
 
+/** The guardians section, left out when the list was refused. */
+function GuardianSection(props: { patient: Patient; guardians: LoaderData["guardians"] }) {
+  if (!props.guardians.ok) {
+    return null;
+  }
+  return <GuardianCard patient={props.patient} guardians={props.guardians.guardians} />;
+}
+
+function GuardianCard(props: { patient: Patient; guardians: Guardian[] }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <Section
+      title="Responsables"
+      action={
+        !adding && (
+          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+            Agregar responsable
+          </Button>
+        )
+      }
+    >
+      <div className="flex flex-col gap-6">
+        <MinorPrompt patient={props.patient} guardians={props.guardians} />
+        {adding && <NewGuardianForm patientId={props.patient.id} onDone={() => setAdding(false)} />}
+        <GuardianList guardians={props.guardians} />
+        <MessageContactChoice patient={props.patient} guardians={props.guardians} />
+      </div>
+    </Section>
+  );
+}
+
 function WhatsappSection({ patient }: { patient: Patient }) {
   const action = useAction();
   const consent = !patient.whatsappConsent;
@@ -327,6 +381,12 @@ const actionLabels: Record<HistoryEntry["action"], string> = {
   reactivate: "Reactivación",
 };
 
+/** What an entry is about, after its action: nothing for the patient's own. */
+const entityLabels: Record<string, string> = {
+  coverage: " de cobertura",
+  guardian: " de responsable",
+};
+
 function HistorySection({ entries }: { entries: HistoryEntry[] }) {
   return (
     <Section title="Historial de cambios">
@@ -336,7 +396,7 @@ function HistorySection({ entries }: { entries: HistoryEntry[] }) {
             <p className="text-sm">
               <span className="font-medium">
                 {actionLabels[entry.action]}
-                {entry.entityType === "coverage" && " de cobertura"}
+                {entityLabels[entry.entityType]}
               </span>
               <span className="text-muted-foreground">
                 {" · "}

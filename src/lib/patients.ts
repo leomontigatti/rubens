@@ -20,7 +20,7 @@ function optionalText(max: number) {
 }
 
 /** A typed phone, read into E.164; the issue's message is the phone's refusal. */
-const phoneSchema = z.string().transform((value, context) => {
+export const phoneSchema = z.string().transform((value, context) => {
   const result = parsePhone(value);
   if (!result.ok) {
     context.addIssue({ code: "custom", message: result.reason });
@@ -53,13 +53,25 @@ const patientFields = z.object({
   address: optionalText(500),
 });
 
-type PatientFields = z.output<typeof patientFields>;
+/** An optional document's fields: a patient's, or a guardian's. */
+export const documentFields = {
+  documentType: patientFields.shape.documentType,
+  documentNumber: patientFields.shape.documentNumber,
+};
+
+interface DocumentFields {
+  documentType: DocumentType | null;
+  documentNumber: string | null;
+}
 
 /**
  * A document is a type and a number together, or neither. A DNI is kept as its
  * digits, so "30.123.456" and "30123456" are the same document.
  */
-function normalizeDocument<T extends PatientFields>(fields: T, context: z.RefinementCtx): T {
+export function normalizeDocument<T extends DocumentFields>(
+  fields: T,
+  context: z.RefinementCtx,
+): T {
   if ((fields.documentType === null) !== (fields.documentNumber === null)) {
     context.addIssue({ code: "custom", path: ["documentNumber"], message: "documentIncomplete" });
     return z.NEVER;
@@ -117,6 +129,25 @@ export function patientName(patient: {
   return `${patient.chosenName ?? patient.firstName} ${patient.lastName}`;
 }
 
+/** Whether a patient born on `birthDate` is under 18 on `today`, both local dates. */
+export function isMinor(birthDate: string | null, today: string): boolean {
+  if (birthDate === null) {
+    return false;
+  }
+  // Zero-padded dates compare as strings. Born on 29 February, a patient
+  // comes of age on 1 March of a year with no 29th.
+  const coming = `${String(Number(birthDate.slice(0, 4)) + 18).padStart(4, "0")}${birthDate.slice(4)}`;
+  return today < coming;
+}
+
+/** The badges a patient shows by their name. */
+export function patientBadges(patient: { incomplete: boolean; minor: boolean }): string[] {
+  return [
+    ...(patient.incomplete ? ["Datos incompletos"] : []),
+    ...(patient.minor ? ["Menor de edad"] : []),
+  ];
+}
+
 /** The legal name, for the patient's details and documents. */
 export function legalName(patient: { firstName: string; lastName: string }): string {
   return `${patient.firstName} ${patient.lastName}`;
@@ -140,8 +171,11 @@ export function documentLabel(patient: {
 }
 
 // In the registration form's order, which the change history follows, then a
-// coverage's.
+// coverage's. A guardian's name and relationship come first: its other fields
+// are a patient's.
 const fieldLabels: Record<string, string> = {
+  name: "Nombre",
+  relationship: "Relación",
   firstName: "Nombre",
   lastName: "Apellido",
   phone: "Teléfono",
@@ -158,6 +192,7 @@ const fieldLabels: Record<string, string> = {
   plan: "Plan",
   memberNumber: "Número de afiliado",
   primary: "Principal",
+  messageContact: "Recibe los mensajes",
 };
 
 const fieldOrder = Object.keys(fieldLabels);
@@ -170,24 +205,26 @@ function fieldRank(field: string): number {
 
 type HistoryValue = string | number | boolean | null | undefined;
 
+// How the change history shows a field's value, when not as written.
+const formatters: Record<string, (text: string) => string> = {
+  phone: formatPhone,
+  birthDate: formatLocalDate,
+  documentType: (text) => documentTypeLabels[text as DocumentType] ?? text,
+};
+
 function formatValue(field: string, value: HistoryValue): string {
+  if (field === "messageContact") {
+    // The guardian messages go to, by name; none is the patient.
+    return value === null || value === undefined ? "El paciente" : String(value);
+  }
   if (value === null || value === undefined) {
     return "—";
   }
   if (typeof value === "boolean") {
     return value ? "Sí" : "No";
   }
-  const text = String(value);
-  if (field === "phone") {
-    return formatPhone(text);
-  }
-  if (field === "birthDate") {
-    return formatLocalDate(text);
-  }
-  if (field === "documentType") {
-    return documentTypeLabels[text as DocumentType] ?? text;
-  }
-  return text;
+  const format = formatters[field];
+  return format ? format(String(value)) : String(value);
 }
 
 export interface FieldChange {

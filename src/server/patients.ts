@@ -5,13 +5,16 @@ import { auditLog, patient, user } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import type { Actor, Role } from "#/lib/access.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import {
+  isMinor,
   patientActiveChangeSchema,
   patientInputSchema,
   patientUpdateSchema,
   whatsappConsentChangeSchema,
 } from "#/lib/patients.ts";
 import { parsePhone } from "#/lib/phones.ts";
+import { today } from "#/lib/schedules.ts";
 import type {
   DocumentType,
   DuplicateConfirmation,
@@ -50,6 +53,8 @@ export interface Patient {
   active: boolean;
   /** No birth date yet (ui: "Datos incompletos"). */
   incomplete: boolean;
+  /** Under 18 today in the organization's time zone; never with no birth date. */
+  minor: boolean;
 }
 
 export interface HistoryEntry {
@@ -117,10 +122,16 @@ const patientColumns = {
   active: patient.active,
 };
 
-type PatientRow = Omit<Patient, "incomplete">;
+type PatientRow = Omit<Patient, "incomplete" | "minor">;
 
+// The organization's offices are all in Argentina, so its date is the default
+// zone's.
 function toPatient(row: PatientRow): Patient {
-  return { ...row, incomplete: row.birthDate === null };
+  return {
+    ...row,
+    incomplete: row.birthDate === null,
+    minor: isMinor(row.birthDate, today(defaultTimeZone)),
+  };
 }
 
 /**

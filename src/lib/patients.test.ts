@@ -58,4 +58,26 @@ describe("historyChanges", () => {
       { field: "Principal", before: "—", after: "Sí" },
     ]);
   });
+
+  it("labels a guardian's fields, the name and relationship first", () => {
+    expect(
+      historyChanges({
+        before: null,
+        after: { phone: "+543514123456", relationship: "Madre", name: "Laura Gómez" },
+      }),
+    ).toEqual([
+      { field: "Nombre", before: "—", after: "Laura Gómez" },
+      { field: "Relación", before: "—", after: "Madre" },
+      { field: "Teléfono", before: "—", after: "0351 412-3456" },
+    ]);
+  });
+
+  it("names the patient as the message contact when no guardian is", () => {
+    expect(
+      historyChanges({
+        before: { messageContact: null },
+        after: { messageContact: "Laura Gómez" },
+      }),
+    ).toEqual([{ field: "Recibe los mensajes", before: "El paciente", after: "Laura Gómez" }]);
+  });
 });

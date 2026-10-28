@@ -6,6 +6,7 @@ import {
   auditLog,
   closure,
   coverage,
+  guardian,
   insurer,
   member,
   office,
@@ -110,6 +111,13 @@ beforeEach(async () => {
       memberNumber: "123",
       primary: true,
     });
+    await db.insert(guardian).values({
+      organizationId,
+      patientId: createdPatient!.id,
+      name: "Laura Paz",
+      relationship: "Madre",
+      phone: "+543514123456",
+    });
   }
 });
 
@@ -143,6 +151,7 @@ describe("row-level security on tenant tables", () => {
           auditLog: await tenant.select().from(auditLog),
           insurers: await tenant.select().from(insurer),
           coverages: await tenant.select().from(coverage),
+          guardians: await tenant.select().from(guardian),
         }),
         tx,
       ),
@@ -158,6 +167,7 @@ describe("row-level security on tenant tables", () => {
     expect(seen.auditLog.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.insurers.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.coverages.map((row) => row.organizationId)).toEqual(["org-a"]);
+    expect(seen.guardians.map((row) => row.organizationId)).toEqual(["org-a"]);
   });
 
   it("shows nothing to the app role without a tenant setting", async () => {
@@ -173,6 +183,7 @@ describe("row-level security on tenant tables", () => {
         auditLog: number;
         insurers: number;
         coverages: number;
+        guardians: number;
       }>(
         await tx.execute(sql`
           select
@@ -185,7 +196,8 @@ describe("row-level security on tenant tables", () => {
             (select count(*)::int from rubens.patient) as patients,
             (select count(*)::int from rubens.audit_log) as "auditLog",
             (select count(*)::int from rubens.insurer) as insurers,
-            (select count(*)::int from rubens.coverage) as coverages
+            (select count(*)::int from rubens.coverage) as coverages,
+            (select count(*)::int from rubens.guardian) as guardians
         `),
       ),
     );
@@ -201,6 +213,7 @@ describe("row-level security on tenant tables", () => {
       auditLog: 0,
       insurers: 0,
       coverages: 0,
+      guardians: 0,
     });
   });
 
@@ -225,6 +238,8 @@ describe("row-level security on tenant tables", () => {
           await tenant.update(insurer).set({ name: "Cambiada" });
           await tenant.update(coverage).set({ memberNumber: "000" });
           await tenant.delete(coverage);
+          await tenant.update(guardian).set({ name: "Cambiada" });
+          await tenant.delete(guardian);
         },
         tx,
       ),
@@ -262,6 +277,10 @@ describe("row-level security on tenant tables", () => {
     );
     expect(insurersB.map((row) => row.name)).toEqual(["OSDE"]);
     expect(coveragesB.map((row) => row.memberNumber)).toEqual(["123"]);
+    const guardiansB = (await db.select().from(guardian)).filter(
+      (row) => row.organizationId === "org-b",
+    );
+    expect(guardiansB.map((row) => row.name)).toEqual(["Laura Paz"]);
   });
 
   it("refuses to write a row into another organization", async () => {
@@ -419,6 +438,28 @@ describe("row-level security on tenant tables", () => {
     await expect(coverageOf(patientOf("org-b"), insurerOf("org-a"))).rejects.toThrow();
     await expect(coverageOf(patientOf("org-a"), insurerOf("org-b"))).rejects.toThrow();
   });
+
+  it("refuses a guardian for another organization's patient", async () => {
+    const patients = await db.select().from(patient);
+    const patientB = patients.find((row) => row.organizationId === "org-b")!.id;
+
+    await expect(
+      asAppRole(db, (tx) =>
+        withTenant(
+          actorA,
+          (tenant) =>
+            tenant.insert(guardian).values({
+              organizationId: "org-a",
+              patientId: patientB,
+              name: "Laura",
+              relationship: "Madre",
+              phone: "+543514123456",
+            }),
+          tx,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
 });
 
 describe("the row-level security guard", () => {
@@ -456,6 +497,7 @@ describe("the row-level security guard", () => {
         "audit_log",
         "insurer",
         "coverage",
+        "guardian",
       ]),
     );
     expect(

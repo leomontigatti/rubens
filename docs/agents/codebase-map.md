@@ -14,7 +14,8 @@ src/
 │   │                  controls), `range-entry.tsx` (the time-off and closure forms and rows),
 │   │                  `patient-form.tsx` (patient registration, for any screen that registers one),
 │   │                  `patient-duplicates.tsx` (the duplicate check's refusal and warning),
-│   │                  `patient-coverages.tsx` (the patient page's coverages)
+│   │                  `patient-coverages.tsx` (the patient page's coverages),
+│   │                  `patient-guardians.tsx` (the patient page's guardians and message contact)
 │   └── ui/            shadcn/ui components (see shadcn.md); add with the CLI, edit by hand
 ├── db/
 │   ├── client.ts      the `db` client (lazy; `DATABASE_URL`, the app role)
