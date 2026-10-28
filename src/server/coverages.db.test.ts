@@ -6,6 +6,7 @@ import type { Actor } from "#/lib/access.ts";
 import { withTenant } from "#/db/tenant.ts";
 import { createAuth } from "#/lib/auth.ts";
 import type { CoverageInput } from "#/lib/coverages.ts";
+import { historyChanges } from "#/lib/patients.ts";
 import { createOrganization } from "#/test-support/organization.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
@@ -344,13 +345,17 @@ describe("a patient's coverages", () => {
       ),
     );
 
-    expect((await coverageHistory()).filter((entry) => entry.action === "update")).toEqual([
+    const updates = (await coverageHistory()).filter((entry) => entry.action === "update");
+    expect(updates).toEqual([
       {
         action: "update",
         userId: "receptionist",
-        before: { insurerId: osde },
-        after: { insurerId: otherOsde },
+        before: { insurerId: osde, insurer: "OSDE" },
+        after: { insurerId: otherOsde, insurer: "OSDE" },
       },
+    ]);
+    expect(historyChanges(updates[0]!)).toEqual([
+      { field: "Obra social / prepaga", before: "OSDE", after: "OSDE" },
     ]);
   });
 });

@@ -72,6 +72,19 @@ function auditedValues(row: Coverage) {
   };
 }
 
+/**
+ * The changed fields of a coverage update. A new insurer records its name on
+ * both sides even when the name is the same, so the history shows the switch.
+ */
+function changedCoverageFields(before: Coverage, after: Coverage) {
+  const changed = changedFields(auditedValues(before), auditedValues(after));
+  if (changed && before.insurerId !== after.insurerId) {
+    changed.before.insurer = before.insurerName;
+    changed.after.insurer = after.insurerName;
+  }
+  return changed;
+}
+
 function selectCoverages(tx: Transaction) {
   return tx
     .select(coverageColumns)
@@ -255,7 +268,7 @@ export async function updateCoverage(
       }
       await tx.update(coverage).set(fields).where(eq(coverage.id, coverageId));
       const updated = (await findCoverage(tx, coverageId))!;
-      const changed = changedFields(auditedValues(current), auditedValues(updated));
+      const changed = changedCoverageFields(current, updated);
       if (changed) {
         await recordAudit(tx, actor, {
           action: "update",
