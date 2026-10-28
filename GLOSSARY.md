@@ -90,6 +90,11 @@ Where an `appointment` stands: `booked` ("Reservado"), `confirmed` ("Confirmado"
 `cancelled` ("Cancelado").
 _Avoid_: pending, done, missed, arrived
 
+**`receptionNote`** — ui: "Nota de recepción"
+A short practical note on an `appointment` for staff, such as "trae
+radiografías". Never clinical.
+_Avoid_: comment, observation, reason, motivo
+
 **`toReschedule`** — ui: "Turnos a reprogramar"
 The `appointment`s a new `timeOff`, `closure` or `schedule` change left outside
 working time, listed for reception to move. They are never cancelled on their own.
