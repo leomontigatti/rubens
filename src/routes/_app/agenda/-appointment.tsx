@@ -27,8 +27,8 @@ import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
 // An appointment clicked on the day view: what it is and its status, the
-// status changes, rescheduling, a move to another room of the office, and a
-// sobreturno over it.
+// status changes, rescheduling, a move to another room of the office, and an
+// overbooking over it.
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -59,7 +59,7 @@ export function AppointmentDialog(props: {
   onClose: () => void;
   /** The office viewed; none until its day has loaded. */
   office: OverbookingOffice | null;
-  /** Opens a sobreturno over the appointment, at its time. */
+  /** Opens an overbooking over the appointment, at its time. */
   onOverbook: (slot: BookingSlot) => void;
 }) {
   const { picked, office } = props;
@@ -122,7 +122,7 @@ function AppointmentDetails(props: {
   );
 }
 
-/** What can be done to the appointment: its status, its room, rescheduling and a sobreturno. */
+/** What can be done to the appointment: its status, its room, rescheduling and an overbooking. */
 function AppointmentActions(props: {
   picked: PickedAppointment;
   office: OverbookingOffice;

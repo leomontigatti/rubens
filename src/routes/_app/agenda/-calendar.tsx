@@ -197,7 +197,7 @@ export function PractitionerColumn(props: {
 
 /**
  * One appointment on the calendar, in its lane, styled and marked by its
- * status; a sobreturno is dashed and marked.
+ * status; an overbooking is dashed and marked.
  */
 function AppointmentBlock(props: {
   block: ReturnType<typeof layoutColumn>[number];

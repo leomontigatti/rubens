@@ -24,7 +24,7 @@ import type { PatientWarning } from "#/server/appointments.ts";
 import { recordAudit } from "#/server/audit.ts";
 import { findBlocking, findFreeTimes, meets } from "#/server/availability.ts";
 
-// Appointments outside their schedule's room: sobreturnos (ui: "Sobreturno"),
+// Appointments outside their schedule's room: overbookings (ui: "Sobreturno"),
 // booked on purpose over another appointment or outside the practitioner's
 // schedules, and moving an appointment to another room. Either needs a room
 // with space (docs/domain/appointments.md § Booking), checked under a lock on
@@ -178,7 +178,7 @@ async function checkWorkingTime(
 }
 
 /**
- * The room a sobreturno goes in: the one picked, or else the schedule's it
+ * The room an overbooking goes in: the one picked, or else the schedule's it
  * falls inside, when that room has space and the practitioner works then.
  */
 export async function placeOverbooking(
@@ -208,7 +208,7 @@ export async function placeOverbooking(
 }
 
 /**
- * Books a sobreturno: at any start, skipping the free-time rule and the
+ * Books an overbooking: at any start, skipping the free-time rule and the
  * overlap constraint, though never in time off or a closure. Inside one of
  * the practitioner's schedules it takes that schedule's room unless another
  * is picked; outside them a room must be picked. The patient's other

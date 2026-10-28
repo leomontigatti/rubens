@@ -16,7 +16,7 @@ import { countToReschedule, listToReschedule } from "#/server/to-reschedule.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 and 2099-01-12 are Mondays;
-// Juan and Lucía work there from 09:00 to 11:00 every Monday. The clock is set
+// Juan and "Lucía" work there from 09:00 to 11:00 every Monday. The clock is set
 // to the first Monday's early morning, before every booking.
 
 let client: PGlite;
@@ -166,7 +166,7 @@ describe("the to-reschedule list", () => {
     expect(await listed()).toEqual([{ id: nextWeek, reason: "outsideSchedules" }]);
   });
 
-  it("never lists a sobreturno, even in time off", async () => {
+  it("never lists an overbooking, even in time off", async () => {
     const result = await asAppRole(db, (tx) =>
       bookOverbooking(
         world.receptionist,

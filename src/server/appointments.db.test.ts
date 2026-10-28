@@ -19,8 +19,8 @@ import { createTimeOff } from "#/server/time-off.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday; Juan works there
-// from 09:00 to 11:00 in Consultorio 1, Lucía from 09:00 to 11:00 in
-// Consultorio 2.
+// from 09:00 to 11:00 in "Consultorio 1", "Lucía" from 09:00 to 11:00 in
+// "Consultorio 2".
 
 let client: PGlite;
 let db: TestDatabase;

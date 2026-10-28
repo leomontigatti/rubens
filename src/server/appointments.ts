@@ -473,7 +473,7 @@ export async function getOfficeDay(
       ok: true;
       office: { id: string; name: string; timeZone: string };
       day: TimeRange;
-      /** The office's active rooms, where an appointment can be moved or a sobreturno booked. */
+      /** The office's active rooms, where an appointment can be moved or an overbooking booked. */
       rooms: { id: string; name: string }[];
       columns: DayColumn[];
     }

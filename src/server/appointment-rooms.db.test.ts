@@ -21,9 +21,9 @@ import { createTimeOff } from "#/server/time-off.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday; Juan works there
-// from 09:00 to 11:00 in Consultorio 1, Lucía from 09:00 to 11:00 in
-// Consultorio 2, both rooms of capacity 1. Consultorio 3 is empty, of
-// capacity 1, and Consultorio 4 of capacity 2.
+// from 09:00 to 11:00 in "Consultorio 1", "Lucía" from 09:00 to 11:00 in
+// "Consultorio 2", both rooms of capacity 1. "Consultorio 3" is empty, of
+// capacity 1, and "Consultorio 4" of capacity 2.
 
 let client: PGlite;
 let db: TestDatabase;
@@ -122,7 +122,7 @@ function move(roomId: string, appointmentId: string, actor: Actor = world.recept
   return asAppRole(db, (tx) => moveAppointmentRoom(actor, { appointmentId, roomId }, tx));
 }
 
-describe("a sobreturno on top of another appointment", () => {
+describe("an overbooking on top of another appointment", () => {
   it("books over the appointment, off the grid, in the room of the schedule", async () => {
     await bookedForJuan();
 
@@ -204,7 +204,7 @@ describe("a sobreturno on top of another appointment", () => {
   });
 });
 
-describe("a sobreturno outside the practitioner's schedules", () => {
+describe("an overbooking outside the practitioner's schedules", () => {
   it("needs a room picked", async () => {
     expect(await overbook(world.receptionist, overbooking({ start: at("15:00") }))).toEqual({
       ok: false,
@@ -261,7 +261,7 @@ describe("a sobreturno outside the practitioner's schedules", () => {
   });
 
   it("fits beside one other practitioner in a room of capacity 2, and not beside two", async () => {
-    // Lucía's second schedule follows the one in Consultorio 2.
+    // The second schedule of "Lucía" follows the one in "Consultorio 2".
     await world.addSchedule({
       practitionerId: world.lucia.id,
       roomId: double.id,
@@ -342,7 +342,7 @@ describe("moving an appointment to another room", () => {
   });
 });
 
-describe("who books sobreturnos and moves appointments", () => {
+describe("who books overbookings and moves appointments", () => {
   it("lets a practitioner book only their own", async () => {
     expect(await overbook(world.juan.actor)).toMatchObject({ ok: true });
     expect(
@@ -362,7 +362,7 @@ describe("who books sobreturnos and moves appointments", () => {
     });
   });
 
-  it("writes the sobreturno to the audit log, about its patient", async () => {
+  it("writes the overbooking to the audit log, about its patient", async () => {
     const created = await overbooked(overbooking());
 
     expect(await auditOf(created.id)).toEqual([
@@ -376,7 +376,7 @@ describe("who books sobreturnos and moves appointments", () => {
 });
 
 describe("the office day view", () => {
-  it("lists the office's rooms and marks a sobreturno", async () => {
+  it("lists the office's rooms and marks an overbooking", async () => {
     await overbooked(overbooking({ start: at("15:00"), roomId: third.id }));
 
     const day = await asAppRole(db, (tx) =>

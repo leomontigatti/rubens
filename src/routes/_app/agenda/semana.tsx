@@ -183,7 +183,7 @@ function WeekPicker(props: {
   );
 }
 
-/** The booking dialog: open on a free time, or on a sobreturno over an appointment. */
+/** The booking dialog: open on a free time, or on an overbooking over an appointment. */
 interface BookingStart {
   open: boolean;
   slot: BookingSlot | null;

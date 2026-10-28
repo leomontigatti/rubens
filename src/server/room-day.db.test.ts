@@ -12,8 +12,8 @@ import { getRoomDay } from "#/server/room-day.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday; Juan works there
-// from 09:00 to 11:00 in Consultorio 1, Lucía from 14:00 to 16:00 in
-// Consultorio 2.
+// from 09:00 to 11:00 in "Consultorio 1", "Lucía" from 14:00 to 16:00 in
+// "Consultorio 2".
 
 let client: PGlite;
 let db: TestDatabase;
@@ -114,7 +114,7 @@ describe("the room view", () => {
     ]);
   });
 
-  it("shows a sobreturno in the room it holds, outside the schedules, and no cancelled appointment", async () => {
+  it("shows an overbooking in the room it holds, outside the schedules, and no cancelled appointment", async () => {
     const cancelled = await book(at("13:00"));
     await asAppRole(db, (tx) =>
       cancelAppointment(

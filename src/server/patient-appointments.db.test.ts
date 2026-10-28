@@ -11,8 +11,8 @@ import { listPatientAppointments } from "#/server/patient-appointments.ts";
 import type { Actor } from "#/lib/access.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
-// (UTC-3). Juan and Lucía work Mondays from 09:00 to 11:00 (12:00Z to 14:00Z),
-// in Consultorio 1 and 2. 2099-01-05 and 2099-01-12 are Mondays.
+// (UTC-3). Juan and "Lucía" work Mondays from 09:00 to 11:00 (12:00Z to 14:00Z),
+// in "Consultorio 1" and "Consultorio 2". 2099-01-05 and 2099-01-12 are Mondays.
 
 let client: PGlite;
 let db: TestDatabase;

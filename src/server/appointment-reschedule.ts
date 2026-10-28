@@ -24,7 +24,7 @@ import { findFreeTimes, toAvailableStarts } from "#/server/availability.ts";
 // Rescheduling (docs/domain/appointments.md § Rescheduling) moves the same
 // appointment, booked or confirmed, to a new time, under the checks of
 // booking: a free start of the practitioner's, which takes its schedule's room
-// and may be in another office, or a sobreturno, placed by the sobreturno and
+// and may be in another office, or an overbooking, placed by the overbooking and
 // room-space rules. The appointment's own time counts as free. The audit entry
 // keeps the previous values. Who may act is as for booking. `database` is for
 // tests, which pass a transaction running as the app role.
@@ -38,7 +38,7 @@ const reschedulable = ["booked", "confirmed"] as const;
 
 type Practitioner = { id: string; gridMinutes: number };
 
-/** Where the appointment goes at `span`: a free start's room, or a sobreturno's. */
+/** Where the appointment goes at `span`: a free start's room, or an overbooking's. */
 async function placeAppointment(
   tx: Transaction,
   found: Practitioner,

@@ -6,8 +6,6 @@ import { useReducer, useState } from "react";
 import type { FormEvent } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
-import { PatientRegistrationForm } from "#/components/patient-form.tsx";
-import { patientSearchKey } from "#/components/patient-search.ts";
 import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -38,19 +36,17 @@ import type {
   PickedStart,
 } from "#/lib/booking-draft.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { patientName } from "#/lib/patients.ts";
 import { getAppointmentTypes } from "#/server/appointment-types.functions.ts";
 import type { RoomOccupant } from "#/server/appointment-rooms.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
 import { getFreeTimes } from "#/server/availability.functions.ts";
 import type { AvailableStart } from "#/server/availability.ts";
-import { findPatients } from "#/server/patients.functions.ts";
-import type { Patient } from "#/server/patients.ts";
+import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 
 // Booking a patient, from either entry: a free time clicked on the day view,
 // which fixes the practitioner, the time and the room, or "Nuevo turno", which
-// picks the practitioner, the type and then a free time for that duration. A
-// sobreturno takes a typed date and time instead, and a room when it falls
+// picks the practitioner, the type and then a free time for that duration. An
+// overbooking takes a typed date and time instead, and a room when it falls
 // outside the practitioner's schedules.
 
 export interface BookingSlot extends PickedStart {
@@ -93,7 +89,7 @@ function localDateTime(instant: Date, timeZone: string) {
   return format(instant, "dd/MM/yyyy HH:mm", { in: tz(timeZone) });
 }
 
-/** Where a sobreturno can go: the office's rooms, its local times read in its zone. */
+/** Where an overbooking can go: the office's rooms, its local times read in its zone. */
 export interface OverbookingOffice {
   rooms: { id: string; name: string }[];
   timeZone: string;
@@ -102,11 +98,11 @@ export interface OverbookingOffice {
 export function BookingDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The free time clicked on the day view, or the appointment a sobreturno goes over. */
+  /** The free time clicked on the day view, or the appointment an overbooking goes over. */
   slot: BookingSlot | null;
   practitioners: { id: string; displayName: string }[];
   defaultDate: string;
-  /** Set for a sobreturno. */
+  /** Set for an overbooking. */
   overbooking: OverbookingOffice | null;
 }) {
   return (
@@ -136,7 +132,7 @@ type BookingRefusal =
   | Exclude<Awaited<ReturnType<typeof addAppointment>>, { ok: true }>
   | Exclude<Awaited<ReturnType<typeof addOverbooking>>, { ok: true }>;
 
-/** A sobreturno's place to start from: the clicked appointment's time, or the day viewed. */
+/** An overbooking's place to start from: the clicked appointment's time, or the day viewed. */
 function initialPlace(slot: BookingSlot | null, defaultDate: string): OverbookingPlace {
   if (!slot) {
     return { date: defaultDate, time: "", roomId: "" };
@@ -145,7 +141,7 @@ function initialPlace(slot: BookingSlot | null, defaultDate: string): Overbookin
   return { date: date!, time: time!, roomId: "" };
 }
 
-/** What the form books: a booking at a free start, or a sobreturno at the typed place. */
+/** What the form books: a booking at a free start, or an overbooking at the typed place. */
 function requestOf(draft: BookingDraft, place: OverbookingPlace, office: OverbookingOffice | null) {
   if (!office) {
     const booking = bookingRequestOf(draft);
@@ -214,7 +210,7 @@ function BookingForm(props: {
   }
 
   async function settle(refusal: BookingRefusal) {
-    // A sobreturno's times are read in its office's zone; a booking's refusals hold none.
+    // An overbooking's times are read in its office's zone; a booking's refusals hold none.
     dispatch(refusalEvent(refusal, props.overbooking?.timeZone ?? defaultTimeZone));
     if (refusal.reason === "timeTaken") {
       // The day view behind the dialog shows the time taken too.
@@ -301,7 +297,7 @@ function FreeStart(props: {
   );
 }
 
-/** A sobreturno's local date and time, and its room when outside the schedules. */
+/** An overbooking's local date and time, and its room when outside the schedules. */
 function OverbookingFields(props: {
   place: OverbookingPlace;
   rooms: { id: string; name: string }[];
@@ -483,103 +479,6 @@ function NoteField(props: { value: string; dispatch: Dispatch }) {
         La información clínica va en la historia clínica, no acá.
       </p>
     </div>
-  );
-}
-
-/** Finds the patient with the search box, or registers one on the spot. */
-function PatientPicker(props: { onChange: (patientId: string | null) => void }) {
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [registering, setRegistering] = useState(false);
-
-  function choose(chosen: Patient | null) {
-    setPatient(chosen);
-    setRegistering(false);
-    props.onChange(chosen?.id ?? null);
-  }
-
-  if (patient) {
-    return (
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm">
-          <span className="text-muted-foreground">Paciente:</span>{" "}
-          <span className="font-medium">{patientName(patient)}</span>
-        </p>
-        <Button type="button" variant="outline" size="sm" onClick={() => choose(null)}>
-          Cambiar
-        </Button>
-      </div>
-    );
-  }
-  if (registering) {
-    return (
-      <PatientRegistrationForm
-        onRegistered={choose}
-        onUseExisting={choose}
-        onCancel={() => setRegistering(false)}
-      />
-    );
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      <PatientSearch onChoose={choose} />
-      <div>
-        <Button type="button" variant="link" onClick={() => setRegistering(true)}>
-          Registrar paciente nuevo
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
-  const { viewer } = useRouteContext({ from: "/_app" });
-  const [query, setQuery] = useState("");
-  const search = { query, includeInactive: false };
-  const { data } = useQuery({
-    queryKey: patientSearchKey(viewer, search),
-    queryFn: () => findPatients({ data: search }),
-    enabled: query.trim() !== "",
-    placeholderData: keepPreviousData,
-    select: (result) => (result.ok ? result.patients : []),
-  });
-
-  return (
-    <>
-      <Label htmlFor="booking-patient">Paciente</Label>
-      <Input
-        id="booking-patient"
-        type="search"
-        placeholder="Buscar por nombre, documento o teléfono"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      {query.trim() && <PatientResults patients={data} onChoose={props.onChoose} />}
-    </>
-  );
-}
-
-function PatientResults(props: {
-  patients: Patient[] | undefined;
-  onChoose: (patient: Patient) => void;
-}) {
-  if (!props.patients) {
-    return null;
-  }
-  if (props.patients.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">Ningún paciente coincide con la búsqueda.</p>
-    );
-  }
-  return (
-    <ul className="flex flex-col gap-1">
-      {props.patients.map((patient) => (
-        <li key={patient.id}>
-          <Button type="button" variant="ghost" size="sm" onClick={() => props.onChoose(patient)}>
-            {patientName(patient)}
-          </Button>
-        </li>
-      ))}
-    </ul>
   );
 }
 

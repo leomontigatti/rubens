@@ -84,7 +84,7 @@ export const appointment = rubens.table(
     roomId: uuid("room_id").notNull(),
     during: timeRange("during").notNull(),
     status: appointmentStatus("status").notNull().default("booked"),
-    /** A sobreturno: booked on purpose over another appointment or outside the schedules. */
+    /** An overbooking: booked on purpose over another appointment or outside the schedules. */
     overbooking: boolean("overbooking").notNull().default(false),
     cancelledBy: appointmentCanceller("cancelled_by"),
     cancellationReason: text("cancellation_reason"),

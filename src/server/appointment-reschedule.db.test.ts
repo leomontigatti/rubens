@@ -18,8 +18,8 @@ import { getAvailability } from "#/server/availability.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday; Juan works from
-// 09:00 to 11:00 in Consultorio 1 at Sede Centro, and from 14:00 to 16:00 in
-// a room of Sede Norte. Lucía works from 09:00 to 11:00 in Consultorio 2.
+// 09:00 to 11:00 in "Consultorio 1" at "Sede Centro", and from 14:00 to 16:00 in
+// a room of "Sede Norte". "Lucía" works from 09:00 to 11:00 in "Consultorio 2".
 
 let client: PGlite;
 let db: TestDatabase;
@@ -183,8 +183,8 @@ describe("rescheduling at a free time", () => {
   });
 });
 
-describe("rescheduling as a sobreturno", () => {
-  it("goes over another appointment and is marked a sobreturno", async () => {
+describe("rescheduling as an overbooking", () => {
+  it("goes over another appointment and is marked an overbooking", async () => {
     const id = await book(maria.id, at("12:00"));
     await book(pedro.id, at("13:00"));
 

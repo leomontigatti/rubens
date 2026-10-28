@@ -50,7 +50,7 @@ export const bookingInputSchema = z.object({
 export type BookingInput = z.input<typeof bookingInputSchema>;
 
 /**
- * A sobreturno: a booking at any start, over another appointment or outside
+ * An overbooking: a booking at any start, over another appointment or outside
  * the schedules. Outside them it needs a room; inside one, `null` keeps the
  * schedule's room.
  */
@@ -169,7 +169,7 @@ export type AppointmentIdInput = z.input<typeof appointmentIdSchema>;
 
 /**
  * Moving an appointment to a new time, and so maybe a new room or office: at
- * a free start, which takes its schedule's room, or as a sobreturno, placed
+ * a free start, which takes its schedule's room, or as an overbooking, placed
  * as booking one is.
  */
 export const rescheduleSchema = z.object({

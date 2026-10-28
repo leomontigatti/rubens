@@ -72,7 +72,7 @@ const refusalMessages = {
   notFound: "No encontramos esa sede.",
 };
 
-/** What the booking dialog opens on: a free time or none, and whether for a sobreturno. */
+/** What the booking dialog opens on: a free time or none, and whether for an overbooking. */
 interface BookingStart {
   slot: BookingSlot | null;
   overbooking: boolean;
@@ -135,7 +135,7 @@ function Agenda() {
   );
 }
 
-/** The title, and the two ways to book: a free time, or a sobreturno once an office is viewed. */
+/** The title, and the two ways to book: a free time, or an overbooking once an office is viewed. */
 function AgendaHeader(props: { canOverbook: boolean; onBook: (overbooking: boolean) => void }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -158,7 +158,7 @@ function AgendaHeader(props: { canOverbook: boolean; onBook: (overbooking: boole
   );
 }
 
-/** The office viewed, where a sobreturno can go; none until its day has loaded. */
+/** The office viewed, where an overbooking can go; none until its day has loaded. */
 function officeOf(day: Awaited<ReturnType<typeof dayOf>>): OverbookingOffice | null {
   return day?.ok ? { rooms: day.rooms, timeZone: day.office.timeZone } : null;
 }

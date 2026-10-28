@@ -104,7 +104,7 @@ describe("what a draft books", () => {
   });
 });
 
-describe("what a sobreturno draft books", () => {
+describe("what an overbooking draft books", () => {
   const ready = run(
     initialBookingDraft(null, ["juan"]),
     { type: "patientPicked", patientId: "maria" },

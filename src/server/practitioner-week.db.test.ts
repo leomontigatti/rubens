@@ -11,7 +11,7 @@ import { getPractitionerWeek } from "#/server/practitioner-week.ts";
 
 // Every service call runs as the app role. The offices are in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday; Juan works from
-// 09:00 to 11:00 on Mondays at Sede Centro, and on Wednesdays at Sede Norte.
+// 09:00 to 11:00 on Mondays at "Sede Centro", and on Wednesdays at "Sede Norte".
 
 let client: PGlite;
 let db: TestDatabase;

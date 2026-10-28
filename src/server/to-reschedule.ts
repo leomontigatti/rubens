@@ -29,7 +29,7 @@ import { meets } from "#/server/availability.ts";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"), computed live and
 // never stored (docs/domain/appointments.md § Rescheduling): every future
-// booked or confirmed appointment, sobreturnos left out, that time off, a
+// booked or confirmed appointment, overbookings left out, that time off, a
 // closure or a schedule change has left outside working time. Scoped as the
 // calendar is: reception and admins see everyone's, a practitioner their own.
 // Schedules in a deactivated room or office cover nothing, as in the free
@@ -66,7 +66,7 @@ function seesEveryone(actor: Actor): boolean {
   return actor.roles.includes("admin") || actor.roles.includes("receptionist");
 }
 
-/** The future booked or confirmed appointments, sobreturnos left out, the actor may see. */
+/** The future booked or confirmed appointments, overbookings left out, the actor may see. */
 async function upcomingAppointments(tx: Transaction, actor: Actor) {
   return tx
     .select({

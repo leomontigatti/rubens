@@ -136,15 +136,15 @@ export function bookingRequestOf(draft: BookingDraft) {
   return partial && draft.start ? { ...partial, start: draft.start.start } : null;
 }
 
-/** Where and when a sobreturno is typed in: a local date and `HH:MM`, and a room or none. */
+/** Where and when an overbooking is typed in: a local date and `HH:MM`, and a room or none. */
 export interface OverbookingPlace {
   date: string;
   time: string;
-  /** Empty for the room of the schedule the sobreturno falls in. */
+  /** Empty for the room of the schedule the overbooking falls in. */
   roomId: string;
 }
 
-/** What a sobreturno draft books, its local date and time read in `timeZone`. */
+/** What an overbooking draft books, its local date and time read in `timeZone`. */
 export function overbookingRequestOf(
   draft: BookingDraft,
   place: OverbookingPlace,
