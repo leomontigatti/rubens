@@ -40,9 +40,19 @@ export const Route = createFileRoute("/_app")({
 function AppShell() {
   const { viewer } = Route.useRouteContext();
 
-  // A sign-out or sign-in since this page loaded: its screen and caches are
-  // the previous user's.
+  // Another tab signed in or out: this tab's screen and caches are the
+  // previous user's.
   useEffect(() => reloadOnSessionChange(), []);
+
+  // A page that was still loading when another tab signed in or out missed
+  // that tab's message: once it mounts, it checks who is signed in now.
+  useEffect(() => {
+    void getViewer().then((result) => {
+      if (!result.ok || result.viewer.userId !== viewer.userId) {
+        window.location.reload();
+      }
+    });
+  }, [viewer.userId]);
 
   async function signOut() {
     await authClient.signOut();
