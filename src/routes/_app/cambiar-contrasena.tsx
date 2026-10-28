@@ -69,7 +69,7 @@ function ChangePassword() {
   return (
     <Card className="mx-auto w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Cambiar contraseña</CardTitle>
+        <CardTitle>Cambiar contraseña</CardTitle>
         {viewer.mustChangePassword && (
           <CardDescription>
             Elegí una contraseña nueva para reemplazar la contraseña inicial.

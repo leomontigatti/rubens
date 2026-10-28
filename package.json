@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@shadcn/lint": "0.2.3",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-cli": "^1.132.0",
     "@types/node": "^22.20.5",

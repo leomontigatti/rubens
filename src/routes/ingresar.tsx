@@ -50,7 +50,7 @@ function SignIn() {
     <main className="flex min-h-svh items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Ingresar a Rubens</CardTitle>
+          <CardTitle>Ingresar a Rubens</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>

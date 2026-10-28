@@ -35,8 +35,30 @@ export default defineConfig({
   lint: {
     ignorePatterns: [".output/**", ".nitro/**", ".tanstack/**", ...generated],
     plugins: ["react", "import", "typescript"],
+    // The style guide's mechanical rules: `@shadcn/lint`, and `ui` for what it
+    // does not cover. It reads the components and the theme from components.json.
+    jsPlugins: ["@shadcn/lint", "./scripts/oxlint-ui-plugin.mjs"],
+    settings: {
+      shadcn: {
+        note: "A colour, radius or state comes from a token or a variant; className is for layout (docs/agents/style-guide.md). A new token or variant is a product decision: ask before adding one.",
+      },
+    },
     options: { typeAware: true, typeCheck: true },
     rules: {
+      "shadcn/no-restyle": [
+        "error",
+        {
+          allow: ["layout"],
+          // A card's content lays out its children; its padding stays the card's.
+          contracts: [{ pattern: "^CardContent$", allow: ["layout", "gap-*"] }],
+        },
+      ],
+      "shadcn/no-raw-colors": "error",
+      "shadcn/no-arbitrary-values": "error",
+      "shadcn/no-unknown-classes": "error",
+      "shadcn/no-inline-styles": "error",
+      "shadcn/require-static-classes": "error",
+      "ui/no-raw-form-element": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
       "import/no-cycle": "error",
@@ -51,6 +73,24 @@ export default defineConfig({
         files: ["src/db/**", "src/lib/auth.ts", "tests/db/**"],
         rules: {
           "no-restricted-imports": ["error", { paths: [publicSchemaImports] }],
+        },
+      },
+      {
+        // The components own their look, so they style themselves (base-nova
+        // writes arbitrary values) and wrap the raw elements.
+        files: ["src/components/ui/**"],
+        rules: {
+          "shadcn/no-restyle": "off",
+          "shadcn/no-arbitrary-values": "off",
+          "ui/no-raw-form-element": "off",
+        },
+      },
+      {
+        // Tests render whatever they need.
+        files: ["**/*.test.tsx"],
+        rules: {
+          "shadcn/no-restyle": "off",
+          "ui/no-raw-form-element": "off",
         },
       },
     ],
