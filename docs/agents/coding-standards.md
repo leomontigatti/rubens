@@ -131,8 +131,9 @@ These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
   time zone, never stored as a bare `timestamp`.
 - **Clinical note versions are append-only** (ADR-0005). Editing a note adds a
   version. No `UPDATE` or `DELETE` on a note version or the audit log, and no
-  `DELETE` of any clinical data, except an admin deleting the content of a voided
-  note or file: the text cleared, the version and a placeholder kept.
+  `DELETE` of any clinical data, except an admin deleting voided content: a voided
+  file's content is removed and its note kept, and a voided note's versions have
+  their text cleared, the only change allowed on a version.
 - **No patient data in logs, errors, or job payload logs.** Names, phone numbers,
   appointment times and clinical text stay out of `console`, error messages and
   pg-boss payload logs. Ids are enough to find a record.
