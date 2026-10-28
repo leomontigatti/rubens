@@ -100,12 +100,13 @@ at it (TBD: Coolify healthcheck path and timings).
 
 ## Backups
 
-**Requirement, not yet set up**: encrypted off-site backups of the Postgres database, and
+**Requirement, not yet set up**: encrypted off-site backups of the Postgres database and of
+the attachments volume (ADR-0005: clinical files live on the VPS's disk), and
 a restore that has been run, not just configured. A backup nobody has restored is a
 hope, not a backup.
 
 - Encryption: at rest on the backup target and with a key held outside the VPS (TBD: tool and key custody).
-- Off-site: a location other than the VPS (TBD: provider, and whether it is in the same
+- Off-site: a location other than the VPS (TBD: provider, R2 the candidate, and whether it is in the same
   jurisdiction as the data; see OPEN below).
 - Schedule and retention: TBD. Clinical records are kept at least ten years (ADR-0003),
   so retention is a legal question, not only an operational one.

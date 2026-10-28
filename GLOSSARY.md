@@ -29,6 +29,11 @@ A health professional who works in exactly one `organization`. A practitioner wh
 keeps clinical records writes `clinicalNote`s; today every practitioner does.
 _Avoid_: doctor, dentist, provider, staff, medic
 
+**`licenseNumber`** — ui: "Matrícula"
+A `practitioner`'s professional licence number, shown next to their name on their
+`clinicalNote`s.
+_Avoid_: registration, MP, MN
+
 A member can hold several of these roles at once, such as a practitioner who is
 also the admin.
 
@@ -128,7 +133,7 @@ _Avoid_: insurance company, payer, provider
 
 **`guardian`** — ui: "Responsable"
 An adult responsible for a `patient`, usually a minor's parent. A guardian can be
-the patient's contact for messages and signs their `consentForm`s.
+the patient's contact for messages and signs a minor's `consentForm`s.
 _Avoid_: tutor, parent, contact person
 
 **`whatsappConsent`** — ui: "Acepta WhatsApp"
@@ -164,21 +169,16 @@ _Avoid_: alert, message, inbox item
 ## Clinical records
 
 **`clinicalRecord`** — ui: "Historia clínica"
-The clinical history of one `patient` in an `organization`: their signed
-`clinicalNote`s, `addendum`s and `attachment`s, readable by every practitioner who
-keeps clinical records.
+The clinical history of one `patient` in an `organization`: their `clinicalNote`s,
+`attachment`s and `medicalAlert`s, readable by every practitioner who keeps
+clinical records.
 _Avoid_: medical record, HC, ficha, chart
 
 **`clinicalNote`** — ui: "Evolución"
 One entry in a `clinicalRecord`, written by one `practitioner` and optionally tied
-to an `appointment`. It is a draft until its author signs it, and never changes
-after that.
-_Avoid_: note, `nota`, progress note, entry
-
-**`addendum`** — ui: "Adenda"
-A signed correction or addition to a signed `clinicalNote`, shown next to it. The
-original stays as it was.
-_Avoid_: edit, version, amendment
+to an `appointment`. Only its author edits it, and every earlier version stays in
+the record.
+_Avoid_: note, `nota`, progress note, entry, draft, addendum, `adenda`
 
 **`medicalAlert`** — ui: "Alerta médica"
 An allergy or condition a `practitioner` must know before treating a `patient`,
@@ -186,15 +186,15 @@ such as an allergy to penicillin, shown at the top of the `clinicalRecord`.
 _Avoid_: allergy, warning, flag
 
 **`attachment`** — ui: "Adjunto"
-A file in a `clinicalRecord`, such as an X-ray, a photo or a scanned
-`consentForm`.
+A file on a `clinicalNote`, such as an X-ray, a photo or a scanned `consentForm`.
 _Avoid_: document, upload, file
 
 **`consentForm`** — ui: "Consentimiento informado"
-A signed informed-consent document, kept as an `attachment` with who signed it:
-the `patient` or a `guardian`.
+An informed-consent form signed on paper by the `patient` or a `guardian`, scanned
+as an `attachment`. The practice keeps the paper.
 _Avoid_: consent, waiver
 
 **`clinicalRecordCopy`** — ui: "Copia de historia clínica"
-A PDF of a `clinicalRecord` handed to a `patient` who asks for it.
+A `clinicalRecord` handed to a `patient` who asks for it: a PDF of its notes with
+the files attached to them.
 _Avoid_: export, report, printout

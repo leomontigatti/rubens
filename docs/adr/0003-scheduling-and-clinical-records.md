@@ -1,13 +1,15 @@
 # ADR-0003: Scheduling integrity and clinical records
 
-**Status**: accepted
+**Status**: accepted; partly superseded by
+[ADR-0005](./0005-versioned-clinical-notes.md)
 
 Date: 2026-10-12. Amended 2026-10-27, after the domain model was agreed
 ([docs/domain/](../domain/README.md)):
 
 - Room blocks became weekly schedules, and room capacity is checked when a schedule is saved.
 - Overbookings are exempt from the overlap constraint.
-- Corrections are addenda rather than superseding versions.
+- Corrections are addenda rather than superseding versions (itself superseded by
+  ADR-0005: notes are edited and every version is kept).
 - Clinical access is per practitioner setting, not per specialty.
 
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,
@@ -31,21 +33,19 @@ Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
   Availability is the schedules expanded inside a bounded window, minus time off,
   closures and booked appointments.
 
-## Clinical records are append-only
+## Clinical records are audited
+
+How notes are written and kept is [ADR-0005](./0005-versioned-clinical-notes.md),
+which superseded this section's append-only notes and application-level encryption
+on 2026-10-28 ([the old text](./superseded/0003-clinical-notes-append-only.md)).
 
 - Whether a practitioner keeps clinical records is a setting on the practitioner.
   Every practitioner who keeps them can read every patient's record in the
   organization. Ley 26.529 makes the institution the custodian, and access is
   audited rather than narrowed per treating practitioner.
-- A note is editable by its author while it is a draft. Once signed, it is never
-  updated or deleted, and the database rejects such a change. A correction is a
-  signed addendum that points at the note. Ley 26.529 asks for an unalterable
-  record, kept at least ten years. Nothing in a record is deleted.
 - Every read and write of clinical data is written to an append-only audit log
   in the same transaction. The app role cannot `UPDATE` or `DELETE` it.
 - Receptionists cannot read clinical notes, and RLS enforces that too.
-- Clinical text is also encrypted at the application level, with the key outside
-  the database.
 
 Health data is sensitive data under Ley 25.326; registration with the AAIP,
 consent and the hosting country are to be confirmed with local counsel before

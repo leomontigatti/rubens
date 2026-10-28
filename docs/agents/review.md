@@ -10,7 +10,7 @@ A diff that touches any of these goes to the full review, beside the migrations,
 terms and destructive scripts the shared skill always sends there:
 
 - **Patient data and clinical records**: anything that stores, reads, shows or sends a patient's
-  data or a clinical note (ADR-0003).
+  data or a clinical note (ADR-0003, ADR-0005).
 - **Tenancy and row-level security**: the schema, `withTenant()`, the `db` client, the roles and
   grants, and the RLS policies (ADR-0002).
 - **Auth**: Better Auth's config and handler, sessions, and who may call a server function.
@@ -60,7 +60,7 @@ setting behind for the next request (a session-level `SET`, `LISTEN`, a session 
 long-lived named prepared statement); request code running as the owner role
 (`DATABASE_DIRECT_URL`), which RLS does not apply to; a server function reachable by a user who
 should be refused (a receptionist reading a clinical note, a request naming another
-organization's id); a clinical note edited or deleted in place; patient data (names, phone
+organization's id); a clinical note edited without keeping its earlier version, or a note version updated or deleted other than clearing a voided note's text; patient data (names, phone
 numbers, appointment times, clinical text) that reaches a log, an error message, an alert or a
 job's log line or payload outside our own Postgres.
 
