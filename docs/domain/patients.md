@@ -61,11 +61,10 @@ A patient can have one or more guardians, usually a minor's parents. A guardian 
 a contact kept on the patient (name, relationship, document, phone, email), not a
 link to another patient, even when the parent is a patient too. One guardian, or
 the patient, is the contact that messages go to; the patient's own phone is the
-default. A guardian signs consent forms while the patient is a minor.
+default. A guardian signs a minor's consent forms, on paper.
 
 A patient under 18 by birth date shows as a minor, and the app asks for a
-guardian without requiring one: a teenager may book for themselves. The
-guardian's signature is enforced where it matters, on a minor's consent form.
+guardian without requiring one: a teenager may book for themselves.
 
 ## WhatsApp consent
 

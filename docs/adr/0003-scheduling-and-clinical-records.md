@@ -1,6 +1,7 @@
 # ADR-0003: Scheduling integrity and clinical records
 
-**Status**: accepted
+**Status**: accepted; the clinical records section is superseded by
+[ADR-0005](./0005-versioned-clinical-notes.md)
 
 Date: 2026-10-12. Amended 2026-10-27, after the domain model was agreed
 ([docs/domain/](../domain/README.md)):
@@ -32,6 +33,10 @@ Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
   closures and booked appointments.
 
 ## Clinical records are append-only
+
+_Superseded on 2026-10-28 by [ADR-0005](./0005-versioned-clinical-notes.md): notes
+are edited with every version kept, with no drafts, signing or addenda, and there is
+no application-level encryption at launch. Kept for its rationale._
 
 - Whether a practitioner keeps clinical records is a setting on the practitioner.
   Every practitioner who keeps them can read every patient's record in the

@@ -129,9 +129,9 @@ These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
   `BYPASSRLS`; as the owner it proves nothing.
 - **Instants are `timestamptz`.** Local times are derived from the office's IANA
   time zone, never stored as a bare `timestamp`.
-- **Signed clinical notes are append-only.** Only an unsigned draft is edited; a
-  correction to a signed note is a new addendum. No `UPDATE` or `DELETE` on a
-  signed note, an addendum or the audit log, and no `DELETE` of any clinical data.
+- **Clinical note versions are append-only** (ADR-0005). Editing a note adds a
+  version; no `UPDATE` or `DELETE` on a note version or the audit log, and no
+  `DELETE` of any clinical data except an admin deleting a voided file.
 - **No patient data in logs, errors, or job payload logs.** Names, phone numbers,
   appointment times and clinical text stay out of `console`, error messages and
   pg-boss payload logs. Ids are enough to find a record.
