@@ -98,7 +98,7 @@ function AppointmentDetails(props: {
         <DialogDescription>
           {localTime(picked.appointment.start, timeZone)} a{" "}
           {localTime(picked.appointment.end, timeZone)} con {picked.practitioner.displayName} ·{" "}
-          {picked.appointment.typeName}
+          {picked.appointment.medicalServiceName}
           {picked.appointment.overbooking && " · Sobreturno"}
         </DialogDescription>
       </DialogHeader>

@@ -49,7 +49,7 @@ export interface ToRescheduleEntry {
   start: Date;
   end: Date;
   status: AppointmentStatus;
-  typeName: string;
+  medicalServiceName: string;
   color: MedicalServiceColor;
   officeName: string;
   roomName: string;
@@ -75,7 +75,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       firstName: patient.firstName,
       lastName: patient.lastName,
       chosenName: patient.chosenName,
-      typeName: medicalService.name,
+      medicalServiceName: medicalService.name,
       color: medicalService.color,
       officeId: office.id,
       officeName: office.name,
@@ -178,7 +178,7 @@ async function findToReschedule(tx: Transaction, actor: Actor): Promise<ToResche
         start: row.during.start,
         end: row.during.end,
         status: row.status,
-        typeName: row.typeName,
+        medicalServiceName: row.medicalServiceName,
         color: row.color,
         officeName: row.officeName,
         roomName: row.roomName,

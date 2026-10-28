@@ -228,7 +228,7 @@ export async function findBookablePractitioner(
   return { ok: true as const, ...found };
 }
 
-/** Why the type, one of the practitioner's, or the patient cannot be booked; `null` when both can. */
+/** Why the medical service, one of the practitioner's, or the patient cannot be booked; `null` when both can. */
 export async function checkTypeAndPatient(
   tx: Transaction,
   practitionerId: string,
@@ -238,7 +238,7 @@ export async function checkTypeAndPatient(
   ok: false;
   reason: "notFound" | "medicalServiceInactive" | "patientInactive";
 } | null> {
-  const [type] = await tx
+  const [service] = await tx
     .select({ active: medicalService.active })
     .from(medicalService)
     .where(
@@ -251,10 +251,10 @@ export async function checkTypeAndPatient(
     .select({ active: patient.active })
     .from(patient)
     .where(eq(patient.id, patientId));
-  if (!type || !patientRow) {
+  if (!service || !patientRow) {
     return notFound;
   }
-  if (!type.active) {
+  if (!service.active) {
     return { ok: false, reason: "medicalServiceInactive" };
   }
   return patientRow.active ? null : { ok: false, reason: "patientInactive" };
@@ -368,7 +368,7 @@ export interface DayAppointment {
   cancellationReason: string | null;
   overbooking: boolean;
   patientName: string;
-  typeName: string;
+  medicalServiceName: string;
   color: MedicalServiceColor;
   roomId: string;
   roomName: string;
@@ -406,7 +406,7 @@ const dayAppointmentColumns = {
   firstName: patient.firstName,
   lastName: patient.lastName,
   chosenName: patient.chosenName,
-  typeName: medicalService.name,
+  medicalServiceName: medicalService.name,
   color: medicalService.color,
   roomId: appointment.roomId,
   roomName: room.name,
@@ -446,7 +446,7 @@ export function toDayAppointment(
     cancellationReason: booked.cancellationReason,
     overbooking: booked.overbooking,
     patientName: patientName(booked),
-    typeName: booked.typeName,
+    medicalServiceName: booked.medicalServiceName,
     color: booked.color,
     roomId: booked.roomId,
     roomName: booked.roomName,

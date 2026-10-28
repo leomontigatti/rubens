@@ -19,7 +19,7 @@ import { getPractitionerWeek } from "#/server/practitioner-week.ts";
 let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
-let juanType: { id: string };
+let juanService: { id: string };
 let maria: { id: string };
 let north: { id: string };
 
@@ -34,7 +34,7 @@ beforeEach(async () => {
   const northRoom = await world.addRoom(north.id, "Norte 1");
   await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.juan.id, roomId: northRoom.id, weekdays: [3] });
-  juanType = await world.addType(world.juan.id, 60);
+  juanService = await world.addMedicalService(world.juan.id, 60);
   maria = await world.addPatient("María", "0351 15 555-1234");
 });
 
@@ -49,7 +49,7 @@ async function book(start: Date) {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        medicalServiceId: juanType.id,
+        medicalServiceId: juanService.id,
         start,
         durationMinutes: 60,
         confirmWarnings: true,

@@ -61,7 +61,7 @@ export async function createSchedulingWorld(db: TestDatabase) {
 
 /**
  * A scheduling world ready for booking: an office in Buenos Aires (UTC-3) with
- * two rooms, two practitioners each with a type, a receptionist and patients,
+ * two rooms, two practitioners each with a medical service, a receptionist and patients,
  * all added through the services as the app role. 2099-01-05 is a Monday.
  */
 export async function createBookingWorld(db: TestDatabase) {
@@ -75,7 +75,7 @@ export async function createBookingWorld(db: TestDatabase) {
   const listed = await asAppRole(db, (tx) => listSchedulePractitioners(world.admin, tx));
   const idOf = (name: string) => listed.find((row) => row.displayName === name)!.id;
 
-  async function addType(practitionerId: string, durationMinutes = 30) {
+  async function addMedicalService(practitionerId: string, durationMinutes = 30) {
     const result = await asAppRole(db, (tx) =>
       createMedicalService(
         world.admin,
@@ -134,7 +134,7 @@ export async function createBookingWorld(db: TestDatabase) {
     receptionist,
     juan: practitioner(juan, "Juan Gómez"),
     lucia: practitioner(lucia, "Lucía Díaz"),
-    addType,
+    addMedicalService,
     addSchedule,
     addPatient,
   };

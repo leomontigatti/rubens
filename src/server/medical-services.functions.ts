@@ -16,8 +16,8 @@ import type { MedicalServiceListOptions } from "#/server/medical-services.ts";
 import { listSchedulePractitioners } from "#/server/schedules.ts";
 import { withActor } from "#/server/with-actor.ts";
 
-// The services validate their input and decide whose types the actor may
-// change, so each validator here only names the type. Requiring an admin or a
+// The services validate their input and decide whose medical services the
+// actor may change, so each validator here only names the type. Requiring an admin or a
 // practitioner refuses a receptionist before a transaction opens.
 const anyRole = { roles: "any" } as const;
 const editors = { roles: ["admin", "practitioner"] } as const;

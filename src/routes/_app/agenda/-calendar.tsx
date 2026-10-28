@@ -208,7 +208,7 @@ function AppointmentBlock(props: {
           </span>
         </Button>
         <span className="text-muted-foreground truncate">
-          {booked.typeName} · {booked.roomName}
+          {booked.medicalServiceName} · {booked.roomName}
         </span>
       </div>
     </div>

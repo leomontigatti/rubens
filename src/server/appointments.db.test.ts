@@ -25,8 +25,8 @@ import { createTimeOff } from "#/server/time-off.ts";
 let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
-let juanType: { id: string };
-let luciaType: { id: string };
+let juanService: { id: string };
+let luciaService: { id: string };
 let maria: { id: string };
 
 beforeEach(async () => {
@@ -34,8 +34,8 @@ beforeEach(async () => {
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
-  juanType = await world.addType(world.juan.id);
-  luciaType = await world.addType(world.lucia.id);
+  juanService = await world.addMedicalService(world.juan.id);
+  luciaService = await world.addMedicalService(world.lucia.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
 });
 
@@ -51,7 +51,7 @@ function booking(overrides: Partial<BookingInput> = {}): BookingInput {
   return {
     patientId: maria.id,
     practitionerId: world.juan.id,
-    medicalServiceId: juanType.id,
+    medicalServiceId: juanService.id,
     start: at("12:00"),
     durationMinutes: 30,
     ...overrides,
@@ -107,7 +107,7 @@ describe("booking an appointment", () => {
     expect(await rowOf(created.id)).toMatchObject({
       patientId: maria.id,
       practitionerId: world.juan.id,
-      medicalServiceId: juanType.id,
+      medicalServiceId: juanService.id,
       roomId: world.room.id,
       during: { start: at("12:00"), end: at("12:45") },
       status: "booked",
@@ -159,13 +159,13 @@ describe("booking an appointment", () => {
     });
   });
 
-  it("refuses another practitioner's type and a deactivated one", async () => {
-    expect(await book(world.receptionist, booking({ medicalServiceId: luciaType.id }))).toEqual({
+  it("refuses another practitioner's medical service and a deactivated one", async () => {
+    expect(await book(world.receptionist, booking({ medicalServiceId: luciaService.id }))).toEqual({
       ok: false,
       reason: "notFound",
     });
     await asAppRole(db, (tx) =>
-      setMedicalServiceActive(world.admin, { id: juanType.id, active: false }, tx),
+      setMedicalServiceActive(world.admin, { id: juanService.id, active: false }, tx),
     );
     expect(await book()).toEqual({ ok: false, reason: "medicalServiceInactive" });
   });
@@ -202,7 +202,7 @@ describe("the patient warning", () => {
   it("warns when the patient has an overlapping appointment, and books once confirmed", async () => {
     await booked(
       world.receptionist,
-      booking({ practitionerId: world.lucia.id, medicalServiceId: luciaType.id }),
+      booking({ practitionerId: world.lucia.id, medicalServiceId: luciaService.id }),
     );
 
     const warned = await book(world.receptionist, booking());
@@ -230,7 +230,7 @@ describe("the patient warning", () => {
       world.receptionist,
       booking({
         practitionerId: world.lucia.id,
-        medicalServiceId: luciaType.id,
+        medicalServiceId: luciaService.id,
         start: at("13:00"),
       }),
     );
@@ -262,7 +262,7 @@ describe("who books", () => {
     expect(await book(world.admin)).toMatchObject({ ok: true });
     expect(
       await book(world.lucia.actor, {
-        ...booking({ practitionerId: world.lucia.id, medicalServiceId: luciaType.id }),
+        ...booking({ practitionerId: world.lucia.id, medicalServiceId: luciaService.id }),
         confirmWarnings: true,
       }),
     ).toMatchObject({ ok: true });
@@ -346,7 +346,7 @@ describe("the office day view", () => {
         status: "booked",
         overbooking: false,
         patientName: "María Paz",
-        typeName: "Consulta",
+        medicalServiceName: "Consulta",
         color: "color1",
         roomName: "Consultorio 1",
         receptionNote: "Trae estudios",

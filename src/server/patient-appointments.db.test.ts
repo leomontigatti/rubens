@@ -19,7 +19,7 @@ let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
 let maria: { id: string };
-let types: Map<string, string>;
+let services: Map<string, string>;
 
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -28,9 +28,9 @@ beforeEach(async () => {
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
-  types = new Map([
-    [world.juan.id, (await world.addType(world.juan.id)).id],
-    [world.lucia.id, (await world.addType(world.lucia.id)).id],
+  services = new Map([
+    [world.juan.id, (await world.addMedicalService(world.juan.id)).id],
+    [world.lucia.id, (await world.addMedicalService(world.lucia.id)).id],
   ]);
   maria = await world.addPatient("María", "0351 15 555-1234");
 });
@@ -47,7 +47,7 @@ async function book(practitionerId: string, start: string) {
       {
         patientId: maria.id,
         practitionerId,
-        medicalServiceId: types.get(practitionerId)!,
+        medicalServiceId: services.get(practitionerId)!,
         start: new Date(start),
         durationMinutes: 30,
         confirmWarnings: true,
@@ -128,7 +128,7 @@ describe("an appointment in the patient's change history", () => {
     });
     expect(result.names).toEqual({
       [world.juan.id]: "Juan Gómez",
-      [types.get(world.juan.id)!]: "Consulta",
+      [services.get(world.juan.id)!]: "Consulta",
       [world.room.id]: "Consultorio 1",
     });
     expect(result.entries.find((entry) => entry.entityType === "patient")).toMatchObject({

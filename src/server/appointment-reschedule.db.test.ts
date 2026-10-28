@@ -24,8 +24,8 @@ import { getAvailability } from "#/server/availability.ts";
 let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
-let juanType: { id: string };
-let luciaType: { id: string };
+let juanService: { id: string };
+let luciaService: { id: string };
 let maria: { id: string };
 let pedro: { id: string };
 let northRoom: { id: string };
@@ -47,8 +47,8 @@ beforeEach(async () => {
     endTime: "16:00",
   });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
-  juanType = await world.addType(world.juan.id);
-  luciaType = await world.addType(world.lucia.id);
+  juanService = await world.addMedicalService(world.juan.id);
+  luciaService = await world.addMedicalService(world.lucia.id);
   // A 15-minute grid, so a move can land over the appointment's own old time.
   await db
     .update(practitionerTable)
@@ -66,7 +66,7 @@ async function book(
   patientId: string,
   start: Date,
   practitioner: { id: string } = world.juan,
-  typeId = juanType.id,
+  serviceId = juanService.id,
 ) {
   const result = await asAppRole(db, (tx) =>
     bookAppointment(
@@ -74,7 +74,7 @@ async function book(
       {
         patientId,
         practitionerId: practitioner.id,
-        medicalServiceId: typeId,
+        medicalServiceId: serviceId,
         start,
         durationMinutes: 30,
         confirmWarnings: true,
@@ -152,7 +152,7 @@ describe("rescheduling at a free time", () => {
 
   it("warns about the patient's other appointments that day, not about itself", async () => {
     const id = await book(maria.id, at("12:00"));
-    await book(maria.id, at("12:00"), world.lucia, luciaType.id);
+    await book(maria.id, at("12:00"), world.lucia, luciaService.id);
 
     const warned = await reschedule({ appointmentId: id, start: at("13:00") });
     expect(warned).toMatchObject({ ok: false, reason: "patientWarning" });

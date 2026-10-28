@@ -38,20 +38,20 @@ describe("the booking draft", () => {
     expect(initialBookingDraft(null, [juan, lucia])).toMatchObject({ practitionerId: "" });
   });
 
-  it("takes the type's duration as a default the user can change", () => {
-    const typed = run(fromSlot, { type: "typeChosen", medicalService: consulta });
+  it("takes the medical service's duration as a default the user can change", () => {
+    const typed = run(fromSlot, { type: "medicalServiceChosen", medicalService: consulta });
     expect(typed.durationMinutes).toBe(40);
     expect(run(typed, { type: "durationChanged", durationMinutes: 60 }).durationMinutes).toBe(60);
   });
 
-  it("drops the type, duration and start when another practitioner is chosen", () => {
+  it("drops the medical service, duration and start when another practitioner is chosen", () => {
     const changed = run(
       fromSlot,
-      { type: "typeChosen", medicalService: consulta },
+      { type: "medicalServiceChosen", medicalService: consulta },
       { type: "practitionerChosen", practitionerId: lucia },
     );
 
-    expect(changed).toMatchObject({ type: null, durationMinutes: null, start: null });
+    expect(changed).toMatchObject({ medicalService: null, durationMinutes: null, start: null });
   });
 
   it("drops the picked start and offers the fresh ones when the time was taken", () => {
@@ -85,11 +85,11 @@ describe("the booking draft", () => {
 });
 
 describe("what a draft books", () => {
-  it("needs a patient, a type, a duration of 1 to 720 minutes and a start", () => {
+  it("needs a patient, a medical service, a duration of 1 to 720 minutes and a start", () => {
     const ready = run(
       fromSlot,
       { type: "patientPicked", patientId: maria },
-      { type: "typeChosen", medicalService: consulta },
+      { type: "medicalServiceChosen", medicalService: consulta },
       { type: "noteChanged", receptionNote: "Trae estudios" },
     );
 
@@ -113,7 +113,7 @@ describe("what an overbooking draft books", () => {
   const ready = run(
     initialBookingDraft(null, [juan]),
     { type: "patientPicked", patientId: maria },
-    { type: "typeChosen", medicalService: consulta },
+    { type: "medicalServiceChosen", medicalService: consulta },
   );
 
   it("books the local date and time in the office's zone, in the schedule's room unless one is picked", () => {
@@ -142,11 +142,11 @@ describe("what an overbooking draft books", () => {
 });
 
 describe("the free times a new booking asks for", () => {
-  it("asks for the week from the date once a practitioner, a type and a duration are set", () => {
+  it("asks for the week from the date once a practitioner, a medical service and a duration are set", () => {
     const fresh = initialBookingDraft(null, [juan]);
     expect(freeStartsQueryOf(fresh, "2099-01-05")).toBeNull();
 
-    const typed = run(fresh, { type: "typeChosen", medicalService: consulta });
+    const typed = run(fresh, { type: "medicalServiceChosen", medicalService: consulta });
     expect(freeStartsQueryOf(typed, "2099-01-05")).toEqual({
       practitionerId: juan,
       firstDate: "2099-01-05",

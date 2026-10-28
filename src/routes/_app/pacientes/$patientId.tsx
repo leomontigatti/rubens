@@ -440,7 +440,7 @@ function AppointmentItem({ appointment }: { appointment: PatientAppointment }) {
       <div className="flex flex-col gap-0.5 text-sm">
         <p>
           <span className="font-medium">{when.format(appointment.start)}</span> ·{" "}
-          {appointment.practitionerName} · {appointment.typeName}
+          {appointment.practitionerName} · {appointment.medicalServiceName}
         </p>
         <p className="text-muted-foreground">
           {[`${appointment.officeName}, ${appointment.roomName}`, cancellationText(appointment)]

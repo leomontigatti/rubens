@@ -95,7 +95,8 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
           {localDateTime(entry.start, entry.timeZone)} · {entry.patientName}
         </p>
         <p className="text-muted-foreground">
-          {entry.practitioner.displayName} · {entry.typeName} · {entry.officeName}, {entry.roomName}
+          {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.officeName},{" "}
+          {entry.roomName}
         </p>
         <p className="text-muted-foreground">{reasonLabels[entry.reason]}</p>
       </div>
@@ -122,7 +123,7 @@ function EntryDialog(props: { picked: Picked | null; onClose: () => void }) {
               <DialogTitle>{picked.entry.patientName}</DialogTitle>
               <DialogDescription>
                 {localDateTime(picked.entry.start, picked.entry.timeZone)} con{" "}
-                {picked.entry.practitioner.displayName} · {picked.entry.typeName}
+                {picked.entry.practitioner.displayName} · {picked.entry.medicalServiceName}
               </DialogDescription>
             </DialogHeader>
             {picked.action === "reschedule" ? (

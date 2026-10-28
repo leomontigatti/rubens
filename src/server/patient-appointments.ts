@@ -35,7 +35,7 @@ export interface PatientAppointment {
   status: AppointmentStatus;
   overbooking: boolean;
   practitionerName: string;
-  typeName: string;
+  medicalServiceName: string;
   officeName: string;
   roomName: string;
   /** The office's zone, to show the times in local time. */
@@ -79,7 +79,7 @@ export async function listPatientAppointments(
           status: appointment.status,
           overbooking: appointment.overbooking,
           practitionerName: practitioner.displayName,
-          typeName: medicalService.name,
+          medicalServiceName: medicalService.name,
           officeName: office.name,
           roomName: room.name,
           timeZone: office.timeZone,

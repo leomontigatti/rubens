@@ -3,7 +3,7 @@ import * as z from "zod";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 
 /**
- * The colour keys a type can take. They stand in for the brand palette until
+ * The colour keys a medical service can take. They stand in for the brand palette until
  * it lands (#37): each draws from one of the theme's chart tokens.
  */
 export const medicalServiceColors = ["color1", "color2", "color3", "color4", "color5"] as const;

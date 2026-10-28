@@ -29,8 +29,8 @@ import { createTimeOff } from "#/server/time-off.ts";
 let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
-let juanType: { id: string };
-let luciaType: { id: string };
+let juanService: { id: string };
+let luciaService: { id: string };
 let maria: { id: string };
 let pedro: { id: string };
 let third: { id: string };
@@ -43,8 +43,8 @@ beforeEach(async () => {
   double = await world.addRoom(world.office.id, "Consultorio 4", 2);
   await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
-  juanType = await world.addType(world.juan.id);
-  luciaType = await world.addType(world.lucia.id);
+  juanService = await world.addMedicalService(world.juan.id);
+  luciaService = await world.addMedicalService(world.lucia.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
 });
@@ -61,7 +61,7 @@ function overbooking(overrides: Partial<OverbookingInput> = {}): OverbookingInpu
   return {
     patientId: pedro.id,
     practitionerId: world.juan.id,
-    medicalServiceId: juanType.id,
+    medicalServiceId: juanService.id,
     start: at("12:10"),
     durationMinutes: 30,
     roomId: null,
@@ -91,7 +91,7 @@ async function bookedForJuan() {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        medicalServiceId: juanType.id,
+        medicalServiceId: juanService.id,
         start: at("12:00"),
         durationMinutes: 30,
       },
@@ -238,7 +238,7 @@ describe("an overbooking outside the practitioner's schedules", () => {
     await overbooked(
       overbooking({
         practitionerId: world.lucia.id,
-        medicalServiceId: luciaType.id,
+        medicalServiceId: luciaService.id,
         patientId: maria.id,
         start: at("15:00"),
         roomId: third.id,
@@ -327,7 +327,7 @@ describe("a schedule saved in a room an appointment holds", () => {
     await overbooked(
       overbooking({
         practitionerId: world.lucia.id,
-        medicalServiceId: luciaType.id,
+        medicalServiceId: luciaService.id,
         start: at("15:00"),
         roomId: third.id,
       }),
@@ -350,7 +350,7 @@ describe("a schedule saved in a room an appointment holds", () => {
     const cancelled = await overbooked(
       overbooking({
         practitionerId: world.lucia.id,
-        medicalServiceId: luciaType.id,
+        medicalServiceId: luciaService.id,
         start: at("15:00"),
         roomId: third.id,
       }),

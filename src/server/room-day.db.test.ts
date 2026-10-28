@@ -18,7 +18,7 @@ import { getRoomDay } from "#/server/room-day.ts";
 let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
-let juanType: { id: string };
+let juanService: { id: string };
 let maria: { id: string };
 
 function at(time: string) {
@@ -35,7 +35,7 @@ beforeEach(async () => {
     startTime: "14:00",
     endTime: "16:00",
   });
-  juanType = await world.addType(world.juan.id);
+  juanService = await world.addMedicalService(world.juan.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
 });
 
@@ -50,7 +50,7 @@ async function book(start: Date, receptionNote = "trae radiografías") {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        medicalServiceId: juanType.id,
+        medicalServiceId: juanService.id,
         start,
         durationMinutes: 30,
         receptionNote,
@@ -129,7 +129,7 @@ describe("the room view", () => {
         {
           patientId: maria.id,
           practitionerId: world.juan.id,
-          medicalServiceId: juanType.id,
+          medicalServiceId: juanService.id,
           start: at("21:00"),
           durationMinutes: 30,
           roomId: world.otherRoom.id,

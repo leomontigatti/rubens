@@ -23,8 +23,8 @@ let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
 let juanSchedule: { id: string };
-let juanType: { id: string };
-let luciaType: { id: string };
+let juanService: { id: string };
+let luciaService: { id: string };
 let maria: { id: string };
 let pedro: { id: string };
 
@@ -39,8 +39,8 @@ beforeEach(async () => {
   world = await createBookingWorld(db);
   juanSchedule = await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
-  juanType = await world.addType(world.juan.id);
-  luciaType = await world.addType(world.lucia.id);
+  juanService = await world.addMedicalService(world.juan.id);
+  luciaService = await world.addMedicalService(world.lucia.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
 });
@@ -54,7 +54,7 @@ async function book(
   start: Date,
   patientId = maria.id,
   practitioner: { id: string } = world.juan,
-  typeId = juanType.id,
+  serviceId = juanService.id,
   durationMinutes = 30,
 ) {
   const result = await asAppRole(db, (tx) =>
@@ -63,7 +63,7 @@ async function book(
       {
         patientId,
         practitionerId: practitioner.id,
-        medicalServiceId: typeId,
+        medicalServiceId: serviceId,
         start,
         durationMinutes,
         confirmWarnings: true,
@@ -122,7 +122,7 @@ async function addClosure(officeId: string | null, date: string) {
 describe("the to-reschedule list", () => {
   it("is empty while every appointment is inside working time", async () => {
     await book(at("12:00"));
-    await book(at("12:00"), pedro.id, world.lucia, luciaType.id);
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
 
     expect(await listed()).toEqual([]);
     expect(await count()).toBe(0);
@@ -136,8 +136,8 @@ describe("the to-reschedule list", () => {
       roomId: world.otherRoom.id,
       weekdays: [2],
     });
-    const long = await book(at("12:00", tuesday), maria.id, world.juan, juanType.id, 180);
-    await book(at("13:00", tuesday), pedro.id, world.lucia, luciaType.id);
+    const long = await book(at("12:00", tuesday), maria.id, world.juan, juanService.id, 180);
+    await book(at("13:00", tuesday), pedro.id, world.lucia, luciaService.id);
 
     await asAppRole(db, (tx) =>
       createClosure(
@@ -156,7 +156,7 @@ describe("the to-reschedule list", () => {
   it("takes the appointments that new time off overlaps, and only those", async () => {
     const overlapped = await book(at("12:30"));
     await book(at("13:00"), pedro.id);
-    await book(at("12:30"), pedro.id, world.lucia, luciaType.id);
+    await book(at("12:30"), pedro.id, world.lucia, luciaService.id);
 
     await addTimeOff("2099-01-05T09:00", "2099-01-05T10:00");
 
@@ -166,7 +166,7 @@ describe("the to-reschedule list", () => {
 
   it("takes the appointments in an office's closure, and in the organization's", async () => {
     const firstMonday = await book(at("12:00"));
-    const lucias = await book(at("12:00"), pedro.id, world.lucia, luciaType.id);
+    const lucias = await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
     const secondMonday = await book(at("12:00", "2099-01-12"));
 
     await addClosure(world.office.id, "2099-01-05");
@@ -199,7 +199,7 @@ describe("the to-reschedule list", () => {
         {
           patientId: maria.id,
           practitionerId: world.juan.id,
-          medicalServiceId: juanType.id,
+          medicalServiceId: juanService.id,
           start: at("15:00"),
           durationMinutes: 30,
           roomId: world.room.id,
@@ -266,7 +266,7 @@ describe("the to-reschedule list", () => {
 
   it("shows a practitioner only their own appointments", async () => {
     const juans = await book(at("12:00"));
-    await book(at("12:00"), pedro.id, world.lucia, luciaType.id);
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
     await addClosure(world.office.id, "2099-01-05");
 
     expect(await listed(world.juan.actor)).toEqual([{ id: juans, reason: "closure" }]);

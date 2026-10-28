@@ -37,7 +37,7 @@ export const medicalService = rubens.table(
     name: text("name").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
     color: medicalServiceColor("color").notNull(),
-    // A type in use is deactivated, never deleted: it drops out of booking and
+    // A medical service in use is deactivated, never deleted: it drops out of booking and
     // stays on its appointments.
     active: boolean("active").notNull().default(true),
     ...timestamps,

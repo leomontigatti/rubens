@@ -27,7 +27,7 @@ import { getAvailability } from "#/server/availability.ts";
 let client: PGlite;
 let db: TestDatabase;
 let world: BookingWorld;
-let juanType: { id: string };
+let juanService: { id: string };
 let maria: { id: string };
 let pedro: { id: string };
 
@@ -41,7 +41,7 @@ beforeEach(async () => {
   ({ client, db } = await createTestDatabase());
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
-  juanType = await world.addType(world.juan.id);
+  juanService = await world.addMedicalService(world.juan.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
 });
@@ -58,7 +58,7 @@ async function book(patientId = maria.id, start = at("12:00")) {
       {
         patientId,
         practitionerId: world.juan.id,
-        medicalServiceId: juanType.id,
+        medicalServiceId: juanService.id,
         start,
         durationMinutes: 30,
       },
@@ -267,7 +267,7 @@ describe("undo", () => {
   });
 
   it("refuses to bring a cancellation back to a room filled since, naming who holds it", async () => {
-    const luciaType = await world.addType(world.lucia.id);
+    const luciaService = await world.addMedicalService(world.lucia.id);
     const overbook = async (
       practitionerId: string,
       medicalServiceId: string,
@@ -292,9 +292,9 @@ describe("undo", () => {
       }
       return result.appointment.id;
     };
-    const id = await overbook(world.juan.id, juanType.id, maria.id);
+    const id = await overbook(world.juan.id, juanService.id, maria.id);
     await cancel(id);
-    await overbook(world.lucia.id, luciaType.id, pedro.id);
+    await overbook(world.lucia.id, luciaService.id, pedro.id);
 
     expect(await undo(id)).toEqual({
       ok: false,

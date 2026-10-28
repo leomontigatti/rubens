@@ -26,7 +26,7 @@ beforeEach(async () => {
   ({ client, db } = await createTestDatabase());
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
-  const type = await world.addType(world.juan.id);
+  const service = await world.addMedicalService(world.juan.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
   const result = await asAppRole(db, (tx) =>
     bookAppointment(
@@ -34,7 +34,7 @@ beforeEach(async () => {
       {
         patientId: maria.id,
         practitionerId: world.juan.id,
-        medicalServiceId: type.id,
+        medicalServiceId: service.id,
         start: new Date("2099-01-05T12:00:00Z"),
         durationMinutes: 30,
         receptionNote: "Trae estudios",

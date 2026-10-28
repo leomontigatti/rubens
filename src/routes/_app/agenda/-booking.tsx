@@ -45,7 +45,7 @@ import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 
 // Booking a patient, from either entry: a free time clicked on the day view,
 // which fixes the practitioner, the time and the room, or "Nuevo turno", which
-// picks the practitioner, the type and then a free time for that duration. An
+// picks the practitioner, the medical service and then a free time for that duration. An
 // overbooking takes a typed date and time instead, and a room when it falls
 // outside the practitioner's schedules.
 
@@ -384,7 +384,7 @@ function PractitionerField(props: {
   );
 }
 
-/** The practitioner's active types, and the duration, which starts at the type's. */
+/** The practitioner's active medical services, and the duration, which starts at the service's. */
 function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
   if (!props.draft.practitionerId) {
     return null;
@@ -393,7 +393,7 @@ function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
     <div className="grid gap-4 sm:grid-cols-2">
       <TypeField
         practitionerId={props.draft.practitionerId}
-        value={props.draft.type}
+        value={props.draft.medicalService}
         dispatch={props.dispatch}
       />
       <div className="flex flex-col gap-2">
@@ -404,7 +404,7 @@ function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
           min={1}
           max={720}
           value={props.draft.durationMinutes ?? ""}
-          disabled={!props.draft.type}
+          disabled={!props.draft.medicalService}
           onChange={(event) =>
             props.dispatch({ type: "durationChanged", durationMinutes: Number(event.target.value) })
           }
@@ -415,9 +415,9 @@ function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
   );
 }
 
-/** The type picker's empty option, once the types have loaded or before. */
-function typePlaceholder(types: readonly unknown[] | undefined): string {
-  return types?.length === 0 ? "Este profesional no tiene prestaciones" : "Elegí una prestación";
+/** The medical service picker's empty option, once the services have loaded or before. */
+function servicePlaceholder(services: readonly unknown[] | undefined): string {
+  return services?.length === 0 ? "Este profesional no tiene prestaciones" : "Elegí una prestación";
 }
 
 function TypeField(props: {
@@ -438,22 +438,22 @@ function TypeField(props: {
 
   function choose(id: string) {
     props.dispatch({
-      type: "typeChosen",
+      type: "medicalServiceChosen",
       medicalService: options.find((option) => option.id === id),
     });
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor="booking-type">Prestación</Label>
+      <Label htmlFor="booking-medical-service">Prestación</Label>
       <NativeSelect
-        id="booking-type"
+        id="booking-medical-service"
         value={props.value?.id ?? ""}
         onChange={(event) => choose(event.target.value)}
         required
       >
         <NativeSelectOption value="" disabled>
-          {typePlaceholder(data)}
+          {servicePlaceholder(data)}
         </NativeSelectOption>
         {options.map((option) => (
           <NativeSelectOption key={option.id} value={option.id}>
@@ -467,7 +467,7 @@ function TypeField(props: {
 
 /**
  * "Nuevo turno"'s free starts for the practitioner and duration, a week from a
- * date, once the type is chosen.
+ * date, once the medical service is chosen.
  */
 function FreeStartPicker(props: { draft: BookingDraft; defaultDate: string; dispatch: Dispatch }) {
   const [date, setDate] = useState(props.defaultDate);

@@ -31,7 +31,7 @@ export interface BookingWarning {
 export interface BookingDraft {
   patientId: string | null;
   practitionerId: string;
-  type: { id: string; durationMinutes: number } | null;
+  medicalService: { id: string; durationMinutes: number } | null;
   durationMinutes: number | null;
   start: PickedStart | null;
   receptionNote: string;
@@ -46,7 +46,7 @@ export type BookingEvent =
   | { type: "patientPicked"; patientId: string | null }
   | { type: "practitionerChosen"; practitionerId: string }
   | {
-      type: "typeChosen";
+      type: "medicalServiceChosen";
       medicalService: { id: string; durationMinutes: number } | null | undefined;
     }
   | { type: "durationChanged"; durationMinutes: number }
@@ -68,7 +68,7 @@ export function initialBookingDraft(
   return {
     patientId: null,
     practitionerId: slot?.practitionerId ?? onlyOne,
-    type: null,
+    medicalService: null,
     durationMinutes: null,
     start: slot,
     receptionNote: "",
@@ -85,20 +85,20 @@ export function bookingReducer(draft: BookingDraft, event: BookingEvent): Bookin
     case "patientPicked":
       return { ...draft, ...answered, patientId: event.patientId };
     case "practitionerChosen":
-      // A type and a start belong to one practitioner.
+      // A medical service and a start belong to one practitioner.
       return {
         ...draft,
         ...answered,
         practitionerId: event.practitionerId,
-        type: null,
+        medicalService: null,
         durationMinutes: null,
         start: null,
       };
-    case "typeChosen":
+    case "medicalServiceChosen":
       return {
         ...draft,
         ...answered,
-        type: event.medicalService ?? null,
+        medicalService: event.medicalService ?? null,
         durationMinutes: event.medicalService?.durationMinutes ?? null,
       };
     case "durationChanged":
@@ -121,7 +121,7 @@ function partialInputOf(draft: BookingDraft) {
   return {
     patientId: draft.patientId,
     practitionerId: draft.practitionerId,
-    medicalServiceId: draft.type?.id,
+    medicalServiceId: draft.medicalService?.id,
     durationMinutes: draft.durationMinutes,
     receptionNote: draft.receptionNote,
   };
@@ -160,14 +160,14 @@ export function overbookingRequestOf(
 
 /**
  * "Nuevo turno"'s free-times query: the week from `firstDate`, once the draft
- * has a practitioner, a type and a valid duration.
+ * has a practitioner, a medical service and a valid duration.
  */
 export function freeStartsQueryOf(
   draft: BookingDraft,
   firstDate: string,
 ): AvailabilityQuery | null {
   const duration = durationMinutesSchema.safeParse(draft.durationMinutes);
-  if (!draft.practitionerId || !draft.type || !duration.success) {
+  if (!draft.practitionerId || !draft.medicalService || !duration.success) {
     return null;
   }
   return {

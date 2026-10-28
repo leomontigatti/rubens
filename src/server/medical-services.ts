@@ -21,8 +21,8 @@ import { findPractitioner } from "#/server/schedules.ts";
 
 // Practitioners' medical services. Everyone reads them, since booking picks
 // from them; an admin changes anyone's and a practitioner their own. Nothing is
-// deleted: a deactivated type drops out of the booking list and stays on the
-// types screen. Every change is written to the audit log, about no patient.
+// deleted: a deactivated one drops out of the booking list and stays on the
+// medical services screen. Every change is written to the audit log, about no patient.
 // `database` is for tests, which pass a transaction running as the app role.
 
 export interface MedicalService {
@@ -42,7 +42,7 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const practitionerInactive = { ok: false, reason: "practitionerInactive" } as const;
 
-/** Whether the actor may change types at all, before any row is read. */
+/** Whether the actor may change medical services at all, before any row is read. */
 function mayEditSome(actor: Actor): boolean {
   return actor.roles.includes("admin") || actor.roles.includes("practitioner");
 }
@@ -57,11 +57,11 @@ const medicalServiceColumns = {
 
 export interface MedicalServiceListOptions {
   practitionerId: string;
-  /** The types screen shows deactivated types; booking does not. */
+  /** The medical services screen shows deactivated ones; booking does not. */
   includeInactive: boolean;
 }
 
-/** A practitioner's types, by name, and whether the actor may change them. */
+/** A practitioner's medical services, by name, and whether the actor may change them. */
 export async function listMedicalServices(
   actor: Actor,
   options: MedicalServiceListOptions,
