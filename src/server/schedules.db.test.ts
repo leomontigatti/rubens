@@ -275,6 +275,22 @@ describe("practitioner overlap", () => {
       ),
     ).toMatchObject({ ok: true });
   });
+
+  it("refuses one practitioner in two time zones at once, and accepts them in turn", async () => {
+    const office = await world.addOffice("Sede Madrid", "Europe/Madrid");
+    const abroad = await world.addRoom(office.id, "Consultorio 2");
+    await create(world.admin, mondayMorning({ lastDate: "2099-02-23" }));
+    // Tuesdays never meet Mondays, yet the zones alone refuse the dates in common.
+    const tuesday = { roomId: abroad.id, weekdays: [2] };
+
+    expect(await create(world.admin, mondayMorning(tuesday))).toEqual({
+      ok: false,
+      reason: "otherTimeZone",
+    });
+    expect(
+      await create(world.admin, mondayMorning({ ...tuesday, firstDate: "2099-02-24" })),
+    ).toMatchObject({ ok: true });
+  });
 });
 
 describe("changing a schedule from a date", () => {

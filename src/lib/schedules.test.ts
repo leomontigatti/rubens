@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { collisionLabel, scheduleState, validityLabel } from "#/lib/schedules.ts";
+import { collisionLabel, datesMeet, scheduleState, validityLabel } from "#/lib/schedules.ts";
 
 // What a schedule's screen offers depends on where today falls in its dates.
 
@@ -52,5 +52,16 @@ describe("a schedule's labels", () => {
         endTime: "10:30",
       }),
     ).toBe("Choca con el horario de Lucía Díaz en Consultorio 1, los miércoles de 09:00 a 10:30.");
+  });
+});
+
+describe("whether two schedules share a date", () => {
+  it("meets on a shared last and first date, and not on the day after", () => {
+    const ending = { firstDate: "2026-11-02", lastDate: "2026-11-30" };
+
+    expect(datesMeet(ending, { firstDate: "2026-11-30", lastDate: null })).toBe(true);
+    expect(datesMeet(ending, { firstDate: "2026-12-01", lastDate: null })).toBe(false);
+    expect(datesMeet({ firstDate: "2026-12-01", lastDate: null }, ending)).toBe(false);
+    expect(datesMeet(open, { firstDate: "2020-01-06", lastDate: null })).toBe(true);
   });
 });

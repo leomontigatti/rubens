@@ -18,6 +18,8 @@ const refusalMessages = {
   alreadyStarted: "El horario ya empezó, así que no se puede eliminar. Terminalo en una fecha.",
   roomFull: "El consultorio ya está completo en ese horario.",
   practitionerBusy: "El profesional ya tiene otro horario a esa hora.",
+  otherTimeZone:
+    "El profesional ya tiene horarios en esas fechas en una sede con otra zona horaria.",
 };
 
 export type RefusalReason = keyof typeof refusalMessages;

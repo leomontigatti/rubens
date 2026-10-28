@@ -6,6 +6,7 @@ import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import {
+  datesMeet,
   findCollision,
   scheduleChangeSchema,
   scheduleDeleteSchema,
@@ -75,7 +76,8 @@ type Refusal =
   | "roomInactive"
   | "officeInactive"
   | "dateInPast"
-  | "alreadyStarted";
+  | "alreadyStarted"
+  | "otherTimeZone";
 
 type CollisionRefusal = {
   ok: false;
@@ -318,6 +320,18 @@ async function checkCandidate(
         replacing === null ? undefined : ne(schedule.id, replacing),
       ),
     );
+
+  // The collision check compares local times, which only means one moment within
+  // one zone, so a practitioner works in a single zone at a time.
+  const abroad = others.some(
+    (row) =>
+      row.practitionerId === candidate.practitionerId &&
+      row.timeZone !== target.timeZone &&
+      datesMeet(row, candidate),
+  );
+  if (abroad) {
+    return { ok: false, reason: "otherTimeZone" };
+  }
 
   const roomClash = findCollision(
     candidate,

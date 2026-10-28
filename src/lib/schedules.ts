@@ -114,6 +114,17 @@ function coversDate(slot: WeeklySlot, date: string): boolean {
   return slot.firstDate <= date && (slot.lastDate === null || date <= slot.lastDate);
 }
 
+/** Whether two schedules share at least one date, whatever their weekdays. */
+export function datesMeet(
+  a: Pick<WeeklySlot, "firstDate" | "lastDate">,
+  b: Pick<WeeklySlot, "firstDate" | "lastDate">,
+): boolean {
+  return (
+    (a.lastDate === null || b.firstDate <= a.lastDate) &&
+    (b.lastDate === null || a.firstDate <= b.lastDate)
+  );
+}
+
 function coversTime(slot: WeeklySlot, time: string): boolean {
   return shortTime(slot.startTime) <= time && time < shortTime(slot.endTime);
 }
