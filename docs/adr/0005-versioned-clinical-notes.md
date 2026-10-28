@@ -23,9 +23,10 @@ for counsel to confirm before go-live, beside the AAIP registration.
 - There are no drafts, no signing step and no addenda.
 - A note or file that never belonged in the record (the wrong patient) is voided
   with a reason, since editing keeps every version. An admin can then delete the
-  voided content for good: the only change the database allows on a version is
-  setting its text to empty once its note is voided; the version and a placeholder
-  stay, and the deletion is audited.
+  voided content for good: a voided file's content is removed and its note kept, and
+  a voided note's versions have their text emptied, the only change the database
+  allows on a version. The versions and a placeholder stay, and the deletion is
+  audited.
 - Every read and write of clinical content is still written to the append-only audit
   log in the same transaction, and RLS still keeps receptionists out.
 

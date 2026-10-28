@@ -56,12 +56,14 @@ every version is kept. The author voids their own. When the author is no longer
 active, a practitioner who keeps records identifies the note or file and an admin
 voids it on their request, seeing only its date, author and file names; the audit
 entry names both. A voided note or
-file leaves the record and the patient's copy; the record keeps a placeholder with
+file leaves the record and the patient's copy, and voiding a note voids its files; the record keeps a placeholder with
 who voided it, when and why.
 
 An admin reviews what was voided and can delete its content for good: it is another
-person's data, or none. The placeholder, the note's versions with the text removed,
-and the audit entries of who voided and deleted it stay. The off-site backups keep
+person's data, or none. Deleting a voided file removes the file and keeps its note
+as it is; deleting a voided note clears the text of every version and removes its
+files. The placeholder, the versions without their text and the audit entries of
+who voided and deleted it stay. The off-site backups keep
 the content until they expire.
 
 ## Consent forms
