@@ -43,8 +43,8 @@ const referencePatterns: RegExp[] = [
   new RegExp(String.raw`--(?:add-|remove-)?label["']?(?:\s*,\s*|=|\s+)["']?(${labelValue})`, "dg"),
   // Workflow trigger conditions.
   new RegExp(String.raw`label\.name\s*===?\s*["'](${labelValue})["']`, "dg"),
-  // jq equality.
-  new RegExp(String.raw`(?:^|[\s(])\.\s*==\s*"(${labelValue})"`, "dg"),
+  // jq equality. `\0` is the start of a code span in markdown (`keepOnlyMarkdownCode`).
+  new RegExp(String.raw`(?:^|[\s(\0])\.\s*==\s*"(${labelValue})"`, "dg"),
   // A prefixed family name is never prose, so it counts wherever it appears.
   new RegExp(String.raw`\b((?:priority|wayfinder):${labelValue})`, "dg"),
 ];
