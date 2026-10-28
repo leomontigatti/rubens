@@ -121,4 +121,16 @@ describe("whether two time zones keep the same clock", () => {
       sameClock("Europe/Moscow", "Europe/Samara", { ...since2012, lastDate: "2015-01-05" }, day),
     ).toBe(false);
   });
+
+  it("compares a far range only through a year past today, up to the last date accepted", () => {
+    const zones = ["America/Argentina/Buenos_Aires", "America/Argentina/Cordoba"] as const;
+
+    expect(sameClock(...zones, { firstDate: "2026-11-02", lastDate: "9999-12-31" }, day)).toBe(
+      true,
+    );
+    expect(sameClock(...zones, { firstDate: "9999-12-30", lastDate: "9999-12-31" }, day)).toBe(
+      true,
+    );
+    expect(sameClock(...zones, { firstDate: "9999-12-30", lastDate: null }, day)).toBe(true);
+  });
 });

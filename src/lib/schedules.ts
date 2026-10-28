@@ -126,23 +126,29 @@ export function sharedDates(a: Dates, b: Dates): Dates | null {
   return lastDate === null || firstDate <= lastDate ? { firstDate, lastDate } : null;
 }
 
+const dayMs = 24 * 60 * 60 * 1000;
+
 /**
- * Whether two time zones show the same clock every week of `dates`, an open
- * range up to a year past `today`, so their local times mean the same moments:
- * two names for one clock, as Argentina's provinces are, count as one zone.
+ * Whether two time zones show the same clock every week of `dates`, up to a
+ * year past `today` or the first date, so their local times mean the same
+ * moments: two names for one clock, as Argentina's provinces are, count as one.
  */
 export function sameClock(zoneA: string, zoneB: string, dates: Dates, today: string): boolean {
   if (zoneA === zoneB) {
     return true;
   }
-  const until = dates.lastDate ?? shiftDate(dates.firstDate > today ? dates.firstDate : today, 371);
-  const days = [until];
-  for (let day = dates.firstDate; day < until; day = shiftDate(day, 7)) {
-    days.push(day);
+  // Milliseconds, not date strings: a date past year 9999 no longer sorts as one.
+  const first = utcMidnight(dates.firstDate).getTime();
+  const yearOn = Math.max(first, utcMidnight(today).getTime()) + 371 * dayMs;
+  const until =
+    dates.lastDate === null ? yearOn : Math.min(utcMidnight(dates.lastDate).getTime(), yearOn);
+  const moments = [until];
+  for (let moment = first; moment < until; moment += 7 * dayMs) {
+    moments.push(moment);
   }
-  return days.every((day) => {
-    const moment = utcMidnight(day);
-    return tzOffset(zoneA, moment) === tzOffset(zoneB, moment);
+  return moments.every((moment) => {
+    const date = new Date(moment);
+    return tzOffset(zoneA, date) === tzOffset(zoneB, date);
   });
 }
 
