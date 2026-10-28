@@ -33,7 +33,8 @@ export const getPatients = createServerFn({ method: "GET" })
     withActor(editors, (actor) => listPatients(actor, { includeInactive: data.includeInactive })),
   );
 
-export const findPatients = createServerFn({ method: "GET" })
+// A POST, so the search text travels in the body and stays out of URLs.
+export const findPatients = createServerFn({ method: "POST" })
   .validator((data: SearchOptions) => data)
   .handler(({ data }) => withActor(editors, (actor) => searchPatients(actor, data)));
 

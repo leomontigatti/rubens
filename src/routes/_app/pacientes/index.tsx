@@ -1,9 +1,11 @@
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
-import { PatientRegistrationForm, patientRefusalMessages } from "#/components/patient-form.tsx";
+import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
+import { PatientRegistrationForm } from "#/components/patient-form.tsx";
+import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -15,21 +17,17 @@ import type { Patient } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/")({
   head: () => ({ meta: [{ title: "Pacientes · Rubens" }] }),
-  validateSearch: z.object({ inactivos: z.boolean().optional(), q: z.string().optional() }),
-  loaderDeps: ({ search }) => ({
-    includeInactive: search.inactivos ?? false,
-    query: search.q ?? "",
-  }),
-  // The whole list until something is typed in the search box.
-  loader: ({ deps }) =>
-    deps.query.trim()
-      ? findPatients({ data: deps })
-      : getPatients({ data: { includeInactive: deps.includeInactive } }),
+  // The search text stays out of the address: a URL ends up in proxy logs and
+  // the browser's history, and patient data must not.
+  validateSearch: z.object({ inactivos: z.boolean().optional() }),
+  loaderDeps: ({ search }) => ({ includeInactive: search.inactivos ?? false }),
+  loader: ({ deps }) => getPatients({ data: deps }),
   component: Patients,
 });
 
 function Patients() {
   const result = Route.useLoaderData();
+  const [query, setQuery] = useState("");
 
   if (!result.ok) {
     return <RefusalMessage message={patientRefusalMessages[result.reason]} />;
@@ -42,8 +40,18 @@ function Patients() {
         <ShowInactivePatients />
       </div>
       <RegisterPanel />
-      <SearchBox />
-      <PatientList patients={result.patients} />
+      <Input
+        type="search"
+        aria-label="Buscar paciente"
+        placeholder="Buscar por nombre, documento o teléfono"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      {query.trim() ? (
+        <SearchResults query={query} />
+      ) : (
+        <PatientList patients={result.patients} emptyMessage="Todavía no hay pacientes." />
+      )}
     </div>
   );
 }
@@ -95,37 +103,37 @@ function RegisterPanel() {
   );
 }
 
-/** Results as the user types: each change replaces the query in the address. */
-function SearchBox() {
-  const { q } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  const [value, setValue] = useState(q ?? "");
+/**
+ * The patients matching `query`, asked for as the user types. Each query is
+ * its own request; the list shows the one for the current text, never a slower
+ * answer to an earlier one.
+ */
+function SearchResults({ query }: { query: string }) {
+  const { inactivos } = Route.useSearch();
+  const search = { query, includeInactive: inactivos ?? false };
+  const { data } = useQuery({
+    queryKey: ["patients", "search", search],
+    queryFn: () => findPatients({ data: search }),
+    placeholderData: keepPreviousData,
+  });
+
+  if (!data) {
+    return null;
+  }
+  if (!data.ok) {
+    return <ErrorAlert message={patientRefusalMessages[data.reason]} />;
+  }
   return (
-    <Input
-      type="search"
-      aria-label="Buscar paciente"
-      placeholder="Buscar por nombre, documento o teléfono"
-      value={value}
-      onChange={(event) => {
-        const query = event.target.value;
-        setValue(query);
-        void navigate({
-          search: (previous) => ({ ...previous, q: query || undefined }),
-          replace: true,
-        });
-      }}
+    <PatientList
+      patients={data.patients}
+      emptyMessage="Ningún paciente coincide con la búsqueda."
     />
   );
 }
 
-function PatientList({ patients }: { patients: Patient[] }) {
-  const { q } = Route.useSearch();
+function PatientList({ patients, emptyMessage }: { patients: Patient[]; emptyMessage: string }) {
   if (patients.length === 0) {
-    return (
-      <p className="text-muted-foreground">
-        {q?.trim() ? "Ningún paciente coincide con la búsqueda." : "Todavía no hay pacientes."}
-      </p>
-    );
+    return <p className="text-muted-foreground">{emptyMessage}</p>;
   }
   return (
     <ul className="flex flex-col gap-3">
