@@ -8,6 +8,7 @@ import type { Actor } from "#/lib/access.ts";
 import {
   datesMeet,
   findCollision,
+  sameClock,
   scheduleChangeSchema,
   scheduleDeleteSchema,
   scheduleEndSchema,
@@ -322,12 +323,12 @@ async function checkCandidate(
     );
 
   // The collision check compares local times, which only means one moment within
-  // one zone, so a practitioner works in a single zone at a time.
+  // one clock, so a practitioner works on a single clock at a time.
   const abroad = others.some(
     (row) =>
       row.practitionerId === candidate.practitionerId &&
-      row.timeZone !== target.timeZone &&
-      datesMeet(row, candidate),
+      datesMeet(row, candidate) &&
+      !sameClock(row.timeZone, target.timeZone, candidate.firstDate),
   );
   if (abroad) {
     return { ok: false, reason: "otherTimeZone" };

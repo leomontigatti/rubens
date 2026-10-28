@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { collisionLabel, datesMeet, scheduleState, validityLabel } from "#/lib/schedules.ts";
+import {
+  collisionLabel,
+  datesMeet,
+  sameClock,
+  scheduleState,
+  validityLabel,
+} from "#/lib/schedules.ts";
 
 // What a schedule's screen offers depends on where today falls in its dates.
 
@@ -63,5 +69,20 @@ describe("whether two schedules share a date", () => {
     expect(datesMeet(ending, { firstDate: "2026-12-01", lastDate: null })).toBe(false);
     expect(datesMeet({ firstDate: "2026-12-01", lastDate: null }, ending)).toBe(false);
     expect(datesMeet(open, { firstDate: "2020-01-06", lastDate: null })).toBe(true);
+  });
+});
+
+describe("whether two time zones keep the same clock", () => {
+  it("matches zones by their clocks, not their names", () => {
+    expect(
+      sameClock("America/Argentina/Buenos_Aires", "America/Argentina/Cordoba", "2026-11-02"),
+    ).toBe(true);
+    expect(sameClock("America/Argentina/Buenos_Aires", "Europe/Madrid", "2026-11-02")).toBe(false);
+  });
+
+  it("tells apart zones that share a clock only part of the year", () => {
+    // Accra keeps London's winter clock all year, but not its summer one.
+    expect(sameClock("Europe/London", "Europe/Lisbon", "2026-11-02")).toBe(true);
+    expect(sameClock("Europe/London", "Africa/Accra", "2026-11-02")).toBe(false);
   });
 });

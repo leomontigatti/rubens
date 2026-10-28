@@ -1,4 +1,4 @@
-import { tz } from "@date-fns/tz";
+import { tz, tzOffset } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
@@ -123,6 +123,24 @@ export function datesMeet(
     (a.lastDate === null || b.firstDate <= a.lastDate) &&
     (b.lastDate === null || a.firstDate <= b.lastDate)
   );
+}
+
+/**
+ * Whether two time zones show the same clock every week for a year from
+ * `from`, so their local times mean the same moments: two names for one
+ * clock, as Argentina's provinces are, count as one zone.
+ */
+export function sameClock(zoneA: string, zoneB: string, from: string): boolean {
+  if (zoneA === zoneB) {
+    return true;
+  }
+  for (let week = 0; week <= 53; week++) {
+    const moment = utcMidnight(shiftDate(from, week * 7));
+    if (tzOffset(zoneA, moment) !== tzOffset(zoneB, moment)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function coversTime(slot: WeeklySlot, time: string): boolean {
