@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
 import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
@@ -46,6 +47,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   id: '/cambiar-contrasena',
   path: '/cambiar-contrasena',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
+  id: '/agenda/',
+  path: '/agenda/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/_app/tipos-de-turno/$practitionerId': typeof AppTiposDeTurnoPractitionerIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/sedes/$officeId'
     | '/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
+    | '/agenda/'
     | '/cierres/'
     | '/disponibilidad/'
     | '/horarios/'
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/sedes/$officeId'
     | '/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
+    | '/agenda'
     | '/cierres'
     | '/disponibilidad'
     | '/horarios'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/_app/sedes/$officeId'
     | '/_app/tipos-de-turno/$practitionerId'
     | '/api/auth/$'
+    | '/_app/agenda/'
     | '/_app/cierres/'
     | '/_app/disponibilidad/'
     | '/_app/horarios/'
@@ -286,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/cambiar-contrasena'
       fullPath: '/cambiar-contrasena'
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/': {
+      id: '/_app/agenda/'
+      path: '/agenda'
+      fullPath: '/agenda/'
+      preLoaderRoute: typeof AppAgendaIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/cierres/': {
@@ -404,6 +423,7 @@ interface AppRouteChildren {
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
   AppTiposDeTurnoPractitionerIdRoute: typeof AppTiposDeTurnoPractitionerIdRoute
+  AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
@@ -423,6 +443,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
   AppTiposDeTurnoPractitionerIdRoute: AppTiposDeTurnoPractitionerIdRoute,
+  AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,

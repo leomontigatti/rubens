@@ -35,7 +35,7 @@ export interface AvailabilityInput {
   timeOff: readonly TimeRange[];
   /** The closures of the practitioner's offices and of the whole organization. */
   closures: readonly AvailabilityClosure[];
-  /** Booked appointments; none until booking exists. */
+  /** The practitioner's active appointments, overbookings included. */
   busy: readonly TimeRange[];
   gridMinutes: number;
   window: TimeRange;
@@ -145,7 +145,7 @@ function datesIn(window: TimeRange, timeZone: string): string[] {
   return dates;
 }
 
-function appliesOn(schedule: WeeklySlot, date: string): boolean {
+export function appliesOn(schedule: WeeklySlot, date: string): boolean {
   return (
     schedule.weekdays.includes(weekdayOf(date)) &&
     schedule.firstDate <= date &&

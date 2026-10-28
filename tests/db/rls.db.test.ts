@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
+  appointment,
   appointmentType,
   auditLog,
   closure,
@@ -77,13 +78,16 @@ beforeEach(async () => {
       endTime: "13:00",
       firstDate: "2026-01-05",
     });
-    await db.insert(appointmentType).values({
-      organizationId,
-      practitionerId: createdPractitioner!.id,
-      name: "Primera consulta",
-      durationMinutes: 40,
-      color: "color1",
-    });
+    const [createdType] = await db
+      .insert(appointmentType)
+      .values({
+        organizationId,
+        practitionerId: createdPractitioner!.id,
+        name: "Primera consulta",
+        durationMinutes: 40,
+        color: "color1",
+      })
+      .returning();
     await db
       .insert(timeOff)
       .values({ organizationId, practitionerId: createdPractitioner!.id, during });
@@ -126,8 +130,22 @@ beforeEach(async () => {
       relationship: "Madre",
       phone: "+543514123456",
     });
+    await db.insert(appointment).values({
+      organizationId,
+      patientId: createdPatient!.id,
+      practitionerId: createdPractitioner!.id,
+      appointmentTypeId: createdType!.id,
+      roomId: createdRoom!.id,
+      during: appointmentDuring,
+      createdBy: userId,
+    });
   }
 });
+
+const appointmentDuring = {
+  start: new Date("2026-01-05T12:00:00Z"),
+  end: new Date("2026-01-05T12:40:00Z"),
+};
 
 const during = {
   start: new Date("2026-01-05T03:00:00Z"),
@@ -161,6 +179,7 @@ describe("row-level security on tenant tables", () => {
           coverages: await tenant.select().from(coverage),
           guardians: await tenant.select().from(guardian),
           appointmentTypes: await tenant.select().from(appointmentType),
+          appointments: await tenant.select().from(appointment),
         }),
         tx,
       ),
@@ -178,6 +197,7 @@ describe("row-level security on tenant tables", () => {
     expect(seen.coverages.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.guardians.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.appointmentTypes.map((row) => row.organizationId)).toEqual(["org-a"]);
+    expect(seen.appointments.map((row) => row.organizationId)).toEqual(["org-a"]);
   });
 
   it("shows nothing to the app role without a tenant setting", async () => {
@@ -195,6 +215,7 @@ describe("row-level security on tenant tables", () => {
         coverages: number;
         guardians: number;
         appointmentTypes: number;
+        appointments: number;
       }>(
         await tx.execute(sql`
           select
@@ -209,7 +230,8 @@ describe("row-level security on tenant tables", () => {
             (select count(*)::int from rubens.insurer) as insurers,
             (select count(*)::int from rubens.coverage) as coverages,
             (select count(*)::int from rubens.guardian) as guardians,
-            (select count(*)::int from rubens.appointment_type) as "appointmentTypes"
+            (select count(*)::int from rubens.appointment_type) as "appointmentTypes",
+            (select count(*)::int from rubens.appointment) as appointments
         `),
       ),
     );
@@ -227,6 +249,7 @@ describe("row-level security on tenant tables", () => {
       coverages: 0,
       guardians: 0,
       appointmentTypes: 0,
+      appointments: 0,
     });
   });
 
@@ -236,6 +259,8 @@ describe("row-level security on tenant tables", () => {
       withTenant(
         actorA,
         async (tenant) => {
+          await tenant.update(appointment).set({ receptionNote: "Cambiada" });
+          await tenant.delete(appointment);
           await tenant.update(office).set({ name: "Cambiada" });
           await tenant.update(schedule).set({ startTime: "10:00" });
           await tenant.delete(schedule);
@@ -300,6 +325,10 @@ describe("row-level security on tenant tables", () => {
       (row) => row.organizationId === "org-b",
     );
     expect(appointmentTypesB.map((row) => row.name)).toEqual(["Primera consulta"]);
+    const appointmentsB = (await db.select().from(appointment)).filter(
+      (row) => row.organizationId === "org-b",
+    );
+    expect(appointmentsB.map((row) => row.receptionNote)).toEqual([null]);
   });
 
   it("refuses to write a row into another organization", async () => {
@@ -473,6 +502,31 @@ describe("row-level security on tenant tables", () => {
               name: "Laura",
               relationship: "Madre",
               phone: "+543514123456",
+            }),
+          tx,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("refuses an appointment for another organization's patient", async () => {
+    const [ownA] = (await db.select().from(appointment)).filter(
+      (row) => row.organizationId === "org-a",
+    );
+    const patientB = (await db.select().from(patient)).find(
+      (row) => row.organizationId === "org-b",
+    )!;
+
+    await expect(
+      asAppRole(db, (tx) =>
+        withTenant(
+          actorA,
+          (tenant) =>
+            tenant.insert(appointment).values({
+              ...ownA!,
+              id: undefined,
+              patientId: patientB.id,
+              during: { start: appointmentDuring.end, end: new Date("2026-01-05T13:00:00Z") },
             }),
           tx,
         ),

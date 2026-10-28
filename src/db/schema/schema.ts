@@ -1,4 +1,6 @@
-import { pgSchema, timestamp } from "drizzle-orm/pg-core";
+import { customType, pgSchema, timestamp } from "drizzle-orm/pg-core";
+
+import type { TimeRange } from "#/lib/time-ranges.ts";
 
 /**
  * Every app table and enum lives in the `rubens` Postgres schema, never in
@@ -16,3 +18,22 @@ export const timestamps = {
     .$onUpdate(() => new Date())
     .notNull(),
 };
+
+/** One bound of Postgres's text form, `"2026-01-05 03:00:00+00"`, as an instant. */
+function parseBound(bound: string): Date {
+  const iso = bound
+    .replaceAll('"', "")
+    .replace(" ", "T")
+    .replace(/([+-]\d\d)$/, "$1:00");
+  return new Date(iso);
+}
+
+/** A half-open span of instants: a `tstzrange` with `[)` bounds. */
+export const timeRange = customType<{ data: TimeRange; driverData: string }>({
+  dataType: () => "tstzrange",
+  toDriver: (range) => `[${range.start.toISOString()},${range.end.toISOString()})`,
+  fromDriver: (value) => {
+    const [start, end] = value.slice(1, -1).split(",");
+    return { start: parseBound(start!), end: parseBound(end!) };
+  },
+});

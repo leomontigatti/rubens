@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vite-plus/test";
+
+import { layoutColumn, visibleHours } from "#/lib/calendar-layout.ts";
+
+// A day from 08:00 to 20:00 UTC; blocks are given as "HH:MM" on that day.
+const day = { start: at("08:00"), end: at("20:00") };
+
+function at(time: string) {
+  return new Date(`2099-01-05T${time}:00Z`);
+}
+
+function block(id: string, start: string, end: string) {
+  return { id, start: at(start), end: at(end) };
+}
+
+describe("laying out one column's day", () => {
+  it("places blocks that do not overlap in one full-width lane, by minutes from the day's start", () => {
+    expect(layoutColumn([block("b", "10:00", "10:30"), block("a", "08:30", "09:15")], day)).toEqual(
+      [
+        { id: "a", top: 30, height: 45, lane: 0, lanes: 1 },
+        { id: "b", top: 120, height: 30, lane: 0, lanes: 1 },
+      ],
+    );
+  });
+
+  it("puts two overlapping blocks side by side", () => {
+    const placed = layoutColumn([block("a", "09:00", "10:00"), block("b", "09:30", "10:30")], day);
+
+    expect(placed).toEqual([
+      { id: "a", top: 60, height: 60, lane: 0, lanes: 2 },
+      { id: "b", top: 90, height: 60, lane: 1, lanes: 2 },
+    ]);
+  });
+
+  it("gives three mutually overlapping blocks three lanes", () => {
+    const placed = layoutColumn(
+      [block("a", "09:00", "10:00"), block("b", "09:15", "09:45"), block("c", "09:30", "10:30")],
+      day,
+    );
+
+    expect(placed.map(({ id, lane, lanes }) => ({ id, lane, lanes }))).toEqual([
+      { id: "a", lane: 0, lanes: 3 },
+      { id: "b", lane: 1, lanes: 3 },
+      { id: "c", lane: 2, lanes: 3 },
+    ]);
+  });
+
+  it("reuses a freed lane in a chain of overlaps, which all share the chain's width", () => {
+    // a overlaps b, b overlaps c, but a ends before c starts: c takes a's lane.
+    const placed = layoutColumn(
+      [block("a", "09:00", "09:30"), block("b", "09:15", "10:00"), block("c", "09:45", "10:15")],
+      day,
+    );
+
+    expect(placed.map(({ id, lane, lanes }) => ({ id, lane, lanes }))).toEqual([
+      { id: "a", lane: 0, lanes: 2 },
+      { id: "b", lane: 1, lanes: 2 },
+      { id: "c", lane: 0, lanes: 2 },
+    ]);
+  });
+
+  it("keeps blocks that touch end to start in one lane", () => {
+    const placed = layoutColumn([block("a", "09:00", "09:30"), block("b", "09:30", "10:00")], day);
+
+    expect(placed.map(({ lane, lanes }) => ({ lane, lanes }))).toEqual([
+      { lane: 0, lanes: 1 },
+      { lane: 0, lanes: 1 },
+    ]);
+  });
+
+  it("clips blocks at the day's edges and leaves out those outside it", () => {
+    const placed = layoutColumn(
+      [
+        block("early", "07:30", "08:30"),
+        block("late", "19:45", "20:30"),
+        block("before", "07:00", "08:00"),
+        block("after", "20:00", "21:00"),
+      ],
+      day,
+    );
+
+    expect(placed).toEqual([
+      { id: "early", top: 0, height: 30, lane: 0, lanes: 1 },
+      { id: "late", top: 705, height: 15, lane: 0, lanes: 1 },
+    ]);
+  });
+});
+
+describe("the hours a day view shows", () => {
+  const zone = "America/Argentina/Buenos_Aires";
+  // 09:00 in Buenos Aires is 12:00Z.
+  const local = (time: string) => new Date(`2099-01-05T${time}:00-03:00`);
+
+  it("shows 08:00 to 20:00 when nothing falls outside them", () => {
+    expect(
+      visibleHours([{ start: local("09:00"), end: local("13:00") }], "2099-01-05", zone),
+    ).toEqual({ start: local("08:00"), end: local("20:00") });
+  });
+
+  it("widens to whole hours around an earlier start or a later end", () => {
+    expect(
+      visibleHours(
+        [
+          { start: local("07:30"), end: local("09:00") },
+          { start: local("19:00"), end: local("21:15") },
+        ],
+        "2099-01-05",
+        zone,
+      ),
+    ).toEqual({ start: local("07:00"), end: local("22:00") });
+  });
+
+  it("stops at the day's midnights", () => {
+    expect(
+      visibleHours(
+        [{ start: local("22:00"), end: new Date("2099-01-06T01:00:00-03:00") }],
+        "2099-01-05",
+        zone,
+      ),
+    ).toEqual({ start: local("08:00"), end: new Date("2099-01-06T00:00:00-03:00") });
+  });
+});

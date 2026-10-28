@@ -92,6 +92,13 @@
       "when": 1793215748356,
       "tag": "0012_appointment_types",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793216334424,
+      "tag": "0013_appointments",
+      "breakpoints": true
     }
   ]
 }
