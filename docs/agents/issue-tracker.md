@@ -19,13 +19,78 @@ first step of any issue work.
 
 ## Labels
 
-- `ready-for-agent`: the issue says what to build and how to tell it is built. A
-  session may pick it up.
-- `wayfinder:map`, `wayfinder:research`, `wayfinder:prototype`,
-  `wayfinder:grilling`, `wayfinder:task`: the [wayfinding](#wayfinding-operations)
-  labels. They are the only labels a map or its tickets carry.
+The list of labels (name, colour, description) is [`.github/labels.json`](../../.github/labels.json);
+this section says what they mean. Add or change a label in the JSON, run `pnpm labels:sync`,
+then describe it here. `pnpm check:labels` fails CI when a workflow, a script or a doc in this
+directory names a label the file does not hold in a `--label` flag or a `priority:` or
+`wayfinder:` name ([scripts.md](../operations/scripts.md)), so write label commands in full.
 
-Create a missing label with `gh label create` before its first use.
+The shared skills speak of a few triage roles; each maps to a label here:
+
+| Role                      | Label                          | Meaning                                                                               |
+| ------------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
+| needs triage              | `needs-triage`                 | Maintainer needs to evaluate this issue                                               |
+| needs information         | `question` + `ready-for-human` | Not specified enough to act on; a person has to decide first                          |
+| work an agent may pick up | `ready-for-agent`              | Says what to build and how to tell it is built: a triage state, **not** a trigger     |
+| work for a human          | `ready-for-human`              | Needs a human: a decision to settle or work an agent cannot do                        |
+| will not be done          | none: close it                 | Close `not planned` with a `Closure:` comment ([Closing an issue](#closing-an-issue)) |
+
+There is no `needs-info` or `wontfix` label. With one maintainer there is no reporter to wait
+on, so "needs more information" is a decision the maintainer owes, which is what `question` +
+`ready-for-human` already say. And a decision not to do something is made by closing: an open
+issue labelled "will not be actioned" is a closure that did not happen.
+
+`dependencies` and `javascript` are the labels Dependabot puts on its PRs. They stay in the
+file so a sync never finds them missing, and triage does not use them.
+
+### Priority and type
+
+The roles above say whether an issue can be picked up. They do not say how much it matters.
+Triage also gives every issue exactly one priority label and at least one type label, and removes
+`needs-triage` on the way out. An issue with no `priority:*` label has not been triaged.
+
+| Priority label    | Meaning                                                                             | Test                                   |
+| ----------------- | ----------------------------------------------------------------------------------- | -------------------------------------- |
+| `priority:urgent` | Breaks bookings, patient data or a clinic's day, or a clinic cannot work without it | Would I drop what I am doing for this? |
+| `priority:next`   | The short list to pull from next. Keep it to about 15                               | Will I start this within two weeks?    |
+| `priority:later`  | Worth doing, no blocker, not scheduled                                              | Would I be sad to close it?            |
+| `priority:parked` | Deliberately not now, and the issue names what wakes it                             | Is there a condition that reopens it?  |
+
+`priority:urgent` is usually empty: it is for appointments that are lost, double-booked or
+shown at the wrong time, patient data that leaks across organizations or reaches someone it
+should not, and anything that stops a clinic from running its day. A parked issue carries a
+comment stating its wake-up trigger ("the first clinic asks for online payments"); without
+one it is `priority:later`. Deciding against is a different thing: parked will be done when
+the trigger fires, a rejected issue is closed.
+
+| Type label    | Meaning                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| `bug`         | Wrong behaviour today                                                     |
+| `enhancement` | New capability or UX                                                      |
+| `refactor`    | Internal structure, no behaviour change                                   |
+| `chore`       | Dependencies, tooling, CI, docs or operations                             |
+| `question`    | A decision to settle rather than work to do; pairs with `ready-for-human` |
+
+### The dispatch queue
+
+The queue is `priority:next` plus `ready-for-agent`:
+`gh issue list --label priority:next --label ready-for-agent`. Skip an issue whose
+`gh issue view <n> --json blockedBy` still lists an open blocker: blocking is GitHub's native
+relation ([Ticket operations](#ticket-operations)), and no label tracks it.
+
+Sub-issues are not triaged on their own. `to-tickets` creates each slice with its PRD's priority
+and type ([Ticket operations](#ticket-operations)). That multiplies a PRD in any priority list,
+so add `no:parent-issue` for the PRD-level view:
+`gh issue list --label priority:next --search "no:parent-issue"`.
+
+`ready-for-agent` triggers nothing: a local session picks the issue up from the queue above,
+and no label starts a run.
+
+### Wayfinding labels
+
+`wayfinder:map`, `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling` and
+`wayfinder:task` are the [wayfinding](#wayfinding-operations) labels. They are the only labels
+a map or its tickets carry: a map is not triaged, and the PRD it ends in is.
 
 ## Closing an issue
 
@@ -51,11 +116,11 @@ discussion before repeating the claim anywhere durable.
 
 The `to-spec` and `to-tickets` skills use this section.
 
-- **The PRD** is an issue: `gh issue create --title "..." --body-file <file> --label ready-for-agent`,
+- **The PRD** is an issue: `gh issue create --title "..." --body-file <file> --label ready-for-agent --label priority:<p> --label <type>`,
   with the body from the `to-spec` template.
 - **Tickets** are native sub-issues of the PRD, flat, created in the order they
-  will be implemented: `gh issue create --parent <PRD> ...`, each with
-  `ready-for-agent`. Check first that the PRD has no sub-issues yet
+  will be implemented: `gh issue create --parent <PRD> ...`, each with the PRD's
+  priority and type plus `ready-for-agent` ([Labels](#labels)). Check first that the PRD has no sub-issues yet
   (`gh issue view <PRD> --json subIssues`), and publish no slice before the user
   approves the slicing.
 - **Blocking** is GitHub's native relation: `gh issue edit <ticket> --add-blocked-by <other>`.
@@ -73,7 +138,9 @@ The `to-spec` and `to-tickets` skills use this section.
   tested through (a server function, a route's loader or action, a pure module). The
   `tdd` skill tests only at seams agreed up front, and this is the point where a
   human agrees them.
-- Labels: `ready-for-agent` only. No other triage state is needed.
+- Labels: `ready-for-agent`, one `priority:*` and at least one type label
+  ([Priority and type](#priority-and-type)). Ask the priority together with the seams when
+  the conversation has not settled it. No other triage state is needed.
 
 ## Wayfinding operations
 
