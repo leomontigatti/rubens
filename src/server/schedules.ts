@@ -329,7 +329,7 @@ async function checkCandidate(
     return (
       row.practitionerId === candidate.practitionerId &&
       shared !== null &&
-      !sameClock(row.timeZone, target.timeZone, shared)
+      !sameClock(row.timeZone, target.timeZone, shared, today(target.timeZone))
     );
   });
   if (abroad) {

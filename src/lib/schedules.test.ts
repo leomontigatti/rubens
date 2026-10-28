@@ -76,32 +76,49 @@ describe("the dates two schedules share", () => {
 });
 
 describe("whether two time zones keep the same clock", () => {
-  const nextYear = { firstDate: "2026-11-02", lastDate: null };
+  const day = "2026-11-02";
+  const nextYear = { firstDate: day, lastDate: null };
 
   it("matches zones by their clocks, not their names", () => {
-    expect(sameClock("America/Argentina/Buenos_Aires", "America/Argentina/Cordoba", nextYear)).toBe(
-      true,
-    );
-    expect(sameClock("America/Argentina/Buenos_Aires", "Europe/Madrid", nextYear)).toBe(false);
+    expect(
+      sameClock("America/Argentina/Buenos_Aires", "America/Argentina/Cordoba", nextYear, day),
+    ).toBe(true);
+    expect(sameClock("America/Argentina/Buenos_Aires", "Europe/Madrid", nextYear, day)).toBe(false);
   });
 
   it("tells apart zones that share a clock only part of the year", () => {
     // Accra keeps London's winter clock all year, but not its summer one.
-    expect(sameClock("Europe/London", "Europe/Lisbon", nextYear)).toBe(true);
-    expect(sameClock("Europe/London", "Africa/Accra", nextYear)).toBe(false);
+    expect(sameClock("Europe/London", "Europe/Lisbon", nextYear, day)).toBe(true);
+    expect(sameClock("Europe/London", "Africa/Accra", nextYear, day)).toBe(false);
   });
 
   it("compares the clocks only over the dates given", () => {
     // Santiago keeps Buenos Aires' clock in its summer, and Moscow kept Samara's until 2014.
     const summer = { firstDate: "2026-11-02", lastDate: "2027-03-15" };
-    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", summer)).toBe(true);
-    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", nextYear)).toBe(false);
+    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", summer, day)).toBe(true);
+    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", nextYear, day)).toBe(
+      false,
+    );
     expect(
-      sameClock("Europe/Moscow", "Europe/Samara", {
-        firstDate: "2012-01-02",
-        lastDate: "2012-12-31",
-      }),
+      sameClock(
+        "Europe/Moscow",
+        "Europe/Samara",
+        {
+          firstDate: "2012-01-02",
+          lastDate: "2012-12-31",
+        },
+        day,
+      ),
     ).toBe(true);
-    expect(sameClock("Europe/Moscow", "Europe/Samara", nextYear)).toBe(false);
+    expect(sameClock("Europe/Moscow", "Europe/Samara", nextYear, day)).toBe(false);
+  });
+
+  it("compares every week of a long range, and an open one through a year from today", () => {
+    // Moscow left Samara's clock in October 2014.
+    const since2012 = { firstDate: "2012-01-02", lastDate: null };
+    expect(sameClock("Europe/Moscow", "Europe/Samara", since2012, day)).toBe(false);
+    expect(
+      sameClock("Europe/Moscow", "Europe/Samara", { ...since2012, lastDate: "2015-01-05" }, day),
+    ).toBe(false);
   });
 });

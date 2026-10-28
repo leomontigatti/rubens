@@ -127,18 +127,17 @@ export function sharedDates(a: Dates, b: Dates): Dates | null {
 }
 
 /**
- * Whether two time zones show the same clock every week of `dates`, the first
- * year of them at most, so their local times mean the same moments: two names
- * for one clock, as Argentina's provinces are, count as one zone.
+ * Whether two time zones show the same clock every week of `dates`, an open
+ * range up to a year past `today`, so their local times mean the same moments:
+ * two names for one clock, as Argentina's provinces are, count as one zone.
  */
-export function sameClock(zoneA: string, zoneB: string, dates: Dates): boolean {
+export function sameClock(zoneA: string, zoneB: string, dates: Dates, today: string): boolean {
   if (zoneA === zoneB) {
     return true;
   }
-  const yearOn = shiftDate(dates.firstDate, 371);
-  const until = dates.lastDate !== null && dates.lastDate < yearOn ? dates.lastDate : yearOn;
-  const days = [dates.firstDate, until];
-  for (let day = shiftDate(dates.firstDate, 7); day < until; day = shiftDate(day, 7)) {
+  const until = dates.lastDate ?? shiftDate(dates.firstDate > today ? dates.firstDate : today, 371);
+  const days = [until];
+  for (let day = dates.firstDate; day < until; day = shiftDate(day, 7)) {
     days.push(day);
   }
   return days.every((day) => {
