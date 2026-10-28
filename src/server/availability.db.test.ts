@@ -168,11 +168,7 @@ describe("free times for stored data", () => {
       lastDate: "2099-01-05",
     });
 
-    expect(await freeStarts()).toEqual([
-      "2099-01-05T12:00:00.000Z",
-      "2099-01-05T12:15:00.000Z",
-      "2099-01-05T12:30:00.000Z",
-    ]);
+    expect(await freeStarts()).toEqual(["2099-01-05T12:00:00.000Z", "2099-01-05T12:30:00.000Z"]);
   });
 
   it("covers every day from the first to the last date", async () => {

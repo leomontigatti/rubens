@@ -149,7 +149,7 @@ describe("changing roles", () => {
       ok: true,
       member: {
         roles: ["receptionist", "practitioner"],
-        practitioner: { displayName: "Juan Gómez", keepsClinicalRecords: true, gridMinutes: 15 },
+        practitioner: { displayName: "Juan Gómez", keepsClinicalRecords: true, gridMinutes: 30 },
       },
     });
     expect(removed).toMatchObject({

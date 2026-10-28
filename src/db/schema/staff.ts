@@ -20,7 +20,7 @@ export const practitioner = rubens.table(
     specialty: text("specialty"),
     keepsClinicalRecords: boolean("keeps_clinical_records").notNull().default(true),
     // Free times start every this many minutes, counted from local midnight.
-    gridMinutes: integer("grid_minutes").notNull().default(15),
+    gridMinutes: integer("grid_minutes").notNull().default(30),
     ...timestamps,
   },
   (table) => [

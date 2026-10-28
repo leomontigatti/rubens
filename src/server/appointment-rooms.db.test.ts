@@ -157,7 +157,7 @@ describe("an overbooking on top of another appointment", () => {
     );
 
     expect(result.ok && result.freeStarts.map((free) => free.start)).toEqual(
-      ["12:00", "12:15", "12:30", "12:45", "13:30", "13:45"].map(at),
+      ["12:00", "12:30", "13:30"].map(at),
     );
   });
 

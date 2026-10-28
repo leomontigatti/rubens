@@ -205,7 +205,7 @@ describe("the patient warning", () => {
       booking({ practitionerId: world.lucia.id, medicalServiceId: luciaType.id }),
     );
 
-    const warned = await book(world.receptionist, booking({ start: at("12:15") }));
+    const warned = await book(world.receptionist, booking());
 
     expect(warned).toEqual({
       ok: false,
@@ -220,9 +220,9 @@ describe("the patient warning", () => {
         },
       ],
     });
-    expect(
-      await book(world.receptionist, { ...booking({ start: at("12:15") }), confirmWarnings: true }),
-    ).toMatchObject({ ok: true });
+    expect(await book(world.receptionist, { ...booking(), confirmWarnings: true })).toMatchObject({
+      ok: true,
+    });
   });
 
   it("warns of another appointment the same day, and not of one another day", async () => {
@@ -352,10 +352,8 @@ describe("the office day view", () => {
         receptionNote: "Trae estudios",
       }),
     ]);
-    // Free starts on Juan's 15-minute grid, a grid step long.
-    expect(juan.freeStarts.map((free) => free.start)).toEqual(
-      ["12:30", "12:45", "13:00", "13:15", "13:30", "13:45"].map(at),
-    );
+    // Free starts on Juan's grid, 30 minutes by default, a grid step long.
+    expect(juan.freeStarts.map((free) => free.start)).toEqual(["12:30", "13:00", "13:30"].map(at));
     expect(juan.freeStarts[0]).toMatchObject({ roomId: world.room.id, roomName: "Consultorio 1" });
   });
 

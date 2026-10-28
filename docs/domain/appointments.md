@@ -88,7 +88,7 @@ free time.
 Reception's main screen is a day view of one office, one column per practitioner.
 A week view of one practitioner answers "when can she come next week". A
 practitioner gets the same two views limited to their own appointments. There is
-no month view: at 15-minute granularity it is unreadable.
+no month view: at 30-minute granularity it is unreadable.
 
 An appointment block is coloured by its medical service, which is what reception
 scans for. Its status is an icon and a style: booked outlined, confirmed solid,

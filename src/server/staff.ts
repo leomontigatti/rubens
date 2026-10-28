@@ -101,7 +101,7 @@ async function selectStaff(tx: Transaction, actor: Actor, memberId?: string) {
               displayName,
               specialty,
               keepsClinicalRecords: keepsClinicalRecords ?? true,
-              gridMinutes: gridMinutes ?? 15,
+              gridMinutes: gridMinutes ?? 30,
             },
     }),
   );

@@ -95,12 +95,7 @@ describe("a practitioner's week", () => {
     expect(monday!.appointments.map((booked) => [booked.id, booked.officeId])).toEqual([
       [id, world.office.id],
     ]);
-    expect(monday!.freeStarts.map((free) => free.start)).toEqual([
-      at("13:00"),
-      at("13:15"),
-      at("13:30"),
-      at("13:45"),
-    ]);
+    expect(monday!.freeStarts.map((free) => free.start)).toEqual([at("13:00"), at("13:30")]);
     expect(wednesday!.schedules).toEqual([
       { start: at("12:00", "2099-01-07"), end: at("14:00", "2099-01-07"), roomName: "Norte 1" },
     ]);

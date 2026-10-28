@@ -48,7 +48,7 @@ inside the window being viewed, minus their time off, closures, and the
 appointments already booked. Overbookings are left out of it, so they never show
 as free.
 
-Free times start on a grid, every 15 minutes unless the practitioner's grid is set
+Free times start on a grid, every 30 minutes unless the practitioner's grid is set
 otherwise, whatever the medical service's duration. The grid keeps start times
 tidy and stable as appointments come and go; it does not limit an appointment's
 length, and an overbooking may start off the grid.

@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, auditLog } from "#/db/schema/index.ts";
+import { appointment, auditLog, practitioner as practitionerTable } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { RescheduleInput, WarningConfirmation } from "#/lib/appointments.ts";
@@ -49,6 +49,11 @@ beforeEach(async () => {
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
   juanType = await world.addType(world.juan.id);
   luciaType = await world.addType(world.lucia.id);
+  // A 15-minute grid, so a move can land over the appointment's own old time.
+  await db
+    .update(practitionerTable)
+    .set({ gridMinutes: 15 })
+    .where(eq(practitionerTable.id, world.juan.id));
   maria = await world.addPatient("María", "0351 15 555-1234");
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
 });
