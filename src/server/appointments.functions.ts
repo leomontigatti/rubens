@@ -7,6 +7,7 @@ import type {
   OfficeDayQuery,
   OverbookingInput,
   PractitionerWeekQuery,
+  ReceptionNoteChange,
   RescheduleInput,
   RoomDayQuery,
   RoomMove,
@@ -14,6 +15,7 @@ import type {
   WarningConfirmation,
 } from "#/lib/appointments.ts";
 
+import { editReceptionNote } from "#/server/appointment-notes.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
 import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms.ts";
 import {
@@ -60,6 +62,10 @@ export const markAppointmentCancelled = createServerFn({ method: "POST" })
 export const undoStatusChange = createServerFn({ method: "POST" })
   .validator((data: AppointmentIdInput) => data)
   .handler(({ data }) => withActor(bookers, (actor) => undoAppointmentStatus(actor, data)));
+
+export const editAppointmentNote = createServerFn({ method: "POST" })
+  .validator((data: ReceptionNoteChange) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => editReceptionNote(actor, data)));
 
 export const moveAppointment = createServerFn({ method: "POST" })
   .validator((data: RescheduleInput & WarningConfirmation) => data)

@@ -35,7 +35,8 @@ overlaps, or one the same day with another practitioner: back-to-back visits wit
 two practitioners are legitimate; booking the same person twice is the mistake.
 
 An appointment can carry a short reception note (`trae radiografías`), read by
-every staff member who sees the appointment. Clinical information goes in the
+every staff member who sees the appointment, and edited later by whoever can book
+it. Clinical information goes in the
 clinical record, and the form says so; without a note field, such notes end up in
 the patient's name.
 
@@ -56,7 +57,8 @@ booked ──► confirmed ──► checkedIn ──► attended
 
 A status set by mistake can be undone the same day. The audit log keeps both
 changes; a busy front desk will make mistakes, and forbidding the undo only
-breeds workarounds.
+breeds workarounds. Undoing a cancellation or a no-show brings the appointment back
+only if its time and its room still have space.
 
 ## Rescheduling
 

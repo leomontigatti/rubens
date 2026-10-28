@@ -36,6 +36,9 @@ const refusalMessages = {
   nothingToUndo: "No hay un cambio para deshacer.",
   tooLate: "Un cambio de estado solo se deshace el mismo día.",
   timeTaken: "Ese horario ya se ocupó con otro turno: no se puede volver atrás.",
+  roomFull: "El consultorio ya no tiene lugar a esa hora: no se puede volver atrás.",
+  roomInactive: "El consultorio del turno está desactivado: no se puede volver atrás.",
+  officeInactive: "La sede del turno está desactivada: no se puede volver atrás.",
 };
 
 export function StatusSection(props: { appointment: DayAppointment; onDone: () => void }) {

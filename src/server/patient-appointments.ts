@@ -12,6 +12,7 @@ import {
 } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase } from "#/db/tenant.ts";
+import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 
@@ -60,7 +61,6 @@ export async function listPatientAppointments(
   if (!patientId.success) {
     return { ok: false, reason: "notFound" };
   }
-  const readsEveryone = actor.roles.includes("admin") || actor.roles.includes("receptionist");
   return withTenant(
     actor,
     async (tx) => {
@@ -100,7 +100,7 @@ export async function listPatientAppointments(
         .where(
           and(
             eq(appointment.patientId, found.id),
-            readsEveryone ? undefined : eq(member.userId, actor.userId),
+            actsForEveryone(actor) ? undefined : eq(member.userId, actor.userId),
           ),
         )
         .orderBy(asc(appointment.during));

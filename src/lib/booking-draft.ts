@@ -1,3 +1,4 @@
+import { bookingInputSchema, overbookingInputSchema } from "#/lib/appointments.ts";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import { shiftDate } from "#/lib/schedules.ts";
@@ -115,25 +116,24 @@ export function bookingReducer(draft: BookingDraft, event: BookingEvent): Bookin
   }
 }
 
-/** What the draft books but the start, once it has a patient, a type and a valid duration. */
-function partialRequestOf(draft: BookingDraft) {
-  const duration = durationMinutesSchema.safeParse(draft.durationMinutes);
-  if (!draft.patientId || !draft.type || !duration.success) {
-    return null;
-  }
+/** What the draft books but the start and the room, as the booking schemas read it. */
+function partialInputOf(draft: BookingDraft) {
   return {
     patientId: draft.patientId,
     practitionerId: draft.practitionerId,
-    appointmentTypeId: draft.type.id,
-    durationMinutes: duration.data,
+    appointmentTypeId: draft.type?.id,
+    durationMinutes: draft.durationMinutes,
     receptionNote: draft.receptionNote,
   };
 }
 
-/** What the draft books, once it has a patient, a type, a valid duration and a start. */
+/** What the draft books, once the booking schema accepts it. */
 export function bookingRequestOf(draft: BookingDraft) {
-  const partial = partialRequestOf(draft);
-  return partial && draft.start ? { ...partial, start: draft.start.start } : null;
+  const parsed = bookingInputSchema.safeParse({
+    ...partialInputOf(draft),
+    start: draft.start?.start,
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 /** Where and when an overbooking is typed in: a local date and `HH:MM`, and a room or none. */
@@ -150,15 +150,12 @@ export function overbookingRequestOf(
   place: OverbookingPlace,
   timeZone: string,
 ) {
-  const partial = partialRequestOf(draft);
-  if (!partial || !place.date || !/^\d{2}:\d{2}$/.test(place.time)) {
-    return null;
-  }
-  return {
-    ...partial,
+  const parsed = overbookingInputSchema.safeParse({
+    ...partialInputOf(draft),
     start: instantOf(place.date, place.time, timeZone),
     roomId: place.roomId || null,
-  };
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 /**

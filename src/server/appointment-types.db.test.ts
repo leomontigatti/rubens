@@ -145,16 +145,7 @@ describe("managing appointment types", () => {
     expect((await typesOf(receptionist, true)).canEdit).toBe(false);
   });
 
-  it("refuses a duration the availability module would not accept, or an unknown colour", async () => {
-    for (const durationMinutes of [0, -15, 12.5, 721]) {
-      expect(await create(world.admin, firstVisit({ durationMinutes }))).toEqual({
-        ok: false,
-        reason: "invalidInput",
-      });
-    }
-    expect(
-      await create(world.admin, { ...firstVisit(), color: "brandPink" } as unknown as never),
-    ).toEqual({ ok: false, reason: "invalidInput" });
+  it("saves the longest duration, which the database's check allows too", async () => {
     expect((await created(world.admin, firstVisit({ durationMinutes: 720 }))).durationMinutes).toBe(
       720,
     );

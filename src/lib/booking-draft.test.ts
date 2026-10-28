@@ -11,6 +11,11 @@ import {
 import type { BookingDraft, BookingEvent } from "#/lib/booking-draft.ts";
 
 const zone = "America/Argentina/Buenos_Aires";
+// Ids are uuids, as the booking schemas read them.
+const juan = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a01";
+const lucia = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a02";
+const maria = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a04";
+const room3 = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a05";
 const nine = { start: new Date("2099-01-05T12:00:00Z"), roomName: "Consultorio 1", timeZone: zone };
 const ten = {
   start: new Date("2099-01-05T13:00:00Z"),
@@ -18,19 +23,19 @@ const ten = {
   roomName: "Consultorio 1",
   timeZone: zone,
 };
-const consulta = { id: "type-1", durationMinutes: 40 };
+const consulta = { id: "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a03", durationMinutes: 40 };
 
 function run(draft: BookingDraft, ...events: BookingEvent[]) {
   return events.reduce(bookingReducer, draft);
 }
 
-const fromSlot = initialBookingDraft({ ...nine, practitionerId: "juan" }, ["juan", "lucia"]);
+const fromSlot = initialBookingDraft({ ...nine, practitionerId: juan }, [juan, lucia]);
 
 describe("the booking draft", () => {
   it("starts from a clicked free time with its practitioner and start, or the only practitioner", () => {
-    expect(fromSlot).toMatchObject({ practitionerId: "juan", start: nine });
-    expect(initialBookingDraft(null, ["juan"])).toMatchObject({ practitionerId: "juan" });
-    expect(initialBookingDraft(null, ["juan", "lucia"])).toMatchObject({ practitionerId: "" });
+    expect(fromSlot).toMatchObject({ practitionerId: juan, start: nine });
+    expect(initialBookingDraft(null, [juan])).toMatchObject({ practitionerId: juan });
+    expect(initialBookingDraft(null, [juan, lucia])).toMatchObject({ practitionerId: "" });
   });
 
   it("takes the type's duration as a default the user can change", () => {
@@ -43,7 +48,7 @@ describe("the booking draft", () => {
     const changed = run(
       fromSlot,
       { type: "typeChosen", appointmentType: consulta },
-      { type: "practitionerChosen", practitionerId: "lucia" },
+      { type: "practitionerChosen", practitionerId: lucia },
     );
 
     expect(changed).toMatchObject({ type: null, durationMinutes: null, start: null });
@@ -83,15 +88,15 @@ describe("what a draft books", () => {
   it("needs a patient, a type, a duration of 1 to 720 minutes and a start", () => {
     const ready = run(
       fromSlot,
-      { type: "patientPicked", patientId: "maria" },
+      { type: "patientPicked", patientId: maria },
       { type: "typeChosen", appointmentType: consulta },
       { type: "noteChanged", receptionNote: "Trae estudios" },
     );
 
     expect(bookingRequestOf(ready)).toEqual({
-      patientId: "maria",
-      practitionerId: "juan",
-      appointmentTypeId: "type-1",
+      patientId: maria,
+      practitionerId: juan,
+      appointmentTypeId: consulta.id,
       start: nine.start,
       durationMinutes: 40,
       receptionNote: "Trae estudios",
@@ -106,8 +111,8 @@ describe("what a draft books", () => {
 
 describe("what an overbooking draft books", () => {
   const ready = run(
-    initialBookingDraft(null, ["juan"]),
-    { type: "patientPicked", patientId: "maria" },
+    initialBookingDraft(null, [juan]),
+    { type: "patientPicked", patientId: maria },
     { type: "typeChosen", appointmentType: consulta },
   );
 
@@ -115,17 +120,17 @@ describe("what an overbooking draft books", () => {
     expect(
       overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: "" }, zone),
     ).toEqual({
-      patientId: "maria",
-      practitionerId: "juan",
-      appointmentTypeId: "type-1",
+      patientId: maria,
+      practitionerId: juan,
+      appointmentTypeId: consulta.id,
       start: new Date("2099-01-05T12:10:00Z"),
       durationMinutes: 40,
-      receptionNote: "",
+      receptionNote: null,
       roomId: null,
     });
     expect(
-      overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: "room-3" }, zone),
-    ).toMatchObject({ roomId: "room-3" });
+      overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: room3 }, zone),
+    ).toMatchObject({ roomId: room3 });
   });
 
   it("needs a date and a time", () => {
@@ -138,12 +143,12 @@ describe("what an overbooking draft books", () => {
 
 describe("the free times a new booking asks for", () => {
   it("asks for the week from the date once a practitioner, a type and a duration are set", () => {
-    const fresh = initialBookingDraft(null, ["juan"]);
+    const fresh = initialBookingDraft(null, [juan]);
     expect(freeStartsQueryOf(fresh, "2099-01-05")).toBeNull();
 
     const typed = run(fresh, { type: "typeChosen", appointmentType: consulta });
     expect(freeStartsQueryOf(typed, "2099-01-05")).toEqual({
-      practitionerId: "juan",
+      practitionerId: juan,
       firstDate: "2099-01-05",
       lastDate: "2099-01-11",
       durationMinutes: 40,
@@ -158,11 +163,11 @@ describe("the free times a new booking asks for", () => {
 });
 
 describe("the reschedule picker's query", () => {
-  const moved = { id: "appointment-1", practitionerId: "juan" };
+  const moved = { id: "appointment-1", practitionerId: juan };
 
   it("asks a week of free times with the appointment's own time counted free", () => {
     expect(rescheduleQueryOf(moved, "2099-01-05", 45)).toEqual({
-      practitionerId: "juan",
+      practitionerId: juan,
       firstDate: "2099-01-05",
       lastDate: "2099-01-11",
       durationMinutes: 45,

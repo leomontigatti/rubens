@@ -1,6 +1,6 @@
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { collisionLabel } from "#/lib/schedules.ts";
-import type { Collision } from "#/server/schedules.ts";
+import { appointmentCollisionLabel, collisionLabel } from "#/lib/schedules.ts";
+import type { AppointmentCollision, Collision } from "#/server/schedules.ts";
 
 // The refusal copy the schedule screens share, collisions included.
 
@@ -27,9 +27,23 @@ export type RefusalReason = keyof typeof refusalMessages;
 export type ActionResult =
   | { ok: true }
   | { ok: false; reason: RefusalReason }
-  | { ok: false; reason: "roomFull" | "practitionerBusy"; collision: Collision };
+  | { ok: false; reason: "roomFull" | "practitionerBusy"; collision: Collision }
+  | { ok: false; reason: "roomFull"; appointment: AppointmentCollision };
 
-/** The shared submit step, with a collision told as the schedule it meets. */
+/** A collision told as the schedule or appointment it meets; `null` for any other result. */
+function collisionMessage(result: ActionResult): string | null {
+  if (result.ok) {
+    return null;
+  }
+  if ("collision" in result) {
+    return `${refusalMessages[result.reason]} ${collisionLabel(result.collision)}`;
+  }
+  return "appointment" in result
+    ? `${refusalMessages.roomFull} ${appointmentCollisionLabel(result.appointment)}`
+    : null;
+}
+
+/** The shared submit step, with a collision told as what it meets. */
 export function useAction() {
   const action = useFormAction(refusalMessages);
 
@@ -37,9 +51,7 @@ export function useAction() {
     let collision: string | null = null;
     const ok = await action.run(async () => {
       const result = await work();
-      if (!result.ok && "collision" in result) {
-        collision = `${refusalMessages[result.reason]} ${collisionLabel(result.collision)}`;
-      }
+      collision = collisionMessage(result);
       return result;
     });
     if (collision) {

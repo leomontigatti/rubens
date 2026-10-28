@@ -9,13 +9,14 @@ import type { StatusChangeInput } from "#/lib/appointments.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
+import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import {
   cancelAppointment,
   changeAppointmentStatus,
   undoAppointmentStatus,
 } from "#/server/appointment-statuses.ts";
-import { createBookingWorld } from "#/server/appointments.test-support.ts";
-import type { BookingWorld } from "#/server/appointments.test-support.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 
@@ -262,6 +263,51 @@ describe("undo", () => {
     await book(pedro.id);
 
     expect(await undo(id)).toEqual({ ok: false, reason: "timeTaken" });
+    expect((await rowOf(id)).status).toBe("cancelled");
+  });
+
+  it("refuses to bring a cancellation back to a room filled since, naming who holds it", async () => {
+    const luciaType = await world.addType(world.lucia.id);
+    const overbook = async (
+      practitionerId: string,
+      appointmentTypeId: string,
+      patientId: string,
+    ) => {
+      const result = await asAppRole(db, (tx) =>
+        bookOverbooking(
+          world.receptionist,
+          {
+            patientId,
+            practitionerId,
+            appointmentTypeId,
+            start: at("15:00"),
+            durationMinutes: 30,
+            roomId: world.otherRoom.id,
+          },
+          tx,
+        ),
+      );
+      if (!result.ok) {
+        throw new Error(`bookOverbooking failed: ${result.reason}`);
+      }
+      return result.appointment.id;
+    };
+    const id = await overbook(world.juan.id, juanType.id, maria.id);
+    await cancel(id);
+    await overbook(world.lucia.id, luciaType.id, pedro.id);
+
+    expect(await undo(id)).toEqual({
+      ok: false,
+      reason: "roomFull",
+      occupants: [
+        {
+          practitionerName: "Lucía Díaz",
+          kind: "appointment",
+          start: at("15:00"),
+          end: at("15:30"),
+        },
+      ],
+    });
     expect((await rowOf(id)).status).toBe("cancelled");
   });
 

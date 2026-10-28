@@ -31,6 +31,15 @@ export const appointmentCancellers = ["patient", "business"] as const;
 /** The longest reception note: a practical line, never clinical text. */
 export const receptionNoteMaxLength = 200;
 
+/** A reception note: blank is none. */
+const receptionNoteSchema = z
+  .string()
+  .trim()
+  .max(receptionNoteMaxLength)
+  .transform((note) => note || null)
+  .nullable()
+  .default(null);
+
 /** A booking at a free time, shared by the form and the service. */
 export const bookingInputSchema = z.object({
   patientId: z.uuid(),
@@ -38,13 +47,7 @@ export const bookingInputSchema = z.object({
   appointmentTypeId: z.uuid(),
   start: z.coerce.date(),
   durationMinutes: durationMinutesSchema,
-  receptionNote: z
-    .string()
-    .trim()
-    .max(receptionNoteMaxLength)
-    .transform((note) => note || null)
-    .nullable()
-    .default(null),
+  receptionNote: receptionNoteSchema,
 });
 
 export type BookingInput = z.input<typeof bookingInputSchema>;
@@ -161,6 +164,14 @@ export const cancellationSchema = z.object({
 });
 
 export type CancellationInput = z.input<typeof cancellationSchema>;
+
+/** A new reception note for an appointment. */
+export const receptionNoteChangeSchema = z.object({
+  appointmentId: z.uuid(),
+  receptionNote: receptionNoteSchema,
+});
+
+export type ReceptionNoteChange = z.input<typeof receptionNoteChangeSchema>;
 
 /** One appointment, named by its id. */
 export const appointmentIdSchema = z.object({ appointmentId: z.uuid() });

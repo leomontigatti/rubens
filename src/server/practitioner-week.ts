@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { appointment, office, room } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase } from "#/db/tenant.ts";
+import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import { practitionerWeekQuerySchema } from "#/lib/appointments.ts";
 import type { PractitionerWeekQuery } from "#/lib/appointments.ts";
@@ -36,10 +37,6 @@ export interface WeekOffice {
 }
 
 const daysInWeek = 7;
-
-function seesEveryone(actor: Actor): boolean {
-  return actor.roles.includes("admin") || actor.roles.includes("receptionist");
-}
 
 function within(instant: Date, range: TimeRange): boolean {
   return range.start <= instant && instant < range.end;
@@ -79,7 +76,7 @@ export async function getPractitionerWeek(
       if (!found) {
         return { ok: false as const, reason: "notFound" as const };
       }
-      if (!seesEveryone(actor) && !found.canEdit) {
+      if (!actsForEveryone(actor) && !found.canEdit) {
         return { ok: false as const, reason: "forbidden" as const };
       }
       const { free, schedules } = await findFreeTimes(tx, found, {

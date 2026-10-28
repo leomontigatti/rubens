@@ -90,7 +90,8 @@ export async function rescheduleAppointment(
         .from(appointment)
         .where(
           and(eq(appointment.id, appointmentId), inArray(appointment.status, [...reschedulable])),
-        );
+        )
+        .for("update");
       if (!current) {
         return { ok: false as const, reason: "notFound" as const };
       }

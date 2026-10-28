@@ -14,6 +14,7 @@ import {
 } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
+import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { AppointmentTypeColor } from "#/lib/appointment-types.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
@@ -61,11 +62,6 @@ type Result<T> = ({ ok: true } & T) | { ok: false; reason: "forbidden" };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 
-/** Whether the actor sees everyone's appointments, not only their own. */
-function seesEveryone(actor: Actor): boolean {
-  return actor.roles.includes("admin") || actor.roles.includes("receptionist");
-}
-
 /** The future booked or confirmed appointments, overbookings left out, the actor may see. */
 async function upcomingAppointments(tx: Transaction, actor: Actor) {
   return tx
@@ -101,7 +97,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
         inArray(appointment.status, ["booked", "confirmed"]),
         eq(appointment.overbooking, false),
         gt(sql`lower(${appointment.during})`, new Date().toISOString()),
-        seesEveryone(actor) ? undefined : eq(member.userId, actor.userId),
+        actsForEveryone(actor) ? undefined : eq(member.userId, actor.userId),
       ),
     )
     .orderBy(asc(appointment.during));
@@ -159,7 +155,10 @@ async function findToReschedule(tx: Transaction, actor: Actor): Promise<ToResche
   if (rows.length === 0) {
     return [];
   }
-  const reach = { start: new Date(), end: rows.at(-1)!.during.end };
+  const reach = {
+    start: new Date(),
+    end: new Date(Math.max(...rows.map((row) => +row.during.end))),
+  };
   const workingTimeFor = await workingTimeOf(
     tx,
     [...new Set(rows.map((row) => row.practitionerId))],

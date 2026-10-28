@@ -18,7 +18,6 @@ import {
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { receptionNoteMaxLength } from "#/lib/appointments.ts";
 import { freeStartsByDay } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import {
@@ -41,6 +40,7 @@ import type { RoomOccupant } from "#/server/appointment-rooms.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
 import { getFreeTimes } from "#/server/availability.functions.ts";
 import type { AvailableStart } from "#/server/availability.ts";
+import { ReceptionNoteField } from "#/routes/_app/agenda/-appointment-note.tsx";
 import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 
 // Booking a patient, from either entry: a free time clicked on the day view,
@@ -254,7 +254,11 @@ function BookingForm(props: {
             dispatch={dispatch}
           />
         )}
-        <NoteField value={draft.receptionNote} dispatch={dispatch} />
+        <ReceptionNoteField
+          id="booking-note"
+          value={draft.receptionNote}
+          onChange={(receptionNote) => dispatch({ type: "noteChanged", receptionNote })}
+        />
         <PatientWarnings
           warnings={draft.warnings}
           pending={pending}
@@ -461,27 +465,6 @@ function TypeField(props: {
   );
 }
 
-function NoteField(props: { value: string; dispatch: Dispatch }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="booking-note">Nota de recepción (opcional)</Label>
-      <Input
-        id="booking-note"
-        value={props.value}
-        maxLength={receptionNoteMaxLength}
-        placeholder="Por ejemplo: trae radiografías"
-        onChange={(event) =>
-          props.dispatch({ type: "noteChanged", receptionNote: event.target.value })
-        }
-        aria-describedby="booking-note-hint"
-      />
-      <p id="booking-note-hint" className="text-muted-foreground text-xs">
-        La información clínica va en la historia clínica, no acá.
-      </p>
-    </div>
-  );
-}
-
 /**
  * "Nuevo turno"'s free starts for the practitioner and duration, a week from a
  * date, once the type is chosen.
@@ -501,7 +484,11 @@ function FreeStartPicker(props: { draft: BookingDraft; defaultDate: string; disp
         value={date}
         onChange={(event) => event.target.value && setDate(event.target.value)}
       />
-      <FreeStartsOfWeek query={query} picked={props.draft.start} dispatch={props.dispatch} />
+      <FreeStartsOfWeek
+        query={query}
+        picked={props.draft.start}
+        onPick={(start) => props.dispatch({ type: "startPicked", start })}
+      />
     </div>
   );
 }
@@ -519,10 +506,11 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
   );
 }
 
-function FreeStartsOfWeek(props: {
+/** The practitioner's free starts for the query's duration and week, to pick one. */
+export function FreeStartsOfWeek(props: {
   query: AvailabilityQuery;
   picked: PickedStart | null;
-  dispatch: Dispatch;
+  onPick: (start: PickedStart) => void;
 }) {
   const { viewer } = useRouteContext({ from: "/_app" });
   const { data } = useQuery({
@@ -535,21 +523,15 @@ function FreeStartsOfWeek(props: {
     return null;
   }
   if (!data.ok) {
-    return <ErrorAlert message={refusalMessages.notFound} />;
+    return <ErrorAlert message="No encontramos los horarios libres de ese profesional." />;
   }
   if (data.freeStarts.length === 0) {
     return <p className="text-muted-foreground text-sm">No hay horarios libres esa semana.</p>;
   }
-  return (
-    <FreeStartList
-      starts={data.freeStarts}
-      picked={props.picked}
-      onPick={(start) => props.dispatch({ type: "startPicked", start })}
-    />
-  );
+  return <FreeStartList starts={data.freeStarts} picked={props.picked} onPick={props.onPick} />;
 }
 
-export function FreeStartList(props: {
+function FreeStartList(props: {
   starts: AvailableStart[];
   picked: PickedStart | null;
   onPick: (start: PickedStart) => void;

@@ -11,8 +11,8 @@ import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
-import { createBookingWorld } from "#/server/appointments.test-support.ts";
-import type { BookingWorld } from "#/server/appointments.test-support.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 

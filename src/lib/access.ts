@@ -40,3 +40,11 @@ export interface Actor {
   userId: string;
   roles: readonly Role[];
 }
+
+/**
+ * Whether the roles act for every practitioner, not only themselves: an admin
+ * or reception books for, and sees the appointments and free times of, anyone.
+ */
+export function actsForEveryone(actor: { roles: readonly Role[] }): boolean {
+  return actor.roles.includes("admin") || actor.roles.includes("receptionist");
+}

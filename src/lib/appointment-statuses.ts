@@ -1,6 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 
+import { actsForEveryone } from "#/lib/access.ts";
 import type { Role } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 
@@ -42,10 +43,6 @@ const sources: Record<StatusAction, readonly AppointmentStatus[]> = {
   cancelled: ["booked", "confirmed"],
 };
 
-function isReception(actor: StatusActor): boolean {
-  return actor.roles.includes("admin") || actor.roles.includes("receptionist");
-}
-
 function isOwnPractitioner(actor: StatusActor): boolean {
   return actor.roles.includes("practitioner") && actor.own;
 }
@@ -53,9 +50,9 @@ function isOwnPractitioner(actor: StatusActor): boolean {
 /** Whether the actor's roles allow moving an appointment to `status`. */
 function mayMake(status: AppointmentStatus, actor: StatusActor): boolean {
   if (status === "checkedIn" || status === "noShow") {
-    return isReception(actor);
+    return actsForEveryone(actor);
   }
-  return isReception(actor) || isOwnPractitioner(actor);
+  return actsForEveryone(actor) || isOwnPractitioner(actor);
 }
 
 /** Whether the appointment, starting at `start`, may go from `status` to `target` at `now`. */

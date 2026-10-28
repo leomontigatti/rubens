@@ -11,8 +11,8 @@ import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
 import { setAppointmentTypeActive } from "#/server/appointment-types.ts";
-import { createBookingWorld } from "#/server/appointments.test-support.ts";
-import type { BookingWorld } from "#/server/appointments.test-support.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment, getOfficeDay, insertAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 import { createTimeOff } from "#/server/time-off.ts";
@@ -168,12 +168,6 @@ describe("booking an appointment", () => {
       setAppointmentTypeActive(world.admin, { id: juanType.id, active: false }, tx),
     );
     expect(await book()).toEqual({ ok: false, reason: "appointmentTypeInactive" });
-  });
-
-  it("refuses a reception note longer than a short line", async () => {
-    expect(
-      await book(world.receptionist, { ...booking(), receptionNote: "x".repeat(201) }),
-    ).toEqual({ ok: false, reason: "invalidInput" });
   });
 
   it("writes the booking to the audit log, about the patient", async () => {

@@ -18,7 +18,9 @@ Offices have no opening hours of their own: schedules are the only working time,
 and a closure covers a day an office is shut.
 
 Saving a schedule fails if, on any date it applies, the
-room would hold more practitioners than its capacity. The room is settled when the
+room would hold more practitioners than its capacity, counting the schedules in it
+and the future appointments other practitioners have there (overbookings and room
+moves place appointments outside schedules). The room is settled when the
 schedule is saved, not each time an appointment is booked.
 
 A change to a schedule takes effect from a date the user picks: the old schedule

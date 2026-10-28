@@ -19,6 +19,7 @@ import {
   checkTypeAndPatient,
   findBookablePractitioner,
   findPatientWarnings,
+  lockAppointment,
 } from "#/server/appointments.ts";
 import type { PatientWarning } from "#/server/appointments.ts";
 import { recordAudit } from "#/server/audit.ts";
@@ -39,7 +40,7 @@ export interface RoomOccupant {
   end: Date;
 }
 
-type RoomRefusal =
+export type RoomRefusal =
   | { ok: false; reason: "notFound" | "roomInactive" | "officeInactive" }
   | { ok: false; reason: "roomFull"; occupants: RoomOccupant[] };
 
@@ -125,7 +126,7 @@ async function findPresences(tx: Transaction, roomId: string, span: TimeRange, t
  * room row for the rest of the transaction, so two checks of one room run one
  * after the other.
  */
-async function checkRoomSpace(
+export async function checkRoomSpace(
   tx: Transaction,
   roomId: string,
   practitionerId: string,
@@ -309,6 +310,7 @@ export async function moveAppointmentRoom(
   return withTenant(
     actor,
     async (tx) => {
+      await lockAppointment(tx, appointmentId);
       const [current] = await tx
         .select({
           practitionerId: appointment.practitionerId,

@@ -11,12 +11,13 @@ import type { RangeEntry } from "#/lib/time-ranges.ts";
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms.ts";
-import { createBookingWorld } from "#/server/appointments.test-support.ts";
-import type { BookingWorld } from "#/server/appointments.test-support.ts";
+import { cancelAppointment } from "#/server/appointment-statuses.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment, getOfficeDay } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 import { createClosure } from "#/server/closures.ts";
-import { listSchedulePractitioners } from "#/server/schedules.ts";
+import { createSchedule, listSchedulePractitioners } from "#/server/schedules.ts";
 import { createTimeOff } from "#/server/time-off.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
@@ -279,7 +280,7 @@ describe("an overbooking outside the practitioner's schedules", () => {
       practitionerId: ana.id,
       roomId: double.id,
       startTime: "11:00",
-      endTime: "12:00",
+      endTime: "11:30",
     });
 
     expect(
@@ -300,6 +301,70 @@ describe("an overbooking outside the practitioner's schedules", () => {
         overbooking({ patientId: maria.id, start: at("15:00"), roomId: third.id }),
       ),
     ).toMatchObject({ ok: true });
+  });
+});
+
+describe("a schedule saved in a room an appointment holds", () => {
+  function scheduleJuanIn(roomId: string) {
+    return asAppRole(db, (tx) =>
+      createSchedule(
+        world.admin,
+        {
+          practitionerId: world.juan.id,
+          roomId,
+          weekdays: [1],
+          startTime: "11:00",
+          endTime: "13:00",
+          firstDate: "2099-01-05",
+          lastDate: null,
+        },
+        tx,
+      ),
+    );
+  }
+
+  it("is refused where another practitioner's overbooking fills the room, naming it", async () => {
+    await overbooked(
+      overbooking({
+        practitionerId: world.lucia.id,
+        appointmentTypeId: luciaType.id,
+        start: at("15:00"),
+        roomId: third.id,
+      }),
+    );
+
+    expect(await scheduleJuanIn(third.id)).toEqual({
+      ok: false,
+      reason: "roomFull",
+      appointment: {
+        practitionerName: "Lucía Díaz",
+        roomName: "Consultorio 3",
+        date: "2099-01-05",
+        startTime: "12:00",
+        endTime: "12:30",
+      },
+    });
+  });
+
+  it("is accepted over the practitioner's own appointment, or one cancelled", async () => {
+    const cancelled = await overbooked(
+      overbooking({
+        practitionerId: world.lucia.id,
+        appointmentTypeId: luciaType.id,
+        start: at("15:00"),
+        roomId: third.id,
+      }),
+    );
+    await asAppRole(db, (tx) =>
+      cancelAppointment(
+        world.receptionist,
+        { appointmentId: cancelled.id, cancelledBy: "patient" },
+        tx,
+      ),
+    );
+    await overbooked(overbooking({ start: at("15:00"), roomId: third.id }));
+
+    expect(await scheduleJuanIn(third.id)).toMatchObject({ ok: true });
   });
 });
 

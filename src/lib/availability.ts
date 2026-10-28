@@ -156,7 +156,10 @@ export function appliesOn(schedule: WeeklySlot, date: string): boolean {
 }
 
 /** The occurrences of `schedule` that meet `span`, as instants in its office's zone. */
-export function occurrencesDuring(schedule: AvailabilitySchedule, span: TimeRange): TimeRange[] {
+export function occurrencesDuring(
+  schedule: WeeklySlot & { timeZone: string },
+  span: TimeRange,
+): TimeRange[] {
   return datesIn(span, schedule.timeZone)
     .filter((date) => appliesOn(schedule, date))
     .map((date) => ({

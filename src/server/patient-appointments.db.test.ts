@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
-import { createBookingWorld } from "#/server/appointments.test-support.ts";
-import type { BookingWorld } from "#/server/appointments.test-support.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { listPatientAppointments } from "#/server/patient-appointments.ts";
 import type { Actor } from "#/lib/access.ts";

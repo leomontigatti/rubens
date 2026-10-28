@@ -15,7 +15,7 @@ import {
 } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
-import { parseRoles } from "#/lib/access.ts";
+import { actsForEveryone, parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { availabilityQuerySchema, findFreeStarts } from "#/lib/availability.ts";
@@ -58,11 +58,6 @@ type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 
-/** Whether the actor may read anyone's free times, before any row is read. */
-function readsEveryone(actor: Actor): boolean {
-  return actor.roles.includes("admin") || actor.roles.includes("receptionist");
-}
-
 /** The active practitioners whose free times the actor may read. */
 export async function listAvailabilityPractitioners(
   actor: Actor,
@@ -90,7 +85,7 @@ export async function listAvailabilityPractitioners(
         .orderBy(asc(practitioner.displayName));
       return rows
         .filter((row) => parseRoles(row.role).includes("practitioner"))
-        .filter((row) => readsEveryone(actor) || row.userId === actor.userId)
+        .filter((row) => actsForEveryone(actor) || row.userId === actor.userId)
         .map(({ id, displayName }) => ({ id, displayName }));
     },
     database,
@@ -254,7 +249,7 @@ export async function getAvailability(
       if (!found) {
         return { ok: false as const, reason: "notFound" as const };
       }
-      if (!readsEveryone(actor) && !found.canEdit) {
+      if (!actsForEveryone(actor) && !found.canEdit) {
         return forbidden;
       }
       const { free, schedules } = await findFreeTimes(tx, found, {

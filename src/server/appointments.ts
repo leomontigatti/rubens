@@ -14,7 +14,7 @@ import {
 } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
-import { parseRoles } from "#/lib/access.ts";
+import { actsForEveryone, parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import { decideUndo, statusActionsFor } from "#/lib/appointment-statuses.ts";
 import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
@@ -83,14 +83,9 @@ const notFound = { ok: false, reason: "notFound" } as const;
 
 const overlapConstraint = "appointment_practitioner_overlap";
 
-/** Whether the actor may book for any practitioner. */
-function booksForAnyone(actor: Actor): boolean {
-  return actor.roles.includes("admin") || actor.roles.includes("receptionist");
-}
-
 /** Whether the actor may book at all, before any row is read. */
 export function booksForSome(actor: Actor): boolean {
-  return booksForAnyone(actor) || actor.roles.includes("practitioner");
+  return actsForEveryone(actor) || actor.roles.includes("practitioner");
 }
 
 /** Whether `error`, or an error it wraps, is a violation of the constraint `name`. */
@@ -122,6 +117,18 @@ export async function insertAppointment(
     }
     throw error;
   }
+}
+
+/**
+ * Locks the appointment row for the rest of the transaction, so changes of one
+ * appointment run one after the other. Taken before any room lock.
+ */
+export async function lockAppointment(tx: Transaction, appointmentId: string): Promise<void> {
+  await tx
+    .select({ id: appointment.id })
+    .from(appointment)
+    .where(eq(appointment.id, appointmentId))
+    .for("update");
 }
 
 /**
@@ -211,7 +218,7 @@ export async function findBookablePractitioner(
   if (!found) {
     return notFound;
   }
-  if (!booksForAnyone(actor) && !found.canEdit) {
+  if (!actsForEveryone(actor) && !found.canEdit) {
     return forbidden;
   }
   if (!found.active) {
@@ -558,7 +565,7 @@ export async function getOfficeDay(
           )
           .where(inArray(practitioner.id, presentIds))
           .orderBy(asc(practitioner.displayName))
-      ).filter((row) => booksForAnyone(actor) || row.userId === actor.userId);
+      ).filter((row) => actsForEveryone(actor) || row.userId === actor.userId);
 
       const now = new Date();
       const columns: DayColumn[] = [];

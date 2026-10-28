@@ -6,8 +6,8 @@ import type { TestDatabase } from "../../tests/db/harness.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
 import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
-import { createBookingWorld } from "#/server/appointments.test-support.ts";
-import type { BookingWorld } from "#/server/appointments.test-support.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { createClosure } from "#/server/closures.ts";
 import { endSchedule } from "#/server/schedules.ts";
@@ -55,6 +55,7 @@ async function book(
   patientId = maria.id,
   practitioner: { id: string } = world.juan,
   typeId = juanType.id,
+  durationMinutes = 30,
 ) {
   const result = await asAppRole(db, (tx) =>
     bookAppointment(
@@ -64,7 +65,7 @@ async function book(
         practitionerId: practitioner.id,
         appointmentTypeId: typeId,
         start,
-        durationMinutes: 30,
+        durationMinutes,
         confirmWarnings: true,
       },
       tx,
@@ -125,6 +126,31 @@ describe("the to-reschedule list", () => {
 
     expect(await listed()).toEqual([]);
     expect(await count()).toBe(0);
+  });
+
+  it("reaches a closure past the last start, during a longer earlier appointment", async () => {
+    const tuesday = "2099-01-06";
+    await world.addSchedule({ practitionerId: world.juan.id, weekdays: [2], endTime: "12:00" });
+    await world.addSchedule({
+      practitionerId: world.lucia.id,
+      roomId: world.otherRoom.id,
+      weekdays: [2],
+    });
+    const long = await book(at("12:00", tuesday), maria.id, world.juan, juanType.id, 180);
+    await book(at("13:00", tuesday), pedro.id, world.lucia, luciaType.id);
+
+    await asAppRole(db, (tx) =>
+      createClosure(
+        world.admin,
+        {
+          officeId: world.office.id,
+          entry: { kind: "hours", start: `${tuesday}T11:00`, end: `${tuesday}T12:00` },
+        },
+        tx,
+      ),
+    );
+
+    expect(await listed()).toEqual([{ id: long, reason: "closure" }]);
   });
 
   it("takes the appointments that new time off overlaps, and only those", async () => {

@@ -1,10 +1,15 @@
-import { and, asc, eq, ne, or } from "drizzle-orm";
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
+import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
 
-import { member, office, practitioner, room, schedule } from "#/db/schema/index.ts";
+import { appointment, member, office, practitioner, room, schedule } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
+import { activeAppointmentStatuses } from "#/lib/appointments.ts";
+import { occurrencesDuring } from "#/lib/availability.ts";
+import { findCrowding } from "#/lib/room-space.ts";
 import {
   findCollision,
   sameClock,
@@ -24,12 +29,13 @@ import type {
   ScheduleInput,
   WeeklySlot,
 } from "#/lib/schedules.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
 
 // Practitioners' weekly schedules. Everyone reads them; an admin changes
 // anyone's and a practitioner their own. Saving one checks, under locks on the
-// practitioner and the room rows, that the room never holds more schedules at
-// once than its capacity and the practitioner is never in two at once
-// (ADR-0003). `database` is for tests, which pass a transaction running as the
+// practitioner and the room rows, that the room never holds more practitioners
+// at once than its capacity, through schedules or future appointments, and the
+// practitioner is never in two schedules at once (ADR-0003). `database` is for tests, which pass a transaction running as the
 // app role.
 //
 // `member` is Better Auth's table and has no row-level security (PRD #16), so
@@ -80,11 +86,18 @@ type Refusal =
   | "alreadyStarted"
   | "otherTimeZone";
 
-type CollisionRefusal = {
-  ok: false;
-  reason: "roomFull" | "practitionerBusy";
-  collision: Collision;
-};
+/** Another practitioner's appointment that fills the room a save would add to. */
+export interface AppointmentCollision {
+  practitionerName: string;
+  roomName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+type CollisionRefusal =
+  | { ok: false; reason: "roomFull" | "practitionerBusy"; collision: Collision }
+  | { ok: false; reason: "roomFull"; appointment: AppointmentCollision };
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
@@ -288,6 +301,7 @@ async function checkCandidate(
   await tx.select({ id: room.id }).from(room).where(eq(room.id, candidate.roomId)).for("update");
   const [target] = await tx
     .select({
+      name: room.name,
       active: room.active,
       capacity: room.capacity,
       officeActive: office.active,
@@ -348,6 +362,15 @@ async function checkCandidate(
       collision: describeCollision(roomClash.schedule, roomClash.weekday),
     };
   }
+  const crowded = await findCrowdedAppointment(
+    tx,
+    candidate,
+    others.filter((row) => row.roomId === candidate.roomId),
+    target,
+  );
+  if (crowded) {
+    return { ok: false, reason: "roomFull", appointment: crowded };
+  }
   const ownClash = findCollision(
     candidate,
     others.filter((row) => row.practitionerId === candidate.practitionerId),
@@ -361,6 +384,67 @@ async function checkCandidate(
     };
   }
   return { ok: true, timeZone: target.timeZone };
+}
+
+/**
+ * Another practitioner's future active appointment in the room that, with the
+ * room's schedules and appointments, leaves no space for `candidate`; `null`
+ * when there is none. `roomSchedules` excludes the one being replaced.
+ */
+async function findCrowdedAppointment(
+  tx: Transaction,
+  candidate: Candidate,
+  roomSchedules: readonly ScheduleRow[],
+  target: { name: string; capacity: number; timeZone: string },
+): Promise<AppointmentCollision | null> {
+  const appointments = await tx
+    .select({
+      practitionerId: appointment.practitionerId,
+      practitionerName: practitioner.displayName,
+      during: appointment.during,
+    })
+    .from(appointment)
+    .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
+    .where(
+      and(
+        eq(appointment.roomId, candidate.roomId),
+        inArray(appointment.status, [...activeAppointmentStatuses]),
+        sql`upper(${appointment.during}) > now()`,
+      ),
+    );
+  const presences = (span: TimeRange) => [
+    ...roomSchedules.flatMap((row) =>
+      occurrencesDuring(row, span).map((occurrence) => ({
+        practitionerId: row.practitionerId,
+        ...occurrence,
+      })),
+    ),
+    ...appointments.map(({ practitionerId, during }) => ({ practitionerId, ...during })),
+  ];
+  for (const held of appointments) {
+    if (held.practitionerId === candidate.practitionerId) {
+      continue;
+    }
+    const slot = { ...candidate, timeZone: target.timeZone };
+    for (const occurrence of occurrencesDuring(slot, held.during)) {
+      const span = {
+        start: occurrence.start > held.during.start ? occurrence.start : held.during.start,
+        end: occurrence.end < held.during.end ? occurrence.end : held.during.end,
+      };
+      if (findCrowding(span, candidate.practitionerId, presences(span), target.capacity)) {
+        const local = (instant: Date, pattern: string) =>
+          format(instant, pattern, { in: tz(target.timeZone) });
+        return {
+          practitionerName: held.practitionerName,
+          roomName: target.name,
+          date: local(held.during.start, "yyyy-MM-dd"),
+          startTime: local(held.during.start, "HH:mm"),
+          endTime: local(held.during.end, "HH:mm"),
+        };
+      }
+    }
+  }
+  return null;
 }
 
 export async function createSchedule(

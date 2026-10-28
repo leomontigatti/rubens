@@ -21,14 +21,15 @@ import type { DayAppointment } from "#/server/appointments.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 
+import { NoteSection } from "#/routes/_app/agenda/-appointment-note.tsx";
 import { StatusSection } from "#/routes/_app/agenda/-appointment-status.tsx";
 import { roomFullMessage } from "#/routes/_app/agenda/-booking.tsx";
 import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
 // An appointment clicked on the day view: what it is and its status, the
-// status changes, rescheduling, a move to another room of the office, and an
-// overbooking over it.
+// status changes, its reception note, rescheduling, a move to another room of
+// the office, and an overbooking over it.
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -122,7 +123,10 @@ function AppointmentDetails(props: {
   );
 }
 
-/** What can be done to the appointment: its status, its room, rescheduling and an overbooking. */
+/**
+ * What can be done to the appointment: its status, its note, its room,
+ * rescheduling and an overbooking.
+ */
 function AppointmentActions(props: {
   picked: PickedAppointment;
   office: OverbookingOffice;
@@ -142,6 +146,7 @@ function AppointmentActions(props: {
   return (
     <>
       <StatusSection appointment={appointment} onDone={props.onClose} />
+      <NoteSection appointment={appointment} onDone={props.onClose} />
       {activeStatuses.has(appointment.status) && (
         <RoomMoveForm
           appointment={appointment}

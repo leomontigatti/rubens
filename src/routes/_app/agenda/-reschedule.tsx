@@ -1,6 +1,6 @@
 import { tz } from "@date-fns/tz";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouteContext, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -9,14 +9,12 @@ import { ErrorAlert } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
-import type { AvailabilityQuery } from "#/lib/availability.ts";
 import { rescheduleQueryOf } from "#/lib/booking-draft.ts";
 import type { BookingWarning, PickedStart } from "#/lib/booking-draft.ts";
 import { moveAppointment } from "#/server/appointments.functions.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
-import { getFreeTimes } from "#/server/availability.functions.ts";
 
-import { FreeStartList, PatientWarnings } from "#/routes/_app/agenda/-booking.tsx";
+import { FreeStartsOfWeek, PatientWarnings } from "#/routes/_app/agenda/-booking.tsx";
 
 // Rescheduling an appointment through the free-times picker: a new free time
 // of the same practitioner, a week from a date, which brings its schedule's
@@ -73,6 +71,11 @@ export function RescheduleForm(props: {
   const [picked, setPicked] = useState<PickedStart | null>(null);
   const [answer, setAnswer] = useState<Answer>(noAnswer);
   const [pending, setPending] = useState(false);
+  const query = rescheduleQueryOf(
+    { id: appointment.id, practitionerId: props.practitionerId },
+    date,
+    durationMinutes,
+  );
 
   async function reschedule(confirmWarnings: boolean) {
     if (!picked) {
@@ -143,15 +146,7 @@ export function RescheduleForm(props: {
           />
         </div>
       </div>
-      <FreeStartsOfWeek
-        query={rescheduleQueryOf(
-          { id: appointment.id, practitionerId: props.practitionerId },
-          date,
-          durationMinutes,
-        )}
-        picked={picked}
-        onPick={pick}
-      />
+      {query && <FreeStartsOfWeek query={query} picked={picked} onPick={pick} />}
       <PatientWarnings
         warnings={answer.warnings}
         pending={pending}
@@ -169,40 +164,4 @@ export function RescheduleForm(props: {
       </div>
     </form>
   );
-}
-
-/** The practitioner's free starts for the duration, a week from `firstDate`. */
-function FreeStartsOfWeek(props: {
-  query: AvailabilityQuery | null;
-  picked: PickedStart | null;
-  onPick: (start: PickedStart) => void;
-}) {
-  if (!props.query) {
-    return null;
-  }
-  return <FreeStartsFor query={props.query} picked={props.picked} onPick={props.onPick} />;
-}
-
-function FreeStartsFor(props: {
-  query: AvailabilityQuery;
-  picked: PickedStart | null;
-  onPick: (start: PickedStart) => void;
-}) {
-  const { viewer } = useRouteContext({ from: "/_app" });
-  const { data } = useQuery({
-    queryKey: ["freeTimes", viewer.organizationId, viewer.userId, props.query],
-    queryFn: () => getFreeTimes({ data: props.query }),
-    placeholderData: keepPreviousData,
-  });
-
-  if (!data) {
-    return null;
-  }
-  if (!data.ok) {
-    return <ErrorAlert message={refusalMessages.notFound} />;
-  }
-  if (data.freeStarts.length === 0) {
-    return <p className="text-muted-foreground text-sm">No hay horarios libres esa semana.</p>;
-  }
-  return <FreeStartList starts={data.freeStarts} picked={props.picked} onPick={props.onPick} />;
 }

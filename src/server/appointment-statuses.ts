@@ -6,7 +6,12 @@ import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import { decideStatusChange, decideUndo } from "#/lib/appointment-statuses.ts";
 import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
-import { appointmentIdSchema, cancellationSchema, statusChangeSchema } from "#/lib/appointments.ts";
+import {
+  activeAppointmentStatuses,
+  appointmentIdSchema,
+  cancellationSchema,
+  statusChangeSchema,
+} from "#/lib/appointments.ts";
 import type {
   AppointmentIdInput,
   AppointmentStatus,
@@ -14,7 +19,9 @@ import type {
   StatusChangeInput,
 } from "#/lib/appointments.ts";
 
-import { booksForSome, updateAppointment } from "#/server/appointments.ts";
+import { checkRoomSpace } from "#/server/appointment-rooms.ts";
+import type { RoomRefusal } from "#/server/appointment-rooms.ts";
+import { booksForSome, lockAppointment, updateAppointment } from "#/server/appointments.ts";
 import { changedFields, recordAudit } from "#/server/audit.ts";
 import { findPractitioner } from "#/server/schedules.ts";
 
@@ -22,12 +29,15 @@ import { findPractitioner } from "#/server/schedules.ts";
 // checking in, attended, no-show and cancelling, each decided by the pure
 // module `#/lib/appointment-statuses.ts`, and the same-day undo of the last
 // one. Cancelled and no-show appointments stop holding the practitioner's
-// time; an undo that brings one back to a time taken since is "timeTaken".
+// time; an undo that brings one back to a time taken since is "timeTaken", and
+// to a room filled since is "roomFull". The appointment row is locked as it is
+// read, so concurrent changes of one appointment run one after the other.
 // Every change and undo is audited, about the appointment's patient.
 // `database` is for tests, which pass a transaction running as the app role.
 
 export type StatusChangeResult =
   | { ok: true }
+  | RoomRefusal
   | {
       ok: false;
       reason:
@@ -47,10 +57,12 @@ const notFound = { ok: false, reason: "notFound" } as const;
 
 /** The appointment as a status change reads it, and the actor as the rules see them. */
 async function findForChange(tx: Transaction, actor: Actor, appointmentId: string) {
+  await lockAppointment(tx, appointmentId);
   const [row] = await tx
     .select({
       practitionerId: appointment.practitionerId,
       patientId: appointment.patientId,
+      roomId: appointment.roomId,
       during: appointment.during,
       status: appointment.status,
       previousStatus: appointment.previousStatus,
@@ -69,6 +81,10 @@ async function findForChange(tx: Transaction, actor: Actor, appointmentId: strin
   const found = await findPractitioner(tx, actor, row.practitionerId, false);
   const statusActor: StatusActor = { roles: actor.roles, own: found?.canEdit === true };
   return { ...row, start: row.during.start, actor: statusActor };
+}
+
+function isActive(status: AppointmentStatus): boolean {
+  return (activeAppointmentStatuses as readonly AppointmentStatus[]).includes(status);
 }
 
 type Current = NonNullable<Awaited<ReturnType<typeof findForChange>>>;
@@ -207,6 +223,18 @@ export async function undoAppointmentStatus(
       const decided = decideUndo(current, current.actor, new Date());
       if (!decided.ok) {
         return decided;
+      }
+      // Undone, a cancellation or a no-show holds the room again.
+      if (!isActive(current.status)) {
+        const space = await checkRoomSpace(
+          tx,
+          current.roomId,
+          current.practitionerId,
+          current.during,
+        );
+        if (!space.ok) {
+          return space;
+        }
       }
       return writeStatus(tx, actor, appointmentId, current, {
         status: decided.status,
