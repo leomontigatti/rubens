@@ -402,7 +402,7 @@ describe("the office day view", () => {
     expect(withReleased.ok && withReleased.columns[0]!.freeStarts.length).toBe(4);
   });
 
-  it("offers free times on the calendar's 30-minute cells, whatever the practitioner's grid", async () => {
+  it("offers only cells whose start is also a free start on the practitioner's grid", async () => {
     await db
       .update(practitioner)
       .set({ gridMinutes: 20 })
@@ -411,9 +411,25 @@ describe("the office day view", () => {
 
     const juan = (await dayOf(world.receptionist)).columns[0]!;
 
-    // 12:00 to 12:30 is only partly free, so it is not offered.
-    expect(juan.freeStarts.map((free) => free.start)).toEqual(["12:30", "13:00", "13:30"].map(at));
+    // 12:30 and 13:30 are free cells, but off the 20-minute grid, so a booking there is refused.
+    expect(juan.freeStarts.map((free) => free.start)).toEqual([at("13:00")]);
   });
+
+  for (const gridMinutes of [20, 60]) {
+    it(`books every offered cell on a ${gridMinutes}-minute grid`, async () => {
+      await db.update(practitioner).set({ gridMinutes }).where(eq(practitioner.id, world.juan.id));
+
+      const offered = (await dayOf(world.receptionist)).columns[0]!.freeStarts;
+
+      expect(offered.length).toBeGreaterThan(0);
+      for (const [index, cell] of offered.entries()) {
+        const patient = await world.addPatient(`Paciente ${index}`, `0351 15 555-000${index}`);
+        expect(
+          await book(world.receptionist, booking({ patientId: patient.id, start: cell.start })),
+        ).toMatchObject({ ok: true });
+      }
+    });
+  }
 
   it("offers each viewer the status changes and the undo they may make", async () => {
     const { id } = await booked();

@@ -84,7 +84,7 @@ export async function getPractitionerWeek(
       if (!actsForEveryone(actor) && !found.canEdit) {
         return { ok: false as const, reason: "forbidden" as const };
       }
-      const { free, schedules } = await findFreeCells(tx, found.id, { window: week });
+      const { free, schedules } = await findFreeCells(tx, found, { window: week });
       const bookable = found.active ? free : [];
       const appointmentRows = await selectDayAppointments(tx)
         .where(

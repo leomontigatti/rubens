@@ -31,6 +31,7 @@ import type {
   WarningConfirmation,
 } from "#/lib/appointments.ts";
 import { appliesOn } from "#/lib/availability.ts";
+import type { FreeStart } from "#/lib/availability.ts";
 import { cellMinutes } from "#/lib/calendar-layout.ts";
 import { patientName } from "#/lib/patients.ts";
 import { instantOf, toTimeRange } from "#/lib/time-ranges.ts";
@@ -467,18 +468,22 @@ export interface DayColumn {
 
 /**
  * The practitioner's free calendar cells inside `window`: `cellMinutes` long,
- * on a grid of cells from local midnight, whatever the practitioner's grid.
+ * wholly free inside one schedule, and starting where a booking may start on
+ * the practitioner's own grid as well as on the cells' grid from local midnight.
  */
-export function findFreeCells(
+export async function findFreeCells(
   tx: Transaction,
-  practitionerId: string,
+  practitioner: { id: string; gridMinutes: number },
   options: { window: TimeRange; officeId?: string },
 ) {
-  return findFreeTimes(
-    tx,
-    { id: practitionerId, gridMinutes: cellMinutes },
-    { ...options, durationMinutes: cellMinutes },
-  );
+  const { free, schedules } = await findFreeTimes(tx, practitioner, {
+    ...options,
+    durationMinutes: cellMinutes,
+  });
+  const zones = new Map(schedules.map((where) => [where.roomId, where.timeZone]));
+  const onCellGrid = (slot: FreeStart) =>
+    Number(format(slot.start, "m", { in: tz(zones.get(slot.roomId)!) })) % cellMinutes === 0;
+  return { free: free.filter(onCellGrid), schedules };
 }
 
 /**
@@ -576,6 +581,7 @@ export async function getOfficeDay(
           .select({
             id: practitioner.id,
             displayName: practitioner.displayName,
+            gridMinutes: practitioner.gridMinutes,
             userId: member.userId,
             role: member.role,
             active: member.active,
@@ -598,7 +604,7 @@ export async function getOfficeDay(
         const viewer = { roles: actor.roles, own: row.userId === actor.userId };
         const bookable = row.active && parseRoles(row.role).includes("practitioner");
         const { free, schedules } = bookable
-          ? await findFreeCells(tx, row.id, { window: day, officeId: found.id })
+          ? await findFreeCells(tx, row, { window: day, officeId: found.id })
           : { free: [], schedules: [] };
         const roomNames = new Map(schedules.map((where) => [where.roomId, where.roomName]));
         columns.push({
