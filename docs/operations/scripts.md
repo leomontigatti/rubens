@@ -37,6 +37,15 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
   ([fallow.md](../agents/fallow.md)). The pre-commit hook and CI run it.
 - `check:pr-title`: the conventional-commit prefix and English subject rule, over the
   `PR_TITLE` environment variable. CI runs it on PR events.
+- `check:labels`: fails when a workflow, a script or a doc under `docs/agents/` names
+  a label `.github/labels.json` does not hold. CI runs it.
+
+## Repository
+
+- `labels:sync` ⚠️ pushes `.github/labels.json` to the GitHub repo's labels with `gh`:
+  creates the missing ones and rewrites the colour and description of those that
+  differ. It never deletes: a live label the file does not hold is listed and left
+  alone. `--dry-run` (`pnpm labels:sync --dry-run`) prints the plan and changes nothing.
 
 ## Tests
 

@@ -11,7 +11,7 @@ are a repo setting, not a file here: renaming or adding a job does not update
 protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
-  `db:generate` drift check, `pnpm check:migrations`, `pnpm check:dependency-audit`,
+  `pnpm check:labels`, `db:generate` drift check, `pnpm check:migrations`, `pnpm check:dependency-audit`,
   `pnpm test:unit`, `pnpm test:db` and `pnpm build`. No database service: `test:db`
   runs on PGlite.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
@@ -35,21 +35,23 @@ current `main`.
 3. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
    Node from `.nvmrc` and pnpm from `packageManager`.
 4. **`pnpm check`** (`vp check`): format, lint and typecheck.
-5. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
+5. **`pnpm check:labels`**: every label a workflow, script or agent doc names is in
+   `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#labels)).
+6. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
    `src/db/migrations`. If it does, the schema changed without its migration. The fix
    is to commit the migration that `db:generate` writes, never to edit a `.sql` file
    already on `main`.
-6. **`pnpm check:migrations`** against `origin/main`. Three rules:
+7. **`pnpm check:migrations`** against `origin/main`. Three rules:
    order (a new migration must be newer than every migration on `main`), immutability
    (no applied `.sql` file may change), and safety (squawk over the new `.sql` files).
    Why each one exists: `scripts/migrations/journal.mjs`.
-7. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+8. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
    branch introduces, compared with `origin/main`.
-8. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+9. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
    branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
    run) fails the job too.
-9. **`pnpm test:unit`** and **`pnpm test:db`**.
-10. **`pnpm build`**: the production build the Dockerfile runs.
+10. **`pnpm test:unit`** and **`pnpm test:db`**.
+11. **`pnpm build`**: the production build the Dockerfile runs.
 
 ## Waiting on CI from a session
 
