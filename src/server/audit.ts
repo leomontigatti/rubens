@@ -7,7 +7,7 @@ import type { Actor } from "#/lib/access.ts";
 // the change's own transaction, so the entry and the change commit together.
 // An entry holds patient data: it is never logged.
 
-export type AuditAction = "create" | "update" | "deactivate" | "reactivate";
+export type AuditAction = "create" | "update" | "delete" | "deactivate" | "reactivate";
 
 /** A field's value as the log keeps it: instants as ISO strings. */
 export type AuditValue = string | number | boolean | null;

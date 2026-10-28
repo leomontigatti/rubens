@@ -18,6 +18,7 @@ import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/dispon
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
 import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
 import { Route as AppLicenciasIndexRouteImport } from './routes/_app/licencias/index'
+import { Route as AppObrasSocialesIndexRouteImport } from './routes/_app/obras-sociales/index'
 import { Route as AppPacientesIndexRouteImport } from './routes/_app/pacientes/index'
 import { Route as AppPacientesPatientIdRouteImport } from './routes/_app/pacientes/$patientId'
 import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
@@ -71,6 +72,11 @@ const AppLicenciasIndexRoute = AppLicenciasIndexRouteImport.update({
   path: '/licencias/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppObrasSocialesIndexRoute = AppObrasSocialesIndexRouteImport.update({
+  id: '/obras-sociales/',
+  path: '/obras-sociales/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPacientesIndexRoute = AppPacientesIndexRouteImport.update({
   id: '/pacientes/',
   path: '/pacientes/',
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
   '/licencias/': typeof AppLicenciasIndexRoute
+  '/obras-sociales/': typeof AppObrasSocialesIndexRoute
   '/pacientes/': typeof AppPacientesIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
   '/licencias': typeof AppLicenciasIndexRoute
+  '/obras-sociales': typeof AppObrasSocialesIndexRoute
   '/pacientes': typeof AppPacientesIndexRoute
   '/personal': typeof AppPersonalIndexRoute
   '/sedes': typeof AppSedesIndexRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
   '/_app/licencias/': typeof AppLicenciasIndexRoute
+  '/_app/obras-sociales/': typeof AppObrasSocialesIndexRoute
   '/_app/pacientes/': typeof AppPacientesIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/disponibilidad/'
     | '/horarios/'
     | '/licencias/'
+    | '/obras-sociales/'
     | '/pacientes/'
     | '/personal/'
     | '/sedes/'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/disponibilidad'
     | '/horarios'
     | '/licencias'
+    | '/obras-sociales'
     | '/pacientes'
     | '/personal'
     | '/sedes'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/_app/disponibilidad/'
     | '/_app/horarios/'
     | '/_app/licencias/'
+    | '/_app/obras-sociales/'
     | '/_app/pacientes/'
     | '/_app/personal/'
     | '/_app/sedes/'
@@ -286,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLicenciasIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/obras-sociales/': {
+      id: '/_app/obras-sociales/'
+      path: '/obras-sociales'
+      fullPath: '/obras-sociales/'
+      preLoaderRoute: typeof AppObrasSocialesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pacientes/': {
       id: '/_app/pacientes/'
       path: '/pacientes'
@@ -349,6 +368,7 @@ interface AppRouteChildren {
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
   AppLicenciasIndexRoute: typeof AppLicenciasIndexRoute
+  AppObrasSocialesIndexRoute: typeof AppObrasSocialesIndexRoute
   AppPacientesIndexRoute: typeof AppPacientesIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
@@ -365,6 +385,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,
   AppLicenciasIndexRoute: AppLicenciasIndexRoute,
+  AppObrasSocialesIndexRoute: AppObrasSocialesIndexRoute,
   AppPacientesIndexRoute: AppPacientesIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,

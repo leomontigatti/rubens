@@ -13,3 +13,4 @@ export * from "#/db/schema/staff.ts";
 export * from "#/db/schema/schedules.ts";
 export * from "#/db/schema/time-off-and-closures.ts";
 export * from "#/db/schema/patients.ts";
+export * from "#/db/schema/coverages.ts";

@@ -139,7 +139,8 @@ export function documentLabel(patient: {
   return `${documentTypeLabels[patient.documentType]} ${patient.documentNumber}`;
 }
 
-// In the registration form's order, which the change history follows.
+// In the registration form's order, which the change history follows, then a
+// coverage's.
 const fieldLabels: Record<string, string> = {
   firstName: "Nombre",
   lastName: "Apellido",
@@ -152,6 +153,11 @@ const fieldLabels: Record<string, string> = {
   address: "Dirección",
   whatsappConsent: "Acepta WhatsApp",
   active: "Activo",
+  // A coverage's, in its form's order.
+  insurer: "Obra social / prepaga",
+  plan: "Plan",
+  memberNumber: "Número de afiliado",
+  primary: "Principal",
 };
 
 const fieldOrder = Object.keys(fieldLabels);

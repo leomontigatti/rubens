@@ -92,6 +92,15 @@ function AppShell() {
           </Link>
           {viewer.roles.includes("admin") && (
             <Link
+              to="/obras-sociales"
+              className="text-muted-foreground hover:text-foreground text-sm"
+              activeProps={{ className: "text-foreground" }}
+            >
+              Obras sociales
+            </Link>
+          )}
+          {viewer.roles.includes("admin") && (
+            <Link
               to="/personal"
               className="text-muted-foreground hover:text-foreground text-sm"
               activeProps={{ className: "text-foreground" }}

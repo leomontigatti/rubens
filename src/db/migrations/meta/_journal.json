@@ -64,6 +64,13 @@
       "when": 1793203410096,
       "tag": "0008_patient_search",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793204277948,
+      "tag": "0009_insurers_and_coverages",
+      "breakpoints": true
     }
   ]
 }

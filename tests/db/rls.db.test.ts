@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   auditLog,
   closure,
+  coverage,
+  insurer,
   member,
   office,
   patient,
@@ -97,6 +99,17 @@ beforeEach(async () => {
       entityId: createdPatient!.id,
       patientId: createdPatient!.id,
     });
+    const [createdInsurer] = await db
+      .insert(insurer)
+      .values({ organizationId, name: "OSDE", kind: "prepaga" })
+      .returning();
+    await db.insert(coverage).values({
+      organizationId,
+      patientId: createdPatient!.id,
+      insurerId: createdInsurer!.id,
+      memberNumber: "123",
+      primary: true,
+    });
   }
 });
 
@@ -128,6 +141,8 @@ describe("row-level security on tenant tables", () => {
           closures: await tenant.select().from(closure),
           patients: await tenant.select().from(patient),
           auditLog: await tenant.select().from(auditLog),
+          insurers: await tenant.select().from(insurer),
+          coverages: await tenant.select().from(coverage),
         }),
         tx,
       ),
@@ -141,6 +156,8 @@ describe("row-level security on tenant tables", () => {
     expect(seen.closures.map((row) => row.organizationId)).toEqual(["org-a", "org-a"]);
     expect(seen.patients.map((row) => row.organizationId)).toEqual(["org-a"]);
     expect(seen.auditLog.map((row) => row.organizationId)).toEqual(["org-a"]);
+    expect(seen.insurers.map((row) => row.organizationId)).toEqual(["org-a"]);
+    expect(seen.coverages.map((row) => row.organizationId)).toEqual(["org-a"]);
   });
 
   it("shows nothing to the app role without a tenant setting", async () => {
@@ -154,6 +171,8 @@ describe("row-level security on tenant tables", () => {
         closures: number;
         patients: number;
         auditLog: number;
+        insurers: number;
+        coverages: number;
       }>(
         await tx.execute(sql`
           select
@@ -164,7 +183,9 @@ describe("row-level security on tenant tables", () => {
             (select count(*)::int from rubens.time_off) as "timeOff",
             (select count(*)::int from rubens.closure) as closures,
             (select count(*)::int from rubens.patient) as patients,
-            (select count(*)::int from rubens.audit_log) as "auditLog"
+            (select count(*)::int from rubens.audit_log) as "auditLog",
+            (select count(*)::int from rubens.insurer) as insurers,
+            (select count(*)::int from rubens.coverage) as coverages
         `),
       ),
     );
@@ -178,6 +199,8 @@ describe("row-level security on tenant tables", () => {
       closures: 0,
       patients: 0,
       auditLog: 0,
+      insurers: 0,
+      coverages: 0,
     });
   });
 
@@ -199,6 +222,9 @@ describe("row-level security on tenant tables", () => {
           await tenant.update(practitioner).set({ displayName: "Cambiado" });
           await tenant.delete(practitioner);
           await tenant.update(patient).set({ firstName: "Cambiada" });
+          await tenant.update(insurer).set({ name: "Cambiada" });
+          await tenant.update(coverage).set({ memberNumber: "000" });
+          await tenant.delete(coverage);
         },
         tx,
       ),
@@ -228,6 +254,14 @@ describe("row-level security on tenant tables", () => {
       (row) => row.organizationId === "org-b",
     );
     expect(patientsB.map((row) => row.firstName)).toEqual(["Juana"]);
+    const insurersB = (await db.select().from(insurer)).filter(
+      (row) => row.organizationId === "org-b",
+    );
+    const coveragesB = (await db.select().from(coverage)).filter(
+      (row) => row.organizationId === "org-b",
+    );
+    expect(insurersB.map((row) => row.name)).toEqual(["OSDE"]);
+    expect(coveragesB.map((row) => row.memberNumber)).toEqual(["123"]);
   });
 
   it("refuses to write a row into another organization", async () => {
@@ -364,6 +398,27 @@ describe("row-level security on tenant tables", () => {
       ),
     ).rejects.toThrow();
   });
+
+  it("refuses a coverage for another organization's patient or insurer", async () => {
+    const patients = await db.select().from(patient);
+    const insurers = await db.select().from(insurer);
+    const patientOf = (id: string) => patients.find((row) => row.organizationId === id)!.id;
+    const insurerOf = (id: string) => insurers.find((row) => row.organizationId === id)!.id;
+    const coverageOf = (patientId: string, insurerId: string) =>
+      asAppRole(db, (tx) =>
+        withTenant(
+          actorA,
+          (tenant) =>
+            tenant
+              .insert(coverage)
+              .values({ organizationId: "org-a", patientId, insurerId, memberNumber: "9" }),
+          tx,
+        ),
+      );
+
+    await expect(coverageOf(patientOf("org-b"), insurerOf("org-a"))).rejects.toThrow();
+    await expect(coverageOf(patientOf("org-a"), insurerOf("org-b"))).rejects.toThrow();
+  });
 });
 
 describe("the row-level security guard", () => {
@@ -399,6 +454,8 @@ describe("the row-level security guard", () => {
         "closure",
         "patient",
         "audit_log",
+        "insurer",
+        "coverage",
       ]),
     );
     expect(

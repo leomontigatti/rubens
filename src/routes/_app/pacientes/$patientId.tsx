@@ -16,6 +16,7 @@ import {
   readPatientForm,
   usePatientSave,
 } from "#/components/patient-form.tsx";
+import { CoverageList, NewCoverageForm } from "#/components/patient-coverages.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -29,6 +30,10 @@ import {
 } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
+import { getCoverages } from "#/server/coverages.functions.ts";
+import type { Coverage } from "#/server/coverages.ts";
+import { getInsurers } from "#/server/insurers.functions.ts";
+import type { Insurer } from "#/server/insurers.ts";
 import {
   changePatientActive,
   changeWhatsappConsent,
@@ -42,11 +47,13 @@ import type { HistoryEntry, Patient } from "#/server/patients.ts";
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
   loader: async ({ params, context }) => {
     const data = { patientId: params.patientId };
-    const [details, history] = await Promise.all([
+    const [details, coverages, insurers, history] = await Promise.all([
       getPatientDetails({ data }),
+      getCoverages({ data }),
+      getInsurers({ data: { includeInactive: false } }),
       context.viewer.roles.includes("admin") ? getPatientChanges({ data }) : null,
     ]);
-    return { details, history };
+    return { details, coverages, insurers, history };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -74,7 +81,7 @@ const instantFormat = new Intl.DateTimeFormat("es-AR", {
 
 function PatientScreen() {
   const { viewer } = Route.useRouteContext();
-  const { details, history } = Route.useLoaderData();
+  const { details, coverages, insurers, history } = Route.useLoaderData();
 
   if (!details.ok) {
     return <RefusalMessage message={patientRefusalMessages[details.reason]} />;
@@ -87,6 +94,7 @@ function PatientScreen() {
     <div key={patient.id} className="mx-auto flex max-w-3xl flex-col gap-6">
       <PatientHeading patient={patient} isAdmin={viewer.roles.includes("admin")} />
       <DetailsSection patient={patient} />
+      <CoverageSection patientId={patient.id} coverages={coverages} insurers={insurers} />
       <WhatsappSection patient={patient} />
       {history?.ok && <HistorySection entries={history.entries} />}
     </div>
@@ -231,6 +239,53 @@ function PatientEditForm({ patient, onDone }: { patient: Patient; onDone: () => 
   );
 }
 
+type LoaderData = ReturnType<typeof Route.useLoaderData>;
+
+/** The coverages section, left out when either list was refused. */
+function CoverageSection(props: {
+  patientId: string;
+  coverages: LoaderData["coverages"];
+  insurers: LoaderData["insurers"];
+}) {
+  if (!props.coverages.ok || !props.insurers.ok) {
+    return null;
+  }
+  return (
+    <CoverageCard
+      patientId={props.patientId}
+      coverages={props.coverages.coverages}
+      insurers={props.insurers.insurers}
+    />
+  );
+}
+
+function CoverageCard(props: { patientId: string; coverages: Coverage[]; insurers: Insurer[] }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <Section
+      title="Coberturas"
+      action={
+        !adding && (
+          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+            Agregar cobertura
+          </Button>
+        )
+      }
+    >
+      <div className="flex flex-col gap-6">
+        {adding && (
+          <NewCoverageForm
+            patientId={props.patientId}
+            insurers={props.insurers}
+            onDone={() => setAdding(false)}
+          />
+        )}
+        <CoverageList coverages={props.coverages} insurers={props.insurers} />
+      </div>
+    </Section>
+  );
+}
+
 function WhatsappSection({ patient }: { patient: Patient }) {
   const action = useAction();
   const consent = !patient.whatsappConsent;
@@ -267,6 +322,7 @@ function WhatsappSection({ patient }: { patient: Patient }) {
 const actionLabels: Record<HistoryEntry["action"], string> = {
   create: "Alta",
   update: "Cambio",
+  delete: "Baja",
   deactivate: "Desactivación",
   reactivate: "Reactivación",
 };
@@ -278,7 +334,10 @@ function HistorySection({ entries }: { entries: HistoryEntry[] }) {
         {entries.map((entry) => (
           <li key={entry.id} className="flex flex-col gap-1">
             <p className="text-sm">
-              <span className="font-medium">{actionLabels[entry.action]}</span>
+              <span className="font-medium">
+                {actionLabels[entry.action]}
+                {entry.entityType === "coverage" && " de cobertura"}
+              </span>
               <span className="text-muted-foreground">
                 {" · "}
                 {instantFormat.format(entry.createdAt)} · {entry.userName ?? "Usuario eliminado"}

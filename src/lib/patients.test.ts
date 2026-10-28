@@ -44,4 +44,18 @@ describe("historyChanges", () => {
 
     expect(changes.map((change) => change.field)).toEqual(["Nombre", "Apellido", "Teléfono"]);
   });
+
+  it("labels a coverage's fields, after the patient's", () => {
+    expect(
+      historyChanges({
+        before: null,
+        after: { primary: true, memberNumber: "123", insurer: "OSDE", plan: "310" },
+      }),
+    ).toEqual([
+      { field: "Obra social / prepaga", before: "—", after: "OSDE" },
+      { field: "Plan", before: "—", after: "310" },
+      { field: "Número de afiliado", before: "—", after: "123" },
+      { field: "Principal", before: "—", after: "Sí" },
+    ]);
+  });
 });
