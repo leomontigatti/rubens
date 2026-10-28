@@ -4,6 +4,7 @@ import {
   collisionLabel,
   sameClock,
   scheduleState,
+  shiftDate,
   sharedDates,
   validityLabel,
 } from "#/lib/schedules.ts";
@@ -134,6 +135,10 @@ describe("whether two time zones keep the same clock", () => {
       true,
     );
     expect(sameClock(...moscow, { firstDate: "2012-01-02", lastDate: null }, day)).toBe(false);
+    expect(sameClock(...moscow, { firstDate: "2014-11-03", lastDate: day }, day)).toBe(false);
+    expect(
+      sameClock(...moscow, { firstDate: "2014-11-03", lastDate: shiftDate(day, -1) }, day),
+    ).toBe(true);
   });
 
   it("compares a year at most, from today", () => {
