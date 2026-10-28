@@ -10,9 +10,10 @@ was agreed for the first version ([clinical-records.md](../domain/clinical-recor
 
 ADR-0003 made a signed note unalterable, with drafts before signing and addenda for
 corrections. Practitioners fix typos and mistakes in their own notes, and drafts,
-signing and addenda were three concepts to serve that. Ley 26.529 asks an
-electronic record for integrity and inalterability: nothing lost, not nothing
-changed.
+signing and addenda were three concepts to serve that. Ley 26.529 (art. 13) asks
+an electronic record for integrity and inalterability; we read that as nothing
+lost rather than nothing changed. That reading, and dropping the signing step, are
+for counsel to confirm before go-live, beside the AAIP registration.
 
 - A note is part of the record once saved. Its author, and only its author, edits
   it at any time; each save adds a version, and the database rejects any `UPDATE` or
@@ -27,9 +28,11 @@ changed.
 
 ADR-0003 asked for clinical text to be encrypted by the app with a key outside the
 database. Dropped for the first version: key custody, rotation and encrypting file
-streams cost more than they buy while the database, the files and the backups sit on
-one VPS with disk encryption, encrypted off-site backups, RLS and the audit log. The
-cost is that a stolen database dump or volume reads in the clear. It returns as
+streams cost more than they buy for one practice on one VPS, where RLS, the audit
+log and the encrypted off-site backups required before go-live
+([infrastructure.md](../operations/infrastructure.md#backups)) are the protection.
+The cost is that anyone who gets the server's disk or a database dump reads clinical
+text in the clear. It returns as
 hardening if counsel's review of the AAIP registration asks for it.
 
 ## Files live on a volume on the VPS

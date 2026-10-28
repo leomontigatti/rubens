@@ -187,7 +187,6 @@ _Avoid_: allergy, warning, flag
 
 **`attachment`** — ui: "Adjunto"
 A file on a `clinicalNote`, such as an X-ray, a photo or a scanned `consentForm`.
-One that should not be in the record is voided ("Anulado") and can then be deleted.
 _Avoid_: document, upload, file
 
 **`consentForm`** — ui: "Consentimiento informado"

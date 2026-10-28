@@ -32,7 +32,7 @@ optional, and shown next to the author's name on screen and in copies.
 
 Allergies, conditions and medications a practitioner must know before treating
 (allergic to penicillin, on anticoagulants, diabetic) are a list at the top of the
-record, not part of a note, and never shown to reception. An alert has a type
+record, not part of a note, and never shown to reception or on appointments. An alert has a type
 (`Alergia`, `Condición` or `Medicación`), a short text and an optional detail. Any
 practitioner who keeps records adds one or resolves it with a reason; a resolved
 alert leaves the active list and keeps its history.
@@ -48,16 +48,18 @@ While a file is on a note, its author can remove it by editing the note; the
 version history keeps that it was there. A file that should not be in the record
 at all, such as one on the wrong patient, is voided by the note's author with a
 reason. An admin reviews voided files and can delete one for good: it is another
-person's data, or none. The audit log keeps who voided and deleted it, when, why,
-and the file name.
+person's data, or none. Deleting removes the file's content only: the attachment
+stays in the note's versions as a deleted entry with its name and the reason, and
+the audit log keeps who voided and deleted it, and when. The off-site backups keep
+the content until they expire.
 
 ## Consent forms
 
 The practice prints its own consent form and the patient, or a guardian, signs it
 on paper. The scan is attached to a note that says what it covers and who signed;
 Rubens keeps no structured consent fields and prints no forms. The paper original is
-kept by the practice as the evidence of the signature (how long is a question for
-counsel; ten years, like the record, is the safe assumption).
+kept by the practice as the evidence of the signature; how long is a question for
+counsel.
 
 ## Copies for the patient
 
@@ -73,8 +75,8 @@ when asked and not stored:
 - the list of attached files by note; the files themselves are handed over apart
   if asked.
 
-Voided files are left out. The audit entry records who issued it and when; since
-nothing is lost, the same copy can be rebuilt.
+Voided files are left out. The audit entry records who issued it and when. The
+notes as of that moment can be rebuilt from their versions.
 
 ## Audit and retention
 
@@ -82,6 +84,8 @@ Every read and write of clinical content goes to the audit log
 ([ADR-0003](../adr/0003-scheduling-and-clinical-records.md)), the same log that
 records changes to a patient's details ([patients.md](./patients.md)): one entry each
 time a record is opened, each file viewed or downloaded and each copy produced, and
-one per change. There is no screen for the log yet; it is queried when a patient
-asks who saw their record. Nothing in a record is deleted except a voided file:
+one per change. A clinical entry names what was read or changed by its id and never
+holds clinical text: the note versions keep the text. The patient's change history
+that admins see leaves clinical entries out, and there is no screen for them yet;
+they are queried when a patient asks who saw their record. Nothing in a record is deleted except a voided file:
 deactivating a patient hides them from search and keeps the record.

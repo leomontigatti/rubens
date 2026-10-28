@@ -21,7 +21,7 @@ and practitioner.
   practitioners (a general dentist and an orthodontist), and Ley 26.529 makes the
   institution the custodian of the record. Every read is written to the audit log.
 - **Receptionists never see clinical content.** The admin role alone grants no
-  reading either: an admin can only produce a patient's copy of their record
+  reading in the app either: an admin can only produce a patient's copy of their record
   ([clinical-records.md](./clinical-records.md#copies-for-the-patient)), which is
   audited, and delete a file a practitioner voided, seeing its name and the reason
   but not its content. A practitioner who is also the admin reads records as a practitioner.

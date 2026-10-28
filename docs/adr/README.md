@@ -12,8 +12,8 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 - Tenancy, RLS, database roles and connections: `0002-tenancy-and-database-connections.md`
 - Database schema and naming: `0004-dedicated-postgres-schema.md`
 - Scheduling: `0003-scheduling-and-clinical-records.md`
-- Clinical records: `0005-versioned-clinical-notes.md`, with the audit and access
-  rules still in `0003-scheduling-and-clinical-records.md`
+- Clinical records: `0005-versioned-clinical-notes.md`, with the access and audit
+  rules in `0003-scheduling-and-clinical-records.md`
 
 ## Decisions
 
