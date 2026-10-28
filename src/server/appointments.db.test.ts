@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, auditLog } from "#/db/schema/index.ts";
+import { appointment, auditLog, practitioner } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { BookingInput, WarningConfirmation } from "#/lib/appointments.ts";
@@ -352,7 +352,7 @@ describe("the office day view", () => {
         receptionNote: "Trae estudios",
       }),
     ]);
-    // Free starts on Juan's grid, 30 minutes by default, a grid step long.
+    // Juan's free 30-minute calendar cells.
     expect(juan.freeStarts.map((free) => free.start)).toEqual(["12:30", "13:00", "13:30"].map(at));
     expect(juan.freeStarts[0]).toMatchObject({ roomId: world.room.id, roomName: "Consultorio 1" });
   });
@@ -373,23 +373,46 @@ describe("the office day view", () => {
     expect(day).toMatchObject({ ok: true, columns: [] });
   });
 
-  it("hides cancelled appointments unless asked for", async () => {
+  it("hides cancelled and no-show appointments unless asked for, leaving their time free", async () => {
     const { id } = await booked();
     await asAppRole(db, (tx) =>
       cancelAppointment(world.receptionist, { appointmentId: id, cancelledBy: "business" }, tx),
     );
+    const { id: absentId } = await booked(world.receptionist, booking({ start: at("13:00") }));
+    await db.update(appointment).set({ status: "noShow" }).where(eq(appointment.id, absentId));
 
-    expect((await dayOf(world.receptionist)).columns[0]!.appointments).toEqual([]);
-    const withCancelled = await asAppRole(db, (tx) =>
+    for (const actor of [world.receptionist, world.admin, world.juan.actor]) {
+      const juan = (await dayOf(actor)).columns[0]!;
+      expect(juan.appointments).toEqual([]);
+      expect(juan.freeStarts.map((free) => free.start)).toEqual(
+        ["12:00", "12:30", "13:00", "13:30"].map(at),
+      );
+    }
+    const withReleased = await asAppRole(db, (tx) =>
       getOfficeDay(
         world.receptionist,
-        { officeId: world.office.id, date: "2099-01-05", includeCancelled: true },
+        { officeId: world.office.id, date: "2099-01-05", includeCancelledAndNoShow: true },
         tx,
       ),
     );
-    expect(withCancelled.ok && withCancelled.columns[0]!.appointments).toEqual([
+    expect(withReleased.ok && withReleased.columns[0]!.appointments).toEqual([
       expect.objectContaining({ id, status: "cancelled", cancelledBy: "business" }),
+      expect.objectContaining({ id: absentId, status: "noShow" }),
     ]);
+    expect(withReleased.ok && withReleased.columns[0]!.freeStarts.length).toBe(4);
+  });
+
+  it("offers free times on the calendar's 30-minute cells, whatever the practitioner's grid", async () => {
+    await db
+      .update(practitioner)
+      .set({ gridMinutes: 20 })
+      .where(eq(practitioner.id, world.juan.id));
+    await booked(world.receptionist, booking({ start: at("12:00"), durationMinutes: 20 }));
+
+    const juan = (await dayOf(world.receptionist)).columns[0]!;
+
+    // 12:00 to 12:30 is only partly free, so it is not offered.
+    expect(juan.freeStarts.map((free) => free.start)).toEqual(["12:30", "13:00", "13:30"].map(at));
   });
 
   it("offers each viewer the status changes and the undo they may make", async () => {

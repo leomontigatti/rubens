@@ -121,12 +121,3 @@
     @apply bg-background text-foreground antialiased;
   }
 }
-
-/* A no-show appointment on the calendar (docs/domain/appointments.md § Calendar). */
-@utility bg-stripes {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--color-muted) 0 6px,
-    transparent 6px 12px
-  );
-}

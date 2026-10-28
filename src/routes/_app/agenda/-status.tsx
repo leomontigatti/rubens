@@ -23,14 +23,18 @@ const statusIcons: Record<AppointmentStatus, LucideIcon> = {
   cancelled: BanIcon,
 };
 
-/** Booked outlined, confirmed solid, checked in highlighted, attended dimmed, no-show striped. */
+/**
+ * Booked outlined, confirmed solid, checked in highlighted, attended dimmed;
+ * no-show and cancelled faded, with no background and letting clicks through,
+ * so the free cell under them shows and books.
+ */
 export const statusBlockClasses: Record<AppointmentStatus, string> = {
   booked: "bg-background",
   confirmed: "bg-secondary",
   checkedIn: "bg-background ring-primary ring-2",
   attended: "bg-background opacity-60",
-  noShow: "bg-background bg-stripes",
-  cancelled: "bg-background line-through opacity-50",
+  noShow: "pointer-events-none opacity-50",
+  cancelled: "pointer-events-none line-through opacity-50",
 };
 
 export function StatusIcon({ status }: { status: AppointmentStatus }) {

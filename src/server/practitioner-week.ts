@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { appointment, office, room } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
@@ -13,9 +13,15 @@ import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { booksForSome, selectDayAppointments, toDayAppointment } from "#/server/appointments.ts";
+import {
+  booksForSome,
+  findFreeCells,
+  selectDayAppointments,
+  shownOnCalendar,
+  toDayAppointment,
+} from "#/server/appointments.ts";
 import type { DayColumn } from "#/server/appointments.ts";
-import { findFreeTimes, meets } from "#/server/availability.ts";
+import { meets } from "#/server/availability.ts";
 import { findPractitioner } from "#/server/schedules.ts";
 
 // The week view of one practitioner (docs/domain/appointments.md § Calendar):
@@ -26,7 +32,7 @@ import { findPractitioner } from "#/server/schedules.ts";
 // running as the app role.
 
 /** One day of the week: a day view's column, under its local date. */
-export type WeekDay = Omit<DayColumn, "practitioner" | "gridMinutes"> & { date: string };
+export type WeekDay = Omit<DayColumn, "practitioner"> & { date: string };
 
 /** An office the week touches, with the active rooms a move can pick from. */
 export interface WeekOffice {
@@ -50,7 +56,6 @@ export async function getPractitionerWeek(
   | {
       ok: true;
       practitioner: { id: string; displayName: string };
-      gridMinutes: number;
       days: WeekDay[];
       offices: WeekOffice[];
     }
@@ -63,7 +68,7 @@ export async function getPractitionerWeek(
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
-  const { practitionerId, date, includeCancelled } = parsed.data;
+  const { practitionerId, date, includeCancelledAndNoShow } = parsed.data;
   const dates = Array.from({ length: daysInWeek }, (_, offset) => shiftDate(date, offset));
   const week = toTimeRange(
     { kind: "days", firstDate: date, lastDate: dates.at(-1)! },
@@ -79,16 +84,13 @@ export async function getPractitionerWeek(
       if (!actsForEveryone(actor) && !found.canEdit) {
         return { ok: false as const, reason: "forbidden" as const };
       }
-      const { free, schedules } = await findFreeTimes(tx, found, {
-        window: week,
-        durationMinutes: found.gridMinutes,
-      });
+      const { free, schedules } = await findFreeCells(tx, found.id, { window: week });
       const bookable = found.active ? free : [];
       const appointmentRows = await selectDayAppointments(tx)
         .where(
           and(
             eq(appointment.practitionerId, found.id),
-            includeCancelled ? undefined : ne(appointment.status, "cancelled"),
+            shownOnCalendar(includeCancelledAndNoShow),
             meets(appointment.during, week),
           ),
         )
@@ -146,7 +148,6 @@ export async function getPractitionerWeek(
       return {
         ok: true as const,
         practitioner: { id: found.id, displayName: found.displayName },
-        gridMinutes: found.gridMinutes,
         days,
         offices: officeRows.map((row) => ({
           ...row,

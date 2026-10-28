@@ -77,8 +77,8 @@ export interface WarningConfirmation {
 export const officeDayQuerySchema = z.object({
   officeId: z.uuid(),
   date: z.iso.date(),
-  /** Cancelled appointments are hidden unless asked for. */
-  includeCancelled: z.boolean().default(false),
+  /** Cancelled and no-show appointments are hidden unless asked for. */
+  includeCancelledAndNoShow: z.boolean().default(false),
 });
 
 export type OfficeDayQuery = z.input<typeof officeDayQuerySchema>;
@@ -90,8 +90,8 @@ export type OfficeDayQuery = z.input<typeof officeDayQuerySchema>;
 export const practitionerWeekQuerySchema = z.object({
   practitionerId: z.uuid(),
   date: z.iso.date(),
-  /** Cancelled appointments are hidden unless asked for. */
-  includeCancelled: z.boolean().default(false),
+  /** Cancelled and no-show appointments are hidden unless asked for. */
+  includeCancelledAndNoShow: z.boolean().default(false),
 });
 
 export type PractitionerWeekQuery = z.input<typeof practitionerWeekQuerySchema>;
@@ -125,17 +125,17 @@ export interface WeekSearch {
 
 /**
  * The practitioner and first date the week view shows, with their defaults:
- * the first practitioner, today, cancelled appointments hidden.
+ * the first practitioner, today, cancelled and no-show appointments hidden.
  */
 export function weekViewOf(
   search: WeekSearch,
   practitioners: readonly { id: string }[],
   today: string,
-): { practitionerId: string | null; date: string; includeCancelled: boolean } {
+): { practitionerId: string | null; date: string; includeCancelledAndNoShow: boolean } {
   return {
     practitionerId: search.profesional ?? practitioners[0]?.id ?? null,
     date: search.fecha ?? today,
-    includeCancelled: search.cancelados === true,
+    includeCancelledAndNoShow: search.cancelados === true,
   };
 }
 

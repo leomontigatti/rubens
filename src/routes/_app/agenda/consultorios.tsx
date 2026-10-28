@@ -7,7 +7,7 @@ import * as z from "zod";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { agendaViewOf } from "#/lib/appointments.ts";
-import { layoutColumn, visibleHours } from "#/lib/calendar-layout.ts";
+import { layoutCells, layoutColumn, visibleHours } from "#/lib/calendar-layout.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatLocalDate, shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -15,14 +15,7 @@ import { getRoomDayView } from "#/server/appointments.functions.ts";
 import { getOffices } from "#/server/offices.functions.ts";
 import type { RoomBlock, RoomColumn } from "#/server/room-day.ts";
 
-import {
-  ColumnBackground,
-  HourGutter,
-  localTime,
-  offsetOf,
-  px,
-  ViewFields,
-} from "#/routes/_app/agenda/-calendar.tsx";
+import { localTime, offsetOf, px, TimeAxis, ViewFields } from "#/routes/_app/agenda/-calendar.tsx";
 
 // The room view (ui: "Consultorios"): one office's day, a column per room,
 // showing which practitioner holds it and when, by schedules and
@@ -168,7 +161,7 @@ function RoomDayView(props: { date: string; timeZone: string; rooms: RoomColumn[
   );
   return (
     <div className="flex overflow-x-auto rounded-xl border">
-      <HourGutter view={view} timeZone={props.timeZone} />
+      <TimeAxis view={view} timeZone={props.timeZone} />
       {props.rooms.map((room) => (
         <RoomDayColumn key={room.id} room={room} view={view} timeZone={props.timeZone} />
       ))}
@@ -177,8 +170,9 @@ function RoomDayView(props: { date: string; timeZone: string; rooms: RoomColumn[
 }
 
 /**
- * One room's day: the schedules that hold it shaded and named, and the
- * appointments in it as blocks in lanes, each by practitioner.
+ * One room's day on grey 30-minute rows: each schedule that holds it as a
+ * white block named at its top left, and the appointments in it as cards in
+ * lanes, each by practitioner.
  */
 function RoomDayColumn(props: { room: RoomColumn; view: TimeRange; timeZone: string }) {
   const { room, view, timeZone } = props;
@@ -195,15 +189,26 @@ function RoomDayColumn(props: { room: RoomColumn; view: TimeRange; timeZone: str
         className="relative h-(--height)"
         style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
       >
-        <ColumnBackground view={view} bands={schedules} />
+        {layoutCells(view, []).map(({ top, height }) => (
+          <div
+            key={top}
+            className="bg-muted absolute inset-x-0 top-(--top) h-(--height) border-t"
+            style={{ "--top": px(top), "--height": px(height) } as CSSProperties}
+          />
+        ))}
         {schedules.map((held) => (
-          <span
+          <div
             key={`${+held.start} ${held.practitionerName}`}
-            className="text-muted-foreground absolute top-(--top) right-1 text-xs"
-            style={{ "--top": px(offsetOf(held.start, view)) } as CSSProperties}
+            className="bg-background absolute inset-x-0 top-(--top) h-(--height) border-y px-1.5 py-0.5 text-xs font-medium"
+            style={
+              {
+                "--top": px(offsetOf(held.start, view)),
+                "--height": px(offsetOf(held.end, view) - offsetOf(held.start, view)),
+              } as CSSProperties
+            }
           >
             {held.practitionerName}
-          </span>
+          </div>
         ))}
         {layoutColumn(appointments, view).map((placed) => (
           <RoomAppointment

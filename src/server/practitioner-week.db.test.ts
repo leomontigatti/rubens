@@ -1,5 +1,8 @@
 import type { PGlite } from "@electric-sql/pglite";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+
+import { appointment } from "#/db/schema/index.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
@@ -60,11 +63,11 @@ async function book(start: Date) {
   return result.appointment.id;
 }
 
-function week(actor = world.receptionist, includeCancelled = false) {
+function week(actor = world.receptionist, includeCancelledAndNoShow = false) {
   return asAppRole(db, (tx) =>
     getPractitionerWeek(
       actor,
-      { practitionerId: world.juan.id, date: "2099-01-05", includeCancelled },
+      { practitionerId: world.juan.id, date: "2099-01-05", includeCancelledAndNoShow },
       tx,
     ),
   );
@@ -102,7 +105,7 @@ describe("a practitioner's week", () => {
     expect(result.offices.map((office) => office.name)).toEqual(["Sede Centro", "Sede Norte"]);
   });
 
-  it("hides cancelled appointments unless asked for", async () => {
+  it("hides cancelled and no-show appointments unless asked for", async () => {
     const id = await book(at("12:00"));
     await asAppRole(db, (tx) =>
       cancelAppointment(
@@ -112,12 +115,16 @@ describe("a practitioner's week", () => {
       ),
     );
 
+    const absentId = await book(at("13:00"));
+    await db.update(appointment).set({ status: "noShow" }).where(eq(appointment.id, absentId));
+
     const hidden = await week();
     const shown = await week(world.receptionist, true);
 
     expect(hidden.ok && hidden.days[0]!.appointments).toEqual([]);
     expect(shown.ok && shown.days[0]!.appointments.map((booked) => booked.status)).toEqual([
       "cancelled",
+      "noShow",
     ]);
   });
 

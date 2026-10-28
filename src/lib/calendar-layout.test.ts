@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { layoutColumn, visibleHours, visibleWeekHours } from "#/lib/calendar-layout.ts";
+import {
+  layoutCells,
+  layoutColumn,
+  visibleHours,
+  visibleWeekHours,
+} from "#/lib/calendar-layout.ts";
 
 // A day from 08:00 to 20:00 UTC; blocks are given as "HH:MM" on that day.
 const day = { start: at("08:00"), end: at("20:00") };
@@ -144,5 +149,39 @@ describe("the hours a week view shows", () => {
       { start: local("2099-01-05", "07:00"), end: local("2099-01-05", "21:00") },
       { start: local("2099-01-06", "07:00"), end: local("2099-01-06", "21:00") },
     ]);
+  });
+});
+
+describe("a column's 30-minute cells", () => {
+  const view = { start: at("09:00"), end: at("11:00") };
+
+  it("stacks the view in 30-minute cells by minutes from its start, none free without free starts", () => {
+    expect(layoutCells(view, [])).toEqual([
+      { start: at("09:00"), top: 0, height: 30, free: null },
+      { start: at("09:30"), top: 30, height: 30, free: null },
+      { start: at("10:00"), top: 60, height: 30, free: null },
+      { start: at("10:30"), top: 90, height: 30, free: null },
+    ]);
+  });
+
+  it("makes a cell free when a free start sits on its start, carrying it", () => {
+    const free = { start: at("09:30"), roomId: "room-1" };
+
+    expect(layoutCells(view, [free]).map((cell) => cell.free)).toEqual([null, free, null, null]);
+  });
+
+  it("leaves a cell grey when its only free start is inside it, not on its start", () => {
+    expect(
+      layoutCells(view, [{ start: at("09:15") }, { start: at("10:45") }]).some((cell) => cell.free),
+    ).toBe(false);
+  });
+
+  it("ends a view that is not a whole number of cells with a shorter cell", () => {
+    expect(layoutCells({ start: at("09:00"), end: at("09:45") }, []).at(-1)).toEqual({
+      start: at("09:30"),
+      top: 30,
+      height: 15,
+      free: null,
+    });
   });
 });

@@ -17,7 +17,7 @@ import { getOffices } from "#/server/offices.functions.ts";
 import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
 import type { PickedAppointment } from "#/routes/_app/agenda/-appointment.tsx";
 import { BookingDialog } from "#/routes/_app/agenda/-booking.tsx";
-import { HourGutter, PractitionerColumn, ViewFields } from "#/routes/_app/agenda/-calendar.tsx";
+import { TimeAxis, PractitionerColumn, ViewFields } from "#/routes/_app/agenda/-calendar.tsx";
 import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
 // Reception's main screen: one office's day, a column per practitioner. What
@@ -50,18 +50,22 @@ export const Route = createFileRoute("/_app/agenda/")({
       offices: offices.offices,
       practitioners: practitioners.practitioners,
       ...view,
-      showCancelled: deps.cancelados === true,
-      day: await dayOf({ ...view, includeCancelled: deps.cancelados === true }),
+      showCancelledAndNoShow: deps.cancelados === true,
+      day: await dayOf({ ...view, includeCancelledAndNoShow: deps.cancelados === true }),
     };
   },
   component: Agenda,
 });
 
-function dayOf(view: { officeId: string | null; date: string; includeCancelled: boolean }) {
-  const { officeId, date, includeCancelled } = view;
+function dayOf(view: {
+  officeId: string | null;
+  date: string;
+  includeCancelledAndNoShow: boolean;
+}) {
+  const { officeId, date, includeCancelledAndNoShow } = view;
   return officeId === null
     ? null
-    : getOfficeDayView({ data: { officeId, date, includeCancelled } });
+    : getOfficeDayView({ data: { officeId, date, includeCancelledAndNoShow } });
 }
 
 const refusalMessages = {
@@ -108,7 +112,7 @@ function Agenda() {
           offices={result.offices}
           officeId={result.officeId}
           date={result.date}
-          showCancelled={result.showCancelled}
+          showCancelledAndNoShow={result.showCancelledAndNoShow}
         />
       )}
       <DayResult
@@ -190,7 +194,7 @@ function DayPicker(props: {
   offices: { id: string; name: string }[];
   officeId: string;
   date: string;
-  showCancelled: boolean;
+  showCancelledAndNoShow: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -200,15 +204,15 @@ function DayPicker(props: {
     const search = searchSchema.parse({
       sede: form.get("officeId") || undefined,
       fecha: form.get("date") || undefined,
-      cancelados: props.showCancelled || undefined,
+      cancelados: props.showCancelledAndNoShow || undefined,
     });
     void navigate({ to: "/agenda", search });
   }
 
-  const linkTo = (date: string, showCancelled = props.showCancelled) => ({
+  const linkTo = (date: string, showCancelledAndNoShow = props.showCancelledAndNoShow) => ({
     sede: props.officeId,
     fecha: date,
-    cancelados: showCancelled || undefined,
+    cancelados: showCancelledAndNoShow || undefined,
   });
 
   return (
@@ -248,9 +252,11 @@ function DayPicker(props: {
       <Button
         variant="ghost"
         nativeButton={false}
-        render={<Link to="/agenda" search={linkTo(props.date, !props.showCancelled)} />}
+        render={<Link to="/agenda" search={linkTo(props.date, !props.showCancelledAndNoShow)} />}
       >
-        {props.showCancelled ? "Ocultar cancelados" : "Mostrar cancelados"}
+        {props.showCancelledAndNoShow
+          ? "Ocultar cancelados y ausentes"
+          : "Mostrar cancelados y ausentes"}
       </Button>
     </form>
   );
@@ -274,7 +280,7 @@ function DayView(props: {
 
   return (
     <div className="flex overflow-x-auto rounded-xl border">
-      <HourGutter view={view} timeZone={props.timeZone} />
+      <TimeAxis view={view} timeZone={props.timeZone} />
       {props.columns.map((column) => (
         <PractitionerColumn
           key={column.practitioner.id}

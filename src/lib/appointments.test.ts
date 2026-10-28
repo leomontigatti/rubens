@@ -28,7 +28,7 @@ describe("what the week view shows", () => {
     expect(weekViewOf({}, practitioners, "2099-01-05")).toEqual({
       practitionerId: "juan",
       date: "2099-01-05",
-      includeCancelled: false,
+      includeCancelledAndNoShow: false,
     });
     expect(
       weekViewOf(
@@ -36,7 +36,7 @@ describe("what the week view shows", () => {
         practitioners,
         "2099-01-05",
       ),
-    ).toEqual({ practitionerId: "lucia", date: "2099-01-12", includeCancelled: true });
+    ).toEqual({ practitionerId: "lucia", date: "2099-01-12", includeCancelledAndNoShow: true });
   });
 
   it("has no practitioner to show when there are none", () => {

@@ -90,10 +90,17 @@ A week view of one practitioner answers "when can she come next week". A
 practitioner gets the same two views limited to their own appointments. There is
 no month view: at 30-minute granularity it is unreadable.
 
-An appointment block is coloured by its medical service, which is what reception
+Each column is a stack of 30-minute cells, with the times on the left axis. A cell
+wholly free (inside a schedule, clear of appointments, time off and closures) is
+white, and clicking it books at its start; every other cell is grey, a cell only
+partly free included. Appointments are cards drawn over the cells at their time,
+side by side when they overlap.
+
+An appointment card is coloured by its medical service, which is what reception
 scans for. Its status is an icon and a style: booked outlined, confirmed solid,
-checked in highlighted, attended dimmed, no-show striped, cancelled hidden unless
-asked for. An overbooking has its own mark.
+checked in highlighted, attended dimmed. A no-show or cancelled appointment leaves
+its time free: it is not drawn unless asked for, and then only faded, never hiding
+or blocking the white cell under it. An overbooking has its own mark.
 
 ## Patient history
 

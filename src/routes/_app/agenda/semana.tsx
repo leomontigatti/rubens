@@ -17,7 +17,7 @@ import type { WeekOffice, getPractitionerWeek } from "#/server/practitioner-week
 import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
 import { BookingDialog } from "#/routes/_app/agenda/-booking.tsx";
 import type { BookingSlot } from "#/routes/_app/agenda/-booking.tsx";
-import { HourGutter, PractitionerColumn, ViewFields } from "#/routes/_app/agenda/-calendar.tsx";
+import { TimeAxis, PractitionerColumn, ViewFields } from "#/routes/_app/agenda/-calendar.tsx";
 
 // The week view of one practitioner (ui: "Semana"): seven days from a date,
 // in the organization's zone, a column per day. A practitioner sees only
@@ -50,10 +50,10 @@ export const Route = createFileRoute("/_app/agenda/semana")({
 });
 
 function weekOf(view: ReturnType<typeof weekViewOf>) {
-  const { practitionerId, date, includeCancelled } = view;
+  const { practitionerId, date, includeCancelledAndNoShow } = view;
   return practitionerId === null
     ? null
-    : getPractitionerWeekView({ data: { practitionerId, date, includeCancelled } });
+    : getPractitionerWeekView({ data: { practitionerId, date, includeCancelledAndNoShow } });
 }
 
 const refusalMessages = {
@@ -91,7 +91,7 @@ function Week() {
           practitioners={result.practitioners}
           practitionerId={result.practitionerId}
           date={result.date}
-          showCancelled={result.includeCancelled}
+          showCancelledAndNoShow={result.includeCancelledAndNoShow}
         />
       )}
       <WeekResult week={result.week} practitioners={result.practitioners} date={result.date} />
@@ -117,7 +117,7 @@ function WeekPicker(props: {
   practitioners: { id: string; displayName: string }[];
   practitionerId: string;
   date: string;
-  showCancelled: boolean;
+  showCancelledAndNoShow: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -127,15 +127,15 @@ function WeekPicker(props: {
     const search = searchSchema.parse({
       profesional: form.get("practitionerId") || undefined,
       fecha: form.get("date") || undefined,
-      cancelados: props.showCancelled || undefined,
+      cancelados: props.showCancelledAndNoShow || undefined,
     });
     void navigate({ to: "/agenda/semana", search });
   }
 
-  const linkTo = (date: string, showCancelled = props.showCancelled) => ({
+  const linkTo = (date: string, showCancelledAndNoShow = props.showCancelledAndNoShow) => ({
     profesional: props.practitionerId,
     fecha: date,
-    cancelados: showCancelled || undefined,
+    cancelados: showCancelledAndNoShow || undefined,
   });
 
   return (
@@ -175,9 +175,13 @@ function WeekPicker(props: {
       <Button
         variant="ghost"
         nativeButton={false}
-        render={<Link to="/agenda/semana" search={linkTo(props.date, !props.showCancelled)} />}
+        render={
+          <Link to="/agenda/semana" search={linkTo(props.date, !props.showCancelledAndNoShow)} />
+        }
       >
-        {props.showCancelled ? "Ocultar cancelados" : "Mostrar cancelados"}
+        {props.showCancelledAndNoShow
+          ? "Ocultar cancelados y ausentes"
+          : "Mostrar cancelados y ausentes"}
       </Button>
     </form>
   );
@@ -208,13 +212,13 @@ function WeekCalendar(props: {
   return (
     <>
       <div className="flex overflow-x-auto rounded-xl border">
-        <HourGutter view={views[0]!} timeZone={defaultTimeZone} />
+        <TimeAxis view={views[0]!} timeZone={defaultTimeZone} />
         {week.days.map((day, index) => (
           <PractitionerColumn
             key={day.date}
             title={`${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date)}`}
             practitioner={week.practitioner}
-            column={{ ...day, gridMinutes: week.gridMinutes }}
+            column={day}
             view={views[index]!}
             timeZone={defaultTimeZone}
             onPick={(slot) => setBooking({ open: true, slot, overbooking: null })}

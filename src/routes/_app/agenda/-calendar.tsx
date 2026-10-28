@@ -9,18 +9,18 @@ import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { medicalServiceColorClasses } from "#/lib/medical-services.ts";
-import { layoutColumn } from "#/lib/calendar-layout.ts";
+import { layoutCells, layoutColumn } from "#/lib/calendar-layout.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 import type { DayAppointment, DayColumn } from "#/server/appointments.ts";
 
 import { StatusIcon, statusBlockClasses } from "#/routes/_app/agenda/-status.tsx";
 import type { BookingSlot } from "#/routes/_app/agenda/-booking.tsx";
 
-// The pieces the day and week views share: the hour gutter, a column of one
-// practitioner's schedules, free times and appointments, and an appointment
-// block styled by its status.
+// The pieces the day, week and room views share: the time axis, a column of
+// one practitioner's 30-minute cells and appointment cards, and a card styled
+// by its status.
 
-/** The height of a minute on the calendar, in pixels: 15 minutes are 24 px. */
+/** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
 const minuteHeight = 1.6;
 
 export function localTime(instant: Date, timeZone: string) {
@@ -35,11 +35,6 @@ export function px(minutes: number): string {
 /** Minutes from the view's start to `instant`. */
 export function offsetOf(instant: Date, view: TimeRange) {
   return (+instant - +view.start) / 60_000;
-}
-
-/** The whole hours a view shows, from 0. */
-function hoursOf(view: TimeRange): number[] {
-  return Array.from({ length: Math.floor(offsetOf(view.end, view) / 60) }, (_, hour) => hour);
 }
 
 /**
@@ -78,8 +73,8 @@ export function ViewFields(props: {
   );
 }
 
-/** The column of hour labels at the calendar's left. */
-export function HourGutter(props: { view: TimeRange; timeZone: string }) {
+/** The time axis at the calendar's left: each row's start, on its line. */
+export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
   const { view } = props;
   return (
     <div className="w-14 shrink-0 border-r">
@@ -88,13 +83,13 @@ export function HourGutter(props: { view: TimeRange; timeZone: string }) {
         className="relative h-(--height)"
         style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
       >
-        {hoursOf(view).map((hour) => (
+        {layoutCells(view, []).map((row) => (
           <span
-            key={hour}
-            className="text-muted-foreground absolute top-(--top) right-2 text-xs tabular-nums"
-            style={{ "--top": px(hour * 60) } as CSSProperties}
+            key={row.top}
+            className="text-muted-foreground absolute top-(--top) right-2 -translate-y-1/2 bg-background px-0.5 text-xs tabular-nums"
+            style={{ "--top": px(row.top) } as CSSProperties}
           >
-            {localTime(new Date(+view.start + hour * 3_600_000), props.timeZone)}
+            {localTime(row.start, props.timeZone)}
           </span>
         ))}
       </div>
@@ -102,37 +97,9 @@ export function HourGutter(props: { view: TimeRange; timeZone: string }) {
   );
 }
 
-/** The column's background: a line each hour, and a band per range. */
-export function ColumnBackground(props: { view: TimeRange; bands: readonly TimeRange[] }) {
-  const { view } = props;
-  return (
-    <>
-      {hoursOf(view).map((hour) => (
-        <div
-          key={hour}
-          className="absolute inset-x-0 top-(--top) border-t"
-          style={{ "--top": px(hour * 60) } as CSSProperties}
-        />
-      ))}
-      {props.bands.map((band) => (
-        <div
-          key={+band.start}
-          className="bg-muted absolute inset-x-0 top-(--top) h-(--height)"
-          style={
-            {
-              "--top": px(offsetOf(band.start, view)),
-              "--height": px(offsetOf(band.end, view) - offsetOf(band.start, view)),
-            } as CSSProperties
-          }
-        />
-      ))}
-    </>
-  );
-}
-
 /**
- * One practitioner's column for a day: their schedules shaded, a button per
- * free time, and their appointments in lanes.
+ * One practitioner's column for a day: a stack of 30-minute cells, white and
+ * bookable where wholly free, grey elsewhere, under their appointment cards.
  */
 export function PractitionerColumn(props: {
   title: ReactNode;
@@ -146,6 +113,7 @@ export function PractitionerColumn(props: {
   const { column, view, timeZone, practitioner } = props;
   const appointments = new Map(column.appointments.map((booked) => [booked.id, booked]));
   const placed = layoutColumn(column.appointments, view);
+  const cells = layoutCells(view, column.freeStarts);
 
   return (
     <div className="min-w-48 flex-1 border-r last:border-r-0">
@@ -154,32 +122,32 @@ export function PractitionerColumn(props: {
         className="relative h-(--height)"
         style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
       >
-        <ColumnBackground view={view} bands={column.schedules} />
-        {column.freeStarts.map((free) => (
-          <Button
-            key={+free.start}
-            variant="ghost"
-            size="xs"
-            className="absolute inset-x-1 top-(--top) h-(--height) justify-start"
-            style={
-              {
-                "--top": px(offsetOf(free.start, view)),
-                "--height": px(column.gridMinutes),
-              } as CSSProperties
-            }
-            aria-label={`Dar turno a las ${localTime(free.start, timeZone)} con ${practitioner.displayName}`}
-            onClick={() =>
-              props.onPick({
-                practitionerId: practitioner.id,
-                practitionerName: practitioner.displayName,
-                start: free.start,
-                roomName: free.roomName,
-                timeZone,
-              })
-            }
+        {cells.map(({ top, height, free }) => (
+          <div
+            key={top}
+            className={cn(
+              "absolute inset-x-0 top-(--top) h-(--height) border-t",
+              free ? "bg-background" : "bg-muted",
+            )}
+            style={{ "--top": px(top), "--height": px(height) } as CSSProperties}
           >
-            {localTime(free.start, timeZone)}
-          </Button>
+            {free && (
+              <Button
+                variant="ghost"
+                className="size-full"
+                aria-label={`Dar turno a las ${localTime(free.start, timeZone)} con ${practitioner.displayName}`}
+                onClick={() =>
+                  props.onPick({
+                    practitionerId: practitioner.id,
+                    practitionerName: practitioner.displayName,
+                    start: free.start,
+                    roomName: free.roomName,
+                    timeZone,
+                  })
+                }
+              />
+            )}
+          </div>
         ))}
         {placed.map((block) => (
           <AppointmentBlock
@@ -196,8 +164,10 @@ export function PractitionerColumn(props: {
 }
 
 /**
- * One appointment on the calendar, in its lane, styled and marked by its
- * status; an overbooking is dashed and marked.
+ * One appointment card on the calendar, in its lane, styled and marked by its
+ * status; an overbooking is dashed and marked. A cancelled or no-show card,
+ * shown only when asked for, is faded and lets clicks through to the cell
+ * under it but for its patient's name.
  */
 function AppointmentBlock(props: {
   block: ReturnType<typeof layoutColumn>[number];
@@ -228,7 +198,7 @@ function AppointmentBlock(props: {
         <Button
           variant="link"
           size="xs"
-          className="max-w-full justify-start"
+          className="pointer-events-auto max-w-full justify-start"
           onClick={() => props.onOpen(booked)}
         >
           <StatusIcon status={booked.status} />

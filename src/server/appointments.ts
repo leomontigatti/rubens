@@ -31,6 +31,7 @@ import type {
   WarningConfirmation,
 } from "#/lib/appointments.ts";
 import { appliesOn } from "#/lib/availability.ts";
+import { cellMinutes } from "#/lib/calendar-layout.ts";
 import { patientName } from "#/lib/patients.ts";
 import { instantOf, toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -460,9 +461,34 @@ export interface DayColumn {
   /** Each schedule's span that day at the office. */
   schedules: { start: Date; end: Date; roomName: string }[];
   appointments: DayAppointment[];
-  /** Free starts a grid step long, each with the room a booking there takes. */
+  /** The wholly free calendar cells' starts, each with the room a booking there takes. */
   freeStarts: { start: Date; roomId: string; roomName: string }[];
-  gridMinutes: number;
+}
+
+/**
+ * The practitioner's free calendar cells inside `window`: `cellMinutes` long,
+ * on a grid of cells from local midnight, whatever the practitioner's grid.
+ */
+export function findFreeCells(
+  tx: Transaction,
+  practitionerId: string,
+  options: { window: TimeRange; officeId?: string },
+) {
+  return findFreeTimes(
+    tx,
+    { id: practitionerId, gridMinutes: cellMinutes },
+    { ...options, durationMinutes: cellMinutes },
+  );
+}
+
+/**
+ * The calendar leaves out cancelled and no-show appointments unless asked
+ * for: their time is free again.
+ */
+export function shownOnCalendar(includeCancelledAndNoShow: boolean) {
+  return includeCancelledAndNoShow
+    ? undefined
+    : inArray(appointment.status, [...activeAppointmentStatuses]);
 }
 
 /**
@@ -493,7 +519,7 @@ export async function getOfficeDay(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { officeId, date, includeCancelled } = parsed.data;
+  const { officeId, date, includeCancelledAndNoShow } = parsed.data;
   return withTenant(
     actor,
     async (tx) => {
@@ -530,7 +556,7 @@ export async function getOfficeDay(
         .where(
           and(
             eq(room.officeId, found.id),
-            includeCancelled ? undefined : ne(appointment.status, "cancelled"),
+            shownOnCalendar(includeCancelledAndNoShow),
             meets(appointment.during, day),
           ),
         )
@@ -550,7 +576,6 @@ export async function getOfficeDay(
           .select({
             id: practitioner.id,
             displayName: practitioner.displayName,
-            gridMinutes: practitioner.gridMinutes,
             userId: member.userId,
             role: member.role,
             active: member.active,
@@ -573,16 +598,11 @@ export async function getOfficeDay(
         const viewer = { roles: actor.roles, own: row.userId === actor.userId };
         const bookable = row.active && parseRoles(row.role).includes("practitioner");
         const { free, schedules } = bookable
-          ? await findFreeTimes(tx, row, {
-              window: day,
-              durationMinutes: row.gridMinutes,
-              officeId: found.id,
-            })
+          ? await findFreeCells(tx, row.id, { window: day, officeId: found.id })
           : { free: [], schedules: [] };
         const roomNames = new Map(schedules.map((where) => [where.roomId, where.roomName]));
         columns.push({
           practitioner: { id: row.id, displayName: row.displayName },
-          gridMinutes: row.gridMinutes,
           schedules: scheduleRows
             .filter((where) => where.practitionerId === row.id)
             .map((where) => ({
