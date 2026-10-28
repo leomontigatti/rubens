@@ -154,6 +154,21 @@ async function findPatient(tx: Transaction, patientId: string) {
   return found;
 }
 
+/**
+ * Reads the patient and locks the row until the transaction ends. A change
+ * that diffs the row for the audit log reads it this way, so its "before" is
+ * the committed row; coverage and guardian changes take it first, so changes
+ * to one patient's coverages or guardians run one after the other.
+ */
+export async function lockPatient(tx: Transaction, patientId: string) {
+  const [found] = await tx
+    .select(patientColumns)
+    .from(patient)
+    .where(eq(patient.id, patientId))
+    .for("update");
+  return found;
+}
+
 /** The fields the duplicate check reads, as the patient schemas output them. */
 interface DuplicateFields {
   firstName: string;
@@ -252,7 +267,7 @@ export async function listPatients(
   );
 }
 
-export const searchLimit = 20;
+const searchLimit = 20;
 
 const searchOptionsSchema = z.object({
   query: z.string().max(200),
@@ -423,7 +438,7 @@ export async function updatePatient(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findPatient(tx, patientId);
+      const current = await lockPatient(tx, patientId);
       if (!current) {
         return notFound;
       }
@@ -482,7 +497,7 @@ export async function setWhatsappConsent(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findPatient(tx, patientId);
+      const current = await lockPatient(tx, patientId);
       if (!current) {
         return notFound;
       }

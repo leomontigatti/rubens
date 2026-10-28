@@ -135,7 +135,8 @@ export async function updateInsurer(
       const [current] = await tx
         .select(insurerColumns)
         .from(insurer)
-        .where(eq(insurer.id, insurerId));
+        .where(eq(insurer.id, insurerId))
+        .for("update");
       if (!current) {
         return notFound;
       }

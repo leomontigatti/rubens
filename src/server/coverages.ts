@@ -8,6 +8,7 @@ import { coverageIdSchema, coverageInputSchema, coverageUpdateSchema } from "#/l
 import type { CoverageId, CoverageInput, CoverageUpdate, InsurerKind } from "#/lib/coverages.ts";
 
 import { changedFields, createdFields, recordAudit } from "#/server/audit.ts";
+import { lockPatient } from "#/server/patients.ts";
 
 // A patient's coverages. Reception, admins and practitioners add, edit and
 // remove them. A patient with coverages has exactly one primary: the first
@@ -57,9 +58,13 @@ const coverageColumns = {
   primary: coverage.primary,
 };
 
-/** The fields an audit entry records, the insurer by the name it had then. */
+/**
+ * The fields an audit entry records: the insurer by its id, and by the name it
+ * had then, since two insurers may share a name.
+ */
 function auditedValues(row: Coverage) {
   return {
+    insurerId: row.insurerId,
     insurer: row.insurerName,
     plan: row.plan,
     memberNumber: row.memberNumber,
@@ -85,6 +90,19 @@ async function patientExists(tx: Transaction, patientId: string): Promise<boolea
     .from(patient)
     .where(eq(patient.id, patientId));
   return found !== undefined;
+}
+
+/**
+ * Finds a coverage and locks its patient, then reads the coverage again: a
+ * change to it starts from the committed row, after any other change to the
+ * patient's coverages.
+ */
+async function lockCoverage(tx: Transaction, coverageId: string) {
+  const found = await findCoverage(tx, coverageId);
+  if (!found || !(await lockPatient(tx, found.patientId))) {
+    return undefined;
+  }
+  return findCoverage(tx, coverageId);
 }
 
 /** Whether a coverage may be given `insurerId`: `null` when it may, the refusal otherwise. */
@@ -171,7 +189,7 @@ export async function addCoverage(
   return withTenant(
     actor,
     async (tx) => {
-      if (!(await patientExists(tx, fields.patientId))) {
+      if (!(await lockPatient(tx, fields.patientId))) {
         return notFound;
       }
       const refusal = await checkInsurer(tx, fields.insurerId);
@@ -225,7 +243,7 @@ export async function updateCoverage(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findCoverage(tx, coverageId);
+      const current = await lockCoverage(tx, coverageId);
       if (!current) {
         return notFound;
       }
@@ -269,7 +287,7 @@ export async function makeCoveragePrimary(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findCoverage(tx, parsed.data.coverageId);
+      const current = await lockCoverage(tx, parsed.data.coverageId);
       if (!current) {
         return notFound;
       }
@@ -302,7 +320,7 @@ export async function removeCoverage(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findCoverage(tx, parsed.data.coverageId);
+      const current = await lockCoverage(tx, parsed.data.coverageId);
       if (!current) {
         return notFound;
       }

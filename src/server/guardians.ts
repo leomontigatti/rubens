@@ -19,6 +19,7 @@ import type {
 import type { DocumentType } from "#/lib/patients.ts";
 
 import { changedFields, createdFields, recordAudit } from "#/server/audit.ts";
+import { lockPatient } from "#/server/patients.ts";
 
 // A patient's guardians: contacts kept on the patient, not links to other
 // patients. Reception, admins and practitioners add, edit and remove them, and
@@ -92,6 +93,19 @@ async function patientExists(tx: Transaction, patientId: string): Promise<boolea
     .from(patient)
     .where(eq(patient.id, patientId));
   return found !== undefined;
+}
+
+/**
+ * Finds a guardian and locks their patient, then reads the guardian again: a
+ * change to them starts from the committed row, after any other change to the
+ * patient's guardians.
+ */
+async function lockGuardian(tx: Transaction, guardianId: string) {
+  const found = await findGuardian(tx, guardianId);
+  if (!found || !(await lockPatient(tx, found.patientId))) {
+    return undefined;
+  }
+  return findGuardian(tx, guardianId);
 }
 
 /** Who messages go to: a guardian, by id and name, or the patient, both `null`. */
@@ -213,7 +227,7 @@ export async function addGuardian(
   return withTenant(
     actor,
     async (tx) => {
-      if (!(await patientExists(tx, parsed.data.patientId))) {
+      if (!(await lockPatient(tx, parsed.data.patientId))) {
         return notFound;
       }
       const [created] = await tx
@@ -251,7 +265,7 @@ export async function updateGuardian(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findGuardian(tx, guardianId);
+      const current = await lockGuardian(tx, guardianId);
       if (!current) {
         return notFound;
       }
@@ -292,7 +306,7 @@ export async function removeGuardian(
   return withTenant(
     actor,
     async (tx) => {
-      const current = await findGuardian(tx, parsed.data.guardianId);
+      const current = await lockGuardian(tx, parsed.data.guardianId);
       if (!current) {
         return notFound;
       }
@@ -331,7 +345,7 @@ export async function setMessageContact(
   return withTenant(
     actor,
     async (tx) => {
-      if (!(await patientExists(tx, patientId))) {
+      if (!(await lockPatient(tx, patientId))) {
         return notFound;
       }
       const target = await contactTarget(tx, patientId, guardianId);

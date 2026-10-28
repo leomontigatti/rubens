@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { coverage } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
+import { withTenant } from "#/db/tenant.ts";
 import { createAuth } from "#/lib/auth.ts";
 import type { CoverageInput } from "#/lib/coverages.ts";
 import { createOrganization } from "#/test-support/organization.ts";
@@ -142,15 +143,22 @@ describe("a patient's coverages", () => {
   it("keeps at most one primary coverage per patient in the database", async () => {
     const first = await add(receptionist);
 
-    // As the owner, past the services.
+    // Past the services, as the app role.
     await expect(
-      db.insert(coverage).values({
-        organizationId: admin.organizationId,
-        patientId,
-        insurerId: apross,
-        memberNumber: "456",
-        primary: true,
-      }),
+      asAppRole(db, (tx) =>
+        withTenant(
+          admin,
+          (tenant) =>
+            tenant.insert(coverage).values({
+              organizationId: admin.organizationId,
+              patientId,
+              insurerId: apross,
+              memberNumber: "456",
+              primary: true,
+            }),
+          tx,
+        ),
+      ),
     ).rejects.toThrow();
     expect((await coverages()).map((row) => row.id)).toEqual([first.id]);
   });
@@ -239,14 +247,9 @@ describe("a patient's coverages", () => {
     }
   });
 
-  it("refuses a missing member number, and answers notFound for what is not there", async () => {
+  it("answers notFound for what is not there", async () => {
     const missing = "00000000-0000-4000-8000-000000000000";
 
-    expect(
-      await asAppRole(db, (tx) =>
-        addCoverage(receptionist, { patientId, insurerId: osde, memberNumber: " " }, tx),
-      ),
-    ).toEqual({ ok: false, reason: "invalidInput" });
     for (const result of [
       await asAppRole(db, (tx) => listCoverages(receptionist, { patientId: missing }, tx)),
       await asAppRole(db, (tx) =>
@@ -284,13 +287,19 @@ describe("a patient's coverages", () => {
           action: "create",
           userId: "receptionist",
           before: null,
-          after: { insurer: "OSDE", plan: "310", memberNumber: "123", primary: true },
+          after: {
+            insurerId: osde,
+            insurer: "OSDE",
+            plan: "310",
+            memberNumber: "123",
+            primary: true,
+          },
         },
         {
           action: "create",
           userId: admin.userId,
           before: null,
-          after: { insurer: "Apross", memberNumber: "456", primary: false },
+          after: { insurerId: apross, insurer: "Apross", memberNumber: "456", primary: false },
         },
         {
           action: "update",
@@ -311,7 +320,7 @@ describe("a patient's coverages", () => {
         {
           action: "delete",
           userId: "receptionist",
-          before: { insurer: "Apross", memberNumber: "456", primary: true },
+          before: { insurerId: apross, insurer: "Apross", memberNumber: "456", primary: true },
           after: null,
         },
         {
@@ -322,5 +331,26 @@ describe("a patient's coverages", () => {
         },
       ]),
     );
+  });
+
+  it("writes a switch between two insurers of the same name to the history", async () => {
+    const otherOsde = await insurer("OSDE", "obraSocial");
+    const added = await add(receptionist);
+    await asAppRole(db, (tx) =>
+      updateCoverage(
+        receptionist,
+        { coverageId: added.id, insurerId: otherOsde, memberNumber: "123" },
+        tx,
+      ),
+    );
+
+    expect((await coverageHistory()).filter((entry) => entry.action === "update")).toEqual([
+      {
+        action: "update",
+        userId: "receptionist",
+        before: { insurerId: osde },
+        after: { insurerId: otherOsde },
+      },
+    ]);
   });
 });

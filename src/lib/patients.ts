@@ -233,15 +233,18 @@ export interface FieldChange {
   after: string;
 }
 
+// Recorded for the log, not shown: a coverage's insurer shows by its name.
+const hiddenFields = new Set(["insurerId"]);
+
 /** An audit entry's changed fields, labelled and formatted for the change history. */
 export function historyChanges(entry: {
   before: Record<string, HistoryValue> | null;
   after: Record<string, HistoryValue> | null;
 }): FieldChange[] {
   // The log's JSON keeps no key order, so the form's order is restored here.
-  const fields = Object.keys({ ...entry.before, ...entry.after }).sort(
-    (a, b) => fieldRank(a) - fieldRank(b),
-  );
+  const fields = Object.keys({ ...entry.before, ...entry.after })
+    .filter((field) => !hiddenFields.has(field))
+    .sort((a, b) => fieldRank(a) - fieldRank(b));
   return fields.map((field) => ({
     field: fieldLabels[field] ?? field,
     before: formatValue(field, entry.before?.[field]),
