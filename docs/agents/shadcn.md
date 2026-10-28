@@ -19,6 +19,8 @@ from it.
 - **Check `package.json` after an `add`.** The CLI may install a dependency a component
   needs; it does not remove what it added by mistake. It does not install
   `@base-ui/react` itself.
+- **Toasts are the `toast` component**, built on Base UI's Toast like the rest of the
+  kit, not shadcn's `sonner` item, which adds the `sonner` and `next-themes` packages.
 - **Base UI's API, not Radix's.** Compose with `render`, not `asChild`:
   `<Button nativeButton={false} render={<Link … />}>` (a non-`<button>` element needs
   `nativeButton={false}`), `<DropdownMenuItem render={<Link … />}>`. A menu item takes
