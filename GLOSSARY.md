@@ -195,5 +195,6 @@ as an `attachment`. The practice keeps the paper.
 _Avoid_: consent, waiver
 
 **`clinicalRecordCopy`** — ui: "Copia de historia clínica"
-A PDF of a `clinicalRecord` handed to a `patient` who asks for it.
+A `clinicalRecord` handed to a `patient` who asks for it: a PDF of its notes with
+the files attached to them.
 _Avoid_: export, report, printout

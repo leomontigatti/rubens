@@ -52,8 +52,10 @@ version history keeps that it was there.
 
 A note or a file that should not be in the record at all, such as one written on
 the wrong patient, is voided (`Anulado`) with a reason. Editing cannot do it, since
-every version is kept. The author voids their own; an admin voids one whose author
-is no longer active, seeing only its date, author and file names. A voided note or
+every version is kept. The author voids their own. When the author is no longer
+active, a practitioner who keeps records identifies the note or file and an admin
+voids it on their request, seeing only its date, author and file names; the audit
+entry names both. A voided note or
 file leaves the record and the patient's copy; the record keeps a placeholder with
 who voided it, when and why.
 
@@ -73,9 +75,9 @@ counsel.
 ## Copies for the patient
 
 A patient may ask for a copy of their record, and Ley 26.529 gives the practice
-48 hours to hand it over. A practitioner or an admin produces it as one download,
-built when asked and not stored: a PDF of the record and every file attached to
-it. The PDF holds:
+48 hours to hand it over. A practitioner or an admin produces it as one ZIP
+download, built when asked and not stored: a PDF of the record and every file
+attached to it. The PDF holds:
 
 - a header with the organization, the patient's name, document and birth date, the
   date of issue and who issued it;
@@ -84,8 +86,7 @@ it. The PDF holds:
   current text, and, when edited, its earlier versions with their dates;
 - the files attached to each note, by name.
 
-Voided notes and files are left out. The audit entry records who issued it and when. The
-notes as of that moment can be rebuilt from their versions.
+Voided notes and files are left out. The audit entry records who issued it and when.
 
 ## Audit and retention
 

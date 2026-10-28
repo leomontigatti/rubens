@@ -8,7 +8,8 @@ Date: 2026-10-12. Amended 2026-10-27, after the domain model was agreed
 
 - Room blocks became weekly schedules, and room capacity is checked when a schedule is saved.
 - Overbookings are exempt from the overlap constraint.
-- Corrections are addenda rather than superseding versions.
+- Corrections are addenda rather than superseding versions (itself superseded by
+  ADR-0005: notes are edited and every version is kept).
 - Clinical access is per practitioner setting, not per specialty.
 
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,

@@ -17,14 +17,15 @@ for counsel to confirm before go-live, beside the AAIP registration.
 
 - A note is part of the record once saved. Its author, and only its author, edits
   it at any time; each save adds a version, and the database rejects any `UPDATE` or
-  `DELETE` of a version. The note's text is its latest version.
+  `DELETE` of a version, except clearing the text of a voided note (below). The note's text is its latest version.
 - The history is shown in the record and the patient's copy marks an edited note,
   not only in the audit log: a reader of the record must see that a note changed.
 - There are no drafts, no signing step and no addenda.
 - A note or file that never belonged in the record (the wrong patient) is voided
   with a reason, since editing keeps every version. An admin can then delete the
-  voided content for good, the one change the database allows on a version: its
-  text cleared, the version and a placeholder kept, and the deletion audited.
+  voided content for good: the only change the database allows on a version is
+  setting its text to empty once its note is voided; the version and a placeholder
+  stay, and the deletion is audited.
 - Every read and write of clinical content is still written to the append-only audit
   log in the same transaction, and RLS still keeps receptionists out.
 
