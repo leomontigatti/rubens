@@ -171,8 +171,9 @@ function RoomDayView(props: { date: string; timeZone: string; rooms: RoomColumn[
 
 /**
  * One room's day on grey 30-minute rows: each schedule that holds it as a
- * white block named at its top left, and the appointments in it as cards in
- * lanes, each by practitioner.
+ * white block, the appointments in it as cards in lanes, each by
+ * practitioner, and over them all the schedules' practitioners named at their
+ * blocks' top left.
  */
 function RoomDayColumn(props: { room: RoomColumn; view: TimeRange; timeZone: string }) {
   const { room, view, timeZone } = props;
@@ -181,6 +182,7 @@ function RoomDayColumn(props: { room: RoomColumn; view: TimeRange; timeZone: str
     .filter((block) => block.kind === "appointment")
     .map((block, index) => ({ ...block, id: String(index) }));
   const byId = new Map(appointments.map((block) => [block.id, block]));
+  const scheduleStarts = new Set(schedules.map((held) => +held.start));
 
   return (
     <div className="min-w-40 flex-1 border-r last:border-r-0">
@@ -199,35 +201,62 @@ function RoomDayColumn(props: { room: RoomColumn; view: TimeRange; timeZone: str
         {schedules.map((held) => (
           <div
             key={`${+held.start} ${held.practitionerName}`}
-            className="bg-background absolute inset-x-0 top-(--top) h-(--height) border-y px-1.5 py-0.5 text-xs font-medium"
+            className="bg-background absolute inset-x-0 top-(--top) h-(--height) border-y"
             style={
               {
                 "--top": px(offsetOf(held.start, view)),
                 "--height": px(offsetOf(held.end, view) - offsetOf(held.start, view)),
               } as CSSProperties
             }
-          >
-            {held.practitionerName}
-          </div>
-        ))}
-        {layoutColumn(appointments, view).map((placed) => (
-          <RoomAppointment
-            key={placed.id}
-            held={byId.get(placed.id)!}
-            placed={placed}
-            timeZone={timeZone}
           />
+        ))}
+        {layoutColumn(appointments, view).map((placed) => {
+          const held = byId.get(placed.id)!;
+          return (
+            <RoomAppointment
+              key={placed.id}
+              held={held}
+              placed={placed}
+              timeZone={timeZone}
+              belowLabel={scheduleStarts.has(+held.start)}
+            />
+          );
+        })}
+        {scheduleLabels(schedules).map(({ start, names }) => (
+          <span
+            key={+start}
+            className="bg-background absolute top-(--top) left-0 z-10 max-w-full truncate rounded-br-md px-1.5 text-xs leading-4 font-medium"
+            style={{ "--top": px(offsetOf(start, view)) } as CSSProperties}
+          >
+            {names.join(" · ")}
+          </span>
         ))}
       </div>
     </div>
   );
 }
 
-/** An appointment holding the room: when, and with which practitioner; never the patient. */
+/** The schedules' practitioners by start: schedules starting together share one label. */
+function scheduleLabels(schedules: readonly RoomBlock[]) {
+  const byStart = new Map<number, { start: Date; names: string[] }>();
+  for (const held of schedules) {
+    const label = byStart.get(+held.start) ?? { start: held.start, names: [] };
+    label.names.push(held.practitionerName);
+    byStart.set(+held.start, label);
+  }
+  return [...byStart.values()];
+}
+
+/**
+ * An appointment holding the room: when, and with which practitioner; never
+ * the patient. One starting with a schedule keeps its text below the
+ * schedule's label.
+ */
 function RoomAppointment(props: {
   held: RoomBlock;
   placed: ReturnType<typeof layoutColumn>[number];
   timeZone: string;
+  belowLabel: boolean;
 }) {
   const { held, placed, timeZone } = props;
   return (
@@ -235,6 +264,7 @@ function RoomAppointment(props: {
       className={cn(
         "bg-background absolute top-(--top) left-(--left) flex h-(--height) w-(--width) items-start gap-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-xs",
         held.overbooking && "border-dashed",
+        props.belowLabel && "pt-4",
       )}
       style={
         {
