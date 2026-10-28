@@ -153,6 +153,29 @@ export function appliesOn(schedule: WeeklySlot, date: string): boolean {
   );
 }
 
+/** The occurrences of `schedule` that meet `span`, as instants in its office's zone. */
+export function occurrencesDuring(schedule: AvailabilitySchedule, span: TimeRange): TimeRange[] {
+  return datesIn(span, schedule.timeZone)
+    .filter((date) => appliesOn(schedule, date))
+    .map((date) => ({
+      start: instantOf(date, shortTime(schedule.startTime), schedule.timeZone),
+      end: instantOf(date, shortTime(schedule.endTime), schedule.timeZone),
+    }))
+    .filter((occurrence) => intersects(occurrence, span));
+}
+
+/** The first schedule one of whose occurrences holds the whole of `span`. */
+export function coveringSchedule<T extends AvailabilitySchedule>(
+  schedules: readonly T[],
+  span: TimeRange,
+): T | undefined {
+  return schedules.find((schedule) =>
+    occurrencesDuring(schedule, span).some(
+      (occurrence) => occurrence.start <= span.start && span.end <= occurrence.end,
+    ),
+  );
+}
+
 /**
  * The spans of `durationMinutes` that start on the grid inside one occurrence
  * of `schedule`, on `date`, and end by its end.

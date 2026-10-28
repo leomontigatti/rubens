@@ -5,6 +5,7 @@ import {
   bookingRequestOf,
   freeStartsQueryOf,
   initialBookingDraft,
+  overbookingRequestOf,
 } from "#/lib/booking-draft.ts";
 import type { BookingDraft, BookingEvent } from "#/lib/booking-draft.ts";
 
@@ -99,6 +100,38 @@ describe("what a draft books", () => {
     ).toBeNull();
     expect(bookingRequestOf(run(ready, { type: "patientPicked", patientId: null }))).toBeNull();
     expect(bookingRequestOf(run(ready, { type: "startPicked", start: null }))).toBeNull();
+  });
+});
+
+describe("what a sobreturno draft books", () => {
+  const ready = run(
+    initialBookingDraft(null, ["juan"]),
+    { type: "patientPicked", patientId: "maria" },
+    { type: "typeChosen", appointmentType: consulta },
+  );
+
+  it("books the local date and time in the office's zone, in the schedule's room unless one is picked", () => {
+    expect(
+      overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: "" }, zone),
+    ).toEqual({
+      patientId: "maria",
+      practitionerId: "juan",
+      appointmentTypeId: "type-1",
+      start: new Date("2099-01-05T12:10:00Z"),
+      durationMinutes: 40,
+      receptionNote: "",
+      roomId: null,
+    });
+    expect(
+      overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: "room-3" }, zone),
+    ).toMatchObject({ roomId: "room-3" });
+  });
+
+  it("needs a date and a time", () => {
+    expect(overbookingRequestOf(ready, { date: "", time: "09:10", roomId: "" }, zone)).toBeNull();
+    expect(
+      overbookingRequestOf(ready, { date: "2099-01-05", time: "", roomId: "" }, zone),
+    ).toBeNull();
   });
 });
 

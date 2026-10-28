@@ -87,7 +87,7 @@ function booksForAnyone(actor: Actor): boolean {
 }
 
 /** Whether the actor may book at all, before any row is read. */
-function booksForSome(actor: Actor): boolean {
+export function booksForSome(actor: Actor): boolean {
   return booksForAnyone(actor) || actor.roles.includes("practitioner");
 }
 
@@ -136,7 +136,7 @@ function intersects(a: TimeRange, b: TimeRange): boolean {
 }
 
 /** The patient's active appointments on the local day of `span`, as warnings. */
-async function findPatientWarnings(
+export async function findPatientWarnings(
   tx: Transaction,
   patientId: string,
   span: TimeRange,
@@ -170,7 +170,11 @@ async function findPatientWarnings(
 }
 
 /** The practitioner, when the actor may book for them and they are active. */
-async function findBookablePractitioner(tx: Transaction, actor: Actor, practitionerId: string) {
+export async function findBookablePractitioner(
+  tx: Transaction,
+  actor: Actor,
+  practitionerId: string,
+) {
   const found = await findPractitioner(tx, actor, practitionerId, false);
   if (!found) {
     return notFound;
@@ -185,12 +189,15 @@ async function findBookablePractitioner(tx: Transaction, actor: Actor, practitio
 }
 
 /** Why the type, one of the practitioner's, or the patient cannot be booked; `null` when both can. */
-async function checkTypeAndPatient(
+export async function checkTypeAndPatient(
   tx: Transaction,
   practitionerId: string,
   appointmentTypeId: string,
   patientId: string,
-): Promise<{ ok: false; reason: Refusal } | null> {
+): Promise<{
+  ok: false;
+  reason: "notFound" | "appointmentTypeInactive" | "patientInactive";
+} | null> {
   const [type] = await tx
     .select({ active: appointmentType.active })
     .from(appointmentType)
@@ -316,6 +323,7 @@ export interface DayAppointment {
   patientName: string;
   typeName: string;
   color: AppointmentTypeColor;
+  roomId: string;
   roomName: string;
   receptionNote: string | null;
 }
@@ -345,6 +353,8 @@ export async function getOfficeDay(
       ok: true;
       office: { id: string; name: string; timeZone: string };
       day: TimeRange;
+      /** The office's active rooms, where an appointment can be moved or a sobreturno booked. */
+      rooms: { id: string; name: string }[];
       columns: DayColumn[];
     }
   | { ok: false; reason: "forbidden" | "invalidInput" | "notFound" }
@@ -368,6 +378,11 @@ export async function getOfficeDay(
         return notFound;
       }
       const day = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, found.timeZone);
+      const rooms = await tx
+        .select({ id: room.id, name: room.name })
+        .from(room)
+        .where(and(eq(room.officeId, found.id), eq(room.active, true)))
+        .orderBy(asc(room.name));
 
       const scheduleRows = (
         await tx
@@ -396,6 +411,7 @@ export async function getOfficeDay(
           chosenName: patient.chosenName,
           typeName: appointmentType.name,
           color: appointmentType.color,
+          roomId: appointment.roomId,
           roomName: room.name,
           receptionNote: appointment.receptionNote,
         })
@@ -419,7 +435,7 @@ export async function getOfficeDay(
         ]),
       ];
       if (presentIds.length === 0) {
-        return { ok: true as const, office: found, day, columns: [] };
+        return { ok: true as const, office: found, day, rooms, columns: [] };
       }
       const practitioners = (
         await tx
@@ -476,6 +492,7 @@ export async function getOfficeDay(
               patientName: patientName(booked),
               typeName: booked.typeName,
               color: booked.color,
+              roomId: booked.roomId,
               roomName: booked.roomName,
               receptionNote: booked.receptionNote,
             })),
@@ -486,7 +503,7 @@ export async function getOfficeDay(
           })),
         });
       }
-      return { ok: true as const, office: found, day, columns };
+      return { ok: true as const, office: found, day, rooms, columns };
     },
     database,
   );

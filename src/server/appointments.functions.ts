@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import type { BookingInput, OfficeDayQuery, WarningConfirmation } from "#/lib/appointments.ts";
+import type {
+  BookingInput,
+  OfficeDayQuery,
+  OverbookingInput,
+  RoomMove,
+  WarningConfirmation,
+} from "#/lib/appointments.ts";
 
+import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms.ts";
 import { bookAppointment, getOfficeDay } from "#/server/appointments.ts";
 import { withActor } from "#/server/with-actor.ts";
 
@@ -17,3 +24,11 @@ export const getOfficeDayView = createServerFn({ method: "GET" })
 export const addAppointment = createServerFn({ method: "POST" })
   .validator((data: BookingInput & WarningConfirmation) => data)
   .handler(({ data }) => withActor(bookers, (actor) => bookAppointment(actor, data)));
+
+export const addOverbooking = createServerFn({ method: "POST" })
+  .validator((data: OverbookingInput & WarningConfirmation) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => bookOverbooking(actor, data)));
+
+export const changeAppointmentRoom = createServerFn({ method: "POST" })
+  .validator((data: RoomMove) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => moveAppointmentRoom(actor, data)));

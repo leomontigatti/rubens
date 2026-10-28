@@ -1,6 +1,7 @@
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import { shiftDate } from "#/lib/schedules.ts";
+import { instantOf } from "#/lib/time-ranges.ts";
 
 // The booking form's state, from either entry (docs/domain/appointments.md §
 // Booking): what is picked so far, and what the last attempt answered. Pure,
@@ -114,19 +115,49 @@ export function bookingReducer(draft: BookingDraft, event: BookingEvent): Bookin
   }
 }
 
-/** What the draft books, once it has a patient, a type, a valid duration and a start. */
-export function bookingRequestOf(draft: BookingDraft) {
+/** What the draft books but the start, once it has a patient, a type and a valid duration. */
+function partialRequestOf(draft: BookingDraft) {
   const duration = durationMinutesSchema.safeParse(draft.durationMinutes);
-  if (!draft.patientId || !draft.type || !draft.start || !duration.success) {
+  if (!draft.patientId || !draft.type || !duration.success) {
     return null;
   }
   return {
     patientId: draft.patientId,
     practitionerId: draft.practitionerId,
     appointmentTypeId: draft.type.id,
-    start: draft.start.start,
     durationMinutes: duration.data,
     receptionNote: draft.receptionNote,
+  };
+}
+
+/** What the draft books, once it has a patient, a type, a valid duration and a start. */
+export function bookingRequestOf(draft: BookingDraft) {
+  const partial = partialRequestOf(draft);
+  return partial && draft.start ? { ...partial, start: draft.start.start } : null;
+}
+
+/** Where and when a sobreturno is typed in: a local date and `HH:MM`, and a room or none. */
+export interface OverbookingPlace {
+  date: string;
+  time: string;
+  /** Empty for the room of the schedule the sobreturno falls in. */
+  roomId: string;
+}
+
+/** What a sobreturno draft books, its local date and time read in `timeZone`. */
+export function overbookingRequestOf(
+  draft: BookingDraft,
+  place: OverbookingPlace,
+  timeZone: string,
+) {
+  const partial = partialRequestOf(draft);
+  if (!partial || !place.date || !/^\d{2}:\d{2}$/.test(place.time)) {
+    return null;
+  }
+  return {
+    ...partial,
+    start: instantOf(place.date, place.time, timeZone),
+    roomId: place.roomId || null,
   };
 }
 

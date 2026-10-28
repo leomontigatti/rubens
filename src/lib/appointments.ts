@@ -49,6 +49,22 @@ export const bookingInputSchema = z.object({
 
 export type BookingInput = z.input<typeof bookingInputSchema>;
 
+/**
+ * A sobreturno: a booking at any start, over another appointment or outside
+ * the schedules. Outside them it needs a room; inside one, `null` keeps the
+ * schedule's room.
+ */
+export const overbookingInputSchema = bookingInputSchema.extend({
+  roomId: z.uuid().nullable().default(null),
+});
+
+export type OverbookingInput = z.input<typeof overbookingInputSchema>;
+
+/** Moving an appointment to another room of its office, at the same time. */
+export const roomMoveSchema = z.object({ appointmentId: z.uuid(), roomId: z.uuid() });
+
+export type RoomMove = z.input<typeof roomMoveSchema>;
+
 /** Sent with a booking to save it although the patient warning was shown. */
 export interface WarningConfirmation {
   confirmWarnings?: boolean;

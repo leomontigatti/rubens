@@ -19,7 +19,12 @@ import { parseRoles } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { availabilityQuerySchema, findFreeStarts } from "#/lib/availability.ts";
-import type { AvailabilityQuery, AvailabilitySchedule, FreeStart } from "#/lib/availability.ts";
+import type {
+  AvailabilityClosure,
+  AvailabilityQuery,
+  AvailabilitySchedule,
+  FreeStart,
+} from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
@@ -104,6 +109,34 @@ function localDate(instant: Date, timeZone: string): string {
   return format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
 }
 
+/**
+ * The practitioner's time off that meets `range`, and the closures that meet
+ * it of the organization and of the offices `officeIds`.
+ */
+export async function findBlocking(
+  tx: Transaction,
+  practitionerId: string,
+  range: TimeRange,
+  officeIds: readonly string[],
+): Promise<{ timeOff: TimeRange[]; closures: AvailabilityClosure[] }> {
+  const timeOffRows = await tx
+    .select({ during: timeOff.during })
+    .from(timeOff)
+    .where(and(eq(timeOff.practitionerId, practitionerId), meets(timeOff.during, range)));
+  const closures = await tx
+    .select({ during: closure.during, officeId: closure.officeId })
+    .from(closure)
+    .where(
+      and(
+        officeIds.length > 0
+          ? or(isNull(closure.officeId), inArray(closure.officeId, [...officeIds]))
+          : isNull(closure.officeId),
+        meets(closure.during, range),
+      ),
+    );
+  return { timeOff: timeOffRows.map((row) => row.during), closures };
+}
+
 /** A schedule as the free times read it, with its office's and room's names. */
 export type FreeTimeSchedule = AvailabilitySchedule & { officeName: string; roomName: string };
 
@@ -149,22 +182,9 @@ export async function findFreeTimes(
         or(isNull(schedule.lastDate), gte(schedule.lastDate, firstDate)),
       ),
     );
-  const timeOffRows = await tx
-    .select({ during: timeOff.during })
-    .from(timeOff)
-    .where(and(eq(timeOff.practitionerId, practitioner.id), meets(timeOff.during, reach)));
-  const officeIds = [...new Set(schedules.map((row) => row.officeId))];
-  const closureRows = await tx
-    .select({ during: closure.during, officeId: closure.officeId })
-    .from(closure)
-    .where(
-      and(
-        officeIds.length > 0
-          ? or(isNull(closure.officeId), inArray(closure.officeId, officeIds))
-          : isNull(closure.officeId),
-        meets(closure.during, reach),
-      ),
-    );
+  const blocking = await findBlocking(tx, practitioner.id, reach, [
+    ...new Set(schedules.map((row) => row.officeId)),
+  ]);
   const busyRows = await tx
     .select({ during: appointment.during })
     .from(appointment)
@@ -177,8 +197,7 @@ export async function findFreeTimes(
     );
   const free = findFreeStarts({
     schedules,
-    timeOff: timeOffRows.map((row) => row.during),
-    closures: closureRows,
+    ...blocking,
     busy: busyRows.map((row) => row.during),
     gridMinutes: practitioner.gridMinutes,
     window,

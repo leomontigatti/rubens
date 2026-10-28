@@ -28,16 +28,20 @@ import {
   bookingRequestOf,
   freeStartsQueryOf,
   initialBookingDraft,
+  overbookingRequestOf,
 } from "#/lib/booking-draft.ts";
 import type {
   BookingDraft,
   BookingEvent,
   BookingWarning,
+  OverbookingPlace,
   PickedStart,
 } from "#/lib/booking-draft.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import { patientName } from "#/lib/patients.ts";
 import { getAppointmentTypes } from "#/server/appointment-types.functions.ts";
-import { addAppointment } from "#/server/appointments.functions.ts";
+import type { RoomOccupant } from "#/server/appointment-rooms.ts";
+import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
 import { getFreeTimes } from "#/server/availability.functions.ts";
 import type { AvailableStart } from "#/server/availability.ts";
 import { findPatients } from "#/server/patients.functions.ts";
@@ -45,7 +49,9 @@ import type { Patient } from "#/server/patients.ts";
 
 // Booking a patient, from either entry: a free time clicked on the day view,
 // which fixes the practitioner, the time and the room, or "Nuevo turno", which
-// picks the practitioner, the type and then a free time for that duration.
+// picks the practitioner, the type and then a free time for that duration. A
+// sobreturno takes a typed date and time instead, and a room when it falls
+// outside the practitioner's schedules.
 
 export interface BookingSlot extends PickedStart {
   practitionerId: string;
@@ -63,7 +69,21 @@ const refusalMessages = {
   patientInactive: "Ese paciente está inactivo.",
   appointmentTypeInactive: "Ese tipo de turno está desactivado.",
   notFree: "Ese horario ya no está libre para esa duración. Elegí otro.",
+  roomRequired: "Ese horario está fuera de los horarios del profesional: elegí un consultorio.",
+  timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",
+  closed: "La sede está cerrada a esa hora.",
+  roomInactive: "Ese consultorio está desactivado.",
+  officeInactive: "La sede de ese consultorio está desactivada.",
 };
+
+/** Why the room has no space: who holds it at that time. */
+export function roomFullMessage(occupants: readonly RoomOccupant[], timeZone: string): string {
+  const held = occupants.map(
+    (occupant) =>
+      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${localTime(occupant.start, timeZone)} a ${localTime(occupant.end, timeZone)})`,
+  );
+  return `Ese consultorio no tiene lugar a esa hora. Lo ocupan: ${held.join(", ")}.`;
+}
 
 function localTime(instant: Date, timeZone: string) {
   return format(instant, "HH:mm", { in: tz(timeZone) });
@@ -73,19 +93,27 @@ function localDateTime(instant: Date, timeZone: string) {
   return format(instant, "dd/MM/yyyy HH:mm", { in: tz(timeZone) });
 }
 
+/** Where a sobreturno can go: the office's rooms, its local times read in its zone. */
+export interface OverbookingOffice {
+  rooms: { id: string; name: string }[];
+  timeZone: string;
+}
+
 export function BookingDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The free time clicked on the day view; none for "Nuevo turno". */
+  /** The free time clicked on the day view, or the appointment a sobreturno goes over. */
   slot: BookingSlot | null;
   practitioners: { id: string; displayName: string }[];
   defaultDate: string;
+  /** Set for a sobreturno. */
+  overbooking: OverbookingOffice | null;
 }) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-h-svh overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nuevo turno</DialogTitle>
+          <DialogTitle>{props.overbooking ? "Sobreturno" : "Nuevo turno"}</DialogTitle>
           {props.slot && <DialogDescription>{props.slot.practitionerName}</DialogDescription>}
         </DialogHeader>
         {props.open && (
@@ -93,6 +121,7 @@ export function BookingDialog(props: {
             slot={props.slot}
             practitioners={props.practitioners}
             defaultDate={props.defaultDate}
+            overbooking={props.overbooking}
             onDone={() => props.onOpenChange(false)}
           />
         )}
@@ -103,10 +132,54 @@ export function BookingDialog(props: {
 
 type Dispatch = (event: BookingEvent) => void;
 
+type BookingRefusal =
+  | Exclude<Awaited<ReturnType<typeof addAppointment>>, { ok: true }>
+  | Exclude<Awaited<ReturnType<typeof addOverbooking>>, { ok: true }>;
+
+/** A sobreturno's place to start from: the clicked appointment's time, or the day viewed. */
+function initialPlace(slot: BookingSlot | null, defaultDate: string): OverbookingPlace {
+  if (!slot) {
+    return { date: defaultDate, time: "", roomId: "" };
+  }
+  const [date, time] = format(slot.start, "yyyy-MM-dd HH:mm", { in: tz(slot.timeZone) }).split(" ");
+  return { date: date!, time: time!, roomId: "" };
+}
+
+/** What the form books: a booking at a free start, or a sobreturno at the typed place. */
+function requestOf(draft: BookingDraft, place: OverbookingPlace, office: OverbookingOffice | null) {
+  if (!office) {
+    const booking = bookingRequestOf(draft);
+    return booking && { overbooking: false as const, data: booking };
+  }
+  const overbooking = overbookingRequestOf(draft, place, office.timeZone);
+  return overbooking && { overbooking: true as const, data: overbooking };
+}
+
+function send(request: NonNullable<ReturnType<typeof requestOf>>, confirmWarnings: boolean) {
+  return request.overbooking
+    ? addOverbooking({ data: { ...request.data, confirmWarnings } })
+    : addAppointment({ data: { ...request.data, confirmWarnings } });
+}
+
+/** What a refusal does to the draft. */
+function refusalEvent(refusal: BookingRefusal, timeZone: string): BookingEvent {
+  switch (refusal.reason) {
+    case "roomFull":
+      return { type: "failed", error: roomFullMessage(refusal.occupants, timeZone) };
+    case "patientWarning":
+      return { type: "warned", warnings: refusal.warnings };
+    case "timeTaken":
+      return { type: "timeTaken", freshStarts: refusal.freeStarts };
+    default:
+      return { type: "failed", error: refusalMessages[refusal.reason] };
+  }
+}
+
 function BookingForm(props: {
   slot: BookingSlot | null;
   practitioners: { id: string; displayName: string }[];
   defaultDate: string;
+  overbooking: OverbookingOffice | null;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -118,16 +191,17 @@ function BookingForm(props: {
     ),
   );
   const [pending, setPending] = useState(false);
-  const request = bookingRequestOf(draft);
+  const [place, setPlace] = useState(() => initialPlace(props.slot, props.defaultDate));
+  const request = requestOf(draft, place, props.overbooking);
 
   async function book(confirmWarnings: boolean) {
     if (!request) {
       return;
     }
     setPending(true);
-    let result: Awaited<ReturnType<typeof addAppointment>>;
+    let result: Awaited<ReturnType<typeof send>>;
     try {
-      result = await addAppointment({ data: { ...request, confirmWarnings } });
+      result = await send(request, confirmWarnings);
     } finally {
       setPending(false);
     }
@@ -139,17 +213,12 @@ function BookingForm(props: {
     await settle(result);
   }
 
-  async function settle(
-    refusal: Exclude<Awaited<ReturnType<typeof addAppointment>>, { ok: true }>,
-  ) {
-    if (refusal.reason === "patientWarning") {
-      dispatch({ type: "warned", warnings: refusal.warnings });
-    } else if (refusal.reason === "timeTaken") {
-      dispatch({ type: "timeTaken", freshStarts: refusal.freeStarts });
+  async function settle(refusal: BookingRefusal) {
+    // A sobreturno's times are read in its office's zone; a booking's refusals hold none.
+    dispatch(refusalEvent(refusal, props.overbooking?.timeZone ?? defaultTimeZone));
+    if (refusal.reason === "timeTaken") {
       // The day view behind the dialog shows the time taken too.
       await router.invalidate();
-    } else {
-      dispatch({ type: "failed", error: refusalMessages[refusal.reason] });
     }
   }
 
@@ -171,11 +240,24 @@ function BookingForm(props: {
           />
         )}
         <TypeAndDuration draft={draft} dispatch={dispatch} />
-        {!props.slot && (
-          <FreeStartPicker draft={draft} defaultDate={props.defaultDate} dispatch={dispatch} />
+        {props.overbooking ? (
+          <OverbookingFields
+            place={place}
+            rooms={props.overbooking.rooms}
+            onChange={(changed) => {
+              setPlace(changed);
+              // A new place drops what the last attempt answered.
+              dispatch({ type: "startPicked", start: draft.start });
+            }}
+          />
+        ) : (
+          <FreeStart
+            slot={props.slot}
+            draft={draft}
+            defaultDate={props.defaultDate}
+            dispatch={dispatch}
+          />
         )}
-        <TimeTaken starts={draft.freshStarts} dispatch={dispatch} />
-        <PickedSummary start={draft.start} />
         <NoteField value={draft.receptionNote} dispatch={dispatch} />
         <PatientWarnings
           warnings={draft.warnings}
@@ -193,6 +275,82 @@ function BookingForm(props: {
         </div>
       </form>
     </div>
+  );
+}
+
+/** The free start of a booking: picked from the free times, or the one clicked. */
+function FreeStart(props: {
+  slot: BookingSlot | null;
+  draft: BookingDraft;
+  defaultDate: string;
+  dispatch: Dispatch;
+}) {
+  return (
+    <>
+      {!props.slot && (
+        <FreeStartPicker
+          draft={props.draft}
+          defaultDate={props.defaultDate}
+          dispatch={props.dispatch}
+        />
+      )}
+      <TimeTaken starts={props.draft.freshStarts} dispatch={props.dispatch} />
+      <PickedSummary start={props.draft.start} />
+    </>
+  );
+}
+
+/** A sobreturno's local date and time, and its room when outside the schedules. */
+function OverbookingFields(props: {
+  place: OverbookingPlace;
+  rooms: { id: string; name: string }[];
+  onChange: (place: OverbookingPlace) => void;
+}) {
+  const { place, onChange } = props;
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="overbooking-date">Fecha</Label>
+          <Input
+            id="overbooking-date"
+            type="date"
+            value={place.date}
+            onChange={(event) => onChange({ ...place, date: event.target.value })}
+            required
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="overbooking-time">Hora</Label>
+          <Input
+            id="overbooking-time"
+            type="time"
+            value={place.time}
+            onChange={(event) => onChange({ ...place, time: event.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="overbooking-room">Consultorio</Label>
+        <NativeSelect
+          id="overbooking-room"
+          value={place.roomId}
+          onChange={(event) => onChange({ ...place, roomId: event.target.value })}
+          aria-describedby="overbooking-room-hint"
+        >
+          <NativeSelectOption value="">El del horario del profesional</NativeSelectOption>
+          {props.rooms.map((room) => (
+            <NativeSelectOption key={room.id} value={room.id}>
+              {room.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <p id="overbooking-room-hint" className="text-muted-foreground text-xs">
+          Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora.
+        </p>
+      </div>
+    </>
   );
 }
 

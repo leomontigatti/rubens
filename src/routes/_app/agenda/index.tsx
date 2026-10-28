@@ -1,6 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { cn } from "cn";
+import { ZapIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
@@ -18,12 +19,14 @@ import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatLocalDate, shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 import { getOfficeDayView } from "#/server/appointments.functions.ts";
-import type { DayColumn } from "#/server/appointments.ts";
+import type { DayAppointment, DayColumn } from "#/server/appointments.ts";
 import { getAvailabilityPractitioners } from "#/server/availability.functions.ts";
 import { getOffices } from "#/server/offices.functions.ts";
 
+import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
+import type { PickedAppointment } from "#/routes/_app/agenda/-appointment.tsx";
 import { BookingDialog } from "#/routes/_app/agenda/-booking.tsx";
-import type { BookingSlot } from "#/routes/_app/agenda/-booking.tsx";
+import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
 // Reception's main screen: one office's day, a column per practitioner. What
 // is being viewed lives in the URL; a value that does not parse falls back to
@@ -75,47 +78,91 @@ const refusalMessages = {
 /** The height of a minute on the day view, in pixels: 15 minutes are 24 px. */
 const minuteHeight = 1.6;
 
+/** What the booking dialog opens on: a free time or none, and whether for a sobreturno. */
+interface BookingStart {
+  slot: BookingSlot | null;
+  overbooking: boolean;
+}
+
 function Agenda() {
   const result = Route.useLoaderData();
-  const [slot, setSlot] = useState<BookingSlot | null>(null);
+  const [start, setStart] = useState<BookingStart>({ slot: null, overbooking: false });
   const [booking, setBooking] = useState(false);
+  const [picked, setPicked] = useState<PickedAppointment | null>(null);
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
+  const office = officeOf(result.day);
 
-  function openBooking(picked: BookingSlot | null) {
-    setSlot(picked);
+  function openBooking(slot: BookingSlot | null, overbooking: boolean) {
+    setPicked(null);
+    setStart({ slot, overbooking });
     setBooking(true);
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Agenda</h1>
-        <Button onClick={() => openBooking(null)}>Nuevo turno</Button>
-      </div>
+      <AgendaHeader
+        canOverbook={office !== null}
+        onBook={(overbooking) => openBooking(null, overbooking)}
+      />
       {result.officeId === null ? (
         <p className="text-muted-foreground">Todavía no hay sedes.</p>
       ) : (
         <DayPicker offices={result.offices} officeId={result.officeId} date={result.date} />
       )}
-      <DayResult day={result.day} date={result.date} onPick={openBooking} />
+      <DayResult
+        day={result.day}
+        date={result.date}
+        onPick={(slot) => openBooking(slot, false)}
+        onOpen={setPicked}
+      />
       <BookingDialog
         open={booking}
         onOpenChange={setBooking}
-        slot={slot}
+        slot={start.slot}
         practitioners={result.practitioners}
         defaultDate={result.date}
+        overbooking={start.overbooking ? office : null}
+      />
+      <AppointmentDialog
+        picked={picked}
+        onClose={() => setPicked(null)}
+        office={office}
+        onOverbook={(slot) => openBooking(slot, true)}
       />
     </div>
   );
+}
+
+/** The title, and the two ways to book: a free time, or a sobreturno once an office is viewed. */
+function AgendaHeader(props: { canOverbook: boolean; onBook: (overbooking: boolean) => void }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <h1 className="text-2xl font-semibold">Agenda</h1>
+      <div className="flex gap-2">
+        {props.canOverbook && (
+          <Button variant="outline" onClick={() => props.onBook(true)}>
+            Sobreturno
+          </Button>
+        )}
+        <Button onClick={() => props.onBook(false)}>Nuevo turno</Button>
+      </div>
+    </div>
+  );
+}
+
+/** The office viewed, where a sobreturno can go; none until its day has loaded. */
+function officeOf(day: Awaited<ReturnType<typeof dayOf>>): OverbookingOffice | null {
+  return day?.ok ? { rooms: day.rooms, timeZone: day.office.timeZone } : null;
 }
 
 function DayResult(props: {
   day: Awaited<ReturnType<typeof dayOf>>;
   date: string;
   onPick: (slot: BookingSlot) => void;
+  onOpen: (picked: PickedAppointment) => void;
 }) {
   if (!props.day) {
     return null;
@@ -129,6 +176,7 @@ function DayResult(props: {
       timeZone={props.day.office.timeZone}
       columns={props.day.columns}
       onPick={props.onPick}
+      onOpen={props.onOpen}
     />
   );
 }
@@ -218,6 +266,7 @@ function DayView(props: {
   timeZone: string;
   columns: DayColumn[];
   onPick: (slot: BookingSlot) => void;
+  onOpen: (picked: PickedAppointment) => void;
 }) {
   if (props.columns.length === 0) {
     return <p className="text-muted-foreground">Nadie atiende en esta sede ese día.</p>;
@@ -254,6 +303,7 @@ function DayView(props: {
           hours={hours}
           timeZone={props.timeZone}
           onPick={props.onPick}
+          onOpen={props.onOpen}
         />
       ))}
     </div>
@@ -266,6 +316,7 @@ function PractitionerColumn(props: {
   hours: number[];
   timeZone: string;
   onPick: (slot: BookingSlot) => void;
+  onOpen: (picked: PickedAppointment) => void;
 }) {
   const { column, view, timeZone } = props;
   const appointments = new Map(column.appointments.map((booked) => [booked.id, booked]));
@@ -325,34 +376,62 @@ function PractitionerColumn(props: {
             {localTime(free.start, timeZone)}
           </Button>
         ))}
-        {placed.map((block) => {
-          const booked = appointments.get(block.id)!;
-          return (
-            <div
-              key={block.id}
-              className="bg-background absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs"
-              style={
-                {
-                  "--top": px(block.top),
-                  "--height": px(block.height),
-                  "--left": `${(block.lane / block.lanes) * 100}%`,
-                  "--width": `${100 / block.lanes}%`,
-                } as CSSProperties
-              }
-              title={booked.receptionNote ?? undefined}
-            >
-              <div className={cn("w-1 shrink-0", appointmentTypeColorClasses[booked.color])} />
-              <div className="flex min-w-0 flex-col px-1.5 py-0.5">
-                <span className="truncate font-medium">
-                  {localTime(booked.start, timeZone)} {booked.patientName}
-                </span>
-                <span className="text-muted-foreground truncate">
-                  {booked.typeName} · {booked.roomName}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+        {placed.map((block) => (
+          <AppointmentBlock
+            key={block.id}
+            block={block}
+            appointment={appointments.get(block.id)!}
+            timeZone={timeZone}
+            onOpen={(appointment) =>
+              props.onOpen({ appointment, practitioner: column.practitioner })
+            }
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One appointment on the day view, in its lane; a sobreturno is dashed and marked. */
+function AppointmentBlock(props: {
+  block: ReturnType<typeof layoutColumn>[number];
+  appointment: DayAppointment;
+  timeZone: string;
+  onOpen: (appointment: DayAppointment) => void;
+}) {
+  const { block, appointment: booked, timeZone } = props;
+  return (
+    <div
+      className={cn(
+        "bg-background absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs",
+        booked.overbooking && "border-dashed",
+      )}
+      style={
+        {
+          "--top": px(block.top),
+          "--height": px(block.height),
+          "--left": `${(block.lane / block.lanes) * 100}%`,
+          "--width": `${100 / block.lanes}%`,
+        } as CSSProperties
+      }
+      title={booked.receptionNote ?? undefined}
+    >
+      <div className={cn("w-1 shrink-0", appointmentTypeColorClasses[booked.color])} />
+      <div className="flex min-w-0 flex-col items-start px-1.5 py-0.5">
+        <Button
+          variant="link"
+          size="xs"
+          className="max-w-full justify-start"
+          onClick={() => props.onOpen(booked)}
+        >
+          {booked.overbooking && <ZapIcon aria-label="Sobreturno" />}
+          <span className="truncate">
+            {localTime(booked.start, timeZone)} {booked.patientName}
+          </span>
+        </Button>
+        <span className="text-muted-foreground truncate">
+          {booked.typeName} · {booked.roomName}
+        </span>
       </div>
     </div>
   );

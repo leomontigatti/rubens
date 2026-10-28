@@ -3,9 +3,11 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   availabilityQuerySchema,
   availabilityViewOf,
+  coveringSchedule,
   findFreeStarts,
   freeStartsByDay,
   freeTimesQueryOf,
+  occurrencesDuring,
 } from "#/lib/availability.ts";
 import type { AvailabilityInput, AvailabilitySchedule } from "#/lib/availability.ts";
 
@@ -358,5 +360,28 @@ describe("the screen's view", () => {
       lastDate: "2099-01-11",
       durationMinutes: 45,
     });
+  });
+});
+
+describe("a schedule's occurrences during a span", () => {
+  const span = (start: string, end: string) => ({
+    start: new Date(`2099-01-05T${start}:00Z`),
+    end: new Date(`2099-01-05T${end}:00Z`),
+  });
+
+  it("gives the occurrence a span meets, in the schedule's zone, and none it only touches", () => {
+    expect(occurrencesDuring(morning, span("12:30", "13:30"))).toEqual([
+      { start: new Date("2099-01-05T12:00:00Z"), end: new Date("2099-01-05T13:00:00Z") },
+    ]);
+    expect(occurrencesDuring(morning, span("13:00", "13:30"))).toEqual([]);
+    expect(occurrencesDuring({ ...morning, weekdays: [2] }, span("12:00", "12:30"))).toEqual([]);
+  });
+
+  it("finds the schedule whose occurrence holds the whole span, and none for a span past its end", () => {
+    const later = { ...morning, roomId: "room-2", startTime: "10:00", endTime: "11:00" };
+
+    expect(coveringSchedule([morning, later], span("13:15", "13:45"))).toBe(later);
+    expect(coveringSchedule([morning, later], span("12:45", "13:15"))).toBeUndefined();
+    expect(coveringSchedule([morning], span("12:00", "13:00"))).toBe(morning);
   });
 });
