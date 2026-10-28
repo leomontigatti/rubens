@@ -162,9 +162,42 @@ export function PractitionerColumn(props: {
             onOpen={props.onOpen}
           />
         ))}
+        {fadedOpeners(placed, appointments).map(({ block, booked, offset }) => (
+          <Button
+            key={block.id}
+            variant="ghost"
+            size="icon-xs"
+            className="absolute top-(--top) right-(--right)"
+            style={{ "--top": px(block.top), "--right": `${offset * 1.5}rem` } as CSSProperties}
+            aria-label={`Abrir el turno de ${booked.patientName}`}
+            onClick={() => props.onOpen(booked)}
+          >
+            <SquareArrowOutUpRightIcon />
+          </Button>
+        ))}
       </div>
     </div>
   );
+}
+
+/**
+ * The open buttons of the faded cards, drawn after every card so no card
+ * covers them; buttons of cards that start together sit side by side.
+ */
+function fadedOpeners(
+  placed: ReturnType<typeof layoutColumn>,
+  appointments: ReadonlyMap<string, DayAppointment>,
+) {
+  const taken = new Map<number, number>();
+  return placed.flatMap((block) => {
+    const booked = appointments.get(block.id)!;
+    if (!isFaded(booked)) {
+      return [];
+    }
+    const offset = taken.get(block.top) ?? 0;
+    taken.set(block.top, offset + 1);
+    return [{ block, booked, offset }];
+  });
 }
 
 /** A cancelled or no-show appointment leaves its time free: the card is drawn faded. */
@@ -176,7 +209,7 @@ function isFaded(booked: DayAppointment) {
  * One appointment card on the calendar, in its lane, styled and marked by its
  * status; an overbooking is dashed and marked. A cancelled or no-show card,
  * shown only when asked for, is faded and lets clicks through to the cell
- * under it but for the small button in its corner that opens it.
+ * under it; its open button is drawn apart, above every card.
  */
 function AppointmentBlock(props: {
   block: ReturnType<typeof layoutColumn>[number];
@@ -215,7 +248,8 @@ function AppointmentBlock(props: {
 
 /**
  * The card's status, time and patient: the button that opens it, or on a
- * faded card plain text and a small open button in the card's corner.
+ * faded card plain text (its open button is drawn above every card,
+ * `fadedOpeners`).
  */
 function CardHeading(props: {
   appointment: DayAppointment;
@@ -244,18 +278,5 @@ function CardHeading(props: {
       </Button>
     );
   }
-  return (
-    <>
-      <span className="flex max-w-full items-center gap-1 [&_svg]:size-3">{label}</span>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        className="pointer-events-auto absolute top-0 right-0"
-        aria-label={`Abrir el turno de ${booked.patientName}`}
-        onClick={() => props.onOpen(booked)}
-      >
-        <SquareArrowOutUpRightIcon />
-      </Button>
-    </>
-  );
+  return <span className="flex max-w-full items-center gap-1 [&_svg]:size-3">{label}</span>;
 }
