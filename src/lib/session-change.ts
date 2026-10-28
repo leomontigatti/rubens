@@ -6,9 +6,17 @@
 // The change is written to local storage, and other tabs hear it through the
 // `storage` event, which never fires in the tab that wrote it. A tab that was
 // still loading misses the event; the signed-in layout catches it by asking the
-// server who is signed in once it mounts (`src/routes/_app.tsx`).
+// server who is signed in once it mounts (`useSessionGuard` in `src/routes/_app.tsx`).
 
 const storageKey = "rubens-session-changed";
+
+/** Whether a check of who is signed in found `userId`, the user a page was loaded for. */
+export function isSignedInAs(
+  result: { ok: true; viewer: { userId: string } } | { ok: false },
+  userId: string,
+): boolean {
+  return result.ok && result.viewer.userId === userId;
+}
 
 /** Tells the app's other tabs that the session changed, then loads `path` afresh here. */
 export function startNewSession(path: string): void {

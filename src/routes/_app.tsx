@@ -1,6 +1,6 @@
 import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { ChevronDownIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu.tsx";
 import { authClient } from "#/lib/auth-client.ts";
-import { reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
+import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
 
 const passwordChangePath = "/cambiar-contrasena";
@@ -37,22 +37,57 @@ export const Route = createFileRoute("/_app")({
   component: AppShell,
 });
 
+const recheckMs = 5000;
+
+/**
+ * Reloads the page once its screen and caches belong to a user other than the
+ * one now signed in: when another tab signs in or out, when a link click finds
+ * another user signed in, and, for a page that was still loading when another
+ * tab's message went out, when a check after mounting says so. A failed check
+ * is retried rather than reloaded, so a failing server causes no reload loop.
+ */
+function useSessionGuard(userId: string) {
+  const loadedAs = useRef(userId);
+
+  useEffect(() => reloadOnSessionChange(), []);
+
+  useEffect(() => {
+    if (userId !== loadedAs.current) {
+      window.location.reload();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    let stopped = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    async function check() {
+      const result = await getViewer().catch((error: unknown) => {
+        console.warn("[session-guard] could not check who is signed in; retrying", error);
+        return null;
+      });
+      if (stopped) {
+        return;
+      }
+      if (result === null) {
+        retry = setTimeout(() => void check(), recheckMs);
+        return;
+      }
+      if (!isSignedInAs(result, loadedAs.current)) {
+        window.location.reload();
+      }
+    }
+    void check();
+    return () => {
+      stopped = true;
+      clearTimeout(retry);
+    };
+  }, []);
+}
+
 function AppShell() {
   const { viewer } = Route.useRouteContext();
 
-  // Another tab signed in or out: this tab's screen and caches are the
-  // previous user's.
-  useEffect(() => reloadOnSessionChange(), []);
-
-  // A page that was still loading when another tab signed in or out missed
-  // that tab's message: once it mounts, it checks who is signed in now.
-  useEffect(() => {
-    void getViewer().then((result) => {
-      if (!result.ok || result.viewer.userId !== viewer.userId) {
-        window.location.reload();
-      }
-    });
-  }, [viewer.userId]);
+  useSessionGuard(viewer.userId);
 
   async function signOut() {
     await authClient.signOut();
