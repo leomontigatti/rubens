@@ -1,19 +1,20 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import type * as z from "zod";
 
 import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
 import {
   DocumentInputs,
   Field,
+  PhoneField,
   patientFieldMessage,
-  phoneHint,
 } from "#/components/patient-form.tsx";
 import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { guardianInputSchema } from "#/lib/guardians.ts";
+import { guardianInputSchema, guardianUpdateSchema } from "#/lib/guardians.ts";
 import type { GuardianInput } from "#/lib/guardians.ts";
 import { documentLabel } from "#/lib/patients.ts";
 import type { DocumentType } from "#/lib/patients.ts";
@@ -42,8 +43,6 @@ const refusalMessages = {
 type ActionResult = { ok: true } | { ok: false; reason: keyof typeof refusalMessages };
 
 type GuardianFields = Omit<GuardianInput, "patientId">;
-
-const guardianFieldsSchema = guardianInputSchema.in.omit({ patientId: true });
 
 function useAction() {
   return useFormAction(refusalMessages);
@@ -84,6 +83,8 @@ function GuardianItem({ guardian }: { guardian: Guardian }) {
           idPrefix={guardian.id}
           initial={{ ...guardian, phone: formatPhone(guardian.phone) }}
           submitLabel="Guardar"
+          schema={guardianUpdateSchema}
+          ids={{ guardianId: guardian.id }}
           onSubmit={(fields) => editGuardian({ data: { ...fields, guardianId: guardian.id } })}
           onDone={() => setEditing(false)}
         />
@@ -179,6 +180,8 @@ export function NewGuardianForm(props: { patientId: string; onDone: () => void }
       idPrefix="new-guardian"
       initial={{ name: "", relationship: "", phone: "" }}
       submitLabel="Agregar"
+      schema={guardianInputSchema}
+      ids={{ patientId: props.patientId }}
       onSubmit={(fields) => addPatientGuardian({ data: { ...fields, patientId: props.patientId } })}
       onDone={props.onDone}
     />
@@ -189,6 +192,10 @@ interface GuardianFormProps {
   idPrefix: string;
   initial: GuardianFields;
   submitLabel: string;
+  /** The schema the server function checks the input with, which the form checks first. */
+  schema: z.ZodType;
+  /** The ids the input carries beside the fields, for `schema`. */
+  ids: Record<string, string>;
   onSubmit: (fields: GuardianFields) => Promise<ActionResult>;
   onDone: () => void;
 }
@@ -216,7 +223,7 @@ function GuardianForm(props: GuardianFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = readGuardianForm(new FormData(event.currentTarget));
-    const checked = guardianFieldsSchema.safeParse(fields);
+    const checked = props.schema.safeParse({ ...fields, ...props.ids });
     if (!checked.success) {
       action.setError(patientFieldMessage(checked.error));
       return;
@@ -246,15 +253,7 @@ function GuardianForm(props: GuardianFormProps) {
           hint="Por ejemplo: madre, padre, tutora."
         />
       </div>
-      <Field
-        id={id("phone")}
-        name="phone"
-        label="Teléfono"
-        type="tel"
-        defaultValue={props.initial.phone}
-        required
-        hint={phoneHint}
-      />
+      <PhoneField id={id("phone")} defaultValue={props.initial.phone} />
       <DocumentInputs idPrefix={props.idPrefix} initial={props.initial} />
       <Field
         id={id("email")}

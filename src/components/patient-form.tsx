@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useReducer, useState } from "react";
-import type { FormEvent } from "react";
+import type { FocusEvent, FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
@@ -17,7 +17,7 @@ import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
-import { formatPhone } from "#/lib/phones.ts";
+import { formatPhone, parsePhone } from "#/lib/phones.ts";
 import { addPatient } from "#/server/patients.functions.ts";
 import type { Patient } from "#/server/patients.ts";
 
@@ -142,7 +142,12 @@ export function Field(props: {
   type?: string;
   required?: boolean;
   hint?: string;
+  /** A problem with what was typed, shown under the input. */
+  error?: string | null;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  onChange?: () => void;
 }) {
+  const errorId = props.error ? `${props.id}-error` : undefined;
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={props.id}>{props.label}</Label>
@@ -152,14 +157,58 @@ export function Field(props: {
         type={props.type ?? "text"}
         defaultValue={props.defaultValue ?? ""}
         required={props.required}
+        aria-invalid={Boolean(errorId)}
+        aria-describedby={errorId}
+        onBlur={props.onBlur}
+        onChange={props.onChange}
       />
-      {props.hint && <p className="text-muted-foreground text-sm">{props.hint}</p>}
+      <FieldNote id={`${props.id}-error`} hint={props.hint} error={props.error} />
     </div>
   );
 }
 
-export const phoneHint =
+/** The problem with a field's value when there is one, its hint otherwise. */
+function FieldNote(props: { id: string; hint?: string; error?: string | null }) {
+  if (props.error) {
+    return (
+      <p id={props.id} className="text-destructive text-sm">
+        {props.error}
+      </p>
+    );
+  }
+  return props.hint ? <p className="text-muted-foreground text-sm">{props.hint}</p> : null;
+}
+
+const phoneHint =
   "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.";
+
+/** The copy for a typed phone that cannot be a number, `null` when it can or is empty. */
+function phoneProblem(input: string): string | null {
+  const parsed = parsePhone(input);
+  return input.trim() && !parsed.ok ? fieldMessages[parsed.reason]! : null;
+}
+
+/**
+ * A patient's or a guardian's phone. A number that cannot be valid is refused
+ * when the field loses focus, until it is changed; the submit checks it again.
+ */
+export function PhoneField(props: { id: string; defaultValue?: string | null }) {
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Field
+      id={props.id}
+      name="phone"
+      label="Teléfono"
+      type="tel"
+      defaultValue={props.defaultValue}
+      required
+      hint={phoneHint}
+      error={error}
+      onBlur={(event) => setError(phoneProblem(event.currentTarget.value))}
+      onChange={() => setError(null)}
+    />
+  );
+}
 
 /** What the inputs start with: nothing for a registration, the patient's data for an edit. */
 function formValues(initial: Patient | undefined): Partial<Patient> {
@@ -224,15 +273,7 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
           required
         />
       </div>
-      <Field
-        id={id("phone")}
-        name="phone"
-        label="Teléfono"
-        type="tel"
-        defaultValue={values.phone}
-        required
-        hint={phoneHint}
-      />
+      <PhoneField id={id("phone")} defaultValue={values.phone} />
       {props.full && (
         <>
           <Field
