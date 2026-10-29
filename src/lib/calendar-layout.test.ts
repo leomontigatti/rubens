@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   layoutCells,
   layoutColumn,
+  layoutDay,
   visibleHours,
   visibleWeekHours,
 } from "#/lib/calendar-layout.ts";
@@ -215,5 +216,44 @@ describe("a day's 30-minute cells", () => {
       height: 15,
       free: [],
     });
+  });
+});
+
+describe("a day's cells and cards together", () => {
+  const view = { start: at("09:00"), end: at("10:00") };
+
+  it("puts a free cell's click beside a card at the same time, so both stay reachable", () => {
+    const free = { start: at("09:00"), practitionerId: "lucia" };
+
+    const { cells, cards } = layoutDay(view, [free], [block("juan", "09:00", "09:30")]);
+
+    expect(cards).toEqual([{ id: "juan", top: 0, height: 30, lane: 0, lanes: 2 }]);
+    expect(cells[0]).toMatchObject({ free: [free], lane: 1, lanes: 2 });
+  });
+
+  it("gives a card over grey cells, and a free cell with no card, the whole width", () => {
+    const free = { start: at("09:30"), practitionerId: "lucia" };
+
+    const { cells, cards } = layoutDay(view, [free], [block("juan", "09:00", "09:30")]);
+
+    expect(cards).toEqual([{ id: "juan", top: 0, height: 30, lane: 0, lanes: 1 }]);
+    expect(cells.map(({ lane, lanes }) => ({ lane, lanes }))).toEqual([
+      { lane: 0, lanes: 1 },
+      { lane: 0, lanes: 1 },
+    ]);
+  });
+
+  it("keeps a free cell's click beside every card that meets it, faded ones included", () => {
+    const free = { start: at("09:00"), practitionerId: "lucia" };
+
+    const { cells, cards } = layoutDay(
+      view,
+      [free],
+      [block("active", "09:00", "10:00"), block("cancelled", "09:15", "09:45")],
+    );
+
+    const lanes = [...cards.map((card) => card.lane), cells[0]!.lane];
+    expect(new Set(lanes).size).toBe(3);
+    expect(cells[0]!.lanes).toBe(3);
   });
 });

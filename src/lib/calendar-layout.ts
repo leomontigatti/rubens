@@ -122,6 +122,42 @@ export function layoutCells<T extends { start: Date }>(
   return cells;
 }
 
+export interface DayCell<T> extends CalendarCell<T> {
+  /** The lane a free cell's booking click takes beside the cards that meet it. */
+  lane: number;
+  lanes: number;
+}
+
+/**
+ * One day's cells and cards. A free cell takes a lane like a card, so a card
+ * at the same time, faded or not, sits beside its booking click and never
+ * over it; a grey cell takes no lane.
+ */
+export function layoutDay<T extends { start: Date }>(
+  view: TimeRange,
+  freeStarts: readonly T[],
+  cards: readonly LayoutBlock[],
+): { cells: DayCell<T>[]; cards: PlacedBlock[] } {
+  const cells = layoutCells(view, freeStarts);
+  // Card ids are uuids, which never hold a space.
+  const cellId = (cell: CalendarCell<T>) => `cell ${cell.top}`;
+  const freeCells = cells
+    .filter((cell) => cell.free.length > 0)
+    .map((cell) => ({
+      id: cellId(cell),
+      start: cell.start,
+      end: new Date(+cell.start + cell.height * minute),
+    }));
+  const placed = new Map(layoutColumn([...cards, ...freeCells], view).map((one) => [one.id, one]));
+  return {
+    cells: cells.map((cell) => {
+      const click = placed.get(cellId(cell));
+      return { ...cell, lane: click?.lane ?? 0, lanes: click?.lanes ?? 1 };
+    }),
+    cards: cards.flatMap((card) => placed.get(card.id) ?? []),
+  };
+}
+
 const firstHour = 8;
 const lastHour = 20;
 

@@ -72,7 +72,7 @@ const refusalMessages = {
   forbidden: "Solo recepción, un administrador o un profesional pueden ver la agenda.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá el consultorio y la fecha.",
-  notFound: "No encontramos ese consultorio o esa prestación.",
+  notFound: "No encontramos ese consultorio.",
 };
 
 /** What the booking dialog opens on: a free cell or none, and whether for an overbooking. */

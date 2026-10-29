@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
-import { layoutCells, layoutColumn } from "#/lib/calendar-layout.ts";
+import { layoutCells, layoutDay } from "#/lib/calendar-layout.ts";
 import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
@@ -33,6 +33,21 @@ function localTime(instant: Date, timeZone: string) {
 /** A length in minutes as the pixels it is drawn at on the calendar. */
 function px(minutes: number): string {
   return `${minutes * minuteHeight}px`;
+}
+
+interface InLane {
+  lane: number;
+  lanes: number;
+}
+
+/** Where a lane starts, as a share of the column's width. */
+function laneLeft(placed: InLane): string {
+  return `${(placed.lane / placed.lanes) * 100}%`;
+}
+
+/** A lane's width, as a share of the column's. */
+function laneWidth(placed: InLane): string {
+  return `${100 / placed.lanes}%`;
 }
 
 function offsetOf(instant: Date, view: TimeRange) {
@@ -82,11 +97,8 @@ export function DayColumn(props: {
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
   const { day, view, timeZone } = props;
-  const cards = new Map(day.cards.map((card) => [keyOf(card), card]));
-  const placed = layoutColumn(
-    day.cards.map((card) => ({ id: keyOf(card), start: card.start, end: card.end })),
-    view,
-  );
+  const cards = new Map(day.cards.map((card) => [card.id, card]));
+  const placed = layoutDay(view, day.freeStarts, day.cards);
 
   return (
     <div className="min-w-36 flex-1 border-r last:border-r-0">
@@ -95,7 +107,7 @@ export function DayColumn(props: {
         className="relative h-(--height)"
         style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
       >
-        {layoutCells(view, day.freeStarts).map(({ start, top, height, free }) => (
+        {placed.cells.map(({ start, top, height, free, lane, lanes }) => (
           <div
             key={top}
             className={cn(
@@ -107,7 +119,13 @@ export function DayColumn(props: {
             {free.length > 0 && (
               <Button
                 variant="ghost"
-                className="size-full"
+                className="absolute left-(--left) h-full w-(--width)"
+                style={
+                  {
+                    "--left": laneLeft({ lane, lanes }),
+                    "--width": laneWidth({ lane, lanes }),
+                  } as CSSProperties
+                }
                 aria-label={`Dar turno a las ${localTime(start, timeZone)}`}
                 onClick={() =>
                   props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
@@ -116,7 +134,7 @@ export function DayColumn(props: {
             )}
           </div>
         ))}
-        {placed.map((block) => (
+        {placed.cards.map((block) => (
           <PlacedCard
             key={block.id}
             block={block}
@@ -130,10 +148,6 @@ export function DayColumn(props: {
   );
 }
 
-function keyOf(card: CalendarCard): string {
-  return card.kind === "busy" ? card.key : card.id;
-}
-
 /** A card in its lane: an appointment, or another practitioner's busy block. */
 function PlacedCard(props: {
   block: PlacedBlock;
@@ -145,8 +159,8 @@ function PlacedCard(props: {
   const style = {
     "--top": px(block.top),
     "--height": px(block.height),
-    "--left": `${(block.lane / block.lanes) * 100}%`,
-    "--width": `${100 / block.lanes}%`,
+    "--left": laneLeft(block),
+    "--width": laneWidth(block),
   } as CSSProperties;
   const placement =
     "absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs";

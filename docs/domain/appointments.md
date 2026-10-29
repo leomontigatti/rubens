@@ -91,7 +91,10 @@ zone, with the previous and next week and a date to jump to. It is filtered in
 this order: the room, required, from the active rooms grouped by office and
 opening on the first; then a practitioner, optional; then a medical service,
 optional, from the chosen practitioner's active ones or all of them, which
-implies its practitioner. Its columns are the days; there are no columns per
+implies its practitioner. The practitioners to filter by are those with a
+schedule or an appointment in the room that week; a filter the room's week
+cannot take (a deactivated medical service, a practitioner with nothing there)
+is ignored, never refused. Its columns are the days; there are no columns per
 practitioner, and no day or month view.
 
 Each day is a stack of 30-minute cells, with the times on the left. A cell is
@@ -102,7 +105,10 @@ cell is grey. Clicking a white cell books there, with the medical service filled
 in when it is filtered.
 
 Appointments are cards that never overlap: those at the same time (overbookings,
-a room for two, cancelled or no-show ones when shown) sit side by side. A card
+a room for two, cancelled or no-show ones when shown) sit side by side, and
+beside a white cell they meet, so its click stays reachable. A medical service
+filter narrows the cards to it. An appointment across midnight shows on both
+days. A card
 shows its practitioner's colour, which is what reception scans for and is chosen
 in the practitioner's staff settings, the time, the patient, the medical service
 and the status as an icon only. An overbooking is dashed and has its own mark.

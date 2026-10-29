@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, practitioner } from "#/db/schema/index.ts";
+import { appointment, medicalService, practitioner } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { BookingInput, CalendarWeekQuery } from "#/lib/appointments.ts";
 
@@ -66,6 +66,28 @@ async function book(overrides: Partial<BookingInput> = {}) {
   );
   if (!result.ok) {
     throw new Error(`bookAppointment failed: ${result.reason}`);
+  }
+  return result.appointment;
+}
+
+async function overbook(overrides: Partial<BookingInput> & { roomId?: string } = {}) {
+  const result = await asAppRole(db, (tx) =>
+    bookOverbooking(
+      world.receptionist,
+      {
+        patientId: maria.id,
+        practitionerId: world.juan.id,
+        medicalServiceId: juanService.id,
+        start: at("12:00"),
+        durationMinutes: 30,
+        roomId: shared.id,
+        ...overrides,
+      },
+      tx,
+    ),
+  );
+  if (!result.ok) {
+    throw new Error(`bookOverbooking failed: ${result.reason}`);
   }
   return result.appointment;
 }
@@ -222,7 +244,7 @@ describe("the calendar week of a room", () => {
     expect(week.days[0]!.cards).toEqual([
       {
         kind: "busy",
-        key: expect.any(String),
+        id: juans.id,
         start: at("12:00"),
         end: at("12:30"),
         practitionerId: world.juan.id,
@@ -231,7 +253,7 @@ describe("the calendar week of a room", () => {
       expect.objectContaining({ kind: "appointment", practitionerId: world.lucia.id }),
     ]);
     const sent = JSON.stringify(week.days[0]!.cards[0]);
-    for (const leak of [juans.id, maria.id, "María", "Trae estudios", juanService.id]) {
+    for (const leak of [maria.id, "María", "Trae estudios", juanService.id]) {
       expect(sent).not.toContain(leak);
     }
     // A practitioner books only for themselves.
@@ -304,15 +326,87 @@ describe("the calendar week of a room", () => {
     });
   });
 
-  it("refuses a medical service that does not exist", async () => {
-    const result = await asAppRole(db, (tx) =>
-      getCalendarWeek(
-        world.receptionist,
-        { roomId: shared.id, date: "2099-01-07", medicalServiceId: world.room.id },
-        tx,
-      ),
-    );
+  it("ignores a deactivated medical service, keeping the practitioner asked for", async () => {
+    await db
+      .update(medicalService)
+      .set({ active: false })
+      .where(eq(medicalService.id, luciaService.id));
 
-    expect(result).toEqual({ ok: false, reason: "notFound" });
+    const week = await weekOf(world.receptionist, {
+      practitionerId: world.lucia.id,
+      medicalServiceId: luciaService.id,
+    });
+
+    expect(week.filter).toEqual({ practitionerId: world.lucia.id, medicalServiceId: null });
+    expect(mondayFree(week)).toHaveLength(4);
+  });
+
+  it("ignores a practitioner and a medical service with nothing in the room that week", async () => {
+    const week = await weekOf(world.receptionist, {
+      roomId: world.room.id,
+      practitionerId: world.juan.id,
+      medicalServiceId: juanService.id,
+    });
+
+    expect(week.room.id).toBe(world.room.id);
+    expect(week.filter).toEqual({ practitionerId: null, medicalServiceId: null });
+  });
+
+  it("ignores a practitioner or a medical service that does not exist", async () => {
+    const week = await weekOf(world.receptionist, {
+      practitionerId: world.room.id,
+      medicalServiceId: world.room.id,
+    });
+
+    expect(week.filter).toEqual({ practitionerId: null, medicalServiceId: null });
+    expect(mondayFree(week)).toHaveLength(8);
+  });
+
+  it("narrows the cards to the medical service filtered by", async () => {
+    const { id } = await book();
+    const pedro = await world.addPatient("Pedro", "0351 15 555-4321");
+    await book({
+      patientId: pedro.id,
+      medicalServiceId: juanLongService.id,
+      start: at("13:00"),
+      durationMinutes: 60,
+    });
+
+    const week = await weekOf(world.receptionist, { medicalServiceId: juanService.id });
+
+    expect(week.days[0]!.cards).toEqual([expect.objectContaining({ id })]);
+  });
+
+  it("keys each busy block by its appointment, so two overbookings at one start stay two", async () => {
+    const first = await overbook();
+    const pedro = await world.addPatient("Pedro", "0351 15 555-4321");
+    const second = await overbook({ patientId: pedro.id });
+
+    const week = await weekOf(world.lucia.actor);
+
+    expect(week.days[0]!.cards.map((card) => card.id).sort()).toEqual([first.id, second.id].sort());
+  });
+
+  it("draws an appointment across midnight on both days, in both weeks", async () => {
+    // Sunday 2099-01-11 23:30 to Monday 00:30 in Buenos Aires.
+    const { id } = await overbook({ start: at("02:30", "2099-01-12"), durationMinutes: 60 });
+
+    const sunday = (await weekOf(world.receptionist)).days[6]!;
+    const monday = (await weekOf(world.receptionist, { date: "2099-01-12" })).days[0]!;
+
+    expect(sunday.cards).toEqual([expect.objectContaining({ id })]);
+    expect(monday.cards).toEqual([expect.objectContaining({ id })]);
+  });
+
+  it("lists a practitioner with an appointment in the room that week but no schedule there", async () => {
+    await overbook({ roomId: world.otherRoom.id, start: at("15:00") });
+
+    const week = await weekOf(world.receptionist, { roomId: world.otherRoom.id });
+
+    expect(week.practitioners.map((one) => one.id)).toEqual([world.juan.id]);
+    expect(week.medicalServices.map((one) => one.id).sort()).toEqual(
+      [juanService.id, juanLongService.id].sort(),
+    );
+    expect(week.days.every((day) => day.freeStarts.length === 0)).toBe(true);
   });
 });
