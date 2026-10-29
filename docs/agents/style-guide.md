@@ -81,3 +81,15 @@ Which channel carries a message, and where the user lands.
 - **A message is about one submit or one state.** A refusal of what was just submitted goes
   with the form; a state of the record (inactive, incomplete data) is a badge or an `Alert` on
   the page, shown to everyone who sees the record, whatever their role.
+
+## An action that cannot run
+
+What decides the treatment is whether the user can do anything about it. A button is never
+disabled with no reason beside it: the user cannot tell why, and a disabled button is skipped by
+the keyboard and by screen readers.
+
+| Why it cannot run                                     | Treatment                                                                                                          |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| The user's role never allows it                       | Hidden.                                                                                                            |
+| A state of the record that never reverts (it started) | Hidden: a schedule's `Eliminar` shows only before its first date. Where people look for it, a short note says why. |
+| A state the user can clear                            | Enabled; on use, an `Alert` or dialog lists every reason and what unblocks it. The server refuses all the same.    |
