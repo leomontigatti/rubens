@@ -88,6 +88,20 @@ export interface AvailabilitySearch {
   duracion?: number;
 }
 
+/** The query form's message for what it is missing, `null` when it can be viewed. */
+export function availabilitySearchProblem(search: AvailabilitySearch): string | null {
+  if (!search.profesional) {
+    return "Elegí un profesional.";
+  }
+  if (!search.fecha) {
+    return "Ingresá la fecha.";
+  }
+  if (search.duracion === undefined) {
+    return "Ingresá una duración de 1 a 720 minutos.";
+  }
+  return null;
+}
+
 /** What the screen shows, with its defaults: the only practitioner, today, a day, 30 minutes. */
 export function availabilityViewOf(
   search: AvailabilitySearch,

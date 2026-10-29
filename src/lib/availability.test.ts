@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   availabilityQuerySchema,
+  availabilitySearchProblem,
   availabilityViewOf,
   findFreeStarts,
   freeStartsByDay,
@@ -358,5 +359,23 @@ describe("the screen's view", () => {
       lastDate: "2099-01-11",
       durationMinutes: 45,
     });
+  });
+});
+
+// The query form's own check, since noValidate turns off the browser's: without
+// it an incomplete query navigates and silently falls back to the defaults.
+describe("availabilitySearchProblem", () => {
+  const complete = { profesional: "p", fecha: "2099-01-05", duracion: 30 };
+
+  it("accepts a complete query", () => {
+    expect(availabilitySearchProblem(complete)).toBeNull();
+  });
+
+  it.each([
+    ["the practitioner", { ...complete, profesional: undefined }],
+    ["the date", { ...complete, fecha: undefined }],
+    ["the duration", { ...complete, duracion: undefined }],
+  ])("refuses a query missing %s", (_missing, search) => {
+    expect(availabilitySearchProblem(search)).not.toBeNull();
   });
 });

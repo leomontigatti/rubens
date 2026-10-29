@@ -73,7 +73,7 @@ export function EntryForm<R extends string>(props: {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
       {props.children}
       <RangeEntryFields idPrefix={props.idPrefix} initial={props.initial} />
