@@ -73,8 +73,14 @@ const refusalMessages = {
   officeInactive: "La sede de ese consultorio está desactivada.",
 };
 
-/** Why the room has no space: who holds it at that time. */
+/**
+ * Why the room has no space: who holds it at that time. None when the
+ * appointment that took it was gone by the time the server looked again.
+ */
 export function roomFullMessage(occupants: readonly RoomOccupant[], timeZone: string): string {
+  if (occupants.length === 0) {
+    return "El consultorio se ocupó a esa hora mientras guardabas. Probá de nuevo.";
+  }
   const held = occupants.map(
     (occupant) =>
       `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${localTime(occupant.start, timeZone)} a ${localTime(occupant.end, timeZone)})`,
