@@ -1,24 +1,23 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 
-import { asAppRole, createTestDatabase } from "./harness.ts";
+import { asAppRole, sharedTestDatabase } from "./harness.ts";
 import type { TestDatabase } from "./harness.ts";
 
 // ADR-0003: the audit log is append-only for the app. The app role inserts and
 // reads entries; an UPDATE or DELETE fails on privileges, whatever the tenant.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 
 const actor: Actor = { organizationId: "org-a", userId: "user-a", roles: ["admin"] };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   await db.execute(sql`
     insert into rubens.organization (id, name, slug, created_at) values ('org-a', 'A', 'a', now())
   `);
@@ -37,10 +36,6 @@ beforeEach(async () => {
       tx,
     ),
   );
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 const asTenant = (work: Parameters<typeof withTenant>[1]) =>

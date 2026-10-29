@@ -1,12 +1,11 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { timeOff } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 import { createSchedulingWorld } from "#/test-support/scheduling.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { listSchedulePractitioners } from "#/server/schedules.ts";
 import { createTimeOff, deleteTimeOff, listTimeOff, updateTimeOff } from "#/server/time-off.ts";
@@ -14,7 +13,7 @@ import { createTimeOff, deleteTimeOff, listTimeOff, updateTimeOff } from "#/serv
 // Every service call runs as the app role. Time off is read in the
 // organization's default zone, Buenos Aires (UTC-3).
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: Awaited<ReturnType<typeof createSchedulingWorld>>;
 let practitionerId: string;
@@ -24,14 +23,10 @@ const vacation: RangeEntry = { kind: "days", firstDate: "2099-01-05", lastDate: 
 const afternoon: RangeEntry = { kind: "hours", start: "2099-01-12T14:00", end: "2099-01-12T18:00" };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createSchedulingWorld(db);
   practitioner = (await world.addStaff("Juan Gómez")).actor;
   practitionerId = await practitionerIdOf("Juan Gómez");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 async function practitionerIdOf(displayName: string) {

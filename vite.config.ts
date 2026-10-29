@@ -128,6 +128,11 @@ export default defineConfig({
           // migrated in globalSetup; files run in parallel, tests in a file
           // run serially (tests/db/README.md).
           fileParallelism: true,
+          // Files in a worker share loaded modules, so the app and Better Auth
+          // load once per worker instead of once per file. A test that mocks a
+          // module, stubs a global or fakes timers undoes it in its own
+          // `afterEach`, or the next file in the worker inherits it.
+          isolate: false,
           globalSetup: ["tests/db/global-setup.ts"],
         },
       },

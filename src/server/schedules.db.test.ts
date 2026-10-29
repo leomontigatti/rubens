@@ -1,12 +1,11 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import type { Actor } from "#/lib/access.ts";
 import { shiftDate, today } from "#/lib/schedules.ts";
 import type { ScheduleChange, ScheduleInput } from "#/lib/schedules.ts";
 import { createSchedulingWorld } from "#/test-support/scheduling.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { setOfficeActive, setRoomActive } from "#/server/offices.ts";
 import { setMemberActive } from "#/server/staff.ts";
@@ -23,7 +22,7 @@ import {
 // the app. Dates far in the future or the past keep "today" out of the way
 // unless a test is about it; 2099-01-05 and 2020-01-06 are Mondays.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: Awaited<ReturnType<typeof createSchedulingWorld>>;
 let roomId: string;
@@ -31,17 +30,13 @@ let practitionerId: string;
 let practitioner: Actor;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createSchedulingWorld(db);
   const office = await world.addOffice();
   roomId = (await world.addRoom(office.id)).id;
   const staff = await world.addStaff("Juan Gómez");
   practitioner = staff.actor;
   practitionerId = await practitionerIdOf("Juan Gómez");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 async function practitionerIdOf(displayName: string) {

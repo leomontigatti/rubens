@@ -12,8 +12,8 @@ pnpm test:unit <path>...        # the unit test files your change touches
 pnpm test:db <path>...          # the DB test files your change touches, when it touches the database
 ```
 
-Run this once, after your edits. Do not run `pnpm test` in a session: it runs both
-suites in series, and CI runs them in parallel. `pnpm check` prints only the
+Run this once, after your edits. Do not run `pnpm test` in a session: it runs the
+both suites in series, and CI runs them again. `pnpm check` prints only the
 failures, each at its file and line; fix them and rerun it. Never pipe its output
 into `tail` or `head`, which hides the failure.
 
@@ -75,5 +75,5 @@ and CI does not run it.
 ## Why not `pnpm test`
 
 `pnpm test` is `test:unit && test:db`, in series. The DB suite is most of the
-cost, and CI splits the work across jobs. A session runs the files it touched and
+cost, and CI runs both on every PR that changes code. A session runs the files it touched and
 leaves the rest to CI.
