@@ -63,9 +63,10 @@ export const appointmentCanceller = rubens.enum("appointment_canceller", appoint
 
 /**
  * A patient's booked time with one practitioner (ui: "Turno"). A practitioner
- * never holds two active appointments at once unless one is an overbooking:
- * the exclusion constraint `appointment_practitioner_overlap` is raw SQL in
- * migration 0013, which Drizzle cannot declare.
+ * never holds two active appointments at once unless one is an overbooking,
+ * and two practitioners never hold one room at once: the exclusion
+ * constraints `appointment_practitioner_overlap` and `appointment_room_overlap`
+ * are raw SQL in migration 0013, which Drizzle cannot declare.
  */
 export const appointment = rubens.table(
   "appointment",

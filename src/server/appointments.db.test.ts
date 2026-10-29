@@ -305,11 +305,68 @@ describe("the database guarantee against double booking", () => {
     expect(await insertOver({})).toEqual({ ok: false, reason: "timeTaken" });
   });
 
+  it("turns another practitioner's overlap in the same room into the time-taken result, overbooking or not", async () => {
+    const lucias = { practitionerId: world.lucia.id, medicalServiceId: luciaService.id };
+
+    expect(await insertOver(lucias)).toEqual({ ok: false, reason: "timeTaken" });
+    expect(await insertOver({ ...lucias, overbooking: true })).toEqual({
+      ok: false,
+      reason: "timeTaken",
+    });
+    expect(await insertOver({ ...lucias, roomId: world.otherRoom.id })).toMatchObject({
+      ok: true,
+    });
+  });
+
   it("lets an overbooking and a cancelled appointment overlap", async () => {
     expect(await insertOver({ overbooking: true })).toMatchObject({ ok: true });
     await client.query("delete from rubens.appointment where overbooking");
     expect(await insertOver({ status: "cancelled", cancelledBy: "patient" })).toMatchObject({
       ok: true,
     });
+  });
+});
+
+describe("a room two practitioners share", () => {
+  // Both work there from 11:00 to 13:00 too, 14:00Z to 16:00Z.
+  beforeEach(async () => {
+    const shared = await world.addRoom(world.office.id, "Consultorio doble", 2);
+    for (const practitionerId of [world.juan.id, world.lucia.id]) {
+      await world.addSchedule({
+        practitionerId,
+        roomId: shared.id,
+        startTime: "11:00",
+        endTime: "13:00",
+      });
+    }
+    await booked(world.receptionist, booking({ start: at("14:00") }));
+  });
+
+  it("offers no other practitioner the time an appointment there holds, and refuses booking it", async () => {
+    const pedro = await world.addPatient("Pedro", "0351 15 555-4321");
+    const lucias = booking({
+      patientId: pedro.id,
+      practitionerId: world.lucia.id,
+      medicalServiceId: luciaService.id,
+      start: at("14:00"),
+    });
+
+    const availability = await asAppRole(db, (tx) =>
+      getAvailability(
+        world.admin,
+        {
+          practitionerId: world.lucia.id,
+          firstDate: "2099-01-05",
+          lastDate: "2099-01-05",
+          durationMinutes: 30,
+        },
+        tx,
+      ),
+    );
+    const offered = availability.ok ? availability.freeStarts.map((free) => +free.start) : [];
+
+    expect(offered).toContain(+at("14:30"));
+    expect(offered).not.toContain(+at("14:00"));
+    expect(await book(world.receptionist, lucias)).toEqual({ ok: false, reason: "notFree" });
   });
 });

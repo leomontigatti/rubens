@@ -33,9 +33,11 @@ import { findPractitioner } from "#/server/schedules.ts";
 
 // Appointments (ui: "Turno"). Reception and admins book for any practitioner,
 // a practitioner for themselves. A booking is taken only at a free time, in
-// the room of the schedule it falls in. Two bookings racing for one time are
-// settled by the exclusion constraint `appointment_practitioner_overlap`
-// (migration 0013): the loser gets "timeTaken" with fresh free times. Every
+// the room of the schedule it falls in, never over another practitioner's
+// appointment there. Two bookings racing for one time are settled by the
+// exclusion constraints `appointment_practitioner_overlap` and
+// `appointment_room_overlap` (migration 0013): the loser gets "timeTaken"
+// with fresh free times. Every
 // booking is written to the audit log, about its patient. `database` is for
 // tests, which pass a transaction running as the app role.
 //
@@ -72,7 +74,7 @@ const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 
-const overlapConstraint = "appointment_practitioner_overlap";
+const overlapConstraints = ["appointment_practitioner_overlap", "appointment_room_overlap"];
 
 /** Whether the actor may book at all, before any row is read. */
 export function booksForSome(actor: Actor): boolean {
@@ -103,7 +105,7 @@ export async function insertAppointment(
     );
     return { ok: true, id: created!.id };
   } catch (error) {
-    if (violates(error, overlapConstraint)) {
+    if (overlapConstraints.some((name) => violates(error, name))) {
       return { ok: false, reason: "timeTaken" };
     }
     throw error;
@@ -140,7 +142,7 @@ export async function updateAppointment(
     );
     return { ok: true };
   } catch (error) {
-    if (violates(error, overlapConstraint)) {
+    if (overlapConstraints.some((name) => violates(error, name))) {
       return { ok: false, reason: "timeTaken" };
     }
     throw error;

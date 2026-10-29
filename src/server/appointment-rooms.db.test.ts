@@ -292,6 +292,34 @@ describe("an overbooking outside the practitioner's schedules", () => {
     });
   });
 
+  it("is refused over another practitioner's appointment in a room they share, naming it", async () => {
+    // "Lucía" works in "Consultorio 4" too, where Juan's overbooking is.
+    await world.addSchedule({
+      practitionerId: world.lucia.id,
+      roomId: double.id,
+      startTime: "11:00",
+      endTime: "13:00",
+    });
+    await overbooked(overbooking({ start: at("14:30"), roomId: double.id }));
+
+    expect(
+      await overbook(
+        world.receptionist,
+        overbooking({
+          patientId: maria.id,
+          practitionerId: world.lucia.id,
+          medicalServiceId: luciaService.id,
+          start: at("14:30"),
+          roomId: double.id,
+        }),
+      ),
+    ).toMatchObject({
+      ok: false,
+      reason: "roomFull",
+      occupants: [{ practitionerName: "Juan Gómez", kind: "appointment" }],
+    });
+  });
+
   it("adds no practitioner on top of their own appointment in that room", async () => {
     await overbooked(overbooking({ start: at("15:00"), roomId: third.id }));
 

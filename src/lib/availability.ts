@@ -37,6 +37,8 @@ export interface AvailabilityInput {
   closures: readonly AvailabilityClosure[];
   /** The practitioner's active appointments, overbookings included. */
   busy: readonly TimeRange[];
+  /** Other practitioners' active appointments in the schedules' rooms, which hold the room. */
+  roomBusy: readonly { roomId: string; during: TimeRange }[];
   gridMinutes: number;
   window: TimeRange;
   durationMinutes: number;
@@ -247,7 +249,8 @@ function gridSpans(
  * The free starts inside the window, in time order. A start is free when it
  * lies on the grid counted from local midnight in its office's zone, the
  * whole duration fits inside one occurrence of a schedule, and that span meets
- * no time off, closure or busy range.
+ * no time off, closure or busy range, nor another practitioner's appointment
+ * in the schedule's room.
  */
 export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
   const { window } = input;
@@ -259,6 +262,9 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
           .filter(({ officeId }) => officeId === null || officeId === schedule.officeId)
           .map(({ during }) => during),
         ...input.busy,
+        ...input.roomBusy
+          .filter(({ roomId }) => roomId === schedule.roomId)
+          .map(({ during }) => during),
       ];
       const isFree = (span: TimeRange) =>
         span.start >= window.start &&

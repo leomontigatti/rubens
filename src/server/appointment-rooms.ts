@@ -122,7 +122,8 @@ async function findPresences(tx: Transaction, roomId: string, span: TimeRange, t
 }
 
 /**
- * Whether the room has space for the practitioner during `span`. Locks the
+ * Whether the room has space for the practitioner during `span`: no other
+ * practitioner's appointment there meets it, and its capacity holds them. Locks the
  * room row for the rest of the transaction, so two checks of one room run one
  * after the other. `no key update` leaves the key-share lock an appointment's
  * foreign key takes free: a plain booking never waits on this lock, which
@@ -156,7 +157,16 @@ export async function checkRoomSpace(
     return { ok: false, reason: "roomInactive" };
   }
   const presences = await findPresences(tx, roomId, span, target.timeZone);
-  const crowding = findCrowding(span, practitionerId, presences, target.capacity);
+  // Another practitioner's appointment holds the room whatever its capacity.
+  const held = presences.filter(
+    (presence) =>
+      presence.kind === "appointment" &&
+      presence.practitionerId !== practitionerId &&
+      presence.start < span.end &&
+      span.start < presence.end,
+  );
+  const crowding =
+    held.length > 0 ? held : findCrowding(span, practitionerId, presences, target.capacity);
   if (crowding) {
     const occupants = crowding
       .map(({ practitionerName, kind, start, end }) => ({ practitionerName, kind, start, end }))

@@ -33,6 +33,7 @@ function input(overrides: Partial<AvailabilityInput>): AvailabilityInput {
     timeOff: [],
     closures: [],
     busy: [],
+    roomBusy: [],
     gridMinutes: 15,
     window: { start: new Date("2099-01-05T03:00:00Z"), end: new Date("2099-01-06T03:00:00Z") },
     durationMinutes: 15,
@@ -191,6 +192,19 @@ describe("time off, closures and busy ranges", () => {
       "2099-01-05T12:30:00.000Z",
       "2099-01-05T12:45:00.000Z",
     ]);
+  });
+
+  it("skips another practitioner's appointment in the schedule's room, not in another room", () => {
+    const during = {
+      start: new Date("2099-01-05T12:15:00Z"),
+      end: new Date("2099-01-05T12:45:00Z"),
+    };
+
+    expect(starts({ roomBusy: [{ roomId: "room-1", during }] })).toEqual([
+      "2099-01-05T12:00:00.000Z",
+      "2099-01-05T12:45:00.000Z",
+    ]);
+    expect(starts({ roomBusy: [{ roomId: "room-2", during }] })).toHaveLength(4);
   });
 });
 

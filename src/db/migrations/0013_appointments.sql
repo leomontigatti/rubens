@@ -36,6 +36,12 @@ CREATE INDEX "appointment_room_id_idx" ON "rubens"."appointment" USING btree ("r
 ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_practitioner_overlap"
   EXCLUDE USING gist ("practitioner_id" WITH =, "during" WITH &&)
   WHERE (NOT "overbooking" AND "status" IN ('booked', 'confirmed', 'checkedIn', 'attended'));--> statement-breakpoint
+-- Practitioners who share a room never hold it at once: two active
+-- appointments of different practitioners never overlap there, overbookings
+-- included. The services report it as "time already taken" too.
+ALTER TABLE "rubens"."appointment" ADD CONSTRAINT "appointment_room_overlap"
+  EXCLUDE USING gist ("room_id" WITH =, "practitioner_id" WITH <>, "during" WITH &&)
+  WHERE ("status" IN ('booked', 'confirmed', 'checkedIn', 'attended'));--> statement-breakpoint
 -- Row-level security, as for `office` (0003).
 ALTER TABLE "rubens"."appointment" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "rubens"."appointment" FORCE ROW LEVEL SECURITY;--> statement-breakpoint

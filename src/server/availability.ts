@@ -196,10 +196,26 @@ export async function findFreeTimes(
         excludeAppointmentId === undefined ? undefined : ne(appointment.id, excludeAppointmentId),
       ),
     );
+  const rooms = [...new Set(schedules.map((row) => row.roomId))];
+  const roomBusy =
+    rooms.length === 0
+      ? []
+      : await tx
+          .select({ roomId: appointment.roomId, during: appointment.during })
+          .from(appointment)
+          .where(
+            and(
+              inArray(appointment.roomId, rooms),
+              ne(appointment.practitionerId, practitioner.id),
+              inArray(appointment.status, [...activeAppointmentStatuses]),
+              meets(appointment.during, reach),
+            ),
+          );
   const free = findFreeStarts({
     schedules,
     ...blocking,
     busy: busyRows.map((row) => row.during),
+    roomBusy,
     gridMinutes: practitioner.gridMinutes,
     window,
     durationMinutes,

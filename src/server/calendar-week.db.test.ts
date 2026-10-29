@@ -142,8 +142,8 @@ describe("the calendar week of a room", () => {
 
     const week = await weekOf(world.receptionist);
 
+    // Juan's appointment holds the shared room at 12:00, for `Lucía` too.
     expect(mondayFree(week)).toEqual([
-      "12:00 Lucía Díaz",
       "12:30 Juan Gómez",
       "12:30 Lucía Díaz",
       "13:00 Juan Gómez",
@@ -171,9 +171,7 @@ describe("the calendar week of a room", () => {
 
     const week = await weekOf(world.receptionist, { practitionerId: world.lucia.id });
 
-    expect(mondayFree(week)).toEqual(
-      ["12:00", "12:30", "13:00", "13:30"].map((t) => `${t} Lucía Díaz`),
-    );
+    expect(mondayFree(week)).toEqual(["12:30", "13:00", "13:30"].map((t) => `${t} Lucía Díaz`));
     expect(week.days[0]!.cards).toEqual([]);
     expect(week.filter).toEqual({ practitionerId: world.lucia.id, medicalServiceId: null });
   });

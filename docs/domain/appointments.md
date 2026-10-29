@@ -31,6 +31,13 @@ outside the practitioner's schedules needs a room picked explicitly, under the
 same rule. So a room never holds more practitioners than its capacity, for
 appointments as for schedules.
 
+Practitioners can share a room, but never at once: while one practitioner holds
+an appointment there, no other practitioner can book, overbook or move an
+appointment into that time, and their cells there turn grey. Only the
+appointment's own practitioner can add an overbooking over it, or reception on
+their behalf. The database enforces it (`appointment_room_overlap`), so two
+bookings racing for a shared room's time cannot both win.
+
 Booking warns, without blocking, when the patient already has an appointment that
 overlaps, or one the same day with another practitioner: back-to-back visits with
 two practitioners are legitimate; booking the same person twice is the mistake.
@@ -104,8 +111,8 @@ medical service filtered, when its duration fits from that start. Every other
 cell is grey. Clicking a white cell books there, with the medical service filled
 in when it is filtered.
 
-Appointments are cards that never overlap: those at the same time (overbookings,
-a room for two, cancelled or no-show ones when shown) sit side by side, and
+Appointments are cards that never overlap: those at the same time (a
+practitioner's overbookings, cancelled or no-show ones when shown) sit side by side, and
 beside a white cell they meet, so its click stays reachable. A medical service
 filter narrows the cards to it. An appointment across midnight shows on both
 days. A card
