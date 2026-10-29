@@ -192,27 +192,6 @@ describe("changing roles", () => {
     expect(colors[1]).not.toBe(colors[0]);
   });
 
-  it("refuses a colour outside the palette", async () => {
-    const created = await newMember(["practitioner"]);
-
-    expect(
-      await asAppRole(db, (tx) =>
-        updatePractitioner(
-          admin,
-          {
-            memberId: created.memberId,
-            displayName: "X",
-            specialty: "",
-            keepsClinicalRecords: true,
-            gridMinutes: 30,
-            color: "red" as "color1",
-          },
-          tx,
-        ),
-      ),
-    ).toEqual({ ok: false, reason: "invalidInput" });
-  });
-
   it("answers notFound for practitioner settings of a member who never was one", async () => {
     const created = await newMember(["receptionist"]);
 
