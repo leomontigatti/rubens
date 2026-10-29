@@ -62,10 +62,27 @@ export default async function setup(project: TestProject) {
   return removeDirectory;
 }
 
+/**
+ * Every test loads this tarball into a new instance, and unpacking it is most
+ * of what a test costs, so it carries as little as it can: a 1 MB WAL segment
+ * instead of 16 MB, and no `template0` or `template1`, which no test creates a
+ * database from. That takes it from 42 MB to under 18.
+ */
 async function writeMigratedDataDir(file: string) {
-  const client = await PGlite.create({ extensions: testExtensions });
+  const client = await PGlite.create({
+    extensions: testExtensions,
+    initDbStartParams: ["--wal-segsize=1"],
+  });
   try {
     await migrate(drizzle(client), { migrationsFolder });
+    // One statement per call: DROP DATABASE cannot run in the implicit
+    // transaction a multi-statement `exec` opens.
+    await client.query(
+      "update pg_database set datistemplate = false where datname in ('template0', 'template1')",
+    );
+    await client.query("drop database template0");
+    await client.query("drop database template1");
+    await client.query("checkpoint");
     const dump = await client.dumpDataDir("none");
     await writeFile(file, Buffer.from(await dump.arrayBuffer()));
   } finally {

@@ -1,19 +1,14 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { asAppRole, createTestDatabase, rowsOf } from "./harness.ts";
+import { asAppRole, sharedTestDatabase, rowsOf } from "./harness.ts";
 import type { TestDatabase } from "./harness.ts";
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
-});
-
-afterEach(async () => {
-  await client.close();
+  db = await testDatabase.reset();
 });
 
 describe("migrations on PGlite", () => {

@@ -128,6 +128,20 @@ export default defineConfig({
           // migrated in globalSetup; files run in parallel, tests in a file
           // run serially (tests/db/README.md).
           fileParallelism: true,
+          // Locally, two workers: on the 4-core dev laptop more run no faster
+          // (7 took 32 s, 2 took 31 s) but hold more memory (4.1 GB against
+          // 2.4), and agent threads share one memory limit. CI keeps the
+          // default, one fewer than the runner's CPUs.
+          maxWorkers: process.env.CI ? undefined : 2,
+          // Vitest refuses one run over projects with different `maxWorkers`
+          // in the same group, so a run over both projects runs this one
+          // after `unit`.
+          sequence: { groupOrder: 1 },
+          // Files in a worker share loaded modules, so the app and Better Auth
+          // load once per worker instead of once per file. A test that mocks a
+          // module, stubs a global or fakes timers undoes it in its own
+          // `afterEach`, or the next file in the worker inherits it.
+          isolate: false,
           globalSetup: ["tests/db/global-setup.ts"],
         },
       },

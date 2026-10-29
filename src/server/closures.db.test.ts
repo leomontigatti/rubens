@@ -1,12 +1,11 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { closure } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 import { createSchedulingWorld } from "#/test-support/scheduling.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { createClosure, deleteClosure, listClosures, updateClosure } from "#/server/closures.ts";
 
@@ -14,7 +13,7 @@ import { createClosure, deleteClosure, listClosures, updateClosure } from "#/ser
 // office's zone; Madrid (UTC+1 in January) tells it apart from the
 // organization's default, Buenos Aires (UTC-3).
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: Awaited<ReturnType<typeof createSchedulingWorld>>;
 let madridId: string;
@@ -27,13 +26,9 @@ const fridayAfternoon: RangeEntry = {
 };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createSchedulingWorld(db);
   madridId = (await world.addOffice("Sede Madrid", "Europe/Madrid")).id;
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function create(actor: Actor, officeId: string | null, entry: RangeEntry) {
