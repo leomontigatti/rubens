@@ -14,7 +14,7 @@ import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
-import { bookAppointment, getOfficeDay } from "#/server/appointments.ts";
+import { bookAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 import { createClosure } from "#/server/closures.ts";
 import { createSchedule, listSchedulePractitioners } from "#/server/schedules.ts";
@@ -436,26 +436,6 @@ describe("who books overbookings and moves appointments", () => {
         patientId: pedro.id,
         after: expect.objectContaining({ roomId: world.room.id, overbooking: true }),
       }),
-    ]);
-  });
-});
-
-describe("the office day view", () => {
-  it("lists the office's rooms and marks an overbooking", async () => {
-    await overbooked(overbooking({ start: at("15:00"), roomId: third.id }));
-
-    const day = await asAppRole(db, (tx) =>
-      getOfficeDay(world.receptionist, { officeId: world.office.id, date: "2099-01-05" }, tx),
-    );
-
-    expect(day.ok && day.rooms.map((room) => room.name)).toEqual([
-      "Consultorio 1",
-      "Consultorio 2",
-      "Consultorio 3",
-      "Consultorio 4",
-    ]);
-    expect(day.ok && day.columns[0]!.appointments).toEqual([
-      expect.objectContaining({ overbooking: true, roomName: "Consultorio 3" }),
     ]);
   });
 });

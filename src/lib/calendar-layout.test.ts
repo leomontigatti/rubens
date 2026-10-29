@@ -64,20 +64,20 @@ describe("laying out one column's day", () => {
     ]);
   });
 
-  it("gives a faded block the full width and no lane, so the blocks it overlaps keep theirs", () => {
+  it("gives a cancelled block shown beside active ones its own lane, so no two overlap", () => {
     const placed = layoutColumn(
       [
         block("active", "09:00", "10:00"),
-        { ...block("cancelled", "09:00", "09:30"), faded: true },
+        block("cancelled", "09:00", "09:30"),
         block("next", "09:30", "10:30"),
       ],
       day,
     );
 
     expect(placed).toEqual([
-      { id: "cancelled", top: 60, height: 30, lane: 0, lanes: 1 },
-      { id: "active", top: 60, height: 60, lane: 0, lanes: 2 },
-      { id: "next", top: 90, height: 60, lane: 1, lanes: 2 },
+      { id: "cancelled", top: 60, height: 30, lane: 0, lanes: 2 },
+      { id: "active", top: 60, height: 60, lane: 1, lanes: 2 },
+      { id: "next", top: 90, height: 60, lane: 0, lanes: 2 },
     ]);
   });
 
@@ -169,27 +169,42 @@ describe("the hours a week view shows", () => {
   });
 });
 
-describe("a column's 30-minute cells", () => {
+describe("a day's 30-minute cells", () => {
   const view = { start: at("09:00"), end: at("11:00") };
 
   it("stacks the view in 30-minute cells by minutes from its start, none free without free starts", () => {
     expect(layoutCells(view, [])).toEqual([
-      { start: at("09:00"), top: 0, height: 30, free: null },
-      { start: at("09:30"), top: 30, height: 30, free: null },
-      { start: at("10:00"), top: 60, height: 30, free: null },
-      { start: at("10:30"), top: 90, height: 30, free: null },
+      { start: at("09:00"), top: 0, height: 30, free: [] },
+      { start: at("09:30"), top: 30, height: 30, free: [] },
+      { start: at("10:00"), top: 60, height: 30, free: [] },
+      { start: at("10:30"), top: 90, height: 30, free: [] },
     ]);
   });
 
   it("makes a cell free when a free start sits on its start, carrying it", () => {
-    const free = { start: at("09:30"), roomId: "room-1" };
+    const free = { start: at("09:30"), practitionerId: "ana" };
 
-    expect(layoutCells(view, [free]).map((cell) => cell.free)).toEqual([null, free, null, null]);
+    expect(layoutCells(view, [free]).map((cell) => cell.free)).toEqual([[], [free], [], []]);
+  });
+
+  it("carries every practitioner free on a cell's start, in the order given", () => {
+    const ana = { start: at("10:00"), practitionerId: "ana" };
+    const juan = { start: at("10:00"), practitionerId: "juan" };
+    const onlyJuan = { start: at("10:30"), practitionerId: "juan" };
+
+    expect(layoutCells(view, [ana, juan, onlyJuan]).map((cell) => cell.free)).toEqual([
+      [],
+      [],
+      [ana, juan],
+      [onlyJuan],
+    ]);
   });
 
   it("leaves a cell grey when its only free start is inside it, not on its start", () => {
     expect(
-      layoutCells(view, [{ start: at("09:15") }, { start: at("10:45") }]).some((cell) => cell.free),
+      layoutCells(view, [{ start: at("09:15") }, { start: at("10:45") }]).some(
+        (cell) => cell.free.length > 0,
+      ),
     ).toBe(false);
   });
 
@@ -198,7 +213,7 @@ describe("a column's 30-minute cells", () => {
       start: at("09:30"),
       top: 30,
       height: 15,
-      free: null,
+      free: [],
     });
   });
 });

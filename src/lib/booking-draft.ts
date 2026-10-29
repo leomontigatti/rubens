@@ -34,6 +34,8 @@ export interface BookingDraft {
   medicalService: { id: string; durationMinutes: number } | null;
   durationMinutes: number | null;
   start: PickedStart | null;
+  /** Set from a clicked cell: its start holds whichever free practitioner is chosen. */
+  startFixed: boolean;
   receptionNote: string;
   /** The patient warning the last attempt returned, until the time or patient changes. */
   warnings: BookingWarning[] | null;
@@ -57,20 +59,22 @@ export type BookingEvent =
   | { type: "failed"; error: string };
 
 /**
- * A new draft: from a clicked free time the practitioner and the start are
- * set; from "Nuevo turno", the only practitioner when there is one.
+ * A new draft, among `practitionerIds`, the only one when there is one: from
+ * a clicked free cell, those free there, with its start and the medical
+ * service the calendar is narrowed to; from "Nuevo turno", everyone.
  */
 export function initialBookingDraft(
-  slot: (PickedStart & { practitionerId: string }) | null,
+  slot: (PickedStart & { medicalService?: { id: string; durationMinutes: number } | null }) | null,
   practitionerIds: readonly string[],
 ): BookingDraft {
-  const onlyOne = practitionerIds.length === 1 ? practitionerIds[0]! : "";
+  const medicalService = slot?.medicalService ?? null;
   return {
     patientId: null,
-    practitionerId: slot?.practitionerId ?? onlyOne,
-    medicalService: null,
-    durationMinutes: null,
-    start: slot,
+    practitionerId: practitionerIds.length === 1 ? practitionerIds[0]! : "",
+    medicalService,
+    durationMinutes: medicalService?.durationMinutes ?? null,
+    start: slot && { start: slot.start, roomName: slot.roomName, timeZone: slot.timeZone },
+    startFixed: slot !== null,
     receptionNote: "",
     warnings: null,
     freshStarts: null,
@@ -85,14 +89,14 @@ export function bookingReducer(draft: BookingDraft, event: BookingEvent): Bookin
     case "patientPicked":
       return { ...draft, ...answered, patientId: event.patientId };
     case "practitionerChosen":
-      // A medical service and a start belong to one practitioner.
+      // A medical service and a picked start belong to one practitioner.
       return {
         ...draft,
         ...answered,
         practitionerId: event.practitionerId,
         medicalService: null,
         durationMinutes: null,
-        start: null,
+        start: draft.startFixed ? draft.start : null,
       };
     case "medicalServiceChosen":
       return {

@@ -1,6 +1,7 @@
 import * as z from "zod";
 
 import { durationMinutesSchema } from "#/lib/availability.ts";
+import { shiftDate, weekdayOf } from "#/lib/schedules.ts";
 
 /** Where an appointment stands (docs/domain/appointments.md § Statuses). */
 export const appointmentStatuses = [
@@ -73,70 +74,26 @@ export interface WarningConfirmation {
   confirmWarnings?: boolean;
 }
 
-/** The office and the local date the day view shows. */
-export const officeDayQuerySchema = z.object({
-  officeId: z.uuid(),
+/**
+ * What the calendar shows (docs/domain/appointments.md § Calendar): a room's
+ * week, Monday to Sunday, around a local date in the room's office's zone,
+ * narrowed to a practitioner or a medical service, which implies its
+ * practitioner. With no room, the first active one.
+ */
+export const calendarWeekQuerySchema = z.object({
+  roomId: z.uuid().optional(),
   date: z.iso.date(),
+  practitionerId: z.uuid().optional(),
+  medicalServiceId: z.uuid().optional(),
   /** Cancelled and no-show appointments are hidden unless asked for. */
   includeCancelledAndNoShow: z.boolean().default(false),
 });
 
-export type OfficeDayQuery = z.input<typeof officeDayQuerySchema>;
+export type CalendarWeekQuery = z.input<typeof calendarWeekQuerySchema>;
 
-/**
- * The practitioner and the first local date, in the organization's default
- * zone, of the seven days the week view shows.
- */
-export const practitionerWeekQuerySchema = z.object({
-  practitionerId: z.uuid(),
-  date: z.iso.date(),
-  /** Cancelled and no-show appointments are hidden unless asked for. */
-  includeCancelledAndNoShow: z.boolean().default(false),
-});
-
-export type PractitionerWeekQuery = z.input<typeof practitionerWeekQuerySchema>;
-
-/** The office and the local date the room view shows. */
-export const roomDayQuerySchema = officeDayQuerySchema.pick({ officeId: true, date: true });
-
-export type RoomDayQuery = z.input<typeof roomDayQuerySchema>;
-
-/** What the day view's URL asks for, each value already parsed. */
-export interface AgendaSearch {
-  sede?: string;
-  fecha?: string;
-}
-
-/** The office and date the day view shows, with their defaults: the first office, today. */
-export function agendaViewOf(
-  search: AgendaSearch,
-  offices: readonly { id: string }[],
-  today: string,
-): { officeId: string | null; date: string } {
-  return { officeId: search.sede ?? offices[0]?.id ?? null, date: search.fecha ?? today };
-}
-
-/** What the week view's URL asks for, each value already parsed. */
-export interface WeekSearch {
-  profesional?: string;
-  fecha?: string;
-  cancelados?: boolean;
-}
-
-/**
- * The practitioner and first date the week view shows, with their defaults:
- * the first practitioner, today, cancelled and no-show appointments hidden.
- */
-export function weekViewOf(
-  search: WeekSearch,
-  practitioners: readonly { id: string }[],
-  today: string,
-): { practitionerId: string | null; date: string; includeCancelledAndNoShow: boolean } {
-  return {
-    practitionerId: search.profesional ?? practitioners[0]?.id ?? null,
-    date: search.fecha ?? today,
-    includeCancelledAndNoShow: search.cancelados === true,
-  };
+/** The Monday of the week a local date falls in. */
+export function mondayOf(date: string): string {
+  return shiftDate(date, 1 - weekdayOf(date));
 }
 
 /** The status changes made by a button: every one but cancelling, which says who cancelled. */

@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
-import { medicalServiceColorClasses } from "#/lib/medical-services.ts";
+import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import type { OutsideWorkingTime } from "#/lib/availability.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
 import type { ToRescheduleEntry } from "#/server/to-reschedule.ts";
@@ -88,7 +88,7 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
   return (
     <li className="flex flex-wrap items-center gap-4 p-4">
       <div
-        className={cn("h-10 w-1 shrink-0 rounded-full", medicalServiceColorClasses[entry.color])}
+        className={cn("h-10 w-1 shrink-0 rounded-full", practitionerColorClasses[entry.color])}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
         <p className="font-medium">

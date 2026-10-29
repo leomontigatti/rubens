@@ -2198,13 +2198,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "color": {
-          "name": "color",
-          "type": "medical_service_color",
-          "typeSchema": "rubens",
-          "primaryKey": false,
-          "notNull": true
-        },
         "active": {
           "name": "active",
           "type": "boolean",
@@ -2313,17 +2306,6 @@
       "values": [
         "obraSocial",
         "prepaga"
-      ]
-    },
-    "rubens.medical_service_color": {
-      "name": "medical_service_color",
-      "schema": "rubens",
-      "values": [
-        "color1",
-        "color2",
-        "color3",
-        "color4",
-        "color5"
       ]
     }
   },

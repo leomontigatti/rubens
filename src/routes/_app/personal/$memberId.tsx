@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { cn } from "cn";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
@@ -9,6 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.t
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
+import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import {
+  practitionerColorClasses,
+  practitionerColorLabels,
+  practitionerColors,
+} from "#/lib/practitioner-colors.ts";
+import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { practitionerUpdateSchema, rolesChangeSchema } from "#/lib/staff.ts";
 import type { PractitionerUpdate } from "#/lib/staff.ts";
 import {
@@ -140,6 +148,7 @@ const practitionerFieldMessages: Record<keyof PractitionerUpdate, string> = {
   specialty: "La especialidad es demasiado larga.",
   keepsClinicalRecords: "Revisá los datos ingresados.",
   gridMinutes: "El intervalo tiene que ser un número de minutos entre 5 y 120.",
+  color: "Elegí un color.",
 };
 
 function PractitionerSection(props: { memberId: string; settings: PractitionerSettings }) {
@@ -155,6 +164,7 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
       specialty: form.get("specialty") as string,
       keepsClinicalRecords: form.get("keepsClinicalRecords") === "on",
       gridMinutes: Number(form.get("gridMinutes")),
+      color: form.get("color") as PractitionerColor,
     };
     const parsed = practitionerUpdateSchema.safeParse(update);
     if (!parsed.success) {
@@ -192,6 +202,7 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
             Los horarios libres empiezan cada tantos minutos, contados desde la medianoche.
           </p>
         </div>
+        <ColorField initial={settings.color} />
         <div className="flex items-center gap-2">
           {/* Keyed on the saved value: Base UI warns when an uncontrolled
               checkbox's default changes, as it does after a save reloads. */}
@@ -210,6 +221,34 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
         </div>
       </form>
     </Section>
+  );
+}
+
+/** The colour of the practitioner's appointments on the calendar, with its swatch. */
+function ColorField(props: { initial: PractitionerColor }) {
+  const [color, setColor] = useState(props.initial);
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="color">Color en la agenda</Label>
+      <div className="flex items-center gap-3">
+        <NativeSelect
+          id="color"
+          name="color"
+          value={color}
+          onChange={(event) => setColor(event.target.value as PractitionerColor)}
+        >
+          {practitionerColors.map((option) => (
+            <NativeSelectOption key={option} value={option}>
+              {practitionerColorLabels[option]}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <span
+          aria-hidden
+          className={cn("size-4 shrink-0 rounded-full", practitionerColorClasses[color])}
+        />
+      </div>
+    </div>
   );
 }
 

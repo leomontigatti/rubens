@@ -11,7 +11,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import { medicalServiceColors } from "#/lib/medical-services.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 
 import { organization } from "#/db/schema/auth.ts";
@@ -22,8 +21,6 @@ import { practitioner } from "#/db/schema/staff.ts";
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migrations (raw SQL, 0012 and 0013), as for every table with that column.
-
-export const medicalServiceColor = rubens.enum("medical_service_color", medicalServiceColors);
 
 /** A kind of visit a practitioner offers (ui: "Prestación"). */
 export const medicalService = rubens.table(
@@ -36,7 +33,6 @@ export const medicalService = rubens.table(
     practitionerId: uuid("practitioner_id").notNull(),
     name: text("name").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
-    color: medicalServiceColor("color").notNull(),
     // A medical service in use is deactivated, never deleted: it drops out of booking and
     // stays on its appointments.
     active: boolean("active").notNull().default(true),

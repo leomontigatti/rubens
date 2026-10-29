@@ -1,0 +1,418 @@
+import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import type * as z from "zod";
+
+import {
+  appointment,
+  medicalService,
+  member,
+  office,
+  practitioner,
+  room,
+  schedule,
+} from "#/db/schema/index.ts";
+import { withTenant } from "#/db/tenant.ts";
+import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
+import { actsForEveryone, parseRoles } from "#/lib/access.ts";
+import type { Actor } from "#/lib/access.ts";
+import {
+  activeAppointmentStatuses,
+  calendarWeekQuerySchema,
+  mondayOf,
+} from "#/lib/appointments.ts";
+import type { CalendarWeekQuery } from "#/lib/appointments.ts";
+import { occurrencesDuring } from "#/lib/availability.ts";
+import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
+import { shiftDate } from "#/lib/schedules.ts";
+import { toTimeRange } from "#/lib/time-ranges.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
+
+import {
+  booksForSome,
+  findFreeCells,
+  selectDayAppointments,
+  shownOnCalendar,
+  toDayAppointment,
+} from "#/server/appointments.ts";
+import type { DayAppointment } from "#/server/appointments.ts";
+import { meets } from "#/server/availability.ts";
+
+// The calendar (docs/domain/appointments.md § Calendar): one room's week,
+// Monday to Sunday in its office's zone, narrowed to a practitioner or a
+// medical service. Its free cells are those a matching practitioner the actor
+// books for can be booked from. A practitioner who does not book for everyone
+// gets other practitioners' appointments as busy blocks, with no patient
+// data. `database` is for tests, which pass a transaction running as the app
+// role.
+//
+// `member` is Better Auth's table and has no row-level security (PRD #16), so
+// every query on it names the actor's organization itself.
+
+/** An appointment drawn in full: the viewer's own, or any for reception and admins. */
+export type CalendarAppointment = DayAppointment & { kind: "appointment" };
+
+/** Another practitioner's active appointment, as a practitioner sees it: only who and when. */
+export interface BusyBlock {
+  kind: "busy";
+  key: string;
+  start: Date;
+  end: Date;
+  practitionerId: string;
+  practitionerName: string;
+}
+
+export type CalendarCard = CalendarAppointment | BusyBlock;
+
+export interface CalendarDay {
+  date: string;
+  /** The room's schedules that day, of the practitioners viewed. */
+  schedules: TimeRange[];
+  /** A free start per practitioner free from it, on the 30-minute cells. */
+  freeStarts: { start: Date; practitionerId: string }[];
+  cards: CalendarCard[];
+}
+
+export interface CalendarPractitioner {
+  id: string;
+  displayName: string;
+  color: PractitionerColor;
+}
+
+export interface CalendarWeek {
+  room: { id: string; name: string };
+  /** The room's office, with its active rooms, where a move or an overbooking can go. */
+  office: { id: string; name: string; timeZone: string; rooms: { id: string; name: string }[] };
+  /** The practitioners with a schedule in the room that week. */
+  practitioners: CalendarPractitioner[];
+  /** Their active medical services. */
+  medicalServices: { id: string; name: string; durationMinutes: number; practitionerId: string }[];
+  /** The filters as applied: a medical service sets its practitioner. */
+  filter: { practitionerId: string | null; medicalServiceId: string | null };
+  days: CalendarDay[];
+}
+
+/** The active rooms of each active office, by name: the room picker's choices. */
+export interface RoomChoice {
+  officeId: string;
+  officeName: string;
+  rooms: { id: string; name: string }[];
+}
+
+const daysInWeek = 7;
+
+async function listRoomChoices(tx: Transaction): Promise<RoomChoice[]> {
+  const rows = await tx
+    .select({ officeId: office.id, officeName: office.name, id: room.id, name: room.name })
+    .from(room)
+    .innerJoin(office, and(eq(office.id, room.officeId), eq(office.active, true)))
+    .where(eq(room.active, true))
+    .orderBy(asc(office.name), asc(office.id), asc(room.name));
+  const choices: RoomChoice[] = [];
+  for (const { officeId, officeName, id, name } of rows) {
+    if (choices.at(-1)?.officeId !== officeId) {
+      choices.push({ officeId, officeName, rooms: [] });
+    }
+    choices.at(-1)!.rooms.push({ id, name });
+  }
+  return choices;
+}
+
+/** The room's schedules that meet the dates, with their practitioner and member. */
+function selectRoomSchedules(tx: Transaction, actor: Actor, roomId: string, dates: string[]) {
+  return tx
+    .select({
+      practitionerId: practitioner.id,
+      displayName: practitioner.displayName,
+      color: practitioner.color,
+      gridMinutes: practitioner.gridMinutes,
+      userId: member.userId,
+      role: member.role,
+      memberActive: member.active,
+      weekdays: schedule.weekdays,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      firstDate: schedule.firstDate,
+      lastDate: schedule.lastDate,
+    })
+    .from(schedule)
+    .innerJoin(practitioner, eq(practitioner.id, schedule.practitionerId))
+    .innerJoin(
+      member,
+      and(eq(member.id, practitioner.memberId), eq(member.organizationId, actor.organizationId)),
+    )
+    .where(
+      and(
+        eq(schedule.roomId, roomId),
+        lte(schedule.firstDate, dates.at(-1)!),
+        or(isNull(schedule.lastDate), gte(schedule.lastDate, dates[0]!)),
+      ),
+    )
+    .orderBy(asc(practitioner.displayName), asc(practitioner.id));
+}
+
+type RoomSchedule = Awaited<ReturnType<typeof selectRoomSchedules>>[number];
+
+/** Each practitioner of the schedules once, in their order. */
+function practitionersOf(schedules: readonly RoomSchedule[]) {
+  return [...new Map(schedules.map((row) => [row.practitionerId, row])).values()];
+}
+
+/** The medical service filtered by, when it is an active one of a practitioner of the room. */
+function resolveFilter(
+  query: { practitionerId?: string; medicalServiceId?: string },
+  services: CalendarWeek["medicalServices"],
+) {
+  if (query.medicalServiceId === undefined) {
+    return { practitionerId: query.practitionerId ?? null, medicalServiceId: null, service: null };
+  }
+  const service = services.find((one) => one.id === query.medicalServiceId);
+  return service
+    ? { practitionerId: service.practitionerId, medicalServiceId: service.id, service }
+    : null;
+}
+
+/** The room and its office; any room the actor's organization holds. */
+async function findRoom(tx: Transaction, roomId: string) {
+  const [found] = await tx
+    .select({
+      id: room.id,
+      name: room.name,
+      officeId: office.id,
+      officeName: office.name,
+      timeZone: office.timeZone,
+    })
+    .from(room)
+    .innerJoin(office, eq(office.id, room.officeId))
+    .where(eq(room.id, roomId));
+  return found;
+}
+
+type FoundRoom = NonNullable<Awaited<ReturnType<typeof findRoom>>>;
+
+/** The practitioners' active medical services, by name. */
+async function listServices(
+  tx: Transaction,
+  practitionerIds: string[],
+): Promise<CalendarWeek["medicalServices"]> {
+  if (practitionerIds.length === 0) {
+    return [];
+  }
+  return tx
+    .select({
+      id: medicalService.id,
+      name: medicalService.name,
+      durationMinutes: medicalService.durationMinutes,
+      practitionerId: medicalService.practitionerId,
+    })
+    .from(medicalService)
+    .where(
+      and(inArray(medicalService.practitionerId, practitionerIds), eq(medicalService.active, true)),
+    )
+    .orderBy(asc(medicalService.name), asc(medicalService.id));
+}
+
+/** Whether the actor may book for the practitioner of the schedule now. */
+function booksFor(actor: Actor, row: RoomSchedule): boolean {
+  const holdsRole = row.memberActive && parseRoles(row.role).includes("practitioner");
+  return holdsRole && (actsForEveryone(actor) || row.userId === actor.userId);
+}
+
+/** The free cells in the room of each practitioner the actor books for, in time order. */
+async function findFreeStarts(
+  tx: Transaction,
+  actor: Actor,
+  practitioners: readonly RoomSchedule[],
+  options: { window: TimeRange; room: FoundRoom; durationMinutes?: number },
+): Promise<CalendarDay["freeStarts"]> {
+  const freeStarts: CalendarDay["freeStarts"] = [];
+  for (const row of practitioners.filter((one) => booksFor(actor, one))) {
+    const free = await findFreeCells(
+      tx,
+      { id: row.practitionerId, gridMinutes: row.gridMinutes },
+      {
+        window: options.window,
+        officeId: options.room.officeId,
+        roomId: options.room.id,
+        durationMinutes: options.durationMinutes,
+      },
+    );
+    freeStarts.push(
+      ...free.map((slot) => ({ start: slot.start, practitionerId: row.practitionerId })),
+    );
+  }
+  return freeStarts.sort((a, b) => +a.start - +b.start);
+}
+
+/** The week's free starts, cards and schedules, split by local day. */
+function splitByDay(
+  dates: readonly string[],
+  timeZone: string,
+  parts: {
+    schedules: readonly RoomSchedule[];
+    freeStarts: CalendarDay["freeStarts"];
+    cards: CalendarCard[];
+  },
+): CalendarDay[] {
+  return dates.map((date) => {
+    const range = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
+    const within = (instant: Date) => range.start <= instant && instant < range.end;
+    return {
+      date,
+      schedules: parts.schedules
+        .flatMap((row) => occurrencesDuring({ ...row, timeZone }, range))
+        .filter((occurrence) => within(occurrence.start)),
+      freeStarts: parts.freeStarts.filter((free) => within(free.start)),
+      cards: parts.cards.filter((card) => within(card.start)),
+    };
+  });
+}
+
+/** The week of `found` as the calendar shows it, or null for a medical service not in the room. */
+async function buildWeek(
+  tx: Transaction,
+  actor: Actor,
+  found: FoundRoom,
+  query: z.output<typeof calendarWeekQuerySchema>,
+): Promise<CalendarWeek | null> {
+  const monday = mondayOf(query.date);
+  const dates = Array.from({ length: daysInWeek }, (_, offset) => shiftDate(monday, offset));
+  const schedules = await selectRoomSchedules(tx, actor, found.id, dates);
+  const present = practitionersOf(schedules);
+  const medicalServices = await listServices(
+    tx,
+    present.map((row) => row.practitionerId),
+  );
+  const filter = resolveFilter(query, medicalServices);
+  if (!filter) {
+    return null;
+  }
+  const window = toTimeRange(
+    { kind: "days", firstDate: dates[0]!, lastDate: dates.at(-1)! },
+    found.timeZone,
+  );
+  const viewed = (row: RoomSchedule) =>
+    filter.practitionerId === null || row.practitionerId === filter.practitionerId;
+  const freeStarts = await findFreeStarts(tx, actor, present.filter(viewed), {
+    window,
+    room: found,
+    durationMinutes: filter.service?.durationMinutes,
+  });
+  const cards = await findCards(tx, actor, {
+    roomId: found.id,
+    week: window,
+    practitionerId: filter.practitionerId,
+    includeCancelledAndNoShow: query.includeCancelledAndNoShow,
+  });
+  const officeRooms = await tx
+    .select({ id: room.id, name: room.name })
+    .from(room)
+    .where(and(eq(room.officeId, found.officeId), eq(room.active, true)))
+    .orderBy(asc(room.name));
+  return {
+    room: { id: found.id, name: found.name },
+    office: {
+      id: found.officeId,
+      name: found.officeName,
+      timeZone: found.timeZone,
+      rooms: officeRooms,
+    },
+    practitioners: present.map((row) => ({
+      id: row.practitionerId,
+      displayName: row.displayName,
+      color: row.color,
+    })),
+    medicalServices,
+    filter: { practitionerId: filter.practitionerId, medicalServiceId: filter.medicalServiceId },
+    days: splitByDay(dates, found.timeZone, {
+      schedules: schedules.filter(viewed),
+      freeStarts,
+      cards,
+    }),
+  };
+}
+
+export async function getCalendarWeek(
+  actor: Actor,
+  input: CalendarWeekQuery,
+  database?: AnyDatabase,
+): Promise<
+  | { ok: true; roomChoices: RoomChoice[]; week: CalendarWeek | null }
+  | { ok: false; reason: "forbidden" | "invalidInput" | "notFound" }
+> {
+  if (!booksForSome(actor)) {
+    return { ok: false, reason: "forbidden" };
+  }
+  const parsed = calendarWeekQuerySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, reason: "invalidInput" };
+  }
+  const query = parsed.data;
+  return withTenant(
+    actor,
+    async (tx) => {
+      const roomChoices = await listRoomChoices(tx);
+      const roomId = query.roomId ?? roomChoices[0]?.rooms[0]?.id;
+      if (roomId === undefined) {
+        return { ok: true as const, roomChoices, week: null };
+      }
+      const found = await findRoom(tx, roomId);
+      const week = found && (await buildWeek(tx, actor, found, query));
+      if (!week) {
+        return { ok: false as const, reason: "notFound" as const };
+      }
+      return { ok: true as const, roomChoices, week };
+    },
+    database,
+  );
+}
+
+/**
+ * The room's appointments that week, in time order: in full for whoever
+ * books for everyone and for their own practitioner, as busy blocks for any
+ * other practitioner, who never sees another's cancelled or no-show ones.
+ */
+async function findCards(
+  tx: Transaction,
+  actor: Actor,
+  options: {
+    roomId: string;
+    week: TimeRange;
+    practitionerId: string | null;
+    includeCancelledAndNoShow: boolean;
+  },
+): Promise<CalendarCard[]> {
+  const rows = await selectDayAppointments(tx, actor)
+    .where(
+      and(
+        eq(appointment.roomId, options.roomId),
+        options.practitionerId === null
+          ? undefined
+          : eq(appointment.practitionerId, options.practitionerId),
+        shownOnCalendar(options.includeCancelledAndNoShow),
+        meets(appointment.during, options.week),
+      ),
+    )
+    .orderBy(asc(appointment.during), asc(appointment.id));
+  const active: readonly string[] = activeAppointmentStatuses;
+  const now = new Date();
+  return rows.flatMap((booked): CalendarCard[] => {
+    const own = booked.practitionerUserId === actor.userId;
+    if (actsForEveryone(actor) || own) {
+      return [
+        { kind: "appointment", ...toDayAppointment(booked, { roles: actor.roles, own }, now) },
+      ];
+    }
+    if (!active.includes(booked.status)) {
+      return [];
+    }
+    return [
+      {
+        kind: "busy",
+        key: `${booked.practitionerId} ${+booked.during.start}`,
+        start: booked.during.start,
+        end: booked.during.end,
+        practitionerId: booked.practitionerId,
+        practitionerName: booked.practitionerName,
+      },
+    ];
+  });
+}

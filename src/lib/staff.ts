@@ -2,6 +2,7 @@ import * as z from "zod";
 
 import { parseRoles } from "#/lib/access.ts";
 import type { Role } from "#/lib/access.ts";
+import { practitionerColors } from "#/lib/practitioner-colors.ts";
 
 const roleSchema = z.enum(["admin", "receptionist", "practitioner"] satisfies Role[]);
 
@@ -49,6 +50,8 @@ export const practitionerUpdateSchema = z.object({
   keepsClinicalRecords: z.boolean(),
   /** Free times start every this many minutes, counted from local midnight. */
   gridMinutes: z.int().min(5).max(120),
+  /** The colour of their appointments on the calendar. */
+  color: z.enum(practitionerColors),
 });
 
 export const memberActiveChangeSchema = z.object({ memberId, active: z.boolean() });

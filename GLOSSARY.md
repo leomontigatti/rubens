@@ -26,7 +26,8 @@ _Avoid_: secretary, front desk, staff
 
 **`practitioner`** — ui: "Profesional"
 A health professional who works in exactly one `organization`. A practitioner who
-keeps clinical records writes `clinicalNote`s; today every practitioner does.
+keeps clinical records writes `clinicalNote`s; today every practitioner does. Their
+`appointment`s are drawn in their own colour on the calendar.
 _Avoid_: doctor, dentist, provider, staff, medic
 
 A member can hold several of these roles at once, such as a practitioner who is
@@ -71,8 +72,8 @@ _Avoid_: free time, open slots, vacancies
 
 **`medicalService`** — ui: "Prestación"
 The kind of visit or practice a `practitioner` offers, such as a first consultation
-or a check-up. It sets the default duration and colour of its `appointment`s and,
-later, their patient messages.
+or a check-up. It sets the default duration of its `appointment`s and, later,
+their patient messages.
 _Avoid_: service, visit type, event type, appointment type
 
 **`appointment`** — ui: "Turno"

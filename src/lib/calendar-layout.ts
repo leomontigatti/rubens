@@ -4,14 +4,11 @@ import { format } from "date-fns";
 import { instantOf, toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-// Places one column's cells and blocks (one practitioner's appointments, say)
-// on a day, so the screen only draws the result. Pure, in minutes from the
-// day's start.
+// Places one day's cells and cards on the calendar, so the screen only draws
+// the result. Pure, in minutes from the view's start.
 
 export interface LayoutBlock extends TimeRange {
   id: string;
-  /** Drawn faded under the others (a cancelled or no-show appointment): it takes no lane. */
-  faded?: boolean;
 }
 
 export interface PlacedBlock {
@@ -29,37 +26,21 @@ export interface PlacedBlock {
 const minute = 60_000;
 
 /**
- * Every block inside `day`, clipped to it, in start order, faded blocks first
- * at the full width. The other blocks that overlap, directly or through a
- * chain, form a group that shares the width: each takes the first lane free at
- * its start. Touching blocks do not overlap.
+ * Every block inside `day`, clipped to it, in start order. Blocks that
+ * overlap, directly or through a chain, form a group that shares the width:
+ * each takes the first lane free at its start, so no two ever overlap.
+ * Touching blocks do not overlap.
  */
 export function layoutColumn(blocks: readonly LayoutBlock[], day: TimeRange): PlacedBlock[] {
   const inside = blocks
     .filter((block) => block.start < day.end && block.end > day.start)
     .map((block) => ({
       id: block.id,
-      faded: block.faded === true,
       start: Math.max(+block.start, +day.start),
       end: Math.min(+block.end, +day.end),
     }))
     .sort((a, b) => a.start - b.start || a.end - b.end);
-  const fullWidth = inside
-    .filter((block) => block.faded)
-    .map((block) => ({
-      id: block.id,
-      top: (block.start - +day.start) / minute,
-      height: (block.end - block.start) / minute,
-      lane: 0,
-      lanes: 1,
-    }));
-  return [
-    ...fullWidth,
-    ...layoutLanes(
-      inside.filter((block) => !block.faded),
-      day,
-    ),
-  ];
+  return layoutLanes(inside, day);
 }
 
 function layoutLanes(
@@ -103,7 +84,7 @@ function layoutLanes(
   return placed;
 }
 
-/** The calendar's row: every column is a stack of cells this many minutes long. */
+/** The calendar's row: every day is a stack of cells this many minutes long. */
 export const cellMinutes = 30;
 
 export interface CalendarCell<T> {
@@ -112,27 +93,30 @@ export interface CalendarCell<T> {
   top: number;
   /** The cell's length in minutes: `cellMinutes`, less for a last cut-off cell. */
   height: number;
-  /** The free start on the cell's start, or null when the cell is not wholly free. */
-  free: T | null;
+  /** The free starts on the cell's start, one per practitioner free there; none for a grey cell. */
+  free: T[];
 }
 
 /**
  * The view as a stack of `cellMinutes` cells from its start. A cell is free
- * when one of `freeStarts`, each a cell long, sits on its start; a free start
- * anywhere else leaves every cell it touches grey.
+ * when some of `freeStarts` sit on its start, and carries them all; a free
+ * start anywhere else leaves every cell it touches grey.
  */
 export function layoutCells<T extends { start: Date }>(
   view: TimeRange,
   freeStarts: readonly T[],
 ): CalendarCell<T>[] {
-  const free = new Map(freeStarts.map((slot) => [+slot.start, slot]));
+  const free = new Map<number, T[]>();
+  for (const slot of freeStarts) {
+    free.set(+slot.start, [...(free.get(+slot.start) ?? []), slot]);
+  }
   const cells: CalendarCell<T>[] = [];
   for (let start = +view.start; start < +view.end; start += cellMinutes * minute) {
     cells.push({
       start: new Date(start),
       top: (start - +view.start) / minute,
       height: (Math.min(start + cellMinutes * minute, +view.end) - start) / minute,
-      free: free.get(start) ?? null,
+      free: free.get(start) ?? [],
     });
   }
   return cells;

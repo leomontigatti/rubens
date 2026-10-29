@@ -15,14 +15,8 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import {
-  medicalServiceColorClasses,
-  medicalServiceColorLabels,
-  medicalServiceColors,
-  medicalServiceInputSchema,
-} from "#/lib/medical-services.ts";
-import type { MedicalServiceColor, MedicalServiceFields } from "#/lib/medical-services.ts";
+import { medicalServiceInputSchema } from "#/lib/medical-services.ts";
+import type { MedicalServiceFields } from "#/lib/medical-services.ts";
 import {
   addMedicalService,
   changeMedicalServiceActive,
@@ -57,13 +51,11 @@ const fieldMessages: Record<keyof MedicalServiceFields | "practitionerId", strin
   practitionerId: "No encontramos ese profesional.",
   name: "Ingresá el nombre.",
   durationMinutes: "La duración tiene que ser de 1 a 720 minutos.",
-  color: "Elegí un color.",
 };
 
 const newMedicalService: MedicalServiceFields = {
   name: "",
   durationMinutes: 30,
-  color: "color1",
 };
 
 function useAction() {
@@ -120,15 +112,6 @@ function PractitionerMedicalServices() {
   );
 }
 
-function ColorSwatch({ color }: { color: MedicalServiceColor }) {
-  return (
-    <span
-      aria-hidden
-      className={`size-4 shrink-0 rounded-full ${medicalServiceColorClasses[color]}`}
-    />
-  );
-}
-
 function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: boolean }) {
   const { medicalService } = props;
   const [editing, setEditing] = useState(false);
@@ -162,7 +145,6 @@ function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: bo
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <ColorSwatch color={medicalService.color} />
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-2 font-medium">
                 {medicalService.name}
@@ -212,7 +194,6 @@ function MedicalServiceForm({
   onDone,
 }: MedicalServiceFormProps) {
   const action = useAction();
-  const [color, setColor] = useState(initial.color);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -220,7 +201,6 @@ function MedicalServiceForm({
     const fields = fieldsSchema.safeParse({
       name: form.get("name"),
       durationMinutes: Number(form.get("durationMinutes")),
-      color: form.get("color"),
     });
     if (!fields.success) {
       action.setError(fieldMessage(fieldMessages, fields.error));
@@ -250,24 +230,6 @@ function MedicalServiceForm({
           defaultValue={initial.durationMinutes}
           required
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-color`}>Color</Label>
-        <div className="flex items-center gap-3">
-          <NativeSelect
-            id={`${idPrefix}-color`}
-            name="color"
-            value={color}
-            onChange={(event) => setColor(event.target.value as MedicalServiceColor)}
-          >
-            {medicalServiceColors.map((option) => (
-              <NativeSelectOption key={option} value={option}>
-                {medicalServiceColorLabels[option]}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <ColorSwatch color={color} />
-        </div>
       </div>
       <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
     </form>

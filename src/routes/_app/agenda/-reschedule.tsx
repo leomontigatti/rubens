@@ -14,7 +14,8 @@ import type { BookingWarning, PickedStart } from "#/lib/booking-draft.ts";
 import { moveAppointment } from "#/server/appointments.functions.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
 
-import { FreeStartsOfWeek, PatientWarnings } from "#/routes/_app/agenda/-booking.tsx";
+import { PatientWarnings } from "#/routes/_app/agenda/-booking.tsx";
+import { FreeStartsOfWeek } from "#/routes/_app/agenda/-free-starts.tsx";
 
 // Rescheduling an appointment through the free-times picker: a new free time
 // of the same practitioner, a week from a date, which brings its schedule's

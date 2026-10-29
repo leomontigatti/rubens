@@ -85,7 +85,6 @@ beforeEach(async () => {
         practitionerId: createdPractitioner!.id,
         name: "Primera consulta",
         durationMinutes: 40,
-        color: "color1",
       })
       .returning();
     await db

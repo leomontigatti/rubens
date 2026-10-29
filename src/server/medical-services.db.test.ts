@@ -50,7 +50,6 @@ function firstVisit(overrides: Partial<MedicalServiceInput> = {}): MedicalServic
     practitionerId,
     name: "Primera consulta",
     durationMinutes: 40,
-    color: "color1",
     ...overrides,
   };
 }
@@ -94,14 +93,14 @@ describe("managing medical services", () => {
     const edited = await asAppRole(db, (tx) =>
       updateMedicalService(
         world.admin,
-        { medicalServiceId: first.id, name: "Primera vez", durationMinutes: 45, color: "color2" },
+        { medicalServiceId: first.id, name: "Primera vez", durationMinutes: 45 },
         tx,
       ),
     );
 
     expect(edited).toMatchObject({
       ok: true,
-      medicalService: { name: "Primera vez", durationMinutes: 45, color: "color2", active: true },
+      medicalService: { name: "Primera vez", durationMinutes: 45, active: true },
     });
     const { medicalServices } = await servicesOf(receptionist, false);
     expect(medicalServices.map((service) => service.name)).toEqual(["Control", "Primera vez"]);
@@ -117,7 +116,7 @@ describe("managing medical services", () => {
     const editOthers = await asAppRole(db, (tx) =>
       updateMedicalService(
         practitioner,
-        { medicalServiceId: othersService.id, name: "Otro", durationMinutes: 30, color: "color1" },
+        { medicalServiceId: othersService.id, name: "Otro", durationMinutes: 30 },
         tx,
       ),
     );
@@ -209,7 +208,6 @@ describe("auditing medical services", () => {
           medicalServiceId: service.id,
           name: "Primera consulta",
           durationMinutes: 60,
-          color: "color1",
         },
         tx,
       ),
@@ -235,7 +233,7 @@ describe("auditing medical services", () => {
         userId: practitioner.userId,
         patientId: null,
         before: null,
-        after: { practitionerId, name: "Primera consulta", durationMinutes: 40, color: "color1" },
+        after: { practitionerId, name: "Primera consulta", durationMinutes: 40 },
       },
       {
         action: "update",

@@ -1,77 +1,42 @@
 import { tz } from "@date-fns/tz";
 import { cn } from "cn";
-import { SquareArrowOutUpRightIcon, ZapIcon } from "lucide-react";
+import { ZapIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { medicalServiceColorClasses } from "#/lib/medical-services.ts";
 import { layoutCells, layoutColumn } from "#/lib/calendar-layout.ts";
+import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
+import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
-import type { DayAppointment, DayColumn } from "#/server/appointments.ts";
+import type {
+  BusyBlock,
+  CalendarAppointment,
+  CalendarCard,
+  CalendarDay,
+} from "#/server/calendar-week.ts";
 
-import { StatusIcon, statusBlockClasses } from "#/routes/_app/agenda/-status.tsx";
-import type { BookingSlot } from "#/routes/_app/agenda/-booking.tsx";
+import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 
-// The pieces the day, week and room views share: the time axis, a column of
-// one practitioner's 30-minute cells and appointment cards, and a card styled
-// by its status.
+// The calendar's pieces (docs/domain/appointments.md § Calendar): the time
+// axis, and a day's column of 30-minute cells, white and bookable where free,
+// under its cards, which sit side by side and never overlap.
 
 /** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
 const minuteHeight = 1.6;
 
-export function localTime(instant: Date, timeZone: string) {
+function localTime(instant: Date, timeZone: string) {
   return format(instant, "HH:mm", { in: tz(timeZone) });
 }
 
 /** A length in minutes as the pixels it is drawn at on the calendar. */
-export function px(minutes: number): string {
+function px(minutes: number): string {
   return `${minutes * minuteHeight}px`;
 }
 
-/** Minutes from the view's start to `instant`. */
-export function offsetOf(instant: Date, view: TimeRange) {
+function offsetOf(instant: Date, view: TimeRange) {
   return (+instant - +view.start) / 60_000;
-}
-
-/**
- * A calendar picker's fields: what to view (an office, a practitioner), the
- * date, and the button that shows them. The form around them reads `name`
- * and `date`.
- */
-export function ViewFields(props: {
-  name: string;
-  label: string;
-  options: readonly { id: string; name: string }[];
-  value: string;
-  dateLabel: string;
-  date: string;
-}) {
-  return (
-    <>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={props.name}>{props.label}</Label>
-        <NativeSelect id={props.name} name={props.name} defaultValue={props.value}>
-          {props.options.map((option) => (
-            <NativeSelectOption key={option.id} value={option.id}>
-              {option.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="date">{props.dateLabel}</Label>
-        <Input id="date" name="date" type="date" defaultValue={props.date} required />
-      </div>
-      <Button type="submit" variant="outline">
-        Ver
-      </Button>
-    </>
-  );
 }
 
 /** The time axis at the calendar's left: each row's start, on its line. */
@@ -87,7 +52,7 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
         {layoutCells(view, []).map((row) => (
           <span
             key={row.top}
-            className="text-muted-foreground absolute top-(--top) right-2 -translate-y-1/2 bg-background px-0.5 text-xs tabular-nums"
+            className="text-muted-foreground bg-background absolute top-(--top) right-2 -translate-y-1/2 px-0.5 text-xs tabular-nums"
             style={{ "--top": px(row.top) } as CSSProperties}
           >
             {localTime(row.start, props.timeZone)}
@@ -98,185 +63,181 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
   );
 }
 
+/** A free cell clicked: its start and the practitioners free from it. */
+export interface PickedCell {
+  start: Date;
+  practitionerIds: string[];
+}
+
 /**
- * One practitioner's column for a day: a stack of 30-minute cells, white and
- * bookable where wholly free, grey elsewhere, under their appointment cards.
+ * One day of the week: a stack of 30-minute cells, white and bookable where a
+ * practitioner is free, grey elsewhere, under the day's cards in lanes.
  */
-export function PractitionerColumn(props: {
+export function DayColumn(props: {
   title: ReactNode;
-  practitioner: { id: string; displayName: string };
-  column: Omit<DayColumn, "practitioner">;
+  day: CalendarDay;
   view: TimeRange;
   timeZone: string;
-  onPick: (slot: BookingSlot) => void;
-  onOpen: (appointment: DayAppointment) => void;
+  onPick: (cell: PickedCell) => void;
+  onOpen: (appointment: CalendarAppointment) => void;
 }) {
-  const { column, view, timeZone, practitioner } = props;
-  const appointments = new Map(column.appointments.map((booked) => [booked.id, booked]));
+  const { day, view, timeZone } = props;
+  const cards = new Map(day.cards.map((card) => [keyOf(card), card]));
   const placed = layoutColumn(
-    column.appointments.map((booked) => ({ ...booked, faded: isFaded(booked) })),
+    day.cards.map((card) => ({ id: keyOf(card), start: card.start, end: card.end })),
     view,
   );
-  const cells = layoutCells(view, column.freeStarts);
 
   return (
-    <div className="min-w-48 flex-1 border-r last:border-r-0">
+    <div className="min-w-36 flex-1 border-r last:border-r-0">
       <div className="flex h-10 items-center border-b px-2 text-sm font-medium">{props.title}</div>
       <div
         className="relative h-(--height)"
         style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
       >
-        {cells.map(({ top, height, free }) => (
+        {layoutCells(view, day.freeStarts).map(({ start, top, height, free }) => (
           <div
             key={top}
             className={cn(
               "absolute inset-x-0 top-(--top) h-(--height) border-t",
-              free ? "bg-background" : "bg-muted",
+              free.length > 0 ? "bg-background" : "bg-muted",
             )}
             style={{ "--top": px(top), "--height": px(height) } as CSSProperties}
           >
-            {free && (
+            {free.length > 0 && (
               <Button
                 variant="ghost"
                 className="size-full"
-                aria-label={`Dar turno a las ${localTime(free.start, timeZone)} con ${practitioner.displayName}`}
+                aria-label={`Dar turno a las ${localTime(start, timeZone)}`}
                 onClick={() =>
-                  props.onPick({
-                    practitionerId: practitioner.id,
-                    practitionerName: practitioner.displayName,
-                    start: free.start,
-                    roomName: free.roomName,
-                    timeZone,
-                  })
+                  props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
                 }
               />
             )}
           </div>
         ))}
         {placed.map((block) => (
-          <AppointmentBlock
+          <PlacedCard
             key={block.id}
             block={block}
-            appointment={appointments.get(block.id)!}
+            card={cards.get(block.id)!}
             timeZone={timeZone}
             onOpen={props.onOpen}
           />
-        ))}
-        {fadedOpeners(placed, appointments).map(({ block, booked, offset }) => (
-          <Button
-            key={block.id}
-            variant="ghost"
-            size="icon-xs"
-            className="absolute top-(--top) right-(--right)"
-            style={{ "--top": px(block.top), "--right": `${offset * 1.5}rem` } as CSSProperties}
-            aria-label={`Abrir el turno de ${booked.patientName}`}
-            onClick={() => props.onOpen(booked)}
-          >
-            <SquareArrowOutUpRightIcon />
-          </Button>
         ))}
       </div>
     </div>
   );
 }
 
-/**
- * The open buttons of the faded cards, drawn after every card so no card
- * covers them; buttons of cards that start together sit side by side.
- */
-function fadedOpeners(
-  placed: ReturnType<typeof layoutColumn>,
-  appointments: ReadonlyMap<string, DayAppointment>,
-) {
-  const taken = new Map<number, number>();
-  return placed.flatMap((block) => {
-    const booked = appointments.get(block.id)!;
-    if (!isFaded(booked)) {
-      return [];
-    }
-    const offset = taken.get(block.top) ?? 0;
-    taken.set(block.top, offset + 1);
-    return [{ block, booked, offset }];
-  });
+function keyOf(card: CalendarCard): string {
+  return card.kind === "busy" ? card.key : card.id;
 }
 
-/** A cancelled or no-show appointment leaves its time free: the card is drawn faded. */
-function isFaded(booked: DayAppointment) {
-  return !(activeAppointmentStatuses as readonly string[]).includes(booked.status);
-}
-
-/**
- * One appointment card on the calendar, in its lane, styled and marked by its
- * status; an overbooking is dashed and marked. A cancelled or no-show card,
- * shown only when asked for, is faded and lets clicks through to the cell
- * under it; its open button is drawn apart, above every card.
- */
-function AppointmentBlock(props: {
-  block: ReturnType<typeof layoutColumn>[number];
-  appointment: DayAppointment;
+/** A card in its lane: an appointment, or another practitioner's busy block. */
+function PlacedCard(props: {
+  block: PlacedBlock;
+  card: CalendarCard;
   timeZone: string;
-  onOpen: (appointment: DayAppointment) => void;
+  onOpen: (appointment: CalendarAppointment) => void;
 }) {
-  const { block, appointment: booked } = props;
+  const { block, card } = props;
+  const style = {
+    "--top": px(block.top),
+    "--height": px(block.height),
+    "--left": `${(block.lane / block.lanes) * 100}%`,
+    "--width": `${100 / block.lanes}%`,
+  } as CSSProperties;
+  const placement =
+    "absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs";
+  return card.kind === "busy" ? (
+    <BusyCard placement={placement} style={style} busy={card} timeZone={props.timeZone} />
+  ) : (
+    <AppointmentCard
+      placement={placement}
+      style={style}
+      appointment={card}
+      timeZone={props.timeZone}
+      onOpen={props.onOpen}
+    />
+  );
+}
+
+const activeStatuses: readonly string[] = activeAppointmentStatuses;
+
+/**
+ * An appointment in its practitioner's colour: its status as an icon, the
+ * time, the patient and the medical service. Cancelled and no-show ones,
+ * drawn only when asked for, are faded; an overbooking is dashed and marked.
+ */
+function AppointmentCard(props: {
+  placement: string;
+  style: CSSProperties;
+  appointment: CalendarAppointment;
+  timeZone: string;
+  onOpen: (appointment: CalendarAppointment) => void;
+}) {
+  const { appointment: card } = props;
   return (
     <div
       className={cn(
-        "absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs",
-        statusBlockClasses[booked.status],
-        booked.overbooking && "border-dashed",
+        props.placement,
+        "bg-background",
+        card.overbooking && "border-dashed",
+        !activeStatuses.includes(card.status) && "opacity-50",
       )}
-      style={
-        {
-          "--top": px(block.top),
-          "--height": px(block.height),
-          "--left": `${(block.lane / block.lanes) * 100}%`,
-          "--width": `${100 / block.lanes}%`,
-        } as CSSProperties
-      }
-      title={booked.receptionNote ?? undefined}
+      style={props.style}
+      title={card.receptionNote ?? undefined}
     >
-      <div className={cn("w-1 shrink-0", medicalServiceColorClasses[booked.color])} />
+      <div className={cn("w-1 shrink-0", practitionerColorClasses[card.color])} />
       <div className="flex min-w-0 flex-1 flex-col items-start px-1.5 py-0.5">
-        <CardHeading appointment={booked} timeZone={props.timeZone} onOpen={props.onOpen} />
-        <span className="text-muted-foreground truncate">
-          {booked.medicalServiceName} · {booked.roomName}
+        <CardHeading appointment={card} timeZone={props.timeZone} onOpen={props.onOpen} />
+        <span className="text-muted-foreground max-w-full truncate">
+          {card.medicalServiceName} · {card.practitionerName}
         </span>
       </div>
     </div>
   );
 }
 
-/**
- * The card's status, time and patient: the button that opens it, or on a
- * faded card plain text (its open button is drawn above every card,
- * `fadedOpeners`).
- */
+/** The button that opens the appointment: its status, overbooking mark, time and patient. */
 function CardHeading(props: {
-  appointment: DayAppointment;
+  appointment: CalendarAppointment;
   timeZone: string;
-  onOpen: (appointment: DayAppointment) => void;
+  onOpen: (appointment: CalendarAppointment) => void;
 }) {
-  const { appointment: booked } = props;
-  const label = (
-    <>
-      <StatusIcon status={booked.status} />
-      {booked.overbooking && <ZapIcon aria-label="Sobreturno" />}
+  const { appointment: card } = props;
+  return (
+    <Button
+      variant="link"
+      size="xs"
+      className="max-w-full justify-start"
+      onClick={() => props.onOpen(card)}
+    >
+      <StatusIcon status={card.status} />
+      {card.overbooking && <ZapIcon role="img" aria-label="Sobreturno" />}
       <span className="truncate">
-        {localTime(booked.start, props.timeZone)} {booked.patientName}
+        {localTime(card.start, props.timeZone)} {card.patientName}
       </span>
-    </>
+    </Button>
   );
-  if (!isFaded(booked)) {
-    return (
-      <Button
-        variant="link"
-        size="xs"
-        className="max-w-full justify-start"
-        onClick={() => props.onOpen(booked)}
-      >
-        {label}
-      </Button>
-    );
-  }
-  return <span className="flex max-w-full items-center gap-1 [&_svg]:size-3">{label}</span>;
+}
+
+/** Another practitioner's appointment, as a practitioner sees it: grey, with only who. */
+function BusyCard(props: {
+  placement: string;
+  style: CSSProperties;
+  busy: BusyBlock;
+  timeZone: string;
+}) {
+  return (
+    <div
+      className={cn(props.placement, "bg-muted text-muted-foreground px-1.5 py-0.5")}
+      style={props.style}
+    >
+      <span className="truncate">
+        {localTime(props.busy.start, props.timeZone)} Ocupado · {props.busy.practitionerName}
+      </span>
+    </div>
+  );
 }

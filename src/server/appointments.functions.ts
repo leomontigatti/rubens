@@ -3,13 +3,11 @@ import { createServerFn } from "@tanstack/react-start";
 import type {
   AppointmentIdInput,
   BookingInput,
+  CalendarWeekQuery,
   CancellationInput,
-  OfficeDayQuery,
   OverbookingInput,
-  PractitionerWeekQuery,
   ReceptionNoteChange,
   RescheduleInput,
-  RoomDayQuery,
   RoomMove,
   StatusChangeInput,
   WarningConfirmation,
@@ -23,10 +21,9 @@ import {
   changeAppointmentStatus,
   undoAppointmentStatus,
 } from "#/server/appointment-statuses.ts";
-import { bookAppointment, getOfficeDay } from "#/server/appointments.ts";
+import { bookAppointment } from "#/server/appointments.ts";
+import { getCalendarWeek } from "#/server/calendar-week.ts";
 import { listPatientAppointments } from "#/server/patient-appointments.ts";
-import { getPractitionerWeek } from "#/server/practitioner-week.ts";
-import { getRoomDay } from "#/server/room-day.ts";
 import { countToReschedule, listToReschedule } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
 
@@ -35,9 +32,9 @@ import { withActor } from "#/server/with-actor.ts";
 // well refuses everyone else before a transaction opens.
 const bookers = { roles: ["admin", "receptionist", "practitioner"] } as const;
 
-export const getOfficeDayView = createServerFn({ method: "GET" })
-  .validator((data: OfficeDayQuery) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => getOfficeDay(actor, data)));
+export const getCalendarWeekView = createServerFn({ method: "GET" })
+  .validator((data: CalendarWeekQuery) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => getCalendarWeek(actor, data)));
 
 export const addAppointment = createServerFn({ method: "POST" })
   .validator((data: BookingInput & WarningConfirmation) => data)
@@ -74,15 +71,6 @@ export const moveAppointment = createServerFn({ method: "POST" })
 export const getPatientAppointments = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
   .handler(({ data }) => withActor(bookers, (actor) => listPatientAppointments(actor, data)));
-
-export const getPractitionerWeekView = createServerFn({ method: "GET" })
-  .validator((data: PractitionerWeekQuery) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => getPractitionerWeek(actor, data)));
-
-/** The room view is open to every staff role, who are the booking roles. */
-export const getRoomDayView = createServerFn({ method: "GET" })
-  .validator((data: RoomDayQuery) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => getRoomDay(actor, data)));
 
 export const getToReschedule = createServerFn({ method: "GET" }).handler(() =>
   withActor(bookers, (actor) => listToReschedule(actor)),

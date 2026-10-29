@@ -134,6 +134,7 @@ describe("changing roles", () => {
           specialty: "Ortodoncia",
           keepsClinicalRecords: false,
           gridMinutes: 20,
+          color: "color4",
         },
         tx,
       ),
@@ -165,12 +166,51 @@ describe("changing roles", () => {
           specialty: "Ortodoncia",
           keepsClinicalRecords: false,
           gridMinutes: 20,
+          color: "color4",
         },
       },
     });
     expect(
       await authorize(auth, created.userId, { roles: "any", passwordChange: "allowed" }),
     ).toMatchObject({ ok: true, actor: { roles: ["practitioner"] } });
+  });
+
+  it("gives each new practitioner the next colour of the palette", async () => {
+    const first = await newMember(["receptionist"], "first@example.com");
+    const second = await newMember(["receptionist"], "second@example.com");
+
+    const colors = [];
+    for (const created of [first, second]) {
+      const granted = await asAppRole(db, (tx) =>
+        changeRoles(admin, { memberId: created.memberId, roles: ["practitioner"] }, tx),
+      );
+      colors.push(granted.ok ? granted.member.practitioner?.color : null);
+    }
+
+    expect(colors[0]).toMatch(/^color[1-5]$/);
+    expect(colors[1]).toMatch(/^color[1-5]$/);
+    expect(colors[1]).not.toBe(colors[0]);
+  });
+
+  it("refuses a colour outside the palette", async () => {
+    const created = await newMember(["practitioner"]);
+
+    expect(
+      await asAppRole(db, (tx) =>
+        updatePractitioner(
+          admin,
+          {
+            memberId: created.memberId,
+            displayName: "X",
+            specialty: "",
+            keepsClinicalRecords: true,
+            gridMinutes: 30,
+            color: "red" as "color1",
+          },
+          tx,
+        ),
+      ),
+    ).toEqual({ ok: false, reason: "invalidInput" });
   });
 
   it("answers notFound for practitioner settings of a member who never was one", async () => {
@@ -186,6 +226,7 @@ describe("changing roles", () => {
             specialty: "",
             keepsClinicalRecords: true,
             gridMinutes: 15,
+            color: "color1",
           },
           tx,
         ),
@@ -324,7 +365,14 @@ describe("refusals", () => {
       await changeRoles(nonAdmin, { memberId, roles: ["admin"] }, tx),
       await updatePractitioner(
         nonAdmin,
-        { memberId, displayName: "X", specialty: "", keepsClinicalRecords: false, gridMinutes: 15 },
+        {
+          memberId,
+          displayName: "X",
+          specialty: "",
+          keepsClinicalRecords: false,
+          gridMinutes: 15,
+          color: "color1",
+        },
         tx,
       ),
       await setMemberActive(nonAdmin, { memberId: adminMemberId, active: false }, tx),

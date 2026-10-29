@@ -77,11 +77,7 @@ export async function createBookingWorld(db: TestDatabase) {
 
   async function addMedicalService(practitionerId: string, durationMinutes = 30) {
     const result = await asAppRole(db, (tx) =>
-      createMedicalService(
-        world.admin,
-        { practitionerId, name: "Consulta", durationMinutes, color: "color1" },
-        tx,
-      ),
+      createMedicalService(world.admin, { practitionerId, name: "Consulta", durationMinutes }, tx),
     );
     if (!result.ok) {
       throw new Error(`createMedicalService failed: ${result.reason}`);

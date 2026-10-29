@@ -8,7 +8,7 @@ the booking can change, and the patient messages for its appointments
 late the patient may reschedule.
 
 Admins, and each practitioner for their own, manage medical services: a name, a
-default duration, a colour, and the message settings. A medical service in use is
+default duration and the message settings. A medical service in use is
 deactivated, never deleted.
 
 Appointments are booked one at a time. A series, such as monthly orthodontic
@@ -16,8 +16,9 @@ check-ups, is booked one appointment after the other.
 
 ## Booking
 
-Reception books from a free time clicked on the calendar, which fills in the
-practitioner, time and room, or from `Nuevo turno`: patient, practitioner and
+Reception books from a free cell clicked on the calendar, which fills in the
+time and room, and the practitioner when only one is free there (otherwise the
+form asks which of those free), or from `Nuevo turno`: patient, practitioner and
 medical service, then the free times for that service's duration. The service comes
 before the time because its duration decides which times fit; the duration can
 still be adjusted. The patient is found with the search box, or registered on
@@ -85,22 +86,34 @@ free time.
 
 ## Calendar
 
-Reception's main screen is a day view of one office, one column per practitioner.
-A week view of one practitioner answers "when can she come next week". A
-practitioner gets the same two views limited to their own appointments. There is
-no month view: at 30-minute granularity it is unreadable.
+The calendar is one week of one room, Monday to Sunday, in the room's office's
+zone, with the previous and next week and a date to jump to. It is filtered in
+this order: the room, required, from the active rooms grouped by office and
+opening on the first; then a practitioner, optional; then a medical service,
+optional, from the chosen practitioner's active ones or all of them, which
+implies its practitioner. Its columns are the days; there are no columns per
+practitioner, and no day or month view.
 
-Each column is a stack of 30-minute cells, with the times on the left axis. A cell
-wholly free (inside a schedule, clear of appointments, time off and closures) is
-white, and clicking it books at its start; every other cell is grey, a cell only
-partly free included. Appointments are cards drawn over the cells at their time,
-side by side when they overlap.
+Each day is a stack of 30-minute cells, with the times on the left. A cell is
+white when at least one practitioner who matches the filters and has a schedule
+in the room is free for the whole cell, starting on their own grid; with a
+medical service filtered, when its duration fits from that start. Every other
+cell is grey. Clicking a white cell books there, with the medical service filled
+in when it is filtered.
 
-An appointment card is coloured by its medical service, which is what reception
-scans for. Its status is an icon and a style: booked outlined, confirmed solid,
-checked in highlighted, attended dimmed. A no-show or cancelled appointment leaves
-its time free: it is not drawn unless asked for, and then only faded, never hiding
-or blocking the white cell under it. An overbooking has its own mark.
+Appointments are cards that never overlap: those at the same time (overbookings,
+a room for two, cancelled or no-show ones when shown) sit side by side. A card
+shows its practitioner's colour, which is what reception scans for and is chosen
+in the practitioner's staff settings, the time, the patient, the medical service
+and the status as an icon only. An overbooking is dashed and has its own mark.
+A no-show or cancelled appointment leaves its time free and bookable for every
+role: it is not drawn unless asked for, and then faded in its own lane, and
+opening it allows an undo.
+
+A practitioner sees their own appointments in full and books only for
+themself. Other practitioners' appointments in the room show as grey
+`Ocupado` blocks with the practitioner's name and nothing about the patient:
+the server never sends it.
 
 ## Patient history
 

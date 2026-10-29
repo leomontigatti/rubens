@@ -1,5 +1,5 @@
 import { tz } from "@date-fns/tz";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouteContext, useRouter } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { useReducer, useState } from "react";
@@ -18,8 +18,6 @@ import {
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { freeStartsByDay } from "#/lib/availability.ts";
-import type { AvailabilityQuery } from "#/lib/availability.ts";
 import {
   bookingReducer,
   bookingRequestOf,
@@ -38,20 +36,23 @@ import { defaultTimeZone } from "#/lib/offices.ts";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
 import type { RoomOccupant } from "#/server/appointment-rooms.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
-import { getFreeTimes } from "#/server/availability.functions.ts";
 import type { AvailableStart } from "#/server/availability.ts";
 import { ReceptionNoteField } from "#/routes/_app/agenda/-appointment-note.tsx";
+import { FreeStartList, FreeStartsOfWeek } from "#/routes/_app/agenda/-free-starts.tsx";
 import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 
-// Booking a patient, from either entry: a free time clicked on the day view,
-// which fixes the practitioner, the time and the room, or "Nuevo turno", which
-// picks the practitioner, the medical service and then a free time for that duration. An
-// overbooking takes a typed date and time instead, and a room when it falls
-// outside the practitioner's schedules.
+// Booking a patient, from either entry: a free cell clicked on the calendar,
+// which fixes the time and the room, and the practitioner unless several are
+// free there, or "Nuevo turno", which picks the practitioner, the medical
+// service and then a free time for that duration. An overbooking takes a
+// typed date and time instead, and a room when it falls outside the
+// practitioner's schedules.
 
 export interface BookingSlot extends PickedStart {
-  practitionerId: string;
-  practitionerName: string;
+  /** Who can be booked there: the practitioners free in the cell, or the overbooked one. */
+  practitioners: { id: string; displayName: string }[];
+  /** The medical service the calendar is narrowed to. */
+  medicalService?: { id: string; durationMinutes: number } | null;
 }
 
 /** The copy for every refusal booking can return. */
@@ -98,7 +99,7 @@ export interface OverbookingOffice {
 export function BookingDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The free time clicked on the day view, or the appointment an overbooking goes over. */
+  /** The free cell clicked on the calendar, or the appointment an overbooking goes over. */
   slot: BookingSlot | null;
   practitioners: { id: string; displayName: string }[];
   defaultDate: string;
@@ -110,7 +111,9 @@ export function BookingDialog(props: {
       <DialogContent className="max-h-svh overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{props.overbooking ? "Sobreturno" : "Nuevo turno"}</DialogTitle>
-          {props.slot && <DialogDescription>{props.slot.practitionerName}</DialogDescription>}
+          {props.slot?.practitioners.length === 1 && (
+            <DialogDescription>{props.slot.practitioners[0]!.displayName}</DialogDescription>
+          )}
         </DialogHeader>
         {props.open && (
           <BookingForm
@@ -132,7 +135,7 @@ type BookingRefusal =
   | Exclude<Awaited<ReturnType<typeof addAppointment>>, { ok: true }>
   | Exclude<Awaited<ReturnType<typeof addOverbooking>>, { ok: true }>;
 
-/** An overbooking's place to start from: the clicked appointment's time, or the day viewed. */
+/** An overbooking's place to start from: the clicked appointment's time, or the date viewed. */
 function initialPlace(slot: BookingSlot | null, defaultDate: string): OverbookingPlace {
   if (!slot) {
     return { date: defaultDate, time: "", roomId: "" };
@@ -171,6 +174,20 @@ function refusalEvent(refusal: BookingRefusal, timeZone: string): BookingEvent {
   }
 }
 
+/**
+ * Whom the form books for: the practitioners free in the clicked cell, asking
+ * only when there are several, or anyone from "Nuevo turno".
+ */
+function practitionerChoices(
+  slot: BookingSlot | null,
+  practitioners: { id: string; displayName: string }[],
+) {
+  if (!slot) {
+    return { choices: practitioners, ask: true };
+  }
+  return { choices: slot.practitioners, ask: slot.practitioners.length > 1 };
+}
+
 function BookingForm(props: {
   slot: BookingSlot | null;
   practitioners: { id: string; displayName: string }[];
@@ -179,11 +196,12 @@ function BookingForm(props: {
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { choices, ask } = practitionerChoices(props.slot, props.practitioners);
   const [draft, dispatch] = useReducer(
     bookingReducer,
     initialBookingDraft(
       props.slot,
-      props.practitioners.map((practitioner) => practitioner.id),
+      choices.map((practitioner) => practitioner.id),
     ),
   );
   const [pending, setPending] = useState(false);
@@ -213,7 +231,7 @@ function BookingForm(props: {
     // An overbooking's times are read in its office's zone; a booking's refusals hold none.
     dispatch(refusalEvent(refusal, props.overbooking?.timeZone ?? defaultTimeZone));
     if (refusal.reason === "timeTaken") {
-      // The day view behind the dialog shows the time taken too.
+      // The calendar behind the dialog shows the time taken too.
       await router.invalidate();
     }
   }
@@ -228,9 +246,9 @@ function BookingForm(props: {
     <div className="flex flex-col gap-4">
       <PatientPicker onChange={(patientId) => dispatch({ type: "patientPicked", patientId })} />
       <form className="flex flex-col gap-4" onSubmit={submit}>
-        {!props.slot && (
+        {ask && (
           <PractitionerField
-            practitioners={props.practitioners}
+            practitioners={choices}
             value={draft.practitionerId}
             dispatch={dispatch}
           />
@@ -503,61 +521,6 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
       <span className="font-medium">{localDateTime(start.start, start.timeZone)}</span>,{" "}
       {start.roomName}
     </p>
-  );
-}
-
-/** The practitioner's free starts for the query's duration and week, to pick one. */
-export function FreeStartsOfWeek(props: {
-  query: AvailabilityQuery;
-  picked: PickedStart | null;
-  onPick: (start: PickedStart) => void;
-}) {
-  const { viewer } = useRouteContext({ from: "/_app" });
-  const { data } = useQuery({
-    queryKey: ["freeTimes", viewer.organizationId, viewer.userId, props.query],
-    queryFn: () => getFreeTimes({ data: props.query }),
-    placeholderData: keepPreviousData,
-  });
-
-  if (!data) {
-    return null;
-  }
-  if (!data.ok) {
-    return <ErrorAlert message="No encontramos los horarios libres de ese profesional." />;
-  }
-  if (data.freeStarts.length === 0) {
-    return <p className="text-muted-foreground text-sm">No hay horarios libres esa semana.</p>;
-  }
-  return <FreeStartList starts={data.freeStarts} picked={props.picked} onPick={props.onPick} />;
-}
-
-function FreeStartList(props: {
-  starts: AvailableStart[];
-  picked: PickedStart | null;
-  onPick: (start: PickedStart) => void;
-}) {
-  return (
-    <div className="flex max-h-60 flex-col gap-3 overflow-y-auto">
-      {freeStartsByDay(props.starts).map((day) => (
-        <div key={day.date} className="flex flex-col gap-1">
-          <p className="text-sm font-medium">{day.label}</p>
-          <div className="flex flex-wrap gap-1">
-            {day.starts.map((free) => (
-              <Button
-                key={+free.start}
-                type="button"
-                size="xs"
-                variant={+free.start === +(props.picked?.start ?? 0) ? "default" : "outline"}
-                title={`${free.officeName}, ${free.roomName}`}
-                onClick={() => props.onPick(free)}
-              >
-                {free.time}
-              </Button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 

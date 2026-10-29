@@ -11,7 +11,6 @@ import {
 } from "#/lib/medical-services.ts";
 import type {
   MedicalServiceActiveChange,
-  MedicalServiceColor,
   MedicalServiceInput,
   MedicalServiceUpdate,
 } from "#/lib/medical-services.ts";
@@ -29,7 +28,6 @@ export interface MedicalService {
   id: string;
   name: string;
   durationMinutes: number;
-  color: MedicalServiceColor;
   active: boolean;
 }
 
@@ -51,7 +49,6 @@ const medicalServiceColumns = {
   id: medicalService.id,
   name: medicalService.name,
   durationMinutes: medicalService.durationMinutes,
-  color: medicalService.color,
   active: medicalService.active,
 };
 

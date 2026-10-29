@@ -27,7 +27,7 @@ import { roomFullMessage } from "#/routes/_app/agenda/-booking.tsx";
 import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 import type { BookingSlot, OverbookingOffice } from "#/routes/_app/agenda/-booking.tsx";
 
-// An appointment clicked on the day view: what it is and its status, the
+// An appointment clicked on the calendar: what it is and its status, the
 // status changes, its reception note, rescheduling, a move to another room of
 // the office, and an overbooking over it.
 
@@ -49,7 +49,7 @@ function localTime(instant: Date, timeZone: string) {
   return format(instant, "HH:mm", { in: tz(timeZone) });
 }
 
-/** The appointment clicked, with whose column it is in. */
+/** The appointment clicked, with its practitioner. */
 export interface PickedAppointment {
   appointment: DayAppointment;
   practitioner: { id: string; displayName: string };
@@ -58,7 +58,7 @@ export interface PickedAppointment {
 export function AppointmentDialog(props: {
   picked: PickedAppointment | null;
   onClose: () => void;
-  /** The office viewed; none until its day has loaded. */
+  /** The office of the room viewed. */
   office: OverbookingOffice | null;
   /** Opens an overbooking over the appointment, at its time. */
   onOverbook: (slot: BookingSlot) => void;
@@ -137,8 +137,7 @@ function AppointmentActions(props: {
   const { appointment, practitioner } = props.picked;
   const { timeZone } = props.office;
   const overbookingSlot = {
-    practitionerId: practitioner.id,
-    practitionerName: practitioner.displayName,
+    practitioners: [practitioner],
     start: appointment.start,
     roomName: appointment.roomName,
     timeZone,

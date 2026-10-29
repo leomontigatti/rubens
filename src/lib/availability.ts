@@ -147,7 +147,7 @@ function datesIn(window: TimeRange, timeZone: string): string[] {
   return dates;
 }
 
-export function appliesOn(schedule: WeeklySlot, date: string): boolean {
+function appliesOn(schedule: WeeklySlot, date: string): boolean {
   return (
     schedule.weekdays.includes(weekdayOf(date)) &&
     schedule.firstDate <= date &&

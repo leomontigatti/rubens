@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 
 import { member, practitioner, session, user } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
@@ -6,6 +6,8 @@ import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { parseRoles } from "#/lib/access.ts";
 import type { Actor, Role } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
+import { practitionerColors } from "#/lib/practitioner-colors.ts";
+import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import {
   memberActiveChangeSchema,
   practitionerUpdateSchema,
@@ -37,6 +39,7 @@ export interface PractitionerSettings {
   specialty: string | null;
   keepsClinicalRecords: boolean;
   gridMinutes: number;
+  color: PractitionerColor;
 }
 
 export interface StaffMember {
@@ -75,6 +78,7 @@ const staffColumns = {
   specialty: practitioner.specialty,
   keepsClinicalRecords: practitioner.keepsClinicalRecords,
   gridMinutes: practitioner.gridMinutes,
+  color: practitioner.color,
 };
 
 async function selectStaff(tx: Transaction, actor: Actor, memberId?: string) {
@@ -91,7 +95,15 @@ async function selectStaff(tx: Transaction, actor: Actor, memberId?: string) {
     )
     .orderBy(asc(user.name), asc(user.email));
   return rows.map(
-    ({ role, displayName, specialty, keepsClinicalRecords, gridMinutes, ...row }): StaffMember => ({
+    ({
+      role,
+      displayName,
+      specialty,
+      keepsClinicalRecords,
+      gridMinutes,
+      color,
+      ...row
+    }): StaffMember => ({
       ...row,
       roles: parseRoles(role),
       practitioner:
@@ -102,6 +114,7 @@ async function selectStaff(tx: Transaction, actor: Actor, memberId?: string) {
               specialty,
               keepsClinicalRecords: keepsClinicalRecords ?? true,
               gridMinutes: gridMinutes ?? 30,
+              color: color ?? practitionerColors[0],
             },
     }),
   );
@@ -128,14 +141,20 @@ async function isLastActiveAdmin(tx: Transaction, actor: Actor, target: StaffMem
   return admins.length <= 1 && admins.some((row) => row.id === target.memberId);
 }
 
-/** Creates the member's practitioner row, unless one survives from before. */
+/**
+ * Creates the member's practitioner row, unless one survives from before, in
+ * the palette's next colour: the organization's practitioners take them in turn.
+ */
 async function ensurePractitioner(tx: Transaction, actor: Actor, target: StaffMember) {
+  const [counted] = await tx.select({ total: count() }).from(practitioner);
+  const total = counted?.total ?? 0;
   await tx
     .insert(practitioner)
     .values({
       organizationId: actor.organizationId,
       memberId: target.memberId,
       displayName: target.name,
+      color: practitionerColors[total % practitionerColors.length],
     })
     .onConflictDoNothing({ target: practitioner.memberId });
 }

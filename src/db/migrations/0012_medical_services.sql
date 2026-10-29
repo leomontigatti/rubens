@@ -1,11 +1,9 @@
-CREATE TYPE "rubens"."medical_service_color" AS ENUM('color1', 'color2', 'color3', 'color4', 'color5');--> statement-breakpoint
 CREATE TABLE "rubens"."medical_service" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" text NOT NULL,
 	"practitioner_id" uuid NOT NULL,
 	"name" text NOT NULL,
 	"duration_minutes" integer NOT NULL,
-	"color" "rubens"."medical_service_color" NOT NULL,
 	"active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,

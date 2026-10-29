@@ -29,13 +29,32 @@ function run(draft: BookingDraft, ...events: BookingEvent[]) {
   return events.reduce(bookingReducer, draft);
 }
 
-const fromSlot = initialBookingDraft({ ...nine, practitionerId: juan }, [juan, lucia]);
+const fromSlot = initialBookingDraft(nine, [juan]);
 
 describe("the booking draft", () => {
-  it("starts from a clicked free time with its practitioner and start, or the only practitioner", () => {
-    expect(fromSlot).toMatchObject({ practitionerId: juan, start: nine });
+  it("starts from a clicked free cell with its start and only free practitioner, or the only practitioner", () => {
+    expect(fromSlot).toMatchObject({ practitionerId: juan, start: nine, medicalService: null });
     expect(initialBookingDraft(null, [juan])).toMatchObject({ practitionerId: juan });
     expect(initialBookingDraft(null, [juan, lucia])).toMatchObject({ practitionerId: "" });
+  });
+
+  it("takes the medical service the calendar is narrowed to, with its duration", () => {
+    expect(initialBookingDraft({ ...nine, medicalService: consulta }, [juan])).toMatchObject({
+      practitionerId: juan,
+      medicalService: consulta,
+      durationMinutes: 40,
+      start: nine,
+    });
+  });
+
+  it("asks which of a cell's free practitioners, keeping the cell's start", () => {
+    const fromCell = initialBookingDraft(nine, [juan, lucia]);
+
+    expect(fromCell).toMatchObject({ practitionerId: "", start: nine });
+    expect(run(fromCell, { type: "practitionerChosen", practitionerId: lucia })).toMatchObject({
+      practitionerId: lucia,
+      start: nine,
+    });
   });
 
   it("takes the medical service's duration as a default the user can change", () => {
@@ -49,10 +68,12 @@ describe("the booking draft", () => {
     ).toBe(60);
   });
 
-  it("drops the medical service, duration and start when another practitioner is chosen", () => {
+  it("drops the medical service, duration and a picked start when another practitioner is chosen", () => {
     const changed = run(
-      fromSlot,
+      initialBookingDraft(null, [juan, lucia]),
+      { type: "practitionerChosen", practitionerId: juan },
       { type: "medicalServiceChosen", medicalService: consulta },
+      { type: "startPicked", start: nine },
       { type: "practitionerChosen", practitionerId: lucia },
     );
 

@@ -15,8 +15,6 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
-import { Route as AppAgendaConsultoriosRouteImport } from './routes/_app/agenda/consultorios'
-import { Route as AppAgendaSemanaRouteImport } from './routes/_app/agenda/semana'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
 import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
@@ -60,16 +58,6 @@ const AppAReprogramarIndexRoute = AppAReprogramarIndexRouteImport.update({
 const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
   id: '/agenda/',
   path: '/agenda/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAgendaConsultoriosRoute = AppAgendaConsultoriosRouteImport.update({
-  id: '/agenda/consultorios',
-  path: '/agenda/consultorios',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAgendaSemanaRoute = AppAgendaSemanaRouteImport.update({
-  id: '/agenda/semana',
-  path: '/agenda/semana',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
@@ -154,8 +142,6 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
-  '/agenda/consultorios': typeof AppAgendaConsultoriosRoute
-  '/agenda/semana': typeof AppAgendaSemanaRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
@@ -178,8 +164,6 @@ export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
-  '/agenda/consultorios': typeof AppAgendaConsultoriosRoute
-  '/agenda/semana': typeof AppAgendaSemanaRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
@@ -204,8 +188,6 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/agenda/consultorios': typeof AppAgendaConsultoriosRoute
-  '/_app/agenda/semana': typeof AppAgendaSemanaRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/_app/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
@@ -230,8 +212,6 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
-    | '/agenda/consultorios'
-    | '/agenda/semana'
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
@@ -254,8 +234,6 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/'
-    | '/agenda/consultorios'
-    | '/agenda/semana'
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
@@ -279,8 +257,6 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
-    | '/_app/agenda/consultorios'
-    | '/_app/agenda/semana'
     | '/_app/horarios/$practitionerId'
     | '/_app/pacientes/$patientId'
     | '/_app/personal/$memberId'
@@ -348,20 +324,6 @@ declare module '@tanstack/react-router' {
       path: '/agenda'
       fullPath: '/agenda/'
       preLoaderRoute: typeof AppAgendaIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/agenda/consultorios': {
-      id: '/_app/agenda/consultorios'
-      path: '/agenda/consultorios'
-      fullPath: '/agenda/consultorios'
-      preLoaderRoute: typeof AppAgendaConsultoriosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/agenda/semana': {
-      id: '/_app/agenda/semana'
-      path: '/agenda/semana'
-      fullPath: '/agenda/semana'
-      preLoaderRoute: typeof AppAgendaSemanaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/cierres/': {
@@ -475,8 +437,6 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
-  AppAgendaConsultoriosRoute: typeof AppAgendaConsultoriosRoute
-  AppAgendaSemanaRoute: typeof AppAgendaSemanaRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppPacientesPatientIdRoute: typeof AppPacientesPatientIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
@@ -498,8 +458,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
-  AppAgendaConsultoriosRoute: AppAgendaConsultoriosRoute,
-  AppAgendaSemanaRoute: AppAgendaSemanaRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppPacientesPatientIdRoute: AppPacientesPatientIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,

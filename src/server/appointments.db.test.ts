@@ -2,18 +2,17 @@ import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, auditLog, practitioner } from "#/db/schema/index.ts";
+import { appointment, auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { BookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 
 import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
 import { setMedicalServiceActive } from "#/server/medical-services.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
-import { bookAppointment, getOfficeDay, insertAppointment } from "#/server/appointments.ts";
+import { bookAppointment, insertAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 import { createTimeOff } from "#/server/time-off.ts";
 
@@ -312,143 +311,5 @@ describe("the database guarantee against double booking", () => {
     expect(await insertOver({ status: "cancelled", cancelledBy: "patient" })).toMatchObject({
       ok: true,
     });
-  });
-});
-
-describe("the office day view", () => {
-  async function dayOf(actor: Actor) {
-    const result = await asAppRole(db, (tx) =>
-      getOfficeDay(actor, { officeId: world.office.id, date: "2099-01-05" }, tx),
-    );
-    if (!result.ok) {
-      throw new Error(`getOfficeDay failed: ${result.reason}`);
-    }
-    return result;
-  }
-
-  it("shows a column per practitioner present, with their appointments and free times", async () => {
-    await booked(world.receptionist, { ...booking(), receptionNote: "Trae estudios" });
-
-    const day = await dayOf(world.receptionist);
-
-    expect(day.columns.map((column) => column.practitioner.displayName)).toEqual([
-      "Juan Gómez",
-      "Lucía Díaz",
-    ]);
-    const juan = day.columns[0]!;
-    expect(juan.schedules).toEqual([
-      { start: at("12:00"), end: at("14:00"), roomName: "Consultorio 1" },
-    ]);
-    expect(juan.appointments).toEqual([
-      expect.objectContaining({
-        start: at("12:00"),
-        end: at("12:30"),
-        status: "booked",
-        overbooking: false,
-        patientName: "María Paz",
-        medicalServiceName: "Consulta",
-        color: "color1",
-        roomName: "Consultorio 1",
-        receptionNote: "Trae estudios",
-      }),
-    ]);
-    // Juan's free 30-minute calendar cells.
-    expect(juan.freeStarts.map((free) => free.start)).toEqual(["12:30", "13:00", "13:30"].map(at));
-    expect(juan.freeStarts[0]).toMatchObject({ roomId: world.room.id, roomName: "Consultorio 1" });
-  });
-
-  it("leaves out a practitioner with no schedule or appointment at the office that day", async () => {
-    const norte = await world.addOffice("Sede Norte");
-    const norteRoom = await world.addRoom(norte.id, "Consultorio Norte");
-    await world.addSchedule({
-      practitionerId: world.lucia.id,
-      roomId: norteRoom.id,
-      weekdays: [3],
-    });
-
-    const day = await asAppRole(db, (tx) =>
-      getOfficeDay(world.receptionist, { officeId: norte.id, date: "2099-01-05" }, tx),
-    );
-
-    expect(day).toMatchObject({ ok: true, columns: [] });
-  });
-
-  it("hides cancelled and no-show appointments unless asked for, leaving their time free", async () => {
-    const { id } = await booked();
-    await asAppRole(db, (tx) =>
-      cancelAppointment(world.receptionist, { appointmentId: id, cancelledBy: "business" }, tx),
-    );
-    const { id: absentId } = await booked(world.receptionist, booking({ start: at("13:00") }));
-    await db.update(appointment).set({ status: "noShow" }).where(eq(appointment.id, absentId));
-
-    for (const actor of [world.receptionist, world.admin, world.juan.actor]) {
-      const juan = (await dayOf(actor)).columns[0]!;
-      expect(juan.appointments).toEqual([]);
-      expect(juan.freeStarts.map((free) => free.start)).toEqual(
-        ["12:00", "12:30", "13:00", "13:30"].map(at),
-      );
-    }
-    const withReleased = await asAppRole(db, (tx) =>
-      getOfficeDay(
-        world.receptionist,
-        { officeId: world.office.id, date: "2099-01-05", includeCancelledAndNoShow: true },
-        tx,
-      ),
-    );
-    expect(withReleased.ok && withReleased.columns[0]!.appointments).toEqual([
-      expect.objectContaining({ id, status: "cancelled", cancelledBy: "business" }),
-      expect.objectContaining({ id: absentId, status: "noShow" }),
-    ]);
-    expect(withReleased.ok && withReleased.columns[0]!.freeStarts.length).toBe(4);
-  });
-
-  it("offers only cells whose start is also a free start on the practitioner's grid", async () => {
-    await db
-      .update(practitioner)
-      .set({ gridMinutes: 20 })
-      .where(eq(practitioner.id, world.juan.id));
-    await booked(world.receptionist, booking({ start: at("12:00"), durationMinutes: 20 }));
-
-    const juan = (await dayOf(world.receptionist)).columns[0]!;
-
-    // 12:30 and 13:30 are free cells, but off the 20-minute grid, so a booking there is refused.
-    expect(juan.freeStarts.map((free) => free.start)).toEqual([at("13:00")]);
-  });
-
-  for (const gridMinutes of [20, 60]) {
-    it(`books every offered cell on a ${gridMinutes}-minute grid`, async () => {
-      await db.update(practitioner).set({ gridMinutes }).where(eq(practitioner.id, world.juan.id));
-
-      const offered = (await dayOf(world.receptionist)).columns[0]!.freeStarts;
-
-      expect(offered.length).toBeGreaterThan(0);
-      for (const [index, cell] of offered.entries()) {
-        const patient = await world.addPatient(`Paciente ${index}`, `0351 15 555-000${index}`);
-        expect(
-          await book(world.receptionist, booking({ patientId: patient.id, start: cell.start })),
-        ).toMatchObject({ ok: true });
-      }
-    });
-  }
-
-  it("offers each viewer the status changes and the undo they may make", async () => {
-    const { id } = await booked();
-    await asAppRole(db, (tx) =>
-      changeAppointmentStatus(world.receptionist, { appointmentId: id, status: "confirmed" }, tx),
-    );
-
-    const forReception = (await dayOf(world.receptionist)).columns[0]!.appointments[0]!;
-    expect(forReception).toMatchObject({
-      actions: ["checkedIn", "attended", "cancelled"],
-      undoStatus: "booked",
-    });
-    const forJuan = (await dayOf(world.juan.actor)).columns[0]!.appointments[0]!;
-    expect(forJuan).toMatchObject({ actions: ["attended", "cancelled"], undoStatus: "booked" });
-  });
-
-  it("shows a practitioner only their own column", async () => {
-    const day = await dayOf(world.lucia.actor);
-
-    expect(day.columns.map((column) => column.practitioner.displayName)).toEqual(["Lucía Díaz"]);
   });
 });

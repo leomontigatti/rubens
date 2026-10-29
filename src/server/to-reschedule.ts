@@ -16,7 +16,7 @@ import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
-import type { MedicalServiceColor } from "#/lib/medical-services.ts";
+import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { outsideWorkingTime } from "#/lib/availability.ts";
 import type { OutsideWorkingTime } from "#/lib/availability.ts";
@@ -50,7 +50,7 @@ export interface ToRescheduleEntry {
   end: Date;
   status: AppointmentStatus;
   medicalServiceName: string;
-  color: MedicalServiceColor;
+  color: PractitionerColor;
   officeName: string;
   roomName: string;
   /** The office's zone, to show the appointment in local time. */
@@ -76,7 +76,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       lastName: patient.lastName,
       chosenName: patient.chosenName,
       medicalServiceName: medicalService.name,
-      color: medicalService.color,
+      color: practitioner.color,
       officeId: office.id,
       officeName: office.name,
       roomName: room.name,

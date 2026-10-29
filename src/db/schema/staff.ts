@@ -1,8 +1,12 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, foreignKey, integer, text, unique, uuid } from "drizzle-orm/pg-core";
 
+import { practitionerColors } from "#/lib/practitioner-colors.ts";
+
 import { member, organization } from "#/db/schema/auth.ts";
 import { rubens, timestamps } from "#/db/schema/schema.ts";
+
+export const practitionerColor = rubens.enum("practitioner_color", practitionerColors);
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migration (raw SQL, 0004), as for every table with that column.
@@ -21,6 +25,8 @@ export const practitioner = rubens.table(
     keepsClinicalRecords: boolean("keeps_clinical_records").notNull().default(true),
     // Free times start every this many minutes, counted from local midnight.
     gridMinutes: integer("grid_minutes").notNull().default(30),
+    // The colour of their appointments on the calendar.
+    color: practitionerColor("color").notNull().default("color1"),
     ...timestamps,
   },
   (table) => [
