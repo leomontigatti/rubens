@@ -167,7 +167,7 @@ export function Field(props: {
 const phoneHint =
   "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.";
 
-/** A patient's or a guardian's phone; the submit checks it. */
+/** A patient's or a guardian's phone. */
 export function PhoneField(props: { id: string; defaultValue?: string | null }) {
   return (
     <Field

@@ -10,6 +10,7 @@ import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
+  availabilitySearchProblem,
   availabilityViewOf,
   durationMinutesSchema,
   freeStartsByDay,
@@ -97,20 +98,6 @@ function FreeTimesResult(props: {
   return <FreeTimes starts={props.result.freeStarts} />;
 }
 
-/** What the query form is missing, `null` when it can be viewed. */
-function queryProblem(search: z.output<typeof searchSchema>): string | null {
-  if (!search.profesional) {
-    return "Elegí un profesional.";
-  }
-  if (!search.fecha) {
-    return "Ingresá la fecha.";
-  }
-  if (search.duracion === undefined) {
-    return "Ingresá una duración de 1 a 720 minutos.";
-  }
-  return null;
-}
-
 function QueryForm(props: {
   practitioners: { id: string; displayName: string }[];
   query: AvailabilityView;
@@ -128,7 +115,7 @@ function QueryForm(props: {
       vista: form.get("view"),
       duracion: Number(form.get("durationMinutes")),
     });
-    const problem = queryProblem(search);
+    const problem = availabilitySearchProblem(search);
     setError(problem);
     if (problem) {
       return;
