@@ -14,6 +14,9 @@ a server.
   The first `reset()` boots the instance; each later one truncates every table
   in the `rubens` schema and discards session state, about 0.05 s. A file closes
   its instance after its last test. Booting per test cost half the suite's time.
+- Files share a worker's loaded modules (`isolate: false` in `vite.config.ts`):
+  a test that mocks a module, stubs a global or fakes timers undoes it in its
+  own `afterEach`, or the next file in that worker inherits it.
 - `createTestDatabase()` boots a separate instance, for a test that needs two
   databases at once; the caller closes it.
 - `harness.ts` creates the instance (`createTestDatabase`), loads the contrib
