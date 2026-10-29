@@ -19,7 +19,9 @@ import {
   checkServiceAndPatient,
   findBookablePractitioner,
   findPatientWarnings,
+  insertAppointment,
   lockAppointment,
+  updateAppointment,
 } from "#/server/appointments.ts";
 import type { PatientWarning } from "#/server/appointments.ts";
 import { recordAudit } from "#/server/audit.ts";
@@ -119,6 +121,21 @@ async function findPresences(tx: Transaction, roomId: string, span: TimeRange, t
       ...during,
     })),
   ];
+}
+
+/**
+ * The refusal for a write the room's constraint turned down: another
+ * practitioner's appointment there was committed after `checkRoomSpace` ran,
+ * and a second check now sees and names it.
+ */
+async function lostRoomRace(
+  tx: Transaction,
+  roomId: string,
+  practitionerId: string,
+  span: TimeRange,
+): Promise<RoomRefusal> {
+  const space = await checkRoomSpace(tx, roomId, practitionerId, span);
+  return space.ok ? { ok: false, reason: "roomFull", occupants: [] } : space;
 }
 
 /**
@@ -274,19 +291,19 @@ export async function bookOverbooking(
         overbooking: true,
         receptionNote,
       };
-      const [created] = await tx
-        .insert(appointment)
-        .values({
-          ...values,
-          during: span,
-          organizationId: actor.organizationId,
-          createdBy: actor.userId,
-        })
-        .returning({ id: appointment.id });
+      const created = await insertAppointment(tx, {
+        ...values,
+        during: span,
+        organizationId: actor.organizationId,
+        createdBy: actor.userId,
+      });
+      if (!created.ok) {
+        return lostRoomRace(tx, roomId, found.id, span);
+      }
       await recordAudit(tx, actor, {
         action: "create",
         entityType: "appointment",
-        entityId: created!.id,
+        entityId: created.id,
         patientId,
         before: null,
         after: {
@@ -296,7 +313,7 @@ export async function bookOverbooking(
           status: "booked",
         },
       });
-      return { ok: true as const, appointment: { id: created!.id } };
+      return { ok: true as const, appointment: { id: created.id } };
     },
     database,
   );
@@ -356,10 +373,10 @@ export async function moveAppointmentRoom(
       if (space.officeId !== current.officeId) {
         return { ok: false as const, reason: "otherOffice" as const };
       }
-      await tx
-        .update(appointment)
-        .set({ roomId, updatedAt: new Date() })
-        .where(eq(appointment.id, appointmentId));
+      const updated = await updateAppointment(tx, appointmentId, { roomId });
+      if (!updated.ok) {
+        return lostRoomRace(tx, roomId, found.id, current.during);
+      }
       await recordAudit(tx, actor, {
         action: "update",
         entityType: "appointment",
