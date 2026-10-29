@@ -13,8 +13,6 @@ import { migratedDataDirKey } from "./global-setup.ts";
 
 export type TestDatabase = PgliteDatabase<typeof schema>;
 
-let migratedDataDir: Promise<Blob> | undefined;
-
 /**
  * A fresh in-process Postgres (PGlite) with every migration applied, loaded
  * from the data directory `global-setup.ts` migrated once for the whole run.
@@ -28,11 +26,12 @@ export async function createTestDatabase(): Promise<{
   client: PGlite;
   db: TestDatabase;
 }> {
-  migratedDataDir ??= readFile(inject(migratedDataDirKey) as string).then(
-    (bytes) => new Blob([bytes]),
-  );
+  // Read on every boot, not cached in the module: modules outlive a watch-mode
+  // rerun (`isolate: false`), and global-setup rewrites the file when a
+  // migration changes.
+  const migratedDataDir = new Blob([await readFile(inject(migratedDataDirKey) as string)]);
   const client = await PGlite.create({
-    loadDataDir: await migratedDataDir,
+    loadDataDir: migratedDataDir,
     extensions: testExtensions,
   });
   const db = drizzle(client, { schema });
