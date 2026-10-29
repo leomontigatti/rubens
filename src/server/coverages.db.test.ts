@@ -1,5 +1,4 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { coverage } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
@@ -9,7 +8,7 @@ import type { CoverageInput } from "#/lib/coverages.ts";
 import { historyChanges } from "#/lib/patients.ts";
 import { createOrganization } from "#/test-support/organization.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import {
   addCoverage,
@@ -23,7 +22,7 @@ import { getPatientHistory, registerPatient } from "#/server/patients.ts";
 
 // Every call runs as the app role, so row-level security applies as in the app.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let admin: Actor;
 let receptionist: Actor;
@@ -33,7 +32,7 @@ let osde: string;
 let apross: string;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   const { organizationId, adminUserId } = await createOrganization(createAuth(db));
   admin = { organizationId, userId: adminUserId, roles: ["admin"] };
   receptionist = { organizationId, userId: "receptionist", roles: ["receptionist"] };
@@ -51,10 +50,6 @@ beforeEach(async () => {
   patientId = registered.patient.id;
   osde = await insurer("OSDE", "prepaga");
   apross = await insurer("Apross", "obraSocial");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 async function insurer(name: string, kind: "obraSocial" | "prepaga") {

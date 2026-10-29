@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { asAppRole, createTestDatabase, rowsOf } from "./harness.ts";
+import { asAppRole, createTestDatabase, rowsOf, sharedTestDatabase } from "./harness.ts";
 import type { TestDatabase } from "./harness.ts";
 
 let client: PGlite;
@@ -46,5 +46,37 @@ describe("createTestDatabase", () => {
     await other.client.close();
 
     expect(rows[0]?.count).toBe(0);
+  });
+});
+
+describe("sharedTestDatabase", () => {
+  const shared = sharedTestDatabase();
+
+  it("empties every app table and clears session state on reset", async () => {
+    const first = await shared.reset();
+    await first.execute(sql`insert into rubens.organization (id, name, slug, created_at)
+      values ('org-a', 'A', 'a', now())`);
+    await first.execute(sql`select set_config('app.leftover', 'yes', false)`);
+
+    const second = await shared.reset();
+    const tables = rowsOf<{ name: string }>(
+      await second.execute(sql`select format('%I.%I', schemaname, tablename) as name
+        from pg_tables where schemaname = 'rubens'`),
+    );
+    const counts = await Promise.all(
+      tables.map(async ({ name }) => {
+        const rows = rowsOf<{ count: number }>(
+          await second.execute(sql.raw(`select count(*)::int as count from ${name}`)),
+        );
+        return [name, rows[0]?.count] as const;
+      }),
+    );
+    const setting = rowsOf<{ value: string | null }>(
+      await second.execute(sql`select current_setting('app.leftover', true) as value`),
+    );
+
+    expect(tables.length).toBeGreaterThan(0);
+    expect(counts.filter(([, count]) => count !== 0)).toEqual([]);
+    expect(setting[0]?.value ?? "").toBe("");
   });
 });

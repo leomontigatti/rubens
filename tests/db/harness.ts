@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
 import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
-import { inject } from "vite-plus/test";
+import { afterAll, inject } from "vite-plus/test";
 
 import * as schema from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
@@ -38,6 +38,44 @@ export async function createTestDatabase(): Promise<{
   const db = drizzle(client, { schema });
 
   return { client, db };
+}
+
+/**
+ * One database for the whole test file, emptied by each `reset()`: call it in
+ * `beforeEach`, and the file's last test closes it. A boot costs several times
+ * what emptying does, so a file of many tests boots once instead of per test.
+ *
+ * `reset()` truncates every table in the `rubens` schema, which is where every
+ * row a test writes lands (ADR-0004; no migration seeds one), and discards the
+ * session state a test could leave on the connection, such as a non-local
+ * `set_config`. The migrations' roles, schema and extensions stay as loaded.
+ */
+export function sharedTestDatabase(): { reset: () => Promise<TestDatabase> } {
+  let opened: Promise<{ client: PGlite; db: TestDatabase; truncate: string }> | undefined;
+
+  afterAll(async () => {
+    await (await opened)?.client.close();
+  });
+
+  return {
+    async reset() {
+      if (!opened) {
+        opened = createTestDatabase().then(async ({ client, db }) => {
+          const { rows } = await client.query<{ name: string }>(
+            "select format('%I.%I', schemaname, tablename) as name from pg_tables where schemaname = 'rubens'",
+          );
+          const truncate = `truncate ${rows.map((row) => row.name).join(", ")} restart identity cascade`;
+          return { client, db, truncate };
+        });
+        return (await opened).db;
+      }
+      const { client, db, truncate } = await opened;
+      // Separate calls: DISCARD ALL cannot run inside a transaction block.
+      await client.query("discard all");
+      await client.query(truncate);
+      return db;
+    },
+  };
 }
 
 /**

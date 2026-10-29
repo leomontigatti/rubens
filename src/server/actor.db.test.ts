@@ -1,5 +1,4 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { createAuth } from "#/lib/auth.ts";
 import type { Auth } from "#/lib/auth.ts";
@@ -9,22 +8,16 @@ import {
   createOrganization,
 } from "#/test-support/organization.ts";
 
-import { createTestDatabase } from "../../tests/db/harness.ts";
+import { sharedTestDatabase } from "../../tests/db/harness.ts";
 import { authorize } from "#/server/actor.ts";
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let auth: Auth;
 let organizationId: string;
 
 beforeEach(async () => {
-  const database = await createTestDatabase();
-  client = database.client;
-  auth = createAuth(database.db);
+  auth = createAuth(await testDatabase.reset());
   ({ organizationId } = await createOrganization(auth));
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 describe("authorize", () => {
