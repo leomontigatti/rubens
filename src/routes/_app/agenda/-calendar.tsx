@@ -5,23 +5,21 @@ import { format } from "date-fns";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
-import { layoutCells, layoutDay } from "#/lib/calendar-layout.ts";
+import { layoutCells, layoutColumn, layoutDay } from "#/lib/calendar-layout.ts";
 import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
+import { formatLocalDate, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
-import type {
-  BusyBlock,
-  CalendarAppointment,
-  CalendarCard,
-  CalendarDay,
-} from "#/server/calendar-week.ts";
+import type { CalendarAppointment, CalendarDay } from "#/server/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 
 // The calendar's pieces (docs/domain/appointments.md § Calendar): the time
 // axis, and a day's column of 30-minute cells, white and bookable where free,
-// under its cards, which sit side by side and never overlap.
+// under its cards, which sit side by side and never overlap. Another
+// practitioner's busy block covers the whole width of its cells, white ones
+// included, under the viewer's own cards.
 
 /** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
 const minuteHeight = 1.6;
@@ -86,7 +84,7 @@ export interface PickedCell {
 
 /**
  * One day of the week: a stack of 30-minute cells, white and bookable where a
- * practitioner is free, grey elsewhere, under the day's cards in lanes.
+ * practitioner is free, grey elsewhere, under the day's appointments in lanes.
  */
 export function DayColumn(props: {
   title: ReactNode;
@@ -97,8 +95,14 @@ export function DayColumn(props: {
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
   const { day, view, timeZone } = props;
-  const cards = new Map(day.cards.map((card) => [card.id, card]));
-  const placed = layoutDay(view, day.freeStarts, day.cards);
+  const appointments = day.cards.filter((card) => card.kind === "appointment");
+  const byId = new Map(appointments.map((card) => [card.id, card]));
+  const placed = layoutDay(view, day.freeStarts, appointments);
+  const busy = layoutColumn(
+    day.cards.filter((card) => card.kind === "busy"),
+    view,
+  );
+  const dateLabel = `${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date)}`;
 
   return (
     <div className="min-w-36 flex-1 border-r last:border-r-0">
@@ -126,7 +130,7 @@ export function DayColumn(props: {
                     "--width": laneWidth({ lane, lanes }),
                   } as CSSProperties
                 }
-                aria-label={`Dar turno a las ${localTime(start, timeZone)}`}
+                aria-label={`Dar turno el ${dateLabel} a las ${localTime(start, timeZone)}`}
                 onClick={() =>
                   props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
                 }
@@ -134,46 +138,20 @@ export function DayColumn(props: {
             )}
           </div>
         ))}
+        {busy.map((block) => (
+          <BusyCard key={block.id} block={block} />
+        ))}
         {placed.cards.map((block) => (
-          <PlacedCard
+          <AppointmentCard
             key={block.id}
             block={block}
-            card={cards.get(block.id)!}
+            appointment={byId.get(block.id)!}
             timeZone={timeZone}
             onOpen={props.onOpen}
           />
         ))}
       </div>
     </div>
-  );
-}
-
-/** A card in its lane: an appointment, or another practitioner's busy block. */
-function PlacedCard(props: {
-  block: PlacedBlock;
-  card: CalendarCard;
-  timeZone: string;
-  onOpen: (appointment: CalendarAppointment) => void;
-}) {
-  const { block, card } = props;
-  const style = {
-    "--top": px(block.top),
-    "--height": px(block.height),
-    "--left": laneLeft(block),
-    "--width": laneWidth(block),
-  } as CSSProperties;
-  const placement =
-    "absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs";
-  return card.kind === "busy" ? (
-    <BusyCard placement={placement} style={style} busy={card} timeZone={props.timeZone} />
-  ) : (
-    <AppointmentCard
-      placement={placement}
-      style={style}
-      appointment={card}
-      timeZone={props.timeZone}
-      onOpen={props.onOpen}
-    />
   );
 }
 
@@ -185,22 +163,27 @@ const activeStatuses: readonly string[] = activeAppointmentStatuses;
  * drawn only when asked for, are faded; an overbooking is dashed and marked.
  */
 function AppointmentCard(props: {
-  placement: string;
-  style: CSSProperties;
+  block: PlacedBlock;
   appointment: CalendarAppointment;
   timeZone: string;
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
-  const { appointment: card } = props;
+  const { block, appointment: card } = props;
   return (
     <div
       className={cn(
-        props.placement,
-        "bg-background",
+        "bg-background absolute top-(--top) left-(--left) flex h-(--height) w-(--width) overflow-hidden rounded-md border text-xs",
         card.overbooking && "border-dashed",
         !activeStatuses.includes(card.status) && "opacity-50",
       )}
-      style={props.style}
+      style={
+        {
+          "--top": px(block.top),
+          "--height": px(block.height),
+          "--left": laneLeft(block),
+          "--width": laneWidth(block),
+        } as CSSProperties
+      }
       title={card.receptionNote ?? undefined}
     >
       <div className={cn("w-1 shrink-0", practitionerColorClasses[card.color])} />
@@ -237,21 +220,15 @@ function CardHeading(props: {
   );
 }
 
-/** Another practitioner's appointment, as a practitioner sees it: grey, with only who. */
-function BusyCard(props: {
-  placement: string;
-  style: CSSProperties;
-  busy: BusyBlock;
-  timeZone: string;
-}) {
+/** Another practitioner's appointment, as a practitioner sees it: a grey block, the column's width. */
+function BusyCard(props: { block: PlacedBlock }) {
+  const { block } = props;
   return (
     <div
-      className={cn(props.placement, "bg-muted text-muted-foreground px-1.5 py-0.5")}
-      style={props.style}
+      className="bg-muted absolute inset-x-0 top-(--top) h-(--height) rounded-md border"
+      style={{ "--top": px(block.top), "--height": px(block.height) } as CSSProperties}
     >
-      <span className="truncate">
-        {localTime(props.busy.start, props.timeZone)} Ocupado · {props.busy.practitionerName}
-      </span>
+      <span className="sr-only">Ocupado</span>
     </div>
   );
 }

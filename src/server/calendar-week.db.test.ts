@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, medicalService, practitioner } from "#/db/schema/index.ts";
+import { appointment, medicalService, practitioner, timeOff } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { BookingInput, CalendarWeekQuery } from "#/lib/appointments.ts";
 
@@ -247,17 +247,42 @@ describe("the calendar week of a room", () => {
         id: juans.id,
         start: at("12:00"),
         end: at("12:30"),
-        practitionerId: world.juan.id,
-        practitionerName: "Juan Gómez",
       },
       expect.objectContaining({ kind: "appointment", practitionerId: world.lucia.id }),
     ]);
     const sent = JSON.stringify(week.days[0]!.cards[0]);
-    for (const leak of [maria.id, "María", "Trae estudios", juanService.id]) {
+    for (const leak of [maria.id, "María", "Trae estudios", juanService.id, "Juan"]) {
       expect(sent).not.toContain(leak);
     }
     // A practitioner books only for themselves.
     expect(mondayFree(week).every((free) => free.endsWith("Lucía Díaz"))).toBe(true);
+  });
+
+  it("sends a practitioner another's appointment only when it meets their own hours in the room", async () => {
+    // 15:00Z is 12:00 in Buenos Aires, after `Lucía`'s 09:00 to 11:00.
+    await overbook({ start: at("15:00") });
+    const pedro = await world.addPatient("Pedro", "0351 15 555-4321");
+    const { id } = await book({ patientId: pedro.id, start: at("13:30") });
+
+    const week = await weekOf(world.lucia.actor);
+
+    expect(week.days[0]!.cards).toEqual([expect.objectContaining({ kind: "busy", id })]);
+    expect(week.days.slice(1).flatMap((day) => day.cards)).toEqual([]);
+  });
+
+  it("leaves out another's appointment while the practitioner is on time off", async () => {
+    await db.insert(timeOff).values({
+      organizationId: world.receptionist.organizationId,
+      practitionerId: world.lucia.id,
+      during: { start: at("12:00"), end: at("13:00") },
+    });
+    await book();
+    const pedro = await world.addPatient("Pedro", "0351 15 555-4321");
+    const { id } = await book({ patientId: pedro.id, start: at("13:30") });
+
+    const week = await weekOf(world.lucia.actor);
+
+    expect(week.days[0]!.cards).toEqual([expect.objectContaining({ kind: "busy", id })]);
   });
 
   it("offers each viewer the status changes and the undo they may make", async () => {

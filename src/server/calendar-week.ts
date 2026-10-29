@@ -34,14 +34,14 @@ import {
   toDayAppointment,
 } from "#/server/appointments.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
-import { meets } from "#/server/availability.ts";
+import { findBlocking, meets } from "#/server/availability.ts";
 
 // The calendar (docs/domain/appointments.md § Calendar): one room's week,
 // Monday to Sunday in its office's zone, narrowed to a practitioner or a
 // medical service. Its free cells are those a matching practitioner the actor
 // books for can be booked from. A practitioner who does not book for everyone
-// gets other practitioners' appointments as busy blocks, with no patient
-// data. `database` is for tests, which pass a transaction running as the app
+// gets other practitioners' appointments as busy blocks, with nothing about
+// who, and only those that meet their own working hours in the room. `database` is for tests, which pass a transaction running as the app
 // role.
 //
 // `member` is Better Auth's table and has no row-level security (PRD #16), so
@@ -50,15 +50,13 @@ import { meets } from "#/server/availability.ts";
 /** An appointment drawn in full: the viewer's own, or any for reception and admins. */
 export type CalendarAppointment = DayAppointment & { kind: "appointment" };
 
-/** Another practitioner's active appointment, as a practitioner sees it: only who and when. */
+/** Another practitioner's active appointment, as a practitioner sees it: only when. */
 export interface BusyBlock {
   kind: "busy";
   /** The appointment's id, which says nothing about its patient. */
   id: string;
   start: Date;
   end: Date;
-  practitionerId: string;
-  practitionerName: string;
 }
 
 export type CalendarCard = CalendarAppointment | BusyBlock;
@@ -301,6 +299,45 @@ async function findFreeStarts(
   return freeStarts.sort((a, b) => +a.start - +b.start);
 }
 
+/**
+ * The actor's own working hours in the room that week: their schedules'
+ * occurrences there, less their time off and the office's and organization's
+ * closures. None for an actor who is not one of the room's practitioners.
+ */
+async function findOwnHours(
+  tx: Transaction,
+  actor: Actor,
+  options: { schedules: readonly RoomSchedule[]; window: TimeRange; room: FoundRoom },
+): Promise<TimeRange[]> {
+  const own = options.schedules.filter((row) => row.userId === actor.userId);
+  if (own.length === 0) {
+    return [];
+  }
+  const { timeOff, closures } = await findBlocking(tx, own[0]!.practitionerId, options.window, [
+    options.room.officeId,
+  ]);
+  const blocked = [...timeOff, ...closures.map((one) => one.during)];
+  return own
+    .flatMap((row) =>
+      occurrencesDuring({ ...row, timeZone: options.room.timeZone }, options.window),
+    )
+    .flatMap((hours) => subtract(hours, blocked));
+}
+
+/** What of `range` none of `cuts` covers, as the ranges left. */
+function subtract(range: TimeRange, cuts: readonly TimeRange[]): TimeRange[] {
+  let left = [range];
+  for (const cut of cuts) {
+    left = left.flatMap((piece) =>
+      [
+        { start: piece.start, end: cut.start < piece.end ? cut.start : piece.end },
+        { start: cut.end > piece.start ? cut.end : piece.start, end: piece.end },
+      ].filter((part) => part.start < part.end && (part.end <= cut.start || part.start >= cut.end)),
+    );
+  }
+  return left;
+}
+
 /** The week's free starts, cards and schedules, split by local day. */
 function splitByDay(
   dates: readonly string[],
@@ -369,6 +406,7 @@ async function buildWeek(
   const cards = await findCards(tx, actor, {
     roomId: found.id,
     week: window,
+    ownHours: await findOwnHours(tx, actor, { schedules, window, room: found }),
     practitionerId: filter.practitionerId,
     medicalServiceId: filter.medicalServiceId,
     includeCancelledAndNoShow: query.includeCancelledAndNoShow,
@@ -434,7 +472,8 @@ export async function getCalendarWeek(
 /**
  * The room's appointments that week, in time order: in full for whoever
  * books for everyone and for their own practitioner, as busy blocks for any
- * other practitioner, who never sees another's cancelled or no-show ones.
+ * other practitioner: only active ones that meet `ownHours`, their schedules
+ * in the room.
  */
 async function findCards(
   tx: Transaction,
@@ -442,6 +481,7 @@ async function findCards(
   options: {
     roomId: string;
     week: TimeRange;
+    ownHours: readonly TimeRange[];
     practitionerId: string | null;
     medicalServiceId: string | null;
     includeCancelledAndNoShow: boolean;
@@ -471,18 +511,11 @@ async function findCards(
         { kind: "appointment", ...toDayAppointment(booked, { roles: actor.roles, own }, now) },
       ];
     }
-    if (!active.includes(booked.status)) {
+    const { start, end } = booked.during;
+    const inOwnHours = options.ownHours.some((hours) => hours.start < end && start < hours.end);
+    if (!active.includes(booked.status) || !inOwnHours) {
       return [];
     }
-    return [
-      {
-        kind: "busy",
-        id: booked.id,
-        start: booked.during.start,
-        end: booked.during.end,
-        practitionerId: booked.practitionerId,
-        practitionerName: booked.practitionerName,
-      },
-    ];
+    return [{ kind: "busy", id: booked.id, start, end }];
   });
 }
