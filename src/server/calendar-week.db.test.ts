@@ -245,11 +245,12 @@ describe("the calendar week of a room", () => {
         id: juans.id,
         start: at("12:00"),
         end: at("12:30"),
+        practitionerName: "Juan Gómez",
       },
       expect.objectContaining({ kind: "appointment", practitionerId: world.lucia.id }),
     ]);
     const sent = JSON.stringify(week.days[0]!.cards[0]);
-    for (const leak of [maria.id, "María", "Trae estudios", juanService.id, "Juan"]) {
+    for (const leak of [maria.id, "María", "Trae estudios", juanService.id]) {
       expect(sent).not.toContain(leak);
     }
     // A practitioner books only for themselves.

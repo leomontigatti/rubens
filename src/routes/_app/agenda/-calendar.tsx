@@ -11,14 +11,14 @@ import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { formatLocalDate, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
-import type { CalendarAppointment, CalendarDay } from "#/server/calendar-week.ts";
+import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/server/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 
 // The calendar's pieces (docs/domain/appointments.md § Calendar): the time
 // axis, and a day's column of 30-minute cells, white and bookable where free,
 // under its cards, which sit side by side and never overlap. Another
-// practitioner's busy block, marked `Ocupado`, covers the whole width of its cells, white ones
+// practitioner's busy block, with its time and practitioner, covers the whole width of its cells, white ones
 // included, under the viewer's own cards.
 
 /** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
@@ -98,10 +98,9 @@ export function DayColumn(props: {
   const appointments = day.cards.filter((card) => card.kind === "appointment");
   const byId = new Map(appointments.map((card) => [card.id, card]));
   const placed = layoutDay(view, day.freeStarts, appointments);
-  const busy = layoutColumn(
-    day.cards.filter((card) => card.kind === "busy"),
-    view,
-  );
+  const busyCards = day.cards.filter((card) => card.kind === "busy");
+  const busyById = new Map(busyCards.map((card) => [card.id, card]));
+  const busy = layoutColumn(busyCards, view);
   const dateLabel = `${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date)}`;
 
   return (
@@ -139,7 +138,12 @@ export function DayColumn(props: {
           </div>
         ))}
         {busy.map((block) => (
-          <BusyCard key={block.id} block={block} />
+          <BusyCard
+            key={block.id}
+            block={block}
+            busy={busyById.get(block.id)!}
+            timeZone={timeZone}
+          />
         ))}
         {placed.cards.map((block) => (
           <AppointmentCard
@@ -222,16 +226,16 @@ function CardHeading(props: {
 
 /**
  * Another practitioner's appointment, as a practitioner sees it: a grey block,
- * the column's width, marked so it does not read as a closed hour.
+ * the column's width, with its time and practitioner and nothing about the patient.
  */
-function BusyCard(props: { block: PlacedBlock }) {
-  const { block } = props;
+function BusyCard(props: { block: PlacedBlock; busy: BusyBlock; timeZone: string }) {
+  const { block, busy } = props;
   return (
     <div
       className="bg-muted text-muted-foreground absolute inset-x-0 top-(--top) h-(--height) truncate rounded-md border px-1.5 py-0.5 text-xs"
       style={{ "--top": px(block.top), "--height": px(block.height) } as CSSProperties}
     >
-      Ocupado
+      {localTime(busy.start, props.timeZone)} {busy.practitionerName}
     </div>
   );
 }

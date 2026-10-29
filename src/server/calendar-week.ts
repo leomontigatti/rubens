@@ -40,8 +40,8 @@ import { findBlocking, meets } from "#/server/availability.ts";
 // Monday to Sunday in its office's zone, narrowed to a practitioner or a
 // medical service. Its free cells are those a matching practitioner the actor
 // books for can be booked from. A practitioner who does not book for everyone
-// gets other practitioners' appointments as busy blocks, with nothing about
-// who, and only those that meet their own working hours in the room. `database` is for tests, which pass a transaction running as the app
+// gets other practitioners' appointments as busy blocks, with only when and
+// whose, and only those that meet their own working hours in the room. `database` is for tests, which pass a transaction running as the app
 // role.
 //
 // `member` is Better Auth's table and has no row-level security (PRD #16), so
@@ -50,13 +50,14 @@ import { findBlocking, meets } from "#/server/availability.ts";
 /** An appointment drawn in full: the viewer's own, or any for reception and admins. */
 export type CalendarAppointment = DayAppointment & { kind: "appointment" };
 
-/** Another practitioner's active appointment, as a practitioner sees it: only when. */
+/** Another practitioner's active appointment, as a practitioner sees it: only when and whose. */
 export interface BusyBlock {
   kind: "busy";
   /** The appointment's id, which says nothing about its patient. */
   id: string;
   start: Date;
   end: Date;
+  practitionerName: string;
 }
 
 export type CalendarCard = CalendarAppointment | BusyBlock;
@@ -516,6 +517,6 @@ async function findCards(
     if (!active.includes(booked.status) || !inOwnHours) {
       return [];
     }
-    return [{ kind: "busy", id: booked.id, start, end }];
+    return [{ kind: "busy", id: booked.id, start, end, practitionerName: booked.practitionerName }];
   });
 }
