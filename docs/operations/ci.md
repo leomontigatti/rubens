@@ -36,34 +36,39 @@ current `main`.
 
 1. **Fetch `origin/main`** with full history, once, for every step below that
    compares against it. Never `--depth=1`: fallow needs the merge base.
-2. **gitleaks** over `origin/main..HEAD` (the PR's own commits). Rules in
+2. **Classify the diff.** A diff made only of `*.md` files and `docs/` is
+   docs-only: steps 9 to 14 skip on it, and the job still reports, so the required
+   context passes. An empty diff counts as code. The skip is per step, not a
+   `paths:` filter on the workflow, because a required context that never runs
+   stays pending and blocks the merge.
+3. **gitleaks** over `origin/main..HEAD` (the PR's own commits). Rules in
    `.gitleaks.toml`. The same scan runs locally as the first line of
    `.vite-hooks/pre-commit`, where it is optional; CI is the blocking half.
-3. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
+4. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
    Node from `.nvmrc` and pnpm from `packageManager`.
-4. **`pnpm check`** (`vp check`): format, lint and typecheck.
-5. **`pnpm check:labels`**: every label a workflow, script or agent doc names in a
+5. **`pnpm check`** (`vp check`): format, lint and typecheck.
+6. **`pnpm check:labels`**: every label a workflow, script or agent doc names in a
    `--label` flag, a workflow condition or a `priority:`/`wayfinder:` name is in
    `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#labels)).
-6. **`pnpm check:comment-language`**: no Spanish engineering prose anywhere in the
+7. **`pnpm check:comment-language`**: no Spanish engineering prose anywhere in the
    tree ([coding-standards.md](../agents/coding-standards.md#code-language)).
-7. **`pnpm check:file-tokens`**: no source file under `src/` above the
+8. **`pnpm check:file-tokens`**: no source file under `src/` above the
    estimated-token ceiling.
-8. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
+9. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
    `src/db/migrations`. If it does, the schema changed without its migration. The fix
    is to commit the migration that `db:generate` writes, never to edit a `.sql` file
    already on `main`.
-9. **`pnpm check:migrations`** against `origin/main`. Three rules:
-   order (a new migration must be newer than every migration on `main`), immutability
-   (no applied `.sql` file may change), and safety (squawk over the new `.sql` files).
-   Why each one exists: `scripts/migrations/journal.mjs`.
-10. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+10. **`pnpm check:migrations`** against `origin/main`. Three rules:
+    order (a new migration must be newer than every migration on `main`), immutability
+    (no applied `.sql` file may change), and safety (squawk over the new `.sql` files).
+    Why each one exists: `scripts/migrations/journal.mjs`.
+11. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
     branch introduces, compared with `origin/main`.
-11. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+12. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
     branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
     run) fails the job too.
-12. **`pnpm test:unit`** and **`pnpm test:db`**.
-13. **`pnpm build`**: the production build the Dockerfile runs.
+13. **`pnpm test:unit`** and **`pnpm test:db`**.
+14. **`pnpm build`**: the production build the Dockerfile runs.
 
 ## Waiting on CI from a session
 

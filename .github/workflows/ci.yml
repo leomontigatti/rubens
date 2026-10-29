@@ -4,7 +4,8 @@
 # renaming a job does not update it):
 #   - checks      : secrets scan, format/lint/typecheck, label, comment-language and
 #                   file-size checks, migration checks, dependency audit, unit and
-#                   PGlite database tests, and the production build.
+#                   PGlite database tests, and the production build. On a diff of
+#                   only Markdown and docs/, the steps from the drift check on skip.
 #                   No Postgres service: `test:db` runs on PGlite (see vite.config.ts).
 #   - actions-gate: zizmor + actionlint over every workflow in this directory, and
 #                   zizmor over .github/dependabot.yml.
@@ -44,6 +45,21 @@ jobs:
       # the merge base off, and fallow then exits 2 instead of judging the branch.
       - name: fetch origin/main
         run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+      # A diff made only of Markdown and `docs/` cannot change what the migration
+      # checks, the audits, the tests or the build see, so those steps skip on it
+      # (`docs_only`). The job still runs, so the required context reports; a
+      # `paths:` filter on the workflow would leave it pending and block the merge.
+      # The secrets scan and the checks that read prose still run. An empty diff
+      # (a manual run on main) counts as code, so every step runs.
+      - name: classify the diff
+        id: diff
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only origin/main...HEAD)"
+          if [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qvE '(\.md$|^docs/)'; then
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Docs-only diff: the migration, audit, test and build steps skip."
+          fi
       # Secrets gate, first because nothing else matters if the branch carries a
       # credential. Rules are in `.gitleaks.toml` (picked up from the repository
       # root); `.vite-hooks/pre-commit` runs the same scan over the staged diff,
@@ -98,6 +114,7 @@ jobs:
       # fail. The fix goes in the schema plus a regenerated migration, never by
       # editing a .sql file that is already on main.
       - name: drift-check (db:generate leaves no uncommitted migration)
+        if: steps.diff.outputs.docs_only != 'true'
         run: |
           pnpm db:generate
           if [ -n "$(git status --porcelain --untracked-files=all src/db/migrations)" ]; then
@@ -115,22 +132,28 @@ jobs:
       #   - safety: squawk over the .sql files this branch adds. A drop or a rename
       #     breaks the old container, which keeps serving while the new one migrates.
       - name: migration order, immutability and safety (vs. main)
+        if: steps.diff.outputs.docs_only != 'true'
         run: pnpm check:migrations
       # Dependency hygiene: `pnpm audit --prod` over this branch's tree and over
       # main's, failing only on the high and critical advisories the branch
       # introduces. Auditing the whole tree would redden every open PR the day a CVE
       # lands on a dependency nobody here touched.
       - name: dependency audit (advisories this branch introduces)
+        if: steps.diff.outputs.docs_only != 'true'
         run: pnpm check:dependency-audit
       # Dead code, unused dependencies and duplication (docs/agents/fallow.md), gated
       # on what this branch adds against `origin/main`. Exit 2 means fallow could not
       # run (bad config, unresolvable base) and fails the job like a finding.
       - name: fallow audit (findings this branch introduces)
+        if: steps.diff.outputs.docs_only != 'true'
         run: pnpm check:fallow
-      - run: pnpm test:unit
+      - if: steps.diff.outputs.docs_only != 'true'
+        run: pnpm test:unit
       # PGlite, in-process: no database service in CI.
-      - run: pnpm test:db
-      - run: pnpm build
+      - if: steps.diff.outputs.docs_only != 'true'
+        run: pnpm test:db
+      - if: steps.diff.outputs.docs_only != 'true'
+        run: pnpm build
 
   # Every workflow in `.github/workflows/` goes through zizmor (Actions security
   # posture: pin freshness, trigger safety, permissions, template injection) and
