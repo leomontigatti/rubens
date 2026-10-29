@@ -77,3 +77,8 @@ and CI does not run it.
 `pnpm test` is `test:unit && test:db`, in series. The DB suite is most of the
 cost, and CI runs both on every PR that changes code. A session runs the files it touched and
 leaves the rest to CI.
+
+The same goes for a bare `pnpm test:db`. Agent threads on the machine share one memory limit,
+and the whole DB suite at once peaks at about 2.4 GB even with its two local workers
+([tests/db/README.md](../../tests/db/README.md)). Run the whole suite only when the change
+reaches every DB test, such as the harness or a migration, and say why in the report.
