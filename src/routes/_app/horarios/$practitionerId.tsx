@@ -55,11 +55,22 @@ const fieldMessages: Record<FieldName, string> = {
   roomId: "Elegí un consultorio.",
   weekdays: "Elegí al menos un día.",
   startTime: "Ingresá la hora de inicio.",
-  endTime: "La hora de fin tiene que ser posterior a la de inicio.",
+  endTime: "Ingresá la hora de fin.",
   firstDate: "Ingresá la fecha de inicio.",
   from: "Ingresá desde qué fecha rige el cambio.",
-  lastDate: "La fecha de fin no puede ser anterior a la de inicio.",
+  lastDate: "La fecha de fin no es válida.",
 };
+
+/** The copy for the ranges `checkRanges` (src/lib/schedules.ts) refuses, by its issue's message. */
+const rangeMessages: Record<string, string> = {
+  endBeforeStart: "La hora de fin tiene que ser posterior a la de inicio.",
+  lastBeforeFirst: "La fecha de fin no puede ser anterior a la de inicio.",
+};
+
+/** The message for the first problem `error` names. */
+function scheduleFieldMessage(error: z.ZodError): string {
+  return rangeMessages[error.issues[0]!.message] ?? fieldMessage(fieldMessages, error);
+}
 
 function PractitionerSchedules() {
   const result = Route.useLoaderData();
@@ -313,7 +324,7 @@ function ScheduleForm(props: ScheduleFormProps) {
     event.preventDefault();
     const submitted = props.onSubmit(readForm(new FormData(event.currentTarget)));
     if (!(submitted instanceof Promise)) {
-      action.setError(fieldMessage(fieldMessages, submitted));
+      action.setError(scheduleFieldMessage(submitted));
       return;
     }
     if (await action.run(() => submitted)) {

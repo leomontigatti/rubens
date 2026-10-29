@@ -74,7 +74,12 @@ function Availability() {
       {result.practitioners.length === 0 ? (
         <p className="text-muted-foreground">Todavía no hay profesionales.</p>
       ) : (
-        <QueryForm practitioners={result.practitioners} query={result.query} />
+        <QueryForm
+          // Remounting on a new query resets the fields and any error to what is being viewed.
+          key={JSON.stringify(result.query)}
+          practitioners={result.practitioners}
+          query={result.query}
+        />
       )}
       {result.freeTimes && <FreeTimesResult result={result.freeTimes} />}
     </div>
@@ -134,13 +139,7 @@ function QueryForm(props: {
   return (
     <Card>
       <CardContent>
-        <form
-          // Remounting on a new query resets the fields to what is being viewed.
-          key={JSON.stringify(query)}
-          onSubmit={submit}
-          noValidate
-          className="grid gap-4 sm:grid-cols-2"
-        >
+        <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
           {error && (
             <div className="sm:col-span-2">
               <ErrorAlert message={error} />
