@@ -322,7 +322,7 @@ function ScheduleForm(props: ScheduleFormProps) {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
       <WeekdayFields idPrefix={idPrefix} initial={initial.weekdays} />
       <div className="flex flex-wrap gap-4">
@@ -441,7 +441,7 @@ function EndForm(props: { schedule: Schedule; initial: string; onDone: () => voi
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
       <div className="flex flex-col gap-2">
         <Label htmlFor={id}>Último día</Label>

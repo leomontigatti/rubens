@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
+import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -91,11 +92,26 @@ function FreeTimesResult(props: {
   return <FreeTimes starts={props.result.freeStarts} />;
 }
 
+/** What the query form is missing, `null` when it can be viewed. */
+function queryProblem(search: z.output<typeof searchSchema>): string | null {
+  if (!search.profesional) {
+    return "Elegí un profesional.";
+  }
+  if (!search.fecha) {
+    return "Ingresá la fecha.";
+  }
+  if (search.duracion === undefined) {
+    return "Ingresá una duración de 1 a 720 minutos.";
+  }
+  return null;
+}
+
 function QueryForm(props: {
   practitioners: { id: string; displayName: string }[];
   query: AvailabilityView;
 }) {
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
   const { query } = props;
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -107,6 +123,11 @@ function QueryForm(props: {
       vista: form.get("view"),
       duracion: Number(form.get("durationMinutes")),
     });
+    const problem = queryProblem(search);
+    setError(problem);
+    if (problem) {
+      return;
+    }
     void navigate({ to: "/disponibilidad", search });
   }
 
@@ -117,8 +138,14 @@ function QueryForm(props: {
           // Remounting on a new query resets the fields to what is being viewed.
           key={JSON.stringify(query)}
           onSubmit={submit}
+          noValidate
           className="grid gap-4 sm:grid-cols-2"
         >
+          {error && (
+            <div className="sm:col-span-2">
+              <ErrorAlert message={error} />
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label htmlFor="practitionerId">Profesional</Label>
             <NativeSelect

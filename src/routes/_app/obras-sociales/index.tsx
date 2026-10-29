@@ -199,7 +199,7 @@ function InsurerForm({
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${idPrefix}-name`}>Nombre</Label>

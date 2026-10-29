@@ -24,7 +24,10 @@ export const Route = createFileRoute("/ingresar")({
   component: SignIn,
 });
 
-const credentialsSchema = z.object({ email: z.string(), password: z.string() });
+const credentialsSchema = z.object({
+  email: z.string().trim().min(1),
+  password: z.string().min(1),
+});
 
 function SignIn() {
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +35,16 @@ function SignIn() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const credentials = credentialsSchema.parse(
+    const credentials = credentialsSchema.safeParse(
       Object.fromEntries(new FormData(event.currentTarget)),
     );
+    if (!credentials.success) {
+      setError("Ingresá tu correo y tu contraseña.");
+      return;
+    }
     setPending(true);
     setError(null);
-    const { error: signInError } = await authClient.signIn.email(credentials);
+    const { error: signInError } = await authClient.signIn.email(credentials.data);
     setPending(false);
     if (signInError) {
       setError(signInErrorMessage(signInError.status));
@@ -53,7 +60,7 @@ function SignIn() {
           <CardTitle>Ingresar a Rubens</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
