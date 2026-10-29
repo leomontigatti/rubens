@@ -173,7 +173,15 @@ async function listPractitioners(
     })
     .from(appointment)
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
-    .where(and(eq(appointment.roomId, options.roomId), meets(appointment.during, options.week)));
+    .where(
+      and(
+        eq(appointment.roomId, options.roomId),
+        meets(appointment.during, options.week),
+        // A cancelled or no-show appointment holds no time, and another
+        // practitioner never sees it.
+        inArray(appointment.status, activeAppointmentStatuses),
+      ),
+    );
   const scheduled = options.scheduled.map((row) => ({
     id: row.practitionerId,
     displayName: row.displayName,
@@ -200,6 +208,25 @@ function resolveFilter(
   }
   const listed = practitioners.find((one) => one.id === query.practitionerId);
   return { practitionerId: listed?.id ?? null, medicalServiceId: null, service: null };
+}
+
+/**
+ * The practitioner of a medical service the URL names that is not among the
+ * week's choices (deactivated since, say), so the filter keeps them.
+ */
+async function ownerOfService(
+  tx: Transaction,
+  medicalServiceId: string | undefined,
+  choices: CalendarWeek["medicalServices"],
+): Promise<string | undefined> {
+  if (medicalServiceId === undefined || choices.some((one) => one.id === medicalServiceId)) {
+    return undefined;
+  }
+  const [found] = await tx
+    .select({ practitionerId: medicalService.practitionerId })
+    .from(medicalService)
+    .where(eq(medicalService.id, medicalServiceId));
+  return found?.practitionerId;
 }
 
 /** The room and its office; any room the actor's organization holds. */
@@ -323,7 +350,15 @@ async function buildWeek(
     tx,
     practitioners.map((one) => one.id),
   );
-  const filter = resolveFilter(query, practitioners, medicalServices);
+  const filter = resolveFilter(
+    {
+      medicalServiceId: query.medicalServiceId,
+      practitionerId:
+        query.practitionerId ?? (await ownerOfService(tx, query.medicalServiceId, medicalServices)),
+    },
+    practitioners,
+    medicalServices,
+  );
   const viewed = (row: RoomSchedule) =>
     filter.practitionerId === null || row.practitionerId === filter.practitionerId;
   const freeStarts = await findFreeStarts(tx, actor, present.filter(viewed), {

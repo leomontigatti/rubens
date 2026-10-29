@@ -341,6 +341,17 @@ describe("the calendar week of a room", () => {
     expect(mondayFree(week)).toHaveLength(4);
   });
 
+  it("keeps a deactivated medical service's practitioner when the URL names only the service", async () => {
+    await db
+      .update(medicalService)
+      .set({ active: false })
+      .where(eq(medicalService.id, luciaService.id));
+
+    const week = await weekOf(world.receptionist, { medicalServiceId: luciaService.id });
+
+    expect(week.filter).toEqual({ practitionerId: world.lucia.id, medicalServiceId: null });
+  });
+
   it("ignores a practitioner and a medical service with nothing in the room that week", async () => {
     const week = await weekOf(world.receptionist, {
       roomId: world.room.id,
@@ -408,5 +419,20 @@ describe("the calendar week of a room", () => {
       [juanService.id, juanLongService.id].sort(),
     );
     expect(week.days.every((day) => day.freeStarts.length === 0)).toBe(true);
+  });
+
+  it("leaves out a practitioner whose only appointment in the room that week was cancelled", async () => {
+    const booked = await overbook({ roomId: world.otherRoom.id, start: at("15:00") });
+    await asAppRole(db, (tx) =>
+      cancelAppointment(
+        world.receptionist,
+        { appointmentId: booked.id, cancelledBy: "patient" },
+        tx,
+      ),
+    );
+
+    const week = await weekOf(world.receptionist, { roomId: world.otherRoom.id });
+
+    expect(week.practitioners).toEqual([]);
   });
 });
