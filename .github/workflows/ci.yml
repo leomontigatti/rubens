@@ -5,7 +5,8 @@
 #   - checks      : secrets scan, format/lint/typecheck, label, comment-language and
 #                   file-size checks, migration checks, dependency audit, unit and
 #                   PGlite database tests, and the production build. On a diff of
-#                   only Markdown and docs/, the steps from the drift check on skip.
+#                   only Markdown and docs/, the steps from the drift check on skip,
+#                   except test:unit.
 #                   No Postgres service: `test:db` runs on PGlite (see vite.config.ts).
 #   - actions-gate: zizmor + actionlint over every workflow in this directory, and
 #                   zizmor over .github/dependabot.yml.
@@ -46,19 +47,24 @@ jobs:
       - name: fetch origin/main
         run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
       # A diff made only of Markdown and `docs/` cannot change what the migration
-      # checks, the audits, the tests or the build see, so those steps skip on it
+      # checks, the audits, the DB tests or the build see, so those steps skip on it
       # (`docs_only`). The job still runs, so the required context reports; a
       # `paths:` filter on the workflow would leave it pending and block the merge.
-      # The secrets scan and the checks that read prose still run. An empty diff
-      # (a manual run on main) counts as code, so every step runs.
+      # The secrets scan, the checks that read prose and `test:unit` still run: the
+      # comment-language tests read `GLOSSARY.md` and every tracked `*.md`. An empty
+      # diff (a manual run on main) counts as code, so every step runs.
+      # `--no-renames`: a rename lists only its new path, so a file moved into
+      # `docs/` would hide the path it left. A here-string, not a pipe: under
+      # `pipefail`, `grep -q` exiting early can SIGPIPE the writer, and the `!`
+      # would read that failure as docs-only.
       - name: classify the diff
         id: diff
         run: |
           set -euo pipefail
-          changed="$(git diff --name-only origin/main...HEAD)"
-          if [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qvE '(\.md$|^docs/)'; then
+          changed="$(git diff --name-only --no-renames origin/main...HEAD)"
+          if [ -n "$changed" ] && ! grep -qvE '(\.md$|^docs/)' <<<"$changed"; then
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
-            echo "Docs-only diff: the migration, audit, test and build steps skip."
+            echo "Docs-only diff: the migration, audit, DB test and build steps skip."
           fi
       # Secrets gate, first because nothing else matters if the branch carries a
       # credential. Rules are in `.gitleaks.toml` (picked up from the repository
@@ -147,8 +153,7 @@ jobs:
       - name: fallow audit (findings this branch introduces)
         if: steps.diff.outputs.docs_only != 'true'
         run: pnpm check:fallow
-      - if: steps.diff.outputs.docs_only != 'true'
-        run: pnpm test:unit
+      - run: pnpm test:unit
       # PGlite, in-process: no database service in CI.
       - if: steps.diff.outputs.docs_only != 'true'
         run: pnpm test:db

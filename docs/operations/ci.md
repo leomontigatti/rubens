@@ -37,10 +37,11 @@ current `main`.
 1. **Fetch `origin/main`** with full history, once, for every step below that
    compares against it. Never `--depth=1`: fallow needs the merge base.
 2. **Classify the diff.** A diff made only of `*.md` files and `docs/` is
-   docs-only: steps 9 to 14 skip on it, and the job still reports, so the required
-   context passes. An empty diff counts as code. The skip is per step, not a
-   `paths:` filter on the workflow, because a required context that never runs
-   stays pending and blocks the merge.
+   docs-only: steps 9 to 14 skip on it, except `test:unit`, which reads
+   `GLOSSARY.md` and the tracked Markdown. The job still reports, so the required
+   context passes. An empty diff counts as code, and a rename counts its old path.
+   The skip is per step, not a `paths:` filter on the workflow, because a required
+   context that never runs stays pending and blocks the merge.
 3. **gitleaks** over `origin/main..HEAD` (the PR's own commits). Rules in
    `.gitleaks.toml`. The same scan runs locally as the first line of
    `.vite-hooks/pre-commit`, where it is optional; CI is the blocking half.
