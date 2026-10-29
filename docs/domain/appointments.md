@@ -124,8 +124,8 @@ role: it is not drawn unless asked for, and then faded in its own lane, and
 opening it allows an undo.
 
 A practitioner sees their own appointments in full and books only for
-themself. Other practitioners' appointments in the room show as plain grey
-blocks across the day's width, with nothing about who or the patient, and
+themself. Other practitioners' appointments in the room show as grey
+`Ocupado` blocks across the day's width, with nothing about who or the patient, and
 only where they meet the practitioner's own schedules in the room: the
 server sends no others. A block covers its cells, white ones included.
 
