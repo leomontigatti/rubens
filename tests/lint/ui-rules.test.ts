@@ -98,7 +98,28 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   it("allow a raw element that has no look: hidden, visually hidden, or rendered by a ui component", () => {
     const file = probe(
       "raw-allowed.tsx",
-      `${button}export const Form = () => (\n  <form>\n    <input type="hidden" name="id" value="1" />\n    <input type="file" className="sr-only" />\n    <Button render={<button type="submit" />}>Guardar</Button>\n    <Button render={(props) => <button {...props} />}>Enviar</Button>\n    <Button\n      render={(props) => {\n        return <button {...props} />;\n      }}\n    >\n      Volver\n    </Button>\n    <Button\n      render={(props) => {\n        if (props.className) return <button {...props} />;\n        return <a {...props} />;\n      }}\n    >\n      Ir\n    </Button>\n  </form>\n);\n`,
+      `${button}export const Form = () => (\n  <form noValidate>\n    <input type="hidden" name="id" value="1" />\n    <input type="file" className="sr-only" />\n    <Button render={<button type="submit" />}>Guardar</Button>\n    <Button render={(props) => <button {...props} />}>Enviar</Button>\n    <Button\n      render={(props) => {\n        return <button {...props} />;\n      }}\n    >\n      Volver\n    </Button>\n    <Button\n      render={(props) => {\n        if (props.className) return <button {...props} />;\n        return <a {...props} />;\n      }}\n    >\n      Ir\n    </Button>\n  </form>\n);\n`,
+    );
+
+    expect(codes(file)).toEqual([]);
+  });
+
+  it("reject a form that lets the browser validate, and say why", () => {
+    const file = probe(
+      "form-validates.tsx",
+      `export const Forms = () => (\n  <>\n    <form />\n    <form noValidate={false} />\n  </>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("require-no-validate"));
+
+    expect(found).toHaveLength(2);
+    expect(found.map(text).join()).toContain("Spanish");
+  });
+
+  it("allow a form that turns the browser's validation off", () => {
+    const file = probe(
+      "form-no-validate.tsx",
+      `export const Forms = () => (\n  <>\n    <form noValidate />\n    <form noValidate={true} />\n  </>\n);\n`,
     );
 
     expect(codes(file)).toEqual([]);
