@@ -55,6 +55,7 @@ export interface BusyBlock {
   kind: "busy";
   /** The appointment's id, which says nothing about its patient. */
   id: string;
+  /** The part of the appointment inside the viewer's working hours. */
   start: Date;
   end: Date;
   practitionerName: string;
@@ -473,7 +474,7 @@ export async function getCalendarWeek(
 /**
  * The room's appointments that week, in time order: in full for whoever
  * books for everyone and for their own practitioner, as busy blocks for any
- * other practitioner: only active ones that meet `ownHours`, their schedules
+ * other practitioner: only active ones, cut to `ownHours`, their working hours
  * in the room.
  */
 async function findCards(
@@ -512,11 +513,26 @@ async function findCards(
         { kind: "appointment", ...toDayAppointment(booked, { roles: actor.roles, own }, now) },
       ];
     }
-    const { start, end } = booked.during;
-    const inOwnHours = options.ownHours.some((hours) => hours.start < end && start < hours.end);
-    if (!active.includes(booked.status) || !inOwnHours) {
+    if (!active.includes(booked.status)) {
       return [];
     }
-    return [{ kind: "busy", id: booked.id, start, end, practitionerName: booked.practitionerName }];
+    return clipToHours(booked.during, options.ownHours).map((part, index): BusyBlock => ({
+      kind: "busy",
+      // Time off can split an appointment; the first part keeps its id.
+      id: index === 0 ? booked.id : `${booked.id}-${index}`,
+      ...part,
+      practitionerName: booked.practitionerName,
+    }));
   });
+}
+
+/** The parts of `range` inside `hours`, in time order. */
+function clipToHours(range: TimeRange, hours: readonly TimeRange[]): TimeRange[] {
+  return hours
+    .filter((one) => one.start < range.end && range.start < one.end)
+    .map((one) => ({
+      start: one.start > range.start ? one.start : range.start,
+      end: one.end < range.end ? one.end : range.end,
+    }))
+    .sort((a, b) => +a.start - +b.start);
 }

@@ -203,6 +203,8 @@ function RoomMoveForm(props: {
       props.onDone();
     } else if (result.reason === "roomFull") {
       setError(roomFullMessage(result.occupants, props.timeZone));
+      // The calendar behind the dialog shows who took the room too.
+      await router.invalidate();
     } else {
       setError(refusalMessages[result.reason]);
     }

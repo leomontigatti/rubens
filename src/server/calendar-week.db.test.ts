@@ -284,6 +284,23 @@ describe("the calendar week of a room", () => {
     expect(week.days[0]!.cards).toEqual([expect.objectContaining({ kind: "busy", id })]);
   });
 
+  it("cuts another's appointment to the practitioner's hours, on both sides of their time off", async () => {
+    await db.insert(timeOff).values({
+      organizationId: world.receptionist.organizationId,
+      practitionerId: world.lucia.id,
+      during: { start: at("12:30"), end: at("13:00") },
+    });
+    // From 09:00 to 11:30 in Buenos Aires: past `Lucía`'s 11:00, and across their time off.
+    await overbook({ durationMinutes: 150 });
+
+    const week = await weekOf(world.lucia.actor);
+
+    expect(week.days[0]!.cards).toMatchObject([
+      { kind: "busy", start: at("12:00"), end: at("12:30") },
+      { kind: "busy", start: at("13:00"), end: at("14:00") },
+    ]);
+  });
+
   it("offers each viewer the status changes and the undo they may make", async () => {
     const { id } = await book();
     await asAppRole(db, (tx) =>

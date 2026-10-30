@@ -226,14 +226,21 @@ function CardHeading(props: {
 
 /**
  * Another practitioner's appointment, as a practitioner sees it: a grey block,
- * the column's width, with its time and practitioner and nothing about the patient.
+ * the column's width unless two overlap, with its time and practitioner and nothing about the patient.
  */
 function BusyCard(props: { block: PlacedBlock; busy: BusyBlock; timeZone: string }) {
   const { block, busy } = props;
   return (
     <div
-      className="bg-muted text-muted-foreground absolute inset-x-0 top-(--top) h-(--height) truncate rounded-md border px-1.5 py-0.5 text-xs"
-      style={{ "--top": px(block.top), "--height": px(block.height) } as CSSProperties}
+      className="bg-muted text-muted-foreground absolute top-(--top) left-(--left) h-(--height) w-(--width) truncate rounded-md border px-1.5 py-0.5 text-xs"
+      style={
+        {
+          "--top": px(block.top),
+          "--height": px(block.height),
+          "--left": laneLeft(block),
+          "--width": laneWidth(block),
+        } as CSSProperties
+      }
     >
       {localTime(busy.start, props.timeZone)} {busy.practitionerName}
     </div>

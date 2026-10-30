@@ -73,6 +73,9 @@ const refusalMessages = {
   officeInactive: "La sede de ese consultorio está desactivada.",
 };
 
+/** The refusals that mean someone took the time since the calendar was read. */
+const takenRefusals: readonly string[] = ["timeTaken", "roomFull"];
+
 /**
  * Why the room has no space: who holds it at that time. None when the
  * appointment that took it was gone by the time the server looked again.
@@ -236,7 +239,7 @@ function BookingForm(props: {
   async function settle(refusal: BookingRefusal) {
     // An overbooking's times are read in its office's zone; a booking's refusals hold none.
     dispatch(refusalEvent(refusal, props.overbooking?.timeZone ?? defaultTimeZone));
-    if (refusal.reason === "timeTaken") {
+    if (takenRefusals.includes(refusal.reason)) {
       // The calendar behind the dialog shows the time taken too.
       await router.invalidate();
     }

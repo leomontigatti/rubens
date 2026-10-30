@@ -127,7 +127,7 @@ A practitioner sees their own appointments in full and books only for
 themself. Other practitioners' appointments in the room show as grey
 blocks across the day's width with their time and practitioner (`09:30 Pablo
 Ríos`), nothing about the patient, and
-only where they meet the practitioner's own schedules in the room: the
+cut to the practitioner's own working hours in the room: the
 server sends no others. A block covers its cells, white ones included.
 
 ## Patient history
