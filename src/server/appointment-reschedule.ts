@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 
-import { appointment } from "#/db/schema/index.ts";
+import { appointment, patient } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
@@ -98,6 +98,13 @@ export async function rescheduleAppointment(
       const found = await findBookablePractitioner(tx, actor, current.practitionerId);
       if (!found.ok) {
         return found;
+      }
+      const [owner] = await tx
+        .select({ active: patient.active })
+        .from(patient)
+        .where(eq(patient.id, current.patientId));
+      if (!owner!.active) {
+        return { ok: false as const, reason: "patientInactive" as const };
       }
       const placed = await placeAppointment(tx, found, span, {
         appointmentId,

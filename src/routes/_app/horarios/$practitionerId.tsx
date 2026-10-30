@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -210,6 +211,7 @@ function ScheduleActions(props: {
   onMode: (mode: Mode) => void;
 }) {
   const remove = useAction();
+  const [confirming, setConfirming] = useState(false);
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex gap-2">
@@ -224,15 +226,23 @@ function ScheduleActions(props: {
             variant="outline"
             size="sm"
             disabled={remove.pending}
-            onClick={() =>
-              void remove.run(() => removeSchedule({ data: { scheduleId: props.schedule.id } }))
-            }
+            onClick={() => setConfirming(true)}
           >
             Eliminar
           </Button>
         )}
       </div>
       <ErrorAlert message={remove.error} />
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="¿Eliminar este horario?"
+        description="Esto no se puede deshacer."
+        confirmLabel="Eliminar"
+        onConfirm={() =>
+          void remove.run(() => removeSchedule({ data: { scheduleId: props.schedule.id } }))
+        }
+      />
     </div>
   );
 }

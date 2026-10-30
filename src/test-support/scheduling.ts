@@ -117,8 +117,9 @@ export async function createBookingWorld(db: TestDatabase) {
     return result.patient;
   }
 
-  const practitioner = (staff: { actor: Actor }, name: string) => ({
+  const practitioner = (staff: { member: { memberId: string }; actor: Actor }, name: string) => ({
     id: idOf(name),
+    memberId: staff.member.memberId,
     actor: staff.actor,
   });
 

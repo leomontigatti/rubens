@@ -78,6 +78,7 @@ function ClosureList() {
             <EntryItem
               key={item.id}
               title={item.officeName ?? wholeOrganization}
+              deleteQuestion="¿Eliminar este cierre?"
               entry={item.entry}
               canEdit={result.canEdit}
               messages={refusalMessages}

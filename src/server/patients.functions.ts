@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type {
   DuplicateConfirmation,
   PatientActiveChange,
+  PatientReference,
   PatientInput,
   PatientUpdate,
   WhatsappConsentChange,
@@ -18,6 +19,7 @@ import {
   setWhatsappConsent,
   updatePatient,
 } from "#/server/patients.ts";
+import { countPatientUpcoming } from "#/server/to-reschedule.ts";
 import type { ListOptions, SearchOptions } from "#/server/patients.ts";
 import { withActor } from "#/server/with-actor.ts";
 
@@ -57,6 +59,10 @@ export const editPatient = createServerFn({ method: "POST" })
 export const changeWhatsappConsent = createServerFn({ method: "POST" })
   .validator((data: WhatsappConsentChange) => data)
   .handler(({ data }) => withActor(editors, (actor) => setWhatsappConsent(actor, data)));
+
+export const getPatientUpcomingCount = createServerFn({ method: "GET" })
+  .validator((data: PatientReference) => data)
+  .handler(({ data }) => withActor(adminOnly, (actor) => countPatientUpcoming(actor, data)));
 
 export const changePatientActive = createServerFn({ method: "POST" })
   .validator((data: PatientActiveChange) => data)

@@ -61,6 +61,7 @@ function TimeOffList() {
             <EntryItem
               key={item.id}
               title={item.practitionerName}
+              deleteQuestion="¿Eliminar esta licencia?"
               entry={item.entry}
               canEdit={item.canEdit}
               messages={refusalMessages}

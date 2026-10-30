@@ -113,6 +113,8 @@ export const whatsappConsentChangeSchema = z.object({
 
 export const patientActiveChangeSchema = z.object({ id: z.uuid(), active: z.boolean() });
 
+export const patientReferenceSchema = patientActiveChangeSchema.pick({ id: true });
+
 export type PatientInput = z.input<typeof patientInputSchema>;
 
 /**
@@ -125,6 +127,7 @@ export interface DuplicateConfirmation {
 export type PatientUpdate = z.input<typeof patientUpdateSchema>;
 export type WhatsappConsentChange = z.input<typeof whatsappConsentChangeSchema>;
 export type PatientActiveChange = z.input<typeof patientActiveChangeSchema>;
+export type PatientReference = z.input<typeof patientReferenceSchema>;
 
 /**
  * The name the app calls a patient by: their chosen first name in place of the

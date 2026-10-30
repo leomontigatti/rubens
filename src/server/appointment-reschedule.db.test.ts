@@ -15,6 +15,8 @@ import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
+import { setPatientActive } from "#/server/patients.ts";
+import { setMemberActive } from "#/server/staff.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday; Juan works from
@@ -221,6 +223,25 @@ describe("rescheduling as an overbooking", () => {
 });
 
 describe("who and what can be rescheduled", () => {
+  it("refuses the appointment of a deactivated patient, or practitioner", async () => {
+    const id = await book(maria.id, at("12:00"));
+
+    await asAppRole(db, (tx) => setPatientActive(world.admin, { id: maria.id, active: false }, tx));
+    expect(await reschedule({ appointmentId: id, start: at("13:00") })).toEqual({
+      ok: false,
+      reason: "patientInactive",
+    });
+
+    await asAppRole(db, (tx) => setPatientActive(world.admin, { id: maria.id, active: true }, tx));
+    await asAppRole(db, (tx) =>
+      setMemberActive(world.admin, { memberId: world.juan.memberId, active: false }, tx),
+    );
+    expect(await reschedule({ appointmentId: id, start: at("13:00") })).toEqual({
+      ok: false,
+      reason: "practitionerInactive",
+    });
+  });
+
   it("refuses a cancelled appointment", async () => {
     const id = await book(maria.id, at("12:00"));
     await asAppRole(db, (tx) =>

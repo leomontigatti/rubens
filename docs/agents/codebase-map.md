@@ -11,7 +11,8 @@ src/
 ├── routes/            TanStack Router file routes; `__root.tsx` is the document shell
 │   └── api/auth/$.ts  Better Auth's HTTP handler
 ├── components/        shared pieces: `admin-form.tsx` (the admin screens' submit step and
-│   │                  controls), `range-entry.tsx` (the time-off and closure forms and rows),
+│   │                  controls), `confirm-dialog.tsx` (the question before a destructive
+│   │                  action), `range-entry.tsx` (the time-off and closure forms and rows),
 │   │                  `patient-form.tsx` (patient registration, for any screen that registers one),
 │   │                  `patient-duplicates.tsx` (the duplicate check's refusal and warning),
 │   │                  `patient-coverages.tsx` (the patient page's coverages),

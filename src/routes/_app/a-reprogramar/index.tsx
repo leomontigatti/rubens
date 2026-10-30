@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
+import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
@@ -14,17 +15,17 @@ import {
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
-import type { OutsideWorkingTime } from "#/lib/availability.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
-import type { ToRescheduleEntry } from "#/server/to-reschedule.ts";
+import type { ToRescheduleEntry, ToRescheduleReason } from "#/server/to-reschedule.ts";
 
 import { CancelForm } from "#/routes/_app/agenda/-appointment-status.tsx";
 import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
-// that time off, a closure or a schedule change left outside working time,
-// soonest first, for reception to call each patient. Each one is rescheduled
-// or cancelled from here, with the agenda's own forms.
+// that time off, a closure or a schedule change left outside working time, or
+// of someone deactivated, soonest first, for reception to call each patient.
+// Each one is rescheduled or cancelled from here, with the agenda's own forms;
+// one of someone deactivated is refused a new time until they are reactivated.
 
 export const Route = createFileRoute("/_app/a-reprogramar/")({
   head: () => ({ meta: [{ title: "Turnos a reprogramar · Rubens" }] }),
@@ -39,11 +40,16 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
 };
 
-const reasonLabels: Record<OutsideWorkingTime, string> = {
+const reasonLabels: Record<ToRescheduleReason, string> = {
   timeOff: "El profesional tiene una ausencia",
   closure: "La sede está cerrada",
   outsideSchedules: "Fuera de los horarios del profesional",
+  practitionerInactive: "El profesional está desactivado",
+  patientInactive: "El paciente está desactivado",
 };
+
+/** The reasons an appointment cannot take a new time yet. */
+const blockedReasons: ToRescheduleReason[] = ["practitionerInactive", "patientInactive"];
 
 /** The entry being acted on, and whether to reschedule or cancel it. */
 interface Picked {
@@ -112,6 +118,40 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
   );
 }
 
+function EntryAction(props: { picked: Picked; onClose: () => void }) {
+  const { entry, action } = props.picked;
+  if (action === "cancel") {
+    return (
+      <CancelForm
+        key={entry.id}
+        appointmentId={entry.id}
+        onDone={props.onClose}
+        onBack={props.onClose}
+      />
+    );
+  }
+  if (blockedReasons.includes(entry.reason)) {
+    return (
+      <Alert>
+        <AlertDescription>
+          No se puede reprogramar mientras el profesional o el paciente estén desactivados. Un
+          administrador puede reactivarlos.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  return (
+    <RescheduleForm
+      key={entry.id}
+      appointment={entry}
+      practitionerId={entry.practitioner.id}
+      timeZone={entry.timeZone}
+      onDone={props.onClose}
+      onBack={props.onClose}
+    />
+  );
+}
+
 function EntryDialog(props: { picked: Picked | null; onClose: () => void }) {
   const { picked } = props;
   return (
@@ -126,23 +166,7 @@ function EntryDialog(props: { picked: Picked | null; onClose: () => void }) {
                 {picked.entry.practitioner.displayName} · {picked.entry.medicalServiceName}
               </DialogDescription>
             </DialogHeader>
-            {picked.action === "reschedule" ? (
-              <RescheduleForm
-                key={picked.entry.id}
-                appointment={picked.entry}
-                practitionerId={picked.entry.practitioner.id}
-                timeZone={picked.entry.timeZone}
-                onDone={props.onClose}
-                onBack={props.onClose}
-              />
-            ) : (
-              <CancelForm
-                key={picked.entry.id}
-                appointmentId={picked.entry.id}
-                onDone={props.onClose}
-                onBack={props.onClose}
-              />
-            )}
+            <EntryAction picked={picked} onClose={props.onClose} />
           </>
         )}
       </DialogContent>
