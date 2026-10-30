@@ -48,13 +48,8 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
   patientInactive: "El paciente está desactivado",
 };
 
-/** Why the appointment cannot take a new time yet, and what unblocks it. */
-const rescheduleBlocks: Partial<Record<ToRescheduleReason, string>> = {
-  practitionerInactive:
-    "No se puede reprogramar mientras el profesional esté desactivado. Un administrador puede reactivarlo.",
-  patientInactive:
-    "No se puede reprogramar mientras el paciente esté desactivado. Un administrador puede reactivarlo.",
-};
+/** The reasons an appointment cannot take a new time yet. */
+const blockedReasons: ToRescheduleReason[] = ["practitionerInactive", "patientInactive"];
 
 /** The entry being acted on, and whether to reschedule or cancel it. */
 interface Picked {
@@ -125,7 +120,6 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
 
 function EntryAction(props: { picked: Picked; onClose: () => void }) {
   const { entry, action } = props.picked;
-  const block = rescheduleBlocks[entry.reason];
   if (action === "cancel") {
     return (
       <CancelForm
@@ -136,10 +130,13 @@ function EntryAction(props: { picked: Picked; onClose: () => void }) {
       />
     );
   }
-  if (block) {
+  if (blockedReasons.includes(entry.reason)) {
     return (
       <Alert>
-        <AlertDescription>{block}</AlertDescription>
+        <AlertDescription>
+          No se puede reprogramar mientras el profesional o el paciente estén desactivados. Un
+          administrador puede reactivarlos.
+        </AlertDescription>
       </Alert>
     );
   }
