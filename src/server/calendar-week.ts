@@ -53,7 +53,7 @@ export type CalendarAppointment = DayAppointment & { kind: "appointment" };
 /** Another practitioner's active appointment, as a practitioner sees it: only when and whose. */
 export interface BusyBlock {
   kind: "busy";
-  /** The appointment's id, which says nothing about its patient. */
+  /** The appointment's id, numbered after the first part; it says nothing about its patient. */
   id: string;
   /** The part of the appointment inside the viewer's working hours. */
   start: Date;
@@ -319,11 +319,27 @@ async function findOwnHours(
     options.room.officeId,
   ]);
   const blocked = [...timeOff, ...closures.map((one) => one.during)];
-  return own
-    .flatMap((row) =>
-      occurrencesDuring({ ...row, timeZone: options.room.timeZone }, options.window),
-    )
-    .flatMap((hours) => subtract(hours, blocked));
+  return mergeTouching(
+    own
+      .flatMap((row) =>
+        occurrencesDuring({ ...row, timeZone: options.room.timeZone }, options.window),
+      )
+      .flatMap((hours) => subtract(hours, blocked)),
+  );
+}
+
+/** `ranges` in time order, with those that touch joined: back-to-back schedules are one stretch. */
+function mergeTouching(ranges: readonly TimeRange[]): TimeRange[] {
+  const merged: TimeRange[] = [];
+  for (const range of [...ranges].sort((a, b) => +a.start - +b.start)) {
+    const last = merged.at(-1);
+    if (last && +range.start <= +last.end) {
+      last.end = range.end > last.end ? range.end : last.end;
+    } else {
+      merged.push({ ...range });
+    }
+  }
+  return merged;
 }
 
 /** What of `range` none of `cuts` covers, as the ranges left. */

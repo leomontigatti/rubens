@@ -301,6 +301,23 @@ describe("the calendar week of a room", () => {
     ]);
   });
 
+  it("keeps one block across the practitioner's back-to-back schedules", async () => {
+    // After their 09:00 to 11:00: 14:00Z to 16:00Z.
+    await world.addSchedule({
+      practitionerId: world.lucia.id,
+      roomId: shared.id,
+      startTime: "11:00",
+      endTime: "13:00",
+    });
+    await overbook({ start: at("13:30"), durationMinutes: 60 });
+
+    const week = await weekOf(world.lucia.actor);
+
+    expect(week.days[0]!.cards).toMatchObject([
+      { kind: "busy", start: at("13:30"), end: at("14:30") },
+    ]);
+  });
+
   it("offers each viewer the status changes and the undo they may make", async () => {
     const { id } = await book();
     await asAppRole(db, (tx) =>

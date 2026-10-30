@@ -18,8 +18,9 @@ import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 // The calendar's pieces (docs/domain/appointments.md § Calendar): the time
 // axis, and a day's column of 30-minute cells, white and bookable where free,
 // under its cards, which sit side by side and never overlap. Another
-// practitioner's busy block, with its time and practitioner, covers the whole width of its cells, white ones
-// included, under the viewer's own cards.
+// practitioner's busy block, with its time and practitioner, covers its cells,
+// white ones included, under the viewer's own cards; only another block shares
+// its width.
 
 /** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
 const minuteHeight = 1.6;
