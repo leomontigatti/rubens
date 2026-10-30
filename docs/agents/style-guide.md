@@ -20,9 +20,16 @@ What is settled already:
   gets a one-off class; a second case gets a variant or a component. A new token, variant or
   typeface is a product decision: ask before adding one.
 - **A state is a `Badge` beside the name**, never ` · Inactivo` in the text. It is neutral
-  (`secondary`, `outline`) unless it changes what someone does next, then semantic:
-  `Datos incompletos` is `warning`, `Ausente` is `destructive`. On the calendar, colour says
-  which practitioner, so a status there is an icon.
+  unless it changes what someone does next. On the calendar, colour says which practitioner, so
+  a status there is an icon.
+
+  | State                                      | Variant       |
+  | ------------------------------------------ | ------------- |
+  | Inactivo, Inactiva, Cancelado, Atendido    | `secondary`   |
+  | Sobreturno, Principal, Menor de edad       | `outline`     |
+  | Datos incompletos                          | `warning`     |
+  | Ausente, the count of turnos a reprogramar | `destructive` |
+
 - **An existing component before new markup.** Look in `src/components/ui` and the shared
   components in `src/components/` ([codebase-map.md](./codebase-map.md#layout)) before writing
   one; extend one with a variant rather than copy its markup. A shadcn component the screen

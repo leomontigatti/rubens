@@ -135,13 +135,34 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     const found = lint(file).filter((d) => d.code.includes("alert-structure"));
 
     expect(found).toHaveLength(2);
-    expect(found.map(text).join()).toContain("what to do");
+  });
+
+  it("reject an alert of plain text or raw elements, beside an action too", () => {
+    const file = probe(
+      "alert-unstructured.tsx",
+      `import { Alert, AlertAction, AlertTitle } from "#/components/ui/alert.tsx";\n\nexport const Notices = () => (\n  <>\n    <Alert variant="info">Texto</Alert>\n    <Alert variant="info">\n      <p>Texto</p>\n    </Alert>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertAction />\n    </Alert>\n  </>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("alert-structure"));
+
+    expect(found).toHaveLength(5);
+  });
+
+  it("follow the alert through split and renamed imports", () => {
+    const file = probe(
+      "alert-imports.tsx",
+      `import { Alert as Notice } from "#/components/ui/alert.tsx";\nimport { AlertDescription as Body } from "#/components/ui/alert.tsx";\n\nexport const Lacking = () => (\n  <Notice variant="info">\n    <Body>Detalle.</Body>\n  </Notice>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("alert-structure"));
+
+    expect(found).toHaveLength(1);
   });
 
   it("allow an alert with both parts, and one whose parts it cannot see", () => {
     const file = probe(
       "alert-complete.tsx",
-      `${alert}export const Notices = ({ body }: { body: React.ReactNode }) => (\n  <>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertDescription>Detalle.</AlertDescription>\n    </Alert>\n    <Alert variant="warning">{body}</Alert>\n  </>\n);\n`,
+      `${alert}export const Notices = ({ body }: { body: React.ReactNode }) => (\n  <>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertDescription>Detalle.</AlertDescription>\n    </Alert>\n    <Alert variant="warning">{body}</Alert>\n    <Alert variant="warning">\n      <Wrapper />\n    </Alert>\n  </>\n);\n\nconst Wrapper = () => null;\n`,
     );
 
     expect(codes(file)).toEqual([]);

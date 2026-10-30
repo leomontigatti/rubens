@@ -142,14 +142,21 @@ function isBlankChild(child) {
   );
 }
 
-// The element's name, or none for what the rule cannot see into: a prop, a wrapper.
-const childElement = (child) => (child.type === "JSXElement" ? child.openingElement.name.name : "");
+// A component the alert module does not export: a wrapper, which may render the parts.
+const isWrapper = (name, alertImports) =>
+  name.type !== "JSXIdentifier" || (/^[A-Z]/.test(name.name) && !alertImports.has(name.name));
+
+// A prop or a wrapper may bring the parts; text and raw elements cannot.
+const hidesParts = (child, alertImports) =>
+  child.type === "JSXExpressionContainer" ||
+  (child.type === "JSXElement" && isWrapper(child.openingElement.name, alertImports));
 
 // The parts the alert lacks, or none when a child hides from the rule what it brings.
-function missingAlertParts(node) {
-  const children = node.children.filter((child) => !isBlankChild(child)).map(childElement);
-  if (!children.every((name) => ALERT_PARTS.includes(name))) return [];
-  return ALERT_PARTS.filter((part) => !children.includes(part));
+function missingAlertParts(node, alertImports) {
+  const children = node.children.filter((child) => !isBlankChild(child));
+  if (children.some((child) => hidesParts(child, alertImports))) return [];
+  const present = children.map((child) => alertImports.get(child.openingElement?.name.name));
+  return ALERT_PARTS.filter((part) => !present.includes(part));
 }
 
 const alertStructure = {
@@ -164,17 +171,19 @@ const alertStructure = {
     schema: [],
   },
   create(context) {
-    let alertName;
+    // Each local name imported from the alert module, to its exported name.
+    const alertImports = new Map();
     return {
       ImportDeclaration(node) {
         if (!node.source.value.endsWith("/components/ui/alert.tsx")) return;
-        const imported = node.specifiers.find((item) => item.imported?.name === "Alert");
-        alertName = imported?.local.name;
+        for (const specifier of node.specifiers) {
+          alertImports.set(specifier.local.name, specifier.imported?.name);
+        }
       },
       JSXElement(node) {
         const opening = node.openingElement;
-        if (!alertName || opening.name.name !== alertName) return;
-        for (const part of missingAlertParts(node)) {
+        if (alertImports.get(opening.name.name) !== "Alert") return;
+        for (const part of missingAlertParts(node, alertImports)) {
           context.report({ node: opening, messageId: "part", data: { part } });
         }
       },

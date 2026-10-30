@@ -237,7 +237,7 @@ function ScheduleActions(props: {
         open={confirming}
         onOpenChange={setConfirming}
         title="¿Eliminar este horario?"
-        description="El horario se borra y no se puede recuperar. Si tiene turnos, pasan a Turnos a reprogramar."
+        description="El horario se borra y no se puede recuperar. Si tiene turnos, salvo sobreturnos, pasan a Turnos a reprogramar."
         confirmLabel="Eliminar"
         onConfirm={() =>
           void remove.run(() => removeSchedule({ data: { scheduleId: props.schedule.id } }))
