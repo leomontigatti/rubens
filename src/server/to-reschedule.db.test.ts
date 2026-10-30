@@ -584,6 +584,17 @@ describe("the future appointments deactivating a room or an office would send to
     expect(await officeCount(world.office)).toEqual({ ok: true, count: 2 });
   });
 
+  it("matches what deactivating the office adds to the list", async () => {
+    await book(at("12:00"));
+    await overbook(at("15:00"), pedro.id);
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
+
+    const before = await officeCount(world.office);
+    await setPlaceActive(world.office, false);
+
+    expect(before).toEqual({ ok: true, count: await count() });
+  });
+
   it("refuses a malformed id, and anyone but an admin", async () => {
     expect(await roomCount({ id: "not-a-uuid" })).toEqual({ ok: false, reason: "invalidInput" });
     expect(await officeCount({ id: "not-a-uuid" })).toEqual({ ok: false, reason: "invalidInput" });

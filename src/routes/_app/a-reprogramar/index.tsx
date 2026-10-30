@@ -23,8 +23,9 @@ import { CancelForm } from "#/routes/_app/agenda/-appointment-status.tsx";
 import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
-// that time off, a closure or a schedule change left outside working time, or
-// of someone deactivated, soonest first, for reception to call each patient.
+// that time off, a closure or a schedule change left outside working time, of
+// someone deactivated or in a deactivated place, soonest first, for reception
+// to call each patient.
 // Each one is rescheduled or cancelled from here, with the agenda's own forms;
 // one of someone deactivated is refused a new time until they are reactivated.
 

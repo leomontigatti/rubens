@@ -93,8 +93,8 @@ even when another room's schedule still covers the time. Its schedules also cove
 nothing from then on, so an appointment in another room of the office that only they
 covered goes to the list as outside working time. The admin is told first how many
 appointments that adds up to, leaving out those on the list already. Rescheduling
-picks a new room, so such an appointment can move at once; reactivating the place
-takes the rest off the list.
+picks a new room, so such an appointment can move once the practitioner has a free
+time in an active room; reactivating the place takes the rest off the list.
 
 ## Overlaps and overbooking
 

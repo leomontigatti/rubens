@@ -4,11 +4,9 @@ import { mondayOf, upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
 describe("the notice before deactivating someone", () => {
   it("agrees with how many appointments they have", () => {
-    expect(upcomingAppointmentsNotice(1)).toBe(
-      "Tiene 1 turno futuro. Va a pasar a Turnos a reprogramar.",
-    );
+    expect(upcomingAppointmentsNotice(1)).toBe("1 turno futuro va a pasar a Turnos a reprogramar.");
     expect(upcomingAppointmentsNotice(12)).toBe(
-      "Tiene 12 turnos futuros. Van a pasar a Turnos a reprogramar.",
+      "12 turnos futuros van a pasar a Turnos a reprogramar.",
     );
   });
 });
