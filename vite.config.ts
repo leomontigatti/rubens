@@ -58,6 +58,7 @@ export default defineConfig({
       "shadcn/no-unknown-classes": "error",
       "shadcn/no-inline-styles": "error",
       "shadcn/require-static-classes": "error",
+      "ui/alert-structure": "error",
       "ui/no-raw-form-element": "error",
       "ui/require-no-validate": "error",
       "react-hooks/rules-of-hooks": "error",

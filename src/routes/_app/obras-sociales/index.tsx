@@ -12,6 +12,7 @@ import {
   fieldMessage,
   useFormAction,
 } from "#/components/admin-form.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -143,11 +144,11 @@ function InsurerItem({ insurer, isAdmin }: { insurer: Insurer; isAdmin: boolean 
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <span className="font-medium">{insurer.name}</span>
-            <span className="text-muted-foreground text-sm">
-              {insurerKindLabels[insurer.kind]}
-              {!insurer.active && " · Inactiva"}
+            <span className="flex items-center gap-2 font-medium">
+              {insurer.name}
+              {!insurer.active && <Badge variant="secondary">Inactiva</Badge>}
             </span>
+            <span className="text-muted-foreground text-sm">{insurerKindLabels[insurer.kind]}</span>
           </div>
           <AdminControls
             isAdmin={isAdmin}

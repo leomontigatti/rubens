@@ -1,35 +1,55 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { cn } from "cn";
+import { CircleAlertIcon, CircleCheckIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
+
+// Local divergence from shadcn: every alert says what kind of message it is, so
+// `variant` is required and has no `default`, and `Alert` draws that variant's
+// one icon itself, so a message reads the same everywhere (style guide, Alerts).
 
 const alertVariants = cva(
   "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "border-destructive-tint-border bg-destructive-tint text-destructive *:data-[slot=alert-description]:text-foreground",
+        info: "border-info-tint-border bg-info-tint text-info *:data-[slot=alert-description]:text-foreground",
+        success:
+          "border-success-tint-border bg-success-tint text-success *:data-[slot=alert-description]:text-foreground",
+        warning:
+          "border-warning-tint-border bg-warning-tint text-warning *:data-[slot=alert-description]:text-foreground",
       },
-    },
-    defaultVariants: {
-      variant: "default",
     },
   },
 );
 
+const alertIcons = {
+  destructive: CircleAlertIcon,
+  info: InfoIcon,
+  success: CircleCheckIcon,
+  warning: TriangleAlertIcon,
+};
+
+type AlertVariant = keyof typeof alertIcons;
+
 function Alert({
   className,
   variant,
+  children,
   ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+}: React.ComponentProps<"div"> & { variant: AlertVariant }) {
+  const Icon = alertIcons[variant];
   return (
     <div
       data-slot="alert"
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
-    />
+    >
+      <Icon aria-hidden="true" />
+      {children}
+    </div>
   );
 }
 

@@ -19,6 +19,10 @@ What is settled already:
   its look: pick a `variant` or `size`, never restyle it from a screen. A case with no token
   gets a one-off class; a second case gets a variant or a component. A new token, variant or
   typeface is a product decision: ask before adding one.
+- **A state is a `Badge` beside the name**, never ` · Inactivo` in the text. It is neutral
+  (`secondary`, `outline`) unless it changes what someone does next, then semantic:
+  `Datos incompletos` is `warning`, `Ausente` is `destructive`. On the calendar, colour says
+  which practitioner, so a status there is an icon.
 - **An existing component before new markup.** Look in `src/components/ui` and the shared
   components in `src/components/` ([codebase-map.md](./codebase-map.md#layout)) before writing
   one; extend one with a variant rather than copy its markup. A shadcn component the screen
@@ -60,6 +64,27 @@ only the first problem, in an `ErrorAlert` above the form, and moves no focus. M
 target is one change for every form at once; until then a form, new or changed, uses that shared
 display and no other.
 
+## Alerts
+
+An `Alert` says what kind of message it is, not how loud: `variant` is required, and `Alert`
+draws that variant's one icon itself.
+
+| Variant       | For                                                               | Example                         |
+| ------------- | ----------------------------------------------------------------- | ------------------------------- |
+| `destructive` | An error: something went wrong                                    | `ErrorAlert`                    |
+| `warning`     | Something to fix or regret                                        | `MinorPrompt`                   |
+| `info`        | A state to know about, including a lock and what unlocks it       | `No se puede reprogramar`       |
+| `success`     | An outcome that stays on screen, when the screen does not show it | The starting password's `Listo` |
+
+- **A title and a description, always**: the title says what is going on in a few words, the
+  description the detail and what to do, never repeating the title. `pnpm lint` enforces it
+  (`ui/alert-structure`).
+- **An alert is for what the screen does not already say.** A tinted box loses its meaning when
+  every screen has one.
+- **The semantic colours are not the brand's.** `success`, `info` and `warning` are tokens of
+  their own; check them against the brand palette when it lands (#37). Their text keeps 4.5:1 on
+  their tint, which is why tints are 6%.
+
 ## After a submit
 
 Which channel carries a message, and where the user lands.
@@ -72,7 +97,7 @@ Which channel carries a message, and where the user lands.
 | Saved, and the change shows on the screen             | No message: the closed panel and the updated row or page are the answer.                                                           |
 | Saved, and nothing on the screen shows it             | An `Alert` that stays: the starting password's `Listo.` (`src/routes/_app/personal/$memberId.tsx`).                                |
 | A field locked by the record's state                  | An `Alert` above the form listing every reason and what unlocks it, or saying nothing does; a lock icon alone explains nothing.    |
-| A condition to know before acting, found by the app   | An `Alert` on the page. There is no `warning` variant yet: adding one is a product decision.                                       |
+| A condition to know before acting, found by the app   | A `warning` `Alert` on the page.                                                                                                   |
 | An action with no form failed, or the network dropped | A toast, once the app has one; it disappears on its own, so it never carries something the user must fix.                          |
 
 - **Stay on the page unless it stops making sense.** An edit or a create made in a panel stays,
@@ -99,8 +124,10 @@ the keyboard and by screen readers.
 
 A confirmation interrupts, so it is kept for what the user cannot undo or would not expect.
 It is a `ConfirmDialog` (`src/components/confirm-dialog.tsx`), never `AlertDialog` directly: a
-question that names the thing, what happens, and a destructive button repeating the action's
-name.
+question that names the thing, what is lost in the description, and a destructive button
+repeating the action's name. It carries no `destructive` `Alert`: the dialog is already the
+warning, and `destructive` means something went wrong. A `warning` `Alert` joins it only when
+the loss goes beyond the record being deleted.
 
 | Action                              | Treatment                                                                                           |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------- |

@@ -4,6 +4,7 @@
 //
 // - `no-raw-form-element`: a raw form element where a ui component exists.
 // - `require-no-validate`: a `<form>` without `noValidate`.
+// - `alert-structure`: an `Alert` without its title and description.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -131,7 +132,61 @@ const requireNoValidate = {
   },
 };
 
+const ALERT_PARTS = ["AlertTitle", "AlertDescription"];
+
+// Whitespace and `{/* comments */}` render nothing.
+function isBlankChild(child) {
+  return (
+    (child.type === "JSXText" && child.value.trim() === "") ||
+    (child.type === "JSXExpressionContainer" && child.expression.type === "JSXEmptyExpression")
+  );
+}
+
+// The element's name, or none for what the rule cannot see into: a prop, a wrapper.
+const childElement = (child) => (child.type === "JSXElement" ? child.openingElement.name.name : "");
+
+// The parts the alert lacks, or none when a child hides from the rule what it brings.
+function missingAlertParts(node) {
+  const children = node.children.filter((child) => !isBlankChild(child)).map(childElement);
+  if (!children.every((name) => ALERT_PARTS.includes(name))) return [];
+  return ALERT_PARTS.filter((part) => !children.includes(part));
+}
+
+const alertStructure = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "An Alert has a title and a description.",
+    },
+    messages: {
+      part: "Give the alert an {{part}}: the title says what is going on in a few words, the description the detail and what to do (style guide, Alerts).",
+    },
+    schema: [],
+  },
+  create(context) {
+    let alertName;
+    return {
+      ImportDeclaration(node) {
+        if (!node.source.value.endsWith("/components/ui/alert.tsx")) return;
+        const imported = node.specifiers.find((item) => item.imported?.name === "Alert");
+        alertName = imported?.local.name;
+      },
+      JSXElement(node) {
+        const opening = node.openingElement;
+        if (!alertName || opening.name.name !== alertName) return;
+        for (const part of missingAlertParts(node)) {
+          context.report({ node: opening, messageId: "part", data: { part } });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
-  rules: { "no-raw-form-element": noRawFormElement, "require-no-validate": requireNoValidate },
+  rules: {
+    "alert-structure": alertStructure,
+    "no-raw-form-element": noRawFormElement,
+    "require-no-validate": requireNoValidate,
+  },
 };

@@ -6,7 +6,7 @@ import { useReducer, useState } from "react";
 import type { FormEvent } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
@@ -540,9 +540,10 @@ function TimeTaken(props: { starts: AvailableStart[] | null; dispatch: Dispatch 
   }
   return (
     <Alert variant="destructive">
+      <AlertTitle>Ese horario ya se ocupó</AlertTitle>
       <AlertDescription>
         <div className="flex flex-col gap-2">
-          <p>Ese horario ya se ocupó. Elegí otro horario libre:</p>
+          <p>Elegí otro horario libre:</p>
           {props.starts.length === 0 ? (
             <p>No quedan horarios libres ese día.</p>
           ) : (
@@ -569,10 +570,10 @@ export function PatientWarnings(props: {
     return null;
   }
   return (
-    <Alert>
+    <Alert variant="warning">
+      <AlertTitle>El paciente ya tiene turno ese día</AlertTitle>
       <AlertDescription>
         <div className="flex flex-col gap-2">
-          <p>El paciente ya tiene turno ese día:</p>
           <ul className="list-disc pl-5">
             {props.warnings.map((warning) => (
               <li key={+warning.start}>

@@ -144,19 +144,19 @@ function PatientList({ patients, emptyMessage }: { patients: Patient[]; emptyMes
           <Card>
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <Link
-                  to="/pacientes/$patientId"
-                  params={{ patientId: patient.id }}
-                  className="font-medium underline-offset-4 hover:underline"
-                >
-                  {patientName(patient)}
-                </Link>
-                <span className="text-muted-foreground text-sm">
-                  {formatPhone(patient.phone)}
-                  {!patient.active && " · Inactivo"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/pacientes/$patientId"
+                    params={{ patientId: patient.id }}
+                    className="font-medium underline-offset-4 hover:underline"
+                  >
+                    {patientName(patient)}
+                  </Link>
+                  {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
+                </div>
+                <span className="text-muted-foreground text-sm">{formatPhone(patient.phone)}</span>
               </div>
-              {patient.incomplete && <Badge variant="outline">Datos incompletos</Badge>}
+              {patient.incomplete && <Badge variant="warning">Datos incompletos</Badge>}
             </CardContent>
           </Card>
         </li>

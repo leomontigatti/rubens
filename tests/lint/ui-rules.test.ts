@@ -10,6 +10,7 @@ const probe = lintProbes("ui");
 const codes = (...files: string[]) => lint(...files).map((d) => d.code);
 
 const button = `import { Button } from "#/components/ui/button.tsx";\n\n`;
+const alert = `import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";\n\n`;
 
 // Each case spawns a type-aware `vp lint`: well under a second warm, slower cold.
 describe("UI lint rules", { timeout: 30_000 }, () => {
@@ -120,6 +121,27 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     const file = probe(
       "form-no-validate.tsx",
       `export const Forms = () => (\n  <>\n    <form noValidate />\n    <form noValidate={true} />\n  </>\n);\n`,
+    );
+
+    expect(codes(file)).toEqual([]);
+  });
+
+  it("reject an alert without a title or a description, and say what each is for", () => {
+    const file = probe(
+      "alert-parts.tsx",
+      `${alert}export const Notices = () => (\n  <>\n    <Alert variant="info">\n      <AlertDescription>Sin título.</AlertDescription>\n    </Alert>\n    <Alert variant="info">\n      <AlertTitle>Sin descripción</AlertTitle>\n    </Alert>\n  </>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("alert-structure"));
+
+    expect(found).toHaveLength(2);
+    expect(found.map(text).join()).toContain("what to do");
+  });
+
+  it("allow an alert with both parts, and one whose parts it cannot see", () => {
+    const file = probe(
+      "alert-complete.tsx",
+      `${alert}export const Notices = ({ body }: { body: React.ReactNode }) => (\n  <>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertDescription>Detalle.</AlertDescription>\n    </Alert>\n    <Alert variant="warning">{body}</Alert>\n  </>\n);\n`,
     );
 
     expect(codes(file)).toEqual([]);

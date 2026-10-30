@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import type * as z from "zod";
 
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 
@@ -58,6 +58,7 @@ export function ErrorAlert({ message }: { message: string | null }) {
   }
   return (
     <Alert variant="destructive">
+      <AlertTitle>Hay un problema</AlertTitle>
       <AlertDescription>{message}</AlertDescription>
     </Alert>
   );

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
@@ -26,8 +27,9 @@ export function DocumentTakenAlert({ holder }: { holder: Patient | null }) {
   }
   return (
     <Alert variant="destructive">
+      <AlertTitle>Ese documento ya está registrado</AlertTitle>
       <AlertDescription>
-        Ya hay un paciente con ese documento:{" "}
+        Lo tiene{" "}
         <Link
           to="/pacientes/$patientId"
           params={{ patientId: holder.id }}
@@ -52,7 +54,6 @@ function candidateDetails({ patient, matches }: DuplicateCandidate): string {
     formatPhone(patient.phone),
     patient.birthDate && formatLocalDate(patient.birthDate),
     ...matches.map((match) => matchLabels[match]),
-    !patient.active && "Inactivo",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -63,7 +64,10 @@ function CandidateRow(props: { candidate: DuplicateCandidate; onUse: (patient: P
   return (
     <li className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex flex-col gap-1">
-        <span className="font-medium">{patientName(patient)}</span>
+        <span className="flex items-center gap-2 font-medium">
+          {patientName(patient)}
+          {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
+        </span>
         <span className="text-muted-foreground text-sm">{candidateDetails(props.candidate)}</span>
       </div>
       <Button variant="outline" size="sm" onClick={() => props.onUse(patient)}>
