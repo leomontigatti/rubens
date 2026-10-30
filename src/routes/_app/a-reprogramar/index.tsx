@@ -14,17 +14,17 @@ import {
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
-import type { OutsideWorkingTime } from "#/lib/availability.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
-import type { ToRescheduleEntry } from "#/server/to-reschedule.ts";
+import type { ToRescheduleEntry, ToRescheduleReason } from "#/server/to-reschedule.ts";
 
 import { CancelForm } from "#/routes/_app/agenda/-appointment-status.tsx";
 import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
-// that time off, a closure or a schedule change left outside working time,
-// soonest first, for reception to call each patient. Each one is rescheduled
-// or cancelled from here, with the agenda's own forms.
+// that time off, a closure or a schedule change left outside working time, or
+// of someone deactivated, soonest first, for reception to call each patient.
+// Each one is rescheduled or cancelled from here, with the agenda's own forms;
+// one of someone deactivated can only be cancelled.
 
 export const Route = createFileRoute("/_app/a-reprogramar/")({
   head: () => ({ meta: [{ title: "Turnos a reprogramar · Rubens" }] }),
@@ -39,11 +39,16 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
 };
 
-const reasonLabels: Record<OutsideWorkingTime, string> = {
+const reasonLabels: Record<ToRescheduleReason, string> = {
   timeOff: "El profesional tiene una ausencia",
   closure: "La sede está cerrada",
   outsideSchedules: "Fuera de los horarios del profesional",
+  practitionerInactive: "El profesional está desactivado",
+  patientInactive: "El paciente está desactivado",
 };
+
+/** Moving it would leave the appointment on the list, or be refused. */
+const onlyCancelled: ToRescheduleReason[] = ["practitionerInactive", "patientInactive"];
 
 /** The entry being acted on, and whether to reschedule or cancel it. */
 interface Picked {
@@ -101,9 +106,11 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
         <p className="text-muted-foreground">{reasonLabels[entry.reason]}</p>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => props.onPick("reschedule")}>
-          Reprogramar
-        </Button>
+        {!onlyCancelled.includes(entry.reason) && (
+          <Button variant="outline" size="sm" onClick={() => props.onPick("reschedule")}>
+            Reprogramar
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={() => props.onPick("cancel")}>
           Cancelar
         </Button>

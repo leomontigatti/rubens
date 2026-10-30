@@ -55,7 +55,8 @@ Patients and everything in their clinical record are kept for at least ten years
 from the last entry (Ley 26.529), so a patient is deactivated, never deleted. The
 one exception is a note or file voided from a record because it never belonged
 there ([clinical-records.md](./clinical-records.md#voiding)). A deactivated patient
-leaves the search results; their data stays.
+leaves the search results; their data stays, and their future appointments go to the
+"to reschedule" list ([appointments.md](./appointments.md#rescheduling)).
 
 ## Guardians
 

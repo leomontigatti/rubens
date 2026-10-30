@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   appointment,
@@ -19,7 +19,7 @@ import type { Actor } from "#/lib/access.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { outsideWorkingTime } from "#/lib/availability.ts";
-import type { OutsideWorkingTime } from "#/lib/availability.ts";
+import type { OutsideWorkingTime, WorkingTime } from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate, today } from "#/lib/schedules.ts";
 import { patientName } from "#/lib/patients.ts";
@@ -31,7 +31,8 @@ import { meets } from "#/server/availability.ts";
 // The "to reschedule" list (ui: "Turnos a reprogramar"), computed live and
 // never stored (docs/domain/appointments.md § Rescheduling): every future
 // booked or confirmed appointment, overbookings left out, that time off, a
-// closure or a schedule change has left outside working time. Scoped as the
+// closure or a schedule change has left outside working time, and, overbookings
+// included, every one of a deactivated practitioner or patient. Scoped as the
 // calendar is: reception and admins see everyone's, a practitioner their own.
 // Schedules in a deactivated room or office cover nothing, as in the free
 // times. `database` is for tests, which pass a transaction running as the app
@@ -55,14 +56,28 @@ export interface ToRescheduleEntry {
   roomName: string;
   /** The office's zone, to show the appointment in local time. */
   timeZone: string;
-  reason: OutsideWorkingTime;
+  reason: ToRescheduleReason;
 }
+
+/** Why an appointment is on the list. */
+export type ToRescheduleReason = OutsideWorkingTime | "practitionerInactive" | "patientInactive";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: "forbidden" };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 
-/** The future booked or confirmed appointments, overbookings left out, the actor may see. */
+function isAdmin(actor: Actor): boolean {
+  return actor.roles.includes("admin");
+}
+
+/** The appointments deactivating someone sends to the list, whatever their working time. */
+const upcoming = () =>
+  and(
+    inArray(appointment.status, ["booked", "confirmed"]),
+    gt(sql`lower(${appointment.during})`, new Date().toISOString()),
+  );
+
+/** The future booked or confirmed appointments the actor may see. */
 async function upcomingAppointments(tx: Transaction, actor: Actor) {
   return tx
     .select({
@@ -72,6 +87,9 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       practitionerName: practitioner.displayName,
       during: appointment.during,
       status: appointment.status,
+      overbooking: appointment.overbooking,
+      practitionerActive: member.active,
+      patientActive: patient.active,
       firstName: patient.firstName,
       lastName: patient.lastName,
       chosenName: patient.chosenName,
@@ -92,14 +110,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
     .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .innerJoin(room, eq(room.id, appointment.roomId))
     .innerJoin(office, eq(office.id, room.officeId))
-    .where(
-      and(
-        inArray(appointment.status, ["booked", "confirmed"]),
-        eq(appointment.overbooking, false),
-        gt(sql`lower(${appointment.during})`, new Date().toISOString()),
-        actsForEveryone(actor) ? undefined : eq(member.userId, actor.userId),
-      ),
-    )
+    .where(and(upcoming(), actsForEveryone(actor) ? undefined : eq(member.userId, actor.userId)))
     .orderBy(asc(appointment.during));
 }
 
@@ -150,6 +161,19 @@ async function workingTimeOf(tx: Transaction, practitionerIds: string[], reach: 
   });
 }
 
+type Upcoming = Awaited<ReturnType<typeof upcomingAppointments>>[number];
+
+/** Why the appointment is on the list; `null` when it is not. */
+function reasonFor(row: Upcoming, workingTime: WorkingTime): ToRescheduleReason | null {
+  if (!row.practitionerActive) {
+    return "practitionerInactive";
+  }
+  if (!row.patientActive) {
+    return "patientInactive";
+  }
+  return row.overbooking ? null : outsideWorkingTime(row.during, row.officeId, workingTime);
+}
+
 async function findToReschedule(tx: Transaction, actor: Actor): Promise<ToRescheduleEntry[]> {
   const rows = await upcomingAppointments(tx, actor);
   if (rows.length === 0) {
@@ -165,7 +189,7 @@ async function findToReschedule(tx: Transaction, actor: Actor): Promise<ToResche
     reach,
   );
   return rows.flatMap((row) => {
-    const reason = outsideWorkingTime(row.during, row.officeId, workingTimeFor(row.practitionerId));
+    const reason = reasonFor(row, workingTimeFor(row.practitionerId));
     if (reason === null) {
       return [];
     }
@@ -215,6 +239,58 @@ export async function countToReschedule(
   return withTenant(
     actor,
     async (tx) => ({ ok: true as const, count: (await findToReschedule(tx, actor)).length }),
+    database,
+  );
+}
+
+/** The patient's future appointments, for the question before deactivating them. */
+export async function countPatientUpcoming(
+  actor: Actor,
+  input: { patientId: string },
+  database?: AnyDatabase,
+): Promise<Result<{ count: number }>> {
+  if (!isAdmin(actor)) {
+    return forbidden;
+  }
+  return withTenant(
+    actor,
+    async (tx) => {
+      const [row] = await tx
+        .select({ total: count() })
+        .from(appointment)
+        .where(and(eq(appointment.patientId, input.patientId), upcoming()));
+      return { ok: true as const, count: row!.total };
+    },
+    database,
+  );
+}
+
+/** The future appointments of the member as a practitioner, likewise. */
+export async function countMemberUpcoming(
+  actor: Actor,
+  input: { memberId: string },
+  database?: AnyDatabase,
+): Promise<Result<{ count: number }>> {
+  if (!isAdmin(actor)) {
+    return forbidden;
+  }
+  return withTenant(
+    actor,
+    async (tx) => {
+      const [row] = await tx
+        .select({ total: count() })
+        .from(appointment)
+        .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
+        .innerJoin(
+          member,
+          and(
+            eq(member.id, practitioner.memberId),
+            eq(member.organizationId, actor.organizationId),
+          ),
+        )
+        .where(and(eq(member.id, input.memberId), upcoming()));
+      return { ok: true as const, count: row!.total };
+    },
     database,
   );
 }

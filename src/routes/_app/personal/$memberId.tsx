@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import { ErrorAlert, fieldMessage } from "#/components/admin-form.tsx";
+import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -24,6 +25,7 @@ import {
   editPractitioner,
   editRoles,
   getMember,
+  getMemberUpcomingCount,
   resetStartingPassword,
 } from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/server/staff.ts";
@@ -65,6 +67,11 @@ function StaffMemberScreen() {
 
 function MemberHeading({ member }: { member: StaffMember }) {
   const toggle = useAction();
+
+  function changeActive(active: boolean) {
+    return toggle.run(() => changeMemberActive({ data: { memberId: member.memberId, active } }));
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -83,17 +90,22 @@ function MemberHeading({ member }: { member: StaffMember }) {
           </h1>
           <p className="text-muted-foreground text-sm">{member.email}</p>
         </div>
-        <Button
-          variant="outline"
-          disabled={toggle.pending}
-          onClick={() =>
-            void toggle.run(() =>
-              changeMemberActive({ data: { memberId: member.memberId, active: !member.active } }),
-            )
-          }
-        >
-          {member.active ? "Desactivar" : "Reactivar"}
-        </Button>
+        {member.active ? (
+          <DeactivateButton
+            name={member.name}
+            pending={toggle.pending}
+            countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
+            onDeactivate={() => void changeActive(false)}
+          />
+        ) : (
+          <Button
+            variant="outline"
+            disabled={toggle.pending}
+            onClick={() => void changeActive(true)}
+          >
+            Reactivar
+          </Button>
+        )}
       </div>
       <ErrorAlert message={toggle.error} />
     </div>

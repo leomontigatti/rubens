@@ -94,3 +94,16 @@ the keyboard and by screen readers.
 | The user's role never allows it                       | Hidden.                                                                                                            |
 | A state of the record that never reverts (it started) | Hidden: a schedule's `Eliminar` shows only before its first date. Where people look for it, a short note says why. |
 | A state the user can clear                            | Enabled; on use, an `Alert` or dialog lists every reason and what unblocks it. The server refuses all the same.    |
+
+## Confirming an action
+
+A confirmation interrupts, so it is kept for what the user cannot undo or would not expect.
+It is a `ConfirmDialog` (`src/components/confirm-dialog.tsx`), never `AlertDialog` directly: a
+question that names the thing, what happens, and a destructive button repeating the action's
+name.
+
+| Action                              | Treatment                                                                                           |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `Eliminar`                          | Always confirmed: `¿Eliminar este horario?`. A record that must stay is deactivated, never deleted. |
+| `Desactivar` with consequences      | Confirmed, saying what happens: `DeactivateButton` gives the count of future appointments.          |
+| `Desactivar` with none, `Reactivar` | At once: it can be reversed the same way.                                                           |

@@ -9,6 +9,7 @@ import {
   RefusalMessage,
   useFormAction,
 } from "#/components/admin-form.tsx";
+import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import {
   PatientFields,
   PatientSaveFeedback,
@@ -53,6 +54,7 @@ import {
   editPatient,
   getPatientChanges,
   getPatientDetails,
+  getPatientUpcomingCount,
 } from "#/server/patients.functions.ts";
 import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import type { PatientAppointment } from "#/server/patient-appointments.ts";
@@ -163,9 +165,9 @@ function ActiveToggle({ patient }: { patient: Patient }) {
   const toggle = useAction();
   const queryClient = useQueryClient();
 
-  async function changeActive() {
+  async function changeActive(active: boolean) {
     const changed = await toggle.run(() =>
-      changePatientActive({ data: { id: patient.id, active: !patient.active } }),
+      changePatientActive({ data: { id: patient.id, active } }),
     );
     if (changed) {
       // A search cached before the change would still list the patient as they were.
@@ -175,9 +177,18 @@ function ActiveToggle({ patient }: { patient: Patient }) {
 
   return (
     <div className="flex flex-col items-end gap-3">
-      <Button variant="outline" disabled={toggle.pending} onClick={() => void changeActive()}>
-        {patient.active ? "Desactivar" : "Reactivar"}
-      </Button>
+      {patient.active ? (
+        <DeactivateButton
+          name={patientName(patient)}
+          pending={toggle.pending}
+          countUpcoming={() => getPatientUpcomingCount({ data: { patientId: patient.id } })}
+          onDeactivate={() => void changeActive(false)}
+        />
+      ) : (
+        <Button variant="outline" disabled={toggle.pending} onClick={() => void changeActive(true)}>
+          Reactivar
+        </Button>
+      )}
       <ErrorAlert message={toggle.error} />
     </div>
   );

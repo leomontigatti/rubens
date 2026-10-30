@@ -81,6 +81,12 @@ practitioner's schedules or inside their time off or a closure. An appointment
 leaves it when it is moved or cancelled. Overbookings are left out, being outside
 working time on purpose. Reception sees the list with a count in the menu.
 
+Deactivating a practitioner or a patient sends every future booked or confirmed
+appointment of theirs to the list, overbookings included, and the admin is told how
+many before confirming. Those appointments can only be cancelled from it: a
+rescheduled one keeps its practitioner and patient, so it would be refused or stay
+on the list. Reactivating the person takes them off it.
+
 ## Overlaps and overbooking
 
 A practitioner cannot have two active appointments at the same time. The exception

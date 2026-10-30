@@ -12,7 +12,14 @@ import { bookAppointment } from "#/server/appointments.ts";
 import { createClosure } from "#/server/closures.ts";
 import { endSchedule } from "#/server/schedules.ts";
 import { createTimeOff } from "#/server/time-off.ts";
-import { countToReschedule, listToReschedule } from "#/server/to-reschedule.ts";
+import { setPatientActive } from "#/server/patients.ts";
+import { setMemberActive } from "#/server/staff.ts";
+import {
+  countMemberUpcoming,
+  countPatientUpcoming,
+  countToReschedule,
+  listToReschedule,
+} from "#/server/to-reschedule.ts";
 
 // Every service call runs as the app role. The office is in Buenos Aires
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 and 2099-01-12 are Mondays;
@@ -106,6 +113,42 @@ async function addTimeOff(start: string, end: string) {
   }
 }
 
+async function setPractitionerActive(active: boolean, practitioner = world.juan) {
+  const result = await asAppRole(db, (tx) =>
+    setMemberActive(world.admin, { memberId: practitioner.memberId, active }, tx),
+  );
+  expect(result.ok).toBe(true);
+}
+
+async function setActive(patient: { id: string }, active: boolean) {
+  const result = await asAppRole(db, (tx) =>
+    setPatientActive(world.admin, { id: patient.id, active }, tx),
+  );
+  expect(result.ok).toBe(true);
+}
+
+async function overbook(start: Date, patientId = maria.id) {
+  const result = await asAppRole(db, (tx) =>
+    bookOverbooking(
+      world.receptionist,
+      {
+        patientId,
+        practitionerId: world.juan.id,
+        medicalServiceId: juanService.id,
+        start,
+        durationMinutes: 30,
+        roomId: world.room.id,
+        confirmWarnings: true,
+      },
+      tx,
+    ),
+  );
+  if (!result.ok) {
+    throw new Error(`bookOverbooking failed: ${result.reason}`);
+  }
+  return result.appointment.id;
+}
+
 async function addClosure(officeId: string | null, date: string) {
   const result = await asAppRole(db, (tx) =>
     createClosure(
@@ -193,21 +236,7 @@ describe("the to-reschedule list", () => {
   });
 
   it("never lists an overbooking, even in time off", async () => {
-    const result = await asAppRole(db, (tx) =>
-      bookOverbooking(
-        world.receptionist,
-        {
-          patientId: maria.id,
-          practitionerId: world.juan.id,
-          medicalServiceId: juanService.id,
-          start: at("15:00"),
-          durationMinutes: 30,
-          roomId: world.room.id,
-        },
-        tx,
-      ),
-    );
-    expect(result.ok).toBe(true);
+    await overbook(at("15:00"));
     await addTimeOff("2099-01-05T12:00", "2099-01-05T13:00");
 
     expect(await listed()).toEqual([]);
@@ -287,6 +316,127 @@ describe("the to-reschedule list", () => {
       start: at("12:00"),
       end: at("12:30"),
       status: "booked",
+    });
+  });
+});
+
+describe("deactivated people on the to-reschedule list", () => {
+  it("takes a deactivated practitioner's future appointments, overbookings too", async () => {
+    const inside = await book(at("12:00"));
+    const overbooked = await overbook(at("15:00"), pedro.id);
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
+
+    await setPractitionerActive(false);
+
+    expect(await listed()).toEqual([
+      { id: inside, reason: "practitionerInactive" },
+      { id: overbooked, reason: "practitionerInactive" },
+    ]);
+    expect(await count()).toBe(2);
+  });
+
+  it("takes a deactivated patient's future appointments, overbookings too", async () => {
+    const inside = await book(at("12:00"));
+    const overbooked = await overbook(at("15:00"));
+    await book(at("12:30"), pedro.id);
+
+    await setActive(maria, false);
+
+    expect(await listed()).toEqual([
+      { id: inside, reason: "patientInactive" },
+      { id: overbooked, reason: "patientInactive" },
+    ]);
+  });
+
+  it("names the practitioner when both are deactivated", async () => {
+    const id = await book(at("12:00"));
+
+    await setActive(maria, false);
+    await setPractitionerActive(false);
+
+    expect(await listed()).toEqual([{ id, reason: "practitionerInactive" }]);
+  });
+
+  it("drops an appointment of someone deactivated once it is cancelled", async () => {
+    const id = await book(at("12:00"));
+    await setPractitionerActive(false);
+
+    const result = await asAppRole(db, (tx) =>
+      cancelAppointment(
+        world.receptionist,
+        { appointmentId: id, cancelledBy: "business", reason: "" },
+        tx,
+      ),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(await listed()).toEqual([]);
+  });
+
+  it("gives the appointments back on reactivation", async () => {
+    await book(at("12:00"));
+    await setActive(maria, false);
+    await setPractitionerActive(false);
+
+    await setActive(maria, true);
+    await setPractitionerActive(true);
+
+    expect(await listed()).toEqual([]);
+  });
+});
+
+describe("the future appointments a deactivation would send to the list", () => {
+  async function patientCount(patient: { id: string }, actor = world.admin) {
+    return asAppRole(db, (tx) => countPatientUpcoming(actor, { patientId: patient.id }, tx));
+  }
+
+  async function memberCount(memberId: string, actor = world.admin) {
+    return asAppRole(db, (tx) => countMemberUpcoming(actor, { memberId }, tx));
+  }
+
+  it("counts a patient's booked and confirmed future ones, overbookings too", async () => {
+    await book(at("12:00"));
+    await overbook(at("15:00"));
+    await book(at("12:30"), pedro.id);
+    const cancelled = await book(at("13:00"));
+    const result = await asAppRole(db, (tx) =>
+      cancelAppointment(
+        world.receptionist,
+        { appointmentId: cancelled, cancelledBy: "patient", reason: "" },
+        tx,
+      ),
+    );
+    expect(result.ok).toBe(true);
+
+    expect(await patientCount(maria)).toEqual({ ok: true, count: 2 });
+    expect(await patientCount(pedro)).toEqual({ ok: true, count: 1 });
+  });
+
+  it("counts a member's as a practitioner, and none for a member without any", async () => {
+    await book(at("12:00"));
+    await book(at("12:30"), pedro.id);
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
+
+    expect(await memberCount(world.juan.memberId)).toEqual({ ok: true, count: 2 });
+    expect(await memberCount("no-such-member")).toEqual({ ok: true, count: 0 });
+  });
+
+  it("leaves past appointments out", async () => {
+    await book(at("12:00"));
+
+    vi.setSystemTime(at("13:00"));
+
+    expect(await patientCount(maria)).toEqual({ ok: true, count: 0 });
+  });
+
+  it("is for admins only, who alone deactivate", async () => {
+    expect(await patientCount(maria, world.receptionist)).toEqual({
+      ok: false,
+      reason: "forbidden",
+    });
+    expect(await memberCount(world.juan.memberId, world.receptionist)).toEqual({
+      ok: false,
+      reason: "forbidden",
     });
   });
 });

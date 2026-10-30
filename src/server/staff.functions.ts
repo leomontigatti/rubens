@@ -17,6 +17,7 @@ import {
   setStartingPassword,
   updatePractitioner,
 } from "#/server/staff.ts";
+import { countMemberUpcoming } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
 
 // The services validate their input and refuse non-admins themselves, so each
@@ -43,6 +44,10 @@ export const editRoles = createServerFn({ method: "POST" })
 export const editPractitioner = createServerFn({ method: "POST" })
   .validator((data: PractitionerUpdate) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => updatePractitioner(actor, data)));
+
+export const getMemberUpcomingCount = createServerFn({ method: "GET" })
+  .validator((data: { memberId: string }) => data)
+  .handler(({ data }) => withActor(adminOnly, (actor) => countMemberUpcoming(actor, data)));
 
 export const changeMemberActive = createServerFn({ method: "POST" })
   .validator((data: MemberActiveChange) => data)

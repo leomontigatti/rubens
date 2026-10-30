@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
+import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -89,6 +90,7 @@ export function EntryForm<R extends string>(props: {
 /** A time off or closure in its list, with edit and delete for those who may. */
 export function EntryItem<R extends string>(props: {
   title: string;
+  deleteQuestion: string;
   entry: RangeEntry;
   canEdit: boolean;
   messages: Record<R, string>;
@@ -97,6 +99,7 @@ export function EntryItem<R extends string>(props: {
 }) {
   const [editing, setEditing] = useState(false);
   const remove = useFormAction(props.messages);
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <li>
@@ -117,12 +120,20 @@ export function EntryItem<R extends string>(props: {
                     variant="outline"
                     size="sm"
                     disabled={remove.pending}
-                    onClick={() => void remove.run(props.onDelete)}
+                    onClick={() => setConfirming(true)}
                   >
                     Eliminar
                   </Button>
                 </div>
                 <ErrorAlert message={remove.error} />
+                <ConfirmDialog
+                  open={confirming}
+                  onOpenChange={setConfirming}
+                  title={props.deleteQuestion}
+                  description="Esto no se puede deshacer."
+                  confirmLabel="Eliminar"
+                  onConfirm={() => void remove.run(props.onDelete)}
+                />
               </div>
             )}
           </div>
