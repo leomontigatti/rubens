@@ -23,12 +23,12 @@ What is settled already:
   unless it changes what someone does next. On the calendar, colour says which practitioner, so
   a status there is an icon.
 
-  | State                                      | Variant       |
-  | ------------------------------------------ | ------------- |
-  | Inactivo, Inactiva, Cancelado, Atendido    | `secondary`   |
-  | Sobreturno, Principal, Menor de edad       | `outline`     |
-  | Datos incompletos                          | `warning`     |
-  | Ausente, the count of turnos a reprogramar | `destructive` |
+  | State                                           | Variant       |
+  | ----------------------------------------------- | ------------- |
+  | `Inactivo`, `Inactiva`, `Cancelado`, `Atendido` | `secondary`   |
+  | `Sobreturno`, `Principal`, `Menor de edad`      | `outline`     |
+  | `Datos incompletos`                             | `warning`     |
+  | `Ausente`, `Turnos a reprogramar` count         | `destructive` |
 
 - **An existing component before new markup.** Look in `src/components/ui` and the shared
   components in `src/components/` ([codebase-map.md](./codebase-map.md#layout)) before writing
