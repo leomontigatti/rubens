@@ -1,6 +1,5 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { member } from "#/db/schema/index.ts";
 
@@ -8,17 +7,17 @@ import { createAuth, handleAuthRequest } from "#/lib/auth.ts";
 import type { Auth } from "#/lib/auth.ts";
 import { createMember, createOrganization, startingPassword } from "#/test-support/organization.ts";
 
-import { createTestDatabase } from "../../tests/db/harness.ts";
+import { sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let auth: Auth;
 let organizationId: string;
 let cookie: string;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   auth = createAuth(db);
   ({ organizationId } = await createOrganization(auth));
   const signIn = await auth.api.signInEmail({
@@ -26,10 +25,6 @@ beforeEach(async () => {
     returnHeaders: true,
   });
   cookie = signIn.headers.get("set-cookie") ?? "";
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function request(path: string, body?: unknown) {

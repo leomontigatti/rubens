@@ -120,7 +120,7 @@ export function RescheduleForm(props: {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={submit}>
+    <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="reschedule-duration">Duración (minutos)</Label>

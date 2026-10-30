@@ -1,6 +1,5 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
   appointment,
@@ -22,14 +21,14 @@ import {
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 
-import { asAppRole, createTestDatabase, rowsOf } from "./harness.ts";
+import { asAppRole, sharedTestDatabase, rowsOf } from "./harness.ts";
 import type { TestDatabase } from "./harness.ts";
 
 // ADR-0002: row-level security is the tenant boundary. Each tenant table gets
 // rows for two organizations; the app role, under one organization's settings,
 // reaches only that organization's rows.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 
 const actorA: Actor = { organizationId: "org-a", userId: "user-a", roles: ["admin"] };
@@ -40,7 +39,7 @@ const actorB: Actor = { organizationId: "org-b", userId: "user-b", roles: ["admi
 const betterAuthTables = ["member", "invitation"];
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   // As the owner, which bypasses row-level security.
   await db.execute(sql`
     insert into rubens.organization (id, name, slug, created_at) values
@@ -150,10 +149,6 @@ const during = {
   start: new Date("2026-01-05T03:00:00Z"),
   end: new Date("2026-01-06T03:00:00Z"),
 };
-
-afterEach(async () => {
-  await client.close();
-});
 
 async function officeOf(organizationId: string) {
   const rows = await db.select().from(office);

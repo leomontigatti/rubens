@@ -254,7 +254,7 @@ function BookingForm(props: {
     // The picker sits outside the form: its quick registration is a form of its own.
     <div className="flex flex-col gap-4">
       <PatientPicker onChange={(patientId) => dispatch({ type: "patientPicked", patientId })} />
-      <form className="flex flex-col gap-4" onSubmit={submit}>
+      <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
         {ask && (
           <PractitionerField
             practitioners={choices}

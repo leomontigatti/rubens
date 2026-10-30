@@ -212,7 +212,7 @@ function MedicalServiceForm({
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+    <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <ErrorAlert message={action.error} />
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${idPrefix}-name`}>Nombre</Label>

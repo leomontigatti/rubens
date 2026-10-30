@@ -71,7 +71,7 @@ export function NoteSection(props: {
     );
   }
   return (
-    <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+    <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <ReceptionNoteField id="appointment-note" value={note} onChange={setNote} />
       <ErrorAlert message={error} />
       <div className="flex gap-2">

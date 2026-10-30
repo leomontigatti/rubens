@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   availabilityQuerySchema,
+  availabilitySearchProblem,
   availabilityViewOf,
   coveringSchedule,
   findFreeStarts,
@@ -470,5 +471,23 @@ describe("whether a span is inside working time", () => {
     const closed = workingTime({ closures: [{ during: span("03:00", "23:00"), officeId: null }] });
 
     expect(outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed)).toBe("closure");
+  });
+});
+
+// The query form's own check, since noValidate turns off the browser's: without
+// it an incomplete query navigates and silently falls back to the defaults.
+describe("availabilitySearchProblem", () => {
+  const complete = { profesional: "p", fecha: "2099-01-05", duracion: 30 };
+
+  it("accepts a complete query", () => {
+    expect(availabilitySearchProblem(complete)).toBeNull();
+  });
+
+  it.each([
+    ["the practitioner", { ...complete, profesional: undefined }],
+    ["the date", { ...complete, fecha: undefined }],
+    ["the duration", { ...complete, duracion: undefined }],
+  ])("refuses a query missing %s", (_missing, search) => {
+    expect(availabilitySearchProblem(search)).not.toBeNull();
   });
 });

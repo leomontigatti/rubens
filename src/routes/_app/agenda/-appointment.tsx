@@ -211,7 +211,7 @@ function RoomMoveForm(props: {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+    <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <div className="flex flex-col gap-2">
         <Label htmlFor="appointment-room">Consultorio</Label>
         <NativeSelect

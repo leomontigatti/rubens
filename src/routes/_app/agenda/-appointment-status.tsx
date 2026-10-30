@@ -139,7 +139,7 @@ export function CancelForm(props: {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+    <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <div className="flex flex-col gap-2">
         <Label htmlFor="cancelled-by">¿Quién cancela?</Label>
         <NativeSelect id="cancelled-by" name="cancelledBy" defaultValue="patient">

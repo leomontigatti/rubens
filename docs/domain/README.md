@@ -9,7 +9,7 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 - [Appointments](./appointments.md): medical services, statuses, rescheduling, overbooking.
 - [Patients](./patients.md): the registry, identity, guardians, consent.
 - [Messages](./messages.md): reminders, the reschedule link, staff notifications.
-- [Clinical records](./clinical-records.md): notes, addenda, attachments, copies.
+- [Clinical records](./clinical-records.md): notes and their versions, alerts, attachments, copies.
 
 ## Scope
 

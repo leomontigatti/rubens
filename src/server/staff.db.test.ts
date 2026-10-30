@@ -1,5 +1,4 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import type { Actor, Role } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
@@ -10,7 +9,7 @@ import {
   startingPassword,
 } from "#/test-support/organization.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { authorize } from "#/server/actor.ts";
 import {
@@ -26,23 +25,19 @@ import {
 // Every service call runs as the app role, so row-level security applies as in
 // the app. Sign-in and sessions go through Better Auth on the same database.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let auth: Auth;
 let admin: Actor;
 let adminMemberId: string;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   auth = createAuth(db);
   const { organizationId, adminUserId } = await createOrganization(auth);
   admin = { organizationId, userId: adminUserId, roles: ["admin"] };
   const staff = await asAppRole(db, (tx) => listStaff(admin, tx));
   adminMemberId = staff.ok ? staff.staff[0]!.memberId : "";
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 async function newMember(roles: Role[], email = `${roles.join("-")}@example.com`) {

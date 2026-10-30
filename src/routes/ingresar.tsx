@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
-import * as z from "zod";
 
 import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -10,7 +9,7 @@ import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { authClient } from "#/lib/auth-client.ts";
 import { startNewSession } from "#/lib/session-change.ts";
-import { signInErrorMessage } from "#/lib/sign-in.ts";
+import { readCredentials, signInErrorMessage } from "#/lib/sign-in.ts";
 import { getViewer } from "#/server/account.functions.ts";
 
 export const Route = createFileRoute("/ingresar")({
@@ -24,20 +23,20 @@ export const Route = createFileRoute("/ingresar")({
   component: SignIn,
 });
 
-const credentialsSchema = z.object({ email: z.string(), password: z.string() });
-
 function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const credentials = credentialsSchema.parse(
-      Object.fromEntries(new FormData(event.currentTarget)),
-    );
+    const read = readCredentials(Object.fromEntries(new FormData(event.currentTarget)));
+    if (!read.ok) {
+      setError(read.message);
+      return;
+    }
     setPending(true);
     setError(null);
-    const { error: signInError } = await authClient.signIn.email(credentials);
+    const { error: signInError } = await authClient.signIn.email(read.credentials);
     setPending(false);
     if (signInError) {
       setError(signInErrorMessage(signInError.status));
@@ -53,7 +52,7 @@ function SignIn() {
           <CardTitle>Ingresar a Rubens</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
