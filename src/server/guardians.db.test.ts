@@ -1,4 +1,3 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { guardian } from "#/db/schema/index.ts";
@@ -8,7 +7,7 @@ import { createAuth } from "#/lib/auth.ts";
 import type { GuardianInput } from "#/lib/guardians.ts";
 import { createOrganization } from "#/test-support/organization.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import {
   addGuardian,
@@ -26,7 +25,7 @@ import {
 
 // Every call runs as the app role, so row-level security applies as in the app.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let admin: Actor;
 let receptionist: Actor;
@@ -36,7 +35,7 @@ let patientId: string;
 const patientFields = { firstName: "Tomás", lastName: "Pérez", phone: "0351 15 555-1234" };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   const { organizationId, adminUserId } = await createOrganization(createAuth(db));
   admin = { organizationId, userId: adminUserId, roles: ["admin"] };
   receptionist = { organizationId, userId: "receptionist", roles: ["receptionist"] };
@@ -48,9 +47,8 @@ beforeEach(async () => {
   patientId = registered.patient.id;
 });
 
-afterEach(async () => {
+afterEach(() => {
   vi.useRealTimers();
-  await client.close();
 });
 
 async function add(actor: Actor, input: Partial<GuardianInput> = {}) {

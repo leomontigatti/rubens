@@ -1,24 +1,19 @@
-import type { PGlite } from "@electric-sql/pglite";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { createAuth } from "#/lib/auth.ts";
 import type { Auth } from "#/lib/auth.ts";
 
-import { createTestDatabase } from "../../tests/db/harness.ts";
+import { sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { setupOrganization } from "#/server/setup.ts";
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let auth: Auth;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   auth = createAuth(db);
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 const input = {

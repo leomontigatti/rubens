@@ -77,7 +77,7 @@ function ChangePassword() {
         )}
       </CardHeader>
       <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
+import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
+  availabilitySearchProblem,
   availabilityViewOf,
   durationMinutesSchema,
   freeStartsByDay,
@@ -73,7 +75,12 @@ function Availability() {
       {result.practitioners.length === 0 ? (
         <p className="text-muted-foreground">Todavía no hay profesionales.</p>
       ) : (
-        <QueryForm practitioners={result.practitioners} query={result.query} />
+        <QueryForm
+          // Remounting on a new query resets the fields and any error to what is being viewed.
+          key={JSON.stringify(result.query)}
+          practitioners={result.practitioners}
+          query={result.query}
+        />
       )}
       {result.freeTimes && <FreeTimesResult result={result.freeTimes} />}
     </div>
@@ -96,6 +103,7 @@ function QueryForm(props: {
   query: AvailabilityView;
 }) {
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
   const { query } = props;
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -107,18 +115,23 @@ function QueryForm(props: {
       vista: form.get("view"),
       duracion: Number(form.get("durationMinutes")),
     });
+    const problem = availabilitySearchProblem(search);
+    setError(problem);
+    if (problem) {
+      return;
+    }
     void navigate({ to: "/disponibilidad", search });
   }
 
   return (
     <Card>
       <CardContent>
-        <form
-          // Remounting on a new query resets the fields to what is being viewed.
-          key={JSON.stringify(query)}
-          onSubmit={submit}
-          className="grid gap-4 sm:grid-cols-2"
-        >
+        <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
+          {error && (
+            <div className="sm:col-span-2">
+              <ErrorAlert message={error} />
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label htmlFor="practitionerId">Profesional</Label>
             <NativeSelect

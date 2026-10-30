@@ -121,7 +121,7 @@ function RolesSection({ member }: { member: StaffMember }) {
 
   return (
     <Section title="Roles">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <ErrorAlert message={action.error} />
         <RoleCheckboxes idPrefix={member.memberId} initial={member.roles} />
         <div>
@@ -166,7 +166,7 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
 
   return (
     <Section title="Profesional">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <ErrorAlert message={action.error} />
         <div className="flex flex-col gap-2">
           <Label htmlFor="displayName">Nombre a mostrar</Label>
@@ -230,7 +230,7 @@ function StartingPasswordSection({ memberId }: { memberId: string }) {
 
   return (
     <Section title="Contraseña inicial">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <ErrorAlert message={action.error} />
         {done && (
           <Alert>

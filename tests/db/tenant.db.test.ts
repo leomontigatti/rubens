@@ -1,25 +1,20 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import type { Actor } from "#/lib/access.ts";
 import { TENANT_SETTINGS, withTenant } from "#/db/tenant.ts";
 
-import { createTestDatabase, rowsOf } from "./harness.ts";
+import { sharedTestDatabase, rowsOf } from "./harness.ts";
 import type { TestDatabase } from "./harness.ts";
 
 // ADR-0002: the tenant is set per transaction, never per session. These pin the
 // rule that keeps a connection pooler a configuration change.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
-});
-
-afterEach(async () => {
-  await client.close();
+  db = await testDatabase.reset();
 });
 
 const actor: Actor = {
