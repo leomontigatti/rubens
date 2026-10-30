@@ -5,12 +5,13 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
@@ -132,12 +133,19 @@ function EntryAction(props: { picked: Picked; onClose: () => void }) {
   }
   if (blockedReasons.includes(entry.reason)) {
     return (
-      <Alert>
-        <AlertDescription>
-          No se puede reprogramar mientras el profesional o el paciente estén desactivados. Un
-          administrador puede reactivarlos.
-        </AlertDescription>
-      </Alert>
+      <>
+        <Alert variant="info">
+          <AlertTitle>No se puede reprogramar</AlertTitle>
+          <AlertDescription>
+            El profesional o el paciente está desactivado. Un administrador puede reactivarlo.
+          </AlertDescription>
+        </Alert>
+        <DialogFooter>
+          <Button variant="outline" onClick={props.onClose}>
+            Cerrar
+          </Button>
+        </DialogFooter>
+      </>
     );
   }
   return (

@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
@@ -57,18 +58,18 @@ function StaffItem({ member }: { member: StaffMember }) {
     <li>
       <Card>
         <CardContent className="flex flex-col gap-1">
-          <Link
-            to="/personal/$memberId"
-            params={{ memberId: member.memberId }}
-            className="font-medium underline-offset-4 hover:underline"
-          >
-            {member.name}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/personal/$memberId"
+              params={{ memberId: member.memberId }}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {member.name}
+            </Link>
+            {!member.active && <Badge variant="secondary">Inactivo</Badge>}
+          </div>
           <span className="text-muted-foreground text-sm">{member.email}</span>
-          <span className="text-muted-foreground text-sm">
-            {rolesLabel(member.roles)}
-            {!member.active && " · Inactivo"}
-          </span>
+          <span className="text-muted-foreground text-sm">{rolesLabel(member.roles)}</span>
         </CardContent>
       </Card>
     </li>

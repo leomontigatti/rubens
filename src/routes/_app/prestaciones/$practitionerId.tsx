@@ -148,7 +148,7 @@ function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: bo
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-2 font-medium">
                 {medicalService.name}
-                {!medicalService.active && <Badge variant="outline">Inactiva</Badge>}
+                {!medicalService.active && <Badge variant="secondary">Inactiva</Badge>}
               </span>
               <span className="text-muted-foreground text-sm">
                 {medicalService.durationMinutes} min

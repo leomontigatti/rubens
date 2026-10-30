@@ -62,6 +62,7 @@ function TimeOffList() {
               key={item.id}
               title={item.practitionerName}
               deleteQuestion="¿Eliminar esta licencia?"
+              deleteNotice="La licencia se borra y no se puede recuperar."
               entry={item.entry}
               canEdit={item.canEdit}
               messages={refusalMessages}

@@ -91,6 +91,7 @@ export function EntryForm<R extends string>(props: {
 export function EntryItem<R extends string>(props: {
   title: string;
   deleteQuestion: string;
+  deleteNotice: string;
   entry: RangeEntry;
   canEdit: boolean;
   messages: Record<R, string>;
@@ -130,7 +131,7 @@ export function EntryItem<R extends string>(props: {
                   open={confirming}
                   onOpenChange={setConfirming}
                   title={props.deleteQuestion}
-                  description="Esto no se puede deshacer."
+                  description={props.deleteNotice}
                   confirmLabel="Eliminar"
                   onConfirm={() => void remove.run(props.onDelete)}
                 />

@@ -131,11 +131,9 @@ function PatientHeading({ patient, isAdmin }: { patient: Patient; isAdmin: boole
         >
           Pacientes
         </Link>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
           {patientName(patient)}
-          {!patient.active && (
-            <span className="text-muted-foreground font-normal"> · Inactivo</span>
-          )}
+          {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
         </h1>
         <PatientBadges patient={patient} />
       </div>
@@ -152,8 +150,8 @@ function PatientBadges({ patient }: { patient: Patient }) {
   return (
     <div className="flex flex-wrap gap-2">
       {badges.map((badge) => (
-        <Badge key={badge} variant="outline">
-          {badge}
+        <Badge key={badge.label} variant={badge.variant}>
+          {badge.label}
         </Badge>
       ))}
     </div>

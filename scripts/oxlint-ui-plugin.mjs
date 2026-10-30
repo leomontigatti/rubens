@@ -4,6 +4,7 @@
 //
 // - `no-raw-form-element`: a raw form element where a ui component exists.
 // - `require-no-validate`: a `<form>` without `noValidate`.
+// - `alert-structure`: an `Alert` without its title and description.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -131,7 +132,72 @@ const requireNoValidate = {
   },
 };
 
+const ALERT_PARTS = ["AlertTitle", "AlertDescription"];
+
+// Whitespace and `{/* comments */}` render nothing.
+function isBlankChild(child) {
+  return (
+    (child.type === "JSXText" && child.value.trim() === "") ||
+    (child.type === "JSXExpressionContainer" && child.expression.type === "JSXEmptyExpression")
+  );
+}
+
+// A component the alert module does not export: a wrapper, which may render the parts.
+const isWrapper = (name, alertImports) =>
+  name.type !== "JSXIdentifier" || (/^[A-Z]/.test(name.name) && !alertImports.has(name.name));
+
+// A prop, a fragment or a wrapper may bring the parts. Text and raw elements
+// cannot: the parts are the alert's direct children, placed by its grid.
+const hidesParts = (child, alertImports) =>
+  child.type === "JSXExpressionContainer" ||
+  child.type === "JSXFragment" ||
+  (child.type === "JSXElement" && isWrapper(child.openingElement.name, alertImports));
+
+// The parts the alert lacks, or none when a child hides from the rule what it brings.
+function missingAlertParts(node, alertImports) {
+  const children = node.children.filter((child) => !isBlankChild(child));
+  if (children.some((child) => hidesParts(child, alertImports))) return [];
+  const present = children.map((child) => alertImports.get(child.openingElement?.name.name));
+  return ALERT_PARTS.filter((part) => !present.includes(part));
+}
+
+const alertStructure = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "An Alert has a title and a description.",
+    },
+    messages: {
+      part: "Give the alert an {{part}}: the title says what is going on in a few words, the description the detail and what to do (style guide, Alerts).",
+    },
+    schema: [],
+  },
+  create(context) {
+    // Each local name imported from the alert module, to its exported name.
+    const alertImports = new Map();
+    return {
+      ImportDeclaration(node) {
+        if (!node.source.value.endsWith("/components/ui/alert.tsx")) return;
+        for (const specifier of node.specifiers) {
+          alertImports.set(specifier.local.name, specifier.imported?.name);
+        }
+      },
+      JSXElement(node) {
+        const opening = node.openingElement;
+        if (alertImports.get(opening.name.name) !== "Alert") return;
+        for (const part of missingAlertParts(node, alertImports)) {
+          context.report({ node: opening, messageId: "part", data: { part } });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
-  rules: { "no-raw-form-element": noRawFormElement, "require-no-validate": requireNoValidate },
+  rules: {
+    "alert-structure": alertStructure,
+    "no-raw-form-element": noRawFormElement,
+    "require-no-validate": requireNoValidate,
+  },
 };

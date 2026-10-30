@@ -2,7 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { ErrorAlert } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Card,
@@ -78,11 +78,7 @@ function ChangePassword() {
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          <ErrorAlert message={error} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="currentPassword">Contraseña actual</Label>
             <Input

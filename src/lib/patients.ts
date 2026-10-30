@@ -153,10 +153,10 @@ export function isMinor(birthDate: string | null, today: string): boolean {
 }
 
 /** The badges a patient shows by their name. */
-export function patientBadges(patient: { incomplete: boolean; minor: boolean }): string[] {
+export function patientBadges(patient: { incomplete: boolean; minor: boolean }) {
   return [
-    ...(patient.incomplete ? ["Datos incompletos"] : []),
-    ...(patient.minor ? ["Menor de edad"] : []),
+    ...(patient.incomplete ? [{ label: "Datos incompletos", variant: "warning" as const }] : []),
+    ...(patient.minor ? [{ label: "Menor de edad", variant: "outline" as const }] : []),
   ];
 }
 

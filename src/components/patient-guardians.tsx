@@ -9,7 +9,7 @@ import {
   PhoneField,
   patientFieldMessage,
 } from "#/components/patient-form.tsx";
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Label } from "#/components/ui/label.tsx";
@@ -54,7 +54,8 @@ export function MinorPrompt(props: { patient: Patient; guardians: Guardian[] }) 
     return null;
   }
   return (
-    <Alert>
+    <Alert variant="warning">
+      <AlertTitle>Falta un responsable</AlertTitle>
       <AlertDescription>Es menor de edad: agregá un responsable.</AlertDescription>
     </Alert>
   );

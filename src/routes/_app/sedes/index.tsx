@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -129,18 +130,18 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <Link
-              to="/sedes/$officeId"
-              params={{ officeId: office.id }}
-              className="font-medium underline-offset-4 hover:underline"
-            >
-              {office.name}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/sedes/$officeId"
+                params={{ officeId: office.id }}
+                className="font-medium underline-offset-4 hover:underline"
+              >
+                {office.name}
+              </Link>
+              {!office.active && <Badge variant="secondary">Inactiva</Badge>}
+            </div>
             <span className="text-muted-foreground text-sm">{office.address}</span>
-            <span className="text-muted-foreground text-sm">
-              {office.timeZone}
-              {!office.active && " · Inactiva"}
-            </span>
+            <span className="text-muted-foreground text-sm">{office.timeZone}</span>
           </div>
           <AdminControls
             isAdmin={isAdmin}

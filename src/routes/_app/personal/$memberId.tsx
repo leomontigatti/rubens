@@ -5,7 +5,8 @@ import type { FormEvent, ReactNode } from "react";
 
 import { ErrorAlert, fieldMessage } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
-import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -82,11 +83,9 @@ function MemberHeading({ member }: { member: StaffMember }) {
           >
             Personal
           </Link>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
             {member.name}
-            {!member.active && (
-              <span className="text-muted-foreground font-normal"> · Inactivo</span>
-            )}
+            {!member.active && <Badge variant="secondary">Inactivo</Badge>}
           </h1>
           <p className="text-muted-foreground text-sm">{member.email}</p>
         </div>
@@ -285,9 +284,10 @@ function StartingPasswordSection({ memberId }: { memberId: string }) {
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <ErrorAlert message={action.error} />
         {done && (
-          <Alert>
+          <Alert variant="success">
+            <AlertTitle>Listo</AlertTitle>
             <AlertDescription>
-              Listo. La persona tiene que cambiarla la próxima vez que ingrese.
+              La persona tiene que cambiarla la próxima vez que ingrese.
             </AlertDescription>
           </Alert>
         )}

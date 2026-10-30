@@ -79,6 +79,7 @@ function ClosureList() {
               key={item.id}
               title={item.officeName ?? wholeOrganization}
               deleteQuestion="¿Eliminar este cierre?"
+              deleteNotice="El cierre se borra y no se puede recuperar."
               entry={item.entry}
               canEdit={result.canEdit}
               messages={refusalMessages}

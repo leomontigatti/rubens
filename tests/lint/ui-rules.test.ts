@@ -10,6 +10,7 @@ const probe = lintProbes("ui");
 const codes = (...files: string[]) => lint(...files).map((d) => d.code);
 
 const button = `import { Button } from "#/components/ui/button.tsx";\n\n`;
+const alert = `import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";\n\n`;
 
 // Each case spawns a type-aware `vp lint`: well under a second warm, slower cold.
 describe("UI lint rules", { timeout: 30_000 }, () => {
@@ -120,6 +121,48 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     const file = probe(
       "form-no-validate.tsx",
       `export const Forms = () => (\n  <>\n    <form noValidate />\n    <form noValidate={true} />\n  </>\n);\n`,
+    );
+
+    expect(codes(file)).toEqual([]);
+  });
+
+  it("reject an alert without a title or a description, and say what each is for", () => {
+    const file = probe(
+      "alert-parts.tsx",
+      `${alert}export const Notices = () => (\n  <>\n    <Alert variant="info">\n      <AlertDescription>Sin título.</AlertDescription>\n    </Alert>\n    <Alert variant="info">\n      <AlertTitle>Sin descripción</AlertTitle>\n    </Alert>\n  </>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("alert-structure"));
+
+    expect(found).toHaveLength(2);
+  });
+
+  it("reject an alert of plain text or raw elements, beside an action too", () => {
+    const file = probe(
+      "alert-unstructured.tsx",
+      `import { Alert, AlertAction, AlertTitle } from "#/components/ui/alert.tsx";\n\nexport const Notices = () => (\n  <>\n    <Alert variant="info">Texto</Alert>\n    <Alert variant="info">\n      <p>Texto</p>\n    </Alert>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertAction />\n    </Alert>\n  </>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("alert-structure"));
+
+    expect(found).toHaveLength(5);
+  });
+
+  it("follow the alert through split and renamed imports", () => {
+    const file = probe(
+      "alert-imports.tsx",
+      `import { Alert as Notice } from "#/components/ui/alert.tsx";\nimport { AlertDescription as Body } from "#/components/ui/alert.tsx";\n\nexport const Lacking = () => (\n  <Notice variant="info">\n    <Body>Detalle.</Body>\n  </Notice>\n);\n`,
+    );
+
+    const found = lint(file).filter((d) => d.code.includes("alert-structure"));
+
+    expect(found).toHaveLength(1);
+  });
+
+  it("allow an alert with both parts, and one whose parts it cannot see", () => {
+    const file = probe(
+      "alert-complete.tsx",
+      `${alert}export const Notices = ({ body }: { body: React.ReactNode }) => (\n  <>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertDescription>Detalle.</AlertDescription>\n    </Alert>\n    <Alert variant="warning">{body}</Alert>\n    <Alert variant="warning">\n      <Wrapper />\n    </Alert>\n    <Alert variant="info">\n      <>\n        <AlertTitle>Título</AlertTitle>\n        <AlertDescription>Detalle.</AlertDescription>\n      </>\n    </Alert>\n  </>\n);\n\nconst Wrapper = () => null;\n`,
     );
 
     expect(codes(file)).toEqual([]);

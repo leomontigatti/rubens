@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -91,9 +92,9 @@ function OfficeHeading({ office }: { office: Office }) {
       >
         Sedes
       </Link>
-      <h1 className="text-2xl font-semibold">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold">
         {office.name}
-        {!office.active && <span className="text-muted-foreground font-normal"> · Inactiva</span>}
+        {!office.active && <Badge variant="secondary">Inactiva</Badge>}
       </h1>
       <p className="text-muted-foreground text-sm">
         {office.address} · {office.timeZone}
@@ -163,11 +164,11 @@ function RoomItem({ room, isAdmin }: { room: Room; isAdmin: boolean }) {
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <span className="font-medium">{room.name}</span>
-            <span className="text-muted-foreground text-sm">
-              {capacityLabel(room.capacity)}
-              {!room.active && " · Inactivo"}
+            <span className="flex items-center gap-2 font-medium">
+              {room.name}
+              {!room.active && <Badge variant="secondary">Inactivo</Badge>}
             </span>
+            <span className="text-muted-foreground text-sm">{capacityLabel(room.capacity)}</span>
           </div>
           <AdminControls
             isAdmin={isAdmin}
