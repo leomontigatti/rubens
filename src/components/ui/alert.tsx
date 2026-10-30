@@ -13,12 +13,12 @@ const alertVariants = cva(
     variants: {
       variant: {
         destructive:
-          "border-destructive-tint-border bg-destructive-tint text-destructive *:data-[slot=alert-description]:text-foreground",
-        info: "border-info-tint-border bg-info-tint text-info *:data-[slot=alert-description]:text-foreground",
+          "border-destructive-tint-border bg-destructive-tint text-destructive *:data-[slot=alert-description]:text-current",
+        info: "border-info-tint-border bg-info-tint text-info *:data-[slot=alert-description]:text-current",
         success:
-          "border-success-tint-border bg-success-tint text-success *:data-[slot=alert-description]:text-foreground",
+          "border-success-tint-border bg-success-tint text-success *:data-[slot=alert-description]:text-current",
         warning:
-          "border-warning-tint-border bg-warning-tint text-warning *:data-[slot=alert-description]:text-foreground",
+          "border-warning-tint-border bg-warning-tint text-warning *:data-[slot=alert-description]:text-current",
       },
     },
   },
