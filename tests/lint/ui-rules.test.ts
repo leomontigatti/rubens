@@ -162,7 +162,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   it("allow an alert with both parts, and one whose parts it cannot see", () => {
     const file = probe(
       "alert-complete.tsx",
-      `${alert}export const Notices = ({ body }: { body: React.ReactNode }) => (\n  <>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertDescription>Detalle.</AlertDescription>\n    </Alert>\n    <Alert variant="warning">{body}</Alert>\n    <Alert variant="warning">\n      <Wrapper />\n    </Alert>\n  </>\n);\n\nconst Wrapper = () => null;\n`,
+      `${alert}export const Notices = ({ body }: { body: React.ReactNode }) => (\n  <>\n    <Alert variant="info">\n      <AlertTitle>Título</AlertTitle>\n      <AlertDescription>Detalle.</AlertDescription>\n    </Alert>\n    <Alert variant="warning">{body}</Alert>\n    <Alert variant="warning">\n      <Wrapper />\n    </Alert>\n    <Alert variant="info">\n      <>\n        <AlertTitle>Título</AlertTitle>\n        <AlertDescription>Detalle.</AlertDescription>\n      </>\n    </Alert>\n  </>\n);\n\nconst Wrapper = () => null;\n`,
     );
 
     expect(codes(file)).toEqual([]);

@@ -146,9 +146,11 @@ function isBlankChild(child) {
 const isWrapper = (name, alertImports) =>
   name.type !== "JSXIdentifier" || (/^[A-Z]/.test(name.name) && !alertImports.has(name.name));
 
-// A prop or a wrapper may bring the parts; text and raw elements cannot.
+// A prop, a fragment or a wrapper may bring the parts. Text and raw elements
+// cannot: the parts are the alert's direct children, placed by its grid.
 const hidesParts = (child, alertImports) =>
   child.type === "JSXExpressionContainer" ||
+  child.type === "JSXFragment" ||
   (child.type === "JSXElement" && isWrapper(child.openingElement.name, alertImports));
 
 // The parts the alert lacks, or none when a child hides from the rule what it brings.
