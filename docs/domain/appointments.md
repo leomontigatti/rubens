@@ -87,9 +87,14 @@ many before confirming. Rescheduling keeps the practitioner and the patient, so 
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 
-Deactivating a room or an office leaves its schedules covering nothing. The admin is
-told first how many appointments that sends to the list: those still in working time
-today that no other schedule of the office would cover. Overbookings stay out.
+Deactivating a room or an office sends every future booked or confirmed appointment
+in it to the list, overbookings included: the calendar no longer offers the room,
+even when another room's schedule still covers the time. Its schedules also cover
+nothing from then on, so an appointment in another room of the office that only they
+covered goes to the list as outside working time. The admin is told first how many
+appointments that adds up to, leaving out those on the list already. Rescheduling
+picks a new room, so such an appointment can move at once; reactivating the place
+takes the rest off the list.
 
 ## Overlaps and overbooking
 

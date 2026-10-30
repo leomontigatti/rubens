@@ -47,6 +47,8 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
   outsideSchedules: "Fuera de los horarios del profesional",
   practitionerInactive: "El profesional está desactivado",
   patientInactive: "El paciente está desactivado",
+  officeInactive: "La sede está desactivada",
+  roomInactive: "El consultorio está desactivado",
 };
 
 /** The reasons an appointment cannot take a new time yet. */

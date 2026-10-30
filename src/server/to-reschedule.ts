@@ -37,11 +37,11 @@ import { meets } from "#/server/availability.ts";
 // never stored (docs/domain/appointments.md § Rescheduling): every future
 // booked or confirmed appointment, overbookings left out, that time off, a
 // closure or a schedule change has left outside working time, and, overbookings
-// included, every one of a deactivated practitioner or patient. Scoped as the
-// calendar is: reception and admins see everyone's, a practitioner their own.
-// Schedules in a deactivated room or office cover nothing, as in the free
-// times. `database` is for tests, which pass a transaction running as the app
-// role.
+// included, every one of a deactivated practitioner or patient, or in a
+// deactivated room or office. Scoped as the calendar is: reception and admins
+// see everyone's, a practitioner their own. Schedules in a deactivated room or
+// office cover nothing, as in the free times. `database` is for tests, which
+// pass a transaction running as the app role.
 //
 // `member` is Better Auth's table and has no row-level security (PRD #16), so
 // every query on it names the actor's organization itself.
@@ -65,7 +65,15 @@ export interface ToRescheduleEntry {
 }
 
 /** Why an appointment is on the list. */
-export type ToRescheduleReason = OutsideWorkingTime | "practitionerInactive" | "patientInactive";
+export type ToRescheduleReason =
+  | OutsideWorkingTime
+  | "practitionerInactive"
+  | "patientInactive"
+  | "officeInactive"
+  | "roomInactive";
+
+/** Where an appointment sits or a schedule runs. */
+type Place = { roomId: string; officeId: string };
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: "forbidden" };
 
@@ -78,7 +86,7 @@ function isAdmin(actor: Actor): boolean {
   return actor.roles.includes("admin");
 }
 
-/** The appointments deactivating someone sends to the list, whatever their working time. */
+/** The appointments a deactivation sends to the list, whatever their working time. */
 const upcoming = () =>
   and(
     inArray(appointment.status, ["booked", "confirmed"]),
@@ -104,7 +112,10 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       medicalServiceName: medicalService.name,
       color: practitioner.color,
       officeId: office.id,
+      officeActive: office.active,
       officeName: office.name,
+      roomId: room.id,
+      roomActive: room.active,
       roomName: room.name,
       timeZone: office.timeZone,
     })
@@ -178,6 +189,12 @@ function reasonFor(row: Upcoming, workingTime: WorkingTime): ToRescheduleReason 
   }
   if (!row.patientActive) {
     return "patientInactive";
+  }
+  if (!row.officeActive) {
+    return "officeInactive";
+  }
+  if (!row.roomActive) {
+    return "roomInactive";
   }
   return row.overbooking ? null : outsideWorkingTime(row.during, row.officeId, workingTime);
 }
@@ -313,14 +330,11 @@ export async function countMemberUpcoming(
 }
 
 /**
- * How many appointments now in working time fall out of it once the schedules
- * `leaving` picks cover nothing, as they do in a deactivated room or office.
+ * How many appointments not on the list yet would reach it once the place
+ * `leaving` picks is deactivated: those sitting there, and those only its
+ * schedules cover.
  */
-async function countSentToList(
-  tx: Transaction,
-  actor: Actor,
-  leaving: (schedule: { roomId: string; officeId: string }) => boolean,
-) {
+async function countSentToList(tx: Transaction, actor: Actor, leaving: (where: Place) => boolean) {
   const rows = await upcomingAppointments(tx, actor);
   if (rows.length === 0) {
     return 0;
@@ -331,7 +345,7 @@ async function countSentToList(
     const remaining = workingTime.schedules.filter((schedule) => !leaving(schedule));
     return (
       reasonFor(row, workingTime) === null &&
-      reasonFor(row, { ...workingTime, schedules: remaining }) !== null
+      (leaving(row) || reasonFor(row, { ...workingTime, schedules: remaining }) !== null)
     );
   }).length;
 }
@@ -340,7 +354,7 @@ async function countSentToList(
 async function countForPlace(
   actor: Actor,
   input: PlaceReference,
-  leaving: (id: string) => (schedule: { roomId: string; officeId: string }) => boolean,
+  leaving: (id: string) => (where: Place) => boolean,
   database?: AnyDatabase,
 ): Promise<CountResult> {
   if (!isAdmin(actor)) {
@@ -362,10 +376,10 @@ async function countForPlace(
 
 /** The appointments deactivating the room would send to the list. */
 export function countRoomUpcoming(actor: Actor, input: PlaceReference, database?: AnyDatabase) {
-  return countForPlace(actor, input, (id) => (schedule) => schedule.roomId === id, database);
+  return countForPlace(actor, input, (id) => (where) => where.roomId === id, database);
 }
 
 /** The appointments deactivating the office would send to the list. */
 export function countOfficeUpcoming(actor: Actor, input: PlaceReference, database?: AnyDatabase) {
-  return countForPlace(actor, input, (id) => (schedule) => schedule.officeId === id, database);
+  return countForPlace(actor, input, (id) => (where) => where.officeId === id, database);
 }
