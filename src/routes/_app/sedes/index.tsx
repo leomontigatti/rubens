@@ -13,6 +13,7 @@ import type { OfficeInput } from "#/lib/offices.ts";
 import {
   addOffice,
   changeOfficeActive,
+  getOfficeUpcomingCount,
   editOffice,
   getOffices,
 } from "#/server/offices.functions.ts";
@@ -147,6 +148,10 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
             isAdmin={isAdmin}
             active={office.active}
             onEdit={() => setEditing(true)}
+            deactivation={{
+              question: `¿Desactivar ${office.name}?`,
+              countUpcoming: () => getOfficeUpcomingCount({ data: { id: office.id } }),
+            }}
             onToggleActive={() =>
               void toggle.run(() =>
                 changeOfficeActive({ data: { id: office.id, active: !office.active } }),

@@ -87,6 +87,10 @@ many before confirming. Rescheduling keeps the practitioner and the patient, so 
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 
+Deactivating a room or an office leaves its schedules covering nothing. The admin is
+told first how many appointments that sends to the list: those still in working time
+today that no other schedule of the office would cover. Overbookings stay out.
+
 ## Overlaps and overbooking
 
 A practitioner cannot have two active appointments at the same time. The exception

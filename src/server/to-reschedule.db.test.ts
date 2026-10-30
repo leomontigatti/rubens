@@ -16,7 +16,9 @@ import { setPatientActive } from "#/server/patients.ts";
 import { setMemberActive } from "#/server/staff.ts";
 import {
   countMemberUpcoming,
+  countOfficeUpcoming,
   countPatientUpcoming,
+  countRoomUpcoming,
   countToReschedule,
   listToReschedule,
 } from "#/server/to-reschedule.ts";
@@ -440,6 +442,53 @@ describe("the future appointments a deactivation would send to the list", () => 
       reason: "forbidden",
     });
     expect(await memberCount(world.juan.memberId, world.receptionist)).toEqual({
+      ok: false,
+      reason: "forbidden",
+    });
+  });
+});
+
+describe("the future appointments deactivating a room or an office would send to the list", () => {
+  function roomCount(room: { id: string }, actor = world.admin) {
+    return asAppRole(db, (tx) => countRoomUpcoming(actor, { id: room.id }, tx));
+  }
+
+  function officeCount(office: { id: string }, actor = world.admin) {
+    return asAppRole(db, (tx) => countOfficeUpcoming(actor, { id: office.id }, tx));
+  }
+
+  it("counts the appointments that room's schedules alone cover", async () => {
+    await book(at("12:00"));
+    await book(at("12:30"), pedro.id);
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
+
+    expect(await roomCount(world.room)).toEqual({ ok: true, count: 2 });
+    expect(await roomCount(world.otherRoom)).toEqual({ ok: true, count: 1 });
+  });
+
+  it("leaves out overbookings, and what is on the list already", async () => {
+    await overbook(at("15:00"));
+    await book(at("12:00"));
+    await addTimeOff("2099-01-05T09:00", "2099-01-05T09:30");
+
+    expect(await roomCount(world.room)).toEqual({ ok: true, count: 0 });
+  });
+
+  it("counts every room of an office", async () => {
+    await book(at("12:00"));
+    await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
+
+    expect(await officeCount(world.office)).toEqual({ ok: true, count: 2 });
+  });
+
+  it("refuses a malformed id, and anyone but an admin", async () => {
+    expect(await roomCount({ id: "not-a-uuid" })).toEqual({ ok: false, reason: "invalidInput" });
+    expect(await officeCount({ id: "not-a-uuid" })).toEqual({ ok: false, reason: "invalidInput" });
+    expect(await roomCount(world.room, world.receptionist)).toEqual({
+      ok: false,
+      reason: "forbidden",
+    });
+    expect(await officeCount(world.office, world.receptionist)).toEqual({
       ok: false,
       reason: "forbidden",
     });

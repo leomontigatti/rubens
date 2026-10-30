@@ -141,5 +141,3 @@ the loss goes beyond the record being deleted.
 | `Eliminar`                          | Always confirmed: `¿Eliminar este horario?`. A record that must stay is deactivated, never deleted. |
 | `Desactivar` with consequences      | Confirmed, saying what happens: `DeactivateButton` gives the count of future appointments.          |
 | `Desactivar` with none, `Reactivar` | At once: it can be reversed the same way.                                                           |
-
-Deactivating a room or an office has consequences too, and does not ask yet.

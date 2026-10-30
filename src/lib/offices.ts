@@ -52,6 +52,8 @@ export const roomUpdateSchema = roomInputSchema.omit({ officeId: true }).extend(
 
 export const activeChangeSchema = z.object({ id: z.uuid(), active: z.boolean() });
 
+export const placeReferenceSchema = activeChangeSchema.pick({ id: true });
+
 /** How many practitioners a room's capacity lets work in it at once. */
 export function capacityLabel(capacity: number): string {
   return capacity === 1 ? "1 profesional a la vez" : `${capacity} profesionales a la vez`;
@@ -62,3 +64,4 @@ export type OfficeUpdate = z.input<typeof officeUpdateSchema>;
 export type RoomInput = z.input<typeof roomInputSchema>;
 export type RoomUpdate = z.input<typeof roomUpdateSchema>;
 export type ActiveChange = z.input<typeof activeChangeSchema>;
+export type PlaceReference = z.input<typeof placeReferenceSchema>;

@@ -52,7 +52,8 @@ export function ConfirmDialog(props: {
  * and shows why.
  */
 export function DeactivateButton(props: {
-  name: string;
+  question: string;
+  size?: "default" | "sm";
   pending: boolean;
   countUpcoming: () => Promise<{ ok: true; count: number } | { ok: false }>;
   onDeactivate: () => void;
@@ -74,13 +75,18 @@ export function DeactivateButton(props: {
 
   return (
     <>
-      <Button variant="outline" disabled={props.pending || checking} onClick={() => void request()}>
+      <Button
+        variant="outline"
+        size={props.size}
+        disabled={props.pending || checking}
+        onClick={() => void request()}
+      >
         Desactivar
       </Button>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title={`¿Desactivar a ${props.name}?`}
+        title={props.question}
         description={upcomingAppointmentsNotice(upcoming)}
         confirmLabel="Desactivar"
         onConfirm={props.onDeactivate}

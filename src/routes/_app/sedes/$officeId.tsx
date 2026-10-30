@@ -12,6 +12,7 @@ import { capacityLabel, roomUpdateSchema } from "#/lib/offices.ts";
 import {
   addRoom,
   changeRoomActive,
+  getRoomUpcomingCount,
   editRoom,
   getOfficeWithRooms,
 } from "#/server/offices.functions.ts";
@@ -174,6 +175,10 @@ function RoomItem({ room, isAdmin }: { room: Room; isAdmin: boolean }) {
             isAdmin={isAdmin}
             active={room.active}
             onEdit={() => setEditing(true)}
+            deactivation={{
+              question: `¿Desactivar ${room.name}?`,
+              countUpcoming: () => getRoomUpcomingCount({ data: { id: room.id } }),
+            }}
             onToggleActive={() =>
               void toggle.run(() =>
                 changeRoomActive({ data: { id: room.id, active: !room.active } }),
