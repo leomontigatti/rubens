@@ -36,7 +36,8 @@ carried over from en-escena.
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
 - **Every `<form>` takes `noValidate`.** The browser's own `required` and `type="email"` popups
   speak the browser's language and style, and run before the form's own check. `required` stays
-  on the input for what it tells a screen reader.
+  on the input for what it tells a screen reader. `pnpm lint` enforces it
+  (`ui/require-no-validate`).
 - **Validate on submit, never as a field loses focus or while typing.** A check on blur
   interrupts someone still filling the form in, and catches people who type slowly the most. The
   form's Zod schema is the check, with `safeParse` on submit and never a thrown `parse`; the

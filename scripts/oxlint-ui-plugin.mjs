@@ -3,6 +3,7 @@
 // files it runs on; its tests are tests/lint/ui-rules.test.ts.
 //
 // - `no-raw-form-element`: a raw form element where a ui component exists.
+// - `require-no-validate`: a `<form>` without `noValidate`.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -100,7 +101,37 @@ const noRawFormElement = {
   },
 };
 
+// `noValidate` alone is `true`; any value other than a literal `false` counts as set.
+function setsNoValidate(openingElement) {
+  const attribute = openingElement.attributes.find((item) => item.name?.name === "noValidate");
+  if (!attribute) return false;
+  const literal = unwrap(attribute.value);
+  return !(literal?.type === "Literal" && literal.value === false);
+}
+
+const requireNoValidate = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A <form> turns off the browser's validation with noValidate.",
+    },
+    messages: {
+      missing:
+        "Add noValidate to the <form>: the form validates on submit with its own Spanish messages under each field, and without it the browser's native popup runs first, in the browser's language and style, so the two fight (GOV.UK's validation pattern turns HTML5 validation off too).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        if (node.name.type !== "JSXIdentifier" || node.name.name !== "form") return;
+        if (!setsNoValidate(node)) context.report({ node, messageId: "missing" });
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
-  rules: { "no-raw-form-element": noRawFormElement },
+  rules: { "no-raw-form-element": noRawFormElement, "require-no-validate": requireNoValidate },
 };
