@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type {
   DuplicateConfirmation,
   PatientActiveChange,
+  PatientReference,
   PatientInput,
   PatientUpdate,
   WhatsappConsentChange,
@@ -60,7 +61,7 @@ export const changeWhatsappConsent = createServerFn({ method: "POST" })
   .handler(({ data }) => withActor(editors, (actor) => setWhatsappConsent(actor, data)));
 
 export const getPatientUpcomingCount = createServerFn({ method: "GET" })
-  .validator((data: { patientId: string }) => data)
+  .validator((data: PatientReference) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => countPatientUpcoming(actor, data)));
 
 export const changePatientActive = createServerFn({ method: "POST" })

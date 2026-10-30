@@ -83,9 +83,9 @@ working time on purpose. Reception sees the list with a count in the menu.
 
 Deactivating a practitioner or a patient sends every future booked or confirmed
 appointment of theirs to the list, overbookings included, and the admin is told how
-many before confirming. Those appointments can only be cancelled from it: a
-rescheduled one keeps its practitioner and patient, so it would be refused or stay
-on the list. Reactivating the person takes them off it.
+many before confirming. Rescheduling keeps the practitioner and the patient, so such
+an appointment is refused a new time until the person is reactivated, which takes
+it off the list; meanwhile it can be cancelled.
 
 ## Overlaps and overbooking
 

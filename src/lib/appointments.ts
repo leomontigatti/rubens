@@ -149,3 +149,10 @@ export const rescheduleSchema = z.object({
 });
 
 export type RescheduleInput = z.input<typeof rescheduleSchema>;
+
+/** What deactivating someone does to the appointments they have ahead. */
+export function upcomingAppointmentsNotice(count: number): string {
+  return count === 1
+    ? "Tiene 1 turno futuro. Va a pasar a Turnos a reprogramar."
+    : `Tiene ${count} turnos futuros. Van a pasar a Turnos a reprogramar.`;
+}

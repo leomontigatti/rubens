@@ -22,7 +22,10 @@ import { outsideWorkingTime } from "#/lib/availability.ts";
 import type { OutsideWorkingTime, WorkingTime } from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate, today } from "#/lib/schedules.ts";
-import { patientName } from "#/lib/patients.ts";
+import { patientName, patientReferenceSchema } from "#/lib/patients.ts";
+import type { PatientReference } from "#/lib/patients.ts";
+import { memberReferenceSchema } from "#/lib/staff.ts";
+import type { MemberReference } from "#/lib/staff.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { booksForSome } from "#/server/appointments.ts";
@@ -64,7 +67,10 @@ export type ToRescheduleReason = OutsideWorkingTime | "practitionerInactive" | "
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: "forbidden" };
 
+type CountResult = Result<{ count: number }> | { ok: false; reason: "invalidInput" };
+
 const forbidden = { ok: false, reason: "forbidden" } as const;
+const invalidInput = { ok: false, reason: "invalidInput" } as const;
 
 function isAdmin(actor: Actor): boolean {
   return actor.roles.includes("admin");
@@ -246,11 +252,15 @@ export async function countToReschedule(
 /** The patient's future appointments, for the question before deactivating them. */
 export async function countPatientUpcoming(
   actor: Actor,
-  input: { patientId: string },
+  input: PatientReference,
   database?: AnyDatabase,
-): Promise<Result<{ count: number }>> {
+): Promise<CountResult> {
   if (!isAdmin(actor)) {
     return forbidden;
+  }
+  const parsed = patientReferenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return invalidInput;
   }
   return withTenant(
     actor,
@@ -258,7 +268,7 @@ export async function countPatientUpcoming(
       const [row] = await tx
         .select({ total: count() })
         .from(appointment)
-        .where(and(eq(appointment.patientId, input.patientId), upcoming()));
+        .where(and(eq(appointment.patientId, parsed.data.id), upcoming()));
       return { ok: true as const, count: row!.total };
     },
     database,
@@ -268,11 +278,15 @@ export async function countPatientUpcoming(
 /** The future appointments of the member as a practitioner, likewise. */
 export async function countMemberUpcoming(
   actor: Actor,
-  input: { memberId: string },
+  input: MemberReference,
   database?: AnyDatabase,
-): Promise<Result<{ count: number }>> {
+): Promise<CountResult> {
   if (!isAdmin(actor)) {
     return forbidden;
+  }
+  const parsed = memberReferenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return invalidInput;
   }
   return withTenant(
     actor,
@@ -288,7 +302,7 @@ export async function countMemberUpcoming(
             eq(member.organizationId, actor.organizationId),
           ),
         )
-        .where(and(eq(member.id, input.memberId), upcoming()));
+        .where(and(eq(member.id, parsed.data.memberId), upcoming()));
       return { ok: true as const, count: row!.total };
     },
     database,

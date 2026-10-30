@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "#/components/ui/alert-dialog.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import { upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
 /** Asks before a destructive action; `confirmLabel` repeats the action's name. */
 export function ConfirmDialog(props: {
@@ -42,12 +43,6 @@ export function ConfirmDialog(props: {
       </AlertDialogContent>
     </AlertDialog>
   );
-}
-
-function upcomingNotice(count: number) {
-  return count === 1
-    ? "Tiene 1 turno futuro. Va a pasar a Turnos a reprogramar."
-    : `Tiene ${count} turnos futuros. Van a pasar a Turnos a reprogramar.`;
 }
 
 /**
@@ -86,7 +81,7 @@ export function DeactivateButton(props: {
         open={open}
         onOpenChange={setOpen}
         title={`¿Desactivar a ${props.name}?`}
-        description={upcomingNotice(upcoming)}
+        description={upcomingAppointmentsNotice(upcoming)}
         confirmLabel="Desactivar"
         onConfirm={props.onDeactivate}
       />

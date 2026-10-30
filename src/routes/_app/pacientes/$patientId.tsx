@@ -179,9 +179,10 @@ function ActiveToggle({ patient }: { patient: Patient }) {
     <div className="flex flex-col items-end gap-3">
       {patient.active ? (
         <DeactivateButton
+          key={patient.id}
           name={patientName(patient)}
           pending={toggle.pending}
-          countUpcoming={() => getPatientUpcomingCount({ data: { patientId: patient.id } })}
+          countUpcoming={() => getPatientUpcomingCount({ data: { id: patient.id } })}
           onDeactivate={() => void changeActive(false)}
         />
       ) : (

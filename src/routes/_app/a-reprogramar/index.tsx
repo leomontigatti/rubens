@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
+import { Alert, AlertDescription } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
@@ -24,7 +25,7 @@ import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 // that time off, a closure or a schedule change left outside working time, or
 // of someone deactivated, soonest first, for reception to call each patient.
 // Each one is rescheduled or cancelled from here, with the agenda's own forms;
-// one of someone deactivated can only be cancelled.
+// one of someone deactivated is refused a new time until they are reactivated.
 
 export const Route = createFileRoute("/_app/a-reprogramar/")({
   head: () => ({ meta: [{ title: "Turnos a reprogramar · Rubens" }] }),
@@ -47,8 +48,13 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
   patientInactive: "El paciente está desactivado",
 };
 
-/** Moving it would leave the appointment on the list, or be refused. */
-const onlyCancelled: ToRescheduleReason[] = ["practitionerInactive", "patientInactive"];
+/** Why the appointment cannot take a new time yet, and what unblocks it. */
+const rescheduleBlocks: Partial<Record<ToRescheduleReason, string>> = {
+  practitionerInactive:
+    "No se puede reprogramar mientras el profesional esté desactivado. Un administrador puede reactivarlo.",
+  patientInactive:
+    "No se puede reprogramar mientras el paciente esté desactivado. Un administrador puede reactivarlo.",
+};
 
 /** The entry being acted on, and whether to reschedule or cancel it. */
 interface Picked {
@@ -106,16 +112,46 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
         <p className="text-muted-foreground">{reasonLabels[entry.reason]}</p>
       </div>
       <div className="flex gap-2">
-        {!onlyCancelled.includes(entry.reason) && (
-          <Button variant="outline" size="sm" onClick={() => props.onPick("reschedule")}>
-            Reprogramar
-          </Button>
-        )}
+        <Button variant="outline" size="sm" onClick={() => props.onPick("reschedule")}>
+          Reprogramar
+        </Button>
         <Button variant="outline" size="sm" onClick={() => props.onPick("cancel")}>
           Cancelar
         </Button>
       </div>
     </li>
+  );
+}
+
+function EntryAction(props: { picked: Picked; onClose: () => void }) {
+  const { entry, action } = props.picked;
+  const block = rescheduleBlocks[entry.reason];
+  if (action === "cancel") {
+    return (
+      <CancelForm
+        key={entry.id}
+        appointmentId={entry.id}
+        onDone={props.onClose}
+        onBack={props.onClose}
+      />
+    );
+  }
+  if (block) {
+    return (
+      <Alert>
+        <AlertDescription>{block}</AlertDescription>
+      </Alert>
+    );
+  }
+  return (
+    <RescheduleForm
+      key={entry.id}
+      appointment={entry}
+      practitionerId={entry.practitioner.id}
+      timeZone={entry.timeZone}
+      onDone={props.onClose}
+      onBack={props.onClose}
+    />
   );
 }
 
@@ -133,23 +169,7 @@ function EntryDialog(props: { picked: Picked | null; onClose: () => void }) {
                 {picked.entry.practitioner.displayName} · {picked.entry.medicalServiceName}
               </DialogDescription>
             </DialogHeader>
-            {picked.action === "reschedule" ? (
-              <RescheduleForm
-                key={picked.entry.id}
-                appointment={picked.entry}
-                practitionerId={picked.entry.practitioner.id}
-                timeZone={picked.entry.timeZone}
-                onDone={props.onClose}
-                onBack={props.onClose}
-              />
-            ) : (
-              <CancelForm
-                key={picked.entry.id}
-                appointmentId={picked.entry.id}
-                onDone={props.onClose}
-                onBack={props.onClose}
-              />
-            )}
+            <EntryAction picked={picked} onClose={props.onClose} />
           </>
         )}
       </DialogContent>

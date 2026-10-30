@@ -56,10 +56,13 @@ export const practitionerUpdateSchema = z.object({
 
 export const memberActiveChangeSchema = z.object({ memberId, active: z.boolean() });
 
+export const memberReferenceSchema = memberActiveChangeSchema.pick({ memberId: true });
+
 export const startingPasswordSchema = z.object({ memberId, password: z.string() });
 
 export type StaffInput = z.input<typeof staffInputSchema>;
 export type RolesChange = z.input<typeof rolesChangeSchema>;
 export type PractitionerUpdate = z.input<typeof practitionerUpdateSchema>;
 export type MemberActiveChange = z.input<typeof memberActiveChangeSchema>;
+export type MemberReference = z.input<typeof memberReferenceSchema>;
 export type StartingPasswordChange = z.input<typeof startingPasswordSchema>;

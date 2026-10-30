@@ -387,7 +387,7 @@ describe("deactivated people on the to-reschedule list", () => {
 
 describe("the future appointments a deactivation would send to the list", () => {
   async function patientCount(patient: { id: string }, actor = world.admin) {
-    return asAppRole(db, (tx) => countPatientUpcoming(actor, { patientId: patient.id }, tx));
+    return asAppRole(db, (tx) => countPatientUpcoming(actor, { id: patient.id }, tx));
   }
 
   async function memberCount(memberId: string, actor = world.admin) {
@@ -427,6 +427,11 @@ describe("the future appointments a deactivation would send to the list", () => 
     vi.setSystemTime(at("13:00"));
 
     expect(await patientCount(maria)).toEqual({ ok: true, count: 0 });
+  });
+
+  it("refuses a malformed id", async () => {
+    expect(await patientCount({ id: "not-a-uuid" })).toEqual({ ok: false, reason: "invalidInput" });
+    expect(await memberCount("")).toEqual({ ok: false, reason: "invalidInput" });
   });
 
   it("is for admins only, who alone deactivate", async () => {

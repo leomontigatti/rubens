@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type {
   MemberActiveChange,
+  MemberReference,
   PractitionerUpdate,
   RolesChange,
   StaffInput,
@@ -46,7 +47,7 @@ export const editPractitioner = createServerFn({ method: "POST" })
   .handler(({ data }) => withActor(adminOnly, (actor) => updatePractitioner(actor, data)));
 
 export const getMemberUpcomingCount = createServerFn({ method: "GET" })
-  .validator((data: { memberId: string }) => data)
+  .validator((data: MemberReference) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => countMemberUpcoming(actor, data)));
 
 export const changeMemberActive = createServerFn({ method: "POST" })

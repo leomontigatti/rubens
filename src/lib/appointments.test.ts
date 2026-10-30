@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { mondayOf } from "#/lib/appointments.ts";
+import { mondayOf, upcomingAppointmentsNotice } from "#/lib/appointments.ts";
+
+describe("the notice before deactivating someone", () => {
+  it("agrees with how many appointments they have", () => {
+    expect(upcomingAppointmentsNotice(1)).toBe(
+      "Tiene 1 turno futuro. Va a pasar a Turnos a reprogramar.",
+    );
+    expect(upcomingAppointmentsNotice(12)).toBe(
+      "Tiene 12 turnos futuros. Van a pasar a Turnos a reprogramar.",
+    );
+  });
+});
 
 describe("the week a date falls in", () => {
   it("starts on that week's Monday, the Monday itself included", () => {

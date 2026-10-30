@@ -92,6 +92,7 @@ function MemberHeading({ member }: { member: StaffMember }) {
         </div>
         {member.active ? (
           <DeactivateButton
+            key={member.memberId}
             name={member.name}
             pending={toggle.pending}
             countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
