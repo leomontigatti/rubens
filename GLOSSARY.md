@@ -16,7 +16,7 @@ _Avoid_: tenant, account, clinic
 
 **`admin`** — ui: "Administrador"
 A member who configures the `organization`: its `office`s, `room`s, staff and
-`appointmentType`s. The first admin is the owner; there is no separate owner role.
+`medicalService`s. The first admin is the owner; there is no separate owner role.
 _Avoid_: owner, manager, superuser
 
 **`receptionist`** — ui: "Recepcionista"
@@ -26,7 +26,8 @@ _Avoid_: secretary, front desk, staff
 
 **`practitioner`** — ui: "Profesional"
 A health professional who works in exactly one `organization`. A practitioner who
-keeps clinical records writes `clinicalNote`s; today every practitioner does.
+keeps clinical records writes `clinicalNote`s; today every practitioner does. Their
+`appointment`s are drawn in their own colour on the calendar.
 _Avoid_: doctor, dentist, provider, staff, medic
 
 **`licenseNumber`** — ui: "Matrícula"
@@ -74,14 +75,15 @@ _Avoid_: free time, open slots, vacancies
 
 ## Booking
 
-**`appointmentType`** — ui: "Tipo de turno"
-A kind of visit a `practitioner` offers, such as a first consultation. It sets the
-default duration and the patient messages for its `appointment`s.
-_Avoid_: service, visit type, event type
+**`medicalService`** — ui: "Prestación"
+The kind of visit or practice a `practitioner` offers, such as a first consultation
+or a check-up. It sets the default duration of its `appointment`s and, later,
+their patient messages.
+_Avoid_: service, visit type, event type, appointment type
 
 **`appointment`** — ui: "Turno"
 A `patient`'s booked time with one `practitioner`, in one `room`, of one
-`appointmentType`. Rescheduling moves the same appointment.
+`medicalService`. Rescheduling moves the same appointment.
 _Avoid_: booking, cita, reservation, event
 
 **`overbooking`** — ui: "Sobreturno"
@@ -145,7 +147,7 @@ _Avoid_: opt-in, subscription
 
 **`reminder`** — ui: "Recordatorio"
 A message to a `patient` some time before an `appointment`, as its
-`appointmentType` sets. A reminder can ask the patient to confirm.
+`medicalService` sets. A reminder can ask the patient to confirm.
 _Avoid_: notification, alert
 
 **`bookingConfirmation`** — ui: "Confirmación de turno"

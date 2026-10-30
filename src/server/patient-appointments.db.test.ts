@@ -1,0 +1,186 @@
+import type { PGlite } from "@electric-sql/pglite";
+import { eq } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+import { office } from "#/db/schema/index.ts";
+import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import type { TestDatabase } from "../../tests/db/harness.ts";
+import { cancelAppointment } from "#/server/appointment-statuses.ts";
+import { createBookingWorld } from "#/test-support/scheduling.ts";
+import type { BookingWorld } from "#/test-support/scheduling.ts";
+import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
+import { bookAppointment } from "#/server/appointments.ts";
+import { listPatientAppointments } from "#/server/patient-appointments.ts";
+import { getPatientHistory } from "#/server/patients.ts";
+import type { Actor } from "#/lib/access.ts";
+import { historyChanges } from "#/lib/patients.ts";
+
+// Every service call runs as the app role. The office is in Buenos Aires
+// (UTC-3). Juan and "Lucía" work Mondays from 09:00 to 11:00 (12:00Z to 14:00Z),
+// in "Consultorio 1" and "Consultorio 2". 2099-01-05 and 2099-01-12 are Mondays.
+
+let client: PGlite;
+let db: TestDatabase;
+let world: BookingWorld;
+let maria: { id: string };
+let services: Map<string, string>;
+
+beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2099-01-01T12:00:00Z"));
+  ({ client, db } = await createTestDatabase());
+  world = await createBookingWorld(db);
+  await world.addSchedule({ practitionerId: world.juan.id });
+  await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
+  services = new Map([
+    [world.juan.id, (await world.addMedicalService(world.juan.id)).id],
+    [world.lucia.id, (await world.addMedicalService(world.lucia.id)).id],
+  ]);
+  maria = await world.addPatient("María", "0351 15 555-1234");
+});
+
+afterEach(async () => {
+  vi.useRealTimers();
+  await client.close();
+});
+
+async function book(practitionerId: string, start: string) {
+  const result = await asAppRole(db, (tx) =>
+    bookAppointment(
+      world.receptionist,
+      {
+        patientId: maria.id,
+        practitionerId,
+        medicalServiceId: services.get(practitionerId)!,
+        start: new Date(start),
+        durationMinutes: 30,
+        confirmWarnings: true,
+      },
+      tx,
+    ),
+  );
+  if (!result.ok) {
+    throw new Error(`bookAppointment failed: ${result.reason}`);
+  }
+  return result.appointment.id;
+}
+
+async function history(actor: Actor) {
+  const result = await asAppRole(db, (tx) =>
+    listPatientAppointments(actor, { patientId: maria.id }, tx),
+  );
+  if (!result.ok) {
+    throw new Error(`listPatientAppointments failed: ${result.reason}`);
+  }
+  return { upcoming: result.upcoming.map((row) => row.id), past: result.past.map((row) => row.id) };
+}
+
+describe("a patient's appointments", () => {
+  it("splits past from upcoming, cancellations included, nearest first", async () => {
+    const first = await book(world.juan.id, "2099-01-05T12:00:00Z");
+    const second = await book(world.lucia.id, "2099-01-05T13:00:00Z");
+    const later = await book(world.juan.id, "2099-01-12T12:00:00Z");
+    await asAppRole(db, (tx) =>
+      cancelAppointment(world.receptionist, { appointmentId: second, cancelledBy: "patient" }, tx),
+    );
+    vi.setSystemTime(new Date("2099-01-05T13:30:00Z"));
+
+    expect(await history(world.receptionist)).toEqual({ upcoming: [later], past: [second, first] });
+    const result = await asAppRole(db, (tx) =>
+      listPatientAppointments(world.receptionist, { patientId: maria.id }, tx),
+    );
+    expect(result.ok && result.past[0]).toMatchObject({
+      status: "cancelled",
+      cancelledBy: "patient",
+      practitionerName: "Lucía Díaz",
+      officeName: "Sede Centro",
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+  });
+
+  it("shows a practitioner only the appointments with themselves", async () => {
+    const withJuan = await book(world.juan.id, "2099-01-05T12:00:00Z");
+    await book(world.lucia.id, "2099-01-05T13:00:00Z");
+
+    expect(await history(world.juan.actor)).toEqual({ upcoming: [withJuan], past: [] });
+  });
+
+  it("answers notFound for an unknown patient", async () => {
+    expect(
+      await asAppRole(db, (tx) =>
+        listPatientAppointments(world.receptionist, { patientId: crypto.randomUUID() }, tx),
+      ),
+    ).toEqual({ ok: false, reason: "notFound" });
+  });
+});
+
+describe("an appointment in the patient's change history", () => {
+  it("comes with its office's zone and the names of its practitioner, medical service and room", async () => {
+    await book(world.juan.id, "2099-01-05T12:00:00Z");
+
+    const result = await asAppRole(db, (tx) =>
+      getPatientHistory(world.admin, { patientId: maria.id }, tx),
+    );
+
+    if (!result.ok) {
+      throw new Error(`getPatientHistory failed: ${result.reason}`);
+    }
+    const booking = result.entries.find((entry) => entry.entityType === "appointment");
+    expect(booking).toMatchObject({
+      timeZones: {
+        before: "America/Argentina/Buenos_Aires",
+        after: "America/Argentina/Buenos_Aires",
+      },
+      after: { start: "2099-01-05T12:00:00.000Z" },
+    });
+    expect(result.names).toEqual({
+      [world.juan.id]: "Juan Gómez",
+      [services.get(world.juan.id)!]: "Consulta",
+      [world.room.id]: "Consultorio 1",
+    });
+    expect(result.entries.find((entry) => entry.entityType === "patient")).toMatchObject({
+      timeZones: null,
+    });
+  });
+
+  it("shows each side of a move to another office's zone in the zone of its own room's office", async () => {
+    const north = await world.addOffice("Sede Norte");
+    const northRoom = await world.addRoom(north.id, "Norte 1");
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      roomId: northRoom.id,
+      startTime: "14:00",
+      endTime: "16:00",
+    });
+    const id = await book(world.juan.id, "2099-01-05T12:00:00Z");
+    const moved = await asAppRole(db, (tx) =>
+      rescheduleAppointment(
+        world.receptionist,
+        { appointmentId: id, start: new Date("2099-01-05T17:00:00Z"), durationMinutes: 30 },
+        tx,
+      ),
+    );
+    expect(moved).toEqual({ ok: true });
+    // A practitioner's schedules share one zone, so the other zone is set
+    // straight on the office: 17:00Z is 12:00 in Lima (UTC-5).
+    await db.update(office).set({ timeZone: "America/Lima" }).where(eq(office.id, north.id));
+
+    const result = await asAppRole(db, (tx) =>
+      getPatientHistory(world.admin, { patientId: maria.id }, tx),
+    );
+
+    if (!result.ok) {
+      throw new Error(`getPatientHistory failed: ${result.reason}`);
+    }
+    const move = result.entries.find((entry) => entry.action === "update");
+    expect(move!.timeZones).toEqual({
+      before: "America/Argentina/Buenos_Aires",
+      after: "America/Lima",
+    });
+    expect(historyChanges(move!, result.names)).toEqual([
+      { field: "Inicio", before: "05/01/2099 09:00", after: "05/01/2099 12:00" },
+      { field: "Fin", before: "05/01/2099 09:30", after: "05/01/2099 12:30" },
+      { field: "Consultorio", before: "Consultorio 1", after: "Norte 1" },
+    ]);
+  });
+});

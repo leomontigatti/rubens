@@ -237,6 +237,20 @@ export function collisionLabel(collision: {
   );
 }
 
+/** Another practitioner's appointment a save would crowd, told after the refusal. */
+export function appointmentCollisionLabel(collision: {
+  practitionerName: string;
+  roomName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}): string {
+  return (
+    `Choca con un turno de ${collision.practitionerName} en ${collision.roomName}, ` +
+    `el ${formatLocalDate(collision.date)} de ${collision.startTime} a ${collision.endTime}.`
+  );
+}
+
 /**
  * Where `today` falls in a schedule's dates, and the dates its change and end
  * forms start from: a started schedule changes from today, a future one from

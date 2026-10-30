@@ -2,6 +2,7 @@ import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   DropdownMenu,
@@ -15,6 +16,7 @@ import {
 import { authClient } from "#/lib/auth-client.ts";
 import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
+import { getToRescheduleCount } from "#/server/appointments.functions.ts";
 
 const passwordChangePath = "/cambiar-contrasena";
 
@@ -30,6 +32,12 @@ export const Route = createFileRoute("/_app")({
       throw redirect({ to: passwordChangePath });
     }
     return { viewer: result.viewer };
+  },
+  // Reloaded on every navigation and after every change a screen makes, so
+  // the menu's count of appointments to reschedule stays current.
+  loader: async () => {
+    const counted = await getToRescheduleCount();
+    return { toReschedule: counted.ok ? counted.count : null };
   },
   // A signed-in page holds the viewer's data, patients' included: the browser
   // keeps no copy, so Back after a sign-out cannot show it to the next person.
@@ -84,8 +92,29 @@ function useSessionGuard(userId: string) {
   }, []);
 }
 
+/**
+ * The menu's link to the "to reschedule" list, with how many it holds in red
+ * when any; no link when refused.
+ */
+function ToRescheduleLink({ count }: { count: number | null }) {
+  if (count === null) {
+    return null;
+  }
+  return (
+    <Link
+      to="/a-reprogramar"
+      className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm"
+      activeProps={{ className: "text-foreground" }}
+    >
+      A reprogramar
+      {count > 0 && <Badge variant="destructive">{count}</Badge>}
+    </Link>
+  );
+}
+
 function AppShell() {
   const { viewer } = Route.useRouteContext();
+  const { toReschedule } = Route.useLoaderData();
 
   useSessionGuard(viewer.userId);
 
@@ -101,6 +130,14 @@ function AppShell() {
           <Link to="/" className="font-semibold">
             {viewer.organizationName}
           </Link>
+          <Link
+            to="/agenda"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Agenda
+          </Link>
+          <ToRescheduleLink count={toReschedule} />
           <Link
             to="/pacientes"
             className="text-muted-foreground hover:text-foreground text-sm"
@@ -121,6 +158,13 @@ function AppShell() {
             activeProps={{ className: "text-foreground" }}
           >
             Horarios
+          </Link>
+          <Link
+            to="/prestaciones"
+            className="text-muted-foreground hover:text-foreground text-sm"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Prestaciones
           </Link>
           <Link
             to="/disponibilidad"

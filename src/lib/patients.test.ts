@@ -86,4 +86,99 @@ describe("historyChanges", () => {
       }),
     ).toEqual([{ field: "Recibe los mensajes", before: "El paciente", after: "Laura Gómez" }]);
   });
+
+  describe("an appointment's entry", () => {
+    const names = {
+      "room-1": "Consultorio 1",
+      "room-2": "Consultorio 2",
+      "practitioner-1": "Juan Gómez",
+      "service-1": "Consulta",
+    };
+    const timeZones = {
+      before: "America/Argentina/Buenos_Aires",
+      after: "America/Argentina/Buenos_Aires",
+    };
+
+    it("shows a booking's fields by name and its times in the office's zone, never the patient's id", () => {
+      expect(
+        historyChanges(
+          {
+            timeZones,
+            before: null,
+            after: {
+              patientId: "patient-1",
+              practitionerId: "practitioner-1",
+              medicalServiceId: "service-1",
+              roomId: "room-1",
+              receptionNote: "Trae estudios",
+              start: "2099-01-05T12:00:00.000Z",
+              end: "2099-01-05T12:30:00.000Z",
+              status: "booked",
+            },
+          },
+          names,
+        ),
+      ).toEqual([
+        { field: "Inicio", before: "—", after: "05/01/2099 09:00" },
+        { field: "Fin", before: "—", after: "05/01/2099 09:30" },
+        { field: "Profesional", before: "—", after: "Juan Gómez" },
+        { field: "Prestación", before: "—", after: "Consulta" },
+        { field: "Consultorio", before: "—", after: "Consultorio 1" },
+        { field: "Estado", before: "—", after: "Reservado" },
+        { field: "Nota de recepción", before: "—", after: "Trae estudios" },
+      ]);
+    });
+
+    it("shows each side's times in that side's zone", () => {
+      expect(
+        historyChanges({
+          timeZones: { before: "America/Argentina/Buenos_Aires", after: "America/Lima" },
+          before: { start: "2099-01-05T12:00:00.000Z" },
+          after: { start: "2099-01-05T14:00:00.000Z" },
+        }),
+      ).toEqual([{ field: "Inicio", before: "05/01/2099 09:00", after: "05/01/2099 09:00" }]);
+    });
+
+    it("shows a room move and an overbooking by name and in Spanish", () => {
+      expect(
+        historyChanges(
+          {
+            timeZones,
+            before: { roomId: "room-1", overbooking: false },
+            after: { roomId: "room-2", overbooking: true },
+          },
+          names,
+        ),
+      ).toEqual([
+        { field: "Consultorio", before: "Consultorio 1", after: "Consultorio 2" },
+        { field: "Sobreturno", before: "No", after: "Sí" },
+      ]);
+    });
+
+    it("shows a cancellation's status, who cancelled and why", () => {
+      expect(
+        historyChanges(
+          {
+            timeZones,
+            before: { status: "confirmed", cancelledBy: null, cancellationReason: null },
+            after: { status: "cancelled", cancelledBy: "patient", cancellationReason: "Viaje" },
+          },
+          names,
+        ),
+      ).toEqual([
+        { field: "Estado", before: "Confirmado", after: "Cancelado" },
+        { field: "Canceló", before: "—", after: "El paciente" },
+        { field: "Motivo de cancelación", before: "—", after: "Viaje" },
+      ]);
+    });
+
+    it("never shows an id it has no name for", () => {
+      expect(
+        historyChanges(
+          { timeZones, before: { roomId: "room-gone" }, after: { roomId: "room-1" } },
+          names,
+        ),
+      ).toEqual([{ field: "Consultorio", before: "Desconocido", after: "Consultorio 1" }]);
+    });
+  });
 });

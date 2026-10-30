@@ -6,7 +6,7 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 
 - [Access](./access.md): roles, and who sees what.
 - [Scheduling](./scheduling.md): offices, rooms, schedules, time off, closures.
-- [Appointments](./appointments.md): types, statuses, rescheduling, overbooking.
+- [Appointments](./appointments.md): medical services, statuses, rescheduling, overbooking.
 - [Patients](./patients.md): the registry, identity, guardians, consent.
 - [Messages](./messages.md): reminders, the reschedule link, staff notifications.
 - [Clinical records](./clinical-records.md): notes and their versions, alerts, attachments, copies.

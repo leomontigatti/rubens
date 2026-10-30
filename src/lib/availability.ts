@@ -35,8 +35,10 @@ export interface AvailabilityInput {
   timeOff: readonly TimeRange[];
   /** The closures of the practitioner's offices and of the whole organization. */
   closures: readonly AvailabilityClosure[];
-  /** Booked appointments; none until booking exists. */
+  /** The practitioner's active appointments, overbookings included. */
   busy: readonly TimeRange[];
+  /** Other practitioners' active appointments in the schedules' rooms, which hold the room. */
+  roomBusy: readonly { roomId: string; during: TimeRange }[];
   gridMinutes: number;
   window: TimeRange;
   durationMinutes: number;
@@ -64,6 +66,8 @@ export const availabilityQuerySchema = z
     firstDate: z.iso.date(),
     lastDate: z.iso.date(),
     durationMinutes: durationMinutesSchema,
+    /** The appointment being rescheduled: its own time counts as free. */
+    appointmentId: z.uuid().optional(),
   })
   .refine((query) => query.firstDate <= query.lastDate, {
     path: ["lastDate"],
@@ -167,6 +171,68 @@ function appliesOn(schedule: WeeklySlot, date: string): boolean {
   );
 }
 
+/** The occurrences of `schedule` that meet `span`, as instants in its office's zone. */
+export function occurrencesDuring(
+  schedule: WeeklySlot & { timeZone: string },
+  span: TimeRange,
+): TimeRange[] {
+  return datesIn(span, schedule.timeZone)
+    .filter((date) => appliesOn(schedule, date))
+    .map((date) => ({
+      start: instantOf(date, shortTime(schedule.startTime), schedule.timeZone),
+      end: instantOf(date, shortTime(schedule.endTime), schedule.timeZone),
+    }))
+    .filter((occurrence) => intersects(occurrence, span));
+}
+
+/** The first schedule one of whose occurrences holds the whole of `span`. */
+export function coveringSchedule<T extends AvailabilitySchedule>(
+  schedules: readonly T[],
+  span: TimeRange,
+): T | undefined {
+  return schedules.find((schedule) =>
+    occurrencesDuring(schedule, span).some(
+      (occurrence) => occurrence.start <= span.start && span.end <= occurrence.end,
+    ),
+  );
+}
+
+/** What decides whether a practitioner's span is working time. */
+export interface WorkingTime {
+  schedules: readonly AvailabilitySchedule[];
+  timeOff: readonly TimeRange[];
+  /** The closures of the span's office and of the whole organization; others are ignored. */
+  closures: readonly AvailabilityClosure[];
+}
+
+/** Why a span is outside working time. */
+export type OutsideWorkingTime = "timeOff" | "closure" | "outsideSchedules";
+
+/**
+ * Why `span`, in the office `officeId`, is outside working time; `null` when
+ * it is inside: one occurrence of a schedule in that office holds it whole,
+ * and it meets no time off and no closure of the office or the organization.
+ */
+export function outsideWorkingTime(
+  span: TimeRange,
+  officeId: string,
+  workingTime: WorkingTime,
+): OutsideWorkingTime | null {
+  if (workingTime.timeOff.some((range) => intersects(range, span))) {
+    return "timeOff";
+  }
+  const closed = workingTime.closures.some(
+    (closure) =>
+      (closure.officeId === null || closure.officeId === officeId) &&
+      intersects(closure.during, span),
+  );
+  if (closed) {
+    return "closure";
+  }
+  const inOffice = workingTime.schedules.filter((schedule) => schedule.officeId === officeId);
+  return coveringSchedule(inOffice, span) ? null : "outsideSchedules";
+}
+
 /**
  * The spans of `durationMinutes` that start on the grid inside one occurrence
  * of `schedule`, on `date`, and end by its end.
@@ -197,7 +263,8 @@ function gridSpans(
  * The free starts inside the window, in time order. A start is free when it
  * lies on the grid counted from local midnight in its office's zone, the
  * whole duration fits inside one occurrence of a schedule, and that span meets
- * no time off, closure or busy range.
+ * no time off, closure or busy range, nor another practitioner's appointment
+ * in the schedule's room.
  */
 export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
   const { window } = input;
@@ -209,6 +276,9 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
           .filter(({ officeId }) => officeId === null || officeId === schedule.officeId)
           .map(({ during }) => during),
         ...input.busy,
+        ...input.roomBusy
+          .filter(({ roomId }) => roomId === schedule.roomId)
+          .map(({ during }) => during),
       ];
       const isFree = (span: TimeRange) =>
         span.start >= window.start &&

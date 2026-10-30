@@ -18,7 +18,9 @@ Offices have no opening hours of their own: schedules are the only working time,
 and a closure covers a day an office is shut.
 
 Saving a schedule fails if, on any date it applies, the
-room would hold more practitioners than its capacity. The room is settled when the
+room would hold more practitioners than its capacity, counting the schedules in it
+and the future appointments other practitioners have there (overbookings and room
+moves place appointments outside schedules). The room is settled when the
 schedule is saved, not each time an appointment is booked.
 
 A change to a schedule takes effect from a date the user picks: the old schedule
@@ -46,8 +48,8 @@ inside the window being viewed, minus their time off, closures, and the
 appointments already booked. Overbookings are left out of it, so they never show
 as free.
 
-Free times start on a grid, every 15 minutes unless the practitioner's grid is set
-otherwise, whatever the appointment type's duration. The grid keeps start times
+Free times start on a grid, every 30 minutes unless the practitioner's grid is set
+otherwise, whatever the medical service's duration. The grid keeps start times
 tidy and stable as appointments come and go; it does not limit an appointment's
 length, and an overbooking may start off the grid.
 

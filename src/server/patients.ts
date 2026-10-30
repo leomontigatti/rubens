@@ -25,6 +25,8 @@ import type {
 } from "#/lib/patients.ts";
 
 import { changedFields, createdFields, recordAudit } from "#/server/audit.ts";
+import { appointmentHistoryContext } from "#/server/patient-appointments.ts";
+import type { HistoryTimeZones } from "#/server/patient-appointments.ts";
 import type { AuditAction, AuditValues } from "#/server/audit.ts";
 
 // The organization's patient registry. Reception, admins and practitioners
@@ -67,6 +69,8 @@ export interface HistoryEntry {
   before: AuditValues | null;
   after: AuditValues | null;
   createdAt: Date;
+  /** An appointment entry's zones, to show each side's times in; `null` for other entries. */
+  timeZones: HistoryTimeZones | null;
 }
 
 /** Why a registration or an edit matched an existing patient. */
@@ -564,7 +568,13 @@ export async function getPatientHistory(
   actor: Actor,
   input: { patientId: string },
   database?: AnyDatabase,
-): Promise<Result<{ entries: HistoryEntry[] }>> {
+): Promise<
+  Result<{
+    entries: HistoryEntry[];
+    /** The names of the practitioners, medical services and rooms the entries point at, by id. */
+    names: Record<string, string>;
+  }>
+> {
   if (!isAdmin(actor)) {
     return forbidden;
   }
@@ -583,6 +593,7 @@ export async function getPatientHistory(
           id: auditLog.id,
           action: auditLog.action,
           entityType: auditLog.entityType,
+          entityId: auditLog.entityId,
           userId: auditLog.userId,
           userName: user.name,
           before: auditLog.before,
@@ -593,9 +604,15 @@ export async function getPatientHistory(
         .leftJoin(user, eq(user.id, auditLog.userId))
         .where(eq(auditLog.patientId, patientId.data))
         .orderBy(desc(auditLog.createdAt), desc(auditLog.id));
+      const { timeZonesOf, names } = await appointmentHistoryContext(tx, rows);
       return {
         ok: true as const,
-        entries: rows.map((row) => ({ ...row, action: row.action as AuditAction })),
+        entries: rows.map(({ entityId, ...row }) => ({
+          ...row,
+          action: row.action as AuditAction,
+          timeZones: timeZonesOf({ ...row, entityId }),
+        })),
+        names,
       };
     },
     database,

@@ -1,31 +1,10 @@
 import { sql } from "drizzle-orm";
-import { check, customType, foreignKey, index, text, uuid } from "drizzle-orm/pg-core";
-
-import type { TimeRange } from "#/lib/time-ranges.ts";
+import { check, foreignKey, index, text, uuid } from "drizzle-orm/pg-core";
 
 import { organization } from "#/db/schema/auth.ts";
 import { office } from "#/db/schema/offices.ts";
-import { rubens, timestamps } from "#/db/schema/schema.ts";
+import { rubens, timeRange, timestamps } from "#/db/schema/schema.ts";
 import { practitioner } from "#/db/schema/staff.ts";
-
-/** One bound of Postgres's text form, `"2026-01-05 03:00:00+00"`, as an instant. */
-function parseBound(bound: string): Date {
-  const iso = bound
-    .replaceAll('"', "")
-    .replace(" ", "T")
-    .replace(/([+-]\d\d)$/, "$1:00");
-  return new Date(iso);
-}
-
-/** A half-open span of instants: a `tstzrange` with `[)` bounds. */
-const timeRange = customType<{ data: TimeRange; driverData: string }>({
-  dataType: () => "tstzrange",
-  toDriver: (range) => `[${range.start.toISOString()},${range.end.toISOString()})`,
-  fromDriver: (value) => {
-    const [start, end] = value.slice(1, -1).split(",");
-    return { start: parseBound(start!), end: parseBound(end!) };
-  },
-});
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migration (raw SQL, 0006), as for every table with that column. Time

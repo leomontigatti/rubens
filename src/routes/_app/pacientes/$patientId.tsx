@@ -39,6 +39,8 @@ import {
 } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
+import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-statuses.ts";
+import { getPatientAppointments } from "#/server/appointments.functions.ts";
 import { getCoverages } from "#/server/coverages.functions.ts";
 import type { Coverage } from "#/server/coverages.ts";
 import { getGuardians } from "#/server/guardians.functions.ts";
@@ -53,19 +55,21 @@ import {
   getPatientDetails,
 } from "#/server/patients.functions.ts";
 import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
+import type { PatientAppointment } from "#/server/patient-appointments.ts";
 import type { HistoryEntry, Patient } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
   loader: async ({ params, context }) => {
     const data = { patientId: params.patientId };
-    const [details, coverages, guardians, insurers, history] = await Promise.all([
+    const [details, coverages, guardians, insurers, history, appointments] = await Promise.all([
       getPatientDetails({ data }),
       getCoverages({ data }),
       getGuardians({ data }),
       getInsurers({ data: { includeInactive: false } }),
       context.viewer.roles.includes("admin") ? getPatientChanges({ data }) : null,
+      getPatientAppointments({ data }),
     ]);
-    return { details, coverages, guardians, insurers, history };
+    return { details, coverages, guardians, insurers, history, appointments };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -93,7 +97,7 @@ const instantFormat = new Intl.DateTimeFormat("es-AR", {
 
 function PatientScreen() {
   const { viewer } = Route.useRouteContext();
-  const { details, coverages, guardians, insurers, history } = Route.useLoaderData();
+  const { details, coverages, guardians, insurers, history, appointments } = Route.useLoaderData();
 
   if (!details.ok) {
     return <RefusalMessage message={patientRefusalMessages[details.reason]} />;
@@ -109,7 +113,8 @@ function PatientScreen() {
       <CoverageSection patientId={patient.id} coverages={coverages} insurers={insurers} />
       <GuardianSection patient={patient} guardians={guardians} />
       <WhatsappSection patient={patient} />
-      {history?.ok && <HistorySection entries={history.entries} />}
+      <AppointmentsSection appointments={appointments} />
+      {history?.ok && <HistorySection entries={history.entries} names={history.names} />}
     </div>
   );
 }
@@ -379,6 +384,80 @@ function WhatsappSection({ patient }: { patient: Patient }) {
   );
 }
 
+/** The patient's appointments, upcoming then past, with their statuses. */
+function AppointmentsSection({ appointments }: { appointments: LoaderData["appointments"] }) {
+  if (!appointments.ok) {
+    return null;
+  }
+  return (
+    <Section title="Turnos">
+      <div className="flex flex-col gap-6">
+        <AppointmentList
+          title="Próximos"
+          appointments={appointments.upcoming}
+          empty="No tiene turnos próximos."
+        />
+        <AppointmentList
+          title="Anteriores"
+          appointments={appointments.past}
+          empty="No tiene turnos anteriores."
+        />
+      </div>
+    </Section>
+  );
+}
+
+function AppointmentList(props: {
+  title: string;
+  appointments: PatientAppointment[];
+  empty: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">{props.title}</h3>
+      {props.appointments.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{props.empty}</p>
+      ) : (
+        <ol className="flex flex-col gap-3">
+          {props.appointments.map((appointment) => (
+            <AppointmentItem key={appointment.id} appointment={appointment} />
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function AppointmentItem({ appointment }: { appointment: PatientAppointment }) {
+  const when = new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    hourCycle: "h23",
+    timeZone: appointment.timeZone,
+  });
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col gap-0.5 text-sm">
+        <p>
+          <span className="font-medium">{when.format(appointment.start)}</span> ·{" "}
+          {appointment.practitionerName} · {appointment.medicalServiceName}
+        </p>
+        <p className="text-muted-foreground">
+          {[`${appointment.officeName}, ${appointment.roomName}`, cancellationText(appointment)]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
+      <div className="flex gap-1">
+        {appointment.overbooking && <Badge variant="outline">Sobreturno</Badge>}
+        <Badge variant={appointment.status === "noShow" ? "destructive" : "secondary"}>
+          {appointmentStatusLabels[appointment.status]}
+        </Badge>
+      </div>
+    </li>
+  );
+}
+
 const actionLabels: Record<HistoryEntry["action"], string> = {
   create: "Alta",
   update: "Cambio",
@@ -389,11 +468,13 @@ const actionLabels: Record<HistoryEntry["action"], string> = {
 
 /** What an entry is about, after its action: nothing for the patient's own. */
 const entityLabels: Record<string, string> = {
+  appointment: " de turno",
   coverage: " de cobertura",
   guardian: " de responsable",
 };
 
-function HistorySection({ entries }: { entries: HistoryEntry[] }) {
+function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, string> }) {
+  const { entries, names } = props;
   return (
     <Section title="Historial de cambios">
       <ol className="flex flex-col gap-4">
@@ -410,7 +491,7 @@ function HistorySection({ entries }: { entries: HistoryEntry[] }) {
               </span>
             </p>
             <ul className="text-muted-foreground text-sm">
-              {historyChanges(entry).map((change) => (
+              {historyChanges(entry, names).map((change) => (
                 <li key={change.field}>
                   {change.field}: {change.before} → {change.after}
                 </li>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  appointmentCollisionLabel,
   collisionLabel,
   sameClock,
   scheduleState,
@@ -59,6 +60,18 @@ describe("a schedule's labels", () => {
         endTime: "10:30",
       }),
     ).toBe("Choca con el horario de Lucía Díaz en Consultorio 1, los miércoles de 09:00 a 10:30.");
+  });
+
+  it("tells the appointment a save would crowd, on its date", () => {
+    expect(
+      appointmentCollisionLabel({
+        practitionerName: "Lucía Díaz",
+        roomName: "Consultorio 3",
+        date: "2099-01-05",
+        startTime: "12:00",
+        endTime: "12:30",
+      }),
+    ).toBe("Choca con un turno de Lucía Díaz en Consultorio 3, el 05/01/2099 de 12:00 a 12:30.");
   });
 });
 

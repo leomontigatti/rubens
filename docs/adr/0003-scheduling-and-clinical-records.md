@@ -12,6 +12,9 @@ Date: 2026-10-12. Amended 2026-10-27, after the domain model was agreed
   ADR-0005: notes are edited and every version is kept).
 - Clinical access is per practitioner setting, not per specialty.
 
+Amended 2026-10-29 (PRD #45): practitioners who share a room never hold it at
+once, so a second exclusion constraint covers appointments per room.
+
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,
 Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
 
@@ -28,6 +31,10 @@ Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
   see its overlaps. Room capacity is checked when a schedule is saved, in the
   same transaction, under a lock on the room row: the schedule is expanded over
   its validity and compared with the room's other schedules.
+- Within a shared room, two practitioners' appointments never overlap: a second
+  exclusion constraint (`room_id WITH =, practitioner_id WITH <>, during WITH &&`)
+  on active appointments, overbookings included, makes the room's time taken for
+  every other practitioner. A practitioner's own overbookings stay allowed.
 - Instants are `timestamptz` in UTC. Each office has an IANA time zone, and local
   times are derived from it. A schedule is an RRULE with validity dates.
   Availability is the schedules expanded inside a bounded window, minus time off,

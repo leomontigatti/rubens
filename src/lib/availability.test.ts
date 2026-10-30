@@ -4,9 +4,12 @@ import {
   availabilityQuerySchema,
   availabilitySearchProblem,
   availabilityViewOf,
+  coveringSchedule,
   findFreeStarts,
   freeStartsByDay,
   freeTimesQueryOf,
+  occurrencesDuring,
+  outsideWorkingTime,
 } from "#/lib/availability.ts";
 import type { AvailabilityInput, AvailabilitySchedule } from "#/lib/availability.ts";
 
@@ -31,6 +34,7 @@ function input(overrides: Partial<AvailabilityInput>): AvailabilityInput {
     timeOff: [],
     closures: [],
     busy: [],
+    roomBusy: [],
     gridMinutes: 15,
     window: { start: new Date("2099-01-05T03:00:00Z"), end: new Date("2099-01-06T03:00:00Z") },
     durationMinutes: 15,
@@ -189,6 +193,19 @@ describe("time off, closures and busy ranges", () => {
       "2099-01-05T12:30:00.000Z",
       "2099-01-05T12:45:00.000Z",
     ]);
+  });
+
+  it("skips another practitioner's appointment in the schedule's room, not in another room", () => {
+    const during = {
+      start: new Date("2099-01-05T12:15:00Z"),
+      end: new Date("2099-01-05T12:45:00Z"),
+    };
+
+    expect(starts({ roomBusy: [{ roomId: "room-1", during }] })).toEqual([
+      "2099-01-05T12:00:00.000Z",
+      "2099-01-05T12:45:00.000Z",
+    ]);
+    expect(starts({ roomBusy: [{ roomId: "room-2", during }] })).toHaveLength(4);
   });
 });
 
@@ -359,6 +376,101 @@ describe("the screen's view", () => {
       lastDate: "2099-01-11",
       durationMinutes: 45,
     });
+  });
+});
+
+describe("a schedule's occurrences during a span", () => {
+  const span = (start: string, end: string) => ({
+    start: new Date(`2099-01-05T${start}:00Z`),
+    end: new Date(`2099-01-05T${end}:00Z`),
+  });
+
+  it("gives the occurrence a span meets, in the schedule's zone, and none it only touches", () => {
+    expect(occurrencesDuring(morning, span("12:30", "13:30"))).toEqual([
+      { start: new Date("2099-01-05T12:00:00Z"), end: new Date("2099-01-05T13:00:00Z") },
+    ]);
+    expect(occurrencesDuring(morning, span("13:00", "13:30"))).toEqual([]);
+    expect(occurrencesDuring({ ...morning, weekdays: [2] }, span("12:00", "12:30"))).toEqual([]);
+  });
+
+  it("finds the schedule whose occurrence holds the whole span, and none for a span past its end", () => {
+    const later = { ...morning, roomId: "room-2", startTime: "10:00", endTime: "11:00" };
+
+    expect(coveringSchedule([morning, later], span("13:15", "13:45"))).toBe(later);
+    expect(coveringSchedule([morning, later], span("12:45", "13:15"))).toBeUndefined();
+    expect(coveringSchedule([morning], span("12:00", "13:00"))).toBe(morning);
+  });
+});
+
+describe("whether a span is inside working time", () => {
+  const span = (start: string, end: string, date = "2099-01-05") => ({
+    start: new Date(`${date}T${start}:00Z`),
+    end: new Date(`${date}T${end}:00Z`),
+  });
+  const workingTime = (overrides: Partial<Parameters<typeof outsideWorkingTime>[2]> = {}) => ({
+    schedules: [morning],
+    timeOff: [],
+    closures: [],
+    ...overrides,
+  });
+
+  it("is inside when one occurrence of a schedule in the office holds the whole span", () => {
+    expect(outsideWorkingTime(span("12:15", "12:45"), "office-centro", workingTime())).toBeNull();
+    expect(outsideWorkingTime(span("12:00", "13:00"), "office-centro", workingTime())).toBeNull();
+  });
+
+  it("is outside the schedules when the span crosses a schedule's end", () => {
+    expect(outsideWorkingTime(span("12:45", "13:15"), "office-centro", workingTime())).toBe(
+      "outsideSchedules",
+    );
+  });
+
+  it("counts only the schedules of the span's office", () => {
+    const norte = { ...morning, officeId: "office-norte", roomId: "room-n" };
+
+    expect(
+      outsideWorkingTime(
+        span("12:00", "12:30"),
+        "office-centro",
+        workingTime({ schedules: [norte] }),
+      ),
+    ).toBe("outsideSchedules");
+  });
+
+  it("is inside on a schedule's last date, and outside the week after", () => {
+    const ending = workingTime({ schedules: [{ ...morning, lastDate: "2099-01-12" }] });
+
+    expect(
+      outsideWorkingTime(span("12:00", "12:30", "2099-01-12"), "office-centro", ending),
+    ).toBeNull();
+    expect(outsideWorkingTime(span("12:00", "12:30", "2099-01-19"), "office-centro", ending)).toBe(
+      "outsideSchedules",
+    );
+  });
+
+  it("is outside in the practitioner's time off, even when it only overlaps part of the span", () => {
+    const away = workingTime({ timeOff: [span("12:20", "14:00")] });
+
+    expect(outsideWorkingTime(span("12:00", "12:30"), "office-centro", away)).toBe("timeOff");
+    expect(outsideWorkingTime(span("12:00", "12:20"), "office-centro", away)).toBeNull();
+  });
+
+  it("is outside in a closure of its office, and not in another office's", () => {
+    const closed = (officeId: string) =>
+      workingTime({ closures: [{ during: span("12:00", "13:00"), officeId }] });
+
+    expect(
+      outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed("office-centro")),
+    ).toBe("closure");
+    expect(
+      outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed("office-norte")),
+    ).toBeNull();
+  });
+
+  it("is outside in a closure of the whole organization", () => {
+    const closed = workingTime({ closures: [{ during: span("03:00", "23:00"), officeId: null }] });
+
+    expect(outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed)).toBe("closure");
   });
 });
 

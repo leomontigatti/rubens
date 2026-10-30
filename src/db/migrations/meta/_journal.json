@@ -85,6 +85,34 @@
       "when": 1793212674968,
       "tag": "0011_unique_insurer_names",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793215748356,
+      "tag": "0012_medical_services",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793216334424,
+      "tag": "0013_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793225988661,
+      "tag": "0014_practitioner_grid_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793231853804,
+      "tag": "0015_practitioner_color",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,9 @@
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
 import * as z from "zod";
 
+import { appointmentStatusLabels, cancellerLabels } from "#/lib/appointment-statuses.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatPhone, parsePhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
 
@@ -176,8 +180,8 @@ export function documentLabel(patient: {
 }
 
 // In the registration form's order, which the change history follows, then a
-// coverage's. A guardian's name and relationship come first: its other fields
-// are a patient's.
+// coverage's, then an appointment's. A guardian's name and relationship come
+// first: its other fields are a patient's.
 const fieldLabels: Record<string, string> = {
   name: "Nombre",
   relationship: "Relación",
@@ -198,6 +202,17 @@ const fieldLabels: Record<string, string> = {
   memberNumber: "Número de afiliado",
   primary: "Principal",
   messageContact: "Recibe los mensajes",
+  // An appointment's: its times, who, what and where, then its state.
+  start: "Inicio",
+  end: "Fin",
+  practitionerId: "Profesional",
+  medicalServiceId: "Prestación",
+  roomId: "Consultorio",
+  overbooking: "Sobreturno",
+  status: "Estado",
+  cancelledBy: "Canceló",
+  cancellationReason: "Motivo de cancelación",
+  receptionNote: "Nota de recepción",
 };
 
 const fieldOrder = Object.keys(fieldLabels);
@@ -210,14 +225,32 @@ function fieldRank(field: string): number {
 
 type HistoryValue = string | number | boolean | null | undefined;
 
+/** What an entry's values point at: names by id, and the zone of its times. */
+interface HistoryContext {
+  names: Readonly<Record<string, string>>;
+  timeZone: string;
+}
+
+const byName = (id: string, context: HistoryContext) => context.names[id] ?? "Desconocido";
+
+const localDateTime = (instant: string, context: HistoryContext) =>
+  format(new Date(instant), "dd/MM/yyyy HH:mm", { in: tz(context.timeZone) });
+
 // How the change history shows a field's value, when not as written.
-const formatters: Record<string, (text: string) => string> = {
+const formatters: Record<string, (text: string, context: HistoryContext) => string> = {
   phone: formatPhone,
   birthDate: formatLocalDate,
   documentType: (text) => documentTypeLabels[text as DocumentType] ?? text,
+  start: localDateTime,
+  end: localDateTime,
+  practitionerId: byName,
+  medicalServiceId: byName,
+  roomId: byName,
+  status: (text) => appointmentStatusLabels[text as keyof typeof appointmentStatusLabels] ?? text,
+  cancelledBy: (text) => cancellerLabels[text as keyof typeof cancellerLabels] ?? text,
 };
 
-function formatValue(field: string, value: HistoryValue): string {
+function formatValue(field: string, value: HistoryValue, context: HistoryContext): string {
   if (field === "messageContact") {
     // The guardian messages go to, by name; none is the patient.
     return value === null || value === undefined ? "El paciente" : String(value);
@@ -228,8 +261,8 @@ function formatValue(field: string, value: HistoryValue): string {
   if (typeof value === "boolean") {
     return value ? "Sí" : "No";
   }
-  const format = formatters[field];
-  return format ? format(String(value)) : String(value);
+  const formatter = formatters[field];
+  return formatter ? formatter(String(value), context) : String(value);
 }
 
 export interface FieldChange {
@@ -238,21 +271,32 @@ export interface FieldChange {
   after: string;
 }
 
-// Recorded for the log, not shown: a coverage's insurer shows by its name.
-const hiddenFields = new Set(["insurerId"]);
+// Recorded for the log, not shown: a coverage's insurer shows by its name, and
+// an appointment's patient is the page's.
+const hiddenFields = new Set(["insurerId", "patientId"]);
 
-/** An audit entry's changed fields, labelled and formatted for the change history. */
-export function historyChanges(entry: {
-  before: Record<string, HistoryValue> | null;
-  after: Record<string, HistoryValue> | null;
-}): FieldChange[] {
+/**
+ * An audit entry's changed fields, labelled and formatted for the change
+ * history: ids by their `names`, an appointment's times on each side in that
+ * side's zone of `timeZones`.
+ */
+export function historyChanges(
+  entry: {
+    before: Record<string, HistoryValue> | null;
+    after: Record<string, HistoryValue> | null;
+    timeZones?: { before: string; after: string } | null;
+  },
+  names: Readonly<Record<string, string>> = {},
+): FieldChange[] {
+  const before = { names, timeZone: entry.timeZones?.before ?? defaultTimeZone };
+  const after = { names, timeZone: entry.timeZones?.after ?? defaultTimeZone };
   // The log's JSON keeps no key order, so the form's order is restored here.
   const fields = Object.keys({ ...entry.before, ...entry.after })
     .filter((field) => !hiddenFields.has(field))
     .sort((a, b) => fieldRank(a) - fieldRank(b));
   return fields.map((field) => ({
     field: fieldLabels[field] ?? field,
-    before: formatValue(field, entry.before?.[field]),
-    after: formatValue(field, entry.after?.[field]),
+    before: formatValue(field, entry.before?.[field], before),
+    after: formatValue(field, entry.after?.[field], after),
   }));
 }

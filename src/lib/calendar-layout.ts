@@ -1,0 +1,216 @@
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
+
+import { instantOf, toTimeRange } from "#/lib/time-ranges.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
+
+// Places one day's cells and cards on the calendar, so the screen only draws
+// the result. Pure, in minutes from the view's start.
+
+export interface LayoutBlock extends TimeRange {
+  id: string;
+}
+
+export interface PlacedBlock {
+  id: string;
+  /** Minutes from the day's start to the block's start. */
+  top: number;
+  /** The block's length in minutes, inside the day. */
+  height: number;
+  /** Which of the `lanes` side-by-side slots the block takes, from 0. */
+  lane: number;
+  /** How many slots its group of overlapping blocks shares the width between. */
+  lanes: number;
+}
+
+const minute = 60_000;
+
+/**
+ * Every block inside `day`, clipped to it, in start order. Blocks that
+ * overlap, directly or through a chain, form a group that shares the width:
+ * each takes the first lane free at its start, so no two ever overlap.
+ * Touching blocks do not overlap.
+ */
+export function layoutColumn(blocks: readonly LayoutBlock[], day: TimeRange): PlacedBlock[] {
+  const inside = blocks
+    .filter((block) => block.start < day.end && block.end > day.start)
+    .map((block) => ({
+      id: block.id,
+      start: Math.max(+block.start, +day.start),
+      end: Math.min(+block.end, +day.end),
+    }))
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  return layoutLanes(inside, day);
+}
+
+function layoutLanes(
+  inside: readonly { id: string; start: number; end: number }[],
+  day: TimeRange,
+): PlacedBlock[] {
+  const placed: PlacedBlock[] = [];
+  let group: PlacedBlock[] = [];
+  let laneEnds: number[] = [];
+  let groupEnd = -Infinity;
+
+  function closeGroup() {
+    for (const member of group) {
+      member.lanes = laneEnds.length;
+    }
+    group = [];
+    laneEnds = [];
+  }
+
+  for (const block of inside) {
+    if (block.start >= groupEnd) {
+      closeGroup();
+    }
+    let lane = laneEnds.findIndex((end) => end <= block.start);
+    if (lane === -1) {
+      lane = laneEnds.length;
+    }
+    laneEnds[lane] = block.end;
+    groupEnd = Math.max(groupEnd, block.end);
+    const member = {
+      id: block.id,
+      top: (block.start - +day.start) / minute,
+      height: (block.end - block.start) / minute,
+      lane,
+      lanes: 0,
+    };
+    group.push(member);
+    placed.push(member);
+  }
+  closeGroup();
+  return placed;
+}
+
+/** The calendar's row: every day is a stack of cells this many minutes long. */
+export const cellMinutes = 30;
+
+export interface CalendarCell<T> {
+  start: Date;
+  /** Minutes from the view's start to the cell's start. */
+  top: number;
+  /** The cell's length in minutes: `cellMinutes`, less for a last cut-off cell. */
+  height: number;
+  /** The free starts on the cell's start, one per practitioner free there; none for a grey cell. */
+  free: T[];
+}
+
+/**
+ * The view as a stack of `cellMinutes` cells from its start. A cell is free
+ * when some of `freeStarts` sit on its start, and carries them all; a free
+ * start anywhere else leaves every cell it touches grey.
+ */
+export function layoutCells<T extends { start: Date }>(
+  view: TimeRange,
+  freeStarts: readonly T[],
+): CalendarCell<T>[] {
+  const free = new Map<number, T[]>();
+  for (const slot of freeStarts) {
+    free.set(+slot.start, [...(free.get(+slot.start) ?? []), slot]);
+  }
+  const cells: CalendarCell<T>[] = [];
+  for (let start = +view.start; start < +view.end; start += cellMinutes * minute) {
+    cells.push({
+      start: new Date(start),
+      top: (start - +view.start) / minute,
+      height: (Math.min(start + cellMinutes * minute, +view.end) - start) / minute,
+      free: free.get(start) ?? [],
+    });
+  }
+  return cells;
+}
+
+export interface DayCell<T> extends CalendarCell<T> {
+  /** The lane a free cell's booking click takes beside the cards that meet it. */
+  lane: number;
+  lanes: number;
+}
+
+/**
+ * One day's cells and cards. A free cell takes a lane like a card, so a card
+ * at the same time, faded or not, sits beside its booking click and never
+ * over it; a grey cell takes no lane.
+ */
+export function layoutDay<T extends { start: Date }>(
+  view: TimeRange,
+  freeStarts: readonly T[],
+  cards: readonly LayoutBlock[],
+): { cells: DayCell<T>[]; cards: PlacedBlock[] } {
+  const cells = layoutCells(view, freeStarts);
+  // Card ids are uuids, which never hold a space.
+  const cellId = (cell: CalendarCell<T>) => `cell ${cell.top}`;
+  const freeCells = cells
+    .filter((cell) => cell.free.length > 0)
+    .map((cell) => ({
+      id: cellId(cell),
+      start: cell.start,
+      end: new Date(+cell.start + cell.height * minute),
+    }));
+  const placed = new Map(layoutColumn([...cards, ...freeCells], view).map((one) => [one.id, one]));
+  return {
+    cells: cells.map((cell) => {
+      const click = placed.get(cellId(cell));
+      return { ...cell, lane: click?.lane ?? 0, lanes: click?.lanes ?? 1 };
+    }),
+    cards: cards.flatMap((card) => placed.get(card.id) ?? []),
+  };
+}
+
+const firstHour = 8;
+const lastHour = 20;
+
+/**
+ * The span of the local `date` in `timeZone` a day view shows: 08:00 to
+ * 20:00, widened to whole hours to take in every range, within the day.
+ */
+export function visibleHours(
+  ranges: readonly TimeRange[],
+  date: string,
+  timeZone: string,
+): TimeRange {
+  const day = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
+  let start = instantOf(date, `${String(firstHour).padStart(2, "0")}:00`, timeZone);
+  let end = instantOf(date, `${lastHour}:00`, timeZone);
+  for (const range of ranges) {
+    if (range.start < start) {
+      start = range.start <= day.start ? day.start : floorToHour(range.start, timeZone);
+    }
+    if (range.end > end) {
+      end = range.end >= day.end ? day.end : ceilToHour(range.end, timeZone);
+    }
+  }
+  return { start, end };
+}
+
+/**
+ * The span each local date of a week view shows, so the days line up: every
+ * day from the earliest hour any day needs to the latest, as `visibleHours`
+ * widens one day.
+ */
+export function visibleWeekHours(
+  days: readonly { date: string; ranges: readonly TimeRange[] }[],
+  timeZone: string,
+): TimeRange[] {
+  const midnights = days.map(({ date }) => instantOf(date, "00:00", timeZone));
+  const views = days.map(({ date, ranges }) => visibleHours(ranges, date, timeZone));
+  const fromMidnight = (instant: Date, index: number) => +instant - +midnights[index]!;
+  const first = Math.min(...views.map((view, index) => fromMidnight(view.start, index)));
+  const last = Math.max(...views.map((view, index) => fromMidnight(view.end, index)));
+  return midnights.map((midnight) => ({
+    start: new Date(+midnight + first),
+    end: new Date(+midnight + last),
+  }));
+}
+
+function floorToHour(instant: Date, timeZone: string): Date {
+  const local = format(instant, "yyyy-MM-dd HH", { in: tz(timeZone) });
+  const [date, hour] = local.split(" ");
+  return instantOf(date!, `${hour}:00`, timeZone);
+}
+
+function ceilToHour(instant: Date, timeZone: string): Date {
+  const floored = floorToHour(instant, timeZone);
+  return +floored === +instant ? floored : new Date(+floored + 60 * minute);
+}
