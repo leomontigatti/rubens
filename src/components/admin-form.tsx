@@ -1,8 +1,9 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type * as z from "zod";
 
+import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -90,12 +91,18 @@ export function FormActions(props: {
   );
 }
 
-/** Edit and deactivate or reactivate, shown to admins only. */
+type Deactivation = Pick<ComponentProps<typeof DeactivateButton>, "question" | "countUpcoming">;
+
+/**
+ * Edit and deactivate or reactivate, shown to admins only. `deactivation` is for
+ * a record whose deactivation sends appointments to the "to reschedule" list.
+ */
 export function AdminControls(props: {
   isAdmin: boolean;
   active: boolean;
   onEdit: () => void;
   onToggleActive: () => void;
+  deactivation?: Deactivation;
 }) {
   if (!props.isAdmin) {
     return null;
@@ -105,10 +112,30 @@ export function AdminControls(props: {
       <Button variant="outline" size="sm" onClick={props.onEdit}>
         Editar
       </Button>
+      <ActiveToggle {...props} />
+    </div>
+  );
+}
+
+function ActiveToggle(props: {
+  active: boolean;
+  onToggleActive: () => void;
+  deactivation?: Deactivation;
+}) {
+  if (!props.active || !props.deactivation) {
+    return (
       <Button variant="outline" size="sm" onClick={props.onToggleActive}>
         {props.active ? "Desactivar" : "Reactivar"}
       </Button>
-    </div>
+    );
+  }
+  return (
+    <DeactivateButton
+      {...props.deactivation}
+      size="sm"
+      pending={false}
+      onDeactivate={props.onToggleActive}
+    />
   );
 }
 

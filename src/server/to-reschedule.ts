@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   appointment,
@@ -24,6 +24,8 @@ import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate, today } from "#/lib/schedules.ts";
 import { patientName, patientReferenceSchema } from "#/lib/patients.ts";
 import type { PatientReference } from "#/lib/patients.ts";
+import { placeReferenceSchema } from "#/lib/offices.ts";
+import type { PlaceReference } from "#/lib/offices.ts";
 import { memberReferenceSchema } from "#/lib/staff.ts";
 import type { MemberReference } from "#/lib/staff.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -35,11 +37,11 @@ import { meets } from "#/server/availability.ts";
 // never stored (docs/domain/appointments.md § Rescheduling): every future
 // booked or confirmed appointment, overbookings left out, that time off, a
 // closure or a schedule change has left outside working time, and, overbookings
-// included, every one of a deactivated practitioner or patient. Scoped as the
-// calendar is: reception and admins see everyone's, a practitioner their own.
-// Schedules in a deactivated room or office cover nothing, as in the free
-// times. `database` is for tests, which pass a transaction running as the app
-// role.
+// included, every one of a deactivated practitioner or patient, or in a
+// deactivated room or office. Scoped as the calendar is: reception and admins
+// see everyone's, a practitioner their own. Schedules in a deactivated room or
+// office cover nothing, as in the free times. `database` is for tests, which
+// pass a transaction running as the app role.
 //
 // `member` is Better Auth's table and has no row-level security (PRD #16), so
 // every query on it names the actor's organization itself.
@@ -63,7 +65,15 @@ export interface ToRescheduleEntry {
 }
 
 /** Why an appointment is on the list. */
-export type ToRescheduleReason = OutsideWorkingTime | "practitionerInactive" | "patientInactive";
+export type ToRescheduleReason =
+  | OutsideWorkingTime
+  | "practitionerInactive"
+  | "patientInactive"
+  | "officeInactive"
+  | "roomInactive";
+
+/** Where an appointment sits or a schedule runs. */
+type Place = { roomId: string; officeId: string };
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: "forbidden" };
 
@@ -76,7 +86,7 @@ function isAdmin(actor: Actor): boolean {
   return actor.roles.includes("admin");
 }
 
-/** The appointments deactivating someone sends to the list, whatever their working time. */
+/** The appointments the list looks at. */
 const upcoming = () =>
   and(
     inArray(appointment.status, ["booked", "confirmed"]),
@@ -94,6 +104,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       during: appointment.during,
       status: appointment.status,
       overbooking: appointment.overbooking,
+      memberId: member.id,
       practitionerActive: member.active,
       patientActive: patient.active,
       firstName: patient.firstName,
@@ -102,7 +113,10 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       medicalServiceName: medicalService.name,
       color: practitioner.color,
       officeId: office.id,
+      officeActive: office.active,
       officeName: office.name,
+      roomId: room.id,
+      roomActive: room.active,
       roomName: room.name,
       timeZone: office.timeZone,
     })
@@ -177,7 +191,22 @@ function reasonFor(row: Upcoming, workingTime: WorkingTime): ToRescheduleReason 
   if (!row.patientActive) {
     return "patientInactive";
   }
+  if (!row.officeActive) {
+    return "officeInactive";
+  }
+  if (!row.roomActive) {
+    return "roomInactive";
+  }
   return row.overbooking ? null : outsideWorkingTime(row.during, row.officeId, workingTime);
+}
+
+/** The working time of `rows`' practitioners, up to the last of them. */
+function workingTimeOfRows(tx: Transaction, rows: Upcoming[]) {
+  const reach = {
+    start: new Date(),
+    end: new Date(Math.max(...rows.map((row) => +row.during.end))),
+  };
+  return workingTimeOf(tx, [...new Set(rows.map((row) => row.practitionerId))], reach);
 }
 
 async function findToReschedule(tx: Transaction, actor: Actor): Promise<ToRescheduleEntry[]> {
@@ -185,15 +214,7 @@ async function findToReschedule(tx: Transaction, actor: Actor): Promise<ToResche
   if (rows.length === 0) {
     return [];
   }
-  const reach = {
-    start: new Date(),
-    end: new Date(Math.max(...rows.map((row) => +row.during.end))),
-  };
-  const workingTimeFor = await workingTimeOf(
-    tx,
-    [...new Set(rows.map((row) => row.practitionerId))],
-    reach,
-  );
+  const workingTimeFor = await workingTimeOfRows(tx, rows);
   return rows.flatMap((row) => {
     const reason = reasonFor(row, workingTimeFor(row.practitionerId));
     if (reason === null) {
@@ -249,7 +270,24 @@ export async function countToReschedule(
   );
 }
 
-/** The patient's future appointments, for the question before deactivating them. */
+/** How many appointments not on the list yet `sends` would send to it. */
+async function countSentToList(
+  tx: Transaction,
+  actor: Actor,
+  sends: (row: Upcoming, workingTime: WorkingTime) => boolean,
+) {
+  const rows = await upcomingAppointments(tx, actor);
+  if (rows.length === 0) {
+    return 0;
+  }
+  const workingTimeFor = await workingTimeOfRows(tx, rows);
+  return rows.filter((row) => {
+    const workingTime = workingTimeFor(row.practitionerId);
+    return reasonFor(row, workingTime) === null && sends(row, workingTime);
+  }).length;
+}
+
+/** The patient's appointments deactivating them would send to the list. */
 export async function countPatientUpcoming(
   actor: Actor,
   input: PatientReference,
@@ -264,18 +302,15 @@ export async function countPatientUpcoming(
   }
   return withTenant(
     actor,
-    async (tx) => {
-      const [row] = await tx
-        .select({ total: count() })
-        .from(appointment)
-        .where(and(eq(appointment.patientId, parsed.data.id), upcoming()));
-      return { ok: true as const, count: row!.total };
-    },
+    async (tx) => ({
+      ok: true as const,
+      count: await countSentToList(tx, actor, (row) => row.patientId === parsed.data.id),
+    }),
     database,
   );
 }
 
-/** The future appointments of the member as a practitioner, likewise. */
+/** The member's appointments as a practitioner, likewise. */
 export async function countMemberUpcoming(
   actor: Actor,
   input: MemberReference,
@@ -290,21 +325,55 @@ export async function countMemberUpcoming(
   }
   return withTenant(
     actor,
-    async (tx) => {
-      const [row] = await tx
-        .select({ total: count() })
-        .from(appointment)
-        .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
-        .innerJoin(
-          member,
-          and(
-            eq(member.id, practitioner.memberId),
-            eq(member.organizationId, actor.organizationId),
-          ),
-        )
-        .where(and(eq(member.id, parsed.data.memberId), upcoming()));
-      return { ok: true as const, count: row!.total };
-    },
+    async (tx) => ({
+      ok: true as const,
+      count: await countSentToList(tx, actor, (row) => row.memberId === parsed.data.memberId),
+    }),
     database,
   );
+}
+
+/**
+ * Whether deactivating the place `leaving` picks sends the appointment to the
+ * list: it sits there, or only that place's schedules cover it.
+ */
+function placeSends(row: Upcoming, workingTime: WorkingTime, leaving: (where: Place) => boolean) {
+  const remaining = workingTime.schedules.filter((schedule) => !leaving(schedule));
+  return leaving(row) || reasonFor(row, { ...workingTime, schedules: remaining }) !== null;
+}
+
+/** The count for a place, as the question before deactivating it needs it. */
+async function countForPlace(
+  actor: Actor,
+  input: PlaceReference,
+  leaving: (id: string) => (where: Place) => boolean,
+  database?: AnyDatabase,
+): Promise<CountResult> {
+  if (!isAdmin(actor)) {
+    return forbidden;
+  }
+  const parsed = placeReferenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return invalidInput;
+  }
+  return withTenant(
+    actor,
+    async (tx) => ({
+      ok: true as const,
+      count: await countSentToList(tx, actor, (row, workingTime) =>
+        placeSends(row, workingTime, leaving(parsed.data.id)),
+      ),
+    }),
+    database,
+  );
+}
+
+/** The appointments deactivating the room would send to the list. */
+export function countRoomUpcoming(actor: Actor, input: PlaceReference, database?: AnyDatabase) {
+  return countForPlace(actor, input, (id) => (where) => where.roomId === id, database);
+}
+
+/** The appointments deactivating the office would send to the list. */
+export function countOfficeUpcoming(actor: Actor, input: PlaceReference, database?: AnyDatabase) {
+  return countForPlace(actor, input, (id) => (where) => where.officeId === id, database);
 }

@@ -104,8 +104,9 @@ _Avoid_: comment, observation, reason, motivo
 
 **`toReschedule`** — ui: "Turnos a reprogramar"
 The `appointment`s a new `timeOff`, `closure` or `schedule` change left outside
-working time, and those of a deactivated `practitioner` or `patient`, listed for
-reception to move or cancel. They are never cancelled on their own.
+working time, those of a deactivated `practitioner` or `patient`, and those in a
+deactivated `room` or `office`, listed for reception to move or cancel. They are
+never cancelled on their own.
 _Avoid_: conflicts, affected appointments
 
 ## Patients

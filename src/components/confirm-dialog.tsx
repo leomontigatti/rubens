@@ -46,13 +46,14 @@ export function ConfirmDialog(props: {
 }
 
 /**
- * `Desactivar` for someone with appointments ahead: it asks first when they
- * have any, saying where those go, and deactivates at once when they have none.
+ * `Desactivar` for someone or a place: it asks first when that sends appointments
+ * to the list, saying how many, and deactivates at once when it sends none.
  * A refused count deactivates too: the deactivation is refused the same way,
  * and shows why.
  */
 export function DeactivateButton(props: {
-  name: string;
+  question: string;
+  size?: "default" | "sm";
   pending: boolean;
   countUpcoming: () => Promise<{ ok: true; count: number } | { ok: false }>;
   onDeactivate: () => void;
@@ -74,13 +75,18 @@ export function DeactivateButton(props: {
 
   return (
     <>
-      <Button variant="outline" disabled={props.pending || checking} onClick={() => void request()}>
+      <Button
+        variant="outline"
+        size={props.size}
+        disabled={props.pending || checking}
+        onClick={() => void request()}
+      >
         Desactivar
       </Button>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title={`¿Desactivar a ${props.name}?`}
+        title={props.question}
         description={upcomingAppointmentsNotice(upcoming)}
         confirmLabel="Desactivar"
         onConfirm={props.onDeactivate}

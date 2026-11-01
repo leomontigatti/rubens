@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type {
   ActiveChange,
+  PlaceReference,
   OfficeInput,
   OfficeUpdate,
   RoomInput,
@@ -18,6 +19,7 @@ import {
   updateOffice,
   updateRoom,
 } from "#/server/offices.ts";
+import { countOfficeUpcoming, countRoomUpcoming } from "#/server/to-reschedule.ts";
 import type { ListOptions } from "#/server/offices.ts";
 import { withActor } from "#/server/with-actor.ts";
 
@@ -48,6 +50,10 @@ export const editOffice = createServerFn({ method: "POST" })
   .validator((data: OfficeUpdate) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => updateOffice(actor, data)));
 
+export const getOfficeUpcomingCount = createServerFn({ method: "GET" })
+  .validator((data: PlaceReference) => data)
+  .handler(({ data }) => withActor(adminOnly, (actor) => countOfficeUpcoming(actor, data)));
+
 export const changeOfficeActive = createServerFn({ method: "POST" })
   .validator((data: ActiveChange) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => setOfficeActive(actor, data)));
@@ -59,6 +65,10 @@ export const addRoom = createServerFn({ method: "POST" })
 export const editRoom = createServerFn({ method: "POST" })
   .validator((data: RoomUpdate) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => updateRoom(actor, data)));
+
+export const getRoomUpcomingCount = createServerFn({ method: "GET" })
+  .validator((data: PlaceReference) => data)
+  .handler(({ data }) => withActor(adminOnly, (actor) => countRoomUpcoming(actor, data)));
 
 export const changeRoomActive = createServerFn({ method: "POST" })
   .validator((data: ActiveChange) => data)

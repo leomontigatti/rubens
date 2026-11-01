@@ -82,10 +82,19 @@ leaves it when it is moved or cancelled. Overbookings are left out, being outsid
 working time on purpose. Reception sees the list with a count in the menu.
 
 Deactivating a practitioner or a patient sends every future booked or confirmed
-appointment of theirs to the list, overbookings included, and the admin is told how
-many before confirming. Rescheduling keeps the practitioner and the patient, so such
+appointment of theirs to the list, overbookings included, and the admin is told first
+how many that adds. Rescheduling keeps the practitioner and the patient, so such
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
+
+Deactivating a room or an office sends every future booked or confirmed appointment
+in it to the list, overbookings included: the calendar no longer offers the room,
+even when another room's schedule still covers the time. Its schedules also cover
+nothing from then on, so an appointment in another room of the office that only they
+covered goes to the list as outside working time. The admin is told first how many
+appointments that adds up to, leaving out those on the list already. Rescheduling
+picks a new room, so such an appointment can move once the practitioner has a free
+time in an active room; reactivating the place takes the rest off the list.
 
 ## Overlaps and overbooking
 

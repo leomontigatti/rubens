@@ -178,7 +178,7 @@ function ActiveToggle({ patient }: { patient: Patient }) {
       {patient.active ? (
         <DeactivateButton
           key={patient.id}
-          name={patientName(patient)}
+          question={`¿Desactivar a ${patientName(patient)}?`}
           pending={toggle.pending}
           countUpcoming={() => getPatientUpcomingCount({ data: { id: patient.id } })}
           onDeactivate={() => void changeActive(false)}
