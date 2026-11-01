@@ -105,7 +105,7 @@ export function DayColumn(props: {
   const dateLabel = `${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date)}`;
 
   return (
-    <div className="min-w-36 flex-1 border-r last:border-r-0">
+    <div className="min-w-28 flex-1 border-r last:border-r-0">
       <div className="flex h-10 items-center border-b px-2 text-sm font-medium">{props.title}</div>
       <div
         className="relative h-(--height)"
