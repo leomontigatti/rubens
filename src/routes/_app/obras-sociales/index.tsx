@@ -17,7 +17,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { insurerInputSchema, insurerKindLabels, insurerKinds } from "#/lib/coverages.ts";
 import type { InsurerInput } from "#/lib/coverages.ts";
@@ -200,12 +200,12 @@ function InsurerForm({
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-name`}>Nombre</Label>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-name`}>Nombre</FieldLabel>
         <Input id={`${idPrefix}-name`} name="name" defaultValue={initial.name} required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-kind`}>Tipo</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-kind`}>Tipo</FieldLabel>
         <NativeSelect id={`${idPrefix}-kind`} name="kind" defaultValue={initial.kind}>
           {insurerKinds.map((kind) => (
             <NativeSelectOption key={kind} value={kind}>
@@ -213,7 +213,7 @@ function InsurerForm({
             </NativeSelectOption>
           ))}
         </NativeSelect>
-      </div>
+      </Field>
       <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
     </form>
   );

@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { changeAppointmentRoom } from "#/server/appointments.functions.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
@@ -212,8 +212,8 @@ function RoomMoveForm(props: {
 
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="appointment-room">Consultorio</Label>
+      <Field>
+        <FieldLabel htmlFor="appointment-room">Consultorio</FieldLabel>
         <NativeSelect
           id="appointment-room"
           value={roomId}
@@ -226,7 +226,7 @@ function RoomMoveForm(props: {
             </NativeSelectOption>
           ))}
         </NativeSelect>
-      </div>
+      </Field>
       <ErrorAlert message={error} />
       <div>
         <Button type="submit" disabled={pending || roomId === props.appointment.roomId}>

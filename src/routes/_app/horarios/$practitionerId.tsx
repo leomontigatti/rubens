@@ -10,7 +10,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   scheduleChangeSchema,
@@ -340,7 +340,8 @@ function ScheduleForm(props: ScheduleFormProps) {
       <ErrorAlert message={action.error} />
       <WeekdayFields idPrefix={idPrefix} initial={initial.weekdays} />
       <div className="flex flex-wrap gap-4">
-        <Field id={`${idPrefix}-startTime`} label="Inicio">
+        <Field className="w-auto">
+          <FieldLabel htmlFor={`${idPrefix}-startTime`}>Inicio</FieldLabel>
           <Input
             id={`${idPrefix}-startTime`}
             name="startTime"
@@ -349,7 +350,8 @@ function ScheduleForm(props: ScheduleFormProps) {
             required
           />
         </Field>
-        <Field id={`${idPrefix}-endTime`} label="Fin">
+        <Field className="w-auto">
+          <FieldLabel htmlFor={`${idPrefix}-endTime`}>Fin</FieldLabel>
           <Input
             id={`${idPrefix}-endTime`}
             name="endTime"
@@ -359,11 +361,13 @@ function ScheduleForm(props: ScheduleFormProps) {
           />
         </Field>
       </div>
-      <Field id={`${idPrefix}-roomId`} label="Consultorio">
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-roomId`}>Consultorio</FieldLabel>
         <RoomSelect id={`${idPrefix}-roomId`} rooms={props.rooms} initial={initial.roomId} />
       </Field>
       <div className="flex flex-wrap gap-4">
-        <Field id={`${idPrefix}-date`} label={props.dateLabel}>
+        <Field className="w-auto">
+          <FieldLabel htmlFor={`${idPrefix}-date`}>{props.dateLabel}</FieldLabel>
           <Input
             id={`${idPrefix}-date`}
             name="date"
@@ -372,7 +376,8 @@ function ScheduleForm(props: ScheduleFormProps) {
             required
           />
         </Field>
-        <Field id={`${idPrefix}-lastDate`} label="Hasta (opcional)">
+        <Field className="w-auto">
+          <FieldLabel htmlFor={`${idPrefix}-lastDate`}>Hasta (opcional)</FieldLabel>
           <Input
             id={`${idPrefix}-lastDate`}
             name="lastDate"
@@ -390,33 +395,24 @@ function ScheduleForm(props: ScheduleFormProps) {
   );
 }
 
-function Field(props: { id: string; label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={props.id}>{props.label}</Label>
-      {props.children}
-    </div>
-  );
-}
-
 function WeekdayFields(props: { idPrefix: string; initial: readonly number[] }) {
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-medium">Días</legend>
+    <FieldSet>
+      <FieldLegend variant="label">Días</FieldLegend>
       <div className="flex flex-wrap gap-4">
         {Object.entries(weekdayLabels).map(([day, label]) => (
-          <div key={day} className="flex items-center gap-2">
+          <Field key={day} orientation="horizontal" className="w-auto">
             <Checkbox
               id={`${props.idPrefix}-weekday-${day}`}
               name="weekdays"
               value={day}
               defaultChecked={props.initial.includes(Number(day))}
             />
-            <Label htmlFor={`${props.idPrefix}-weekday-${day}`}>{label}</Label>
-          </div>
+            <FieldLabel htmlFor={`${props.idPrefix}-weekday-${day}`}>{label}</FieldLabel>
+          </Field>
         ))}
       </div>
-    </fieldset>
+    </FieldSet>
   );
 }
 
@@ -457,10 +453,10 @@ function EndForm(props: { schedule: Schedule; initial: string; onDone: () => voi
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={id}>Último día</Label>
+      <Field>
+        <FieldLabel htmlFor={id}>Último día</FieldLabel>
         <Input id={id} name="lastDate" type="date" defaultValue={props.initial} required />
-      </div>
+      </Field>
       <FormActions
         pending={action.pending}
         submitLabel="Terminar horario"

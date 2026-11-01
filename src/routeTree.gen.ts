@@ -16,6 +16,7 @@ import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
+import { Route as AppDevPatronesRouteImport } from './routes/_app/dev/patrones'
 import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
 import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
@@ -63,6 +64,11 @@ const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
 const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
   id: '/cierres/',
   path: '/cierres/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDevPatronesRoute = AppDevPatronesRouteImport.update({
+  id: '/dev/patrones',
+  path: '/dev/patrones',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDisponibilidadIndexRoute = AppDisponibilidadIndexRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
+  '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/dev/patrones': typeof AppDevPatronesRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/_app/pacientes/$patientId': typeof AppPacientesPatientIdRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/dev/patrones'
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/'
+    | '/dev/patrones'
     | '/horarios/$practitionerId'
     | '/pacientes/$patientId'
     | '/personal/$memberId'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
+    | '/_app/dev/patrones'
     | '/_app/horarios/$practitionerId'
     | '/_app/pacientes/$patientId'
     | '/_app/personal/$memberId'
@@ -331,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/cierres'
       fullPath: '/cierres/'
       preLoaderRoute: typeof AppCierresIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dev/patrones': {
+      id: '/_app/dev/patrones'
+      path: '/dev/patrones'
+      fullPath: '/dev/patrones'
+      preLoaderRoute: typeof AppDevPatronesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/disponibilidad/': {
@@ -437,6 +456,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppDevPatronesRoute: typeof AppDevPatronesRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppPacientesPatientIdRoute: typeof AppPacientesPatientIdRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
@@ -458,6 +478,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppDevPatronesRoute: AppDevPatronesRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppPacientesPatientIdRoute: AppPacientesPatientIdRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,

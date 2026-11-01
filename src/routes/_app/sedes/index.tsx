@@ -8,7 +8,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { defaultTimeZone, officeInputSchema } from "#/lib/offices.ts";
 import type { OfficeInput } from "#/lib/offices.ts";
 import {
@@ -25,6 +25,7 @@ import {
   ErrorAlert,
   FormActions,
   fieldMessage,
+  NameField,
 } from "#/components/admin-form.tsx";
 
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
@@ -202,23 +203,20 @@ function OfficeForm({
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-name`}>Nombre</Label>
-        <Input id={`${idPrefix}-name`} name="name" defaultValue={initial.name} required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-address`}>Dirección</Label>
+      <NameField idPrefix={idPrefix} initial={initial.name} />
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-address`}>Dirección</FieldLabel>
         <Input id={`${idPrefix}-address`} name="address" defaultValue={initial.address} required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-timeZone`}>Zona horaria</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-timeZone`}>Zona horaria</FieldLabel>
         <Input
           id={`${idPrefix}-timeZone`}
           name="timeZone"
           defaultValue={initial.timeZone}
           required
         />
-      </div>
+      </Field>
       <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
     </form>
   );

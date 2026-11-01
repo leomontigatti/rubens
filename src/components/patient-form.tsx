@@ -15,7 +15,7 @@ import { patientSearchQueries } from "#/components/patient-search.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
@@ -140,7 +140,10 @@ export function readPatientForm(form: FormData): PatientInput {
   };
 }
 
-export function Field(props: {
+const hintIdFor = (field: { id: string; hint?: string }) =>
+  field.hint ? `${field.id}-hint` : undefined;
+
+export function TextField(props: {
   id: string;
   name: string;
   label: string;
@@ -149,18 +152,20 @@ export function Field(props: {
   required?: boolean;
   hint?: string;
 }) {
+  const hintId = hintIdFor(props);
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={props.id}>{props.label}</Label>
+    <Field>
+      <FieldLabel htmlFor={props.id}>{props.label}</FieldLabel>
       <Input
         id={props.id}
         name={props.name}
         type={props.type ?? "text"}
         defaultValue={props.defaultValue ?? ""}
         required={props.required}
+        aria-describedby={hintId}
       />
-      {props.hint && <p className="text-muted-foreground text-sm">{props.hint}</p>}
-    </div>
+      {hintId && <FieldDescription id={hintId}>{props.hint}</FieldDescription>}
+    </Field>
   );
 }
 
@@ -170,7 +175,7 @@ const phoneHint =
 /** A patient's or a guardian's phone. */
 export function PhoneField(props: { id: string; defaultValue?: string | null }) {
   return (
-    <Field
+    <TextField
       id={props.id}
       name="phone"
       label="Teléfono"
@@ -195,8 +200,8 @@ export function DocumentInputs(props: {
   const id = (name: string) => `${props.idPrefix}-${name}`;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={id("documentType")}>Tipo de documento</Label>
+      <Field>
+        <FieldLabel htmlFor={id("documentType")}>Tipo de documento</FieldLabel>
         <NativeSelect
           id={id("documentType")}
           name="documentType"
@@ -209,8 +214,8 @@ export function DocumentInputs(props: {
             </NativeSelectOption>
           ))}
         </NativeSelect>
-      </div>
-      <Field
+      </Field>
+      <TextField
         id={id("documentNumber")}
         name="documentNumber"
         label="Número de documento"
@@ -230,14 +235,14 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
+        <TextField
           id={id("firstName")}
           name="firstName"
           label="Nombre"
           defaultValue={values.firstName}
           required
         />
-        <Field
+        <TextField
           id={id("lastName")}
           name="lastName"
           label="Apellido"
@@ -248,7 +253,7 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
       <PhoneField id={id("phone")} defaultValue={values.phone} />
       {props.full && (
         <>
-          <Field
+          <TextField
             id={id("chosenName")}
             name="chosenName"
             label="Nombre autopercibido"
@@ -256,21 +261,21 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
             hint="Si la persona usa otro nombre, la app la llama así."
           />
           <DocumentInputs idPrefix={props.idPrefix} initial={values} />
-          <Field
+          <TextField
             id={id("birthDate")}
             name="birthDate"
             label="Fecha de nacimiento"
             type="date"
             defaultValue={values.birthDate}
           />
-          <Field
+          <TextField
             id={id("email")}
             name="email"
             label="Correo electrónico"
             type="email"
             defaultValue={values.email}
           />
-          <Field
+          <TextField
             id={id("address")}
             name="address"
             label="Dirección"

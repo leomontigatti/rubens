@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { timeOffInputSchema, timeOffUpdateSchema } from "#/lib/time-ranges.ts";
 import type { SchedulePractitioner } from "#/server/schedules.ts";
@@ -96,8 +96,8 @@ function TimeOffList() {
 function PractitionerSelect(props: { practitioners: SchedulePractitioner[] }) {
   const only = props.practitioners.length === 1 ? props.practitioners[0]!.id : "";
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="new-practitionerId">Profesional</Label>
+    <Field>
+      <FieldLabel htmlFor="new-practitionerId">Profesional</FieldLabel>
       <NativeSelect id="new-practitionerId" name="practitionerId" defaultValue={only} required>
         <NativeSelectOption value="" disabled>
           Elegí un profesional
@@ -108,6 +108,6 @@ function PractitionerSelect(props: { practitioners: SchedulePractitioner[] }) {
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }

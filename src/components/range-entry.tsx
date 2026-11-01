@@ -7,7 +7,7 @@ import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { rangeEntryLabel } from "#/lib/time-ranges.ts";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
@@ -176,7 +176,8 @@ function RangeEntryFields(props: { idPrefix: string; initial: RangeEntry | null 
 
   return (
     <div className="flex flex-col gap-4">
-      <Field id={`${idPrefix}-kind`} label="Duración">
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-kind`}>Duración</FieldLabel>
         <NativeSelect
           id={`${idPrefix}-kind`}
           name="kind"
@@ -189,7 +190,8 @@ function RangeEntryFields(props: { idPrefix: string; initial: RangeEntry | null 
       </Field>
       <div className="flex flex-wrap gap-4">
         {fields.map(([name, label]) => (
-          <Field key={name} id={`${idPrefix}-${name}`} label={label}>
+          <Field key={name} className="w-auto">
+            <FieldLabel htmlFor={`${idPrefix}-${name}`}>{label}</FieldLabel>
             <Input
               id={`${idPrefix}-${name}`}
               name={name}
@@ -200,15 +202,6 @@ function RangeEntryFields(props: { idPrefix: string; initial: RangeEntry | null 
           </Field>
         ))}
       </div>
-    </div>
-  );
-}
-
-function Field(props: { id: string; label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={props.id}>{props.label}</Label>
-      {props.children}
     </div>
   );
 }

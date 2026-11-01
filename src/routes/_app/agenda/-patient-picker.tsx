@@ -6,7 +6,7 @@ import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientSearchKey } from "#/components/patient-search.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { patientName } from "#/lib/patients.ts";
 import { findPatients } from "#/server/patients.functions.ts";
 import type { Patient } from "#/server/patients.ts";
@@ -69,8 +69,8 @@ function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
   });
 
   return (
-    <>
-      <Label htmlFor="booking-patient">Paciente</Label>
+    <Field>
+      <FieldLabel htmlFor="booking-patient">Paciente</FieldLabel>
       <Input
         id="booking-patient"
         type="search"
@@ -79,7 +79,7 @@ function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
         onChange={(event) => setQuery(event.target.value)}
       />
       {query.trim() && <PatientResults patients={data} onChoose={props.onChoose} />}
-    </>
+    </Field>
   );
 }
 

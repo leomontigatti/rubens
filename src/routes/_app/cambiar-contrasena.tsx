@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { passwordChangeSchema } from "#/lib/password-change.ts";
 import { changePassword } from "#/server/account.functions.ts";
 
@@ -79,8 +79,8 @@ function ChangePassword() {
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           <ErrorAlert message={error} />
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="currentPassword">Contraseña actual</Label>
+          <Field>
+            <FieldLabel htmlFor="currentPassword">Contraseña actual</FieldLabel>
             <Input
               id="currentPassword"
               name="currentPassword"
@@ -88,9 +88,9 @@ function ChangePassword() {
               autoComplete="current-password"
               required
             />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="newPassword">Contraseña nueva</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="newPassword">Contraseña nueva</FieldLabel>
             <Input
               id="newPassword"
               name="newPassword"
@@ -98,9 +98,9 @@ function ChangePassword() {
               autoComplete="new-password"
               required
             />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="confirmPassword">Repetí la contraseña nueva</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="confirmPassword">Repetí la contraseña nueva</FieldLabel>
             <Input
               id="confirmPassword"
               name="confirmPassword"
@@ -108,7 +108,7 @@ function ChangePassword() {
               autoComplete="new-password"
               required
             />
-          </div>
+          </Field>
           <Button type="submit" disabled={pending}>
             Guardar
           </Button>

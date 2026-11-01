@@ -6,7 +6,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { rolesLabel, staffInputSchema } from "#/lib/staff.ts";
 import type { StaffInput } from "#/lib/staff.ts";
 import { addStaffMember, getStaff } from "#/server/staff.functions.ts";
@@ -101,21 +101,28 @@ function StaffForm({ onCancel, onDone }: { onCancel: () => void; onDone: () => v
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="new-name">Nombre</Label>
+      <Field>
+        <FieldLabel htmlFor="new-name">Nombre</FieldLabel>
         <Input id="new-name" name="name" required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="new-email">Correo</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="new-email">Correo</FieldLabel>
         <Input id="new-email" name="email" type="email" required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="new-password">Contraseña inicial</Label>
-        <Input id="new-password" name="password" type="text" autoComplete="off" required />
-        <p className="text-muted-foreground text-sm">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="new-password">Contraseña inicial</FieldLabel>
+        <Input
+          id="new-password"
+          name="password"
+          type="text"
+          autoComplete="off"
+          required
+          aria-describedby="new-password-hint"
+        />
+        <FieldDescription id="new-password-hint">
           La persona la usa para ingresar la primera vez y la cambia al entrar.
-        </p>
-      </div>
+        </FieldDescription>
+      </Field>
       <RoleCheckboxes idPrefix="new" initial={[]} />
       <FormActions pending={action.pending} submitLabel="Crear cuenta" onCancel={onCancel} />
     </form>
