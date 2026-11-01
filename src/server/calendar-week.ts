@@ -34,6 +34,7 @@ import {
   toDayAppointment,
 } from "#/server/appointments.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
+import { findCalendarOpening } from "#/server/calendar-opening.ts";
 import { findBlocking, meets } from "#/server/availability.ts";
 
 // The calendar (docs/domain/appointments.md § Calendar): one room's week,
@@ -453,6 +454,25 @@ async function buildWeek(
   };
 }
 
+/** The room and the practitioner to show: what the URL names, else where the actor opens. */
+async function resolveView(
+  tx: Transaction,
+  actor: Actor,
+  query: z.output<typeof calendarWeekQuerySchema>,
+  roomChoices: readonly RoomChoice[],
+) {
+  if (query.roomId !== undefined) {
+    return { roomId: query.roomId, practitionerId: query.practitionerId };
+  }
+  const roomIds = roomChoices.flatMap((choice) => choice.rooms.map((one) => one.id));
+  const opening = await findCalendarOpening(tx, actor, query.date, roomIds);
+  const filtered = query.practitionerId !== undefined || query.medicalServiceId !== undefined;
+  return {
+    roomId: opening?.roomId ?? roomIds[0],
+    practitionerId: filtered ? query.practitionerId : opening?.practitionerId,
+  };
+}
+
 export async function getCalendarWeek(
   actor: Actor,
   input: CalendarWeekQuery,
@@ -473,7 +493,7 @@ export async function getCalendarWeek(
     actor,
     async (tx) => {
       const roomChoices = await listRoomChoices(tx);
-      const roomId = query.roomId ?? roomChoices[0]?.rooms[0]?.id;
+      const { roomId, practitionerId } = await resolveView(tx, actor, query, roomChoices);
       if (roomId === undefined) {
         return { ok: true as const, roomChoices, week: null };
       }
@@ -481,7 +501,8 @@ export async function getCalendarWeek(
       if (!found) {
         return { ok: false as const, reason: "notFound" as const };
       }
-      return { ok: true as const, roomChoices, week: await buildWeek(tx, actor, found, query) };
+      const week = await buildWeek(tx, actor, found, { ...query, practitionerId });
+      return { ok: true as const, roomChoices, week };
     },
     database,
   );

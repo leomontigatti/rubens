@@ -12,6 +12,7 @@ import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { getCalendarWeek } from "#/server/calendar-week.ts";
+import { setRoomActive } from "#/server/offices.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
 
@@ -109,6 +110,120 @@ function mondayFree(week: Awaited<ReturnType<typeof weekOf>>) {
     (free) => `${free.start.toISOString().slice(11, 16)} ${names.get(free.practitionerId)}`,
   );
 }
+
+describe("where a practitioner's calendar opens", () => {
+  const tuesday = "2099-01-06";
+  let pedro: { id: string };
+
+  beforeEach(async () => {
+    pedro = await world.addPatient("Pedro", "0351 15 555-9876");
+  });
+
+  async function opening(actor: Actor, query: Partial<CalendarWeekQuery> = {}) {
+    const result = await asAppRole(db, (tx) =>
+      getCalendarWeek(actor, { date: "2099-01-07", ...query }, tx),
+    );
+    if (!result.ok || !result.week) {
+      throw new Error(`getCalendarWeek failed: ${result.ok ? "no week" : result.reason}`);
+    }
+    return { roomId: result.week.room.id, practitionerId: result.week.filter.practitionerId };
+  }
+
+  /** Two of Juan's appointments on Tuesday in the other room, against one on Monday. */
+  async function bookMostlyInOtherRoom() {
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      roomId: world.otherRoom.id,
+      weekdays: [2],
+    });
+    await book();
+    const first = await book({ start: at("12:00", tuesday) });
+    await book({ start: at("12:30", tuesday), patientId: pedro.id });
+    return first;
+  }
+
+  it("is the room with most of their appointments that week, filtered to themselves", async () => {
+    await bookMostlyInOtherRoom();
+
+    expect(await opening(world.juan.actor)).toEqual({
+      roomId: world.otherRoom.id,
+      practitionerId: world.juan.id,
+    });
+  });
+
+  it("counts only that week's active appointments", async () => {
+    const first = await bookMostlyInOtherRoom();
+    const cancelled = await asAppRole(db, (tx) =>
+      cancelAppointment(
+        world.receptionist,
+        { appointmentId: first.id, cancelledBy: "patient", reason: null },
+        tx,
+      ),
+    );
+    expect(cancelled.ok).toBe(true);
+    await book({ start: at("12:30"), patientId: pedro.id });
+    await book({ start: at("12:00", "2099-01-12") });
+
+    expect((await opening(world.juan.actor)).roomId).toBe(shared.id);
+    expect((await opening(world.juan.actor, { date: "2099-01-14" })).roomId).toBe(shared.id);
+  });
+
+  it("is a room they are scheduled in when they have no appointments", async () => {
+    expect(await opening(world.juan.actor)).toEqual({
+      roomId: shared.id,
+      practitionerId: world.juan.id,
+    });
+  });
+
+  it("skips a schedule with no day that week", async () => {
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      weekdays: [2],
+      firstDate: "2099-01-07",
+    });
+
+    expect((await opening(world.juan.actor)).roomId).toBe(shared.id);
+  });
+
+  it("skips a deactivated room", async () => {
+    await bookMostlyInOtherRoom();
+
+    const deactivated = await asAppRole(db, (tx) =>
+      setRoomActive(world.admin, { id: world.otherRoom.id, active: false }, tx),
+    );
+
+    expect(deactivated.ok).toBe(true);
+    expect((await opening(world.juan.actor)).roomId).toBe(shared.id);
+  });
+
+  it("is the first room, unfiltered, for a practitioner with nothing anywhere", async () => {
+    const { actor } = await world.addStaff("Ana Ruiz");
+
+    expect(await opening(actor)).toEqual({ roomId: world.room.id, practitionerId: null });
+  });
+
+  it("leaves a room the URL names unfiltered, for the practitioner to see everyone", async () => {
+    expect(await opening(world.juan.actor, { roomId: shared.id })).toEqual({
+      roomId: shared.id,
+      practitionerId: null,
+    });
+  });
+
+  it("keeps a medical service the URL names", async () => {
+    const filtered = await opening(world.juan.actor, { medicalServiceId: luciaService.id });
+
+    expect(filtered).toEqual({ roomId: shared.id, practitionerId: world.lucia.id });
+  });
+
+  it("stays the first room, unfiltered, for reception", async () => {
+    await bookMostlyInOtherRoom();
+
+    expect(await opening(world.receptionist)).toEqual({
+      roomId: world.room.id,
+      practitionerId: null,
+    });
+  });
+});
 
 describe("the calendar week of a room", () => {
   it("shows Monday to Sunday around the date, with the room's practitioners in their colours", async () => {
