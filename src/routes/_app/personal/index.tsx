@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -40,7 +41,7 @@ function Staff() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Personal</h1>
+      <PageHeader title="Personal" />
       <CreatePanel isAdmin label="Nueva persona">
         {(close) => <StaffForm onCancel={close} onDone={close} />}
       </CreatePanel>

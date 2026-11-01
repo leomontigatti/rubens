@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
@@ -10,6 +10,7 @@ import {
   useFormAction,
 } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import {
   PatientFields,
   PatientSaveFeedback,
@@ -123,22 +124,13 @@ function PatientScreen() {
 
 function PatientHeading({ patient, isAdmin }: { patient: Patient; isAdmin: boolean }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="flex flex-col gap-2">
-        <Link
-          to="/pacientes"
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          Pacientes
-        </Link>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          {patientName(patient)}
-          {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
-        </h1>
-        <PatientBadges patient={patient} />
-      </div>
-      {isAdmin && <ActiveToggle patient={patient} />}
-    </div>
+    <PageHeader
+      back={{ to: "/pacientes", label: "Pacientes" }}
+      title={patientName(patient)}
+      status={!patient.active && <Badge variant="secondary">Inactivo</Badge>}
+      description={<PatientBadges patient={patient} />}
+      actions={isAdmin && <ActiveToggle patient={patient} />}
+    />
   );
 }
 

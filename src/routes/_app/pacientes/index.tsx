@@ -4,6 +4,7 @@ import { useState } from "react";
 import * as z from "zod";
 
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { patientSearchKey } from "#/components/patient-search.ts";
@@ -36,10 +37,7 @@ function Patients() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Pacientes</h1>
-        <ShowInactivePatients />
-      </div>
+      <PageHeader title="Pacientes" actions={<ShowInactivePatients />} />
       <RegisterPanel />
       <Input
         type="search"

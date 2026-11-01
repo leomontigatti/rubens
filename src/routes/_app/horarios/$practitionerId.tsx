@@ -1,10 +1,11 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -84,15 +85,7 @@ function PractitionerSchedules() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link
-          to="/horarios"
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          Horarios
-        </Link>
-        <h1 className="text-2xl font-semibold">{practitioner.displayName}</h1>
-      </div>
+      <PageHeader back={{ to: "/horarios", label: "Horarios" }} title={practitioner.displayName} />
       <CreatePanel isAdmin={canEdit} label="Nuevo horario">
         {(close) => (
           <ScheduleForm

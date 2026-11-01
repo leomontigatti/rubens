@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -81,7 +82,7 @@ function ToRescheduleList() {
   }
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Turnos a reprogramar</h1>
+      <PageHeader title="Turnos a reprogramar" />
       {result.appointments.length === 0 ? (
         <p className="text-muted-foreground">No hay turnos para reprogramar.</p>
       ) : (

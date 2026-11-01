@@ -3,6 +3,7 @@ import { useState } from "react";
 import * as z from "zod";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { mondayOf } from "#/lib/appointments.ts";
@@ -89,7 +90,7 @@ function Agenda() {
   if (!result.week) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold">Agenda</h1>
+        <PageHeader title="Agenda" />
         <p className="text-muted-foreground">Todavía no hay consultorios.</p>
       </div>
     );
@@ -124,15 +125,17 @@ function Calendar(props: {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Agenda</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => openBooking(null, true)}>
-            Sobreturno
-          </Button>
-          <Button onClick={() => openBooking(null, false)}>Nuevo turno</Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Agenda"
+        actions={
+          <>
+            <Button variant="outline" onClick={() => openBooking(null, true)}>
+              Sobreturno
+            </Button>
+            <Button onClick={() => openBooking(null, false)}>Nuevo turno</Button>
+          </>
+        }
+      />
       <CalendarFilters week={week} roomChoices={props.roomChoices} search={props.search} />
       <WeekNavigation search={props.search} />
       <WeekGrid

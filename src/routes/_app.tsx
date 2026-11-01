@@ -1,24 +1,14 @@
-import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { ChevronDownIcon } from "lucide-react";
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 
-import { Badge } from "#/components/ui/badge.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "#/components/ui/dropdown-menu.tsx";
+import { passwordChangePath } from "#/components/app-nav.ts";
+import { AppSidebar } from "#/components/app-sidebar.tsx";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
+import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { authClient } from "#/lib/auth-client.ts";
 import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getToRescheduleCount } from "#/server/appointments.functions.ts";
-
-const passwordChangePath = "/cambiar-contrasena";
 
 // Every signed-in screen sits under this layout. A member who must still
 // replace the starting password is held on the change-password screen.
@@ -92,26 +82,6 @@ function useSessionGuard(userId: string) {
   }, []);
 }
 
-/**
- * The menu's link to the "to reschedule" list, with how many it holds in red
- * when any; no link when refused.
- */
-function ToRescheduleLink({ count }: { count: number | null }) {
-  if (count === null) {
-    return null;
-  }
-  return (
-    <Link
-      to="/a-reprogramar"
-      className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm"
-      activeProps={{ className: "text-foreground" }}
-    >
-      A reprogramar
-      {count > 0 && <Badge variant="destructive">{count}</Badge>}
-    </Link>
-  );
-}
-
 function AppShell() {
   const { viewer } = Route.useRouteContext();
   const { toReschedule } = Route.useLoaderData();
@@ -124,108 +94,18 @@ function AppShell() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <nav className="flex items-center gap-6">
-          <Link to="/" className="font-semibold">
-            {viewer.organizationName}
-          </Link>
-          <Link
-            to="/agenda"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Agenda
-          </Link>
-          <ToRescheduleLink count={toReschedule} />
-          <Link
-            to="/pacientes"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Pacientes
-          </Link>
-          <Link
-            to="/sedes"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Sedes
-          </Link>
-          <Link
-            to="/horarios"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Horarios
-          </Link>
-          <Link
-            to="/prestaciones"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Prestaciones
-          </Link>
-          <Link
-            to="/disponibilidad"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Disponibilidad
-          </Link>
-          <Link
-            to="/licencias"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Licencias
-          </Link>
-          <Link
-            to="/cierres"
-            className="text-muted-foreground hover:text-foreground text-sm"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Cierres
-          </Link>
-          {viewer.roles.includes("admin") && (
-            <Link
-              to="/obras-sociales"
-              className="text-muted-foreground hover:text-foreground text-sm"
-              activeProps={{ className: "text-foreground" }}
-            >
-              Obras sociales
-            </Link>
-          )}
-          {viewer.roles.includes("admin") && (
-            <Link
-              to="/personal"
-              className="text-muted-foreground hover:text-foreground text-sm"
-              activeProps={{ className: "text-foreground" }}
-            >
-              Personal
-            </Link>
-          )}
-        </nav>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" />}>
-            {viewer.name}
-            <ChevronDownIcon />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-auto">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>{viewer.email}</DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link to={passwordChangePath} />}>
-              Cambiar contraseña
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void signOut()}>Cerrar sesión</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-      <main className="flex-1 p-6">
-        <Outlet />
-      </main>
-    </div>
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar viewer={viewer} toReschedule={toReschedule} onSignOut={() => void signOut()} />
+        <SidebarInset className="min-w-0">
+          <header className="flex items-center border-b px-4 py-2">
+            <SidebarTrigger />
+          </header>
+          <main className="flex-1 p-6">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

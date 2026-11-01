@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
@@ -56,10 +57,7 @@ function Offices() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Sedes</h1>
-        <ShowInactiveOffices />
-      </div>
+      <PageHeader title="Sedes" actions={<ShowInactiveOffices />} />
       <CreatePanel isAdmin={isAdmin} label="Nueva sede">
         {(close) => (
           <OfficeForm

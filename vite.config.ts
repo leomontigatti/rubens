@@ -60,6 +60,7 @@ export default defineConfig({
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
       "ui/no-raw-form-element": "error",
+      "ui/no-raw-page-title": "error",
       "ui/require-no-validate": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
@@ -85,6 +86,13 @@ export default defineConfig({
           "shadcn/no-restyle": "off",
           "shadcn/no-arbitrary-values": "off",
           "ui/no-raw-form-element": "off",
+        },
+      },
+      {
+        // The one place a page's title is written.
+        files: ["src/components/page-header.tsx"],
+        rules: {
+          "ui/no-raw-page-title": "off",
         },
       },
       {

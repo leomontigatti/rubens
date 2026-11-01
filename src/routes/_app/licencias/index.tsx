@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
@@ -32,7 +33,7 @@ function TimeOffList() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Licencias</h1>
+      <PageHeader title="Licencias" />
       <CreatePanel isAdmin={result.practitioners.length > 0} label="Nueva licencia">
         {(close) => (
           <EntryForm

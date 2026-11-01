@@ -34,6 +34,28 @@ What is settled already:
   components in `src/components/` ([codebase-map.md](./codebase-map.md#layout)) before writing
   one; extend one with a variant rather than copy its markup. A shadcn component the screen
   needs is added with the CLI ([shadcn.md](./shadcn.md)), never written by hand.
+- **Stop and ask when the guide has no answer.** A screen that needs a component, a pattern or
+  a layout this page and the shared components do not cover is a design decision, not an
+  implementation detail: stop and ask the user before building it, with what you would do and
+  why. Once decided, it goes in the same PR as a component, a lint rule where a machine can judge
+  it, and a line here, so the next screen finds it.
+
+## Page shell
+
+Every signed-in screen sits in one shell, `_app.tsx`, for every role: the sidebar, and the page
+beside it.
+
+- **Every role opens on the calendar**: `/` goes to `/agenda`.
+- **A new screen gets one link in the sidebar**, in `src/components/app-nav.ts`, in the group that
+  fits: `Día a día` for what reception uses all day, `Profesionales` for what a practitioner sets
+  up, `Administración` for the organization's own setup. A detail page gets no link: its parent
+  stays current. A new group is a product decision: ask.
+- **A link is hidden only when the screen has nothing for that role.** The menu spares a click and
+  guards nothing: the screen's server functions decide what a member may do.
+- **Every link has a `lucide` icon**, the only thing left when the sidebar is collapsed.
+- **Every page opens with `PageHeader`**, never its own `<h1>` (`pnpm lint` enforces it): `title`,
+  `back` on a detail page, `status` for its `Badge`, `description` for a line of detail, and
+  `actions` for the buttons that act on the whole page.
 
 ## Forms
 

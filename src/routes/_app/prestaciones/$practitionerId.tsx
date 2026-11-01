@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
@@ -11,6 +11,7 @@ import {
   fieldMessage,
   useFormAction,
 } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -72,15 +73,10 @@ function PractitionerMedicalServices() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link
-          to="/prestaciones"
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          Prestaciones
-        </Link>
-        <h1 className="text-2xl font-semibold">{practitioner.displayName}</h1>
-      </div>
+      <PageHeader
+        back={{ to: "/prestaciones", label: "Prestaciones" }}
+        title={practitioner.displayName}
+      />
       <CreatePanel isAdmin={canEdit} label="Nueva prestación">
         {(close) => (
           <MedicalServiceForm
