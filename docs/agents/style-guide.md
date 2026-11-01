@@ -55,7 +55,8 @@ beside it.
 - **Every link has a `lucide` icon**, the only thing left when the sidebar is collapsed.
 - **Every page opens with `PageHeader`**, never its own `<h1>` (`pnpm lint` enforces it): `title`,
   `back` on a detail page, `status` for its `Badge`, `description` for a line of detail, and
-  `actions` for the buttons that act on the whole page.
+  `actions` for the buttons that act on the whole page. A page that is one card holding one form,
+  `/ingresar` and `/cambiar-contrasena`, is titled by its `CardTitle` instead.
 
 ## Forms
 

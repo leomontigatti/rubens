@@ -36,11 +36,11 @@ interface Viewer {
   roles: readonly Role[];
 }
 
-function NavMenu(props: { viewer: Viewer; toReschedule: number | null }) {
+function NavMenu(props: { roles: readonly Role[]; toReschedule: number | null }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { setOpenMobile } = useSidebar();
 
-  return navFor(props.viewer.roles, props.toReschedule).map((group) => (
+  return navFor(props.roles, props.toReschedule).map((group) => (
     <SidebarGroup key={group.label}>
       <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
       <SidebarGroupContent>
@@ -69,7 +69,7 @@ function NavMenu(props: { viewer: Viewer; toReschedule: number | null }) {
 }
 
 function UserMenu(props: { viewer: Viewer; onSignOut: () => void }) {
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
     <SidebarMenu>
@@ -85,7 +85,9 @@ function UserMenu(props: { viewer: Viewer; onSignOut: () => void }) {
               <DropdownMenuLabel>{props.viewer.email}</DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link to={passwordChangePath} />}>
+            <DropdownMenuItem
+              render={<Link to={passwordChangePath} onClick={() => setOpenMobile(false)} />}
+            >
               Cambiar contraseña
             </DropdownMenuItem>
             <DropdownMenuItem onClick={props.onSignOut}>Cerrar sesión</DropdownMenuItem>
@@ -103,13 +105,17 @@ export function AppSidebar(props: {
   onSignOut: () => void;
 }) {
   const { viewer } = props;
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip={viewer.organizationName} render={<Link to="/agenda" />}>
+            <SidebarMenuButton
+              tooltip={viewer.organizationName}
+              render={<Link to="/agenda" onClick={() => setOpenMobile(false)} />}
+            >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-4 shrink-0 items-center justify-center rounded-sm text-xs font-semibold">
                 {viewer.organizationName.charAt(0)}
               </span>
@@ -119,7 +125,7 @@ export function AppSidebar(props: {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMenu viewer={viewer} toReschedule={props.toReschedule} />
+        <NavMenu roles={viewer.roles} toReschedule={props.toReschedule} />
       </SidebarContent>
       <SidebarFooter>
         <UserMenu viewer={viewer} onSignOut={props.onSignOut} />

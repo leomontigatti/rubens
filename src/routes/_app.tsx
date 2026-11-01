@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/s
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { authClient } from "#/lib/auth-client.ts";
 import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
+import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getToRescheduleCount } from "#/server/appointments.functions.ts";
 
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/_app")({
   // the menu's count of appointments to reschedule stays current.
   loader: async () => {
     const counted = await getToRescheduleCount();
-    return { toReschedule: counted.ok ? counted.count : null };
+    return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };
   },
   // A signed-in page holds the viewer's data, patients' included: the browser
   // keeps no copy, so Back after a sign-out cannot show it to the next person.
@@ -84,7 +85,7 @@ function useSessionGuard(userId: string) {
 
 function AppShell() {
   const { viewer } = Route.useRouteContext();
-  const { toReschedule } = Route.useLoaderData();
+  const { toReschedule, sidebarOpen } = Route.useLoaderData();
 
   useSessionGuard(viewer.userId);
 
@@ -95,7 +96,7 @@ function AppShell() {
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={sidebarOpen}>
         <AppSidebar viewer={viewer} toReschedule={toReschedule} onSignOut={() => void signOut()} />
         <SidebarInset className="min-w-0">
           <header className="flex items-center border-b px-4 py-2">
