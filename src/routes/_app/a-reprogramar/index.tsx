@@ -27,7 +27,8 @@ import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 // someone deactivated or in a deactivated place, soonest first, for reception
 // to call each patient.
 // Each one is rescheduled or cancelled from here, with the agenda's own forms;
-// one of someone deactivated is refused a new time until they are reactivated.
+// one of someone deactivated is refused a new time until they are reactivated,
+// and one in a deactivated place is told why free times may be missing.
 
 export const Route = createFileRoute("/_app/a-reprogramar/")({
   head: () => ({ meta: [{ title: "Turnos a reprogramar · Rubens" }] }),
@@ -54,6 +55,12 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
 
 /** The reasons an appointment cannot take a new time yet. */
 const blockedReasons: ToRescheduleReason[] = ["practitionerInactive", "patientInactive"];
+
+/** What else an administrator can do for an appointment in a deactivated place. */
+const placeRemedies: Partial<Record<ToRescheduleReason, string>> = {
+  officeInactive: "reactivar la sede",
+  roomInactive: "reactivar el consultorio",
+};
 
 /** The entry being acted on, and whether to reschedule or cancel it. */
 interface Picked {
@@ -151,15 +158,27 @@ function EntryAction(props: { picked: Picked; onClose: () => void }) {
       </>
     );
   }
+  const placeRemedy = placeRemedies[entry.reason];
   return (
-    <RescheduleForm
-      key={entry.id}
-      appointment={entry}
-      practitionerId={entry.practitioner.id}
-      timeZone={entry.timeZone}
-      onDone={props.onClose}
-      onBack={props.onClose}
-    />
+    <>
+      {placeRemedy && (
+        <Alert variant="info">
+          <AlertTitle>{reasonLabels[entry.reason]}</AlertTitle>
+          <AlertDescription>
+            Solo hay horarios libres en consultorios activos. Si no aparece ninguno, un
+            administrador puede {placeRemedy} o cargarle otro horario al profesional.
+          </AlertDescription>
+        </Alert>
+      )}
+      <RescheduleForm
+        key={entry.id}
+        appointment={entry}
+        practitionerId={entry.practitioner.id}
+        timeZone={entry.timeZone}
+        onDone={props.onClose}
+        onBack={props.onClose}
+      />
+    </>
   );
 }
 
