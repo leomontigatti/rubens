@@ -46,8 +46,8 @@ export function ConfirmDialog(props: {
 }
 
 /**
- * `Desactivar` for someone with appointments ahead: it asks first when they
- * have any, saying where those go, and deactivates at once when they have none.
+ * `Desactivar` for someone or a place: it asks first when that sends appointments
+ * to the list, saying how many, and deactivates at once when it sends none.
  * A refused count deactivates too: the deactivation is refused the same way,
  * and shows why.
  */

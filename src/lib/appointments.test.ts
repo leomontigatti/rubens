@@ -2,8 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { mondayOf, upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
-describe("the notice before deactivating someone", () => {
-  it("agrees with how many appointments they have", () => {
+describe("the notice before a deactivation", () => {
+  it("agrees with how many appointments go to the list", () => {
     expect(upcomingAppointmentsNotice(1)).toBe("1 turno futuro va a pasar a Turnos a reprogramar.");
     expect(upcomingAppointmentsNotice(12)).toBe(
       "12 turnos futuros van a pasar a Turnos a reprogramar.",

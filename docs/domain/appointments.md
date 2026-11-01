@@ -82,8 +82,8 @@ leaves it when it is moved or cancelled. Overbookings are left out, being outsid
 working time on purpose. Reception sees the list with a count in the menu.
 
 Deactivating a practitioner or a patient sends every future booked or confirmed
-appointment of theirs to the list, overbookings included, and the admin is told how
-many before confirming. Rescheduling keeps the practitioner and the patient, so such
+appointment of theirs to the list, overbookings included, and the admin is told first
+how many that adds. Rescheduling keeps the practitioner and the patient, so such
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 

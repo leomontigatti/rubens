@@ -510,6 +510,28 @@ describe("the future appointments a deactivation would send to the list", () => 
     expect(await memberCount("no-such-member")).toEqual({ ok: true, count: 0 });
   });
 
+  it("leaves out what is on the list already", async () => {
+    await book(at("12:00"));
+    await book(at("12:30"), pedro.id);
+    await book(at("13:30"));
+    await addTimeOff("2099-01-05T09:00", "2099-01-05T09:30");
+
+    expect(await patientCount(maria)).toEqual({ ok: true, count: 1 });
+    expect(await memberCount(world.juan.memberId)).toEqual({ ok: true, count: 2 });
+  });
+
+  it("matches what deactivating the patient adds to the list", async () => {
+    await book(at("12:00"));
+    await book(at("13:30"));
+    await addTimeOff("2099-01-05T09:00", "2099-01-05T09:30");
+
+    const before = await count();
+    const predicted = await patientCount(maria);
+    await setActive(maria, false);
+
+    expect(predicted).toEqual({ ok: true, count: (await count()) - before });
+  });
+
   it("leaves past appointments out", async () => {
     await book(at("12:00"));
 
@@ -588,11 +610,14 @@ describe("the future appointments deactivating a room or an office would send to
     await book(at("12:00"));
     await overbook(at("15:00"), pedro.id);
     await book(at("12:00"), pedro.id, world.lucia, luciaService.id);
+    await addTimeOff("2099-01-05T09:00", "2099-01-05T09:30");
 
-    const before = await officeCount(world.office);
+    const before = await count();
+    const predicted = await officeCount(world.office);
     await setPlaceActive(world.office, false);
 
-    expect(before).toEqual({ ok: true, count: await count() });
+    expect(before).toBe(1);
+    expect(predicted).toEqual({ ok: true, count: (await count()) - before });
   });
 
   it("refuses a malformed id, and anyone but an admin", async () => {

@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   appointment,
@@ -86,7 +86,7 @@ function isAdmin(actor: Actor): boolean {
   return actor.roles.includes("admin");
 }
 
-/** The appointments a deactivation sends to the list, whatever their working time. */
+/** The appointments the list looks at. */
 const upcoming = () =>
   and(
     inArray(appointment.status, ["booked", "confirmed"]),
@@ -104,6 +104,7 @@ async function upcomingAppointments(tx: Transaction, actor: Actor) {
       during: appointment.during,
       status: appointment.status,
       overbooking: appointment.overbooking,
+      memberId: member.id,
       practitionerActive: member.active,
       patientActive: patient.active,
       firstName: patient.firstName,
@@ -269,7 +270,24 @@ export async function countToReschedule(
   );
 }
 
-/** The patient's future appointments, for the question before deactivating them. */
+/** How many appointments not on the list yet `sends` would send to it. */
+async function countSentToList(
+  tx: Transaction,
+  actor: Actor,
+  sends: (row: Upcoming, workingTime: WorkingTime) => boolean,
+) {
+  const rows = await upcomingAppointments(tx, actor);
+  if (rows.length === 0) {
+    return 0;
+  }
+  const workingTimeFor = await workingTimeOfRows(tx, rows);
+  return rows.filter((row) => {
+    const workingTime = workingTimeFor(row.practitionerId);
+    return reasonFor(row, workingTime) === null && sends(row, workingTime);
+  }).length;
+}
+
+/** The patient's appointments deactivating them would send to the list. */
 export async function countPatientUpcoming(
   actor: Actor,
   input: PatientReference,
@@ -284,18 +302,15 @@ export async function countPatientUpcoming(
   }
   return withTenant(
     actor,
-    async (tx) => {
-      const [row] = await tx
-        .select({ total: count() })
-        .from(appointment)
-        .where(and(eq(appointment.patientId, parsed.data.id), upcoming()));
-      return { ok: true as const, count: row!.total };
-    },
+    async (tx) => ({
+      ok: true as const,
+      count: await countSentToList(tx, actor, (row) => row.patientId === parsed.data.id),
+    }),
     database,
   );
 }
 
-/** The future appointments of the member as a practitioner, likewise. */
+/** The member's appointments as a practitioner, likewise. */
 export async function countMemberUpcoming(
   actor: Actor,
   input: MemberReference,
@@ -310,44 +325,21 @@ export async function countMemberUpcoming(
   }
   return withTenant(
     actor,
-    async (tx) => {
-      const [row] = await tx
-        .select({ total: count() })
-        .from(appointment)
-        .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
-        .innerJoin(
-          member,
-          and(
-            eq(member.id, practitioner.memberId),
-            eq(member.organizationId, actor.organizationId),
-          ),
-        )
-        .where(and(eq(member.id, parsed.data.memberId), upcoming()));
-      return { ok: true as const, count: row!.total };
-    },
+    async (tx) => ({
+      ok: true as const,
+      count: await countSentToList(tx, actor, (row) => row.memberId === parsed.data.memberId),
+    }),
     database,
   );
 }
 
 /**
- * How many appointments not on the list yet would reach it once the place
- * `leaving` picks is deactivated: those sitting there, and those only its
- * schedules cover.
+ * Whether deactivating the place `leaving` picks sends the appointment to the
+ * list: it sits there, or only that place's schedules cover it.
  */
-async function countSentToList(tx: Transaction, actor: Actor, leaving: (where: Place) => boolean) {
-  const rows = await upcomingAppointments(tx, actor);
-  if (rows.length === 0) {
-    return 0;
-  }
-  const workingTimeFor = await workingTimeOfRows(tx, rows);
-  return rows.filter((row) => {
-    const workingTime = workingTimeFor(row.practitionerId);
-    const remaining = workingTime.schedules.filter((schedule) => !leaving(schedule));
-    return (
-      reasonFor(row, workingTime) === null &&
-      (leaving(row) || reasonFor(row, { ...workingTime, schedules: remaining }) !== null)
-    );
-  }).length;
+function placeSends(row: Upcoming, workingTime: WorkingTime, leaving: (where: Place) => boolean) {
+  const remaining = workingTime.schedules.filter((schedule) => !leaving(schedule));
+  return leaving(row) || reasonFor(row, { ...workingTime, schedules: remaining }) !== null;
 }
 
 /** The count for a place, as the question before deactivating it needs it. */
@@ -368,7 +360,9 @@ async function countForPlace(
     actor,
     async (tx) => ({
       ok: true as const,
-      count: await countSentToList(tx, actor, leaving(parsed.data.id)),
+      count: await countSentToList(tx, actor, (row, workingTime) =>
+        placeSends(row, workingTime, leaving(parsed.data.id)),
+      ),
     }),
     database,
   );
