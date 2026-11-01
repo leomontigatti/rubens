@@ -26,6 +26,12 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(found.map(text).join()).toContain("style-guide.md");
   });
 
+  it("reject a raw page title", () => {
+    const file = probe("title.tsx", `export const Title = () => <h1>Sedes</h1>;\n`);
+
+    expect(codes(file).filter((code) => code.includes("no-raw-page-title")).length).toBe(1);
+  });
+
   it("allow layout classes on a ui component", () => {
     const file = probe(
       "layout.tsx",

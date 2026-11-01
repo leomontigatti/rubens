@@ -9,6 +9,10 @@
   // shadcn components are vendored whole (docs/agents/shadcn.md): a screen uses
   // some of a component's parts, and trimming the rest would fight every re-sync.
   "ignoreExports": [{ "file": "src/components/ui/**", "exports": ["*"] }],
+  "health": {
+    // Likewise for their complexity: vendored code keeps shadcn's shape.
+    "ignore": ["src/components/ui/**"]
+  },
   "duplicates": {
     // Pair-only clones are hidden; widespread copy-paste is what is worth a refactor.
     "minOccurrences": 3

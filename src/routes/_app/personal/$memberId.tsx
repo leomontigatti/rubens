@@ -1,10 +1,11 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "cn";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import { ErrorAlert, fieldMessage } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -75,38 +76,31 @@ function MemberHeading({ member }: { member: StaffMember }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <Link
-            to="/personal"
-            className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-          >
-            Personal
-          </Link>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            {member.name}
-            {!member.active && <Badge variant="secondary">Inactivo</Badge>}
-          </h1>
-          <p className="text-muted-foreground text-sm">{member.email}</p>
-        </div>
-        {member.active ? (
-          <DeactivateButton
-            key={member.memberId}
-            question={`¿Desactivar a ${member.name}?`}
-            pending={toggle.pending}
-            countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
-            onDeactivate={() => void changeActive(false)}
-          />
-        ) : (
-          <Button
-            variant="outline"
-            disabled={toggle.pending}
-            onClick={() => void changeActive(true)}
-          >
-            Reactivar
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        back={{ to: "/personal", label: "Personal" }}
+        title={member.name}
+        status={!member.active && <Badge variant="secondary">Inactivo</Badge>}
+        description={<p className="text-muted-foreground text-sm">{member.email}</p>}
+        actions={
+          member.active ? (
+            <DeactivateButton
+              key={member.memberId}
+              question={`¿Desactivar a ${member.name}?`}
+              pending={toggle.pending}
+              countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
+              onDeactivate={() => void changeActive(false)}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              disabled={toggle.pending}
+              onClick={() => void changeActive(true)}
+            >
+              Reactivar
+            </Button>
+          )
+        }
+      />
       <ErrorAlert message={toggle.error} />
     </div>
   );

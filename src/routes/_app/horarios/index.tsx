@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import { PageHeader } from "#/components/page-header.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { getSchedulePractitioners } from "#/server/schedules.functions.ts";
 
@@ -20,7 +21,7 @@ function SchedulePractitioners() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Horarios</h1>
+      <PageHeader title="Horarios" />
       {result.practitioners.length === 0 ? (
         <p className="text-muted-foreground">Todavía no hay profesionales.</p>
       ) : (

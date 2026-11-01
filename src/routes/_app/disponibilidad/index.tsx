@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import * as z from "zod";
 
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -71,7 +72,7 @@ function Availability() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Disponibilidad</h1>
+      <PageHeader title="Disponibilidad" />
       {result.practitioners.length === 0 ? (
         <p className="text-muted-foreground">Todavía no hay profesionales.</p>
       ) : (

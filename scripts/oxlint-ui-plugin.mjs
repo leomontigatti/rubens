@@ -5,6 +5,7 @@
 // - `no-raw-form-element`: a raw form element where a ui component exists.
 // - `require-no-validate`: a `<form>` without `noValidate`.
 // - `alert-structure`: an `Alert` without its title and description.
+// - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -193,11 +194,35 @@ const alertStructure = {
   },
 };
 
+const noRawPageTitle = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "A page's title comes from PageHeader.",
+    },
+    messages: {
+      title:
+        "Use PageHeader for the page's title: it keeps the title's size, the link to the page above and the actions in one place on every screen (style guide, Page shell).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        if (node.name.type === "JSXIdentifier" && node.name.name === "h1") {
+          context.report({ node, messageId: "title" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
     "no-raw-form-element": noRawFormElement,
+    "no-raw-page-title": noRawPageTitle,
     "require-no-validate": requireNoValidate,
   },
 };

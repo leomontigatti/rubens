@@ -12,6 +12,7 @@ import {
   fieldMessage,
   useFormAction,
 } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
@@ -69,10 +70,7 @@ function Insurers() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Obras sociales y prepagas</h1>
-        <ShowInactiveInsurers />
-      </div>
+      <PageHeader title="Obras sociales y prepagas" actions={<ShowInactiveInsurers />} />
       <CreatePanel isAdmin={isAdmin} label="Nueva obra social o prepaga">
         {(close) => (
           <InsurerForm

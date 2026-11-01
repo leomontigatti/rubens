@@ -143,3 +143,12 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* The sidebar's list scrolls without a bar beside its links. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

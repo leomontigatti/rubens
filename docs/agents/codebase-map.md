@@ -16,8 +16,11 @@ src/
 │   │                  `patient-form.tsx` (patient registration, for any screen that registers one),
 │   │                  `patient-duplicates.tsx` (the duplicate check's refusal and warning),
 │   │                  `patient-coverages.tsx` (the patient page's coverages),
-│   │                  `patient-guardians.tsx` (the patient page's guardians and message contact)
+│   │                  `patient-guardians.tsx` (the patient page's guardians and message contact),
+│   │                  `app-nav.ts` and `app-sidebar.tsx` (the shell's menu), `page-header.tsx`
+│   │                  (every page's title)
 │   └── ui/            shadcn/ui components (see shadcn.md); add with the CLI, edit by hand
+├── hooks/             shared React hooks; shadcn's `use-mobile.ts`
 ├── db/
 │   ├── client.ts      the `db` client (lazy; `DATABASE_URL`, the app role)
 │   ├── tenant.ts      `withTenant()`: the only way to query tenant-owned tables

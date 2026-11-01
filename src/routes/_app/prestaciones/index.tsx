@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { getMedicalServicePractitioners } from "#/server/medical-services.functions.ts";
 
@@ -21,7 +22,7 @@ function MedicalServicePractitioners() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Prestaciones</h1>
+      <PageHeader title="Prestaciones" />
       {result.practitioners.length === 0 ? (
         <p className="text-muted-foreground">Todavía no hay profesionales.</p>
       ) : (

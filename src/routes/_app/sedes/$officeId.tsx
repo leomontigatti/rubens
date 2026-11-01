@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
@@ -86,21 +87,16 @@ function OfficeRooms() {
 
 function OfficeHeading({ office }: { office: Office }) {
   return (
-    <div className="flex flex-col gap-1">
-      <Link
-        to="/sedes"
-        className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-      >
-        Sedes
-      </Link>
-      <h1 className="flex items-center gap-2 text-2xl font-semibold">
-        {office.name}
-        {!office.active && <Badge variant="secondary">Inactiva</Badge>}
-      </h1>
-      <p className="text-muted-foreground text-sm">
-        {office.address} · {office.timeZone}
-      </p>
-    </div>
+    <PageHeader
+      back={{ to: "/sedes", label: "Sedes" }}
+      title={office.name}
+      status={!office.active && <Badge variant="secondary">Inactiva</Badge>}
+      description={
+        <p className="text-muted-foreground text-sm">
+          {office.address} · {office.timeZone}
+        </p>
+      }
+    />
   );
 }
 
