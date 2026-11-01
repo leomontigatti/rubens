@@ -1,6 +1,5 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { appointment, auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
@@ -8,7 +7,7 @@ import type { Actor } from "#/lib/access.ts";
 import type { OverbookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
@@ -26,7 +25,7 @@ import { createTimeOff } from "#/server/time-off.ts";
 // "Consultorio 2", both rooms of capacity 1. "Consultorio 3" is empty, of
 // capacity 1, and "Consultorio 4" of capacity 2.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let juanService: { id: string };
@@ -37,7 +36,7 @@ let third: { id: string };
 let double: { id: string };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   third = await world.addRoom(world.office.id, "Consultorio 3");
   double = await world.addRoom(world.office.id, "Consultorio 4", 2);
@@ -47,10 +46,6 @@ beforeEach(async () => {
   luciaService = await world.addMedicalService(world.lucia.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function at(time: string) {

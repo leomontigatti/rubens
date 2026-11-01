@@ -1,7 +1,8 @@
+import { withTenant } from "#/db/tenant.ts";
 import type { Actor, Role } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
 import type { ScheduleInput } from "#/lib/schedules.ts";
-import { createOrganization, startingPassword } from "#/test-support/organization.ts";
+import { createOrganization, createUserWithoutPassword } from "#/test-support/organization.ts";
 
 import { asAppRole } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
@@ -9,7 +10,7 @@ import { createMedicalService } from "#/server/medical-services.ts";
 import { createOffice, createRoom } from "#/server/offices.ts";
 import { registerPatient } from "#/server/patients.ts";
 import { createSchedule, listSchedulePractitioners } from "#/server/schedules.ts";
-import { createStaffMember } from "#/server/staff.ts";
+import { addToStaff } from "#/server/staff.ts";
 
 /**
  * An organization with its admin, ready for scheduling: offices, rooms and
@@ -46,14 +47,18 @@ export async function createSchedulingWorld(db: TestDatabase) {
       .toLowerCase()
       .replaceAll(" ", ".");
     const email = `${local}@example.com`;
-    const result = await asAppRole(db, (tx) =>
-      createStaffMember(admin, { name, email, password: startingPassword, roles }, tx),
+    const member = await asAppRole(db, (tx) =>
+      withTenant(
+        admin,
+        async (tenant) => {
+          const user = await createUserWithoutPassword(createAuth(tenant), { name, email });
+          return addToStaff(tenant, admin, user.id, roles);
+        },
+        tx,
+      ),
     );
-    if (!result.ok) {
-      throw new Error(`createStaffMember failed: ${result.reason}`);
-    }
-    const actor: Actor = { organizationId, userId: result.member.userId, roles };
-    return { member: result.member, actor };
+    const actor: Actor = { organizationId, userId: member.userId, roles };
+    return { member, actor };
   }
 
   return { auth, organizationId, admin, addOffice, addRoom, addStaff };

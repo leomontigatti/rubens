@@ -216,23 +216,33 @@ export async function createStaffMember(
       if (!created.ok) {
         return created;
       }
-      const memberId = crypto.randomUUID();
-      await tx.insert(member).values({
-        id: memberId,
-        organizationId: actor.organizationId,
-        userId: created.userId,
-        role: roles.join(","),
-        createdAt: new Date(),
-      });
-      const found = (await findStaffMember(tx, actor, memberId))!;
-      if (roles.includes("practitioner")) {
-        await ensurePractitioner(tx, actor, found);
-        return { ok: true as const, member: (await findStaffMember(tx, actor, memberId))! };
-      }
-      return { ok: true as const, member: found };
+      return { ok: true as const, member: await addToStaff(tx, actor, created.userId, roles) };
     },
     database,
   );
+}
+
+/** Makes a user a member of the actor's organization, with their practitioner row if due. */
+export async function addToStaff(
+  tx: Transaction,
+  actor: Actor,
+  userId: string,
+  roles: Role[],
+): Promise<StaffMember> {
+  const memberId = crypto.randomUUID();
+  await tx.insert(member).values({
+    id: memberId,
+    organizationId: actor.organizationId,
+    userId,
+    role: roles.join(","),
+    createdAt: new Date(),
+  });
+  const found = (await findStaffMember(tx, actor, memberId))!;
+  if (roles.includes("practitioner")) {
+    await ensurePractitioner(tx, actor, found);
+    return (await findStaffMember(tx, actor, memberId))!;
+  }
+  return found;
 }
 
 /**

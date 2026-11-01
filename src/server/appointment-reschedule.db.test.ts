@@ -1,13 +1,12 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { appointment, auditLog, practitioner as practitionerTable } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { RescheduleInput, WarningConfirmation } from "#/lib/appointments.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
@@ -23,7 +22,7 @@ import { setMemberActive } from "#/server/staff.ts";
 // 09:00 to 11:00 in "Consultorio 1" at "Sede Centro", and from 14:00 to 16:00 in
 // a room of "Sede Norte". "Lucía" works from 09:00 to 11:00 in "Consultorio 2".
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let juanService: { id: string };
@@ -37,7 +36,7 @@ function at(time: string) {
 }
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   const north = await world.addOffice("Sede Norte");
   northRoom = await world.addRoom(north.id, "Norte 1");
@@ -58,10 +57,6 @@ beforeEach(async () => {
     .where(eq(practitionerTable.id, world.juan.id));
   maria = await world.addPatient("María", "0351 15 555-1234");
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 async function book(
