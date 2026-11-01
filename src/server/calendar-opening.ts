@@ -1,13 +1,15 @@
-import { and, count, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 
 import { appointment, member, practitioner, schedule } from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 import { actsForEveryone } from "#/lib/access.ts";
 import type { Actor } from "#/lib/access.ts";
 import { activeAppointmentStatuses, mondayOf } from "#/lib/appointments.ts";
+import { occurrencesDuring } from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { meets } from "#/server/availability.ts";
 
@@ -42,7 +44,7 @@ async function countByRoom(
   tx: Transaction,
   practitionerId: string,
   roomIds: readonly string[],
-  days: { firstDate: string; lastDate: string },
+  week: TimeRange,
 ) {
   const rows = await tx
     .select({ roomId: appointment.roomId, total: count() })
@@ -52,32 +54,37 @@ async function countByRoom(
         eq(appointment.practitionerId, practitionerId),
         inArray(appointment.roomId, [...roomIds]),
         inArray(appointment.status, activeAppointmentStatuses),
-        meets(appointment.during, toTimeRange({ kind: "days", ...days }, defaultTimeZone)),
+        meets(appointment.during, week),
       ),
     )
     .groupBy(appointment.roomId);
   return new Map(rows.map((row) => [row.roomId, row.total]));
 }
 
-/** The rooms where the practitioner has a schedule that meets the week. */
+/** The rooms where the practitioner has a schedule with a day that week. */
 async function scheduledRooms(
   tx: Transaction,
   practitionerId: string,
   roomIds: readonly string[],
-  days: { firstDate: string; lastDate: string },
+  week: TimeRange,
 ) {
   const rows = await tx
-    .selectDistinct({ roomId: schedule.roomId })
+    .select({
+      roomId: schedule.roomId,
+      weekdays: schedule.weekdays,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      firstDate: schedule.firstDate,
+      lastDate: schedule.lastDate,
+    })
     .from(schedule)
     .where(
-      and(
-        eq(schedule.practitionerId, practitionerId),
-        inArray(schedule.roomId, [...roomIds]),
-        lte(schedule.firstDate, days.lastDate),
-        or(isNull(schedule.lastDate), gte(schedule.lastDate, days.firstDate)),
-      ),
+      and(eq(schedule.practitionerId, practitionerId), inArray(schedule.roomId, [...roomIds])),
     );
-  return new Set(rows.map((row) => row.roomId));
+  const held = rows.filter(
+    (row) => occurrencesDuring({ ...row, timeZone: defaultTimeZone }, week).length > 0,
+  );
+  return new Set(held.map((row) => row.roomId));
 }
 
 /** Who the calendar opens on and where; `undefined` when the actor keeps the default. */
@@ -92,12 +99,15 @@ export async function findCalendarOpening(
     return undefined;
   }
   const firstDate = mondayOf(date);
-  const days = { firstDate, lastDate: shiftDate(firstDate, 6) };
-  const counts = await countByRoom(tx, practitionerId, roomIds, days);
+  const week = toTimeRange(
+    { kind: "days", firstDate, lastDate: shiftDate(firstDate, 6) },
+    defaultTimeZone,
+  );
+  const counts = await countByRoom(tx, practitionerId, roomIds, week);
   if (counts.size > 0) {
     const most = Math.max(...counts.values());
     return { practitionerId, roomId: roomIds.find((id) => counts.get(id) === most) };
   }
-  const scheduled = await scheduledRooms(tx, practitionerId, roomIds, days);
+  const scheduled = await scheduledRooms(tx, practitionerId, roomIds, week);
   return { practitionerId, roomId: roomIds.find((id) => scheduled.has(id)) };
 }

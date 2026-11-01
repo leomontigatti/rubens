@@ -175,6 +175,16 @@ describe("where a practitioner's calendar opens", () => {
     });
   });
 
+  it("skips a schedule with no day that week", async () => {
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      weekdays: [2],
+      firstDate: "2099-01-07",
+    });
+
+    expect((await opening(world.juan.actor)).roomId).toBe(shared.id);
+  });
+
   it("skips a deactivated room", async () => {
     await bookMostlyInOtherRoom();
 
