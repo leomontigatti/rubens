@@ -40,6 +40,16 @@ Status of an entry:
 - **Breaks if:** T3 reuses a folder name for a second live worktree, which would share one
   database between two threads, or renames a folder in place, which would orphan its database.
 
+### agent-memory-limit
+
+- **Relies on:** on Linux with `systemd-run`, T3 puts every agent in one systemd slice with
+  `MemoryHigh` at RAM minus 6 GB and `MemoryMax` at RAM minus 4 GB (never below half and three
+  quarters of RAM), so agent threads on the machine share one limit and the kernel kills one past
+  it (`agentSliceMemoryLimits` in `apps/server/src/process/agentScope.ts`; pingdotgg/t3code#27176).
+- **Used by:** `docs/agents/validation.md` § Why not `pnpm test`; `tests/db/README.md`
+- **Breaks if:** T3 gives each thread its own limit or drops the shared one; then a whole
+  `pnpm test:db` no longer competes with other threads, and the cap on it can be revisited.
+
 ## Watching
 
 None.
