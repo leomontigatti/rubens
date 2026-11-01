@@ -110,14 +110,18 @@ free time.
 
 The calendar is one week of one room, Monday to Sunday, in the room's office's
 zone, with the previous and next week and a date to jump to. It is filtered in
-this order: the room, required, from the active rooms grouped by office and
-opening on the first; then a practitioner, optional; then a medical service,
-optional, from the chosen practitioner's active ones or all of them, which
+this order: the room, required, from the active rooms grouped by office; then a
+practitioner, optional; then a medical service, optional, from the chosen practitioner's active ones or all of them, which
 implies its practitioner. The practitioners to filter by are those with a
 schedule or an appointment in the room that week; a filter the room's week
 cannot take (a deactivated medical service, a practitioner with nothing there)
 is ignored, never refused. Its columns are the days; there are no columns per
 practitioner, and no day or month view.
+
+Reception and admins open on the first room, unfiltered. A practitioner who is
+neither opens filtered to themselves, in the room with most of their active
+appointments that week, else a room they are scheduled in that week, else the first
+room; `Todos` then shows everyone in that room.
 
 Each day is a stack of 30-minute cells, with the times on the left. A cell is
 white when at least one practitioner who matches the filters and has a schedule

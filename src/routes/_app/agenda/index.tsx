@@ -25,8 +25,10 @@ import type { CalendarSearch } from "#/routes/_app/agenda/-filters.tsx";
 
 // The calendar (docs/domain/appointments.md § Calendar): one room's week,
 // narrowed to a practitioner or a medical service. What is viewed lives in
-// the URL; a value that does not parse falls back to its default, the first
-// active room and this week.
+// the URL; a value that does not parse falls back to its default, this week and
+// the room the calendar opens on. The opening's room and practitioner join the
+// search the filters extend, so `Todos` then means everyone rather than opening
+// again.
 const searchSchema = z.object({
   consultorio: z.uuid().optional().catch(undefined),
   profesional: z.uuid().optional().catch(undefined),
@@ -34,6 +36,20 @@ const searchSchema = z.object({
   fecha: z.iso.date().optional().catch(undefined),
   cancelados: z.boolean().optional().catch(undefined),
 });
+
+type DatedSearch = CalendarSearch & { fecha: string };
+
+/** What the filters extend: the URL, with the room and practitioner an opening picked. */
+function viewedSearch(search: DatedSearch, week: CalendarWeek | null): DatedSearch {
+  if (search.consultorio !== undefined || week === null) {
+    return search;
+  }
+  return {
+    ...search,
+    consultorio: week.room.id,
+    profesional: week.filter.practitionerId ?? undefined,
+  };
+}
 
 export const Route = createFileRoute("/_app/agenda/")({
   head: () => ({ meta: [{ title: "Agenda · Rubens" }] }),
@@ -62,7 +78,7 @@ export const Route = createFileRoute("/_app/agenda/")({
     return {
       ...calendar,
       practitioners: practitioners.practitioners,
-      search: { ...deps, fecha: mondayOf(date) } satisfies CalendarSearch,
+      search: viewedSearch({ ...deps, fecha: mondayOf(date) }, calendar.week),
     };
   },
   component: Agenda,
@@ -109,7 +125,7 @@ function Calendar(props: {
   week: CalendarWeek;
   roomChoices: Parameters<typeof CalendarFilters>[0]["roomChoices"];
   practitioners: { id: string; displayName: string }[];
-  search: CalendarSearch & { fecha: string };
+  search: DatedSearch;
 }) {
   const { week } = props;
   const [start, setStart] = useState<BookingStart>({ slot: null, overbooking: false });
@@ -183,7 +199,7 @@ function slotOf(week: CalendarWeek, cell: PickedCell): BookingSlot {
 }
 
 /** The week before and after, and a date to jump to. */
-function WeekNavigation(props: { search: CalendarSearch & { fecha: string } }) {
+function WeekNavigation(props: { search: DatedSearch }) {
   const navigate = useNavigate();
   const { search } = props;
   const linkTo = (fecha: string) => ({ ...search, fecha });
