@@ -210,7 +210,7 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
           </FieldDescription>
         </Field>
         <ColorField initial={settings.color} />
-        <Field orientation="horizontal">
+        <Field orientation="horizontal" className="w-fit">
           {/* Keyed on the saved value: Base UI warns when an uncontrolled
               checkbox's default changes, as it does after a save reloads. */}
           <Checkbox

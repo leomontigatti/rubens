@@ -75,8 +75,9 @@ carried over from en-escena.
 - **Fields sit in a column or a grid**, where they fill their cell. In a `flex` row, a filter row
   above all, each takes `className="w-auto"`, or it takes the whole line. An input
   narrower than its field takes `max-w-*`: `Field` sets its children's `width`.
-- **A checkbox is a horizontal `Field`**, with the box before its label. A group of them is a
-  `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a
+- **A checkbox is a horizontal `Field` with `className="w-fit"`**, the box before its label:
+  without `w-fit` the label fills the row, and a click on the empty space ticks the box.
+  A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a
   `FieldGroup data-slot="checkbox-group"`.
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
 - **Every `<form>` takes `noValidate`.** The browser's own `required` and `type="email"` popups

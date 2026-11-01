@@ -85,7 +85,7 @@ function Patterns() {
         </div>
       </Pattern>
       <Pattern title="Casilla">
-        <Field orientation="horizontal">
+        <Field orientation="horizontal" className="w-fit">
           <Checkbox id="pattern-records" />
           <FieldLabel htmlFor="pattern-records">Lleva historia clínica</FieldLabel>
         </Field>
@@ -94,11 +94,11 @@ function Patterns() {
         <FieldSet>
           <FieldLegend variant="label">Roles</FieldLegend>
           <FieldGroup data-slot="checkbox-group">
-            <Field orientation="horizontal">
+            <Field orientation="horizontal" className="w-fit">
               <Checkbox id="pattern-reception" />
               <FieldLabel htmlFor="pattern-reception">Recepción</FieldLabel>
             </Field>
-            <Field orientation="horizontal">
+            <Field orientation="horizontal" className="w-fit">
               <Checkbox id="pattern-practitioner-role" />
               <FieldLabel htmlFor="pattern-practitioner-role">Profesional</FieldLabel>
             </Field>

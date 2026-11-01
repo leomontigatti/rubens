@@ -40,7 +40,7 @@ export function RoleCheckboxes(props: { idPrefix: string; initial: readonly Role
       <FieldLegend variant="label">Roles</FieldLegend>
       <FieldGroup data-slot="checkbox-group">
         {Object.entries(roleLabels).map(([role, label]) => (
-          <Field key={role} orientation="horizontal">
+          <Field key={role} orientation="horizontal" className="w-fit">
             {/* Keyed on the saved value: Base UI warns when an uncontrolled
                 checkbox's default changes, as it does after a save reloads. */}
             <Checkbox

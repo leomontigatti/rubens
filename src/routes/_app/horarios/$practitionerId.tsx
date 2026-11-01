@@ -10,7 +10,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   scheduleChangeSchema,
@@ -399,9 +399,9 @@ function WeekdayFields(props: { idPrefix: string; initial: readonly number[] }) 
   return (
     <FieldSet>
       <FieldLegend variant="label">Días</FieldLegend>
-      <div className="flex flex-wrap gap-4">
+      <FieldGroup data-slot="checkbox-group" className="flex-row flex-wrap">
         {Object.entries(weekdayLabels).map(([day, label]) => (
-          <Field key={day} orientation="horizontal" className="w-auto">
+          <Field key={day} orientation="horizontal" className="w-fit">
             <Checkbox
               id={`${props.idPrefix}-weekday-${day}`}
               name="weekdays"
@@ -411,7 +411,7 @@ function WeekdayFields(props: { idPrefix: string; initial: readonly number[] }) 
             <FieldLabel htmlFor={`${props.idPrefix}-weekday-${day}`}>{label}</FieldLabel>
           </Field>
         ))}
-      </div>
+      </FieldGroup>
     </FieldSet>
   );
 }
