@@ -15,6 +15,10 @@ Date: 2026-10-12. Amended 2026-10-27, after the domain model was agreed
 Amended 2026-10-29 (PRD #45): practitioners who share a room never hold it at
 once, so a second exclusion constraint covers appointments per room.
 
+Amended 2026-11-02 (#91): a schedule is a set of weekdays with times and validity
+dates, expanded in the office's zone, not an RRULE. The domain has no recurrence
+beyond weekly, and a series of appointments is booked one at a time.
+
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,
 Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
 
@@ -36,9 +40,10 @@ Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
   on active appointments, overbookings included, makes the room's time taken for
   every other practitioner. A practitioner's own overbookings stay allowed.
 - Instants are `timestamptz` in UTC. Each office has an IANA time zone, and local
-  times are derived from it. A schedule is an RRULE with validity dates.
-  Availability is the schedules expanded inside a bounded window, minus time off,
-  closures and booked appointments.
+  times are derived from it. A schedule is a set of weekdays with times and
+  validity dates, expanded in the office's zone. Availability is the schedules
+  expanded inside a bounded window, minus time off, closures and booked
+  appointments.
 
 ## Clinical records are audited
 

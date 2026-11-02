@@ -8,8 +8,8 @@ import { practitioner } from "#/db/schema/staff.ts";
 
 // Tenant-owned: row-level security on `organization_id` is enabled and forced
 // in the migration (raw SQL, 0005), as for every table with that column.
-// A weekly RRULE with validity dates (ADR-0003): the times are wall-clock times
-// in the room's office's time zone, the dates local dates there.
+// A set of weekdays with times and validity dates (ADR-0003): the times are
+// wall-clock times in the room's office's time zone, the dates local dates there.
 export const schedule = rubens.table(
   "schedule",
   {
