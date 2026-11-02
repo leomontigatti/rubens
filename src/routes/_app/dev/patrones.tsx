@@ -10,6 +10,8 @@ import { FilterBar } from "#/components/filter-bar.tsx";
 import { CreateSheet } from "#/components/form-sheet.tsx";
 import { FormActions } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { Detail, RecordSection } from "#/components/record-section.tsx";
+import { Button } from "#/components/ui/button.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
   Field,
@@ -112,7 +114,14 @@ function Patterns() {
       <Pattern title="Panel lateral">
         <CreateSheet canCreate label="Nueva prestación">
           {(close) => (
-            <form noValidate className="flex flex-col gap-4">
+            <form
+              noValidate
+              className="flex flex-col gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                close();
+              }}
+            >
               <Field>
                 <FieldLabel htmlFor="pattern-service">Nombre</FieldLabel>
                 <Input id="pattern-service" />
@@ -121,6 +130,21 @@ function Patterns() {
             </form>
           )}
         </CreateSheet>
+      </Pattern>
+      <Pattern title="Sección de un registro">
+        <RecordSection
+          title="Datos"
+          action={
+            <Button variant="outline" size="sm">
+              Editar
+            </Button>
+          }
+        >
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <Detail label="Nombre" value="Ana Gómez" />
+            <Detail label="Correo electrónico" value={null} />
+          </dl>
+        </RecordSection>
       </Pattern>
       <Pattern title="Campo">
         <Field>

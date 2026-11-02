@@ -101,7 +101,7 @@ beside it.
 
 - **A create or an edit opens in `FormSheet`** (`src/components/form-sheet.tsx`), never in the page,
   so what it changes stays in view. `CreateSheet` is the button and its panel. The panel's title
-  names the action, the same words as the button that opens it. `pnpm lint` rejects the ui `Sheet`
+  says the action and its object: `Editar` on a sede opens `Editar sede`. `pnpm lint` rejects the ui `Sheet`
   (`ui/no-raw-sheet`) and a form in a card (`ui/no-form-in-card`).
 - **A record's page shows values, and each section's button opens the form**: `RecordSection`
   (`src/components/record-section.tsx`).
