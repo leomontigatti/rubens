@@ -52,7 +52,7 @@ export type OverbookingPlacement = {
   pickedRoomId: string | null;
 };
 
-type BookablePractitioner = { id: string; gridMinutes: number };
+export type BookablePractitioner = { id: string; gridMinutes: number };
 
 /** Which exclusion constraint turned a write down. */
 type LostConstraint = { ok: false; constraint: "practitioner" | "room" };
@@ -432,12 +432,11 @@ export async function resolveTime(
 async function refuseLostTime(
   tx: Transaction,
   bookable: BookablePractitioner,
-  kind: "freeStart" | "overbooking",
-  { roomId, during }: { roomId: string; during: TimeRange },
+  { roomId, during, overbooking }: { roomId: string; during: TimeRange; overbooking?: boolean },
   timeZone: string,
   excludeAppointmentId: string | undefined,
 ): Promise<TimeTaken | RoomRefusal> {
-  if (kind === "overbooking") {
+  if (overbooking) {
     return lostRoomRace(tx, roomId, bookable.id, during);
   }
   const fresh = await findFreeTimes(tx, bookable, {
@@ -456,23 +455,21 @@ async function refuseLostTime(
 export async function writeNewRow(
   tx: Transaction,
   bookable: BookablePractitioner,
-  kind: "freeStart" | "overbooking",
   values: typeof appointment.$inferInsert,
   timeZone: string,
 ): Promise<{ ok: true; id: string } | TimeTaken | RoomRefusal> {
   const written = await insertRow(tx, values);
-  return written.ok ? written : refuseLostTime(tx, bookable, kind, values, timeZone, undefined);
+  return written.ok ? written : refuseLostTime(tx, bookable, values, timeZone, undefined);
 }
 
 /** Writes an appointment's move to a new time, recovering a lost race by `refuseLostTime`. */
 export async function writeMovedRow(
   tx: Transaction,
   bookable: BookablePractitioner,
-  kind: "freeStart" | "overbooking",
   appointmentId: string,
   values: { during: TimeRange; roomId: string; overbooking: boolean },
   timeZone: string,
 ): Promise<{ ok: true } | TimeTaken | RoomRefusal> {
   const written = await updateRow(tx, appointmentId, values);
-  return written.ok ? written : refuseLostTime(tx, bookable, kind, values, timeZone, appointmentId);
+  return written.ok ? written : refuseLostTime(tx, bookable, values, timeZone, appointmentId);
 }

@@ -14,6 +14,7 @@ import {
   writeStatusRow,
 } from "#/server/appointment-placement-steps.ts";
 import type {
+  BookablePractitioner,
   FreeStartPlacement,
   NextStatus,
   OverbookingPlacement,
@@ -26,9 +27,10 @@ import { changedFields, recordAudit } from "#/server/audit.ts";
 export type { RoomOccupant } from "#/server/appointment-placement-steps.ts";
 
 // Appointment placement: every write that decides when and where an appointment
-// holds time, or whether it holds time at all. A caller says what it wants as a placement and gets back success
-// or a structured refusal; it owns its role gate, its parsing, `withTenant` and
-// finding the practitioner, and nothing here opens a transaction.
+// holds time, or whether it holds time at all. A caller says what it wants as a
+// placement and gets back success or a structured refusal; it owns its role
+// gate, its parsing, `withTenant` and finding the practitioner, and nothing here
+// opens a transaction.
 //
 // The sequence, whichever the caller:
 //
@@ -47,10 +49,10 @@ export type { RoomOccupant } from "#/server/appointment-placement-steps.ts";
 type SameTimePlacement = { kind: "sameTime"; roomId: string };
 
 /** A placement at a new time, which any new appointment needs: it has no time to keep. */
-type NewPlacement = FreeStartPlacement | OverbookingPlacement;
+export type NewPlacement = FreeStartPlacement | OverbookingPlacement;
 
 /** A placement: what the caller wants of the appointment's time and room. */
-type Placement = NewPlacement | SameTimePlacement;
+export type Placement = NewPlacement | SameTimePlacement;
 
 /** What the new appointment is for. */
 interface Visit {
@@ -81,8 +83,6 @@ export type PlacementRefusal<Kind extends keyof RefusalsByKind = keyof RefusalsB
 
 /** Why a move to a new time was refused: all but what only a new appointment can hit. */
 type NewTimeMoveRefusal = Exclude<PlacementRefusal<NewPlacement["kind"]>, VisitRefusal>;
-
-type BookablePractitioner = { id: string; gridMinutes: number };
 
 interface Confirmation {
   confirmWarnings: boolean;
@@ -210,7 +210,6 @@ export async function placeNew(
   const written = await writeNewRow(
     tx,
     practitioner,
-    placement.kind,
     { ...fields, during: span, organizationId: actor.organizationId, createdBy: actor.userId },
     where.timeZone,
   );
@@ -282,7 +281,7 @@ async function moveToTime(
   const { roomId, timeZone } = where;
   const overbooking = kind === "overbooking";
   const values = { during: span, roomId, overbooking };
-  const written = await writeMovedRow(tx, practitioner, kind, id, values, timeZone);
+  const written = await writeMovedRow(tx, practitioner, id, values, timeZone);
   if (!written.ok) {
     return written;
   }

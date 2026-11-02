@@ -237,7 +237,6 @@ describe("a free start that loses the race", () => {
       writeNewRow(
         tenant,
         bookable("juan"),
-        "freeStart",
         newRow("juan", pedro.id, at("12:15"), world.room.id),
         timeZone,
       ),
@@ -260,7 +259,6 @@ describe("a free start that loses the race", () => {
       writeNewRow(
         tenant,
         bookable("lucia"),
-        "freeStart",
         newRow("lucia", pedro.id, at("12:00"), world.room.id),
         timeZone,
       ),
@@ -285,7 +283,6 @@ describe("an overbooking that loses the race", () => {
         writeNewRow(
           tenant,
           bookable("lucia"),
-          "overbooking",
           { ...newRow("lucia", pedro.id, at("12:00"), world.room.id), overbooking: true },
           "America/Argentina/Buenos_Aires",
         ),
@@ -317,7 +314,6 @@ describe("a move to a new time that loses the race", () => {
       writeMovedRow(
         tenant,
         bookable("juan"),
-        "freeStart",
         moved.id,
         {
           during: { start: at("12:15"), end: at("12:45") },
@@ -345,7 +341,6 @@ describe("a move to a new time that loses the race", () => {
       writeMovedRow(
         tenant,
         bookable("lucia"),
-        "freeStart",
         moved.id,
         {
           during: { start: at("12:00"), end: at("12:30") },
@@ -374,7 +369,6 @@ describe("a move to a new time that loses the race", () => {
         writeMovedRow(
           tenant,
           bookable("lucia"),
-          "overbooking",
           moved.id,
           {
             during: { start: at("12:00"), end: at("12:30") },
