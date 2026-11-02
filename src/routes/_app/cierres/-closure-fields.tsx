@@ -1,5 +1,4 @@
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import type { OfficeOption } from "#/server/closures.ts";
 
 /** The copy for every refusal the closure server functions return. */
@@ -13,24 +12,23 @@ export const refusalMessages = {
 
 export const wholeOrganization = "Toda la organización";
 
-/** The office field: empty for the whole organization. */
-export function readOfficeId(form: FormData): string | null {
-  const officeId = form.get("officeId") as string;
-  return officeId === "" ? null : officeId;
-}
+/** The office the form holds: empty for the whole organization. */
+export const readOfficeId = (owner: string): string | null => (owner === "" ? null : owner);
 
-export function OfficeSelect(props: { offices: OfficeOption[]; initial: string | null }) {
-  return (
-    <Field>
-      <FieldLabel htmlFor="closure-officeId">Sede</FieldLabel>
-      <NativeSelect id="closure-officeId" name="officeId" defaultValue={props.initial ?? ""}>
+/** The office field of a closure's form. */
+export function officeField(offices: OfficeOption[], initial: string | null) {
+  return {
+    label: "Sede",
+    initial: initial ?? "",
+    options: (
+      <>
         <NativeSelectOption value="">{wholeOrganization}</NativeSelectOption>
-        {props.offices.map((office) => (
+        {offices.map((office) => (
           <NativeSelectOption key={office.id} value={office.id}>
             {office.name}
           </NativeSelectOption>
         ))}
-      </NativeSelect>
-    </Field>
-  );
+      </>
+    ),
+  };
 }

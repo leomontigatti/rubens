@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import {
@@ -15,9 +16,7 @@ import {
 import { patientSearchQueries } from "#/components/patient-search.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
@@ -121,169 +120,111 @@ export function patientFieldMessage(error: z.ZodError): string {
   );
 }
 
+const noPatient = {
+  firstName: "",
+  lastName: "",
+  phone: "",
+  chosenName: "",
+  documentType: "",
+  documentNumber: "",
+  birthDate: "",
+  email: "",
+  address: "",
+};
+
+/** What the form opens with: nothing for a registration, the patient's data for an edit. */
+function patientValues(initial?: Patient): typeof noPatient {
+  if (!initial) {
+    return noPatient;
+  }
+  const held = Object.keys(noPatient).map((key) => [
+    key,
+    initial[key as keyof typeof noPatient] ?? "",
+  ]);
+  return { ...(Object.fromEntries(held) as typeof noPatient), phone: formatPhone(initial.phone) };
+}
+
 /**
- * The fields `PatientFields` submitted. The type is only the select's value as
- * typed: the schema, on both sides, checks it.
+ * A patient's form. `onSubmit` gets the input as typed, the empty document type
+ * as none: the schema, on both sides, checks it.
  */
-export function readPatientForm(form: FormData): PatientInput {
-  const text = (name: string) => {
-    const value = form.get(name);
-    return typeof value === "string" ? value : "";
-  };
-  return {
-    firstName: text("firstName"),
-    lastName: text("lastName"),
-    phone: text("phone"),
-    chosenName: text("chosenName"),
-    documentType: (text("documentType") || null) as DocumentType | null,
-    documentNumber: text("documentNumber"),
-    birthDate: text("birthDate"),
-    email: text("email"),
-    address: text("address"),
-  };
+export function usePatientForm(
+  initial: Patient | undefined,
+  onSubmit: (input: PatientInput) => Promise<unknown>,
+) {
+  return useAppForm({
+    defaultValues: patientValues(initial),
+    onSubmit: ({ value }) =>
+      onSubmit({ ...value, documentType: (value.documentType || null) as DocumentType | null }),
+  });
 }
-
-const hintIdFor = (field: { id: string; hint?: string }) =>
-  field.hint ? `${field.id}-hint` : undefined;
-
-export function TextField(props: {
-  id: string;
-  name: string;
-  label: string;
-  defaultValue?: string | null;
-  type?: string;
-  required?: boolean;
-  hint?: string;
-}) {
-  const hintId = hintIdFor(props);
-  return (
-    <Field>
-      <FieldLabel htmlFor={props.id}>{props.label}</FieldLabel>
-      <Input
-        id={props.id}
-        name={props.name}
-        type={props.type ?? "text"}
-        defaultValue={props.defaultValue ?? ""}
-        required={props.required}
-        aria-describedby={hintId}
-      />
-      {hintId && <FieldDescription id={hintId}>{props.hint}</FieldDescription>}
-    </Field>
-  );
-}
-
-const phoneHint =
-  "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.";
 
 /** A patient's or a guardian's phone. */
-export function PhoneField(props: { id: string; defaultValue?: string | null }) {
-  return (
-    <TextField
-      id={props.id}
-      name="phone"
-      label="Teléfono"
-      type="tel"
-      defaultValue={props.defaultValue}
-      required
-      hint={phoneHint}
-    />
-  );
-}
+export const phoneFieldProps = {
+  label: "Teléfono",
+  type: "tel",
+  required: true,
+  hint: "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.",
+};
 
-/** What the inputs start with: nothing for a registration, the patient's data for an edit. */
-function formValues(initial: Patient | undefined): Partial<Patient> {
-  return initial ? { ...initial, phone: formatPhone(initial.phone) } : {};
-}
+export const documentTypeOptions = (
+  <>
+    <NativeSelectOption value="">Sin documento</NativeSelectOption>
+    {documentTypes.map((type) => (
+      <NativeSelectOption key={type} value={type}>
+        {documentTypeLabels[type]}
+      </NativeSelectOption>
+    ))}
+  </>
+);
 
-/** The optional document's type and number, a patient's or a guardian's. */
-export function DocumentInputs(props: {
-  idPrefix: string;
-  initial: { documentType?: DocumentType | null; documentNumber?: string | null };
-}) {
-  const id = (name: string) => `${props.idPrefix}-${name}`;
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field>
-        <FieldLabel htmlFor={id("documentType")}>Tipo de documento</FieldLabel>
-        <NativeSelect
-          id={id("documentType")}
-          name="documentType"
-          defaultValue={props.initial.documentType ?? ""}
-        >
-          <NativeSelectOption value="">Sin documento</NativeSelectOption>
-          {documentTypes.map((type) => (
-            <NativeSelectOption key={type} value={type}>
-              {documentTypeLabels[type]}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </Field>
-      <TextField
-        id={id("documentNumber")}
-        name="documentNumber"
-        label="Número de documento"
-        defaultValue={props.initial.documentNumber}
-      />
-    </div>
-  );
-}
-
-/**
- * The registration inputs: the names and the phone always, the rest when
- * `full`. `initial` fills them for an edit.
- */
-export function PatientFields(props: { idPrefix: string; full: boolean; initial?: Patient }) {
-  const values = formValues(props.initial);
-  const id = (name: string) => `${props.idPrefix}-${name}`;
+/** The registration inputs: the names and the phone always, the rest when `full`. */
+export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; full: boolean }) {
+  const { form } = props;
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          id={id("firstName")}
-          name="firstName"
-          label="Nombre"
-          defaultValue={values.firstName}
-          required
-        />
-        <TextField
-          id={id("lastName")}
-          name="lastName"
-          label="Apellido"
-          defaultValue={values.lastName}
-          required
-        />
+        <form.AppField name="firstName">
+          {(field) => <field.TextField label="Nombre" required />}
+        </form.AppField>
+        <form.AppField name="lastName">
+          {(field) => <field.TextField label="Apellido" required />}
+        </form.AppField>
       </div>
-      <PhoneField id={id("phone")} defaultValue={values.phone} />
+      <form.AppField name="phone">
+        {(field) => <field.TextField {...phoneFieldProps} />}
+      </form.AppField>
       {props.full && (
         <>
-          <TextField
-            id={id("chosenName")}
-            name="chosenName"
-            label="Nombre autopercibido"
-            defaultValue={values.chosenName}
-            hint="Si la persona usa otro nombre, la app la llama así."
-          />
-          <DocumentInputs idPrefix={props.idPrefix} initial={values} />
-          <TextField
-            id={id("birthDate")}
-            name="birthDate"
-            label="Fecha de nacimiento"
-            type="date"
-            defaultValue={values.birthDate}
-          />
-          <TextField
-            id={id("email")}
-            name="email"
-            label="Correo electrónico"
-            type="email"
-            defaultValue={values.email}
-          />
-          <TextField
-            id={id("address")}
-            name="address"
-            label="Dirección"
-            defaultValue={values.address}
-          />
+          <form.AppField name="chosenName">
+            {(field) => (
+              <field.TextField
+                label="Nombre autopercibido"
+                hint="Si la persona usa otro nombre, la app la llama así."
+              />
+            )}
+          </form.AppField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <form.AppField name="documentType">
+              {(field) => (
+                <field.SelectField label="Tipo de documento">
+                  {documentTypeOptions}
+                </field.SelectField>
+              )}
+            </form.AppField>
+            <form.AppField name="documentNumber">
+              {(field) => <field.TextField label="Número de documento" />}
+            </form.AppField>
+          </div>
+          <form.AppField name="birthDate">
+            {(field) => <field.TextField label="Fecha de nacimiento" type="date" />}
+          </form.AppField>
+          <form.AppField name="email">
+            {(field) => <field.TextField label="Correo electrónico" type="email" />}
+          </form.AppField>
+          <form.AppField name="address">
+            {(field) => <field.TextField label="Dirección" />}
+          </form.AppField>
         </>
       )}
     </div>
@@ -296,30 +237,27 @@ function usePatientRegistration(onRegistered: (patient: Patient) => void) {
     (data: PatientInput & DuplicateConfirmation) => addPatient({ data }),
     onRegistered,
   );
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const raw = readPatientForm(new FormData(event.currentTarget));
+  const form = usePatientForm(undefined, async (raw) => {
     const parsed = patientInputSchema.safeParse(raw);
     if (!parsed.success) {
       save.setError(patientFieldMessage(parsed.error));
       return;
     }
     await save.submit(raw);
-  }
+  });
 
-  return { save, handleSubmit };
+  return { save, form };
 }
 
 /**
  * A name and a phone, so a first booking by phone takes seconds, or the whole
  * record when the patient is in front of reception.
  */
-function RegistrationFields() {
+function RegistrationFields({ form }: { form: ReturnType<typeof usePatientForm> }) {
   const [full, setFull] = useState(false);
   return (
     <>
-      <PatientFields idPrefix="new-patient" full={full} />
+      <PatientFields form={form} full={full} />
       {!full && (
         <div>
           <Button type="button" variant="link" onClick={() => setFull(true)}>
@@ -338,11 +276,17 @@ export function PatientRegistrationForm(props: {
   onUseExisting: (patient: Patient) => void;
   onCancel: () => void;
 }) {
-  const { save, handleSubmit } = usePatientRegistration(props.onRegistered);
+  const { save, form } = usePatientRegistration(props.onRegistered);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void form.handleSubmit();
+  }
+
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+    <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
-      <RegistrationFields />
+      <RegistrationFields form={form} />
       <FormActions
         pending={save.pending}
         submitLabel="Registrar paciente"
@@ -357,18 +301,18 @@ export function PatientRegistrationPage() {
   const page = useFormPage({ to: "/pacientes" });
   const showPatient = (patient: Patient) =>
     page.leave({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
-  const { save, handleSubmit } = usePatientRegistration(showPatient);
+  const { save, form } = usePatientRegistration(showPatient);
   return (
     <FormPage
       page={page}
+      form={form}
       title="Nuevo paciente"
       submitLabel="Registrar paciente"
       pending={save.pending}
-      onSubmit={(event) => void handleSubmit(event)}
       onDiscard={save.dismiss}
     >
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={showPatient} />
-      <RegistrationFields />
+      <RegistrationFields form={form} />
     </FormPage>
   );
 }

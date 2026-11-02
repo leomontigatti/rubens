@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { FormEvent } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
@@ -7,7 +6,7 @@ import {
   PatientFields,
   PatientSaveFeedback,
   patientFieldMessage,
-  readPatientForm,
+  usePatientForm,
   usePatientSave,
 } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
@@ -37,25 +36,24 @@ function PatientEditForm({ patient }: { patient: Patient }) {
     () => page.leave(),
   );
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const update = { ...readPatientForm(new FormData(event.currentTarget)), patientId: patient.id };
+  const form = usePatientForm(patient, async (input) => {
+    const update = { ...input, patientId: patient.id };
     const parsed = patientUpdateSchema.safeParse(update);
     if (!parsed.success) {
       save.setError(patientFieldMessage(parsed.error));
       return;
     }
     await save.submit(update);
-  }
+  });
 
   return (
     <FormPage
       page={page}
+      form={form}
       title="Editar paciente"
       description={patientName(patient)}
       submitLabel="Guardar"
       pending={save.pending}
-      onSubmit={(event) => void handleSubmit(event)}
       onDiscard={save.dismiss}
     >
       <PatientSaveFeedback
@@ -65,7 +63,7 @@ function PatientEditForm({ patient }: { patient: Patient }) {
           page.leave({ to: "/pacientes/$patientId", params: { patientId: other.id } })
         }
       />
-      <PatientFields idPrefix={patient.id} full initial={patient} />
+      <PatientFields form={form} full />
     </FormPage>
   );
 }

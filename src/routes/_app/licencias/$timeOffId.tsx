@@ -34,8 +34,8 @@ function EditTimeOff() {
       initial={item.entry}
       submitLabel="Guardar"
       messages={refusalMessages}
-      onSubmit={(form) => {
-        const input = timeOffUpdateSchema.safeParse({ timeOffId, entry: readRangeEntry(form) });
+      onSubmit={(values) => {
+        const input = timeOffUpdateSchema.safeParse({ timeOffId, entry: readRangeEntry(values) });
         return input.success ? editTimeOff({ data: input.data }) : input.error;
       }}
     />

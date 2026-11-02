@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import type { FormEvent } from "react";
 
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
-import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
-import { Input } from "#/components/ui/input.tsx";
 import { getMember, resetStartingPassword } from "#/server/staff.functions.ts";
 import type { StaffMember } from "#/server/staff.ts";
 
@@ -32,24 +30,26 @@ function StartingPasswordForm({ member }: { member: StaffMember }) {
   const action = useAction();
   const [done, setDone] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const password = new FormData(event.currentTarget).get("password") as string;
-    setDone(false);
-    if (await action.run(() => resetStartingPassword({ data: { memberId, password } }))) {
-      page.reset();
-      setDone(true);
-    }
-  }
+  const form = useAppForm({
+    defaultValues: { password: "" },
+    onSubmit: async ({ value, formApi }) => {
+      setDone(false);
+      const { password } = value;
+      if (await action.run(() => resetStartingPassword({ data: { memberId, password } }))) {
+        formApi.reset();
+        setDone(true);
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title="Asignar contraseña inicial"
       description={member.name}
       submitLabel="Asignar"
       action={action}
-      onSubmit={handleSubmit}
     >
       {done && (
         <Alert variant="success">
@@ -59,20 +59,16 @@ function StartingPasswordForm({ member }: { member: StaffMember }) {
           </AlertDescription>
         </Alert>
       )}
-      <Field>
-        <FieldLabel htmlFor="password">Contraseña inicial nueva</FieldLabel>
-        <Input
-          id="password"
-          name="password"
-          type="text"
-          autoComplete="off"
-          required
-          aria-describedby="password-hint"
-        />
-        <FieldDescription id="password-hint">
-          Reemplaza la contraseña actual. La persona la usa para ingresar y la cambia al entrar.
-        </FieldDescription>
-      </Field>
+      <form.AppField name="password">
+        {(field) => (
+          <field.TextField
+            label="Contraseña inicial nueva"
+            autoComplete="off"
+            required
+            hint="Reemplaza la contraseña actual. La persona la usa para ingresar y la cambia al entrar."
+          />
+        )}
+      </form.AppField>
     </ActionFormPage>
   );
 }

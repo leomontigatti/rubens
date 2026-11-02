@@ -6,7 +6,7 @@ import { closureInputSchema } from "#/lib/time-ranges.ts";
 import { addClosure, getClosures } from "#/server/closures.functions.ts";
 
 import {
-  OfficeSelect,
+  officeField,
   readOfficeId,
   refusalMessages,
 } from "#/routes/_app/cierres/-closure-fields.tsx";
@@ -31,16 +31,15 @@ function NewClosure() {
       title="Nuevo cierre"
       initial={null}
       submitLabel="Crear cierre"
+      owner={officeField(result.offices, null)}
       messages={refusalMessages}
-      onSubmit={(form) => {
+      onSubmit={(values) => {
         const input = closureInputSchema.safeParse({
-          officeId: readOfficeId(form),
-          entry: readRangeEntry(form),
+          officeId: readOfficeId(values.owner),
+          entry: readRangeEntry(values),
         });
         return input.success ? addClosure({ data: input.data }) : input.error;
       }}
-    >
-      <OfficeSelect offices={result.offices} initial={null} />
-    </EntryForm>
+    />
   );
 }

@@ -1,12 +1,10 @@
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type * as z from "zod";
 
 import { fieldMessage } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { Checkbox } from "#/components/ui/checkbox.tsx";
-import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { scheduleState, today, weekdayLabels } from "#/lib/schedules.ts";
 import type { ScheduleChange, ScheduleInput } from "#/lib/schedules.ts";
 import type { getSchedules } from "#/server/schedules.functions.ts";
@@ -59,19 +57,25 @@ export type Initial = Pick<
   date: string;
 };
 
-function readForm(form: FormData): FormFields {
-  const lastDate = form.get("lastDate") as string;
+function readValues(values: ScheduleValues): FormFields {
   return {
-    date: form.get("date") as string,
+    date: values.date,
     rest: {
-      roomId: form.get("roomId") as string,
-      weekdays: form.getAll("weekdays").map(Number),
-      startTime: form.get("startTime") as string,
-      endTime: form.get("endTime") as string,
-      lastDate: lastDate === "" ? null : lastDate,
+      roomId: values.roomId,
+      weekdays: values.weekdays.map(Number),
+      startTime: values.startTime,
+      endTime: values.endTime,
+      lastDate: values.lastDate === "" ? null : values.lastDate,
     },
   };
 }
+
+const weekdayOptions = Object.entries(weekdayLabels).map(([value, label]) => ({ value, label }));
+
+type ScheduleValues = Omit<Initial, "weekdays" | "lastDate"> & {
+  weekdays: string[];
+  lastDate: string;
+};
 
 export function ScheduleForm(props: {
   practitionerId: string;
@@ -87,107 +91,71 @@ export function ScheduleForm(props: {
   const { initial, practitionerId } = props;
   const page = useFormPage({ to: "/horarios/$practitionerId", params: { practitionerId } });
   const action = useAction();
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const submitted = props.onSubmit(readForm(new FormData(event.currentTarget)));
-    if (!(submitted instanceof Promise)) {
-      action.setError(scheduleFieldMessage(submitted));
-      return;
-    }
-    if (await action.save(() => submitted)) {
-      page.leave();
-    }
-  }
+  const defaultValues: ScheduleValues = {
+    roomId: initial.roomId,
+    weekdays: initial.weekdays.map(String),
+    startTime: initial.startTime,
+    endTime: initial.endTime,
+    date: initial.date,
+    lastDate: initial.lastDate ?? "",
+  };
+  const form = useAppForm({
+    defaultValues,
+    onSubmit: async ({ value }) => {
+      const submitted = props.onSubmit(readValues(value));
+      if (!(submitted instanceof Promise)) {
+        action.setError(scheduleFieldMessage(submitted));
+        return;
+      }
+      if (await action.save(() => submitted)) {
+        page.leave();
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
       action={action}
-      onSubmit={handleSubmit}
     >
-      <WeekdayFields initial={initial.weekdays} />
+      <form.AppField name="weekdays">
+        {(field) => <field.CheckboxGroupField legend="Días" options={weekdayOptions} row />}
+      </form.AppField>
       <div className="flex flex-wrap gap-4">
-        <Field className="w-auto">
-          <FieldLabel htmlFor="schedule-startTime">Inicio</FieldLabel>
-          <Input
-            id="schedule-startTime"
-            name="startTime"
-            type="time"
-            defaultValue={initial.startTime}
-            required
-          />
-        </Field>
-        <Field className="w-auto">
-          <FieldLabel htmlFor="schedule-endTime">Fin</FieldLabel>
-          <Input
-            id="schedule-endTime"
-            name="endTime"
-            type="time"
-            defaultValue={initial.endTime}
-            required
-          />
-        </Field>
+        <form.AppField name="startTime">
+          {(field) => <field.TextField label="Inicio" type="time" inline required />}
+        </form.AppField>
+        <form.AppField name="endTime">
+          {(field) => <field.TextField label="Fin" type="time" inline required />}
+        </form.AppField>
       </div>
-      <Field>
-        <FieldLabel htmlFor="schedule-roomId">Consultorio</FieldLabel>
-        <RoomSelect id="schedule-roomId" rooms={props.rooms} initial={initial.roomId} />
-      </Field>
+      <form.AppField name="roomId">
+        {(field) => (
+          <field.SelectField label="Consultorio" required>
+            <NativeSelectOption value="" disabled>
+              Elegí un consultorio
+            </NativeSelectOption>
+            {props.rooms.map((room) => (
+              <NativeSelectOption key={room.id} value={room.id}>
+                {room.name} · {room.officeName}
+              </NativeSelectOption>
+            ))}
+          </field.SelectField>
+        )}
+      </form.AppField>
       <div className="flex flex-wrap gap-4">
-        <Field className="w-auto">
-          <FieldLabel htmlFor="schedule-date">{props.dateLabel}</FieldLabel>
-          <Input id="schedule-date" name="date" type="date" defaultValue={initial.date} required />
-        </Field>
-        <Field className="w-auto">
-          <FieldLabel htmlFor="schedule-lastDate">Hasta (opcional)</FieldLabel>
-          <Input
-            id="schedule-lastDate"
-            name="lastDate"
-            type="date"
-            defaultValue={initial.lastDate ?? ""}
-          />
-        </Field>
+        <form.AppField name="date">
+          {(field) => <field.TextField label={props.dateLabel} type="date" inline required />}
+        </form.AppField>
+        <form.AppField name="lastDate">
+          {(field) => <field.TextField label="Hasta (opcional)" type="date" inline />}
+        </form.AppField>
       </div>
     </ActionFormPage>
-  );
-}
-
-function WeekdayFields(props: { initial: readonly number[] }) {
-  return (
-    <FieldSet>
-      <FieldLegend variant="label">Días</FieldLegend>
-      <FieldGroup data-slot="checkbox-group" className="flex-row flex-wrap">
-        {Object.entries(weekdayLabels).map(([day, label]) => (
-          <Field key={day} orientation="horizontal" className="w-fit">
-            <Checkbox
-              id={`schedule-weekday-${day}`}
-              name="weekdays"
-              value={day}
-              defaultChecked={props.initial.includes(Number(day))}
-            />
-            <FieldLabel htmlFor={`schedule-weekday-${day}`}>{label}</FieldLabel>
-          </Field>
-        ))}
-      </FieldGroup>
-    </FieldSet>
-  );
-}
-
-function RoomSelect(props: { id: string; rooms: RoomOption[]; initial: string }) {
-  return (
-    <NativeSelect id={props.id} name="roomId" defaultValue={props.initial} required>
-      <NativeSelectOption value="" disabled>
-        Elegí un consultorio
-      </NativeSelectOption>
-      {props.rooms.map((room) => (
-        <NativeSelectOption key={room.id} value={room.id}>
-          {room.name} · {room.officeName}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
   );
 }
 

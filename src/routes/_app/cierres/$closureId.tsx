@@ -6,7 +6,7 @@ import { closureOfficeOptions, closureUpdateSchema } from "#/lib/time-ranges.ts"
 import { editClosure, getClosures } from "#/server/closures.functions.ts";
 
 import {
-  OfficeSelect,
+  officeField,
   readOfficeId,
   refusalMessages,
 } from "#/routes/_app/cierres/-closure-fields.tsx";
@@ -36,20 +36,16 @@ function EditClosure() {
       title="Editar cierre"
       initial={closure.entry}
       submitLabel="Guardar"
+      owner={officeField(closureOfficeOptions(result.offices, closure), closure.officeId)}
       messages={refusalMessages}
-      onSubmit={(form) => {
+      onSubmit={(values) => {
         const input = closureUpdateSchema.safeParse({
           closureId,
-          officeId: readOfficeId(form),
-          entry: readRangeEntry(form),
+          officeId: readOfficeId(values.owner),
+          entry: readRangeEntry(values),
         });
         return input.success ? editClosure({ data: input.data }) : input.error;
       }}
-    >
-      <OfficeSelect
-        offices={closureOfficeOptions(result.offices, closure)}
-        initial={closure.officeId}
-      />
-    </EntryForm>
+    />
   );
 }

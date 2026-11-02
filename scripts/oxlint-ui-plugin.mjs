@@ -9,6 +9,7 @@
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
 // - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
 // - `no-raw-form`: a `<form>` where `FormPage` belongs.
+// - `no-uncontrolled-input`: a default value where `useAppForm` holds the field.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -296,6 +297,29 @@ const noRawForm = {
   },
 };
 
+const noUncontrolledInput = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A form's values live in useAppForm.",
+    },
+    messages: {
+      input:
+        "Use a field from useAppForm in #/components/app-form.tsx: the form then knows what changed, so Descartar cambios and the question before leaving work (style guide, Forms).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        if (node.name.name === "defaultValue" || node.name.name === "defaultChecked") {
+          context.report({ node, messageId: "input" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
@@ -305,6 +329,7 @@ export default {
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "no-raw-table": noRawTable,
+    "no-uncontrolled-input": noUncontrolledInput,
     "require-no-validate": requireNoValidate,
   },
 };

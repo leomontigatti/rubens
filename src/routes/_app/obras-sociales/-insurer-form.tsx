@@ -1,9 +1,7 @@
-import type { FormEvent } from "react";
-
-import { NameField, fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { insurerInputSchema, insurerKindLabels, insurerKinds } from "#/lib/coverages.ts";
 import type { InsurerInput } from "#/lib/coverages.ts";
 
@@ -38,39 +36,43 @@ export function InsurerForm(props: {
   const page = useFormPage({ to: "/obras-sociales" });
   const action = useAction();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const input = insurerInputSchema.safeParse({ name: form.get("name"), kind: form.get("kind") });
-    if (!input.success) {
-      action.setError(fieldMessage(fieldMessages, input.error));
-      return;
-    }
-    if (await action.save(() => props.onSubmit(input.data))) {
-      page.leave();
-    }
-  }
+  const form = useAppForm({
+    defaultValues: { name: initial.name, kind: initial.kind as string },
+    onSubmit: async ({ value }) => {
+      const input = insurerInputSchema.safeParse(value);
+      if (!input.success) {
+        action.setError(fieldMessage(fieldMessages, input.error));
+        return;
+      }
+      if (await action.save(() => props.onSubmit(input.data))) {
+        page.leave();
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
       action={action}
-      onSubmit={handleSubmit}
     >
-      <NameField idPrefix="insurer" initial={initial.name} />
-      <Field>
-        <FieldLabel htmlFor="insurer-kind">Tipo</FieldLabel>
-        <NativeSelect id="insurer-kind" name="kind" defaultValue={initial.kind}>
-          {insurerKinds.map((kind) => (
-            <NativeSelectOption key={kind} value={kind}>
-              {insurerKindLabels[kind]}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </Field>
+      <form.AppField name="name">
+        {(field) => <field.TextField label="Nombre" required />}
+      </form.AppField>
+      <form.AppField name="kind">
+        {(field) => (
+          <field.SelectField label="Tipo">
+            {insurerKinds.map((kind) => (
+              <NativeSelectOption key={kind} value={kind}>
+                {insurerKindLabels[kind]}
+              </NativeSelectOption>
+            ))}
+          </field.SelectField>
+        )}
+      </form.AppField>
     </ActionFormPage>
   );
 }

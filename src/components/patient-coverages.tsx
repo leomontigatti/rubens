@@ -1,13 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import type { FormEvent } from "react";
 
 import { ErrorAlert, fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   coverageInputSchema,
   coverageLabel,
@@ -151,74 +149,56 @@ export function CoverageForm(props: {
   submitLabel: string;
   onSubmit: (fields: CoverageFields) => Promise<ActionResult>;
 }) {
-  const { patientId } = props;
+  const { patientId, initial } = props;
   const page = useFormPage({ to: "/pacientes/$patientId", params: { patientId } });
   const action = useAction();
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const checked = coverageFieldsSchema.safeParse({
-      insurerId: form.get("insurerId"),
-      plan: form.get("plan"),
-      memberNumber: form.get("memberNumber"),
-    });
-    if (!checked.success) {
-      action.setError(fieldMessage(fieldMessages, checked.error));
-      return;
-    }
-    if (await action.save(() => props.onSubmit(checked.data))) {
-      page.leave();
-    }
-  }
+  const form = useAppForm({
+    defaultValues: {
+      insurerId: initial.insurerId,
+      plan: initial.plan ?? "",
+      memberNumber: initial.memberNumber,
+    },
+    onSubmit: async ({ value }) => {
+      const checked = coverageFieldsSchema.safeParse(value);
+      if (!checked.success) {
+        action.setError(fieldMessage(fieldMessages, checked.error));
+        return;
+      }
+      if (await action.save(() => props.onSubmit(checked.data))) {
+        page.leave();
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
       action={action}
-      onSubmit={handleSubmit}
     >
-      <InsurerSelect
-        id="coverage-insurerId"
-        insurers={props.insurers}
-        initial={props.initial.insurerId}
-      />
+      <form.AppField name="insurerId">
+        {(field) => (
+          <field.SelectField label="Obra social / prepaga" required>
+            <NativeSelectOption value="" disabled>
+              Elegí una
+            </NativeSelectOption>
+            {props.insurers.map((insurer) => (
+              <NativeSelectOption key={insurer.id} value={insurer.id}>
+                {insurer.name}
+              </NativeSelectOption>
+            ))}
+          </field.SelectField>
+        )}
+      </form.AppField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="coverage-plan">Plan</FieldLabel>
-          <Input id="coverage-plan" name="plan" defaultValue={props.initial.plan ?? ""} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="coverage-memberNumber">Número de afiliado</FieldLabel>
-          <Input
-            id="coverage-memberNumber"
-            name="memberNumber"
-            defaultValue={props.initial.memberNumber}
-            required
-          />
-        </Field>
+        <form.AppField name="plan">{(field) => <field.TextField label="Plan" />}</form.AppField>
+        <form.AppField name="memberNumber">
+          {(field) => <field.TextField label="Número de afiliado" required />}
+        </form.AppField>
       </div>
     </ActionFormPage>
-  );
-}
-
-function InsurerSelect(props: { id: string; insurers: Insurer[]; initial: string }) {
-  return (
-    <Field>
-      <FieldLabel htmlFor={props.id}>Obra social / prepaga</FieldLabel>
-      <NativeSelect id={props.id} name="insurerId" defaultValue={props.initial} required>
-        <NativeSelectOption value="" disabled>
-          Elegí una
-        </NativeSelectOption>
-        {props.insurers.map((insurer) => (
-          <NativeSelectOption key={insurer.id} value={insurer.id}>
-            {insurer.name}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </Field>
   );
 }

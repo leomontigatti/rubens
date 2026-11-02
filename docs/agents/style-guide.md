@@ -127,6 +127,9 @@ What a form checks and when, after GOV.UK's
 [validation pattern](https://design-system.service.gov.uk/patterns/validation/) and the rules
 carried over from en-escena.
 
+- **A form's values live in `useAppForm`** (`src/components/app-form.tsx`, on TanStack Form): each
+  field is a `form.AppField` with one of its field components, and a form needing a new kind adds
+  one there. `pnpm lint` rejects an uncontrolled input (`ui/no-uncontrolled-input`).
 - **A field is `Field` with a `FieldLabel`, never a hand-made wrapper** (`pnpm lint` enforces it:
   `ui/no-bare-label`). The label sits above the input. A placeholder shows an example, never the
   label.

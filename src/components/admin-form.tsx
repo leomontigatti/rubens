@@ -6,8 +6,6 @@ import type * as z from "zod";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { Input } from "#/components/ui/input.tsx";
 
 // The pieces the admin screens (offices and rooms, staff) share: the submit
 // step every form and button goes through, its error copy, and the admin
@@ -83,17 +81,6 @@ export function RefusalMessage({ message }: { message: string }) {
     <div className="mx-auto max-w-3xl">
       <ErrorAlert message={message} />
     </div>
-  );
-}
-
-/** The name every setup record has. */
-export function NameField(props: { idPrefix: string; initial: string }) {
-  const id = `${props.idPrefix}-name`;
-  return (
-    <Field>
-      <FieldLabel htmlFor={id}>Nombre</FieldLabel>
-      <Input id={id} name="name" defaultValue={props.initial} required />
-    </Field>
   );
 }
 

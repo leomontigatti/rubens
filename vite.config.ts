@@ -64,6 +64,7 @@ export default defineConfig({
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
       "ui/no-raw-table": "error",
+      "ui/no-uncontrolled-input": "error",
       "ui/require-no-validate": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
@@ -108,6 +109,7 @@ export default defineConfig({
         ],
         rules: {
           "ui/no-raw-form": "off",
+          "ui/no-uncontrolled-input": "off",
         },
       },
       {

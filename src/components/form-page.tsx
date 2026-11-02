@@ -1,5 +1,7 @@
 import { useBlocker, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import type { NavigateOptions } from "@tanstack/react-router";
+import { useStore } from "@tanstack/react-form";
+import type { AnyFormApi } from "@tanstack/react-form";
 import { CheckIcon, ChevronLeftIcon, Undo2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode } from "react";
@@ -85,8 +87,6 @@ export function useFormPage(back: NavigateOptions) {
       setDiscarding(false);
       blocker.reset?.();
     },
-    /** Opens the form again from what is saved, for a save that stays on the page. */
-    reset: () => setVersion(version + 1),
     discard() {
       if (blocker.status === "blocked") {
         blocker.proceed();
@@ -114,10 +114,8 @@ export function CreateButton(props: { can: boolean; link: ReactElement; children
   );
 }
 
-/** What the form holds, to compare with what it opened with. */
-function snapshot(form: HTMLFormElement): string {
-  return JSON.stringify([...new FormData(form).entries()]);
-}
+/** What `FormPage` needs of `useAppForm`'s form. */
+type PageForm = Pick<AnyFormApi, "store" | "handleSubmit" | "reset">;
 
 /**
  * A create or an edit on a page of its own: the fields take the page's width,
@@ -128,27 +126,27 @@ function snapshot(form: HTMLFormElement): string {
  */
 export function FormPage(props: {
   page: FormPageControl;
+  form: PageForm;
   title: string;
   description?: string;
   submitLabel: string;
   pending: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => unknown;
   /** Clears what the last submit answered. */
   onDiscard: () => void;
   children: ReactNode;
 }) {
-  const { page } = props;
+  const { page, form } = props;
   // Going back waits for the page's data, and nothing here may run again meanwhile.
   const pending = props.pending || page.leaving;
-  const form = useRef<HTMLFormElement>(null);
-  const opened = useRef("");
+  const unchanged = useStore(form.store, (state) => state.isDefaultValue);
+  const { setDirty } = page;
 
-  useEffect(() => {
-    opened.current = snapshot(form.current!);
-    page.setDirty(false);
-    // A discard remounts the form, which opens again from what is saved.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page.version]);
+  useEffect(() => setDirty(!unchanged), [setDirty, unchanged]);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void form.handleSubmit();
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -159,12 +157,11 @@ export function FormPage(props: {
         }
       />
       <form
+        // A discard remounts the form: what its fields keep of their own goes too.
         key={page.version}
-        ref={form}
         noValidate
         className="flex flex-col gap-4"
-        onChange={(event) => page.setDirty(snapshot(event.currentTarget) !== opened.current)}
-        onSubmit={props.onSubmit}
+        onSubmit={submit}
       >
         <FieldSet disabled={pending}>{props.children}</FieldSet>
         <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
@@ -177,6 +174,7 @@ export function FormPage(props: {
         cancelLabel="Seguir editando"
         confirmLabel="Descartar cambios"
         onConfirm={() => {
+          form.reset();
           props.onDiscard();
           page.discard();
         }}
@@ -217,11 +215,11 @@ function FormPageActions(props: { page: FormPageControl; pending: boolean; submi
 /** A `FormPage` that submits through `useFormAction`, whose refusal shows above the fields. */
 export function ActionFormPage(props: {
   page: FormPageControl;
+  form: PageForm;
   title: string;
   description?: string;
   submitLabel: string;
   action: { pending: boolean; error: string | null; setError: (error: string | null) => void };
-  onSubmit: (event: FormEvent<HTMLFormElement>) => unknown;
   children: ReactNode;
 }) {
   const { action, children, ...page } = props;

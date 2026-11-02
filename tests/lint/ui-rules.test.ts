@@ -76,6 +76,18 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(found.map(text).join()).toContain("FormPage");
   });
 
+  const uncontrolledProbe = probe(
+    "uncontrolled.tsx",
+    `import { Input } from "#/components/ui/input.tsx";\n\nexport const Name = () => <Input defaultValue="Ana" />;\n`,
+  );
+
+  it("reject an uncontrolled input: a form's values live in useAppForm", () => {
+    const found = lint(uncontrolledProbe).filter((d) => d.code.includes("no-uncontrolled-input"));
+
+    expect(found).toHaveLength(1);
+    expect(found.map(text).join()).toContain("useAppForm");
+  });
+
   const layoutProbe = probe(
     "layout.tsx",
     `${button}export const Save = () => <Button className="mt-4 w-full">Guardar</Button>;\n`,
