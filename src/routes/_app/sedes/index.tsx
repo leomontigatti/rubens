@@ -96,8 +96,8 @@ function OfficeList({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean 
     return (
       <EmptyState
         icon={BuildingIcon}
-        title="Todavía no hay sedes"
-        description="Agregá la primera con Nueva sede."
+        title="No hay sedes activas"
+        description="Agregá una con Nueva sede, o mirá las inactivas."
         canAct={isAdmin}
       />
     );

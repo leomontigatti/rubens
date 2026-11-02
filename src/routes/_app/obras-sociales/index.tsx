@@ -108,8 +108,8 @@ function InsurerList({ insurers, isAdmin }: { insurers: Insurer[]; isAdmin: bool
     return (
       <EmptyState
         icon={ShieldIcon}
-        title="Todavía no hay obras sociales ni prepagas"
-        description="Agregá la primera con Nueva obra social o prepaga."
+        title="No hay obras sociales ni prepagas activas"
+        description="Agregá una con Nueva obra social o prepaga, o mirá las inactivas."
         canAct={isAdmin}
       />
     );

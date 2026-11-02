@@ -1,3 +1,5 @@
+import { useRouteContext } from "@tanstack/react-router";
+import { UserCogIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import {
@@ -30,5 +32,18 @@ export function EmptyState(props: {
         {canAct && <EmptyDescription>{props.description}</EmptyDescription>}
       </EmptyHeader>
     </Empty>
+  );
+}
+
+/** Screens about practitioners, before there are any: an admin adds them in Personal. */
+export function NoPractitioners() {
+  const { viewer } = useRouteContext({ from: "/_app" });
+  return (
+    <EmptyState
+      icon={UserCogIcon}
+      title="Todavía no hay profesionales"
+      description="Agregalos en Personal."
+      canAct={viewer.roles.includes("admin")}
+    />
   );
 }

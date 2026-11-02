@@ -1,10 +1,10 @@
-import { CalendarSearchIcon, UserCogIcon } from "lucide-react";
+import { CalendarSearchIcon } from "lucide-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, NoPractitioners } from "#/components/empty-state.tsx";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -76,11 +76,7 @@ function Availability() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Disponibilidad" />
       {result.practitioners.length === 0 ? (
-        <EmptyState
-          icon={UserCogIcon}
-          title="Todavía no hay profesionales"
-          description="Un administrador los agrega en Personal."
-        />
+        <NoPractitioners />
       ) : (
         <QueryForm
           // Remounting on a new query resets the fields and any error to what is being viewed.
@@ -201,7 +197,7 @@ function FreeTimes({ starts }: { starts: AvailableStart[] }) {
       <EmptyState
         icon={CalendarSearchIcon}
         title="No hay horarios libres en esas fechas"
-        description="Probá con otras fechas u otro profesional."
+        description="Probá con otras fechas."
       />
     );
   }

@@ -1,7 +1,6 @@
-import { UserCogIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { EmptyState } from "#/components/empty-state.tsx";
+import { NoPractitioners } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { getSchedulePractitioners } from "#/server/schedules.functions.ts";
@@ -25,11 +24,7 @@ function SchedulePractitioners() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Horarios" />
       {result.practitioners.length === 0 ? (
-        <EmptyState
-          icon={UserCogIcon}
-          title="Todavía no hay profesionales"
-          description="Un administrador los agrega en Personal."
-        />
+        <NoPractitioners />
       ) : (
         <ul className="flex flex-col gap-3">
           {result.practitioners.map((practitioner) => (

@@ -102,6 +102,7 @@ interface BookingStart {
 
 function Agenda() {
   const result = Route.useLoaderData();
+  const { viewer } = Route.useRouteContext();
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
@@ -111,8 +112,9 @@ function Agenda() {
         <PageHeader title="Agenda" />
         <EmptyState
           icon={CalendarDaysIcon}
-          title="Todavía no hay consultorios"
-          description="Un administrador los agrega en Sedes."
+          title="No hay consultorios activos"
+          description="Agregalos en Sedes."
+          canAct={viewer.roles.includes("admin")}
         />
       </div>
     );

@@ -53,8 +53,8 @@ function Patients() {
       ) : (
         <PatientList
           patients={result.patients}
-          emptyTitle="Todavía no hay pacientes"
-          emptyDescription="Agregá el primero con Nuevo paciente."
+          emptyTitle="No hay pacientes activos"
+          emptyDescription="Agregá uno con Nuevo paciente, o mirá los inactivos."
         />
       )}
     </div>
@@ -133,7 +133,7 @@ function SearchResults({ query }: { query: string }) {
     <PatientList
       patients={data.patients}
       emptyTitle="Ningún paciente coincide con la búsqueda"
-      emptyDescription="Probá con otro nombre, documento o teléfono."
+      emptyDescription="Probá con otro nombre, documento o teléfono, o mirá los inactivos."
     />
   );
 }

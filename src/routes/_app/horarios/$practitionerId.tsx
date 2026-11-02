@@ -110,12 +110,7 @@ function PractitionerSchedules() {
         )}
       </CreatePanel>
       {schedules.length === 0 ? (
-        <EmptyState
-          icon={ClockIcon}
-          title="Todavía no tiene horarios"
-          description="Agregá el primero con Nuevo horario."
-          canAct={canEdit}
-        />
+        <NoSchedules canEdit={canEdit} rooms={rooms} />
       ) : (
         <ul className="flex flex-col gap-3">
           {schedules.map((schedule) => (
@@ -124,6 +119,18 @@ function PractitionerSchedules() {
         </ul>
       )}
     </div>
+  );
+}
+
+/** A schedule needs an active room, so with none there is no next step to offer. */
+function NoSchedules(props: { canEdit: boolean; rooms: RoomOption[] }) {
+  return (
+    <EmptyState
+      icon={ClockIcon}
+      title="Todavía no tiene horarios"
+      description="Agregá el primero con Nuevo horario."
+      canAct={props.canEdit && props.rooms.length > 0}
+    />
   );
 }
 

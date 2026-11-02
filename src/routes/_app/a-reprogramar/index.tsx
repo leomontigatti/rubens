@@ -89,7 +89,7 @@ function ToRescheduleList() {
         <EmptyState
           icon={CalendarSyncIcon}
           title="No hay turnos para reprogramar"
-          description="Acá aparecen los turnos que un cambio de horario, una licencia o un cierre deja sin lugar."
+          description="No hace falta hacer nada. Acá aparecen los turnos que hay que mover o cancelar."
         />
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border">
