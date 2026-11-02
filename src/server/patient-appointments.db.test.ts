@@ -1,9 +1,8 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { office } from "#/db/schema/index.ts";
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
@@ -19,7 +18,7 @@ import { historyChanges } from "#/lib/patients.ts";
 // (UTC-3). Juan and "Lucía" work Mondays from 09:00 to 11:00 (12:00Z to 14:00Z),
 // in "Consultorio 1" and "Consultorio 2". 2099-01-05 and 2099-01-12 are Mondays.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let maria: { id: string };
@@ -28,7 +27,7 @@ let services: Map<string, string>;
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2099-01-01T12:00:00Z"));
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
@@ -39,9 +38,8 @@ beforeEach(async () => {
   maria = await world.addPatient("María", "0351 15 555-1234");
 });
 
-afterEach(async () => {
+afterEach(() => {
   vi.useRealTimers();
-  await client.close();
 });
 
 async function book(practitionerId: string, start: string) {

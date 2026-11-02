@@ -1,7 +1,7 @@
 import type { Actor, Role } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
 import type { ScheduleInput } from "#/lib/schedules.ts";
-import { createOrganization, startingPassword } from "#/test-support/organization.ts";
+import { createOrganization, createUserWithoutPassword } from "#/test-support/organization.ts";
 
 import { asAppRole } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
@@ -9,11 +9,11 @@ import { createMedicalService } from "#/server/medical-services.ts";
 import { createOffice, createRoom } from "#/server/offices.ts";
 import { registerPatient } from "#/server/patients.ts";
 import { createSchedule, listSchedulePractitioners } from "#/server/schedules.ts";
-import { createStaffMember } from "#/server/staff.ts";
+import { changeRoles } from "#/server/staff.ts";
 
 /**
- * An organization with its admin, ready for scheduling: offices, rooms and
- * staff are added through the services, as the app role.
+ * An organization with its admin, ready for scheduling: offices and rooms are
+ * added through the services as the app role, staff without a password.
  */
 export async function createSchedulingWorld(db: TestDatabase) {
   const auth = createAuth(db);
@@ -46,14 +46,20 @@ export async function createSchedulingWorld(db: TestDatabase) {
       .toLowerCase()
       .replaceAll(" ", ".");
     const email = `${local}@example.com`;
+    const user = await createUserWithoutPassword(auth, { name, email });
+    const added = await auth.api.addMember({
+      body: { userId: user.id, organizationId, role: roles },
+    });
+    // `changeRoles` is what creates a practitioner's row.
     const result = await asAppRole(db, (tx) =>
-      createStaffMember(admin, { name, email, password: startingPassword, roles }, tx),
+      changeRoles(admin, { memberId: added.id, roles }, tx),
     );
     if (!result.ok) {
-      throw new Error(`createStaffMember failed: ${result.reason}`);
+      throw new Error(`changeRoles failed: ${result.reason}`);
     }
-    const actor: Actor = { organizationId, userId: result.member.userId, roles };
-    return { member: result.member, actor };
+    const { member } = result;
+    const actor: Actor = { organizationId, userId: member.userId, roles };
+    return { member, actor };
   }
 
   return { auth, organizationId, admin, addOffice, addRoom, addStaff };
@@ -61,8 +67,8 @@ export async function createSchedulingWorld(db: TestDatabase) {
 
 /**
  * A scheduling world ready for booking: an office in Buenos Aires (UTC-3) with
- * two rooms, two practitioners each with a medical service, a receptionist and patients,
- * all added through the services as the app role. 2099-01-05 is a Monday.
+ * two rooms, two practitioners each with a medical service, a receptionist and patients.
+ * 2099-01-05 is a Monday.
  */
 export async function createBookingWorld(db: TestDatabase) {
   const world = await createSchedulingWorld(db);

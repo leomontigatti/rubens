@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { createAuth } from "#/lib/auth.ts";
 import type { Auth } from "#/lib/auth.ts";
-import { createOrganization, startingPassword } from "#/test-support/organization.ts";
+import { createOrganizationWithPassword, startingPassword } from "#/test-support/organization.ts";
 
 import { sharedTestDatabase } from "../../tests/db/harness.ts";
 import { changeOwnPassword } from "#/server/accounts.ts";
@@ -14,7 +14,7 @@ let userId: string;
 
 beforeEach(async () => {
   auth = createAuth(await testDatabase.reset());
-  ({ adminUserId: userId } = await createOrganization(auth));
+  ({ adminUserId: userId } = await createOrganizationWithPassword(auth));
 });
 
 describe("changeOwnPassword", () => {

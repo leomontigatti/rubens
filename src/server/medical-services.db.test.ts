@@ -1,6 +1,5 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
@@ -8,7 +7,7 @@ import type { Actor } from "#/lib/access.ts";
 import type { MedicalServiceInput } from "#/lib/medical-services.ts";
 import { createSchedulingWorld } from "#/test-support/scheduling.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import {
   createMedicalService,
@@ -22,7 +21,7 @@ import { setMemberActive } from "#/server/staff.ts";
 // Every service call runs as the app role, so row-level security applies as in
 // the app.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: Awaited<ReturnType<typeof createSchedulingWorld>>;
 let practitioner: Actor;
@@ -31,7 +30,7 @@ let otherPractitionerId: string;
 let receptionist: Actor;
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createSchedulingWorld(db);
   practitioner = (await world.addStaff("Juan Gómez")).actor;
   await world.addStaff("Ana Ruiz");
@@ -39,10 +38,6 @@ beforeEach(async () => {
   const listed = await asAppRole(db, (tx) => listSchedulePractitioners(world.admin, tx));
   practitionerId = listed.find((row) => row.displayName === "Juan Gómez")!.id;
   otherPractitionerId = listed.find((row) => row.displayName === "Ana Ruiz")!.id;
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function firstVisit(overrides: Partial<MedicalServiceInput> = {}): MedicalServiceInput {

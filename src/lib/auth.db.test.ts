@@ -5,7 +5,11 @@ import { member } from "#/db/schema/index.ts";
 
 import { createAuth, handleAuthRequest } from "#/lib/auth.ts";
 import type { Auth } from "#/lib/auth.ts";
-import { createMember, createOrganization, startingPassword } from "#/test-support/organization.ts";
+import {
+  createMemberWithPassword,
+  createOrganizationWithPassword,
+  startingPassword,
+} from "#/test-support/organization.ts";
 
 import { sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
@@ -19,7 +23,7 @@ let cookie: string;
 beforeEach(async () => {
   db = await testDatabase.reset();
   auth = createAuth(db);
-  ({ organizationId } = await createOrganization(auth));
+  ({ organizationId } = await createOrganizationWithPassword(auth));
   const signIn = await auth.api.signInEmail({
     body: { email: "ana@consultorios-belgrano.example.com", password: startingPassword },
     returnHeaders: true,
@@ -48,7 +52,7 @@ describe("handleAuthRequest", () => {
   // An admin is the plugin's creator role, so its member endpoints would let
   // one skip the staff services' rules.
   it("refuses the organization plugin's endpoints, even to an admin", async () => {
-    const userId = await createMember(auth, organizationId, ["receptionist"]);
+    const userId = await createMemberWithPassword(auth, organizationId, ["receptionist"]);
     const receptionist = await db.query.member.findFirst({ where: eq(member.userId, userId) });
 
     const memberRole = await handleAuthRequest(

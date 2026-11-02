@@ -1,7 +1,6 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
 import { bookOverbooking } from "#/server/appointment-rooms.ts";
@@ -29,7 +28,7 @@ import {
 // Juan and "Lucía" work there from 09:00 to 11:00 every Monday. The clock is set
 // to the first Monday's early morning, before every booking.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let juanSchedule: { id: string };
@@ -45,7 +44,7 @@ function at(time: string, date = "2099-01-05") {
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(at("11:00"));
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   juanSchedule = await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
@@ -55,9 +54,8 @@ beforeEach(async () => {
   pedro = await world.addPatient("Pedro", "0351 15 555-9876");
 });
 
-afterEach(async () => {
+afterEach(() => {
   vi.useRealTimers();
-  await client.close();
 });
 
 async function book(
