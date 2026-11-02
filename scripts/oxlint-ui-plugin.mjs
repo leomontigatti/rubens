@@ -300,18 +300,18 @@ const noRawSheet = {
 
 const CARDS = new Set(["Card", "CardContent", "RecordSection"]);
 
-const HOLDERS = new Set([...CARDS, "FormSheet"]);
+const HOLDERS = new Set([...CARDS, "FormSheet", "CreateSheet"]);
 
 const elementName = (node) => (node.type === "JSXElement" ? node.openingElement.name.name : null);
 
-// The nearest card or FormSheet around `openingElement`, in the same JSX tree.
+// The nearest card or side panel around `openingElement`, in the same JSX tree.
 function nearestHolder(openingElement) {
   let node = openingElement.parent.parent;
   while (node && !HOLDERS.has(elementName(node))) node = node.parent;
   return node;
 }
 
-// A form in a FormSheet is in its place, whatever holds the sheet.
+// A form in a side panel is in its place, whatever holds the panel.
 function isInsideCard(openingElement) {
   const holder = nearestHolder(openingElement);
   return Boolean(holder) && CARDS.has(elementName(holder));

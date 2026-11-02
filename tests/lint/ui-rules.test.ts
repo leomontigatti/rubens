@@ -94,6 +94,11 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     `import { FormSheet } from "#/components/form-sheet.tsx";\nimport { RecordSection } from "#/components/record-section.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Panel = () => (\n  <RecordSection title="Datos">\n    <FormSheet open onClose={() => undefined} title="Editar datos">\n      <RoomForm />\n    </FormSheet>\n  </RecordSection>\n);\n`,
   );
 
+  const createInSectionProbe = probe(
+    "create-in-section.tsx",
+    `import { CreateSheet } from "#/components/form-sheet.tsx";\nimport { RecordSection } from "#/components/record-section.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Panel = () => (\n  <RecordSection title="Datos">\n    <CreateSheet canCreate label="Nuevo">\n      {() => <RoomForm />}\n    </CreateSheet>\n  </RecordSection>\n);\n`,
+  );
+
   it("reject a form in a card: it opens in a FormSheet", () => {
     const found = lint(formInCardProbe, formInSectionProbe).filter((d) =>
       d.code.includes("no-form-in-card"),
@@ -101,7 +106,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
 
     expect(found).toHaveLength(3);
     expect(found.map(text).join()).toContain("FormSheet");
-    expect(codes(cardHeadingProbe, sheetInSectionProbe)).toEqual([]);
+    expect(codes(cardHeadingProbe, sheetInSectionProbe, createInSectionProbe)).toEqual([]);
   });
 
   const layoutProbe = probe(
