@@ -3,7 +3,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { scheduleChangeSchema, validityLabel } from "#/lib/schedules.ts";
 import { editSchedule, getSchedules } from "#/server/schedules.functions.ts";
 
-import { EditableSchedule, ScheduleForm } from "#/routes/_app/horarios/-schedule-form.tsx";
+import {
+  EditableSchedule,
+  ScheduleForm,
+  offeredRooms,
+} from "#/routes/_app/horarios/-schedule-form.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/$scheduleId/cambiar")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
@@ -21,7 +25,7 @@ function ChangeSchedule() {
           practitionerId={practitionerId}
           title="Cambiar horario"
           description={validityLabel(schedule)}
-          rooms={result.ok ? result.rooms : []}
+          rooms={offeredRooms(result.ok ? result.rooms : [], schedule)}
           initial={{ ...schedule, date: state.changeFrom }}
           dateLabel="El cambio rige desde"
           submitLabel="Guardar cambio"

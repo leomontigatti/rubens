@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type * as z from "zod";
 
 import { fieldMessage } from "#/components/admin-form.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { pickedIn, useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { scheduleState, today, weekdayLabels } from "#/lib/schedules.ts";
@@ -93,7 +93,7 @@ export function ScheduleForm(props: {
   const action = useAction();
   const defaultValues: ScheduleValues = {
     roomId: initial.roomId,
-    weekdays: initial.weekdays.map(String),
+    weekdays: pickedIn(weekdayOptions, initial.weekdays.map(String)),
     startTime: initial.startTime,
     endTime: initial.endTime,
     date: initial.date,
@@ -157,6 +157,18 @@ export function ScheduleForm(props: {
       </div>
     </ActionFormPage>
   );
+}
+
+/**
+ * The rooms a schedule's form offers: the active ones, and the schedule's own
+ * when it was deactivated since, so the form shows the room the schedule holds.
+ */
+export function offeredRooms(rooms: RoomOption[], schedule: Schedule): RoomOption[] {
+  if (rooms.some((room) => room.id === schedule.roomId)) {
+    return rooms;
+  }
+  const own = { id: schedule.roomId, name: schedule.roomName, officeName: schedule.officeName };
+  return [own, ...rooms];
 }
 
 type LoadedSchedules = Awaited<ReturnType<typeof getSchedules>>;

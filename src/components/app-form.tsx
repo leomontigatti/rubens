@@ -58,21 +58,30 @@ function TextField(
   );
 }
 
-function SelectField(props: { label: string; required?: boolean; children: ReactNode }) {
+function SelectField(props: {
+  label: string;
+  required?: boolean;
+  /** What sits beside the select, such as a colour's swatch. */
+  beside?: ReactNode;
+  children: ReactNode;
+}) {
   const field = useFieldContext<string>();
   return (
     <Field>
       <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
-      <NativeSelect
-        id={field.name}
-        name={field.name}
-        required={props.required}
-        value={field.state.value}
-        onChange={(event) => field.handleChange(event.target.value)}
-        onBlur={field.handleBlur}
-      >
-        {props.children}
-      </NativeSelect>
+      <div className="flex items-center gap-3">
+        <NativeSelect
+          id={field.name}
+          name={field.name}
+          required={props.required}
+          value={field.state.value}
+          onChange={(event) => field.handleChange(event.target.value)}
+          onBlur={field.handleBlur}
+        >
+          {props.children}
+        </NativeSelect>
+        {props.beside}
+      </div>
     </Field>
   );
 }
@@ -96,18 +105,25 @@ function CheckboxField(props: { label: string }) {
   );
 }
 
+interface Option {
+  value: string;
+  label: string;
+}
+
+/** The picks in the options' order: the same picks always compare as the same value. */
+export function pickedIn(options: Option[], picked: readonly string[]): string[] {
+  return options.map((option) => option.value).filter((value) => picked.includes(value));
+}
+
 /** Several options picked in place; `row` lays short ones side by side. */
-function CheckboxGroupField(props: {
-  legend: string;
-  options: { value: string; label: string }[];
-  row?: boolean;
-}) {
+function CheckboxGroupField(props: { legend: string; options: Option[]; row?: boolean }) {
   const field = useFieldContext<string[]>();
   const submitting = useSubmitting(field.form);
   const picked = field.state.value;
 
   function toggle(value: string, checked: boolean) {
-    field.handleChange(checked ? [...picked, value] : picked.filter((one) => one !== value));
+    const others = picked.filter((one) => one !== value);
+    field.handleChange(pickedIn(props.options, checked ? [...others, value] : others));
   }
 
   return (

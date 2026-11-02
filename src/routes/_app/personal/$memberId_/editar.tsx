@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type * as z from "zod";
 
-import { useAppForm } from "#/components/app-form.tsx";
+import { pickedIn, useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { memberUpdateSchema } from "#/lib/staff.ts";
@@ -111,7 +110,10 @@ function MemberForm({ member }: { member: StaffMember }) {
   const page = useFormPage({ to: "/personal/$memberId", params: { memberId } });
   const action = useAction();
   const settings = shownSettings(member);
-  const defaultValues: MemberValues = { ...settingsValues(settings), roles: member.roles };
+  const defaultValues: MemberValues = {
+    ...settingsValues(settings),
+    roles: pickedIn(roleOptions, member.roles),
+  };
   const form = useAppForm({
     defaultValues,
     onSubmit: async ({ value }) => {
@@ -161,27 +163,20 @@ function MemberForm({ member }: { member: StaffMember }) {
               />
             )}
           </form.AppField>
-          <form.Field name="color">
+          <form.AppField name="color">
             {(field) => (
-              <Field>
-                <FieldLabel htmlFor="color">Color en la agenda</FieldLabel>
-                <div className="flex items-center gap-3">
-                  <NativeSelect
-                    id="color"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  >
-                    {practitionerColors.map((option) => (
-                      <NativeSelectOption key={option} value={option}>
-                        {practitionerColorLabels[option]}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                  <ColorSwatch color={field.state.value as PractitionerColor} />
-                </div>
-              </Field>
+              <field.SelectField
+                label="Color en la agenda"
+                beside={<ColorSwatch color={field.state.value as PractitionerColor} />}
+              >
+                {practitionerColors.map((option) => (
+                  <NativeSelectOption key={option} value={option}>
+                    {practitionerColorLabels[option]}
+                  </NativeSelectOption>
+                ))}
+              </field.SelectField>
             )}
-          </form.Field>
+          </form.AppField>
           <form.AppField name="keepsClinicalRecords">
             {(field) => <field.CheckboxField label="Lleva historia clínica" />}
           </form.AppField>
