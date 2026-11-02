@@ -59,10 +59,11 @@ export function useFormPage(back: NavigateOptions) {
 
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
-   * A save that ends after the user left moves nobody.
+   * A save that ends after the user left moves nobody, and refreshes where they are.
    */
   function leave(to?: NavigateOptions) {
     if (!mounted.current) {
+      void router.invalidate();
       return;
     }
     released.current = true;

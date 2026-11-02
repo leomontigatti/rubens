@@ -31,6 +31,7 @@ export const Route = createFileRoute("/_app")({
   },
   // Reloaded on every navigation and after every change a screen makes, so
   // the menu's count of appointments to reschedule stays current.
+  shouldReload: true,
   loader: async () => {
     const counted = await getToRescheduleCount();
     return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };

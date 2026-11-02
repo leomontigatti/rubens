@@ -36,7 +36,7 @@ function StartingPasswordForm({ member }: { member: StaffMember }) {
     event.preventDefault();
     const password = new FormData(event.currentTarget).get("password") as string;
     setDone(false);
-    if (await action.save(() => resetStartingPassword({ data: { memberId, password } }))) {
+    if (await action.run(() => resetStartingPassword({ data: { memberId, password } }))) {
       page.reset();
       setDone(true);
     }
