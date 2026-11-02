@@ -1,13 +1,12 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { appointment, auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { BookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { setMedicalServiceActive } from "#/server/medical-services.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
@@ -21,7 +20,7 @@ import { createTimeOff } from "#/server/time-off.ts";
 // from 09:00 to 11:00 in "Consultorio 1", "Lucía" from 09:00 to 11:00 in
 // "Consultorio 2".
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let juanService: { id: string };
@@ -29,17 +28,13 @@ let luciaService: { id: string };
 let maria: { id: string };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
   await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
   juanService = await world.addMedicalService(world.juan.id);
   luciaService = await world.addMedicalService(world.lucia.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function at(time: string) {
@@ -320,7 +315,7 @@ describe("the database guarantee against double booking", () => {
 
   it("lets an overbooking and a cancelled appointment overlap", async () => {
     expect(await insertOver({ overbooking: true })).toMatchObject({ ok: true });
-    await client.query("delete from rubens.appointment where overbooking");
+    await db.delete(appointment).where(eq(appointment.overbooking, true));
     expect(await insertOver({ status: "cancelled", cancelledBy: "patient" })).toMatchObject({
       ok: true,
     });

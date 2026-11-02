@@ -1,6 +1,5 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { appointment, auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
@@ -8,7 +7,7 @@ import type { Actor } from "#/lib/access.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { editReceptionNote } from "#/server/appointment-notes.ts";
 import { bookAppointment } from "#/server/appointments.ts";
@@ -16,14 +15,14 @@ import { bookAppointment } from "#/server/appointments.ts";
 // Every service call runs as the app role. 2099-01-05 is a Monday; Juan works
 // from 09:00 to 11:00 in Buenos Aires (UTC-3), so 09:00 there is 12:00Z.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let appointmentId: string;
 let maria: { id: string };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   await world.addSchedule({ practitionerId: world.juan.id });
   const service = await world.addMedicalService(world.juan.id);
@@ -46,10 +45,6 @@ beforeEach(async () => {
     throw new Error(`bookAppointment failed: ${result.reason}`);
   }
   appointmentId = result.appointment.id;
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function edit(receptionNote: string, actor: Actor = world.receptionist) {

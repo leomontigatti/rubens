@@ -14,6 +14,11 @@ a server.
   The first `reset()` boots the instance; each later one truncates every table
   in the `rubens` schema and discards session state, about 0.05 s. A file closes
   its instance after its last test. Booting per test cost half the suite's time.
+- Fixtures create accounts without a password (`createOrganization`,
+  `createMember`, `addStaff`): hashing one costs about 0.2 s and a booking world
+  has four. A test that signs in or changes a password uses
+  `createOrganizationWithPassword` and `createMemberWithPassword`, or the
+  services themselves.
 - Outside CI, two files run at a time (`maxWorkers` in `vite.config.ts`). Each
   worker holds its app modules and a PGlite instance, and agent threads on one
   machine share one memory limit: before the cap, Vitest's default gave the

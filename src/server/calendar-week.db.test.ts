@@ -1,12 +1,11 @@
-import type { PGlite } from "@electric-sql/pglite";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { appointment, medicalService, practitioner, timeOff } from "#/db/schema/index.ts";
 import type { Actor } from "#/lib/access.ts";
 import type { BookingInput, CalendarWeekQuery } from "#/lib/appointments.ts";
 
-import { asAppRole, createTestDatabase } from "../../tests/db/harness.ts";
+import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/server/appointment-statuses.ts";
@@ -20,7 +19,7 @@ import type { BookingWorld } from "#/test-support/scheduling.ts";
 // (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday. Juan and
 // `Lucía` both work Mondays 09:00 to 11:00 in "Consultorio doble", a room for two.
 
-let client: PGlite;
+const testDatabase = sharedTestDatabase();
 let db: TestDatabase;
 let world: BookingWorld;
 let shared: { id: string };
@@ -30,7 +29,7 @@ let luciaService: { id: string };
 let maria: { id: string };
 
 beforeEach(async () => {
-  ({ client, db } = await createTestDatabase());
+  db = await testDatabase.reset();
   world = await createBookingWorld(db);
   shared = await world.addRoom(world.office.id, "Consultorio doble", 2);
   await world.addSchedule({ practitionerId: world.juan.id, roomId: shared.id });
@@ -39,10 +38,6 @@ beforeEach(async () => {
   juanLongService = await world.addMedicalService(world.juan.id, 60);
   luciaService = await world.addMedicalService(world.lucia.id);
   maria = await world.addPatient("María", "0351 15 555-1234");
-});
-
-afterEach(async () => {
-  await client.close();
 });
 
 function at(time: string, date = "2099-01-05") {
