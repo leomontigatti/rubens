@@ -69,7 +69,7 @@ function changedSettings(form: FormData, saved: PractitionerSettings | null) {
   return sameSettings(settings, saved) ? undefined : settings;
 }
 
-/** Only what the form changed: a stale page must not restore what it left alone. */
+/** Only the parts the form changed: a stale page leaves the other part as it is. */
 function changesIn(form: FormData, member: StaffMember) {
   const roles = formRoles(form);
   return {
