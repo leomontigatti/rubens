@@ -1,9 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { BuildingIcon, CalendarXIcon, UserRoundIcon } from "lucide-react";
+import { BuildingIcon, CalendarXIcon, UserRoundIcon, UsersIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import { DataTable, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
@@ -68,6 +68,7 @@ function PatternTable() {
         label: "Buscar paciente",
         placeholder: "Buscar por nombre",
       }}
+      empty={<NoMatches icon={UsersIcon} />}
     />
   );
 }

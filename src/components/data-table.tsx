@@ -8,7 +8,7 @@ import {
 import type { ColumnDef, RowData, Table as TanStackTable } from "@tanstack/react-table";
 import { Link } from "@tanstack/react-router";
 import type { LinkProps } from "@tanstack/react-router";
-import { SearchIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -118,11 +118,15 @@ export function useServerDataTable<Row extends RowData>(options: DataTableOption
   });
 }
 
-/** The link to a row's record, in the column that names it: the whole row opens it. */
+/**
+ * The link to a row's record, in the column that names it: the whole row opens
+ * it. It does not preload: moving the pointer down a list would read each record.
+ */
 export function RowLink(props: LinkProps & { children: ReactNode }) {
   return (
     <Link
       {...props}
+      preload={false}
       className="font-medium underline-offset-4 after:absolute after:inset-0 hover:underline"
     />
   );
@@ -133,23 +137,24 @@ export function DataTable<Row extends RowData>(props: {
   search: Search;
   filters?: ComponentProps<typeof FilterBar>;
   pager?: Pager;
-  /** What shows with no rows; by default, that the search found nothing. */
-  empty?: ReactNode;
+  /** What shows with no rows: `NoMatches`, or the list's own `EmptyState`. */
+  empty: ReactNode;
 }) {
-  const { table, empty = <NoMatches /> } = props;
+  const { table } = props;
   return (
     <div className="flex flex-col gap-3">
       <Toolbar search={props.search} filters={props.filters} />
-      {table.getRowModel().rows.length === 0 ? empty : <Rows table={table} />}
+      {table.getRowModel().rows.length === 0 ? props.empty : <Rows table={table} />}
       <PageControls pager={props.pager} />
     </div>
   );
 }
 
-function NoMatches() {
+/** A search that found nothing, with the icon of the list's concept. */
+export function NoMatches(props: { icon: LucideIcon }) {
   return (
     <EmptyState
-      icon={SearchIcon}
+      icon={props.icon}
       title="Ningún resultado coincide con la búsqueda"
       description="Probá con otra búsqueda."
     />

@@ -1,12 +1,14 @@
+import { ClockIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DataTable, RowLink, useClientDataTable } from "#/components/data-table.tsx";
-import type { DataTableColumn } from "#/components/data-table.tsx";
 import { NoPractitioners } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { PractitionerTable, practitionerColumns } from "#/components/practitioner-table.tsx";
 import { getSchedulePractitioners } from "#/server/schedules.functions.ts";
 
 import { RefusalAlert } from "#/routes/_app/horarios/-shared.tsx";
+
+const columns = practitionerColumns("/horarios/$practitionerId");
 
 export const Route = createFileRoute("/_app/horarios/")({
   head: () => ({ meta: [{ title: "Horarios · Rubens" }] }),
@@ -27,46 +29,12 @@ function SchedulePractitioners() {
       {result.practitioners.length === 0 ? (
         <NoPractitioners />
       ) : (
-        <Practitioners practitioners={result.practitioners} />
+        <PractitionerTable
+          practitioners={result.practitioners}
+          columns={columns}
+          icon={ClockIcon}
+        />
       )}
     </div>
-  );
-}
-
-interface Practitioner {
-  id: string;
-  displayName: string;
-}
-
-const columns: DataTableColumn<Practitioner>[] = [
-  {
-    id: "name",
-    header: "Profesional",
-    cell: (practitioner) => (
-      <RowLink to="/horarios/$practitionerId" params={{ practitionerId: practitioner.id }}>
-        {practitioner.displayName}
-      </RowLink>
-    ),
-  },
-];
-
-function Practitioners(props: { practitioners: Practitioner[] }) {
-  const { table, pager, query, setQuery } = useClientDataTable({
-    rows: props.practitioners,
-    columns,
-    getRowId: (practitioner) => practitioner.id,
-    searchText: (practitioner) => practitioner.displayName,
-  });
-  return (
-    <DataTable
-      table={table}
-      pager={pager}
-      search={{
-        value: query,
-        onChange: setQuery,
-        label: "Buscar profesional",
-        placeholder: "Buscar por nombre",
-      }}
-    />
   );
 }

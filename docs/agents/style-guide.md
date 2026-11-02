@@ -22,7 +22,8 @@ What is settled already:
   its look: pick a `variant` or `size`, never restyle it from a screen. A case with no token
   gets a one-off class; a second case gets a variant or a component. A new token, variant or
   typeface is a product decision: ask before adding one.
-- **A state is a `Badge` beside the name**, never ` · Inactivo` in the text. It is neutral
+- **A state is a `Badge` beside the name**, or in the `Estado` column of a table, never
+  ` · Inactivo` in the text. It is neutral
   unless it changes what someone does next. On the calendar, colour says which practitioner, so
   a status there is an icon.
 

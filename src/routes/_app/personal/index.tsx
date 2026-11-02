@@ -1,8 +1,9 @@
+import { UserCogIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
-import { DataTable, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
@@ -87,6 +88,7 @@ function StaffTable(props: { staff: StaffMember[] }) {
         label: "Buscar persona",
         placeholder: "Buscar por nombre o correo",
       }}
+      empty={<NoMatches icon={UserCogIcon} />}
     />
   );
 }

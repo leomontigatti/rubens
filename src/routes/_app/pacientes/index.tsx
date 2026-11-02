@@ -1,5 +1,5 @@
 import { CircleDotIcon, UsersIcon } from "lucide-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
@@ -12,7 +12,7 @@ import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
-import { patientSearchKey } from "#/components/patient-search.ts";
+import { patientSearchKey, sharesPatientFilter } from "#/components/patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -44,40 +44,52 @@ function Patients() {
 
 const inactiveHint = (shown?: boolean) => (shown ? "" : ", o mirá los inactivos");
 
-type Found = Awaited<ReturnType<typeof findPatients>>;
+interface PatientSearch {
+  searching: boolean;
+  found?: Awaited<ReturnType<typeof findPatients>>;
+  failed: boolean;
+}
 
 /**
  * The patients matching what is typed. Each query is its own request; the
  * answer is the one for the current text, never a slower one to an earlier text.
  */
-function useFoundPatients(query: string, inactivos?: boolean): Found | undefined {
+function usePatientSearch(query: string, inactivos?: boolean): PatientSearch {
   const { viewer } = Route.useRouteContext();
   const searching = query.trim() !== "";
   const search = { query, includeInactive: inactivos ?? false };
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: patientSearchKey(viewer, search),
     queryFn: () => findPatients({ data: search }),
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, previousQuery) =>
+      sharesPatientFilter(previousQuery?.queryKey, search.includeInactive) ? previous : undefined,
     enabled: searching,
   });
-  return searching ? data : undefined;
+  return { searching, found: searching ? data : undefined, failed: searching && isError };
 }
 
-/** The registry's page, until a search has an answer to show instead. */
-function shownPatients(listed: PatientPage, found?: Found) {
-  if (!found) {
+/** The registry's page with no search; with one, only what it found. */
+function shownPatients(listed: PatientPage, { searching, found }: PatientSearch) {
+  if (!searching) {
     return listed.patients;
   }
-  return found.ok ? found.patients : [];
+  return found?.ok ? found.patients : [];
+}
+
+function searchProblem({ found, failed }: PatientSearch) {
+  if (found && !found.ok) {
+    return patientRefusalMessages[found.reason];
+  }
+  return failed ? "No pudimos buscar. Probá de nuevo." : null;
 }
 
 function Registry({ listed }: { listed: PatientPage }) {
   const { inactivos } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [query, setQuery] = useState("");
-  const found = useFoundPatients(query, inactivos);
+  const search = usePatientSearch(query, inactivos);
   const table = useServerDataTable({
-    rows: shownPatients(listed, found),
+    rows: shownPatients(listed, search),
     columns,
     getRowId: (patient) => patient.id,
   });
@@ -88,6 +100,8 @@ function Registry({ listed }: { listed: PatientPage }) {
     onPageChange: (pagina: number) =>
       void navigate({ search: (previous) => ({ ...previous, pagina }) }),
   };
+  const changeStatus = (value: string | null) =>
+    void navigate({ search: { inactivos: value === "todos" ? true : undefined } });
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,11 +117,11 @@ function Registry({ listed }: { listed: PatientPage }) {
         }}
         filters={{
           groups: [statusFilter(inactivos)],
-          onPick: (_id, value) =>
-            void navigate({ search: { inactivos: value === "todos" ? true : undefined } }),
+          onPick: (_id, value) => changeStatus(value),
+          onRemove: () => changeStatus(null),
         }}
-        pager={query.trim() ? undefined : pager}
-        empty={<NoPatients found={found} inactivos={inactivos} />}
+        pager={search.searching ? undefined : pager}
+        empty={<NoPatients search={search} inactivos={inactivos} />}
       />
     </div>
   );
@@ -127,26 +141,29 @@ function statusFilter(inactivos?: boolean): FilterGroup {
   };
 }
 
-function NoPatients(props: { found?: Found; inactivos?: boolean }) {
-  const { found, inactivos } = props;
-  if (found && !found.ok) {
-    return <ErrorAlert message={patientRefusalMessages[found.reason]} />;
+function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {
+  const { search, inactivos } = props;
+  const problem = searchProblem(search);
+  if (problem) {
+    return <ErrorAlert message={problem} />;
   }
-  if (found) {
+  if (!search.searching) {
     return (
+      <EmptyState
+        icon={UsersIcon}
+        title="No hay pacientes para mostrar"
+        description={`Agregá uno con Nuevo paciente${inactiveHint(inactivos)}.`}
+      />
+    );
+  }
+  return (
+    search.found && (
       <EmptyState
         icon={UsersIcon}
         title="Ningún paciente coincide con la búsqueda"
         description={`Probá con otro nombre, documento o teléfono${inactiveHint(inactivos)}.`}
       />
-    );
-  }
-  return (
-    <EmptyState
-      icon={UsersIcon}
-      title="No hay pacientes para mostrar"
-      description={`Agregá uno con Nuevo paciente${inactiveHint(inactivos)}.`}
-    />
+    )
   );
 }
 

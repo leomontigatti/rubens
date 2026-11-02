@@ -10,3 +10,11 @@ export function patientSearchKey(
 ) {
   return [...patientSearchQueries, viewer.organizationId, viewer.userId, search] as const;
 }
+
+/** Whether a previous search's results may stand in: not across the inactive filter. */
+export function sharesPatientFilter(
+  previousKey: ReturnType<typeof patientSearchKey> | undefined,
+  includeInactive: boolean,
+) {
+  return previousKey?.[4].includeInactive === includeInactive;
+}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { patientSearchKey, patientSearchQueries } from "#/components/patient-search.ts";
+import {
+  patientSearchKey,
+  patientSearchQueries,
+  sharesPatientFilter,
+} from "#/components/patient-search.ts";
 
 const search = { query: "juan", includeInactive: false };
 
@@ -19,5 +23,22 @@ describe("patientSearchKey", () => {
     const key = patientSearchKey({ organizationId: "org-1", userId: "user-1" }, search);
 
     expect(key.slice(0, patientSearchQueries.length)).toEqual(patientSearchQueries);
+  });
+});
+
+describe("sharesPatientFilter", () => {
+  const viewer = { organizationId: "org-1", userId: "user-1" };
+  const shown = patientSearchKey(viewer, { query: "juan", includeInactive: true });
+
+  it("keeps results while the inactive filter holds", () => {
+    expect(sharesPatientFilter(shown, true)).toBe(true);
+  });
+
+  it("drops results that may hold patients the filter now hides", () => {
+    expect(sharesPatientFilter(shown, false)).toBe(false);
+  });
+
+  it("has nothing to keep before the first search", () => {
+    expect(sharesPatientFilter(undefined, false)).toBe(false);
   });
 });
