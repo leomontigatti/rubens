@@ -10,6 +10,13 @@
 
 const storageKey = "rubens-session-changed";
 
+let changing = false;
+
+/** Whether this tab is leaving for a new session: nothing may hold it back. */
+export function isSessionChanging(): boolean {
+  return changing;
+}
+
 /** Whether a check of who is signed in found `userId`, the user a page was loaded for. */
 export function isSignedInAs(
   result: { ok: true; viewer: { userId: string } } | { ok: false },
@@ -27,6 +34,7 @@ export function startNewSession(path: string): void {
     // leaves the previous user's screen.
     console.warn("[session-change] could not tell other tabs", error);
   }
+  changing = true;
   window.location.assign(path);
 }
 
@@ -37,6 +45,7 @@ export function startNewSession(path: string): void {
 export function reloadOnSessionChange(): () => void {
   const onStorage = (event: StorageEvent) => {
     if (event.key === storageKey) {
+      changing = true;
       window.location.reload();
     }
   };

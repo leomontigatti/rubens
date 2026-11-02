@@ -13,6 +13,8 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    // Back from a save waits for the fresh data: a saved form never shows the old row.
+    defaultStaleReloadMode: "blocking",
   });
 
   setupRouterSsrQueryIntegration({ router, queryClient });

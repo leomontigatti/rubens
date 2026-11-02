@@ -45,6 +45,12 @@ export function usePatientSave<I extends object>(
     let result: SaveResult;
     try {
       result = await send({ ...next, confirmDuplicates });
+      if (result.ok) {
+        await Promise.all([
+          router.invalidate(),
+          queryClient.invalidateQueries({ queryKey: patientSearchQueries }),
+        ]);
+      }
     } finally {
       dispatch({ type: "settled" });
     }
@@ -52,10 +58,6 @@ export function usePatientSave<I extends object>(
       dispatch({ type: "refused", result });
       return;
     }
-    await Promise.all([
-      router.invalidate(),
-      queryClient.invalidateQueries({ queryKey: patientSearchQueries }),
-    ]);
     onSaved(result.patient);
   }
 

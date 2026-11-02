@@ -24,8 +24,8 @@ export function fieldMessage<T extends string>(
 
 /**
  * Runs a server function, shows its refusal as the copy `messages` gives it,
- * and reloads the route's data when it succeeds. `run` resolves to whether it
- * succeeded.
+ * and reloads the route's data when it succeeds, pending until that is done.
+ * `run` resolves to whether it succeeded.
  */
 export function useFormAction<R extends string>(messages: Record<R, string>) {
   const router = useRouter();
@@ -37,18 +37,17 @@ export function useFormAction<R extends string>(messages: Record<R, string>) {
   ): Promise<boolean> {
     setPending(true);
     setError(null);
-    let result: Awaited<ReturnType<typeof action>>;
     try {
-      result = await action();
+      const result = await action();
+      if (!result.ok) {
+        setError(messages[result.reason]);
+        return false;
+      }
+      await router.invalidate();
+      return true;
     } finally {
       setPending(false);
     }
-    if (!result.ok) {
-      setError(messages[result.reason]);
-      return false;
-    }
-    await router.invalidate();
-    return true;
   }
 
   return { error, setError, pending, run };

@@ -8,7 +8,9 @@ import { ErrorAlert } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import { FieldSet } from "#/components/ui/field.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
+import { isSessionChanging } from "#/lib/session-change.ts";
 
 /**
  * A form page's way out: `Volver` goes where the browser's back goes, so a list
@@ -23,11 +25,19 @@ export function useFormPage(back: NavigateOptions) {
   const [version, setVersion] = useState(0);
   const [discarding, setDiscarding] = useState(false);
   const released = useRef(false);
+  const mounted = useRef(false);
   const blocker = useBlocker({
     shouldBlockFn: () => dirty && !released.current,
-    enableBeforeUnload: dirty,
+    enableBeforeUnload: () => dirty && !isSessionChanging(),
     withResolver: true,
   });
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   function goBack() {
     if (canGoBack) {
@@ -37,11 +47,17 @@ export function useFormPage(back: NavigateOptions) {
     }
   }
 
-  /** Leaves without asking: what is saved, or a way out the form itself offers. */
+  /**
+   * Leaves without asking: what is saved, or a way out the form itself offers.
+   * A save that ends after the user left moves nobody.
+   */
   function leave(to?: NavigateOptions) {
+    if (!mounted.current) {
+      return;
+    }
     released.current = true;
     if (to) {
-      void navigate(to);
+      void navigate({ ...to, replace: true });
     } else {
       goBack();
     }
@@ -98,7 +114,8 @@ function snapshot(form: HTMLFormElement): string {
  * A create or an edit on a page of its own: the fields take the page's width,
  * and the actions stay at the bottom of the window. `Descartar cambios` shows
  * once something differs from what the form opened with. While `pending`, the
- * spinner is on the submit button and the other buttons wait.
+ * spinner is on the submit button, and the fields and other buttons wait: what
+ * is typed then would be lost when the save goes back.
  */
 export function FormPage(props: {
   page: FormPageControl;
@@ -138,7 +155,7 @@ export function FormPage(props: {
         onChange={(event) => page.setDirty(snapshot(event.currentTarget) !== opened.current)}
         onSubmit={props.onSubmit}
       >
-        {props.children}
+        <FieldSet disabled={pending}>{props.children}</FieldSet>
         <div className="bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4">
           <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
             <ChevronLeftIcon data-icon="inline-start" aria-hidden />

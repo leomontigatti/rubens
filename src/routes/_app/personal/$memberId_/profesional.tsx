@@ -38,7 +38,7 @@ function EditPractitioner() {
     return <RefusalAlert reason={result.reason} />;
   }
   const { member } = result;
-  if (!member.practitioner) {
+  if (!member.practitioner || !member.roles.includes("practitioner")) {
     return <RefusalAlert reason="notFound" />;
   }
   return <PractitionerForm member={member} settings={member.practitioner} />;
