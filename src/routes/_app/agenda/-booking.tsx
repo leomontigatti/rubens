@@ -34,7 +34,7 @@ import type {
 } from "#/lib/booking-draft.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
-import type { RoomOccupant } from "#/server/appointment-rooms.ts";
+import type { RoomOccupant } from "#/server/appointment-placement.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
 import type { AvailableStart } from "#/server/availability.ts";
 import { ReceptionNoteField } from "#/routes/_app/agenda/-appointment-note.tsx";

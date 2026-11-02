@@ -1,28 +1,18 @@
-import { eq } from "drizzle-orm";
-
-import { appointment, office, room } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import { decideStatusChange, decideUndo } from "#/lib/appointment-statuses.ts";
 import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
-import {
-  activeAppointmentStatuses,
-  appointmentIdSchema,
-  cancellationSchema,
-  statusChangeSchema,
-} from "#/lib/appointments.ts";
+import { appointmentIdSchema, cancellationSchema, statusChangeSchema } from "#/lib/appointments.ts";
 import type {
   AppointmentIdInput,
-  AppointmentStatus,
   CancellationInput,
   StatusChangeInput,
 } from "#/lib/appointments.ts";
 
-import { checkRoomSpace } from "#/server/appointment-rooms.ts";
-import type { RoomRefusal } from "#/server/appointment-rooms.ts";
-import { booksForSome, lockAppointment, updateAppointment } from "#/server/appointments.ts";
-import { changedFields, recordAudit } from "#/server/audit.ts";
+import { lockPlaced, setPlacedStatus } from "#/server/appointment-placement.ts";
+import type { PlacementRefusal } from "#/server/appointment-placement.ts";
+import { booksForSome } from "#/server/appointments.ts";
 import { findPractitioner } from "#/server/schedules.ts";
 
 // Status changes (docs/domain/appointments.md § Statuses): confirming,
@@ -30,14 +20,14 @@ import { findPractitioner } from "#/server/schedules.ts";
 // module `#/lib/appointment-statuses.ts`, and the same-day undo of the last
 // one. Cancelled and no-show appointments stop holding the practitioner's
 // time; an undo that brings one back to a time taken since is "timeTaken", and
-// to a room filled since is "roomFull". The appointment row is locked as it is
-// read, so concurrent changes of one appointment run one after the other.
-// Every change and undo is audited, about the appointment's patient.
+// to a room filled since is "roomFull". The placement module
+// (`appointment-placement.ts`) does the lock, the write, those refusals and the
+// audit entry, about the appointment's patient; the rules are decided here.
 // `database` is for tests, which pass a transaction running as the app role.
 
 export type StatusChangeResult =
   | { ok: true }
-  | RoomRefusal
+  | PlacementRefusal<"status">
   | {
       ok: false;
       reason:
@@ -47,8 +37,7 @@ export type StatusChangeResult =
         | "notAllowed"
         | "beforeStart"
         | "nothingToUndo"
-        | "tooLate"
-        | "timeTaken";
+        | "tooLate";
     };
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
@@ -57,77 +46,16 @@ const notFound = { ok: false, reason: "notFound" } as const;
 
 /** The appointment as a status change reads it, and the actor as the rules see them. */
 async function findForChange(tx: Transaction, actor: Actor, appointmentId: string) {
-  await lockAppointment(tx, appointmentId);
-  const [row] = await tx
-    .select({
-      practitionerId: appointment.practitionerId,
-      patientId: appointment.patientId,
-      roomId: appointment.roomId,
-      during: appointment.during,
-      status: appointment.status,
-      previousStatus: appointment.previousStatus,
-      statusChangedAt: appointment.statusChangedAt,
-      cancelledBy: appointment.cancelledBy,
-      cancellationReason: appointment.cancellationReason,
-      timeZone: office.timeZone,
-    })
-    .from(appointment)
-    .innerJoin(room, eq(room.id, appointment.roomId))
-    .innerJoin(office, eq(office.id, room.officeId))
-    .where(eq(appointment.id, appointmentId));
-  if (!row) {
+  const placed = await lockPlaced(tx, appointmentId);
+  if (!placed) {
     return undefined;
   }
-  const found = await findPractitioner(tx, actor, row.practitionerId, false);
+  const found = await findPractitioner(tx, actor, placed.practitionerId, false);
   const statusActor: StatusActor = { roles: actor.roles, own: found?.canEdit === true };
-  return { ...row, start: row.during.start, actor: statusActor };
-}
-
-function isActive(status: AppointmentStatus): boolean {
-  return (activeAppointmentStatuses as readonly AppointmentStatus[]).includes(status);
+  return { ...placed, start: placed.during.start, actor: statusActor };
 }
 
 type Current = NonNullable<Awaited<ReturnType<typeof findForChange>>>;
-
-/** Writes the new status, keeping the one it replaces for the undo, and audits it. */
-async function writeStatus(
-  tx: Transaction,
-  actor: Actor,
-  appointmentId: string,
-  current: Current,
-  next: {
-    status: AppointmentStatus;
-    previousStatus: AppointmentStatus | null;
-    cancelledBy: Current["cancelledBy"];
-    cancellationReason: string | null;
-  },
-): Promise<StatusChangeResult> {
-  const updated = await updateAppointment(tx, appointmentId, {
-    ...next,
-    statusChangedAt: new Date(),
-  });
-  if (!updated.ok) {
-    return updated;
-  }
-  const { status, cancelledBy, cancellationReason } = current;
-  const changed = changedFields(
-    { status, cancelledBy, cancellationReason },
-    {
-      status: next.status,
-      cancelledBy: next.cancelledBy,
-      cancellationReason: next.cancellationReason,
-    },
-  );
-  await recordAudit(tx, actor, {
-    action: "update",
-    entityType: "appointment",
-    entityId: appointmentId,
-    patientId: current.patientId,
-    before: changed!.before,
-    after: changed!.after,
-  });
-  return { ok: true };
-}
 
 /** Moves the appointment to `status`, as the status rules allow at `now`. */
 async function moveTo(
@@ -148,7 +76,7 @@ async function moveTo(
       if (!decided.ok) {
         return decided;
       }
-      return writeStatus(tx, actor, appointmentId, current, {
+      return setPlacedStatus(tx, actor, current, {
         status: decided.status,
         previousStatus: current.status,
         ...cancellation,
@@ -224,19 +152,7 @@ export async function undoAppointmentStatus(
       if (!decided.ok) {
         return decided;
       }
-      // Undone, a cancellation or a no-show holds the room again.
-      if (!isActive(current.status)) {
-        const space = await checkRoomSpace(
-          tx,
-          current.roomId,
-          current.practitionerId,
-          current.during,
-        );
-        if (!space.ok) {
-          return space;
-        }
-      }
-      return writeStatus(tx, actor, appointmentId, current, {
+      return setPlacedStatus(tx, actor, current, {
         status: decided.status,
         previousStatus: null,
         cancelledBy: null,
