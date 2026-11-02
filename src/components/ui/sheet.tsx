@@ -1,5 +1,6 @@
 // Local edits: the close button's label is in Spanish ("Cerrar"), the UI's language,
-// and the right side is as wide as a form needs, the whole screen on a phone.
+// the right side is as wide as a form needs, the whole screen on a phone, and the
+// overlay has no blur, so what a form changes stays readable behind it.
 // Keep them on a shadcn sync.
 import * as React from "react";
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
@@ -29,7 +30,7 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
     <SheetPrimitive.Backdrop
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/10 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 z-50 bg-black/10 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
         className,
       )}
       {...props}
