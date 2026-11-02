@@ -116,7 +116,7 @@ export function DayColumn(props: {
             key={top}
             className={cn(
               "absolute inset-x-0 top-(--top) h-(--height) border-t",
-              free.length > 0 ? "bg-background" : "bg-muted",
+              free.length > 0 ? "bg-background" : "bg-sidebar",
             )}
             style={{ "--top": px(top), "--height": px(height) } as CSSProperties}
           >
