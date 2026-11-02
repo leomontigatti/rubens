@@ -11,10 +11,17 @@ export function patientSearchKey(
   return [...patientSearchQueries, viewer.organizationId, viewer.userId, search] as const;
 }
 
-/** Whether a previous search's results may stand in: not across the inactive filter. */
-export function sharesPatientFilter(
+/**
+ * Whether a previous search's results may stand in while this one is asked:
+ * only as the same text being typed on, and never across the inactive filter.
+ */
+export function continuesPatientSearch(
   previousKey: ReturnType<typeof patientSearchKey> | undefined,
-  includeInactive: boolean,
+  search: { query: string; includeInactive: boolean },
 ) {
-  return previousKey?.[4].includeInactive === includeInactive;
+  const previous = previousKey?.[4];
+  if (previous?.includeInactive !== search.includeInactive) {
+    return false;
+  }
+  return previous.query.startsWith(search.query) || search.query.startsWith(previous.query);
 }

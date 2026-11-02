@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   patientSearchKey,
   patientSearchQueries,
-  sharesPatientFilter,
+  continuesPatientSearch,
 } from "#/components/patient-search.ts";
 
 const search = { query: "juan", includeInactive: false };
@@ -26,19 +26,25 @@ describe("patientSearchKey", () => {
   });
 });
 
-describe("sharesPatientFilter", () => {
+describe("continuesPatientSearch", () => {
   const viewer = { organizationId: "org-1", userId: "user-1" };
-  const shown = patientSearchKey(viewer, { query: "juan", includeInactive: true });
+  const shown = patientSearchKey(viewer, { query: "mar", includeInactive: true });
+  const next = (query: string, includeInactive = true) => ({ query, includeInactive });
 
-  it("keeps results while the inactive filter holds", () => {
-    expect(sharesPatientFilter(shown, true)).toBe(true);
+  it("keeps results while the same text is typed on or deleted back", () => {
+    expect(continuesPatientSearch(shown, next("mari"))).toBe(true);
+    expect(continuesPatientSearch(shown, next("ma"))).toBe(true);
+  });
+
+  it("drops results for a different text", () => {
+    expect(continuesPatientSearch(shown, next("juan"))).toBe(false);
   });
 
   it("drops results that may hold patients the filter now hides", () => {
-    expect(sharesPatientFilter(shown, false)).toBe(false);
+    expect(continuesPatientSearch(shown, next("mari", false))).toBe(false);
   });
 
   it("has nothing to keep before the first search", () => {
-    expect(sharesPatientFilter(undefined, false)).toBe(false);
+    expect(continuesPatientSearch(undefined, next("mar"))).toBe(false);
   });
 });

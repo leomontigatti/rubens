@@ -12,7 +12,7 @@ import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
-import { patientSearchKey, sharesPatientFilter } from "#/components/patient-search.ts";
+import { patientSearchKey, continuesPatientSearch } from "#/components/patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -56,16 +56,22 @@ interface PatientSearch {
  */
 function usePatientSearch(query: string, inactivos?: boolean): PatientSearch {
   const { viewer } = Route.useRouteContext();
-  const searching = query.trim() !== "";
-  const search = { query, includeInactive: inactivos ?? false };
+  const search = { query, includeInactive: inactivos === true };
   const { data, isError } = useQuery({
     queryKey: patientSearchKey(viewer, search),
     queryFn: () => findPatients({ data: search }),
     placeholderData: (previous, previousQuery) =>
-      sharesPatientFilter(previousQuery?.queryKey, search.includeInactive) ? previous : undefined,
-    enabled: searching,
+      continuesPatientSearch(previousQuery?.queryKey, search) ? previous : undefined,
+    enabled: query.trim() !== "",
   });
-  return { searching, found: searching ? data : undefined, failed: searching && isError };
+  return searchState(query, data, isError);
+}
+
+function searchState(query: string, found: PatientSearch["found"], failed: boolean): PatientSearch {
+  if (query.trim() === "") {
+    return { searching: false, failed: false };
+  }
+  return failed ? { searching: true, failed } : { searching: true, found, failed };
 }
 
 /** The registry's page with no search; with one, only what it found. */
@@ -156,14 +162,15 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {
       />
     );
   }
+  if (!search.found) {
+    return <p className="text-muted-foreground text-sm">Buscando…</p>;
+  }
   return (
-    search.found && (
-      <EmptyState
-        icon={UsersIcon}
-        title="Ningún paciente coincide con la búsqueda"
-        description={`Probá con otro nombre, documento o teléfono${inactiveHint(inactivos)}.`}
-      />
-    )
+    <EmptyState
+      icon={UsersIcon}
+      title="Ningún paciente coincide con la búsqueda"
+      description={`Probá con otro nombre, documento o teléfono${inactiveHint(inactivos)}.`}
+    />
   );
 }
 
