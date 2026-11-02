@@ -71,6 +71,15 @@ beside it.
 - **A filter's icon is the one the sidebar gives its concept.** A value's menu has no search; the
   picker gets one past seven values.
 
+## Empty states
+
+- **A page or a list with nothing to show is `EmptyState`** (`src/components/empty-state.tsx`),
+  with the icon the sidebar gives its concept. A list that can hide inactive records never says none
+  exist: it points at them while they are hidden.
+  Inside a form, a dialog, a menu or a section of a page, a sentence is enough.
+- **It says why and what to do next**, naming the button that does it. `canAct` hides it from
+  someone who cannot do it: without the permission, the title stands alone.
+
 ## Forms
 
 What a form checks and when, after GOV.UK's

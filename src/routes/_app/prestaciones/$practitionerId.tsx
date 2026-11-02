@@ -1,3 +1,4 @@
+import { StethoscopeIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -12,6 +13,7 @@ import {
   useFormAction,
   NameField,
 } from "#/components/admin-form.tsx";
+import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
@@ -93,7 +95,12 @@ function PractitionerMedicalServices() {
         )}
       </CreatePanel>
       {medicalServices.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no tiene prestaciones.</p>
+        <EmptyState
+          icon={StethoscopeIcon}
+          title="Todavía no tiene prestaciones"
+          description="Agregá la primera con Nueva prestación."
+          canAct={canEdit}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {medicalServices.map((medicalService) => (

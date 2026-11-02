@@ -1,9 +1,11 @@
+import { CalendarSyncIcon } from "lucide-react";
 import { tz } from "@date-fns/tz";
 import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "cn";
 import { format } from "date-fns";
 import { useState } from "react";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
@@ -84,7 +86,11 @@ function ToRescheduleList() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Turnos a reprogramar" />
       {result.appointments.length === 0 ? (
-        <p className="text-muted-foreground">No hay turnos para reprogramar.</p>
+        <EmptyState
+          icon={CalendarSyncIcon}
+          title="No hay turnos para reprogramar"
+          description="No hace falta hacer nada. Acá aparecen los turnos que hay que mover o cancelar."
+        />
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border">
           {result.appointments.map((entry) => (

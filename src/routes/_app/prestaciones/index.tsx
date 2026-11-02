@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import { NoPractitioners } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
@@ -24,7 +25,7 @@ function MedicalServicePractitioners() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Prestaciones" />
       {result.practitioners.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no hay profesionales.</p>
+        <NoPractitioners />
       ) : (
         <ul className="flex flex-col gap-3">
           {result.practitioners.map((practitioner) => (

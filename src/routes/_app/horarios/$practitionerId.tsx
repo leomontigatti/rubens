@@ -1,8 +1,10 @@
+import { ClockIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -108,7 +110,7 @@ function PractitionerSchedules() {
         )}
       </CreatePanel>
       {schedules.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no tiene horarios.</p>
+        <NoSchedules canEdit={canEdit} rooms={rooms} />
       ) : (
         <ul className="flex flex-col gap-3">
           {schedules.map((schedule) => (
@@ -117,6 +119,22 @@ function PractitionerSchedules() {
         </ul>
       )}
     </div>
+  );
+}
+
+/** A schedule needs an active room, so with none that comes first. */
+function NoSchedules(props: { canEdit: boolean; rooms: RoomOption[] }) {
+  return (
+    <EmptyState
+      icon={ClockIcon}
+      title="Todavía no tiene horarios"
+      description={
+        props.rooms.length > 0
+          ? "Agregá el primero con Nuevo horario."
+          : "Primero hace falta un consultorio activo en Sedes."
+      }
+      canAct={props.canEdit}
+    />
   );
 }
 

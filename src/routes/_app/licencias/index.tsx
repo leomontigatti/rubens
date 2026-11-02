@@ -1,5 +1,7 @@
+import { TreePalmIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
@@ -55,7 +57,12 @@ function TimeOffList() {
         )}
       </CreatePanel>
       {result.timeOff.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no hay licencias.</p>
+        <EmptyState
+          icon={TreePalmIcon}
+          title="Todavía no hay licencias"
+          description="Agregá la primera con Nueva licencia."
+          canAct={result.practitioners.length > 0}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {result.timeOff.map((item) => (

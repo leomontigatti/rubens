@@ -1,8 +1,10 @@
+import { CalendarSearchIcon } from "lucide-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { EmptyState, NoPractitioners } from "#/components/empty-state.tsx";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -74,7 +76,7 @@ function Availability() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Disponibilidad" />
       {result.practitioners.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no hay profesionales.</p>
+        <NoPractitioners />
       ) : (
         <QueryForm
           // Remounting on a new query resets the fields and any error to what is being viewed.
@@ -191,7 +193,13 @@ function QueryForm(props: {
 
 function FreeTimes({ starts }: { starts: AvailableStart[] }) {
   if (starts.length === 0) {
-    return <p className="text-muted-foreground">No hay horarios libres en esas fechas.</p>;
+    return (
+      <EmptyState
+        icon={CalendarSearchIcon}
+        title="No hay horarios libres en esas fechas"
+        description="Probá con otra búsqueda."
+      />
+    );
   }
   return (
     <div className="flex flex-col gap-4">

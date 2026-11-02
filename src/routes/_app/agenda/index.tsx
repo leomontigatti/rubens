@@ -1,7 +1,9 @@
+import { CalendarDaysIcon } from "lucide-react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -100,6 +102,7 @@ interface BookingStart {
 
 function Agenda() {
   const result = Route.useLoaderData();
+  const { viewer } = Route.useRouteContext();
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
@@ -107,7 +110,12 @@ function Agenda() {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title="Agenda" />
-        <p className="text-muted-foreground">Todavía no hay consultorios.</p>
+        <EmptyState
+          icon={CalendarDaysIcon}
+          title="No hay consultorios activos"
+          description="Agregalos en Sedes."
+          canAct={viewer.roles.includes("admin")}
+        />
       </div>
     );
   }
