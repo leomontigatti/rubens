@@ -30,8 +30,9 @@ export const Route = createFileRoute("/_app")({
     return { viewer: result.viewer };
   },
   // Reloaded on every navigation and after every change a screen makes, so
-  // the menu's count of appointments to reschedule stays current.
-  shouldReload: true,
+  // the menu's count of appointments to reschedule stays current. A preload
+  // is not a navigation: hovering a link queries nothing here.
+  shouldReload: ({ preload }) => !preload,
   loader: async () => {
     const counted = await getToRescheduleCount();
     return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };
