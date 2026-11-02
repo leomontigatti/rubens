@@ -121,7 +121,7 @@ practitioner, and no day or month view.
 Reception and admins open on the first room, unfiltered. A practitioner who is
 neither opens filtered to themselves, in the room with most of their active
 appointments that week, else a room they are scheduled in that week, else the first
-room; `Todos` then shows everyone in that room.
+room; removing the `Profesional` filter then shows everyone in that room.
 
 Each day is a stack of 30-minute cells, with the times on the left. A cell is
 white when at least one practitioner who matches the filters and has a schedule

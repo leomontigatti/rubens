@@ -1,28 +1,43 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { BuildingIcon, StethoscopeIcon, UserRoundIcon } from "lucide-react";
 
+import { FilterBar } from "#/components/filter-bar.tsx";
+import type { FilterGroup } from "#/components/filter-groups.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import {
-  NativeSelect,
-  NativeSelectOptGroup,
-  NativeSelectOption,
-} from "#/components/ui/native-select.tsx";
 import type { CalendarWeek, RoomChoice } from "#/server/calendar-week.ts";
 
+import { filterChange, roomOptions, serviceOptions } from "#/routes/_app/agenda/-filter-changes.ts";
+import type { CalendarFilterId, CalendarSearch } from "#/routes/_app/agenda/-filter-changes.ts";
+
 // The calendar's filters, in their order: the room, required; then the
-// practitioner and the medical service, each optional. A medical service
-// implies its practitioner. Each change navigates.
+// practitioner and the medical service, each optional. Each change navigates.
 
-/** What the calendar's URL asks for, each value already parsed. */
-export interface CalendarSearch {
-  consultorio?: string;
-  profesional?: string;
-  prestacion?: string;
-  fecha?: string;
-  cancelados?: boolean;
+function filterGroups(week: CalendarWeek, roomChoices: RoomChoice[]): FilterGroup[] {
+  return [
+    {
+      id: "consultorio",
+      label: "Consultorio",
+      icon: BuildingIcon,
+      required: true,
+      value: week.room.id,
+      options: roomOptions(week.room, week.office.name, roomChoices),
+    },
+    {
+      id: "profesional",
+      label: "Profesional",
+      icon: UserRoundIcon,
+      value: week.filter.practitionerId,
+      options: week.practitioners.map((one) => ({ value: one.id, label: one.displayName })),
+    },
+    {
+      id: "prestacion",
+      label: "Prestación",
+      icon: StethoscopeIcon,
+      value: week.filter.medicalServiceId,
+      options: serviceOptions(week),
+    },
+  ];
 }
-
-type Go = (changed: CalendarSearch) => void;
 
 export function CalendarFilters(props: {
   week: CalendarWeek;
@@ -31,108 +46,20 @@ export function CalendarFilters(props: {
 }) {
   const navigate = useNavigate();
   const { week, search } = props;
-  const go: Go = (changed) => void navigate({ to: "/agenda", search: { ...search, ...changed } });
+  const change = (id: string, value: string | null) =>
+    void navigate({
+      to: "/agenda",
+      search: { ...search, ...filterChange(id as CalendarFilterId, value, week) },
+    });
   return (
-    <div className="flex flex-wrap items-end gap-4">
-      <RoomFilter roomId={week.room.id} roomChoices={props.roomChoices} go={go} />
-      <PractitionerFilter week={week} go={go} />
-      <MedicalServiceFilter week={week} go={go} />
+    <div className="flex flex-wrap items-center gap-2">
+      <FilterBar
+        groups={filterGroups(week, props.roomChoices)}
+        onPick={change}
+        onRemove={(id) => change(id, null)}
+      />
       <CancelledToggle search={search} />
     </div>
-  );
-}
-
-/** A new room drops the other filters: its practitioners are others. */
-function RoomFilter(props: { roomId: string; roomChoices: RoomChoice[]; go: Go }) {
-  return (
-    <Field className="w-auto">
-      <FieldLabel htmlFor="calendar-room">Consultorio</FieldLabel>
-      <NativeSelect
-        id="calendar-room"
-        value={props.roomId}
-        onChange={(event) =>
-          props.go({
-            consultorio: event.target.value,
-            profesional: undefined,
-            prestacion: undefined,
-          })
-        }
-      >
-        {props.roomChoices.map((choice) => (
-          <NativeSelectOptGroup key={choice.officeId} label={choice.officeName}>
-            {choice.rooms.map((room) => (
-              <NativeSelectOption key={room.id} value={room.id}>
-                {room.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelectOptGroup>
-        ))}
-      </NativeSelect>
-    </Field>
-  );
-}
-
-function PractitionerFilter(props: { week: CalendarWeek; go: Go }) {
-  return (
-    <Field className="w-auto">
-      <FieldLabel htmlFor="calendar-practitioner">Profesional</FieldLabel>
-      <NativeSelect
-        id="calendar-practitioner"
-        value={props.week.filter.practitionerId ?? ""}
-        onChange={(event) =>
-          props.go({ profesional: event.target.value || undefined, prestacion: undefined })
-        }
-      >
-        <NativeSelectOption value="">Todos</NativeSelectOption>
-        {props.week.practitioners.map((one) => (
-          <NativeSelectOption key={one.id} value={one.id}>
-            {one.displayName}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </Field>
-  );
-}
-
-/** The chosen practitioner's medical services, or everyone's named with their practitioner. */
-function serviceOptions(week: CalendarWeek) {
-  const { practitionerId } = week.filter;
-  const names = new Map(week.practitioners.map((one) => [one.id, one.displayName]));
-  return week.medicalServices
-    .filter((one) => practitionerId === null || one.practitionerId === practitionerId)
-    .map((one) => ({
-      ...one,
-      label: `${one.name} (${one.durationMinutes} min)${practitionerId === null ? ` · ${names.get(one.practitionerId)}` : ""}`,
-    }));
-}
-
-/** Choosing a medical service sets its practitioner; clearing it keeps the practitioner. */
-function MedicalServiceFilter(props: { week: CalendarWeek; go: Go }) {
-  const options = serviceOptions(props.week);
-  function choose(id: string) {
-    const service = options.find((one) => one.id === id);
-    props.go(
-      service
-        ? { prestacion: service.id, profesional: service.practitionerId }
-        : { prestacion: undefined },
-    );
-  }
-  return (
-    <Field className="w-auto">
-      <FieldLabel htmlFor="calendar-medical-service">Prestación</FieldLabel>
-      <NativeSelect
-        id="calendar-medical-service"
-        value={props.week.filter.medicalServiceId ?? ""}
-        onChange={(event) => choose(event.target.value)}
-      >
-        <NativeSelectOption value="">Todas</NativeSelectOption>
-        {options.map((one) => (
-          <NativeSelectOption key={one.id} value={one.id}>
-            {one.label}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </Field>
   );
 }
 
