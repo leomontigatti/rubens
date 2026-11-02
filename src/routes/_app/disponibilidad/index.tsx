@@ -197,7 +197,7 @@ function FreeTimes({ starts }: { starts: AvailableStart[] }) {
       <EmptyState
         icon={CalendarSearchIcon}
         title="No hay horarios libres en esas fechas"
-        description="Probá con otras fechas."
+        description="Probá con otra búsqueda."
       />
     );
   }

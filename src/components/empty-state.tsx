@@ -41,8 +41,8 @@ export function NoPractitioners() {
   return (
     <EmptyState
       icon={UserCogIcon}
-      title="Todavía no hay profesionales"
-      description="Agregalos en Personal."
+      title="No hay profesionales activos"
+      description="Agregalos o reactivalos en Personal."
       canAct={viewer.roles.includes("admin")}
     />
   );

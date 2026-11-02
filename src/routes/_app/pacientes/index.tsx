@@ -31,6 +31,7 @@ export const Route = createFileRoute("/_app/pacientes/")({
 
 function Patients() {
   const result = Route.useLoaderData();
+  const { inactivos } = Route.useSearch();
   const [query, setQuery] = useState("");
 
   if (!result.ok) {
@@ -53,13 +54,15 @@ function Patients() {
       ) : (
         <PatientList
           patients={result.patients}
-          emptyTitle="No hay pacientes activos"
-          emptyDescription="Agregá uno con Nuevo paciente, o mirá los inactivos."
+          emptyTitle="No hay pacientes para mostrar"
+          emptyDescription={`Agregá uno con Nuevo paciente${inactiveHint(inactivos)}.`}
         />
       )}
     </div>
   );
 }
+
+const inactiveHint = (shown?: boolean) => (shown ? "" : ", o mirá los inactivos");
 
 function ShowInactivePatients() {
   const { inactivos } = Route.useSearch();
@@ -133,7 +136,7 @@ function SearchResults({ query }: { query: string }) {
     <PatientList
       patients={data.patients}
       emptyTitle="Ningún paciente coincide con la búsqueda"
-      emptyDescription="Probá con otro nombre, documento o teléfono, o mirá los inactivos."
+      emptyDescription={`Probá con otro nombre, documento o teléfono${inactiveHint(inactivos)}.`}
     />
   );
 }

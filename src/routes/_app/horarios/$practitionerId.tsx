@@ -122,14 +122,18 @@ function PractitionerSchedules() {
   );
 }
 
-/** A schedule needs an active room, so with none there is no next step to offer. */
+/** A schedule needs an active room, so with none that comes first. */
 function NoSchedules(props: { canEdit: boolean; rooms: RoomOption[] }) {
   return (
     <EmptyState
       icon={ClockIcon}
       title="Todavía no tiene horarios"
-      description="Agregá el primero con Nuevo horario."
-      canAct={props.canEdit && props.rooms.length > 0}
+      description={
+        props.rooms.length > 0
+          ? "Agregá el primero con Nuevo horario."
+          : "Primero hace falta un consultorio activo en Sedes."
+      }
+      canAct={props.canEdit}
     />
   );
 }

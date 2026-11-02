@@ -74,8 +74,8 @@ beside it.
 ## Empty states
 
 - **A page or a list with nothing to show is `EmptyState`** (`src/components/empty-state.tsx`),
-  with the icon the sidebar gives its concept. A list that hides inactive records says "activos",
-  since inactive ones may exist.
+  with the icon the sidebar gives its concept. A list that can hide inactive records never says none
+  exist: it points at them while they are hidden.
   Inside a form, a dialog, a menu or a section of a page, a sentence is enough.
 - **It says why and what to do next**, naming the button that does it. `canAct` hides it from
   someone who cannot do it: without the permission, the title stands alone.

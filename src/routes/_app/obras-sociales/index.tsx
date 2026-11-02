@@ -104,12 +104,13 @@ function ShowInactiveInsurers() {
 }
 
 function InsurerList({ insurers, isAdmin }: { insurers: Insurer[]; isAdmin: boolean }) {
+  const { inactivas } = Route.useSearch();
   if (insurers.length === 0) {
     return (
       <EmptyState
         icon={ShieldIcon}
-        title="No hay obras sociales ni prepagas activas"
-        description="Agregá una con Nueva obra social o prepaga, o mirá las inactivas."
+        title="No hay obras sociales ni prepagas para mostrar"
+        description={`Agregá una con Nueva obra social o prepaga${inactivas ? "" : ", o mirá las inactivas"}.`}
         canAct={isAdmin}
       />
     );

@@ -92,12 +92,13 @@ function ShowInactiveOffices() {
 }
 
 function OfficeList({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean }) {
+  const { inactivas } = Route.useSearch();
   if (offices.length === 0) {
     return (
       <EmptyState
         icon={BuildingIcon}
-        title="No hay sedes activas"
-        description="Agregá una con Nueva sede, o mirá las inactivas."
+        title="No hay sedes para mostrar"
+        description={`Agregá una con Nueva sede${inactivas ? "" : ", o mirá las inactivas"}.`}
         canAct={isAdmin}
       />
     );
