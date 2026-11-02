@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, auditLog } from "#/db/schema/index.ts";
+import { appointment, auditLog, room } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Transaction } from "#/db/tenant.ts";
 
@@ -14,10 +14,12 @@ import {
   writeMovedRow,
   writeNewRow,
   writeRoomChange,
+  writeStatusRow,
 } from "#/server/appointment-placement-steps.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
 import { bookOverbooking } from "#/server/appointment-rooms.ts";
+import { changeAppointmentStatus, undoAppointmentStatus } from "#/server/appointment-statuses.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 
 // Lost races. PGlite runs one connection, so a service cannot lose one here:
@@ -398,6 +400,79 @@ describe("a move to a new time that loses the race", () => {
       roomId: world.otherRoom.id,
       overbooking: false,
     });
+  });
+});
+
+describe("an undo that loses the race", () => {
+  const undone = {
+    status: "booked",
+    previousStatus: null,
+    cancelledBy: null,
+    cancellationReason: null,
+  } as const;
+
+  async function cancelled(id: string) {
+    await db
+      .update(appointment)
+      .set({ status: "cancelled", previousStatus: "booked", cancelledBy: "patient" })
+      .where(eq(appointment.id, id));
+    return rowOf(id);
+  }
+
+  it("on the room's constraint is room full, naming who took the room, and stays cancelled", async () => {
+    const juans = await cancelled((await booked("juan", maria.id, at("12:00"))).id);
+    const lucias = await booked("lucia", pedro.id, at("12:00"));
+    await db
+      .update(appointment)
+      .set({ roomId: world.room.id })
+      .where(eq(appointment.id, lucias.id));
+
+    expect(await asTenant((tenant) => writeStatusRow(tenant, juans, undone))).toEqual({
+      ok: false,
+      reason: "roomFull",
+      occupants: [
+        {
+          practitionerName: "Lucía Díaz",
+          kind: "appointment",
+          start: at("12:00"),
+          end: at("12:30"),
+        },
+      ],
+    });
+    expect(await rowOf(juans.id)).toMatchObject({ status: "cancelled" });
+  });
+
+  it("on the practitioner's constraint is time taken, with no free times, and stays cancelled", async () => {
+    const juans = await cancelled((await booked("juan", maria.id, at("12:00"))).id);
+    await booked("juan", pedro.id, at("12:00"));
+
+    expect(await asTenant((tenant) => writeStatusRow(tenant, juans, undone))).toEqual({
+      ok: false,
+      reason: "timeTaken",
+    });
+    expect(await rowOf(juans.id)).toMatchObject({ status: "cancelled" });
+  });
+});
+
+describe("a status change that holds time all along", () => {
+  it("checks no room space, in a room deactivated since", async () => {
+    const juans = await booked("juan", maria.id, at("12:00"));
+    await db.update(room).set({ active: false }).where(eq(room.id, world.room.id));
+
+    expect(
+      await asAppRole(db, (tx) =>
+        changeAppointmentStatus(
+          world.receptionist,
+          { appointmentId: juans.id, status: "confirmed" },
+          tx,
+        ),
+      ),
+    ).toEqual({ ok: true });
+    expect(
+      await asAppRole(db, (tx) =>
+        undoAppointmentStatus(world.receptionist, { appointmentId: juans.id }, tx),
+      ),
+    ).toEqual({ ok: true });
   });
 });
 

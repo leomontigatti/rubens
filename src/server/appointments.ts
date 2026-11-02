@@ -25,7 +25,6 @@ import { patientName } from "#/lib/patients.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { updateRow } from "#/server/appointment-placement-steps.ts";
 import { placeNew } from "#/server/appointment-placement.ts";
 import type { PlacementRefusal } from "#/server/appointment-placement.ts";
 import { findFreeTimes } from "#/server/availability.ts";
@@ -56,31 +55,6 @@ const notFound = { ok: false, reason: "notFound" } as const;
 /** Whether the actor may book at all, before any row is read. */
 export function booksForSome(actor: Actor): boolean {
   return actsForEveryone(actor) || actor.roles.includes("practitioner");
-}
-
-/**
- * Locks the appointment row for the rest of the transaction, so changes of one
- * appointment run one after the other. Taken before any room lock.
- */
-export async function lockAppointment(tx: Transaction, appointmentId: string): Promise<void> {
-  await tx
-    .select({ id: appointment.id })
-    .from(appointment)
-    .where(eq(appointment.id, appointmentId))
-    .for("update");
-}
-
-/**
- * Updates an appointment in a savepoint: a change that would make it overlap
- * another active one is "timeTaken".
- */
-export async function updateAppointment(
-  tx: Transaction,
-  appointmentId: string,
-  values: Partial<typeof appointment.$inferInsert>,
-): Promise<{ ok: true } | { ok: false; reason: "timeTaken" }> {
-  const updated = await updateRow(tx, appointmentId, values);
-  return updated.ok ? updated : { ok: false, reason: "timeTaken" };
 }
 
 /** The practitioner, when the actor may book for them and they are active. */

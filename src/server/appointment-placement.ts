@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { appointment, medicalService, office, patient, room } from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
+import { isActiveStatus } from "#/lib/appointments.ts";
 
 import {
   checkRoomSpace,
@@ -10,9 +11,11 @@ import {
   writeMovedRow,
   writeNewRow,
   writeRoomChange,
+  writeStatusRow,
 } from "#/server/appointment-placement-steps.ts";
 import type {
   FreeStartPlacement,
+  NextStatus,
   OverbookingPlacement,
   RoomRefusal,
   TimeTaken,
@@ -20,10 +23,10 @@ import type {
 } from "#/server/appointment-placement-steps.ts";
 import { changedFields, recordAudit } from "#/server/audit.ts";
 
-export type { RoomOccupant, RoomRefusal } from "#/server/appointment-placement-steps.ts";
+export type { RoomOccupant } from "#/server/appointment-placement-steps.ts";
 
 // Appointment placement: every write that decides when and where an appointment
-// holds time. A caller says what it wants as a placement and gets back success
+// holds time, or whether it holds time at all. A caller says what it wants as a placement and gets back success
 // or a structured refusal; it owns its role gate, its parsing, `withTenant` and
 // finding the practitioner, and nothing here opens a transaction.
 //
@@ -69,6 +72,7 @@ interface RefusalsByKind {
     | RoomRefusal
     | { ok: false; reason: "roomRequired" | "timeOff" | "closed" };
   sameTime: RoomRefusal | { ok: false; reason: "otherOffice" };
+  status: RoomRefusal | { ok: false; reason: "timeTaken" };
 }
 
 /** Why a placement of that kind was refused, so a screen's copy map covers each. */
@@ -331,4 +335,44 @@ export async function movePlaced(
   return placement.kind === "sameTime"
     ? moveToRoom(tx, actor, practitioner, placed, placement.roomId)
     : moveToTime(tx, actor, practitioner, placed, placement, confirmWarnings);
+}
+
+/**
+ * Moves a locked appointment to the status the status rules allowed, and audits
+ * it. A change back to holding time needs its room to have space still.
+ */
+export async function setPlacedStatus(
+  tx: Transaction,
+  actor: Actor,
+  placed: Placed,
+  next: NextStatus,
+): Promise<{ ok: true } | PlacementRefusal<"status">> {
+  if (!isActiveStatus(placed.status) && isActiveStatus(next.status)) {
+    const space = await checkRoomSpace(tx, placed.roomId, placed.practitionerId, placed.during);
+    if (!space.ok) {
+      return space;
+    }
+  }
+  const written = await writeStatusRow(tx, placed, next);
+  if (!written.ok) {
+    return written;
+  }
+  const { status, cancelledBy, cancellationReason } = placed;
+  const changed = changedFields(
+    { status, cancelledBy, cancellationReason },
+    {
+      status: next.status,
+      cancelledBy: next.cancelledBy,
+      cancellationReason: next.cancellationReason,
+    },
+  );
+  await recordAudit(tx, actor, {
+    action: "update",
+    entityType: "appointment",
+    entityId: placed.id,
+    patientId: placed.patientId,
+    before: changed!.before,
+    after: changed!.after,
+  });
+  return { ok: true };
 }

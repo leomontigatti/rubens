@@ -5,6 +5,7 @@ import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { appointment, office, practitioner, room, schedule } from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
+import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { coveringSchedule, occurrencesDuring } from "#/lib/availability.ts";
 import { findCrowding } from "#/lib/room-space.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
@@ -248,6 +249,33 @@ export async function writeRoomChange(
 ): Promise<{ ok: true } | RoomRefusal> {
   const written = await updateRow(tx, placed.id, { roomId });
   return written.ok ? written : lostRoomRace(tx, roomId, placed.practitionerId, placed.during);
+}
+
+/** What a status change leaves on the appointment. */
+export interface NextStatus {
+  status: AppointmentStatus;
+  previousStatus: AppointmentStatus | null;
+  cancelledBy: (typeof appointment.$inferSelect)["cancelledBy"];
+  cancellationReason: string | null;
+}
+
+/**
+ * Writes a status change. Only a change back to holding time can be turned down,
+ * and the two constraints mean different things: the room's that another
+ * practitioner took the room, the practitioner's that their own time is taken.
+ */
+export async function writeStatusRow(
+  tx: Transaction,
+  placed: { id: string; practitionerId: string; roomId: string; during: TimeRange },
+  next: NextStatus,
+): Promise<{ ok: true } | RoomRefusal | { ok: false; reason: "timeTaken" }> {
+  const written = await updateRow(tx, placed.id, { ...next, statusChangedAt: new Date() });
+  if (written.ok) {
+    return written;
+  }
+  return written.constraint === "room"
+    ? lostRoomRace(tx, placed.roomId, placed.practitionerId, placed.during)
+    : { ok: false, reason: "timeTaken" };
 }
 
 function localDay(instant: Date, timeZone: string): TimeRange {
