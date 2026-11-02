@@ -1,11 +1,23 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-import { appointment, office, room } from "#/db/schema/index.ts";
+import { appointment, medicalService, office, patient, room } from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { checkRoomSpace, writeRoomChange } from "#/server/appointment-placement-steps.ts";
-import type { RoomRefusal } from "#/server/appointment-placement-steps.ts";
+import {
+  checkRoomSpace,
+  findPatientWarnings,
+  placeFreeStart,
+  placeOverbooking,
+  writeNewRow,
+  writeRoomChange,
+} from "#/server/appointment-placement-steps.ts";
+import type {
+  PatientWarning,
+  RoomRefusal,
+  TimeTaken,
+} from "#/server/appointment-placement-steps.ts";
 import { recordAudit } from "#/server/audit.ts";
 
 export type { RoomOccupant, RoomRefusal } from "#/server/appointment-placement-steps.ts";
@@ -18,10 +30,12 @@ export type { RoomOccupant, RoomRefusal } from "#/server/appointment-placement-s
 // The sequence, whichever the caller:
 //
 // 1. Lock the appointment row, when there is one, and read it after the lock.
+//    A new appointment has none: check its medical service and patient instead.
 // 2. Resolve the room and take its row lock when the room's space is at stake.
 //    Always in this order, appointment row then room row, so two changes never
 //    wait on each other. A free start takes no room lock: see `checkRoomSpace`.
-// 3. Check what the placement needs: room space, its office.
+// 3. Check what the placement needs: room space, its office, working time, then
+//    the patient's warnings.
 // 4. Write in a savepoint. The exclusion constraints stay the arbiter (ADR-0003):
 //    the write reports which one fired, and the transaction survives to read why.
 // 5. Recover a lost race into the refusal for that placement and constraint.
@@ -29,6 +43,46 @@ export type { RoomOccupant, RoomRefusal } from "#/server/appointment-placement-s
 
 /** A placement: what the caller wants of the appointment's time and room. */
 type Placement = { kind: "sameTime"; roomId: string };
+
+type FreeStartPlacement = { kind: "freeStart"; span: TimeRange };
+type OverbookingPlacement = { kind: "overbooking"; span: TimeRange; pickedRoomId: string | null };
+
+/** The placement of a new appointment, which has no time to keep. */
+type NewPlacement = FreeStartPlacement | OverbookingPlacement;
+
+/** What the new appointment is for. */
+interface Visit {
+  patientId: string;
+  medicalServiceId: string;
+  receptionNote: string | null;
+}
+
+type VisitRefusal = {
+  ok: false;
+  reason: "notFound" | "medicalServiceInactive" | "patientInactive";
+};
+
+type WarningRefusal = { ok: false; reason: "patientWarning"; warnings: PatientWarning[] };
+
+interface RefusalsByKind {
+  freeStart: VisitRefusal | WarningRefusal | { ok: false; reason: "notFree" } | TimeTaken;
+  overbooking:
+    | VisitRefusal
+    | WarningRefusal
+    | RoomRefusal
+    | { ok: false; reason: "roomRequired" | "timeOff" | "closed" };
+  sameTime: RoomRefusal | { ok: false; reason: "otherOffice" };
+}
+
+/** Why a placement of that kind was refused, so a screen's copy map covers each. */
+export type PlacementRefusal<Kind extends keyof RefusalsByKind = keyof RefusalsByKind> =
+  RefusalsByKind[Kind];
+
+type BookablePractitioner = { id: string; gridMinutes: number };
+
+interface Confirmation {
+  confirmWarnings: boolean;
+}
 
 /**
  * Locks the appointment row for the rest of the transaction, so changes of one
@@ -67,6 +121,116 @@ export async function lockPlaced(tx: Transaction, appointmentId: string) {
 
 type Placed = NonNullable<Awaited<ReturnType<typeof lockPlaced>>>;
 
+/** Why the medical service, one of the practitioner's, or the patient cannot be booked; `null` when both can. */
+async function checkServiceAndPatient(
+  tx: Transaction,
+  practitionerId: string,
+  { medicalServiceId, patientId }: Visit,
+): Promise<VisitRefusal | null> {
+  const [service] = await tx
+    .select({ active: medicalService.active })
+    .from(medicalService)
+    .where(
+      and(
+        eq(medicalService.id, medicalServiceId),
+        eq(medicalService.practitionerId, practitionerId),
+      ),
+    );
+  const [patientRow] = await tx
+    .select({ active: patient.active })
+    .from(patient)
+    .where(eq(patient.id, patientId));
+  if (!service || !patientRow) {
+    return { ok: false, reason: "notFound" };
+  }
+  if (!service.active) {
+    return { ok: false, reason: "medicalServiceInactive" };
+  }
+  return patientRow.active ? null : { ok: false, reason: "patientInactive" };
+}
+
+/**
+ * Places a new appointment for an authorised, active practitioner. The patient's
+ * other appointments that day warn until `confirmWarnings`.
+ */
+export async function placeNew(
+  tx: Transaction,
+  actor: Actor,
+  practitioner: BookablePractitioner,
+  visit: Visit,
+  placement: FreeStartPlacement,
+  confirmation: Confirmation,
+): Promise<{ ok: true; id: string } | PlacementRefusal<"freeStart">>;
+export async function placeNew(
+  tx: Transaction,
+  actor: Actor,
+  practitioner: BookablePractitioner,
+  visit: Visit,
+  placement: OverbookingPlacement,
+  confirmation: Confirmation,
+): Promise<{ ok: true; id: string } | PlacementRefusal<"overbooking">>;
+export async function placeNew(
+  tx: Transaction,
+  actor: Actor,
+  practitioner: BookablePractitioner,
+  visit: Visit,
+  placement: NewPlacement,
+  { confirmWarnings }: Confirmation,
+): Promise<{ ok: true; id: string } | PlacementRefusal<NewPlacement["kind"]>> {
+  const refused = await checkServiceAndPatient(tx, practitioner.id, visit);
+  if (refused) {
+    return refused;
+  }
+  const { span } = placement;
+  const where =
+    placement.kind === "freeStart"
+      ? await placeFreeStart(tx, practitioner, span)
+      : await placeOverbooking(tx, practitioner, span, placement.pickedRoomId);
+  if (!where.ok) {
+    return where;
+  }
+  const { patientId, medicalServiceId, receptionNote } = visit;
+  const warnings = confirmWarnings
+    ? []
+    : await findPatientWarnings(tx, patientId, span, where.timeZone);
+  if (warnings.length > 0) {
+    return { ok: false, reason: "patientWarning", warnings };
+  }
+
+  const fields = {
+    patientId,
+    practitionerId: practitioner.id,
+    medicalServiceId,
+    roomId: where.roomId,
+    ...(placement.kind === "overbooking" ? { overbooking: true } : {}),
+    receptionNote,
+  };
+  const written = await writeNewRow(
+    tx,
+    practitioner,
+    placement.kind,
+    { ...fields, during: span, organizationId: actor.organizationId, createdBy: actor.userId },
+    where.timeZone,
+  );
+  if (!written.ok) {
+    return written;
+  }
+  await recordAudit(tx, actor, {
+    action: "create",
+    entityType: "appointment",
+    entityId: written.id,
+    patientId,
+    before: null,
+    after: {
+      ...fields,
+      start: span.start.toISOString(),
+      end: span.end.toISOString(),
+      status: "booked",
+    },
+  });
+  return written;
+}
+
 /**
  * Moves a locked appointment where the placement says. Keeping the room it
  * already has is a success with no write and no audit entry.
@@ -77,7 +241,7 @@ export async function movePlaced(
   practitioner: { id: string },
   placed: Placed,
   { roomId }: Placement,
-): Promise<{ ok: true } | RoomRefusal | { ok: false; reason: "otherOffice" }> {
+): Promise<{ ok: true } | PlacementRefusal<"sameTime">> {
   if (roomId === placed.roomId) {
     return { ok: true };
   }

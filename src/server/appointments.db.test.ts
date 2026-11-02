@@ -11,7 +11,7 @@ import type { TestDatabase } from "../../tests/db/harness.ts";
 import { setMedicalServiceActive } from "#/server/medical-services.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
-import { bookAppointment, insertAppointment } from "#/server/appointments.ts";
+import { bookAppointment } from "#/server/appointments.ts";
 import { getAvailability } from "#/server/availability.ts";
 import { createTimeOff } from "#/server/time-off.ts";
 
@@ -270,55 +270,6 @@ describe("who books", () => {
     const nobody: Actor = { ...world.receptionist, roles: [] };
 
     expect(await book(nobody)).toEqual({ ok: false, reason: "forbidden" });
-  });
-});
-
-describe("the database guarantee against double booking", () => {
-  let first: typeof appointment.$inferSelect;
-
-  beforeEach(async () => {
-    first = await rowOf((await booked()).id);
-  });
-
-  function insertOver(values: Partial<typeof appointment.$inferInsert>) {
-    return asAppRole(db, (tx) =>
-      withTenant(
-        world.admin,
-        (tenant) =>
-          insertAppointment(tenant, {
-            ...first,
-            id: undefined,
-            during: { start: at("12:15"), end: at("12:45") },
-            ...values,
-          }),
-        tx,
-      ),
-    );
-  }
-
-  it("turns an overlap with an active appointment into the time-taken result", async () => {
-    expect(await insertOver({})).toEqual({ ok: false, reason: "timeTaken" });
-  });
-
-  it("turns another practitioner's overlap in the same room into the time-taken result, overbooking or not", async () => {
-    const lucias = { practitionerId: world.lucia.id, medicalServiceId: luciaService.id };
-
-    expect(await insertOver(lucias)).toEqual({ ok: false, reason: "timeTaken" });
-    expect(await insertOver({ ...lucias, overbooking: true })).toEqual({
-      ok: false,
-      reason: "timeTaken",
-    });
-    expect(await insertOver({ ...lucias, roomId: world.otherRoom.id })).toMatchObject({
-      ok: true,
-    });
-  });
-
-  it("lets an overbooking and a cancelled appointment overlap", async () => {
-    expect(await insertOver({ overbooking: true })).toMatchObject({ ok: true });
-    await db.delete(appointment).where(eq(appointment.overbooking, true));
-    expect(await insertOver({ status: "cancelled", cancelledBy: "patient" })).toMatchObject({
-      ok: true,
-    });
   });
 });
 

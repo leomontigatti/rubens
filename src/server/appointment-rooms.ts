@@ -1,24 +1,12 @@
 import { withTenant } from "#/db/tenant.ts";
-import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
+import type { AnyDatabase } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import { isActiveStatus, overbookingInputSchema, roomMoveSchema } from "#/lib/appointments.ts";
 import type { OverbookingInput, RoomMove, WarningConfirmation } from "#/lib/appointments.ts";
-import { coveringSchedule } from "#/lib/availability.ts";
-import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { checkRoomSpace, lostRoomRace } from "#/server/appointment-placement-steps.ts";
-import { lockPlaced, movePlaced } from "#/server/appointment-placement.ts";
-import type { RoomRefusal } from "#/server/appointment-placement.ts";
-import {
-  booksForSome,
-  checkServiceAndPatient,
-  findBookablePractitioner,
-  findPatientWarnings,
-  insertAppointment,
-} from "#/server/appointments.ts";
-import type { PatientWarning } from "#/server/appointments.ts";
-import { recordAudit } from "#/server/audit.ts";
-import { findBlocking, findFreeTimes } from "#/server/availability.ts";
+import { lockPlaced, movePlaced, placeNew } from "#/server/appointment-placement.ts";
+import type { PlacementRefusal } from "#/server/appointment-placement.ts";
+import { booksForSome, findBookablePractitioner } from "#/server/appointments.ts";
 
 // Appointments outside their schedule's room: overbookings (ui: "Sobreturno"),
 // booked on purpose over another appointment or outside the practitioner's
@@ -30,73 +18,16 @@ import { findBlocking, findFreeTimes } from "#/server/availability.ts";
 
 export type OverbookingResult =
   | { ok: true; appointment: { id: string } }
-  | RoomRefusal
-  | {
-      ok: false;
-      reason:
-        | "forbidden"
-        | "invalidInput"
-        | "notFound"
-        | "practitionerInactive"
-        | "patientInactive"
-        | "medicalServiceInactive"
-        | "roomRequired"
-        | "timeOff"
-        | "closed";
-    }
-  | { ok: false; reason: "patientWarning"; warnings: PatientWarning[] };
+  | { ok: false; reason: "forbidden" | "invalidInput" | "notFound" | "practitionerInactive" }
+  | PlacementRefusal<"overbooking">;
 
 export type RoomMoveResult =
   | { ok: true }
-  | RoomRefusal
-  | { ok: false; reason: "forbidden" | "invalidInput" | "practitionerInactive" | "otherOffice" };
+  | { ok: false; reason: "forbidden" | "invalidInput" | "practitionerInactive" }
+  | PlacementRefusal<"sameTime">;
 
 const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
-
-/** Why the practitioner cannot work during `span` at the office; `null` when they can. */
-async function checkWorkingTime(
-  tx: Transaction,
-  practitionerId: string,
-  span: TimeRange,
-  officeId: string,
-): Promise<{ ok: false; reason: "timeOff" | "closed" } | null> {
-  const blocking = await findBlocking(tx, practitionerId, span, [officeId]);
-  if (blocking.timeOff.length > 0) {
-    return { ok: false, reason: "timeOff" };
-  }
-  return blocking.closures.length > 0 ? { ok: false, reason: "closed" } : null;
-}
-
-/**
- * The room an overbooking goes in: the one picked, or else the schedule's it
- * falls inside, when that room has space and the practitioner works then.
- */
-export async function placeOverbooking(
-  tx: Transaction,
-  practitioner: { id: string; gridMinutes: number },
-  span: TimeRange,
-  picked: string | null,
-): Promise<
-  | { ok: true; roomId: string; timeZone: string }
-  | RoomRefusal
-  | { ok: false; reason: "roomRequired" | "timeOff" | "closed" }
-> {
-  const { schedules } = await findFreeTimes(tx, practitioner, {
-    window: span,
-    durationMinutes: (+span.end - +span.start) / 60_000,
-  });
-  const roomId = picked ?? coveringSchedule(schedules, span)?.roomId;
-  if (!roomId) {
-    return { ok: false, reason: "roomRequired" };
-  }
-  const space = await checkRoomSpace(tx, roomId, practitioner.id, span);
-  if (!space.ok) {
-    return space;
-  }
-  const blocked = await checkWorkingTime(tx, practitioner.id, span, space.officeId);
-  return blocked ?? { ok: true, roomId, timeZone: space.timeZone };
-}
 
 /**
  * Books an overbooking: at any start, skipping the free-time rule and the
@@ -117,8 +48,7 @@ export async function bookOverbooking(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { patientId, practitionerId, medicalServiceId, start, durationMinutes, receptionNote } =
-    parsed.data;
+  const { practitionerId, start, durationMinutes, roomId, ...visit } = parsed.data;
   const span = { start, end: new Date(+start + durationMinutes * 60_000) };
   return withTenant(
     actor,
@@ -127,54 +57,15 @@ export async function bookOverbooking(
       if (!found.ok) {
         return found;
       }
-      const refused = await checkServiceAndPatient(tx, found.id, medicalServiceId, patientId);
-      if (refused) {
-        return refused;
-      }
-      const placed = await placeOverbooking(tx, found, span, parsed.data.roomId);
-      if (!placed.ok) {
-        return placed;
-      }
-      const { roomId } = placed;
-      const warnings =
-        input.confirmWarnings === true
-          ? []
-          : await findPatientWarnings(tx, patientId, span, placed.timeZone);
-      if (warnings.length > 0) {
-        return { ok: false as const, reason: "patientWarning" as const, warnings };
-      }
-
-      const values = {
-        patientId,
-        practitionerId: found.id,
-        medicalServiceId,
-        roomId,
-        overbooking: true,
-        receptionNote,
-      };
-      const created = await insertAppointment(tx, {
-        ...values,
-        during: span,
-        organizationId: actor.organizationId,
-        createdBy: actor.userId,
-      });
-      if (!created.ok) {
-        return lostRoomRace(tx, roomId, found.id, span);
-      }
-      await recordAudit(tx, actor, {
-        action: "create",
-        entityType: "appointment",
-        entityId: created.id,
-        patientId,
-        before: null,
-        after: {
-          ...values,
-          start: span.start.toISOString(),
-          end: span.end.toISOString(),
-          status: "booked",
-        },
-      });
-      return { ok: true as const, appointment: { id: created.id } };
+      const placed = await placeNew(
+        tx,
+        actor,
+        found,
+        visit,
+        { kind: "overbooking", span, pickedRoomId: roomId },
+        { confirmWarnings: input.confirmWarnings === true },
+      );
+      return placed.ok ? { ok: true as const, appointment: { id: placed.id } } : placed;
     },
     database,
   );

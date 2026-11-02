@@ -1,13 +1,17 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 
 import { appointment, office, practitioner, room, schedule } from "#/db/schema/index.ts";
 import type { Transaction } from "#/db/tenant.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
-import { occurrencesDuring } from "#/lib/availability.ts";
+import { coveringSchedule, occurrencesDuring } from "#/lib/availability.ts";
 import { findCrowding } from "#/lib/room-space.ts";
+import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { meets } from "#/server/availability.ts";
+import { findBlocking, findFreeTimes, meets, toAvailableStarts } from "#/server/availability.ts";
+import type { AvailableStart } from "#/server/availability.ts";
 
 // The steps behind appointment placement (`appointment-placement.ts`, whose top
 // comment gives their sequence). Only that module and its tests call them: the
@@ -25,6 +29,20 @@ export interface RoomOccupant {
 export type RoomRefusal =
   | { ok: false; reason: "notFound" | "roomInactive" | "officeInactive" }
   | { ok: false; reason: "roomFull"; occupants: RoomOccupant[] };
+
+/** Another appointment of the patient's that a booking warns about. */
+export interface PatientWarning {
+  kind: "overlap" | "sameDay";
+  start: Date;
+  end: Date;
+  practitionerName: string;
+  /** The zone of the appointment's office, to show it in local time. */
+  timeZone: string;
+}
+
+export type TimeTaken = { ok: false; reason: "timeTaken"; freeStarts: AvailableStart[] };
+
+type BookablePractitioner = { id: string; gridMinutes: number };
 
 /** Which exclusion constraint turned a write down. */
 type LostConstraint = { ok: false; constraint: "practitioner" | "room" };
@@ -221,4 +239,145 @@ export async function writeRoomChange(
 ): Promise<{ ok: true } | RoomRefusal> {
   const written = await updateRow(tx, placed.id, { roomId });
   return written.ok ? written : lostRoomRace(tx, roomId, placed.practitionerId, placed.during);
+}
+
+export function localDay(instant: Date, timeZone: string): TimeRange {
+  const date = format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
+  return toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
+}
+
+function intersects(a: TimeRange, b: TimeRange): boolean {
+  return a.start < b.end && b.start < a.end;
+}
+
+/**
+ * The patient's active appointments on the local day of `span`, as warnings,
+ * but for `excludeId`, the one being rescheduled.
+ */
+export async function findPatientWarnings(
+  tx: Transaction,
+  patientId: string,
+  span: TimeRange,
+  timeZone: string,
+  excludeId?: string,
+): Promise<PatientWarning[]> {
+  const rows = await tx
+    .select({
+      during: appointment.during,
+      practitionerName: practitioner.displayName,
+      timeZone: office.timeZone,
+    })
+    .from(appointment)
+    .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
+    .innerJoin(room, eq(room.id, appointment.roomId))
+    .innerJoin(office, eq(office.id, room.officeId))
+    .where(
+      and(
+        eq(appointment.patientId, patientId),
+        inArray(appointment.status, [...activeAppointmentStatuses]),
+        meets(appointment.during, localDay(span.start, timeZone)),
+        excludeId === undefined ? undefined : ne(appointment.id, excludeId),
+      ),
+    )
+    .orderBy(asc(appointment.during));
+  return rows.map((row) => ({
+    kind: intersects(row.during, span) ? "overlap" : "sameDay",
+    start: row.during.start,
+    end: row.during.end,
+    practitionerName: row.practitionerName,
+    timeZone: row.timeZone,
+  }));
+}
+
+/** The room of the free start at the start of `span`, which takes no room lock. */
+export async function placeFreeStart(
+  tx: Transaction,
+  bookable: BookablePractitioner,
+  span: TimeRange,
+): Promise<{ ok: true; roomId: string; timeZone: string } | { ok: false; reason: "notFree" }> {
+  const { free, schedules } = await findFreeTimes(tx, bookable, {
+    window: { start: span.start, end: new Date(+span.start + 1) },
+    durationMinutes: (+span.end - +span.start) / 60_000,
+  });
+  const slot = free.find((candidate) => +candidate.start === +span.start);
+  if (!slot) {
+    return { ok: false, reason: "notFree" };
+  }
+  const { timeZone } = schedules.find((row) => row.roomId === slot.roomId)!;
+  return { ok: true, roomId: slot.roomId, timeZone };
+}
+
+/** Why the practitioner cannot work during `span` at the office; `null` when they can. */
+async function checkWorkingTime(
+  tx: Transaction,
+  practitionerId: string,
+  span: TimeRange,
+  officeId: string,
+): Promise<{ ok: false; reason: "timeOff" | "closed" } | null> {
+  const blocking = await findBlocking(tx, practitionerId, span, [officeId]);
+  if (blocking.timeOff.length > 0) {
+    return { ok: false, reason: "timeOff" };
+  }
+  return blocking.closures.length > 0 ? { ok: false, reason: "closed" } : null;
+}
+
+/**
+ * The room an overbooking goes in: the one picked, or else the schedule's it
+ * falls inside, when that room has space and the practitioner works then.
+ */
+export async function placeOverbooking(
+  tx: Transaction,
+  bookable: BookablePractitioner,
+  span: TimeRange,
+  picked: string | null,
+): Promise<
+  | { ok: true; roomId: string; timeZone: string }
+  | RoomRefusal
+  | { ok: false; reason: "roomRequired" | "timeOff" | "closed" }
+> {
+  const { schedules } = await findFreeTimes(tx, bookable, {
+    window: span,
+    durationMinutes: (+span.end - +span.start) / 60_000,
+  });
+  const roomId = picked ?? coveringSchedule(schedules, span)?.roomId;
+  if (!roomId) {
+    return { ok: false, reason: "roomRequired" };
+  }
+  const space = await checkRoomSpace(tx, roomId, bookable.id, span);
+  if (!space.ok) {
+    return space;
+  }
+  const blocked = await checkWorkingTime(tx, bookable.id, span, space.officeId);
+  return blocked ?? { ok: true, roomId, timeZone: space.timeZone };
+}
+
+/**
+ * Writes a new appointment. A free start lost on either constraint gets the free
+ * times of its local day to pick another. An overbooking can lose only on the
+ * room's constraint, since its flag exempts it from the practitioner's.
+ */
+export async function writeNewRow(
+  tx: Transaction,
+  bookable: BookablePractitioner,
+  kind: "freeStart" | "overbooking",
+  values: typeof appointment.$inferInsert,
+  timeZone: string,
+): Promise<{ ok: true; id: string } | TimeTaken | RoomRefusal> {
+  const written = await insertRow(tx, values);
+  if (written.ok) {
+    return written;
+  }
+  if (kind === "overbooking") {
+    return lostRoomRace(tx, values.roomId, bookable.id, values.during);
+  }
+  const { start, end } = values.during;
+  const fresh = await findFreeTimes(tx, bookable, {
+    window: localDay(start, timeZone),
+    durationMinutes: (+end - +start) / 60_000,
+  });
+  return {
+    ok: false,
+    reason: "timeTaken",
+    freeStarts: toAvailableStarts(fresh.free, fresh.schedules),
+  };
 }

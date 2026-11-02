@@ -8,13 +8,15 @@ import { rescheduleSchema } from "#/lib/appointments.ts";
 import type { RescheduleInput, WarningConfirmation } from "#/lib/appointments.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { placeOverbooking } from "#/server/appointment-rooms.ts";
+import {
+  findPatientWarnings,
+  localDay,
+  placeOverbooking,
+} from "#/server/appointment-placement-steps.ts";
 import type { OverbookingResult } from "#/server/appointment-rooms.ts";
 import {
   booksForSome,
   findBookablePractitioner,
-  findPatientWarnings,
-  localDay,
   updateAppointment,
 } from "#/server/appointments.ts";
 import type { BookingResult } from "#/server/appointments.ts";

@@ -1,15 +1,22 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment } from "#/db/schema/index.ts";
+import { appointment, auditLog } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Transaction } from "#/db/tenant.ts";
 
 import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { lostRoomRace, updateRow, writeRoomChange } from "#/server/appointment-placement-steps.ts";
+import {
+  insertRow,
+  lostRoomRace,
+  updateRow,
+  writeNewRow,
+  writeRoomChange,
+} from "#/server/appointment-placement-steps.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
+import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 
 // Lost races. PGlite runs one connection, so a service cannot lose one here:
@@ -76,6 +83,29 @@ async function rowOf(id: string) {
   return row!;
 }
 
+/** The row a booking of `who`'s would write, over the checks that would refuse it. */
+function newRow(who: "juan" | "lucia", patientId: string, start: Date, roomId: string) {
+  return {
+    organizationId: world.admin.organizationId,
+    createdBy: world.admin.userId,
+    patientId,
+    practitionerId: world[who].id,
+    medicalServiceId: who === "juan" ? juanService.id : luciaService.id,
+    roomId,
+    during: { start, end: new Date(+start + 30 * 60_000) },
+  };
+}
+
+/** The practitioner as `findBookablePractitioner` hands them over, on the default grid. */
+function bookable(who: "juan" | "lucia") {
+  return { id: world[who].id, gridMinutes: 30 };
+}
+
+function isoStarts(refused: unknown) {
+  const { freeStarts } = refused as { freeStarts: { start: Date }[] };
+  return freeStarts.map(({ start }) => start.toISOString());
+}
+
 describe("the write step", () => {
   it("reports appointment_practitioner_overlap as the practitioner's constraint", async () => {
     await booked("juan", maria.id, at("12:00"));
@@ -136,5 +166,192 @@ describe("a room move that loses the race", () => {
         lostRoomRace(tenant, third.id, world.juan.id, { start: at("12:00"), end: at("12:30") }),
       ),
     ).toEqual({ ok: false, reason: "roomFull", occupants: [] });
+  });
+});
+
+describe("the database guarantee against double booking", () => {
+  let first: typeof appointment.$inferSelect;
+
+  beforeEach(async () => {
+    first = await booked("juan", maria.id, at("12:00"));
+  });
+
+  function insertOver(values: Partial<typeof appointment.$inferInsert>) {
+    return asTenant((tenant) =>
+      insertRow(tenant, {
+        ...first,
+        id: undefined,
+        during: { start: at("12:15"), end: at("12:45") },
+        ...values,
+      }),
+    );
+  }
+
+  it("turns an overlap with an active appointment into the practitioner's constraint", async () => {
+    expect(await insertOver({})).toEqual({ ok: false, constraint: "practitioner" });
+  });
+
+  it("turns another practitioner's overlap in the same room into the room's constraint, overbooking or not", async () => {
+    const lucias = { practitionerId: world.lucia.id, medicalServiceId: luciaService.id };
+
+    expect(await insertOver(lucias)).toEqual({ ok: false, constraint: "room" });
+    expect(await insertOver({ ...lucias, overbooking: true })).toEqual({
+      ok: false,
+      constraint: "room",
+    });
+    expect(await insertOver({ ...lucias, roomId: world.otherRoom.id })).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("lets an overbooking and a cancelled appointment overlap", async () => {
+    expect(await insertOver({ overbooking: true })).toMatchObject({ ok: true });
+    await db.delete(appointment).where(eq(appointment.overbooking, true));
+    expect(await insertOver({ status: "cancelled", cancelledBy: "patient" })).toMatchObject({
+      ok: true,
+    });
+  });
+});
+
+describe("a free start that loses the race", () => {
+  const timeZone = "America/Argentina/Buenos_Aires";
+
+  it("on the practitioner's constraint is time taken, with the free times of the local day", async () => {
+    // Monday evening runs past midnight UTC, and Tuesday is another local day.
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      startTime: "20:30",
+      endTime: "21:30",
+    });
+    await world.addSchedule({
+      practitionerId: world.juan.id,
+      weekdays: [2],
+      firstDate: "2099-01-06",
+    });
+    await booked("juan", maria.id, at("12:00"));
+
+    const refused = await asTenant((tenant) =>
+      writeNewRow(
+        tenant,
+        bookable("juan"),
+        "freeStart",
+        newRow("juan", pedro.id, at("12:15"), world.room.id),
+        timeZone,
+      ),
+    );
+
+    expect(refused).toMatchObject({ ok: false, reason: "timeTaken" });
+    expect(isoStarts(refused)).toEqual([
+      "2099-01-05T12:30:00.000Z",
+      "2099-01-05T13:00:00.000Z",
+      "2099-01-05T13:30:00.000Z",
+      "2099-01-05T23:30:00.000Z",
+      "2099-01-06T00:00:00.000Z",
+    ]);
+  });
+
+  it("on the room's constraint is time taken too, with the free times, not an empty list", async () => {
+    await booked("juan", maria.id, at("12:00"));
+
+    const refused = await asTenant((tenant) =>
+      writeNewRow(
+        tenant,
+        bookable("lucia"),
+        "freeStart",
+        newRow("lucia", pedro.id, at("12:00"), world.room.id),
+        timeZone,
+      ),
+    );
+
+    expect(refused).toMatchObject({ ok: false, reason: "timeTaken" });
+    expect(isoStarts(refused)).toEqual([
+      "2099-01-05T12:00:00.000Z",
+      "2099-01-05T12:30:00.000Z",
+      "2099-01-05T13:00:00.000Z",
+      "2099-01-05T13:30:00.000Z",
+    ]);
+  });
+});
+
+describe("an overbooking that loses the race", () => {
+  it("on the room's constraint is refused as room full, naming who took the room", async () => {
+    await booked("juan", maria.id, at("12:00"));
+
+    expect(
+      await asTenant((tenant) =>
+        writeNewRow(
+          tenant,
+          bookable("lucia"),
+          "overbooking",
+          { ...newRow("lucia", pedro.id, at("12:00"), world.room.id), overbooking: true },
+          "America/Argentina/Buenos_Aires",
+        ),
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "roomFull",
+      occupants: [
+        {
+          practitionerName: "Juan Gómez",
+          kind: "appointment",
+          start: at("12:00"),
+          end: at("12:30"),
+        },
+      ],
+    });
+    expect(await db.select().from(appointment)).toHaveLength(1);
+  });
+});
+
+describe("the audit entry of a new appointment", () => {
+  async function afterOf(id: string) {
+    const [entry] = await db.select().from(auditLog).where(eq(auditLog.entityId, id));
+    return entry!.after;
+  }
+
+  const span = { start: "2099-01-05T12:00:00.000Z", end: "2099-01-05T12:30:00.000Z" };
+
+  it("leaves `overbooking` out of a booking", async () => {
+    const created = await booked("juan", maria.id, at("12:00"));
+
+    expect(await afterOf(created.id)).toEqual({
+      patientId: maria.id,
+      practitionerId: world.juan.id,
+      medicalServiceId: juanService.id,
+      roomId: world.room.id,
+      receptionNote: null,
+      ...span,
+      status: "booked",
+    });
+  });
+
+  it("carries `overbooking` on an overbooking", async () => {
+    const result = await asAppRole(db, (tx) =>
+      bookOverbooking(
+        world.receptionist,
+        {
+          patientId: maria.id,
+          practitionerId: world.juan.id,
+          medicalServiceId: juanService.id,
+          start: at("12:00"),
+          durationMinutes: 30,
+        },
+        tx,
+      ),
+    );
+    if (!result.ok) {
+      throw new Error(`bookOverbooking failed: ${result.reason}`);
+    }
+
+    expect(await afterOf(result.appointment.id)).toEqual({
+      patientId: maria.id,
+      practitionerId: world.juan.id,
+      medicalServiceId: juanService.id,
+      roomId: world.room.id,
+      overbooking: true,
+      receptionNote: null,
+      ...span,
+      status: "booked",
+    });
   });
 });
