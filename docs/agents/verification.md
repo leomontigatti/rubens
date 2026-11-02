@@ -40,16 +40,12 @@ When the launch fails, check in this order:
 
 ## Drive
 
-In a T3 thread, drive with T3's preview tools, as the shared `implement` skill's `PREVIEW.md`
-says. Rubens runs the preview-tools trial first: note in the final report every capture that
-blurred and every click that missed.
+Drive with the Playwright CLI, `playwright-cli`, in a T3 thread too. It is installed globally with
+a headless Chromium. Its scratch files go to `.playwright-cli/`, which is gitignored.
 
 - The design width is 1440 × 900; check the touched screen at 1280 too when it has a table or a
   dense row.
 - Done when the touched screens show no console error and no React warning.
-
-**Fallback outside T3**: the Playwright CLI, `playwright-cli`, installed globally with a headless
-Chromium. Its scratch files go to `.playwright-cli/`, which is gitignored.
 
 1. `playwright-cli -s=<name> open "http://localhost:<port>/<path>"`, then `resize 1440 900`.
 2. Drive with `goto`, `click`, `fill`, `select`, `press`, and confirm with `snapshot` (or
@@ -58,15 +54,20 @@ Chromium. Its scratch files go to `.playwright-cli/`, which is gitignored.
 4. Capture with `screenshot --filename=.playwright-cli/<what>-before.png` (and `-after`).
 
 Quote any URL with a query string so the shell does not expand it. If `playwright-cli` is
-missing outside T3, stop and tell the user.
+missing, stop and tell the user.
+
+T3's preview tools are for a quick look at a page, as the shared `implement` skill's `PREVIEW.md`
+says; a click made through `preview_evaluate` proves nothing about the path.
 
 ## Evidence
 
 A change to what a screen looks like is shown as a before and an after image, same screen,
-account and size; a change to motion or interaction as a short recording instead.
+account and size; a change to motion or interaction as a short recording instead. Images come
+from `playwright-cli` `screenshot`.
 
 - **Approved in the thread, never uploaded.** Show the captures to the user in the reply, each
-  embedded by its absolute path, for approval before the PR opens. The PR carries no images.
+  embedded by its absolute path under `<worktree>/.playwright-cli/`, for approval before the PR
+  opens. The PR carries no images.
 - **Made-up data only.** Screenshots show names and appointments: never put a real patient's data
   on screen for a capture.
 - Never commit evidence images to the repo.
@@ -75,8 +76,8 @@ account and size; a change to motion or interaction as a short recording instead
 
 - `pnpm dev:stop` stops this worktree's dev server, found by its port and working directory.
   Never `pkill -f`.
-- Close every preview tab you opened with `t3_preview_close`; outside T3,
-  `playwright-cli -s=<name> close`, since a session left open holds a Chromium.
+- Close every preview tab you opened with `t3_preview_close`, and every `playwright-cli` session
+  with `playwright-cli -s=<name> close`, since a session left open holds a Chromium.
 - Leave the Postgres container running: other worktrees use it.
 
 ## Feature map
