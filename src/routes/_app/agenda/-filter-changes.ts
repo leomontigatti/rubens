@@ -1,3 +1,5 @@
+import type { RoomChoice } from "#/server/calendar-week.ts";
+
 // What each calendar filter does to the URL: a new room drops the other filters,
 // its practitioners being others; a medical service implies its practitioner.
 
@@ -17,6 +19,24 @@ interface FilterWeek {
 }
 
 export type CalendarFilterId = "consultorio" | "profesional" | "prestacion";
+
+/** The active rooms under their office, and the viewed room, which may be deactivated since. */
+export function roomOptions(
+  viewed: { id: string; name: string },
+  officeName: string,
+  roomChoices: RoomChoice[],
+) {
+  const options = roomChoices.flatMap((choice) =>
+    choice.rooms.map((room) => ({
+      value: room.id,
+      label: room.name,
+      section: choice.officeName,
+    })),
+  );
+  return options.some((option) => option.value === viewed.id)
+    ? options
+    : [{ value: viewed.id, label: viewed.name, section: officeName }, ...options];
+}
 
 /** The chosen practitioner's medical services, or everyone's named with their practitioner. */
 export function serviceOptions(week: FilterWeek) {

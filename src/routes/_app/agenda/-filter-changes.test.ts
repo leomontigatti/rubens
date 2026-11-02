@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { filterChange, serviceOptions } from "#/routes/_app/agenda/-filter-changes.ts";
+import { filterChange, roomOptions, serviceOptions } from "#/routes/_app/agenda/-filter-changes.ts";
 
 const practitioners = [
   { id: "laura", displayName: "Laura" },
@@ -62,6 +62,25 @@ describe("the calendar's medical service options", () => {
   it("list only the chosen practitioner's, unnamed", () => {
     expect(serviceOptions(week("laura"))).toEqual([
       { value: "consulta", label: "Consulta (30 min)" },
+    ]);
+  });
+});
+
+describe("the calendar's room options", () => {
+  const roomChoices = [
+    { officeId: "centro", officeName: "Centro", rooms: [{ id: "uno", name: "Uno" }] },
+  ];
+
+  it("list the rooms under their office", () => {
+    expect(roomOptions({ id: "uno", name: "Uno" }, "Centro", roomChoices)).toEqual([
+      { value: "uno", label: "Uno", section: "Centro" },
+    ]);
+  });
+
+  it("keep a deactivated room being viewed, which the choices leave out", () => {
+    expect(roomOptions({ id: "viejo", name: "Viejo" }, "Norte", roomChoices)).toEqual([
+      { value: "viejo", label: "Viejo", section: "Norte" },
+      { value: "uno", label: "Uno", section: "Centro" },
     ]);
   });
 });

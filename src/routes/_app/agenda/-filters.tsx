@@ -6,7 +6,7 @@ import type { FilterGroup } from "#/components/filter-groups.ts";
 import { Button } from "#/components/ui/button.tsx";
 import type { CalendarWeek, RoomChoice } from "#/server/calendar-week.ts";
 
-import { filterChange, serviceOptions } from "#/routes/_app/agenda/-filter-changes.ts";
+import { filterChange, roomOptions, serviceOptions } from "#/routes/_app/agenda/-filter-changes.ts";
 import type { CalendarFilterId, CalendarSearch } from "#/routes/_app/agenda/-filter-changes.ts";
 
 // The calendar's filters, in their order: the room, required; then the
@@ -20,13 +20,7 @@ function filterGroups(week: CalendarWeek, roomChoices: RoomChoice[]): FilterGrou
       icon: BuildingIcon,
       required: true,
       value: week.room.id,
-      options: roomChoices.flatMap((choice) =>
-        choice.rooms.map((room) => ({
-          value: room.id,
-          label: room.name,
-          section: choice.officeName,
-        })),
-      ),
+      options: roomOptions(week.room, week.office.name, roomChoices),
     },
     {
       id: "profesional",

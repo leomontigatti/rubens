@@ -1,5 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon, ListFilterPlusIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 
 import {
   addableGroups,
@@ -28,9 +29,21 @@ export function FilterBar(props: {
   onPick: (groupId: string, value: string) => void;
   onRemove: (groupId: string) => void;
 }) {
+  const applied = appliedGroups(props.groups);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const appliedCount = useRef(applied.length);
+
+  // A removed filter takes its focused trash button with it.
+  useEffect(() => {
+    if (applied.length < appliedCount.current && document.activeElement === document.body) {
+      addRef.current?.focus();
+    }
+    appliedCount.current = applied.length;
+  }, [applied.length]);
+
   return (
     <>
-      {appliedGroups(props.groups).map((group) => (
+      {applied.map((group) => (
         <AppliedFilter
           key={group.id}
           group={group}
@@ -38,7 +51,7 @@ export function FilterBar(props: {
           onRemove={() => props.onRemove(group.id)}
         />
       ))}
-      <AddFilter groups={addableGroups(props.groups)} onPick={props.onPick} />
+      <AddFilter ref={addRef} groups={addableGroups(props.groups)} onPick={props.onPick} />
     </>
   );
 }
@@ -94,6 +107,7 @@ function AppliedFilter(props: {
 
 /** The picker that applies one more filter: a group, then one of its values. */
 function AddFilter(props: {
+  ref: RefObject<HTMLButtonElement | null>;
   groups: FilterGroup[];
   onPick: (groupId: string, value: string) => void;
 }) {
@@ -114,7 +128,7 @@ function AddFilter(props: {
 
   return (
     <Popover open={open} onOpenChange={changeOpen}>
-      <PopoverTrigger render={<Button variant="outline" />}>
+      <PopoverTrigger ref={props.ref} render={<Button variant="outline" />}>
         <ListFilterPlusIcon data-icon="inline-start" />
         Agregar filtro
       </PopoverTrigger>
