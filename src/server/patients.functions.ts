@@ -31,9 +31,7 @@ const adminOnly = { roles: ["admin"] } as const;
 
 export const getPatients = createServerFn({ method: "GET" })
   .validator((data: ListOptions) => data)
-  .handler(({ data }) =>
-    withActor(editors, (actor) => listPatients(actor, { includeInactive: data.includeInactive })),
-  );
+  .handler(({ data }) => withActor(editors, (actor) => listPatients(actor, data)));
 
 // A POST, so the search text travels in the body and stays out of URLs.
 export const findPatients = createServerFn({ method: "POST" })

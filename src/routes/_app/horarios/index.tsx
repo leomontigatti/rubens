@@ -1,11 +1,14 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { ClockIcon } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { NoPractitioners } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Card, CardContent } from "#/components/ui/card.tsx";
+import { PractitionerTable, practitionerColumns } from "#/components/practitioner-table.tsx";
 import { getSchedulePractitioners } from "#/server/schedules.functions.ts";
 
 import { RefusalAlert } from "#/routes/_app/horarios/-shared.tsx";
+
+const columns = practitionerColumns("/horarios/$practitionerId");
 
 export const Route = createFileRoute("/_app/horarios/")({
   head: () => ({ meta: [{ title: "Horarios · Rubens" }] }),
@@ -21,28 +24,16 @@ function SchedulePractitioners() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Horarios" />
       {result.practitioners.length === 0 ? (
         <NoPractitioners />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {result.practitioners.map((practitioner) => (
-            <li key={practitioner.id}>
-              <Card>
-                <CardContent>
-                  <Link
-                    to="/horarios/$practitionerId"
-                    params={{ practitionerId: practitioner.id }}
-                    className="font-medium underline-offset-4 hover:underline"
-                  >
-                    {practitioner.displayName}
-                  </Link>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <PractitionerTable
+          practitioners={result.practitioners}
+          columns={columns}
+          icon={ClockIcon}
+        />
       )}
     </div>
   );

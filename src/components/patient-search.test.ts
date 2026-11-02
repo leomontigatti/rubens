@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { patientSearchKey, patientSearchQueries } from "#/components/patient-search.ts";
+import {
+  patientSearchKey,
+  patientSearchQueries,
+  patientSearchState,
+} from "#/components/patient-search.ts";
 
 const search = { query: "juan", includeInactive: false };
 
@@ -19,5 +23,39 @@ describe("patientSearchKey", () => {
     const key = patientSearchKey({ organizationId: "org-1", userId: "user-1" }, search);
 
     expect(key.slice(0, patientSearchQueries.length)).toEqual(patientSearchQueries);
+  });
+});
+
+describe("patientSearchState", () => {
+  const answered = { data: "results", isError: false };
+
+  it("is no search with an empty box, whatever an earlier search answered", () => {
+    expect(patientSearchState("  ", "juan", answered)).toEqual({ searching: false, failed: false });
+  });
+
+  it("holds no answer while the text differs from what was asked", () => {
+    expect(patientSearchState("juana", "juan", answered)).toEqual({
+      searching: true,
+      failed: false,
+    });
+  });
+
+  it("holds the answer to the text in the box", () => {
+    expect(patientSearchState("juan", "juan", answered)).toEqual({
+      searching: true,
+      found: "results",
+      failed: false,
+    });
+  });
+
+  it("ignores a space typed after the words", () => {
+    expect(patientSearchState("juan ", "juan", answered).found).toBe("results");
+  });
+
+  it("holds no answer once the search failed, even one fetched earlier", () => {
+    expect(patientSearchState("juan", "juan", { data: "results", isError: true })).toEqual({
+      searching: true,
+      failed: true,
+    });
   });
 });

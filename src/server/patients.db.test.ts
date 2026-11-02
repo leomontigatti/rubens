@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import type { Actor } from "#/lib/access.ts";
 import { createAuth } from "#/lib/auth.ts";
-import { patientName } from "#/lib/patients.ts";
+import { patientName, patientPageSize } from "#/lib/patients.ts";
 import { createOrganization } from "#/test-support/organization.ts";
 
 import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
@@ -17,6 +17,8 @@ import {
   setWhatsappConsent,
   updatePatient,
 } from "#/server/patients.ts";
+import { addCoverage } from "#/server/coverages.ts";
+import { createInsurer } from "#/server/insurers.ts";
 
 // Every call runs as the app role, so row-level security applies as in the app.
 
@@ -277,6 +279,94 @@ describe("WhatsApp consent", () => {
   });
 });
 
+describe("the patient list", () => {
+  const fullPage = async () => {
+    for (let index = 0; index <= patientPageSize; index += 1) {
+      await register(receptionist, {
+        firstName: "Ana",
+        lastName: `Apellido ${String(index).padStart(2, "0")}`,
+        phone: `0351 15 555-${1000 + index}`,
+      });
+    }
+  };
+
+  const list = (page?: number) =>
+    asAppRole(db, (tx) => listPatients(receptionist, { includeInactive: false, page }, tx));
+
+  it("shows a page at a time, by last name, and says how many there are", async () => {
+    await fullPage();
+
+    const first = await list();
+    const second = await list(2);
+
+    expect(first).toMatchObject({ ok: true, total: patientPageSize + 1, page: 1 });
+    expect(first.ok && first.patients).toHaveLength(patientPageSize);
+    expect(second).toMatchObject({ ok: true, page: 2 });
+    expect(second.ok && second.patients.map((row) => row.lastName)).toEqual([
+      `Apellido ${patientPageSize}`,
+    ]);
+  });
+
+  it("answers with the last page when asked for one past it", async () => {
+    await fullPage();
+
+    const past = await list(9);
+
+    expect(past).toMatchObject({ ok: true, page: 2 });
+    expect(past.ok && past.patients).toHaveLength(1);
+  });
+
+  it("answers an empty registry on page one", async () => {
+    expect(await list(9)).toMatchObject({ ok: true, patients: [], total: 0, page: 1 });
+  });
+
+  it("refuses a page that is not a positive whole number", async () => {
+    expect(await list(0)).toEqual({ ok: false, reason: "invalidInput" });
+    expect(await list(1.5)).toEqual({ ok: false, reason: "invalidInput" });
+  });
+
+  it("names a patient's primary insurer, in the list and in a search, and none for a private one", async () => {
+    const covered = await register(receptionist);
+    await register(receptionist, {
+      firstName: "Luz",
+      lastName: "Pérez",
+      phone: "0351 15 555-4321",
+    });
+    const created = await asAppRole(db, (tx) =>
+      createInsurer(admin, { name: "OSDE", kind: "prepaga" }, tx),
+    );
+    if (!created.ok) {
+      throw new Error(`createInsurer failed: ${created.reason}`);
+    }
+    await asAppRole(db, (tx) =>
+      addCoverage(
+        receptionist,
+        {
+          patientId: covered.id,
+          insurerId: created.insurer.id,
+          memberNumber: "123",
+          primary: true,
+        },
+        tx,
+      ),
+    );
+
+    const listed = await list();
+    const found = await asAppRole(db, (tx) =>
+      searchPatients(receptionist, { query: "perez", includeInactive: false }, tx),
+    );
+
+    for (const result of [listed, found]) {
+      expect(
+        result.ok && result.patients.map((row) => [row.firstName, row.insurerName]).sort(),
+      ).toEqual([
+        ["Juan", "OSDE"],
+        ["Luz", null],
+      ]);
+    }
+  });
+});
+
 describe("deactivating a patient", () => {
   it("drops a deactivated patient from the default list, keeps their data, and reactivates them, audited", async () => {
     const patient = await register(receptionist);
@@ -293,7 +383,7 @@ describe("deactivating a patient", () => {
     );
     await asAppRole(db, (tx) => setPatientActive(admin, { id: patient.id, active: true }, tx));
 
-    expect(active).toEqual({ ok: true, patients: [] });
+    expect(active).toMatchObject({ ok: true, patients: [], total: 0 });
     expect(all).toMatchObject({ ok: true, patients: [{ id: patient.id, active: false }] });
     expect(found).toMatchObject({ ok: true, patient: { firstName: "Juan", active: false } });
     expect((await historyOf(patient.id)).map((entry) => entry.action)).toEqual([

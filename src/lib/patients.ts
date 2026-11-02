@@ -165,6 +165,9 @@ export function legalName(patient: { firstName: string; lastName: string }): str
   return `${patient.firstName} ${patient.lastName}`;
 }
 
+/** How many patients the list shows at a time. */
+export const patientPageSize = 25;
+
 export const documentTypeLabels: Record<DocumentType, string> = {
   dni: "DNI",
   passport: "Pasaporte",

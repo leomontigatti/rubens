@@ -36,7 +36,7 @@ export function addableGroups(groups: FilterGroup[]): FilterGroup[] {
   return groups.filter((group) => !selectedOption(group) && group.options.length > 0);
 }
 
-const folded = (text: string) =>
+export const folded = (text: string) =>
   text
     .normalize("NFD")
     .replace(/\p{Mn}/gu, "")

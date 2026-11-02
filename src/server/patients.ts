@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import * as z from "zod";
 
-import { auditLog, patient, user } from "#/db/schema/index.ts";
+import { auditLog, coverage, insurer, patient, user } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
 import type { Actor, Role } from "#/lib/access.ts";
@@ -10,6 +10,7 @@ import {
   isMinor,
   patientActiveChangeSchema,
   patientInputSchema,
+  patientPageSize,
   patientUpdateSchema,
   whatsappConsentChangeSchema,
 } from "#/lib/patients.ts";
@@ -58,6 +59,9 @@ export interface Patient {
   /** Under 18 today in the organization's time zone; never with no birth date. */
   minor: boolean;
 }
+
+/** A patient as a list shows them; a private patient has no insurer. */
+export type ListedPatient = Patient & { insurerName: string | null };
 
 export interface HistoryEntry {
   id: string;
@@ -130,7 +134,7 @@ type PatientRow = Omit<Patient, "incomplete" | "minor">;
 
 // The organization's offices are all in Argentina, so its date is the default
 // zone's.
-function toPatient(row: PatientRow): Patient {
+function toPatient<Row extends PatientRow>(row: Row) {
   return {
     ...row,
     incomplete: row.birthDate === null,
@@ -245,27 +249,56 @@ async function checkDuplicates(
   return { ok: false, reason: "possibleDuplicates", candidates };
 }
 
-export interface ListOptions {
-  includeInactive: boolean;
+const listOptionsSchema = z.object({
+  includeInactive: z.boolean(),
+  page: z.number().int().positive().default(1),
+});
+
+export type ListOptions = z.input<typeof listOptionsSchema>;
+
+export interface PatientPage {
+  patients: ListedPatient[];
+  total: number;
+  page: number;
 }
 
+/** Patients with their primary insurer: at most one coverage is primary, so a patient is one row. */
+function selectListedPatients(tx: Transaction) {
+  return tx
+    .select({ ...patientColumns, insurerName: insurer.name })
+    .from(patient)
+    .leftJoin(coverage, and(eq(coverage.patientId, patient.id), eq(coverage.primary, true)))
+    .leftJoin(insurer, eq(insurer.id, coverage.insurerId));
+}
+
+/** One page of the registry; a page past the end answers with the last one. */
 export async function listPatients(
   actor: Actor,
   options: ListOptions,
   database?: AnyDatabase,
-): Promise<Result<{ patients: Patient[] }>> {
+): Promise<Result<PatientPage>> {
   if (!canEdit(actor)) {
     return forbidden;
   }
+  const parsed = listOptionsSchema.safeParse(options);
+  if (!parsed.success) {
+    return invalidInput;
+  }
+  const shown = parsed.data.includeInactive ? undefined : eq(patient.active, true);
   return withTenant(
     actor,
     async (tx) => {
-      const rows = await tx
-        .select(patientColumns)
+      const [{ total } = { total: 0 }] = await tx
+        .select({ total: count() })
         .from(patient)
-        .where(options.includeInactive ? undefined : eq(patient.active, true))
-        .orderBy(asc(patient.lastName), asc(patient.firstName));
-      return { ok: true as const, patients: rows.map(toPatient) };
+        .where(shown);
+      const page = Math.min(parsed.data.page, Math.max(1, Math.ceil(total / patientPageSize)));
+      const rows = await selectListedPatients(tx)
+        .where(shown)
+        .orderBy(asc(patient.lastName), asc(patient.firstName), asc(patient.id))
+        .limit(patientPageSize)
+        .offset((page - 1) * patientPageSize);
+      return { ok: true as const, patients: rows.map(toPatient), total, page };
     },
     database,
   );
@@ -307,7 +340,7 @@ export async function searchPatients(
   actor: Actor,
   options: SearchOptions,
   database?: AnyDatabase,
-): Promise<Result<{ patients: Patient[] }>> {
+): Promise<Result<{ patients: ListedPatient[] }>> {
   if (!canEdit(actor)) {
     return forbidden;
   }
@@ -339,9 +372,7 @@ export async function searchPatients(
   return withTenant(
     actor,
     async (tx) => {
-      const rows = await tx
-        .select(patientColumns)
-        .from(patient)
+      const rows = await selectListedPatients(tx)
         .where(
           and(
             parsed.data.includeInactive ? undefined : eq(patient.active, true),

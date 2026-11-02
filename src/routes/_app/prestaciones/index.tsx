@@ -1,12 +1,15 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { StethoscopeIcon } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { NoPractitioners } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Card, CardContent } from "#/components/ui/card.tsx";
+import { PractitionerTable, practitionerColumns } from "#/components/practitioner-table.tsx";
 import { getMedicalServicePractitioners } from "#/server/medical-services.functions.ts";
 
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
+
+const columns = practitionerColumns("/prestaciones/$practitionerId");
 
 export const Route = createFileRoute("/_app/prestaciones/")({
   head: () => ({ meta: [{ title: "Prestaciones · Rubens" }] }),
@@ -22,28 +25,16 @@ function MedicalServicePractitioners() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Prestaciones" />
       {result.practitioners.length === 0 ? (
         <NoPractitioners />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {result.practitioners.map((practitioner) => (
-            <li key={practitioner.id}>
-              <Card>
-                <CardContent>
-                  <Link
-                    to="/prestaciones/$practitionerId"
-                    params={{ practitionerId: practitioner.id }}
-                    className="font-medium underline-offset-4 hover:underline"
-                  >
-                    {practitioner.displayName}
-                  </Link>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <PractitionerTable
+          practitioners={result.practitioners}
+          columns={columns}
+          icon={StethoscopeIcon}
+        />
       )}
     </div>
   );

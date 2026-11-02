@@ -1,10 +1,12 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { UserCogIcon } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import type { DataTableColumn } from "#/components/data-table.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
-import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { rolesLabel, staffInputSchema } from "#/lib/staff.ts";
@@ -40,40 +42,54 @@ function Staff() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Personal" />
       <CreatePanel isAdmin label="Nueva persona">
         {(close) => <StaffForm onCancel={close} onDone={close} />}
       </CreatePanel>
-      <ul className="flex flex-col gap-3">
-        {result.staff.map((member) => (
-          <StaffItem key={member.memberId} member={member} />
-        ))}
-      </ul>
+      <StaffTable staff={result.staff} />
     </div>
   );
 }
 
-function StaffItem({ member }: { member: StaffMember }) {
+const columns: DataTableColumn<StaffMember>[] = [
+  {
+    id: "name",
+    header: "Nombre",
+    cell: (member) => (
+      <RowLink to="/personal/$memberId" params={{ memberId: member.memberId }}>
+        {member.name}
+      </RowLink>
+    ),
+  },
+  { id: "email", header: "Correo", cell: (member) => member.email },
+  { id: "roles", header: "Roles", cell: (member) => rolesLabel(member.roles) },
+  {
+    id: "status",
+    header: "Estado",
+    cell: (member) => !member.active && <Badge variant="secondary">Inactivo</Badge>,
+  },
+];
+
+function StaffTable(props: { staff: StaffMember[] }) {
+  const { table, pager, query, setQuery } = useClientDataTable({
+    rows: props.staff,
+    columns,
+    getRowId: (member) => member.memberId,
+    searchText: (member) => `${member.name} ${member.email}`,
+  });
   return (
-    <li>
-      <Card>
-        <CardContent className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <Link
-              to="/personal/$memberId"
-              params={{ memberId: member.memberId }}
-              className="font-medium underline-offset-4 hover:underline"
-            >
-              {member.name}
-            </Link>
-            {!member.active && <Badge variant="secondary">Inactivo</Badge>}
-          </div>
-          <span className="text-muted-foreground text-sm">{member.email}</span>
-          <span className="text-muted-foreground text-sm">{rolesLabel(member.roles)}</span>
-        </CardContent>
-      </Card>
-    </li>
+    <DataTable
+      table={table}
+      pager={pager}
+      search={{
+        value: query,
+        onChange: setQuery,
+        label: "Buscar persona",
+        placeholder: "Buscar por nombre o correo",
+      }}
+      empty={<NoMatches icon={UserCogIcon} />}
+    />
   );
 }
 

@@ -7,6 +7,7 @@
 // - `alert-structure`: an `Alert` without its title and description.
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
+// - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -244,6 +245,34 @@ const noBareLabel = {
   },
 };
 
+const noRawTable = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A list is a DataTable.",
+    },
+    messages: {
+      table:
+        "Use DataTable from #/components/data-table.tsx: it owns the toolbar, the 40 px rows and the pager, so a hand-made table drifts from it (style guide, Tables).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value.endsWith("/components/ui/table.tsx")) {
+          context.report({ node, messageId: "table" });
+        }
+      },
+      JSXOpeningElement(node) {
+        if (node.name.name === "table") {
+          context.report({ node, messageId: "table" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
@@ -251,6 +280,7 @@ export default {
     "no-bare-label": noBareLabel,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
+    "no-raw-table": noRawTable,
     "require-no-validate": requireNoValidate,
   },
 };

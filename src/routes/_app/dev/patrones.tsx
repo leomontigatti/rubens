@@ -1,8 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { BuildingIcon, CalendarXIcon, UserRoundIcon } from "lucide-react";
+import { BuildingIcon, CalendarXIcon, UserRoundIcon, UsersIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
+import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -36,6 +38,38 @@ function Pattern(props: { title: string; children: ReactNode }) {
       <h2 className="text-lg font-semibold">{props.title}</h2>
       {props.children}
     </section>
+  );
+}
+
+const patternColumns: DataTableColumn<{ id: string; name: string; insurer: string }>[] = [
+  { id: "name", header: "Nombre", cell: (row) => row.name },
+  { id: "insurer", header: "Obra social", cell: (row) => row.insurer },
+];
+
+const patternRows = [
+  { id: "1", name: "Ana Gómez", insurer: "Particular" },
+  { id: "2", name: "Juan Pérez", insurer: "OSDE" },
+];
+
+function PatternTable() {
+  const { table, pager, query, setQuery } = useClientDataTable({
+    rows: patternRows,
+    columns: patternColumns,
+    getRowId: (row) => row.id,
+    searchText: (row) => row.name,
+  });
+  return (
+    <DataTable
+      table={table}
+      pager={pager}
+      search={{
+        value: query,
+        onChange: setQuery,
+        label: "Buscar paciente",
+        placeholder: "Buscar por nombre",
+      }}
+      empty={<NoMatches icon={UsersIcon} />}
+    />
   );
 }
 
@@ -106,6 +140,9 @@ function Patterns() {
         <div className="flex flex-wrap items-center gap-2">
           <PatternFilters />
         </div>
+      </Pattern>
+      <Pattern title="Tabla">
+        <PatternTable />
       </Pattern>
       <Pattern title="Sin datos">
         <EmptyState

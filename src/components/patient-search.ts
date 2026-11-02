@@ -10,3 +10,27 @@ export function patientSearchKey(
 ) {
   return [...patientSearchQueries, viewer.organizationId, viewer.userId, search] as const;
 }
+
+export interface PatientSearchState<Found> {
+  searching: boolean;
+  /** The answer to the text in the box: nothing else may stand in for it. */
+  found?: Found;
+  failed: boolean;
+}
+
+/** Where a search stands, from the text typed and the text the answer is for. */
+export function patientSearchState<Found>(
+  typed: string,
+  asked: string,
+  answer: { data?: Found; isError: boolean },
+): PatientSearchState<Found> {
+  if (typed.trim() === "") {
+    return { searching: false, failed: false };
+  }
+  if (typed.trim() !== asked.trim()) {
+    return { searching: true, failed: false };
+  }
+  return answer.isError
+    ? { searching: true, failed: true }
+    : { searching: true, found: answer.data, failed: false };
+}
