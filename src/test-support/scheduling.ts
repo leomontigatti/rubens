@@ -9,7 +9,7 @@ import { createMedicalService } from "#/server/medical-services.ts";
 import { createOffice, createRoom } from "#/server/offices.ts";
 import { registerPatient } from "#/server/patients.ts";
 import { createSchedule, listSchedulePractitioners } from "#/server/schedules.ts";
-import { changeRoles } from "#/server/staff.ts";
+import { updateMember } from "#/server/staff.ts";
 
 /**
  * An organization with its admin, ready for scheduling: offices and rooms are
@@ -50,12 +50,12 @@ export async function createSchedulingWorld(db: TestDatabase) {
     const added = await auth.api.addMember({
       body: { userId: user.id, organizationId, role: roles },
     });
-    // `changeRoles` is what creates a practitioner's row.
+    // `updateMember` is what creates a practitioner's row.
     const result = await asAppRole(db, (tx) =>
-      changeRoles(admin, { memberId: added.id, roles }, tx),
+      updateMember(admin, { memberId: added.id, roles }, tx),
     );
     if (!result.ok) {
-      throw new Error(`changeRoles failed: ${result.reason}`);
+      throw new Error(`updateMember failed: ${result.reason}`);
     }
     const { member } = result;
     const actor: Actor = { organizationId, userId: member.userId, roles };

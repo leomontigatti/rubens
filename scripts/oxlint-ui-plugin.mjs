@@ -8,6 +8,7 @@
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
 // - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
+// - `no-raw-form`: a `<form>` where `FormPage` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -273,11 +274,34 @@ const noRawTable = {
   },
 };
 
+const noRawForm = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A create or an edit is a FormPage.",
+    },
+    messages: {
+      form: "Use FormPage from #/components/form-page.tsx: it owns the actions, the spinner and the question before leaving with changes, so a hand-made form drifts from it (style guide, Form pages).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        if (node.name.name === "form") {
+          context.report({ node, messageId: "form" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
     "no-bare-label": noBareLabel,
+    "no-raw-form": noRawForm,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "no-raw-table": noRawTable,

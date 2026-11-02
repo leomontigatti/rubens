@@ -1,37 +1,22 @@
 import { BuildingIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import type { FormEvent } from "react";
 import * as z from "zod";
 
 import { EmptyState } from "#/components/empty-state.tsx";
+import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { defaultTimeZone, officeInputSchema } from "#/lib/offices.ts";
-import type { OfficeInput } from "#/lib/offices.ts";
 import {
-  addOffice,
   changeOfficeActive,
   getOfficeUpcomingCount,
-  editOffice,
   getOffices,
 } from "#/server/offices.functions.ts";
 import type { Office } from "#/server/offices.ts";
-import {
-  AdminControls,
-  CreatePanel,
-  ErrorAlert,
-  FormActions,
-  fieldMessage,
-  NameField,
-} from "#/components/admin-form.tsx";
+import { AdminControls, ErrorAlert } from "#/components/admin-form.tsx";
 
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
-import type { ActionResult } from "#/routes/_app/sedes/-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/")({
   head: () => ({ meta: [{ title: "Sedes · Rubens" }] }),
@@ -40,14 +25,6 @@ export const Route = createFileRoute("/_app/sedes/")({
   loader: ({ deps }) => getOffices({ data: deps }),
   component: Offices,
 });
-
-const fieldMessages: Record<keyof OfficeInput, string> = {
-  name: "Ingresá el nombre de la sede.",
-  address: "Ingresá la dirección de la sede.",
-  timeZone: "La zona horaria no es válida. Usá un nombre como America/Argentina/Buenos_Aires.",
-};
-
-const newOffice = { name: "", address: "", timeZone: defaultTimeZone };
 
 function Offices() {
   const { viewer } = Route.useRouteContext();
@@ -61,18 +38,9 @@ function Offices() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Sedes" actions={<ShowInactiveOffices />} />
-      <CreatePanel isAdmin={isAdmin} label="Nueva sede">
-        {(close) => (
-          <OfficeForm
-            idPrefix="new"
-            initial={newOffice}
-            submitLabel="Crear sede"
-            onCancel={close}
-            onSubmit={(input) => addOffice({ data: input })}
-            onDone={close}
-          />
-        )}
-      </CreatePanel>
+      <CreateButton can={isAdmin} link={<Link to="/sedes/nueva" />}>
+        Nueva sede
+      </CreateButton>
       <OfficeList offices={result.offices} isAdmin={isAdmin} />
     </div>
   );
@@ -113,27 +81,7 @@ function OfficeList({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean 
 }
 
 function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
-  const [editing, setEditing] = useState(false);
   const toggle = useAction();
-
-  if (editing) {
-    return (
-      <li>
-        <Card>
-          <CardContent>
-            <OfficeForm
-              idPrefix={office.id}
-              initial={office}
-              submitLabel="Guardar"
-              onCancel={() => setEditing(false)}
-              onSubmit={(input) => editOffice({ data: { ...input, officeId: office.id } })}
-              onDone={() => setEditing(false)}
-            />
-          </CardContent>
-        </Card>
-      </li>
-    );
-  }
 
   return (
     <li>
@@ -156,7 +104,7 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
           <AdminControls
             isAdmin={isAdmin}
             active={office.active}
-            onEdit={() => setEditing(true)}
+            editLink={<Link to="/sedes/$officeId/editar" params={{ officeId: office.id }} />}
             deactivation={{
               question: `¿Desactivar ${office.name}?`,
               countUpcoming: () => getOfficeUpcomingCount({ data: { id: office.id } }),
@@ -171,63 +119,5 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
         </CardContent>
       </Card>
     </li>
-  );
-}
-
-interface OfficeFormProps {
-  idPrefix: string;
-  initial: OfficeInput;
-  submitLabel: string;
-  onCancel: () => void;
-  onSubmit: (input: OfficeInput) => Promise<ActionResult>;
-  onDone: () => void;
-}
-
-function OfficeForm({
-  idPrefix,
-  initial,
-  submitLabel,
-  onCancel,
-  onSubmit,
-  onDone,
-}: OfficeFormProps) {
-  const action = useAction();
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const input = officeInputSchema.safeParse({
-      name: form.get("name"),
-      address: form.get("address"),
-      timeZone: form.get("timeZone"),
-    });
-    if (!input.success) {
-      action.setError(fieldMessage(fieldMessages, input.error));
-      return;
-    }
-    if (await action.run(() => onSubmit(input.data))) {
-      onDone();
-    }
-  }
-
-  return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <ErrorAlert message={action.error} />
-      <NameField idPrefix={idPrefix} initial={initial.name} />
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-address`}>Dirección</FieldLabel>
-        <Input id={`${idPrefix}-address`} name="address" defaultValue={initial.address} required />
-      </Field>
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-timeZone`}>Zona horaria</FieldLabel>
-        <Input
-          id={`${idPrefix}-timeZone`}
-          name="timeZone"
-          defaultValue={initial.timeZone}
-          required
-        />
-      </Field>
-      <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
-    </form>
   );
 }

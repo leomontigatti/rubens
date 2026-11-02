@@ -47,9 +47,12 @@ function collisionMessage(result: ActionResult): string | null {
 export function useAction() {
   const action = useFormAction(refusalMessages);
 
-  async function run(work: () => Promise<ActionResult>): Promise<boolean> {
+  async function tellingCollisions(
+    submit: typeof action.run,
+    work: () => Promise<ActionResult>,
+  ): Promise<boolean> {
     let collision: string | null = null;
-    const ok = await action.run(async () => {
+    const ok = await submit(async () => {
       const result = await work();
       collision = collisionMessage(result);
       return result;
@@ -60,7 +63,11 @@ export function useAction() {
     return ok;
   }
 
-  return { ...action, run };
+  return {
+    ...action,
+    run: (work: () => Promise<ActionResult>) => tellingCollisions(action.run, work),
+    save: (work: () => Promise<ActionResult>) => tellingCollisions(action.save, work),
+  };
 }
 
 export function RefusalAlert({ reason }: { reason: RefusalReason }) {

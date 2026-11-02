@@ -10,12 +10,25 @@
 
 const storageKey = "rubens-session-changed";
 
+let changing = false;
+
+/** Whether this tab is leaving for a new session: nothing may hold it back. */
+export function isSessionChanging(): boolean {
+  return changing;
+}
+
 /** Whether a check of who is signed in found `userId`, the user a page was loaded for. */
 export function isSignedInAs(
   result: { ok: true; viewer: { userId: string } } | { ok: false },
   userId: string,
 ): boolean {
   return result.ok && result.viewer.userId === userId;
+}
+
+/** Loads this tab afresh, for whoever is signed in now. */
+export function reloadForNewSession(): void {
+  changing = true;
+  window.location.reload();
 }
 
 /** Tells the app's other tabs that the session changed, then loads `path` afresh here. */
@@ -27,6 +40,7 @@ export function startNewSession(path: string): void {
     // leaves the previous user's screen.
     console.warn("[session-change] could not tell other tabs", error);
   }
+  changing = true;
   window.location.assign(path);
 }
 
@@ -37,12 +51,12 @@ export function startNewSession(path: string): void {
 export function reloadOnSessionChange(): () => void {
   const onStorage = (event: StorageEvent) => {
     if (event.key === storageKey) {
-      window.location.reload();
+      reloadForNewSession();
     }
   };
   const onPageShow = (event: PageTransitionEvent) => {
     if (event.persisted) {
-      window.location.reload();
+      reloadForNewSession();
     }
   };
   window.addEventListener("storage", onStorage);

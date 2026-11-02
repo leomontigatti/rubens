@@ -60,6 +60,7 @@ export default defineConfig({
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
       "ui/no-bare-label": "error",
+      "ui/no-raw-form": "error",
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
       "ui/no-raw-table": "error",
@@ -91,6 +92,22 @@ export default defineConfig({
           "ui/no-bare-label": "off",
           "ui/no-raw-form-element": "off",
           "ui/no-raw-table": "off",
+        },
+      },
+      {
+        // The one place a form is drawn; the pages that are only their form, with
+        // no list to return to; and the agenda, which moves in its own change.
+        files: [
+          "src/components/form-page.tsx",
+          "src/components/patient-form.tsx",
+          "src/routes/ingresar.tsx",
+          "src/routes/_app/cambiar-contrasena.tsx",
+          "src/routes/_app/disponibilidad/index.tsx",
+          "src/routes/_app/agenda/**",
+          "**/*.test.tsx",
+        ],
+        rules: {
+          "ui/no-raw-form": "off",
         },
       },
       {

@@ -1,35 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
-import {
-  ErrorAlert,
-  FormActions,
-  RefusalMessage,
-  useFormAction,
-} from "#/components/admin-form.tsx";
+import { ErrorAlert, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import {
-  PatientFields,
-  PatientSaveFeedback,
-  patientFieldMessage,
-  readPatientForm,
-  usePatientSave,
-} from "#/components/patient-form.tsx";
+import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
-import { CoverageList, NewCoverageForm } from "#/components/patient-coverages.tsx";
+import { CoverageList } from "#/components/patient-coverages.tsx";
 import {
   GuardianList,
   MessageContactChoice,
   MinorPrompt,
-  NewGuardianForm,
 } from "#/components/patient-guardians.tsx";
 import { patientSearchQueries } from "#/components/patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
   documentLabel,
@@ -37,42 +22,35 @@ import {
   legalName,
   patientBadges,
   patientName,
-  patientUpdateSchema,
 } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
 import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-statuses.ts";
 import { getPatientAppointments } from "#/server/appointments.functions.ts";
 import { getCoverages } from "#/server/coverages.functions.ts";
-import type { Coverage } from "#/server/coverages.ts";
 import { getGuardians } from "#/server/guardians.functions.ts";
 import type { Guardian } from "#/server/guardians.ts";
-import { getInsurers } from "#/server/insurers.functions.ts";
-import type { Insurer } from "#/server/insurers.ts";
 import {
   changePatientActive,
   changeWhatsappConsent,
-  editPatient,
   getPatientChanges,
   getPatientDetails,
   getPatientUpcomingCount,
 } from "#/server/patients.functions.ts";
-import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import type { PatientAppointment } from "#/server/patient-appointments.ts";
 import type { HistoryEntry, Patient } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
   loader: async ({ params, context }) => {
     const data = { patientId: params.patientId };
-    const [details, coverages, guardians, insurers, history, appointments] = await Promise.all([
+    const [details, coverages, guardians, history, appointments] = await Promise.all([
       getPatientDetails({ data }),
       getCoverages({ data }),
       getGuardians({ data }),
-      getInsurers({ data: { includeInactive: false } }),
       context.viewer.roles.includes("admin") ? getPatientChanges({ data }) : null,
       getPatientAppointments({ data }),
     ]);
-    return { details, coverages, guardians, insurers, history, appointments };
+    return { details, coverages, guardians, history, appointments };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -100,20 +78,20 @@ const instantFormat = new Intl.DateTimeFormat("es-AR", {
 
 function PatientScreen() {
   const { viewer } = Route.useRouteContext();
-  const { details, coverages, guardians, insurers, history, appointments } = Route.useLoaderData();
+  const { details, coverages, guardians, history, appointments } = Route.useLoaderData();
 
   if (!details.ok) {
     return <RefusalMessage message={patientRefusalMessages[details.reason]} />;
   }
   const { patient } = details;
 
-  // Keyed by patient: a link to another patient (from the duplicate warning)
-  // stays on this route, and must not carry an open edit form over.
+  // Keyed by patient: a link to another patient stays on this route, and must
+  // not carry one patient's messages over.
   return (
     <div key={patient.id} className="mx-auto flex max-w-3xl flex-col gap-6">
       <PatientHeading patient={patient} isAdmin={viewer.roles.includes("admin")} />
       <DetailsSection patient={patient} />
-      <CoverageSection patientId={patient.id} coverages={coverages} insurers={insurers} />
+      <CoverageSection patientId={patient.id} coverages={coverages} />
       <GuardianSection patient={patient} guardians={guardians} />
       <WhatsappSection patient={patient} />
       <AppointmentsSection appointments={appointments} />
@@ -185,43 +163,17 @@ function ActiveToggle({ patient }: { patient: Patient }) {
   );
 }
 
-function Section(props: { title: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{props.title}</CardTitle>
-        {props.action && <CardAction>{props.action}</CardAction>}
-      </CardHeader>
-      <CardContent>{props.children}</CardContent>
-    </Card>
-  );
-}
-
-function Detail(props: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-muted-foreground text-sm">{props.label}</dt>
-      <dd>{props.value ?? "—"}</dd>
-    </div>
-  );
-}
-
 function DetailsSection({ patient }: { patient: Patient }) {
-  const [editing, setEditing] = useState(false);
-
-  if (editing) {
-    return (
-      <Section title="Datos">
-        <PatientEditForm patient={patient} onDone={() => setEditing(false)} />
-      </Section>
-    );
-  }
-
   return (
-    <Section
+    <RecordSection
       title="Datos"
       action={
-        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link to="/pacientes/$patientId/editar" params={{ patientId: patient.id }} />}
+        >
           Editar
         </Button>
       }
@@ -238,87 +190,34 @@ function DetailsSection({ patient }: { patient: Patient }) {
         <Detail label="Correo electrónico" value={patient.email} />
         <Detail label="Dirección" value={patient.address} />
       </dl>
-    </Section>
-  );
-}
-
-function PatientEditForm({ patient, onDone }: { patient: Patient; onDone: () => void }) {
-  const navigate = useNavigate();
-  const save = usePatientSave(
-    (data: PatientUpdate & DuplicateConfirmation) => editPatient({ data }),
-    onDone,
-  );
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const update = { ...readPatientForm(new FormData(event.currentTarget)), patientId: patient.id };
-    const parsed = patientUpdateSchema.safeParse(update);
-    if (!parsed.success) {
-      save.setError(patientFieldMessage(parsed.error));
-      return;
-    }
-    await save.submit(update);
-  }
-
-  return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <PatientSaveFeedback
-        save={save}
-        confirmLabel="Guardar igual"
-        onUse={(other) =>
-          void navigate({ to: "/pacientes/$patientId", params: { patientId: other.id } })
-        }
-      />
-      <PatientFields idPrefix={patient.id} full initial={patient} />
-      <FormActions pending={save.pending} submitLabel="Guardar" onCancel={onDone} />
-    </form>
+    </RecordSection>
   );
 }
 
 type LoaderData = ReturnType<typeof Route.useLoaderData>;
 
-/** The coverages section, left out when either list was refused. */
-function CoverageSection(props: {
-  patientId: string;
-  coverages: LoaderData["coverages"];
-  insurers: LoaderData["insurers"];
-}) {
-  if (!props.coverages.ok || !props.insurers.ok) {
+/** The coverages section, left out when the list was refused. */
+function CoverageSection(props: { patientId: string; coverages: LoaderData["coverages"] }) {
+  const { patientId } = props;
+  if (!props.coverages.ok) {
     return null;
   }
   return (
-    <CoverageCard
-      patientId={props.patientId}
-      coverages={props.coverages.coverages}
-      insurers={props.insurers.insurers}
-    />
-  );
-}
-
-function CoverageCard(props: { patientId: string; coverages: Coverage[]; insurers: Insurer[] }) {
-  const [adding, setAdding] = useState(false);
-  return (
-    <Section
+    <RecordSection
       title="Coberturas"
       action={
-        !adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            Agregar cobertura
-          </Button>
-        )
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link to="/pacientes/$patientId/coberturas/nueva" params={{ patientId }} />}
+        >
+          Agregar cobertura
+        </Button>
       }
     >
-      <div className="flex flex-col gap-6">
-        {adding && (
-          <NewCoverageForm
-            patientId={props.patientId}
-            insurers={props.insurers}
-            onDone={() => setAdding(false)}
-          />
-        )}
-        <CoverageList coverages={props.coverages} insurers={props.insurers} />
-      </div>
-    </Section>
+      <CoverageList patientId={patientId} coverages={props.coverages.coverages} />
+    </RecordSection>
   );
 }
 
@@ -331,25 +230,27 @@ function GuardianSection(props: { patient: Patient; guardians: LoaderData["guard
 }
 
 function GuardianCard(props: { patient: Patient; guardians: Guardian[] }) {
-  const [adding, setAdding] = useState(false);
+  const patientId = props.patient.id;
   return (
-    <Section
+    <RecordSection
       title="Responsables"
       action={
-        !adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            Agregar responsable
-          </Button>
-        )
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link to="/pacientes/$patientId/responsables/nuevo" params={{ patientId }} />}
+        >
+          Agregar responsable
+        </Button>
       }
     >
       <div className="flex flex-col gap-6">
         <MinorPrompt patient={props.patient} guardians={props.guardians} />
-        {adding && <NewGuardianForm patientId={props.patient.id} onDone={() => setAdding(false)} />}
-        <GuardianList guardians={props.guardians} />
+        <GuardianList patientId={patientId} guardians={props.guardians} />
         <MessageContactChoice patient={props.patient} guardians={props.guardians} />
       </div>
-    </Section>
+    </RecordSection>
   );
 }
 
@@ -357,7 +258,7 @@ function WhatsappSection({ patient }: { patient: Patient }) {
   const action = useAction();
   const consent = !patient.whatsappConsent;
   return (
-    <Section title="WhatsApp">
+    <RecordSection title="WhatsApp">
       <div className="flex flex-col gap-4">
         <ErrorAlert message={action.error} />
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -382,7 +283,7 @@ function WhatsappSection({ patient }: { patient: Patient }) {
           </Button>
         </div>
       </div>
-    </Section>
+    </RecordSection>
   );
 }
 
@@ -392,7 +293,7 @@ function AppointmentsSection({ appointments }: { appointments: LoaderData["appoi
     return null;
   }
   return (
-    <Section title="Turnos">
+    <RecordSection title="Turnos">
       <div className="flex flex-col gap-6">
         <AppointmentList
           title="Próximos"
@@ -405,7 +306,7 @@ function AppointmentsSection({ appointments }: { appointments: LoaderData["appoi
           empty="No tiene turnos anteriores."
         />
       </div>
-    </Section>
+    </RecordSection>
   );
 }
 
@@ -478,7 +379,7 @@ const entityLabels: Record<string, string> = {
 function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, string> }) {
   const { entries, names } = props;
   return (
-    <Section title="Historial de cambios">
+    <RecordSection title="Historial de cambios">
       <ol className="flex flex-col gap-4">
         {entries.map((entry) => (
           <li key={entry.id} className="flex flex-col gap-1">
@@ -502,6 +403,6 @@ function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, 
           </li>
         ))}
       </ol>
-    </Section>
+    </RecordSection>
   );
 }

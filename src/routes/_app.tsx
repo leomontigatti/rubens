@@ -6,7 +6,12 @@ import { AppSidebar } from "#/components/app-sidebar.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { authClient } from "#/lib/auth-client.ts";
-import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
+import {
+  isSignedInAs,
+  reloadForNewSession,
+  reloadOnSessionChange,
+  startNewSession,
+} from "#/lib/session-change.ts";
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getToRescheduleCount } from "#/server/appointments.functions.ts";
@@ -25,7 +30,9 @@ export const Route = createFileRoute("/_app")({
     return { viewer: result.viewer };
   },
   // Reloaded on every navigation and after every change a screen makes, so
-  // the menu's count of appointments to reschedule stays current.
+  // the menu's count of appointments to reschedule stays current. A preload is
+  // not a navigation, so hovering a link does not count them.
+  shouldReload: ({ preload }) => !preload,
   loader: async () => {
     const counted = await getToRescheduleCount();
     return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };
@@ -52,7 +59,7 @@ function useSessionGuard(userId: string) {
 
   useEffect(() => {
     if (userId !== loadedAs.current) {
-      window.location.reload();
+      reloadForNewSession();
     }
   }, [userId]);
 
@@ -72,7 +79,7 @@ function useSessionGuard(userId: string) {
         return;
       }
       if (!isSignedInAs(result, loadedAs.current)) {
-        window.location.reload();
+        reloadForNewSession();
       }
     }
     void check();

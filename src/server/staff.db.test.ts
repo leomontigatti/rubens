@@ -13,13 +13,12 @@ import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
 import { authorize } from "#/server/actor.ts";
 import {
-  changeRoles,
   createStaffMember,
   getStaffMember,
   listStaff,
   setMemberActive,
   setStartingPassword,
-  updatePractitioner,
+  updateMember,
 } from "#/server/staff.ts";
 
 // Every service call runs as the app role, so row-level security applies as in
@@ -114,31 +113,34 @@ describe("changing roles", () => {
     const created = await newMember(["receptionist"]);
 
     const granted = await asAppRole(db, (tx) =>
-      changeRoles(
+      updateMember(
         admin,
         { memberId: created.memberId, roles: ["practitioner", "receptionist"] },
         tx,
       ),
     );
     await asAppRole(db, (tx) =>
-      updatePractitioner(
+      updateMember(
         admin,
         {
           memberId: created.memberId,
-          displayName: "Dr. Gómez",
-          specialty: "Ortodoncia",
-          keepsClinicalRecords: false,
-          gridMinutes: 20,
-          color: "color4",
+          roles: ["practitioner", "receptionist"],
+          practitioner: {
+            displayName: "Dr. Gómez",
+            specialty: "Ortodoncia",
+            keepsClinicalRecords: false,
+            gridMinutes: 20,
+            color: "color4",
+          },
         },
         tx,
       ),
     );
     const removed = await asAppRole(db, (tx) =>
-      changeRoles(admin, { memberId: created.memberId, roles: ["receptionist"] }, tx),
+      updateMember(admin, { memberId: created.memberId, roles: ["receptionist"] }, tx),
     );
     const regranted = await asAppRole(db, (tx) =>
-      changeRoles(admin, { memberId: created.memberId, roles: ["practitioner"] }, tx),
+      updateMember(admin, { memberId: created.memberId, roles: ["practitioner"] }, tx),
     );
 
     expect(granted).toMatchObject({
@@ -177,7 +179,7 @@ describe("changing roles", () => {
     const colors = [];
     for (const created of [first, second]) {
       const granted = await asAppRole(db, (tx) =>
-        changeRoles(admin, { memberId: created.memberId, roles: ["practitioner"] }, tx),
+        updateMember(admin, { memberId: created.memberId, roles: ["practitioner"] }, tx),
       );
       colors.push(granted.ok ? granted.member.practitioner?.color : null);
     }
@@ -192,27 +194,130 @@ describe("changing roles", () => {
 
     expect(
       await asAppRole(db, (tx) =>
-        updatePractitioner(
+        updateMember(
           admin,
           {
             memberId: created.memberId,
-            displayName: "X",
-            specialty: "",
-            keepsClinicalRecords: true,
-            gridMinutes: 15,
-            color: "color1",
+            roles: ["admin"],
+            practitioner: {
+              displayName: "X",
+              specialty: "",
+              keepsClinicalRecords: true,
+              gridMinutes: 15,
+              color: "color1",
+            },
           },
           tx,
         ),
       ),
     ).toEqual({ ok: false, reason: "notFound" });
+
+    const after = await asAppRole(db, (tx) =>
+      getStaffMember(admin, { memberId: created.memberId }, tx),
+    );
+    expect(after.ok && after.member.roles).toEqual(["receptionist"]);
+  });
+
+  it("saves the roles and the practitioner settings together", async () => {
+    const created = await newMember(["practitioner"]);
+
+    const saved = await asAppRole(db, (tx) =>
+      updateMember(
+        admin,
+        {
+          memberId: created.memberId,
+          roles: ["practitioner", "receptionist"],
+          practitioner: {
+            displayName: "Dra. Gómez",
+            specialty: "",
+            keepsClinicalRecords: false,
+            gridMinutes: 20,
+            color: "color2",
+          },
+        },
+        tx,
+      ),
+    );
+
+    expect(saved.ok && saved.member.roles).toEqual(
+      expect.arrayContaining(["practitioner", "receptionist"]),
+    );
+    expect(saved.ok && saved.member.practitioner).toMatchObject({
+      displayName: "Dra. Gómez",
+      specialty: null,
+      gridMinutes: 20,
+    });
+  });
+
+  it("leaves the roles as they are when a save carries none", async () => {
+    const created = await newMember(["practitioner"]);
+    await asAppRole(db, (tx) =>
+      updateMember(
+        admin,
+        { memberId: created.memberId, roles: ["practitioner", "receptionist"] },
+        tx,
+      ),
+    );
+
+    const saved = await asAppRole(db, (tx) =>
+      updateMember(
+        admin,
+        {
+          memberId: created.memberId,
+          practitioner: {
+            displayName: "Dra. Gómez",
+            specialty: "",
+            keepsClinicalRecords: false,
+            gridMinutes: 20,
+            color: "color2",
+          },
+        },
+        tx,
+      ),
+    );
+
+    expect(saved.ok && saved.member.roles).toEqual(
+      expect.arrayContaining(["practitioner", "receptionist"]),
+    );
+    expect(saved.ok && saved.member.practitioner?.displayName).toBe("Dra. Gómez");
+  });
+
+  it("saves neither when the roles are refused", async () => {
+    const before = await asAppRole(db, (tx) =>
+      updateMember(admin, { memberId: adminMemberId, roles: ["admin", "practitioner"] }, tx),
+    );
+    const displayName = before.ok ? before.member.practitioner?.displayName : null;
+
+    const refused = await asAppRole(db, (tx) =>
+      updateMember(
+        admin,
+        {
+          memberId: adminMemberId,
+          roles: ["practitioner"],
+          practitioner: {
+            displayName: "Otro nombre",
+            specialty: "",
+            keepsClinicalRecords: true,
+            gridMinutes: 15,
+            color: "color1",
+          },
+        },
+        tx,
+      ),
+    );
+
+    expect(refused).toEqual({ ok: false, reason: "lastAdmin" });
+    const after = await asAppRole(db, (tx) =>
+      getStaffMember(admin, { memberId: adminMemberId }, tx),
+    );
+    expect(after.ok && after.member.practitioner?.displayName).toBe(displayName);
   });
 });
 
 describe("the last admin", () => {
   it("can neither lose the admin role nor be deactivated", async () => {
     const results = await asAppRole(db, async (tx) => [
-      await changeRoles(admin, { memberId: adminMemberId, roles: ["practitioner"] }, tx),
+      await updateMember(admin, { memberId: adminMemberId, roles: ["practitioner"] }, tx),
       await setMemberActive(admin, { memberId: adminMemberId, active: false }, tx),
     ]);
 
@@ -234,7 +339,7 @@ describe("the last admin", () => {
 
     expect(
       await asAppRole(db, (tx) =>
-        changeRoles(admin, { memberId: adminMemberId, roles: ["receptionist"] }, tx),
+        updateMember(admin, { memberId: adminMemberId, roles: ["receptionist"] }, tx),
       ),
     ).toEqual({ ok: false, reason: "lastAdmin" });
   });
@@ -244,7 +349,7 @@ describe("the last admin", () => {
 
     expect(
       await asAppRole(db, (tx) =>
-        changeRoles(admin, { memberId: adminMemberId, roles: ["practitioner"] }, tx),
+        updateMember(admin, { memberId: adminMemberId, roles: ["practitioner"] }, tx),
       ),
     ).toMatchObject({ ok: true, member: { roles: ["practitioner"] } });
   });
@@ -336,19 +441,7 @@ describe("refusals", () => {
         { name: "X", email: "x@example.com", password: startingPassword, roles: ["admin"] },
         tx,
       ),
-      await changeRoles(nonAdmin, { memberId, roles: ["admin"] }, tx),
-      await updatePractitioner(
-        nonAdmin,
-        {
-          memberId,
-          displayName: "X",
-          specialty: "",
-          keepsClinicalRecords: false,
-          gridMinutes: 15,
-          color: "color1",
-        },
-        tx,
-      ),
+      await updateMember(nonAdmin, { memberId, roles: ["admin"] }, tx),
       await setMemberActive(nonAdmin, { memberId: adminMemberId, active: false }, tx),
       await setStartingPassword(nonAdmin, { memberId: adminMemberId, password: "x-password" }, tx),
     ]);
@@ -381,7 +474,7 @@ describe("refusals", () => {
 
     const results = await asAppRole(db, async (tx) => [
       await getStaffMember(otherAdmin, { memberId: created.memberId }, tx),
-      await changeRoles(otherAdmin, { memberId: created.memberId, roles: ["admin"] }, tx),
+      await updateMember(otherAdmin, { memberId: created.memberId, roles: ["admin"] }, tx),
       await setMemberActive(otherAdmin, { memberId: created.memberId, active: false }, tx),
       await setStartingPassword(
         otherAdmin,

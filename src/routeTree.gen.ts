@@ -16,21 +16,45 @@ import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
+import { Route as AppCierresClosureIdRouteImport } from './routes/_app/cierres/$closureId'
+import { Route as AppCierresNuevoRouteImport } from './routes/_app/cierres/nuevo'
 import { Route as AppDevPatronesRouteImport } from './routes/_app/dev/patrones'
 import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
 import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/horarios/$practitionerId'
 import { Route as AppLicenciasIndexRouteImport } from './routes/_app/licencias/index'
+import { Route as AppLicenciasTimeOffIdRouteImport } from './routes/_app/licencias/$timeOffId'
+import { Route as AppLicenciasNuevaRouteImport } from './routes/_app/licencias/nueva'
 import { Route as AppObrasSocialesIndexRouteImport } from './routes/_app/obras-sociales/index'
+import { Route as AppObrasSocialesInsurerIdRouteImport } from './routes/_app/obras-sociales/$insurerId'
+import { Route as AppObrasSocialesNuevaRouteImport } from './routes/_app/obras-sociales/nueva'
 import { Route as AppPacientesIndexRouteImport } from './routes/_app/pacientes/index'
 import { Route as AppPacientesPatientIdRouteImport } from './routes/_app/pacientes/$patientId'
+import { Route as AppPacientesNuevoRouteImport } from './routes/_app/pacientes/nuevo'
 import { Route as AppPersonalIndexRouteImport } from './routes/_app/personal/index'
 import { Route as AppPersonalMemberIdRouteImport } from './routes/_app/personal/$memberId'
+import { Route as AppPersonalNuevaRouteImport } from './routes/_app/personal/nueva'
 import { Route as AppPrestacionesIndexRouteImport } from './routes/_app/prestaciones/index'
 import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app/prestaciones/$practitionerId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
+import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
+import { Route as AppPacientesPatientIdEditarRouteImport } from './routes/_app/pacientes/$patientId_/editar'
+import { Route as AppPersonalMemberIdContrasenaRouteImport } from './routes/_app/personal/$memberId_/contrasena'
+import { Route as AppPersonalMemberIdEditarRouteImport } from './routes/_app/personal/$memberId_/editar'
+import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
+import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
+import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
+import { Route as AppHorariosPractitionerIdScheduleIdCambiarRouteImport } from './routes/_app/horarios/$practitionerId_/$scheduleId/cambiar'
+import { Route as AppHorariosPractitionerIdScheduleIdTerminarRouteImport } from './routes/_app/horarios/$practitionerId_/$scheduleId/terminar'
+import { Route as AppPacientesPatientIdCoberturasCoverageIdRouteImport } from './routes/_app/pacientes/$patientId_/coberturas/$coverageId'
+import { Route as AppPacientesPatientIdCoberturasNuevaRouteImport } from './routes/_app/pacientes/$patientId_/coberturas/nueva'
+import { Route as AppPacientesPatientIdResponsablesGuardianIdRouteImport } from './routes/_app/pacientes/$patientId_/responsables/$guardianId'
+import { Route as AppPacientesPatientIdResponsablesNuevoRouteImport } from './routes/_app/pacientes/$patientId_/responsables/nuevo'
+import { Route as AppSedesOfficeIdConsultoriosRoomIdRouteImport } from './routes/_app/sedes/$officeId_/consultorios/$roomId'
+import { Route as AppSedesOfficeIdConsultoriosNuevoRouteImport } from './routes/_app/sedes/$officeId_/consultorios/nuevo'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -66,6 +90,16 @@ const AppCierresIndexRoute = AppCierresIndexRouteImport.update({
   path: '/cierres/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCierresClosureIdRoute = AppCierresClosureIdRouteImport.update({
+  id: '/cierres/$closureId',
+  path: '/cierres/$closureId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCierresNuevoRoute = AppCierresNuevoRouteImport.update({
+  id: '/cierres/nuevo',
+  path: '/cierres/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDevPatronesRoute = AppDevPatronesRouteImport.update({
   id: '/dev/patrones',
   path: '/dev/patrones',
@@ -92,9 +126,30 @@ const AppLicenciasIndexRoute = AppLicenciasIndexRouteImport.update({
   path: '/licencias/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLicenciasTimeOffIdRoute = AppLicenciasTimeOffIdRouteImport.update({
+  id: '/licencias/$timeOffId',
+  path: '/licencias/$timeOffId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLicenciasNuevaRoute = AppLicenciasNuevaRouteImport.update({
+  id: '/licencias/nueva',
+  path: '/licencias/nueva',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppObrasSocialesIndexRoute = AppObrasSocialesIndexRouteImport.update({
   id: '/obras-sociales/',
   path: '/obras-sociales/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppObrasSocialesInsurerIdRoute =
+  AppObrasSocialesInsurerIdRouteImport.update({
+    id: '/obras-sociales/$insurerId',
+    path: '/obras-sociales/$insurerId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppObrasSocialesNuevaRoute = AppObrasSocialesNuevaRouteImport.update({
+  id: '/obras-sociales/nueva',
+  path: '/obras-sociales/nueva',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPacientesIndexRoute = AppPacientesIndexRouteImport.update({
@@ -107,6 +162,11 @@ const AppPacientesPatientIdRoute = AppPacientesPatientIdRouteImport.update({
   path: '/pacientes/$patientId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPacientesNuevoRoute = AppPacientesNuevoRouteImport.update({
+  id: '/pacientes/nuevo',
+  path: '/pacientes/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
   id: '/personal/',
   path: '/personal/',
@@ -115,6 +175,11 @@ const AppPersonalIndexRoute = AppPersonalIndexRouteImport.update({
 const AppPersonalMemberIdRoute = AppPersonalMemberIdRouteImport.update({
   id: '/personal/$memberId',
   path: '/personal/$memberId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalNuevaRoute = AppPersonalNuevaRouteImport.update({
+  id: '/personal/nueva',
+  path: '/personal/nueva',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPrestacionesIndexRoute = AppPrestacionesIndexRouteImport.update({
@@ -138,22 +203,125 @@ const AppSedesOfficeIdRoute = AppSedesOfficeIdRouteImport.update({
   path: '/sedes/$officeId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
+  id: '/sedes/nueva',
+  path: '/sedes/nueva',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppHorariosPractitionerIdNuevoRoute =
+  AppHorariosPractitionerIdNuevoRouteImport.update({
+    id: '/horarios/$practitionerId_/nuevo',
+    path: '/horarios/$practitionerId/nuevo',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPacientesPatientIdEditarRoute =
+  AppPacientesPatientIdEditarRouteImport.update({
+    id: '/pacientes/$patientId_/editar',
+    path: '/pacientes/$patientId/editar',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPersonalMemberIdContrasenaRoute =
+  AppPersonalMemberIdContrasenaRouteImport.update({
+    id: '/personal/$memberId_/contrasena',
+    path: '/personal/$memberId/contrasena',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPersonalMemberIdEditarRoute =
+  AppPersonalMemberIdEditarRouteImport.update({
+    id: '/personal/$memberId_/editar',
+    path: '/personal/$memberId/editar',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPrestacionesPractitionerIdMedicalServiceIdRoute =
+  AppPrestacionesPractitionerIdMedicalServiceIdRouteImport.update({
+    id: '/prestaciones/$practitionerId_/$medicalServiceId',
+    path: '/prestaciones/$practitionerId/$medicalServiceId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPrestacionesPractitionerIdNuevaRoute =
+  AppPrestacionesPractitionerIdNuevaRouteImport.update({
+    id: '/prestaciones/$practitionerId_/nueva',
+    path: '/prestaciones/$practitionerId/nueva',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSedesOfficeIdEditarRoute = AppSedesOfficeIdEditarRouteImport.update({
+  id: '/sedes/$officeId_/editar',
+  path: '/sedes/$officeId/editar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHorariosPractitionerIdScheduleIdCambiarRoute =
+  AppHorariosPractitionerIdScheduleIdCambiarRouteImport.update({
+    id: '/horarios/$practitionerId_/$scheduleId/cambiar',
+    path: '/horarios/$practitionerId/$scheduleId/cambiar',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppHorariosPractitionerIdScheduleIdTerminarRoute =
+  AppHorariosPractitionerIdScheduleIdTerminarRouteImport.update({
+    id: '/horarios/$practitionerId_/$scheduleId/terminar',
+    path: '/horarios/$practitionerId/$scheduleId/terminar',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPacientesPatientIdCoberturasCoverageIdRoute =
+  AppPacientesPatientIdCoberturasCoverageIdRouteImport.update({
+    id: '/pacientes/$patientId_/coberturas/$coverageId',
+    path: '/pacientes/$patientId/coberturas/$coverageId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPacientesPatientIdCoberturasNuevaRoute =
+  AppPacientesPatientIdCoberturasNuevaRouteImport.update({
+    id: '/pacientes/$patientId_/coberturas/nueva',
+    path: '/pacientes/$patientId/coberturas/nueva',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPacientesPatientIdResponsablesGuardianIdRoute =
+  AppPacientesPatientIdResponsablesGuardianIdRouteImport.update({
+    id: '/pacientes/$patientId_/responsables/$guardianId',
+    path: '/pacientes/$patientId/responsables/$guardianId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPacientesPatientIdResponsablesNuevoRoute =
+  AppPacientesPatientIdResponsablesNuevoRouteImport.update({
+    id: '/pacientes/$patientId_/responsables/nuevo',
+    path: '/pacientes/$patientId/responsables/nuevo',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSedesOfficeIdConsultoriosRoomIdRoute =
+  AppSedesOfficeIdConsultoriosRoomIdRouteImport.update({
+    id: '/sedes/$officeId_/consultorios/$roomId',
+    path: '/sedes/$officeId/consultorios/$roomId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSedesOfficeIdConsultoriosNuevoRoute =
+  AppSedesOfficeIdConsultoriosNuevoRouteImport.update({
+    id: '/sedes/$officeId_/consultorios/nuevo',
+    path: '/sedes/$officeId/consultorios/nuevo',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/cierres/$closureId': typeof AppCierresClosureIdRoute
+  '/cierres/nuevo': typeof AppCierresNuevoRoute
   '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
+  '/licencias/$timeOffId': typeof AppLicenciasTimeOffIdRoute
+  '/licencias/nueva': typeof AppLicenciasNuevaRoute
+  '/obras-sociales/$insurerId': typeof AppObrasSocialesInsurerIdRoute
+  '/obras-sociales/nueva': typeof AppObrasSocialesNuevaRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
+  '/pacientes/nuevo': typeof AppPacientesNuevoRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/personal/nueva': typeof AppPersonalNuevaRoute
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
+  '/sedes/nueva': typeof AppSedesNuevaRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
@@ -166,17 +334,41 @@ export interface FileRoutesByFullPath {
   '/personal/': typeof AppPersonalIndexRoute
   '/prestaciones/': typeof AppPrestacionesIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
+  '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
+  '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
+  '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
+  '/personal/$memberId/editar': typeof AppPersonalMemberIdEditarRoute
+  '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
+  '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
+  '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/horarios/$practitionerId/$scheduleId/cambiar': typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
+  '/horarios/$practitionerId/$scheduleId/terminar': typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
+  '/pacientes/$patientId/coberturas/$coverageId': typeof AppPacientesPatientIdCoberturasCoverageIdRoute
+  '/pacientes/$patientId/coberturas/nueva': typeof AppPacientesPatientIdCoberturasNuevaRoute
+  '/pacientes/$patientId/responsables/$guardianId': typeof AppPacientesPatientIdResponsablesGuardianIdRoute
+  '/pacientes/$patientId/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
+  '/sedes/$officeId/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
+  '/sedes/$officeId/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
 }
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/': typeof AppIndexRoute
+  '/cierres/$closureId': typeof AppCierresClosureIdRoute
+  '/cierres/nuevo': typeof AppCierresNuevoRoute
   '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
+  '/licencias/$timeOffId': typeof AppLicenciasTimeOffIdRoute
+  '/licencias/nueva': typeof AppLicenciasNuevaRoute
+  '/obras-sociales/$insurerId': typeof AppObrasSocialesInsurerIdRoute
+  '/obras-sociales/nueva': typeof AppObrasSocialesNuevaRoute
   '/pacientes/$patientId': typeof AppPacientesPatientIdRoute
+  '/pacientes/nuevo': typeof AppPacientesNuevoRoute
   '/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/personal/nueva': typeof AppPersonalNuevaRoute
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
+  '/sedes/nueva': typeof AppSedesNuevaRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
@@ -189,6 +381,21 @@ export interface FileRoutesByTo {
   '/personal': typeof AppPersonalIndexRoute
   '/prestaciones': typeof AppPrestacionesIndexRoute
   '/sedes': typeof AppSedesIndexRoute
+  '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
+  '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
+  '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
+  '/personal/$memberId/editar': typeof AppPersonalMemberIdEditarRoute
+  '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
+  '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
+  '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/horarios/$practitionerId/$scheduleId/cambiar': typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
+  '/horarios/$practitionerId/$scheduleId/terminar': typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
+  '/pacientes/$patientId/coberturas/$coverageId': typeof AppPacientesPatientIdCoberturasCoverageIdRoute
+  '/pacientes/$patientId/coberturas/nueva': typeof AppPacientesPatientIdCoberturasNuevaRoute
+  '/pacientes/$patientId/responsables/$guardianId': typeof AppPacientesPatientIdResponsablesGuardianIdRoute
+  '/pacientes/$patientId/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
+  '/sedes/$officeId/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
+  '/sedes/$officeId/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -196,12 +403,21 @@ export interface FileRoutesById {
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/cierres/$closureId': typeof AppCierresClosureIdRoute
+  '/_app/cierres/nuevo': typeof AppCierresNuevoRoute
   '/_app/dev/patrones': typeof AppDevPatronesRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
+  '/_app/licencias/$timeOffId': typeof AppLicenciasTimeOffIdRoute
+  '/_app/licencias/nueva': typeof AppLicenciasNuevaRoute
+  '/_app/obras-sociales/$insurerId': typeof AppObrasSocialesInsurerIdRoute
+  '/_app/obras-sociales/nueva': typeof AppObrasSocialesNuevaRoute
   '/_app/pacientes/$patientId': typeof AppPacientesPatientIdRoute
+  '/_app/pacientes/nuevo': typeof AppPacientesNuevoRoute
   '/_app/personal/$memberId': typeof AppPersonalMemberIdRoute
+  '/_app/personal/nueva': typeof AppPersonalNuevaRoute
   '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
+  '/_app/sedes/nueva': typeof AppSedesNuevaRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
@@ -214,6 +430,21 @@ export interface FileRoutesById {
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/prestaciones/': typeof AppPrestacionesIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
+  '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
+  '/_app/pacientes/$patientId_/editar': typeof AppPacientesPatientIdEditarRoute
+  '/_app/personal/$memberId_/contrasena': typeof AppPersonalMemberIdContrasenaRoute
+  '/_app/personal/$memberId_/editar': typeof AppPersonalMemberIdEditarRoute
+  '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
+  '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
+  '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
+  '/_app/horarios/$practitionerId_/$scheduleId/cambiar': typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
+  '/_app/horarios/$practitionerId_/$scheduleId/terminar': typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
+  '/_app/pacientes/$patientId_/coberturas/$coverageId': typeof AppPacientesPatientIdCoberturasCoverageIdRoute
+  '/_app/pacientes/$patientId_/coberturas/nueva': typeof AppPacientesPatientIdCoberturasNuevaRoute
+  '/_app/pacientes/$patientId_/responsables/$guardianId': typeof AppPacientesPatientIdResponsablesGuardianIdRoute
+  '/_app/pacientes/$patientId_/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
+  '/_app/sedes/$officeId_/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
+  '/_app/sedes/$officeId_/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -221,12 +452,21 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/cierres/$closureId'
+    | '/cierres/nuevo'
     | '/dev/patrones'
     | '/horarios/$practitionerId'
+    | '/licencias/$timeOffId'
+    | '/licencias/nueva'
+    | '/obras-sociales/$insurerId'
+    | '/obras-sociales/nueva'
     | '/pacientes/$patientId'
+    | '/pacientes/nuevo'
     | '/personal/$memberId'
+    | '/personal/nueva'
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
+    | '/sedes/nueva'
     | '/api/auth/$'
     | '/a-reprogramar/'
     | '/agenda/'
@@ -239,17 +479,41 @@ export interface FileRouteTypes {
     | '/personal/'
     | '/prestaciones/'
     | '/sedes/'
+    | '/horarios/$practitionerId/nuevo'
+    | '/pacientes/$patientId/editar'
+    | '/personal/$memberId/contrasena'
+    | '/personal/$memberId/editar'
+    | '/prestaciones/$practitionerId/$medicalServiceId'
+    | '/prestaciones/$practitionerId/nueva'
+    | '/sedes/$officeId/editar'
+    | '/horarios/$practitionerId/$scheduleId/cambiar'
+    | '/horarios/$practitionerId/$scheduleId/terminar'
+    | '/pacientes/$patientId/coberturas/$coverageId'
+    | '/pacientes/$patientId/coberturas/nueva'
+    | '/pacientes/$patientId/responsables/$guardianId'
+    | '/pacientes/$patientId/responsables/nuevo'
+    | '/sedes/$officeId/consultorios/$roomId'
+    | '/sedes/$officeId/consultorios/nuevo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/ingresar'
     | '/cambiar-contrasena'
     | '/'
+    | '/cierres/$closureId'
+    | '/cierres/nuevo'
     | '/dev/patrones'
     | '/horarios/$practitionerId'
+    | '/licencias/$timeOffId'
+    | '/licencias/nueva'
+    | '/obras-sociales/$insurerId'
+    | '/obras-sociales/nueva'
     | '/pacientes/$patientId'
+    | '/pacientes/nuevo'
     | '/personal/$memberId'
+    | '/personal/nueva'
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
+    | '/sedes/nueva'
     | '/api/auth/$'
     | '/a-reprogramar'
     | '/agenda'
@@ -262,18 +526,42 @@ export interface FileRouteTypes {
     | '/personal'
     | '/prestaciones'
     | '/sedes'
+    | '/horarios/$practitionerId/nuevo'
+    | '/pacientes/$patientId/editar'
+    | '/personal/$memberId/contrasena'
+    | '/personal/$memberId/editar'
+    | '/prestaciones/$practitionerId/$medicalServiceId'
+    | '/prestaciones/$practitionerId/nueva'
+    | '/sedes/$officeId/editar'
+    | '/horarios/$practitionerId/$scheduleId/cambiar'
+    | '/horarios/$practitionerId/$scheduleId/terminar'
+    | '/pacientes/$patientId/coberturas/$coverageId'
+    | '/pacientes/$patientId/coberturas/nueva'
+    | '/pacientes/$patientId/responsables/$guardianId'
+    | '/pacientes/$patientId/responsables/nuevo'
+    | '/sedes/$officeId/consultorios/$roomId'
+    | '/sedes/$officeId/consultorios/nuevo'
   id:
     | '__root__'
     | '/_app'
     | '/ingresar'
     | '/_app/cambiar-contrasena'
     | '/_app/'
+    | '/_app/cierres/$closureId'
+    | '/_app/cierres/nuevo'
     | '/_app/dev/patrones'
     | '/_app/horarios/$practitionerId'
+    | '/_app/licencias/$timeOffId'
+    | '/_app/licencias/nueva'
+    | '/_app/obras-sociales/$insurerId'
+    | '/_app/obras-sociales/nueva'
     | '/_app/pacientes/$patientId'
+    | '/_app/pacientes/nuevo'
     | '/_app/personal/$memberId'
+    | '/_app/personal/nueva'
     | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
+    | '/_app/sedes/nueva'
     | '/api/auth/$'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
@@ -286,6 +574,21 @@ export interface FileRouteTypes {
     | '/_app/personal/'
     | '/_app/prestaciones/'
     | '/_app/sedes/'
+    | '/_app/horarios/$practitionerId_/nuevo'
+    | '/_app/pacientes/$patientId_/editar'
+    | '/_app/personal/$memberId_/contrasena'
+    | '/_app/personal/$memberId_/editar'
+    | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
+    | '/_app/prestaciones/$practitionerId_/nueva'
+    | '/_app/sedes/$officeId_/editar'
+    | '/_app/horarios/$practitionerId_/$scheduleId/cambiar'
+    | '/_app/horarios/$practitionerId_/$scheduleId/terminar'
+    | '/_app/pacientes/$patientId_/coberturas/$coverageId'
+    | '/_app/pacientes/$patientId_/coberturas/nueva'
+    | '/_app/pacientes/$patientId_/responsables/$guardianId'
+    | '/_app/pacientes/$patientId_/responsables/nuevo'
+    | '/_app/sedes/$officeId_/consultorios/$roomId'
+    | '/_app/sedes/$officeId_/consultorios/nuevo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -345,6 +648,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCierresIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/cierres/$closureId': {
+      id: '/_app/cierres/$closureId'
+      path: '/cierres/$closureId'
+      fullPath: '/cierres/$closureId'
+      preLoaderRoute: typeof AppCierresClosureIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/cierres/nuevo': {
+      id: '/_app/cierres/nuevo'
+      path: '/cierres/nuevo'
+      fullPath: '/cierres/nuevo'
+      preLoaderRoute: typeof AppCierresNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dev/patrones': {
       id: '/_app/dev/patrones'
       path: '/dev/patrones'
@@ -380,11 +697,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLicenciasIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/licencias/$timeOffId': {
+      id: '/_app/licencias/$timeOffId'
+      path: '/licencias/$timeOffId'
+      fullPath: '/licencias/$timeOffId'
+      preLoaderRoute: typeof AppLicenciasTimeOffIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/licencias/nueva': {
+      id: '/_app/licencias/nueva'
+      path: '/licencias/nueva'
+      fullPath: '/licencias/nueva'
+      preLoaderRoute: typeof AppLicenciasNuevaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/obras-sociales/': {
       id: '/_app/obras-sociales/'
       path: '/obras-sociales'
       fullPath: '/obras-sociales/'
       preLoaderRoute: typeof AppObrasSocialesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/obras-sociales/$insurerId': {
+      id: '/_app/obras-sociales/$insurerId'
+      path: '/obras-sociales/$insurerId'
+      fullPath: '/obras-sociales/$insurerId'
+      preLoaderRoute: typeof AppObrasSocialesInsurerIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/obras-sociales/nueva': {
+      id: '/_app/obras-sociales/nueva'
+      path: '/obras-sociales/nueva'
+      fullPath: '/obras-sociales/nueva'
+      preLoaderRoute: typeof AppObrasSocialesNuevaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pacientes/': {
@@ -401,6 +746,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPacientesPatientIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pacientes/nuevo': {
+      id: '/_app/pacientes/nuevo'
+      path: '/pacientes/nuevo'
+      fullPath: '/pacientes/nuevo'
+      preLoaderRoute: typeof AppPacientesNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/personal/': {
       id: '/_app/personal/'
       path: '/personal'
@@ -413,6 +765,13 @@ declare module '@tanstack/react-router' {
       path: '/personal/$memberId'
       fullPath: '/personal/$memberId'
       preLoaderRoute: typeof AppPersonalMemberIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personal/nueva': {
+      id: '/_app/personal/nueva'
+      path: '/personal/nueva'
+      fullPath: '/personal/nueva'
+      preLoaderRoute: typeof AppPersonalNuevaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/prestaciones/': {
@@ -443,6 +802,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSedesOfficeIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sedes/nueva': {
+      id: '/_app/sedes/nueva'
+      path: '/sedes/nueva'
+      fullPath: '/sedes/nueva'
+      preLoaderRoute: typeof AppSedesNuevaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -450,18 +816,132 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/horarios/$practitionerId_/nuevo': {
+      id: '/_app/horarios/$practitionerId_/nuevo'
+      path: '/horarios/$practitionerId/nuevo'
+      fullPath: '/horarios/$practitionerId/nuevo'
+      preLoaderRoute: typeof AppHorariosPractitionerIdNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/$patientId_/editar': {
+      id: '/_app/pacientes/$patientId_/editar'
+      path: '/pacientes/$patientId/editar'
+      fullPath: '/pacientes/$patientId/editar'
+      preLoaderRoute: typeof AppPacientesPatientIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personal/$memberId_/contrasena': {
+      id: '/_app/personal/$memberId_/contrasena'
+      path: '/personal/$memberId/contrasena'
+      fullPath: '/personal/$memberId/contrasena'
+      preLoaderRoute: typeof AppPersonalMemberIdContrasenaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personal/$memberId_/editar': {
+      id: '/_app/personal/$memberId_/editar'
+      path: '/personal/$memberId/editar'
+      fullPath: '/personal/$memberId/editar'
+      preLoaderRoute: typeof AppPersonalMemberIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/prestaciones/$practitionerId_/$medicalServiceId': {
+      id: '/_app/prestaciones/$practitionerId_/$medicalServiceId'
+      path: '/prestaciones/$practitionerId/$medicalServiceId'
+      fullPath: '/prestaciones/$practitionerId/$medicalServiceId'
+      preLoaderRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/prestaciones/$practitionerId_/nueva': {
+      id: '/_app/prestaciones/$practitionerId_/nueva'
+      path: '/prestaciones/$practitionerId/nueva'
+      fullPath: '/prestaciones/$practitionerId/nueva'
+      preLoaderRoute: typeof AppPrestacionesPractitionerIdNuevaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sedes/$officeId_/editar': {
+      id: '/_app/sedes/$officeId_/editar'
+      path: '/sedes/$officeId/editar'
+      fullPath: '/sedes/$officeId/editar'
+      preLoaderRoute: typeof AppSedesOfficeIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/horarios/$practitionerId_/$scheduleId/cambiar': {
+      id: '/_app/horarios/$practitionerId_/$scheduleId/cambiar'
+      path: '/horarios/$practitionerId/$scheduleId/cambiar'
+      fullPath: '/horarios/$practitionerId/$scheduleId/cambiar'
+      preLoaderRoute: typeof AppHorariosPractitionerIdScheduleIdCambiarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/horarios/$practitionerId_/$scheduleId/terminar': {
+      id: '/_app/horarios/$practitionerId_/$scheduleId/terminar'
+      path: '/horarios/$practitionerId/$scheduleId/terminar'
+      fullPath: '/horarios/$practitionerId/$scheduleId/terminar'
+      preLoaderRoute: typeof AppHorariosPractitionerIdScheduleIdTerminarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/$patientId_/coberturas/$coverageId': {
+      id: '/_app/pacientes/$patientId_/coberturas/$coverageId'
+      path: '/pacientes/$patientId/coberturas/$coverageId'
+      fullPath: '/pacientes/$patientId/coberturas/$coverageId'
+      preLoaderRoute: typeof AppPacientesPatientIdCoberturasCoverageIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/$patientId_/coberturas/nueva': {
+      id: '/_app/pacientes/$patientId_/coberturas/nueva'
+      path: '/pacientes/$patientId/coberturas/nueva'
+      fullPath: '/pacientes/$patientId/coberturas/nueva'
+      preLoaderRoute: typeof AppPacientesPatientIdCoberturasNuevaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/$patientId_/responsables/$guardianId': {
+      id: '/_app/pacientes/$patientId_/responsables/$guardianId'
+      path: '/pacientes/$patientId/responsables/$guardianId'
+      fullPath: '/pacientes/$patientId/responsables/$guardianId'
+      preLoaderRoute: typeof AppPacientesPatientIdResponsablesGuardianIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pacientes/$patientId_/responsables/nuevo': {
+      id: '/_app/pacientes/$patientId_/responsables/nuevo'
+      path: '/pacientes/$patientId/responsables/nuevo'
+      fullPath: '/pacientes/$patientId/responsables/nuevo'
+      preLoaderRoute: typeof AppPacientesPatientIdResponsablesNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sedes/$officeId_/consultorios/$roomId': {
+      id: '/_app/sedes/$officeId_/consultorios/$roomId'
+      path: '/sedes/$officeId/consultorios/$roomId'
+      fullPath: '/sedes/$officeId/consultorios/$roomId'
+      preLoaderRoute: typeof AppSedesOfficeIdConsultoriosRoomIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sedes/$officeId_/consultorios/nuevo': {
+      id: '/_app/sedes/$officeId_/consultorios/nuevo'
+      path: '/sedes/$officeId/consultorios/nuevo'
+      fullPath: '/sedes/$officeId/consultorios/nuevo'
+      preLoaderRoute: typeof AppSedesOfficeIdConsultoriosNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppCierresClosureIdRoute: typeof AppCierresClosureIdRoute
+  AppCierresNuevoRoute: typeof AppCierresNuevoRoute
   AppDevPatronesRoute: typeof AppDevPatronesRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
+  AppLicenciasTimeOffIdRoute: typeof AppLicenciasTimeOffIdRoute
+  AppLicenciasNuevaRoute: typeof AppLicenciasNuevaRoute
+  AppObrasSocialesInsurerIdRoute: typeof AppObrasSocialesInsurerIdRoute
+  AppObrasSocialesNuevaRoute: typeof AppObrasSocialesNuevaRoute
   AppPacientesPatientIdRoute: typeof AppPacientesPatientIdRoute
+  AppPacientesNuevoRoute: typeof AppPacientesNuevoRoute
   AppPersonalMemberIdRoute: typeof AppPersonalMemberIdRoute
+  AppPersonalNuevaRoute: typeof AppPersonalNuevaRoute
   AppPrestacionesPractitionerIdRoute: typeof AppPrestacionesPractitionerIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppSedesNuevaRoute: typeof AppSedesNuevaRoute
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
@@ -473,17 +953,41 @@ interface AppRouteChildren {
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppPrestacionesIndexRoute: typeof AppPrestacionesIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
+  AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
+  AppPacientesPatientIdEditarRoute: typeof AppPacientesPatientIdEditarRoute
+  AppPersonalMemberIdContrasenaRoute: typeof AppPersonalMemberIdContrasenaRoute
+  AppPersonalMemberIdEditarRoute: typeof AppPersonalMemberIdEditarRoute
+  AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
+  AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
+  AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
+  AppHorariosPractitionerIdScheduleIdCambiarRoute: typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
+  AppHorariosPractitionerIdScheduleIdTerminarRoute: typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
+  AppPacientesPatientIdCoberturasCoverageIdRoute: typeof AppPacientesPatientIdCoberturasCoverageIdRoute
+  AppPacientesPatientIdCoberturasNuevaRoute: typeof AppPacientesPatientIdCoberturasNuevaRoute
+  AppPacientesPatientIdResponsablesGuardianIdRoute: typeof AppPacientesPatientIdResponsablesGuardianIdRoute
+  AppPacientesPatientIdResponsablesNuevoRoute: typeof AppPacientesPatientIdResponsablesNuevoRoute
+  AppSedesOfficeIdConsultoriosRoomIdRoute: typeof AppSedesOfficeIdConsultoriosRoomIdRoute
+  AppSedesOfficeIdConsultoriosNuevoRoute: typeof AppSedesOfficeIdConsultoriosNuevoRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppCierresClosureIdRoute: AppCierresClosureIdRoute,
+  AppCierresNuevoRoute: AppCierresNuevoRoute,
   AppDevPatronesRoute: AppDevPatronesRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
+  AppLicenciasTimeOffIdRoute: AppLicenciasTimeOffIdRoute,
+  AppLicenciasNuevaRoute: AppLicenciasNuevaRoute,
+  AppObrasSocialesInsurerIdRoute: AppObrasSocialesInsurerIdRoute,
+  AppObrasSocialesNuevaRoute: AppObrasSocialesNuevaRoute,
   AppPacientesPatientIdRoute: AppPacientesPatientIdRoute,
+  AppPacientesNuevoRoute: AppPacientesNuevoRoute,
   AppPersonalMemberIdRoute: AppPersonalMemberIdRoute,
+  AppPersonalNuevaRoute: AppPersonalNuevaRoute,
   AppPrestacionesPractitionerIdRoute: AppPrestacionesPractitionerIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppSedesNuevaRoute: AppSedesNuevaRoute,
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
@@ -495,6 +999,31 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppPrestacionesIndexRoute: AppPrestacionesIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
+  AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
+  AppPacientesPatientIdEditarRoute: AppPacientesPatientIdEditarRoute,
+  AppPersonalMemberIdContrasenaRoute: AppPersonalMemberIdContrasenaRoute,
+  AppPersonalMemberIdEditarRoute: AppPersonalMemberIdEditarRoute,
+  AppPrestacionesPractitionerIdMedicalServiceIdRoute:
+    AppPrestacionesPractitionerIdMedicalServiceIdRoute,
+  AppPrestacionesPractitionerIdNuevaRoute:
+    AppPrestacionesPractitionerIdNuevaRoute,
+  AppSedesOfficeIdEditarRoute: AppSedesOfficeIdEditarRoute,
+  AppHorariosPractitionerIdScheduleIdCambiarRoute:
+    AppHorariosPractitionerIdScheduleIdCambiarRoute,
+  AppHorariosPractitionerIdScheduleIdTerminarRoute:
+    AppHorariosPractitionerIdScheduleIdTerminarRoute,
+  AppPacientesPatientIdCoberturasCoverageIdRoute:
+    AppPacientesPatientIdCoberturasCoverageIdRoute,
+  AppPacientesPatientIdCoberturasNuevaRoute:
+    AppPacientesPatientIdCoberturasNuevaRoute,
+  AppPacientesPatientIdResponsablesGuardianIdRoute:
+    AppPacientesPatientIdResponsablesGuardianIdRoute,
+  AppPacientesPatientIdResponsablesNuevoRoute:
+    AppPacientesPatientIdResponsablesNuevoRoute,
+  AppSedesOfficeIdConsultoriosRoomIdRoute:
+    AppSedesOfficeIdConsultoriosRoomIdRoute,
+  AppSedesOfficeIdConsultoriosNuevoRoute:
+    AppSedesOfficeIdConsultoriosNuevoRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

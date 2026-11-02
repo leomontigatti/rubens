@@ -1,12 +1,11 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactElement } from "react";
 import type * as z from "zod";
 
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 
@@ -25,34 +24,45 @@ export function fieldMessage<T extends string>(
 
 /**
  * Runs a server function, shows its refusal as the copy `messages` gives it,
- * and reloads the route's data when it succeeds. `run` resolves to whether it
- * succeeded.
+ * and reloads the route's data when it succeeds, pending until that is done.
+ * `run` resolves to whether it succeeded; so does `save`, which reloads nothing.
  */
 export function useFormAction<R extends string>(messages: Record<R, string>) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function run(
-    action: () => Promise<{ ok: true } | { ok: false; reason: R }>,
-  ): Promise<boolean> {
+  type Action = () => Promise<{ ok: true } | { ok: false; reason: R }>;
+
+  /** What `run` and `save` share: whether it succeeded, with its refusal shown if not. */
+  async function attempt(action: Action, after?: () => Promise<void>): Promise<boolean> {
     setPending(true);
     setError(null);
-    let result: Awaited<ReturnType<typeof action>>;
     try {
-      result = await action();
+      const result = await action();
+      if (!result.ok) {
+        setError(messages[result.reason]);
+        return false;
+      }
+      await after?.();
+      return true;
     } finally {
       setPending(false);
     }
-    if (!result.ok) {
-      setError(messages[result.reason]);
-      return false;
-    }
-    await router.invalidate();
-    return true;
   }
 
-  return { error, setError, pending, run };
+  return {
+    error,
+    setError,
+    pending,
+    run: (action: Action) => attempt(action, () => router.invalidate()),
+    /**
+     * For a form page, which leaves once saved. Going back reloads what it goes
+     * back to; reloading here would reload the form too, and what was saved can
+     * take the form away (a schedule ended yesterday can no longer be changed).
+     */
+    save: (action: Action) => attempt(action),
+  };
 }
 
 export function ErrorAlert({ message }: { message: string | null }) {
@@ -113,7 +123,8 @@ type Deactivation = Pick<ComponentProps<typeof DeactivateButton>, "question" | "
 export function AdminControls(props: {
   isAdmin: boolean;
   active: boolean;
-  onEdit: () => void;
+  /** The `Link` to the record's edit page. */
+  editLink: ReactElement;
   onToggleActive: () => void;
   deactivation?: Deactivation;
 }) {
@@ -122,7 +133,7 @@ export function AdminControls(props: {
   }
   return (
     <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={props.onEdit}>
+      <Button variant="outline" size="sm" nativeButton={false} render={props.editLink}>
         Editar
       </Button>
       <ActiveToggle {...props} />
@@ -149,35 +160,5 @@ function ActiveToggle(props: {
       pending={false}
       onDeactivate={props.onToggleActive}
     />
-  );
-}
-
-/**
- * The admin's button that opens a creation form in a card. `children` gets the
- * function that closes it.
- */
-export function CreatePanel(props: {
-  isAdmin: boolean;
-  label: string;
-  children: (close: () => void) => ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  if (!props.isAdmin) {
-    return null;
-  }
-  if (!open) {
-    return (
-      <div>
-        <Button onClick={() => setOpen(true)}>{props.label}</Button>
-      </div>
-    );
-  }
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{props.label}</CardTitle>
-      </CardHeader>
-      <CardContent>{props.children(() => setOpen(false))}</CardContent>
-    </Card>
   );
 }

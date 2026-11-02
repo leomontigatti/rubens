@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
+import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import {
   initialSaveState,
@@ -44,6 +45,12 @@ export function usePatientSave<I extends object>(
     let result: SaveResult;
     try {
       result = await send({ ...next, confirmDuplicates });
+      if (result.ok) {
+        await Promise.all([
+          router.invalidate(),
+          queryClient.invalidateQueries({ queryKey: patientSearchQueries }),
+        ]);
+      }
     } finally {
       dispatch({ type: "settled" });
     }
@@ -51,10 +58,6 @@ export function usePatientSave<I extends object>(
       dispatch({ type: "refused", result });
       return;
     }
-    await Promise.all([
-      router.invalidate(),
-      queryClient.invalidateQueries({ queryKey: patientSearchQueries }),
-    ]);
     onSaved(result.patient);
   }
 
@@ -287,21 +290,12 @@ export function PatientFields(props: { idPrefix: string; full: boolean; initial?
   );
 }
 
-/**
- * Registers a patient: a name and a phone, so a first booking by phone takes
- * seconds, or the whole record when the patient is in front of reception.
- */
-export function PatientRegistrationForm(props: {
-  onRegistered: (patient: Patient) => void;
-  /** The user picked an existing patient the duplicate warning offered. */
-  onUseExisting: (patient: Patient) => void;
-  onCancel: () => void;
-}) {
+/** The submit step of registering a patient, for its page and for the booking's picker. */
+function usePatientRegistration(onRegistered: (patient: Patient) => void) {
   const save = usePatientSave(
     (data: PatientInput & DuplicateConfirmation) => addPatient({ data }),
-    props.onRegistered,
+    onRegistered,
   );
-  const [full, setFull] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -314,9 +308,17 @@ export function PatientRegistrationForm(props: {
     await save.submit(raw);
   }
 
+  return { save, handleSubmit };
+}
+
+/**
+ * A name and a phone, so a first booking by phone takes seconds, or the whole
+ * record when the patient is in front of reception.
+ */
+function RegistrationFields() {
+  const [full, setFull] = useState(false);
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
+    <>
       <PatientFields idPrefix="new-patient" full={full} />
       {!full && (
         <div>
@@ -325,11 +327,48 @@ export function PatientRegistrationForm(props: {
           </Button>
         </div>
       )}
+    </>
+  );
+}
+
+/** Registers a patient inside another form's flow. */
+export function PatientRegistrationForm(props: {
+  onRegistered: (patient: Patient) => void;
+  /** The user picked an existing patient the duplicate warning offered. */
+  onUseExisting: (patient: Patient) => void;
+  onCancel: () => void;
+}) {
+  const { save, handleSubmit } = usePatientRegistration(props.onRegistered);
+  return (
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
+      <RegistrationFields />
       <FormActions
         pending={save.pending}
         submitLabel="Registrar paciente"
         onCancel={props.onCancel}
       />
     </form>
+  );
+}
+
+/** Registers a patient on a page of its own; `Nuevo paciente` then opens their record. */
+export function PatientRegistrationPage() {
+  const page = useFormPage({ to: "/pacientes" });
+  const showPatient = (patient: Patient) =>
+    page.leave({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
+  const { save, handleSubmit } = usePatientRegistration(showPatient);
+  return (
+    <FormPage
+      page={page}
+      title="Nuevo paciente"
+      submitLabel="Registrar paciente"
+      pending={save.pending}
+      onSubmit={(event) => void handleSubmit(event)}
+      onDiscard={save.dismiss}
+    >
+      <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={showPatient} />
+      <RegistrationFields />
+    </FormPage>
   );
 }

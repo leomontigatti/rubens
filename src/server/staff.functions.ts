@@ -3,20 +3,18 @@ import { createServerFn } from "@tanstack/react-start";
 import type {
   MemberActiveChange,
   MemberReference,
-  PractitionerUpdate,
-  RolesChange,
+  MemberUpdate,
   StaffInput,
   StartingPasswordChange,
 } from "#/lib/staff.ts";
 
 import {
-  changeRoles,
   createStaffMember,
   getStaffMember,
   listStaff,
   setMemberActive,
   setStartingPassword,
-  updatePractitioner,
+  updateMember,
 } from "#/server/staff.ts";
 import { countMemberUpcoming } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
@@ -38,13 +36,9 @@ export const addStaffMember = createServerFn({ method: "POST" })
   .validator((data: StaffInput) => data)
   .handler(({ data }) => withActor(adminOnly, (actor) => createStaffMember(actor, data)));
 
-export const editRoles = createServerFn({ method: "POST" })
-  .validator((data: RolesChange) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => changeRoles(actor, data)));
-
-export const editPractitioner = createServerFn({ method: "POST" })
-  .validator((data: PractitionerUpdate) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => updatePractitioner(actor, data)));
+export const editMember = createServerFn({ method: "POST" })
+  .validator((data: MemberUpdate) => data)
+  .handler(({ data }) => withActor(adminOnly, (actor) => updateMember(actor, data)));
 
 export const getMemberUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: MemberReference) => data)

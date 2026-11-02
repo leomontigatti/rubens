@@ -9,6 +9,9 @@ const { probe, existing, lint } = lintProbes("ui");
 
 const codes = (...files: string[]) => lint(...files).map((d) => d.code);
 
+// A rule of its own: `<form>` is its own finding in the probes about something else.
+const besidesRawForm = (found: string[]) => found.filter((code) => code !== "ui(no-raw-form)");
+
 const button = `import { Button } from "#/components/ui/button.tsx";\n\n`;
 const alert = `import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";\n\n`;
 
@@ -62,6 +65,15 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
 
     expect(found).toHaveLength(2);
     expect(found.map(text).join()).toContain("DataTable");
+  });
+
+  const rawFormProbe = probe("raw-form.tsx", `export const Inline = () => <form noValidate />;\n`);
+
+  it("reject a form outside FormPage, and say where it belongs", () => {
+    const found = lint(rawFormProbe).filter((d) => d.code.includes("no-raw-form"));
+
+    expect(found.filter((d) => !d.code.includes("no-raw-form-element"))).toHaveLength(1);
+    expect(found.map(text).join()).toContain("FormPage");
   });
 
   const layoutProbe = probe(
@@ -140,7 +152,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   );
 
   it("allow a raw element that has no look: hidden, visually hidden, or rendered by a ui component", () => {
-    expect(codes(rawAllowedProbe)).toEqual([]);
+    expect(besidesRawForm(codes(rawAllowedProbe))).toEqual([]);
   });
 
   const formValidatesProbe = probe(
@@ -161,7 +173,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   );
 
   it("allow a form that turns the browser's validation off", () => {
-    expect(codes(formNoValidateProbe)).toEqual([]);
+    expect(besidesRawForm(codes(formNoValidateProbe))).toEqual([]);
   });
 
   const alertPartsProbe = probe(

@@ -1,9 +1,11 @@
+import type { NavigateOptions } from "@tanstack/react-router";
 import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent, ReactElement, ReactNode } from "react";
 import type * as z from "zod";
 
-import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
+import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -47,18 +49,20 @@ function entryErrorMessage(error: z.ZodError): string {
 }
 
 /**
- * A time-off or closure form: `children` are the fields before the range.
- * `onSubmit` returns the server call, or the validation error that stopped it.
+ * A time-off or closure form on its page: `children` are the fields before the
+ * range. `onSubmit` returns the server call, or the validation error that stopped it.
  */
 export function EntryForm<R extends string>(props: {
-  idPrefix: string;
+  back: NavigateOptions;
+  title: string;
+  description?: string;
   initial: RangeEntry | null;
   submitLabel: string;
   messages: Record<R, string>;
   children?: ReactNode;
   onSubmit: (form: FormData) => Promise<Outcome<R>> | z.ZodError;
-  onDone: () => void;
 }) {
+  const page = useFormPage(props.back);
   const action = useFormAction(props.messages);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -68,22 +72,23 @@ export function EntryForm<R extends string>(props: {
       action.setError(entryErrorMessage(submitted));
       return;
     }
-    if (await action.run(() => submitted)) {
-      props.onDone();
+    if (await action.save(() => submitted)) {
+      page.leave();
     }
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <ErrorAlert message={action.error} />
+    <ActionFormPage
+      page={page}
+      title={props.title}
+      description={props.description}
+      submitLabel={props.submitLabel}
+      action={action}
+      onSubmit={handleSubmit}
+    >
       {props.children}
-      <RangeEntryFields idPrefix={props.idPrefix} initial={props.initial} />
-      <FormActions
-        pending={action.pending}
-        submitLabel={props.submitLabel}
-        onCancel={props.onDone}
-      />
-    </form>
+      <RangeEntryFields initial={props.initial} />
+    </ActionFormPage>
   );
 }
 
@@ -96,9 +101,9 @@ export function EntryItem<R extends string>(props: {
   canEdit: boolean;
   messages: Record<R, string>;
   onDelete: () => Promise<Outcome<R>>;
-  renderEdit: (close: () => void) => ReactNode;
+  /** The `Link` to the entry's edit page. */
+  editLink: ReactElement;
 }) {
-  const [editing, setEditing] = useState(false);
   const remove = useFormAction(props.messages);
   const [confirming, setConfirming] = useState(false);
 
@@ -111,10 +116,10 @@ export function EntryItem<R extends string>(props: {
               <span className="font-medium">{props.title}</span>
               <span className="text-muted-foreground text-sm">{rangeEntryLabel(props.entry)}</span>
             </div>
-            {props.canEdit && !editing && (
+            {props.canEdit && (
               <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                  <Button variant="outline" size="sm" nativeButton={false} render={props.editLink}>
                     Editar
                   </Button>
                   <Button
@@ -138,7 +143,6 @@ export function EntryItem<R extends string>(props: {
               </div>
             )}
           </div>
-          {editing && props.renderEdit(() => setEditing(false))}
         </CardContent>
       </Card>
     </li>
@@ -168,8 +172,7 @@ function valuesFor(initial: RangeEntry | null, kind: Kind): Partial<Record<strin
   return initial?.kind === kind ? initial : {};
 }
 
-function RangeEntryFields(props: { idPrefix: string; initial: RangeEntry | null }) {
-  const { idPrefix, initial } = props;
+function RangeEntryFields({ initial }: { initial: RangeEntry | null }) {
   const [kind, setKind] = useState<Kind>(initial === null ? "days" : initial.kind);
   const values = valuesFor(initial, kind);
   const { type, fields } = kindFields[kind];
@@ -177,9 +180,9 @@ function RangeEntryFields(props: { idPrefix: string; initial: RangeEntry | null 
   return (
     <div className="flex flex-col gap-4">
       <Field>
-        <FieldLabel htmlFor={`${idPrefix}-kind`}>Duración</FieldLabel>
+        <FieldLabel htmlFor="entry-kind">Duración</FieldLabel>
         <NativeSelect
-          id={`${idPrefix}-kind`}
+          id="entry-kind"
           name="kind"
           value={kind}
           onChange={(event) => setKind(event.target.value as Kind)}
@@ -191,9 +194,9 @@ function RangeEntryFields(props: { idPrefix: string; initial: RangeEntry | null 
       <div className="flex flex-wrap gap-4">
         {fields.map(([name, label]) => (
           <Field key={name} className="w-auto">
-            <FieldLabel htmlFor={`${idPrefix}-${name}`}>{label}</FieldLabel>
+            <FieldLabel htmlFor={`entry-${name}`}>{label}</FieldLabel>
             <Input
-              id={`${idPrefix}-${name}`}
+              id={`entry-${name}`}
               name={name}
               type={type}
               defaultValue={values[name]}

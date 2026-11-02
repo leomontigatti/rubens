@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 import type * as z from "zod";
 
-import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
+import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
+import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import {
   DocumentInputs,
   TextField,
@@ -14,17 +15,11 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { guardianInputSchema, guardianUpdateSchema } from "#/lib/guardians.ts";
 import type { GuardianInput } from "#/lib/guardians.ts";
 import { documentLabel } from "#/lib/patients.ts";
 import type { DocumentType } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
-import {
-  addPatientGuardian,
-  changeMessageContact,
-  deleteGuardian,
-  editGuardian,
-} from "#/server/guardians.functions.ts";
+import { changeMessageContact, deleteGuardian } from "#/server/guardians.functions.ts";
 import type { Guardian } from "#/server/guardians.ts";
 import type { Patient } from "#/server/patients.ts";
 
@@ -61,42 +56,19 @@ export function MinorPrompt(props: { patient: Patient; guardians: Guardian[] }) 
   );
 }
 
-export function GuardianList({ guardians }: { guardians: Guardian[] }) {
-  if (guardians.length === 0) {
+export function GuardianList(props: { patientId: string; guardians: Guardian[] }) {
+  if (props.guardians.length === 0) {
     return <p className="text-muted-foreground">Sin responsables.</p>;
   }
   return (
     <ul className="flex flex-col gap-4">
-      {guardians.map((guardian) => (
-        <GuardianItem key={guardian.id} guardian={guardian} />
+      {props.guardians.map((guardian) => (
+        <li key={guardian.id} className="flex flex-wrap items-start justify-between gap-4">
+          <GuardianSummary guardian={guardian} />
+          <GuardianControls patientId={props.patientId} guardian={guardian} />
+        </li>
       ))}
     </ul>
-  );
-}
-
-function GuardianItem({ guardian }: { guardian: Guardian }) {
-  const [editing, setEditing] = useState(false);
-
-  if (editing) {
-    return (
-      <li>
-        <GuardianForm
-          idPrefix={guardian.id}
-          initial={{ ...guardian, phone: formatPhone(guardian.phone) }}
-          submitLabel="Guardar"
-          schema={guardianUpdateSchema}
-          ids={{ guardianId: guardian.id }}
-          onSubmit={(fields) => editGuardian({ data: { ...fields, guardianId: guardian.id } })}
-          onDone={() => setEditing(false)}
-        />
-      </li>
-    );
-  }
-  return (
-    <li className="flex flex-wrap items-start justify-between gap-4">
-      <GuardianSummary guardian={guardian} />
-      <GuardianControls guardian={guardian} onEdit={() => setEditing(true)} />
-    </li>
   );
 }
 
@@ -114,12 +86,22 @@ function GuardianSummary({ guardian }: { guardian: Guardian }) {
   );
 }
 
-function GuardianControls({ guardian, onEdit }: { guardian: Guardian; onEdit: () => void }) {
+function GuardianControls({ patientId, guardian }: { patientId: string; guardian: Guardian }) {
   const action = useAction();
   return (
     <div className="flex flex-col items-end gap-3">
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={onEdit}>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={
+            <Link
+              to="/pacientes/$patientId/responsables/$guardianId"
+              params={{ patientId, guardianId: guardian.id }}
+            />
+          }
+        >
           Editar
         </Button>
         <Button
@@ -174,23 +156,10 @@ export function MessageContactChoice(props: { patient: Patient; guardians: Guard
   );
 }
 
-/** The form that adds a guardian to the patient. */
-export function NewGuardianForm(props: { patientId: string; onDone: () => void }) {
-  return (
-    <GuardianForm
-      idPrefix="new-guardian"
-      initial={{ name: "", relationship: "", phone: "" }}
-      submitLabel="Agregar"
-      schema={guardianInputSchema}
-      ids={{ patientId: props.patientId }}
-      onSubmit={(fields) => addPatientGuardian({ data: { ...fields, patientId: props.patientId } })}
-      onDone={props.onDone}
-    />
-  );
-}
-
 interface GuardianFormProps {
-  idPrefix: string;
+  patientId: string;
+  title: string;
+  description: string;
   initial: GuardianFields;
   submitLabel: string;
   /** The schema the server function checks the input with, which the form checks first. */
@@ -198,7 +167,6 @@ interface GuardianFormProps {
   /** The ids the input carries beside the fields, for `schema`. */
   ids: Record<string, string>;
   onSubmit: (fields: GuardianFields) => Promise<ActionResult>;
-  onDone: () => void;
 }
 
 /** The fields the form submitted, as typed: the schema, on both sides, checks them. */
@@ -217,9 +185,11 @@ function readGuardianForm(form: FormData): GuardianFields {
   };
 }
 
-function GuardianForm(props: GuardianFormProps) {
+export function GuardianForm(props: GuardianFormProps) {
+  const { patientId } = props;
+  const page = useFormPage({ to: "/pacientes/$patientId", params: { patientId } });
   const action = useAction();
-  const id = (name: string) => `${props.idPrefix}-${name}`;
+  const id = (name: string) => `guardian-${name}`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -229,14 +199,20 @@ function GuardianForm(props: GuardianFormProps) {
       action.setError(patientFieldMessage(checked.error));
       return;
     }
-    if (await action.run(() => props.onSubmit(fields))) {
-      props.onDone();
+    if (await action.save(() => props.onSubmit(fields))) {
+      page.leave();
     }
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <ErrorAlert message={action.error} />
+    <ActionFormPage
+      page={page}
+      title={props.title}
+      description={props.description}
+      submitLabel={props.submitLabel}
+      action={action}
+      onSubmit={handleSubmit}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           id={id("name")}
@@ -255,7 +231,7 @@ function GuardianForm(props: GuardianFormProps) {
         />
       </div>
       <PhoneField id={id("phone")} defaultValue={props.initial.phone} />
-      <DocumentInputs idPrefix={props.idPrefix} initial={props.initial} />
+      <DocumentInputs idPrefix="guardian" initial={props.initial} />
       <TextField
         id={id("email")}
         name="email"
@@ -263,11 +239,6 @@ function GuardianForm(props: GuardianFormProps) {
         type="email"
         defaultValue={props.initial.email}
       />
-      <FormActions
-        pending={action.pending}
-        submitLabel={props.submitLabel}
-        onCancel={props.onDone}
-      />
-    </form>
+    </ActionFormPage>
   );
 }
