@@ -99,7 +99,14 @@ export async function moveAppointmentRoom(
       if (!found.ok) {
         return found;
       }
-      return movePlaced(tx, actor, found, placed, { kind: "sameTime", roomId });
+      return movePlaced(
+        tx,
+        actor,
+        found,
+        placed,
+        { kind: "sameTime", roomId },
+        { confirmWarnings: false },
+      );
     },
     database,
   );

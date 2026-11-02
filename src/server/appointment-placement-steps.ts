@@ -42,6 +42,15 @@ export interface PatientWarning {
 
 export type TimeTaken = { ok: false; reason: "timeTaken"; freeStarts: AvailableStart[] };
 
+export type WarningRefusal = { ok: false; reason: "patientWarning"; warnings: PatientWarning[] };
+
+export type FreeStartPlacement = { kind: "freeStart"; span: TimeRange };
+export type OverbookingPlacement = {
+  kind: "overbooking";
+  span: TimeRange;
+  pickedRoomId: string | null;
+};
+
 type BookablePractitioner = { id: string; gridMinutes: number };
 
 /** Which exclusion constraint turned a write down. */
@@ -241,7 +250,7 @@ export async function writeRoomChange(
   return written.ok ? written : lostRoomRace(tx, roomId, placed.practitionerId, placed.during);
 }
 
-export function localDay(instant: Date, timeZone: string): TimeRange {
+function localDay(instant: Date, timeZone: string): TimeRange {
   const date = format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
   return toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
 }
@@ -254,12 +263,12 @@ function intersects(a: TimeRange, b: TimeRange): boolean {
  * The patient's active appointments on the local day of `span`, as warnings,
  * but for `excludeId`, the one being rescheduled.
  */
-export async function findPatientWarnings(
+async function findPatientWarnings(
   tx: Transaction,
   patientId: string,
   span: TimeRange,
   timeZone: string,
-  excludeId?: string,
+  excludeId: string | undefined,
 ): Promise<PatientWarning[]> {
   const rows = await tx
     .select({
@@ -289,15 +298,20 @@ export async function findPatientWarnings(
   }));
 }
 
-/** The room of the free start at the start of `span`, which takes no room lock. */
-export async function placeFreeStart(
+/**
+ * The room of the free start at the start of `span`, which takes no room lock.
+ * `excludeAppointmentId` is the one being moved, whose own time counts as free.
+ */
+async function placeFreeStart(
   tx: Transaction,
   bookable: BookablePractitioner,
   span: TimeRange,
+  excludeAppointmentId: string | undefined,
 ): Promise<{ ok: true; roomId: string; timeZone: string } | { ok: false; reason: "notFree" }> {
   const { free, schedules } = await findFreeTimes(tx, bookable, {
     window: { start: span.start, end: new Date(+span.start + 1) },
     durationMinutes: (+span.end - +span.start) / 60_000,
+    excludeAppointmentId,
   });
   const slot = free.find((candidate) => +candidate.start === +span.start);
   if (!slot) {
@@ -325,7 +339,7 @@ async function checkWorkingTime(
  * The room an overbooking goes in: the one picked, or else the schedule's it
  * falls inside, when that room has space and the practitioner works then.
  */
-export async function placeOverbooking(
+async function placeOverbooking(
   tx: Transaction,
   bookable: BookablePractitioner,
   span: TimeRange,
@@ -352,10 +366,65 @@ export async function placeOverbooking(
 }
 
 /**
- * Writes a new appointment. A free start lost on either constraint gets the free
- * times of its local day to pick another. An overbooking can lose only on the
- * room's constraint, since its flag exempts it from the practitioner's.
+ * Where a placement at a new time goes, and the patient's warnings about it
+ * unless confirmed. `excludeAppointmentId` is the appointment being moved, which
+ * does not compete with its own time or warn about itself.
  */
+export async function resolveTime(
+  tx: Transaction,
+  bookable: BookablePractitioner,
+  patientId: string,
+  placement: FreeStartPlacement | OverbookingPlacement,
+  confirmWarnings: boolean,
+  excludeAppointmentId: string | undefined,
+) {
+  const { span } = placement;
+  const where =
+    placement.kind === "freeStart"
+      ? await placeFreeStart(tx, bookable, span, excludeAppointmentId)
+      : await placeOverbooking(tx, bookable, span, placement.pickedRoomId);
+  if (!where.ok) {
+    return where;
+  }
+  const warnings = confirmWarnings
+    ? []
+    : await findPatientWarnings(tx, patientId, span, where.timeZone, excludeAppointmentId);
+  if (warnings.length > 0) {
+    return { ok: false as const, reason: "patientWarning" as const, warnings };
+  }
+  return where;
+}
+
+/**
+ * The refusal for a write at a new time that lost the race. A free start lost on
+ * either constraint gets the free times of its local day to pick another. An
+ * overbooking can lose only on the room's constraint, since its flag exempts it
+ * from the practitioner's.
+ */
+async function refuseLostTime(
+  tx: Transaction,
+  bookable: BookablePractitioner,
+  kind: "freeStart" | "overbooking",
+  { roomId, during }: { roomId: string; during: TimeRange },
+  timeZone: string,
+  excludeAppointmentId: string | undefined,
+): Promise<TimeTaken | RoomRefusal> {
+  if (kind === "overbooking") {
+    return lostRoomRace(tx, roomId, bookable.id, during);
+  }
+  const fresh = await findFreeTimes(tx, bookable, {
+    window: localDay(during.start, timeZone),
+    durationMinutes: (+during.end - +during.start) / 60_000,
+    excludeAppointmentId,
+  });
+  return {
+    ok: false,
+    reason: "timeTaken",
+    freeStarts: toAvailableStarts(fresh.free, fresh.schedules),
+  };
+}
+
+/** Writes a new appointment, recovering a lost race by `refuseLostTime`. */
 export async function writeNewRow(
   tx: Transaction,
   bookable: BookablePractitioner,
@@ -364,20 +433,18 @@ export async function writeNewRow(
   timeZone: string,
 ): Promise<{ ok: true; id: string } | TimeTaken | RoomRefusal> {
   const written = await insertRow(tx, values);
-  if (written.ok) {
-    return written;
-  }
-  if (kind === "overbooking") {
-    return lostRoomRace(tx, values.roomId, bookable.id, values.during);
-  }
-  const { start, end } = values.during;
-  const fresh = await findFreeTimes(tx, bookable, {
-    window: localDay(start, timeZone),
-    durationMinutes: (+end - +start) / 60_000,
-  });
-  return {
-    ok: false,
-    reason: "timeTaken",
-    freeStarts: toAvailableStarts(fresh.free, fresh.schedules),
-  };
+  return written.ok ? written : refuseLostTime(tx, bookable, kind, values, timeZone, undefined);
+}
+
+/** Writes an appointment's move to a new time, recovering a lost race by `refuseLostTime`. */
+export async function writeMovedRow(
+  tx: Transaction,
+  bookable: BookablePractitioner,
+  kind: "freeStart" | "overbooking",
+  appointmentId: string,
+  values: { during: TimeRange; roomId: string; overbooking: boolean },
+  timeZone: string,
+): Promise<{ ok: true } | TimeTaken | RoomRefusal> {
+  const written = await updateRow(tx, appointmentId, values);
+  return written.ok ? written : refuseLostTime(tx, bookable, kind, values, timeZone, appointmentId);
 }

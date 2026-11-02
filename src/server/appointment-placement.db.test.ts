@@ -11,6 +11,7 @@ import {
   insertRow,
   lostRoomRace,
   updateRow,
+  writeMovedRow,
   writeNewRow,
   writeRoomChange,
 } from "#/server/appointment-placement-steps.ts";
@@ -300,6 +301,103 @@ describe("an overbooking that loses the race", () => {
       ],
     });
     expect(await db.select().from(appointment)).toHaveLength(1);
+  });
+});
+
+describe("a move to a new time that loses the race", () => {
+  const timeZone = "America/Argentina/Buenos_Aires";
+
+  it("as a free start on the practitioner's constraint is time taken, its own time counted free", async () => {
+    await booked("juan", maria.id, at("12:00"));
+    const moved = await booked("juan", pedro.id, at("12:30"));
+
+    const refused = await asTenant((tenant) =>
+      writeMovedRow(
+        tenant,
+        bookable("juan"),
+        "freeStart",
+        moved.id,
+        {
+          during: { start: at("12:15"), end: at("12:45") },
+          roomId: world.room.id,
+          overbooking: false,
+        },
+        timeZone,
+      ),
+    );
+
+    expect(refused).toMatchObject({ ok: false, reason: "timeTaken" });
+    expect(isoStarts(refused)).toEqual([
+      "2099-01-05T12:30:00.000Z",
+      "2099-01-05T13:00:00.000Z",
+      "2099-01-05T13:30:00.000Z",
+    ]);
+    expect((await rowOf(moved.id)).during.start).toEqual(at("12:30"));
+  });
+
+  it("as a free start on the room's constraint is time taken too, with the free times", async () => {
+    await booked("juan", maria.id, at("12:00"));
+    const moved = await booked("lucia", pedro.id, at("12:00"));
+
+    const refused = await asTenant((tenant) =>
+      writeMovedRow(
+        tenant,
+        bookable("lucia"),
+        "freeStart",
+        moved.id,
+        {
+          during: { start: at("12:00"), end: at("12:30") },
+          roomId: world.room.id,
+          overbooking: false,
+        },
+        timeZone,
+      ),
+    );
+
+    expect(refused).toMatchObject({ ok: false, reason: "timeTaken" });
+    expect(isoStarts(refused)).toEqual([
+      "2099-01-05T12:00:00.000Z",
+      "2099-01-05T12:30:00.000Z",
+      "2099-01-05T13:00:00.000Z",
+      "2099-01-05T13:30:00.000Z",
+    ]);
+  });
+
+  it("as an overbooking on the room's constraint is room full, naming who took the room", async () => {
+    await booked("juan", maria.id, at("12:00"));
+    const moved = await booked("lucia", pedro.id, at("13:00"));
+
+    expect(
+      await asTenant((tenant) =>
+        writeMovedRow(
+          tenant,
+          bookable("lucia"),
+          "overbooking",
+          moved.id,
+          {
+            during: { start: at("12:00"), end: at("12:30") },
+            roomId: world.room.id,
+            overbooking: true,
+          },
+          timeZone,
+        ),
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "roomFull",
+      occupants: [
+        {
+          practitionerName: "Juan Gómez",
+          kind: "appointment",
+          start: at("12:00"),
+          end: at("12:30"),
+        },
+      ],
+    });
+    expect(await rowOf(moved.id)).toMatchObject({
+      roomId: world.otherRoom.id,
+      overbooking: false,
+    });
   });
 });
 
