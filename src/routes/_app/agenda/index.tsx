@@ -20,15 +20,15 @@ import { BookingDialog } from "#/routes/_app/agenda/-booking.tsx";
 import type { BookingSlot } from "#/routes/_app/agenda/-booking.tsx";
 import { DayColumn, TimeAxis } from "#/routes/_app/agenda/-calendar.tsx";
 import type { PickedCell } from "#/routes/_app/agenda/-calendar.tsx";
+import type { CalendarSearch } from "#/routes/_app/agenda/-filter-changes.ts";
 import { CalendarFilters } from "#/routes/_app/agenda/-filters.tsx";
-import type { CalendarSearch } from "#/routes/_app/agenda/-filters.tsx";
 
 // The calendar (docs/domain/appointments.md § Calendar): one room's week,
 // narrowed to a practitioner or a medical service. What is viewed lives in
 // the URL; a value that does not parse falls back to its default, this week and
 // the room the calendar opens on. The opening's room and practitioner join the
-// search the filters extend, so `Todos` then means everyone rather than opening
-// again.
+// search the filters extend, so removing the practitioner then means everyone
+// rather than opening again.
 const searchSchema = z.object({
   consultorio: z.uuid().optional().catch(undefined),
   profesional: z.uuid().optional().catch(undefined),

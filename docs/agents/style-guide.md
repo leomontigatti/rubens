@@ -61,6 +61,16 @@ beside it.
   `actions` for the buttons that act on the whole page. A page that is one card holding one form,
   `/ingresar` and `/cambiar-contrasena`, is titled by its `CardTitle` instead.
 
+## Filters
+
+- **What narrows a list or the calendar is `FilterBar`** (`src/components/filter-bar.tsx`), never
+  a row of selects. A form that asks and answers, such as `/disponibilidad`, stays a form.
+- **An applied filter is a button group**: its name, its value as a menu, a trash button; the
+  rest come from `Agregar filtro`. A filter that always holds a value, the calendar's
+  `Consultorio`, is `required`: always shown, with no trash button.
+- **A filter's icon is the one the sidebar gives its concept.** A value's menu has no search; the
+  picker gets one past seven values.
+
 ## Forms
 
 What a form checks and when, after GOV.UK's
@@ -72,9 +82,9 @@ carried over from en-escena.
   label.
 - **A rule the user needs while typing is a hint under the field**: a `FieldDescription`, with
   the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/patient-form.tsx`).
-- **Fields sit in a column or a grid**, where they fill their cell. In a `flex` row, a filter row
-  above all, each takes `className="w-auto"`, or it takes the whole line. An input
-  narrower than its field takes `max-w-*`: `Field` sets its children's `width`.
+- **Fields sit in a column or a grid**, where they fill their cell. In a `flex` row, each takes
+  `className="w-auto"`, or it takes the whole line. An input narrower than its field takes
+  `max-w-*`: `Field` sets its children's `width`.
 - **A checkbox is a horizontal `Field` with `className="w-fit"`**, the box before its label:
   without `w-fit` the label fills the row, and a click on the empty space ticks the box.
   A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a

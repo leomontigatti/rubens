@@ -1,6 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { BuildingIcon, UserRoundIcon } from "lucide-react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { FilterBar } from "#/components/filter-bar.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -32,6 +35,36 @@ function Pattern(props: { title: string; children: ReactNode }) {
       <h2 className="text-lg font-semibold">{props.title}</h2>
       {props.children}
     </section>
+  );
+}
+
+function PatternFilters() {
+  const [practitioner, setPractitioner] = useState<string | null>("laura");
+  return (
+    <FilterBar
+      groups={[
+        {
+          id: "room",
+          label: "Consultorio",
+          icon: BuildingIcon,
+          required: true,
+          value: "room-1",
+          options: [{ value: "room-1", label: "Consultorio 1", section: "Sede Centro" }],
+        },
+        {
+          id: "practitioner",
+          label: "Profesional",
+          icon: UserRoundIcon,
+          value: practitioner,
+          options: [
+            { value: "laura", label: "Dra. Laura Díaz" },
+            { value: "pablo", label: "Dr. Pablo Ruiz" },
+          ],
+        },
+      ]}
+      onPick={(_, value) => setPractitioner(value)}
+      onRemove={() => setPractitioner(null)}
+    />
   );
 }
 
@@ -68,20 +101,9 @@ function Patterns() {
           </Field>
         </div>
       </Pattern>
-      <Pattern title="Filtros en una fila">
-        <div className="flex flex-wrap items-end gap-4">
-          <Field className="w-auto">
-            <FieldLabel htmlFor="pattern-room">Consultorio</FieldLabel>
-            <NativeSelect id="pattern-room">
-              <NativeSelectOption value="">Consultorio 1</NativeSelectOption>
-            </NativeSelect>
-          </Field>
-          <Field className="w-auto">
-            <FieldLabel htmlFor="pattern-practitioner">Profesional</FieldLabel>
-            <NativeSelect id="pattern-practitioner">
-              <NativeSelectOption value="">Todos</NativeSelectOption>
-            </NativeSelect>
-          </Field>
+      <Pattern title="Filtros">
+        <div className="flex flex-wrap items-center gap-2">
+          <PatternFilters />
         </div>
       </Pattern>
       <Pattern title="Casilla">
