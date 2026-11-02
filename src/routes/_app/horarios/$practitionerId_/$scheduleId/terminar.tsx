@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { FormEvent } from "react";
 
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { Input } from "#/components/ui/input.tsx";
 import { scheduleEndSchema, validityLabel } from "#/lib/schedules.ts";
 import { finishSchedule, getSchedules } from "#/server/schedules.functions.ts";
 import type { Schedule } from "#/server/schedules.ts";
@@ -32,40 +30,32 @@ function EndForm(props: { schedule: Schedule; initial: string }) {
   const page = useFormPage({ to: "/horarios/$practitionerId", params: { practitionerId } });
   const action = useAction();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = scheduleEndSchema.safeParse({
-      scheduleId: props.schedule.id,
-      lastDate: new FormData(event.currentTarget).get("lastDate"),
-    });
-    if (!input.success) {
-      action.setError("Ingresá el último día del horario.");
-      return;
-    }
-    if (await action.save(() => finishSchedule({ data: input.data }))) {
-      page.leave();
-    }
-  }
+  const form = useAppForm({
+    defaultValues: { lastDate: props.initial },
+    onSubmit: async ({ value }) => {
+      const input = scheduleEndSchema.safeParse({ scheduleId: props.schedule.id, ...value });
+      if (!input.success) {
+        action.setError("Ingresá el último día del horario.");
+        return;
+      }
+      if (await action.save(() => finishSchedule({ data: input.data }))) {
+        page.leave();
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title="Terminar horario"
       description={validityLabel(props.schedule)}
       submitLabel="Terminar horario"
       action={action}
-      onSubmit={handleSubmit}
     >
-      <Field>
-        <FieldLabel htmlFor="schedule-end">Último día</FieldLabel>
-        <Input
-          id="schedule-end"
-          name="lastDate"
-          type="date"
-          defaultValue={props.initial}
-          required
-        />
-      </Field>
+      <form.AppField name="lastDate">
+        {(field) => <field.TextField label="Último día" type="date" required />}
+      </form.AppField>
     </ActionFormPage>
   );
 }

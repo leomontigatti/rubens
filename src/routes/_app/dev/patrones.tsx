@@ -7,6 +7,7 @@ import { DataTable, NoMatches, useClientDataTable } from "#/components/data-tabl
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
@@ -108,19 +109,17 @@ function PatternFilters() {
 
 function PatternFormPage() {
   const page = useFormPage({ to: "/dev/patrones" });
+  const form = useAppForm({ defaultValues: { service: "" } });
   return (
     <FormPage
       page={page}
+      form={form}
       title="Nueva prestación"
       submitLabel="Crear"
       pending={false}
-      onSubmit={(event) => event.preventDefault()}
       onDiscard={() => undefined}
     >
-      <Field>
-        <FieldLabel htmlFor="pattern-service">Nombre</FieldLabel>
-        <Input id="pattern-service" name="name" />
-      </Field>
+      <form.AppField name="service">{(field) => <field.TextField label="Nombre" />}</form.AppField>
     </FormPage>
   );
 }

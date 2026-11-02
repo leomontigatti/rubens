@@ -1,10 +1,8 @@
-import type { FormEvent } from "react";
 import type * as z from "zod";
 
-import { NameField, fieldMessage } from "#/components/admin-form.tsx";
+import { fieldMessage } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { Input } from "#/components/ui/input.tsx";
 import { roomUpdateSchema } from "#/lib/offices.ts";
 
 import { useAction } from "#/routes/_app/sedes/-shared.tsx";
@@ -31,45 +29,44 @@ export function RoomForm(props: {
   const page = useFormPage({ to: "/sedes/$officeId", params: { officeId } });
   const action = useAction();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const fields = roomFieldsSchema.safeParse({
-      name: form.get("name"),
-      capacity: Number(form.get("capacity")),
-    });
-    if (!fields.success) {
-      action.setError(fieldMessage(fieldMessages, fields.error));
-      return;
-    }
-    if (await action.save(() => props.onSubmit(fields.data))) {
-      page.leave();
-    }
-  }
+  const form = useAppForm({
+    defaultValues: { name: initial.name, capacity: String(initial.capacity) },
+    onSubmit: async ({ value }) => {
+      const fields = roomFieldsSchema.safeParse({ ...value, capacity: Number(value.capacity) });
+      if (!fields.success) {
+        action.setError(fieldMessage(fieldMessages, fields.error));
+        return;
+      }
+      if (await action.save(() => props.onSubmit(fields.data))) {
+        page.leave();
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
       action={action}
-      onSubmit={handleSubmit}
     >
-      <NameField idPrefix="room" initial={initial.name} />
-      <Field>
-        <FieldLabel htmlFor="room-capacity">Capacidad (profesionales a la vez)</FieldLabel>
-        <Input
-          id="room-capacity"
-          name="capacity"
-          type="number"
-          min={1}
-          max={100}
-          step={1}
-          defaultValue={initial.capacity}
-          required
-        />
-      </Field>
+      <form.AppField name="name">
+        {(field) => <field.TextField label="Nombre" required />}
+      </form.AppField>
+      <form.AppField name="capacity">
+        {(field) => (
+          <field.TextField
+            label="Capacidad (profesionales a la vez)"
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            required
+          />
+        )}
+      </form.AppField>
     </ActionFormPage>
   );
 }

@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm, readRangeEntry } from "#/components/range-entry.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { timeOffInputSchema } from "#/lib/time-ranges.ts";
 import type { SchedulePractitioner } from "#/server/schedules.ts";
 import { addTimeOff, getTimeOff } from "#/server/time-off.functions.ts";
@@ -30,36 +29,36 @@ function NewTimeOff() {
       title="Nueva licencia"
       initial={null}
       submitLabel="Crear licencia"
+      owner={practitionerField(result.practitioners)}
       messages={refusalMessages}
-      onSubmit={(form) => {
+      onSubmit={(values) => {
         const input = timeOffInputSchema.safeParse({
-          practitionerId: form.get("practitionerId"),
-          entry: readRangeEntry(form),
+          practitionerId: values.owner,
+          entry: readRangeEntry(values),
         });
         return input.success ? addTimeOff({ data: input.data }) : input.error;
       }}
-    >
-      <PractitionerSelect practitioners={result.practitioners} />
-    </EntryForm>
+    />
   );
 }
 
 /** The practitioners the actor may record time off for; a practitioner sees only themself. */
-function PractitionerSelect(props: { practitioners: SchedulePractitioner[] }) {
-  const only = props.practitioners.length === 1 ? props.practitioners[0]!.id : "";
-  return (
-    <Field>
-      <FieldLabel htmlFor="new-practitionerId">Profesional</FieldLabel>
-      <NativeSelect id="new-practitionerId" name="practitionerId" defaultValue={only} required>
+function practitionerField(practitioners: SchedulePractitioner[]) {
+  return {
+    label: "Profesional",
+    required: true,
+    initial: practitioners.length === 1 ? practitioners[0]!.id : "",
+    options: (
+      <>
         <NativeSelectOption value="" disabled>
           Elegí un profesional
         </NativeSelectOption>
-        {props.practitioners.map((practitioner) => (
+        {practitioners.map((practitioner) => (
           <NativeSelectOption key={practitioner.id} value={practitioner.id}>
             {practitioner.displayName}
           </NativeSelectOption>
         ))}
-      </NativeSelect>
-    </Field>
-  );
+      </>
+    ),
+  };
 }

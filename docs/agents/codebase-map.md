@@ -10,8 +10,9 @@ when a directory is added, moved or given a new job.
 src/
 ├── routes/            TanStack Router file routes; `__root.tsx` is the document shell
 │   └── api/auth/$.ts  Better Auth's HTTP handler
-├── components/        shared pieces: `admin-form.tsx` (the admin screens' submit step and
-│   │                  controls), `confirm-dialog.tsx` (the question before a destructive
+├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),
+│   │                  `form-page.tsx` (a create or an edit on its own page),
+│   │                  `admin-form.tsx` (the admin screens' submit step and controls), `confirm-dialog.tsx` (the question before a destructive
 │   │                  action), `range-entry.tsx` (the time-off and closure forms and rows),
 │   │                  `patient-form.tsx` (patient registration, for any screen that registers one),
 │   │                  `patient-duplicates.tsx` (the duplicate check's refusal and warning),

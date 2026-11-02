@@ -1,14 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import {
-  DocumentInputs,
-  TextField,
-  PhoneField,
+  documentTypeOptions,
   patientFieldMessage,
+  phoneFieldProps,
 } from "#/components/patient-form.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
@@ -169,76 +168,72 @@ interface GuardianFormProps {
   onSubmit: (fields: GuardianFields) => Promise<ActionResult>;
 }
 
-/** The fields the form submitted, as typed: the schema, on both sides, checks them. */
-function readGuardianForm(form: FormData): GuardianFields {
-  const text = (name: string) => {
-    const value = form.get(name);
-    return typeof value === "string" ? value : "";
-  };
-  return {
-    name: text("name"),
-    relationship: text("relationship"),
-    documentType: (text("documentType") || null) as DocumentType | null,
-    documentNumber: text("documentNumber"),
-    phone: text("phone"),
-    email: text("email"),
-  };
-}
+const guardianValues = (initial: GuardianFields) => ({
+  name: initial.name,
+  relationship: initial.relationship,
+  phone: initial.phone,
+  documentType: (initial.documentType ?? "") as string,
+  documentNumber: initial.documentNumber ?? "",
+  email: initial.email ?? "",
+});
 
 export function GuardianForm(props: GuardianFormProps) {
   const { patientId } = props;
   const page = useFormPage({ to: "/pacientes/$patientId", params: { patientId } });
   const action = useAction();
-  const id = (name: string) => `guardian-${name}`;
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const fields = readGuardianForm(new FormData(event.currentTarget));
-    const checked = props.schema.safeParse({ ...fields, ...props.ids });
-    if (!checked.success) {
-      action.setError(patientFieldMessage(checked.error));
-      return;
-    }
-    if (await action.save(() => props.onSubmit(fields))) {
-      page.leave();
-    }
-  }
+  const form = useAppForm({
+    defaultValues: guardianValues(props.initial),
+    onSubmit: async ({ value }) => {
+      const fields = {
+        ...value,
+        documentType: (value.documentType || null) as DocumentType | null,
+      };
+      const checked = props.schema.safeParse({ ...fields, ...props.ids });
+      if (!checked.success) {
+        action.setError(patientFieldMessage(checked.error));
+        return;
+      }
+      if (await action.save(() => props.onSubmit(fields))) {
+        page.leave();
+      }
+    },
+  });
 
   return (
     <ActionFormPage
       page={page}
+      form={form}
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
       action={action}
-      onSubmit={handleSubmit}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          id={id("name")}
-          name="name"
-          label="Nombre"
-          defaultValue={props.initial.name}
-          required
-        />
-        <TextField
-          id={id("relationship")}
-          name="relationship"
-          label="Relación"
-          defaultValue={props.initial.relationship}
-          required
-          hint="Por ejemplo: madre, padre, tutora."
-        />
+        <form.AppField name="name">
+          {(field) => <field.TextField label="Nombre" required />}
+        </form.AppField>
+        <form.AppField name="relationship">
+          {(field) => (
+            <field.TextField label="Relación" required hint="Por ejemplo: madre, padre, tutora." />
+          )}
+        </form.AppField>
       </div>
-      <PhoneField id={id("phone")} defaultValue={props.initial.phone} />
-      <DocumentInputs idPrefix="guardian" initial={props.initial} />
-      <TextField
-        id={id("email")}
-        name="email"
-        label="Correo electrónico"
-        type="email"
-        defaultValue={props.initial.email}
-      />
+      <form.AppField name="phone">
+        {(field) => <field.TextField {...phoneFieldProps} />}
+      </form.AppField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <form.AppField name="documentType">
+          {(field) => (
+            <field.SelectField label="Tipo de documento">{documentTypeOptions}</field.SelectField>
+          )}
+        </form.AppField>
+        <form.AppField name="documentNumber">
+          {(field) => <field.TextField label="Número de documento" />}
+        </form.AppField>
+      </div>
+      <form.AppField name="email">
+        {(field) => <field.TextField label="Correo electrónico" type="email" />}
+      </form.AppField>
     </ActionFormPage>
   );
 }
