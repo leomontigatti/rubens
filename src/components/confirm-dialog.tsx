@@ -19,12 +19,14 @@ export function ConfirmDialog(props: {
   onOpenChange: (open: boolean) => void;
   title: string;
   description: string;
+  cancelLabel?: string;
   confirmLabel: string;
   onConfirm: () => void;
 }) {
+  // In this order: closing first would read as a dismissal, and undo what confirming does.
   function confirm() {
-    props.onOpenChange(false);
     props.onConfirm();
+    props.onOpenChange(false);
   }
 
   return (
@@ -35,7 +37,7 @@ export function ConfirmDialog(props: {
           <AlertDialogDescription>{props.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{props.cancelLabel ?? "Cancelar"}</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={confirm}>
             {props.confirmLabel}
           </AlertDialogAction>

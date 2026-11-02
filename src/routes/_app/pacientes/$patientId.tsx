@@ -1,25 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import type { FormEvent } from "react";
 
-import {
-  ErrorAlert,
-  FormActions,
-  RefusalMessage,
-  useFormAction,
-} from "#/components/admin-form.tsx";
+import { ErrorAlert, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { FormSheet } from "#/components/form-sheet.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
-import {
-  PatientFields,
-  PatientSaveFeedback,
-  patientFieldMessage,
-  readPatientForm,
-  usePatientSave,
-} from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { CoverageList, NewCoverageForm } from "#/components/patient-coverages.tsx";
 import {
@@ -38,7 +25,6 @@ import {
   legalName,
   patientBadges,
   patientName,
-  patientUpdateSchema,
 } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
@@ -53,12 +39,10 @@ import type { Insurer } from "#/server/insurers.ts";
 import {
   changePatientActive,
   changeWhatsappConsent,
-  editPatient,
   getPatientChanges,
   getPatientDetails,
   getPatientUpcomingCount,
 } from "#/server/patients.functions.ts";
-import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import type { PatientAppointment } from "#/server/patient-appointments.ts";
 import type { HistoryEntry, Patient } from "#/server/patients.ts";
 
@@ -187,13 +171,16 @@ function ActiveToggle({ patient }: { patient: Patient }) {
 }
 
 function DetailsSection({ patient }: { patient: Patient }) {
-  const [editing, setEditing] = useState(false);
-
   return (
     <RecordSection
       title="Datos"
       action={
-        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link to="/pacientes/$patientId/editar" params={{ patientId: patient.id }} />}
+        >
           Editar
         </Button>
       }
@@ -210,43 +197,7 @@ function DetailsSection({ patient }: { patient: Patient }) {
         <Detail label="Correo electrónico" value={patient.email} />
         <Detail label="Dirección" value={patient.address} />
       </dl>
-      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar datos">
-        <PatientEditForm patient={patient} onDone={() => setEditing(false)} />
-      </FormSheet>
     </RecordSection>
-  );
-}
-
-function PatientEditForm({ patient, onDone }: { patient: Patient; onDone: () => void }) {
-  const navigate = useNavigate();
-  const save = usePatientSave(
-    (data: PatientUpdate & DuplicateConfirmation) => editPatient({ data }),
-    onDone,
-  );
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const update = { ...readPatientForm(new FormData(event.currentTarget)), patientId: patient.id };
-    const parsed = patientUpdateSchema.safeParse(update);
-    if (!parsed.success) {
-      save.setError(patientFieldMessage(parsed.error));
-      return;
-    }
-    await save.submit(update);
-  }
-
-  return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <PatientSaveFeedback
-        save={save}
-        confirmLabel="Guardar igual"
-        onUse={(other) =>
-          void navigate({ to: "/pacientes/$patientId", params: { patientId: other.id } })
-        }
-      />
-      <PatientFields idPrefix={patient.id} full initial={patient} />
-      <FormActions pending={save.pending} submitLabel="Guardar" onCancel={onDone} />
-    </form>
   );
 }
 
