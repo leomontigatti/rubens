@@ -4,6 +4,7 @@ import type * as z from "zod";
 
 import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { FormSheet } from "#/components/form-sheet.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -90,6 +91,7 @@ export function EntryForm<R extends string>(props: {
 /** A time off or closure in its list, with edit and delete for those who may. */
 export function EntryItem<R extends string>(props: {
   title: string;
+  editTitle: string;
   deleteQuestion: string;
   deleteNotice: string;
   entry: RangeEntry;
@@ -111,7 +113,7 @@ export function EntryItem<R extends string>(props: {
               <span className="font-medium">{props.title}</span>
               <span className="text-muted-foreground text-sm">{rangeEntryLabel(props.entry)}</span>
             </div>
-            {props.canEdit && !editing && (
+            {props.canEdit && (
               <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
@@ -138,9 +140,11 @@ export function EntryItem<R extends string>(props: {
               </div>
             )}
           </div>
-          {editing && props.renderEdit(() => setEditing(false))}
         </CardContent>
       </Card>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title={props.editTitle}>
+        {props.renderEdit(() => setEditing(false))}
+      </FormSheet>
     </li>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ErrorAlert, FormActions, fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { FormSheet } from "#/components/form-sheet.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -71,9 +72,11 @@ export function CoverageList(props: { coverages: Coverage[]; insurers: Insurer[]
 function CoverageItem({ coverage, insurers }: { coverage: Coverage; insurers: Insurer[] }) {
   const [editing, setEditing] = useState(false);
 
-  if (editing) {
-    return (
-      <li>
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-4">
+      <CoverageSummary coverage={coverage} />
+      <CoverageControls coverage={coverage} onEdit={() => setEditing(true)} />
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar cobertura">
         <CoverageForm
           idPrefix={coverage.id}
           initial={coverage}
@@ -82,13 +85,7 @@ function CoverageItem({ coverage, insurers }: { coverage: Coverage; insurers: In
           onSubmit={(fields) => editCoverage({ data: { ...fields, coverageId: coverage.id } })}
           onDone={() => setEditing(false)}
         />
-      </li>
-    );
-  }
-  return (
-    <li className="flex flex-wrap items-start justify-between gap-4">
-      <CoverageSummary coverage={coverage} />
-      <CoverageControls coverage={coverage} onEdit={() => setEditing(true)} />
+      </FormSheet>
     </li>
   );
 }

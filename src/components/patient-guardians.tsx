@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
+import { FormSheet } from "#/components/form-sheet.tsx";
 import {
   DocumentInputs,
   TextField,
@@ -77,9 +78,11 @@ export function GuardianList({ guardians }: { guardians: Guardian[] }) {
 function GuardianItem({ guardian }: { guardian: Guardian }) {
   const [editing, setEditing] = useState(false);
 
-  if (editing) {
-    return (
-      <li>
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-4">
+      <GuardianSummary guardian={guardian} />
+      <GuardianControls guardian={guardian} onEdit={() => setEditing(true)} />
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar responsable">
         <GuardianForm
           idPrefix={guardian.id}
           initial={{ ...guardian, phone: formatPhone(guardian.phone) }}
@@ -89,13 +92,7 @@ function GuardianItem({ guardian }: { guardian: Guardian }) {
           onSubmit={(fields) => editGuardian({ data: { ...fields, guardianId: guardian.id } })}
           onDone={() => setEditing(false)}
         />
-      </li>
-    );
-  }
-  return (
-    <li className="flex flex-wrap items-start justify-between gap-4">
-      <GuardianSummary guardian={guardian} />
-      <GuardianControls guardian={guardian} onEdit={() => setEditing(true)} />
+      </FormSheet>
     </li>
   );
 }

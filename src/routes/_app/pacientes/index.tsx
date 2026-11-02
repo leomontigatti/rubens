@@ -9,6 +9,7 @@ import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import type { FilterGroup } from "#/components/filter-groups.ts";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
+import { CreateSheet } from "#/components/form-sheet.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
@@ -16,8 +17,6 @@ import { patientSearchKey, patientSearchState } from "#/components/patient-searc
 import type { PatientSearchState } from "#/components/patient-search.ts";
 import { useDebounced } from "#/components/use-debounced.ts";
 import { Badge } from "#/components/ui/badge.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { documentLabel, patientName, patientPageSize } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { findPatients, getPatients } from "#/server/patients.functions.ts";
@@ -197,30 +196,19 @@ const columns: DataTableColumn<ListedPatient>[] = [
 ];
 
 function RegisterPanel() {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const showPatient = (patient: Patient) =>
     void navigate({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
 
-  if (!open) {
-    return (
-      <div>
-        <Button onClick={() => setOpen(true)}>Nuevo paciente</Button>
-      </div>
-    );
-  }
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Nuevo paciente</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <CreateSheet canCreate label="Nuevo paciente">
+      {(close) => (
         <PatientRegistrationForm
-          onCancel={() => setOpen(false)}
+          onCancel={close}
           onRegistered={showPatient}
           onUseExisting={showPatient}
         />
-      </CardContent>
-    </Card>
+      )}
+    </CreateSheet>
   );
 }

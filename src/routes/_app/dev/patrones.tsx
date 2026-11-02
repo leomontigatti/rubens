@@ -7,6 +7,8 @@ import { DataTable, NoMatches, useClientDataTable } from "#/components/data-tabl
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
+import { CreateSheet } from "#/components/form-sheet.tsx";
+import { FormActions } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -107,6 +109,19 @@ function Patterns() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Patrones" description="Cómo se ve cada patrón de la guía de estilo." />
+      <Pattern title="Panel lateral">
+        <CreateSheet canCreate label="Nueva prestación">
+          {(close) => (
+            <form noValidate className="flex flex-col gap-4">
+              <Field>
+                <FieldLabel htmlFor="pattern-service">Nombre</FieldLabel>
+                <Input id="pattern-service" />
+              </Field>
+              <FormActions pending={false} submitLabel="Crear" onCancel={close} />
+            </form>
+          )}
+        </CreateSheet>
+      </Pattern>
       <Pattern title="Campo">
         <Field>
           <FieldLabel htmlFor="pattern-name">Nombre</FieldLabel>

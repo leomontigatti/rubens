@@ -6,7 +6,6 @@ import * as z from "zod";
 
 import {
   AdminControls,
-  CreatePanel,
   ErrorAlert,
   FormActions,
   NameField,
@@ -14,6 +13,7 @@ import {
   fieldMessage,
   useFormAction,
 } from "#/components/admin-form.tsx";
+import { CreateSheet, FormSheet } from "#/components/form-sheet.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
@@ -73,7 +73,7 @@ function Insurers() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Obras sociales y prepagas" actions={<ShowInactiveInsurers />} />
-      <CreatePanel isAdmin={isAdmin} label="Nueva obra social o prepaga">
+      <CreateSheet canCreate={isAdmin} label="Nueva obra social o prepaga">
         {(close) => (
           <InsurerForm
             idPrefix="new"
@@ -84,7 +84,7 @@ function Insurers() {
             onDone={close}
           />
         )}
-      </CreatePanel>
+      </CreateSheet>
       <InsurerList insurers={result.insurers} isAdmin={isAdmin} />
     </div>
   );
@@ -128,25 +128,6 @@ function InsurerItem({ insurer, isAdmin }: { insurer: Insurer; isAdmin: boolean 
   const [editing, setEditing] = useState(false);
   const toggle = useAction();
 
-  if (editing) {
-    return (
-      <li>
-        <Card>
-          <CardContent>
-            <InsurerForm
-              idPrefix={insurer.id}
-              initial={insurer}
-              submitLabel="Guardar"
-              onCancel={() => setEditing(false)}
-              onSubmit={(input) => editInsurer({ data: { ...input, insurerId: insurer.id } })}
-              onDone={() => setEditing(false)}
-            />
-          </CardContent>
-        </Card>
-      </li>
-    );
-  }
-
   return (
     <li>
       <Card>
@@ -171,6 +152,20 @@ function InsurerItem({ insurer, isAdmin }: { insurer: Insurer; isAdmin: boolean 
           <ErrorAlert message={toggle.error} />
         </CardContent>
       </Card>
+      <FormSheet
+        open={editing}
+        onClose={() => setEditing(false)}
+        title="Editar obra social o prepaga"
+      >
+        <InsurerForm
+          idPrefix={insurer.id}
+          initial={insurer}
+          submitLabel="Guardar"
+          onCancel={() => setEditing(false)}
+          onSubmit={(input) => editInsurer({ data: { ...input, insurerId: insurer.id } })}
+          onDone={() => setEditing(false)}
+        />
+      </FormSheet>
     </li>
   );
 }

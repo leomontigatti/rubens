@@ -5,7 +5,8 @@ import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
 import { EmptyState } from "#/components/empty-state.tsx";
-import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { CreateSheet, FormSheet } from "#/components/form-sheet.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -88,7 +89,7 @@ function PractitionerSchedules() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader back={{ to: "/horarios", label: "Horarios" }} title={practitioner.displayName} />
-      <CreatePanel isAdmin={canEdit} label="Nuevo horario">
+      <CreateSheet canCreate={canEdit} label="Nuevo horario">
         {(close) => (
           <ScheduleForm
             idPrefix="new"
@@ -108,7 +109,7 @@ function PractitionerSchedules() {
             }}
           />
         )}
-      </CreatePanel>
+      </CreateSheet>
       {schedules.length === 0 ? (
         <NoSchedules canEdit={canEdit} rooms={rooms} />
       ) : (
@@ -145,53 +146,32 @@ function ScheduleItem(props: { schedule: Schedule; rooms: RoomOption[]; canEdit:
   const [mode, setMode] = useState<Mode>("view");
   const state = scheduleState(schedule, today(schedule.timeZone));
   const editable = props.canEdit && !state.ended;
+  const close = () => setMode("view");
 
   return (
     <li>
       <Card>
         <CardContent className="flex flex-col gap-4">
           <ScheduleSummary schedule={schedule} ended={state.ended}>
-            {editable && mode === "view" && (
+            {editable && (
               <ScheduleActions schedule={schedule} deletable={!state.started} onMode={setMode} />
             )}
           </ScheduleSummary>
-          <ModeForm
-            mode={mode}
-            schedule={schedule}
-            rooms={props.rooms}
-            changeFrom={state.changeFrom}
-            endDefault={state.endDefault}
-            onDone={() => setMode("view")}
-          />
         </CardContent>
       </Card>
+      <FormSheet open={mode === "change"} onClose={close} title="Cambiar horario">
+        <ChangeForm
+          schedule={schedule}
+          rooms={props.rooms}
+          from={state.changeFrom}
+          onDone={close}
+        />
+      </FormSheet>
+      <FormSheet open={mode === "end"} onClose={close} title="Terminar horario">
+        <EndForm schedule={schedule} initial={state.endDefault} onDone={close} />
+      </FormSheet>
     </li>
   );
-}
-
-/** The change or end form the item's mode opens, if any. */
-function ModeForm(props: {
-  mode: Mode;
-  schedule: Schedule;
-  rooms: RoomOption[];
-  changeFrom: string;
-  endDefault: string;
-  onDone: () => void;
-}) {
-  if (props.mode === "change") {
-    return (
-      <ChangeForm
-        schedule={props.schedule}
-        rooms={props.rooms}
-        from={props.changeFrom}
-        onDone={props.onDone}
-      />
-    );
-  }
-  if (props.mode === "end") {
-    return <EndForm schedule={props.schedule} initial={props.endDefault} onDone={props.onDone} />;
-  }
-  return null;
 }
 
 function ScheduleSummary(props: { schedule: Schedule; ended: boolean; children: ReactNode }) {

@@ -2,7 +2,8 @@ import { TreePalmIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { EmptyState } from "#/components/empty-state.tsx";
-import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
+import { RefusalMessage } from "#/components/admin-form.tsx";
+import { CreateSheet } from "#/components/form-sheet.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
@@ -36,7 +37,7 @@ function TimeOffList() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Licencias" />
-      <CreatePanel isAdmin={result.practitioners.length > 0} label="Nueva licencia">
+      <CreateSheet canCreate={result.practitioners.length > 0} label="Nueva licencia">
         {(close) => (
           <EntryForm
             idPrefix="new"
@@ -55,7 +56,7 @@ function TimeOffList() {
             <PractitionerSelect practitioners={result.practitioners} />
           </EntryForm>
         )}
-      </CreatePanel>
+      </CreateSheet>
       {result.timeOff.length === 0 ? (
         <EmptyState
           icon={TreePalmIcon}
@@ -69,6 +70,7 @@ function TimeOffList() {
             <EntryItem
               key={item.id}
               title={item.practitionerName}
+              editTitle="Editar licencia"
               deleteQuestion="¿Eliminar esta licencia?"
               deleteNotice="La licencia se borra y no se puede recuperar."
               entry={item.entry}

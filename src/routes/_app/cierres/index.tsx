@@ -2,7 +2,8 @@ import { CalendarXIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { EmptyState } from "#/components/empty-state.tsx";
-import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
+import { RefusalMessage } from "#/components/admin-form.tsx";
+import { CreateSheet } from "#/components/form-sheet.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
@@ -53,7 +54,7 @@ function ClosureList() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Cierres" />
-      <CreatePanel isAdmin={result.canEdit} label="Nuevo cierre">
+      <CreateSheet canCreate={result.canEdit} label="Nuevo cierre">
         {(close) => (
           <EntryForm
             idPrefix="new"
@@ -72,7 +73,7 @@ function ClosureList() {
             <OfficeSelect idPrefix="new" offices={result.offices} initial={null} />
           </EntryForm>
         )}
-      </CreatePanel>
+      </CreateSheet>
       {result.closures.length === 0 ? (
         <EmptyState
           icon={CalendarXIcon}
@@ -86,6 +87,7 @@ function ClosureList() {
             <EntryItem
               key={item.id}
               title={item.officeName ?? wholeOrganization}
+              editTitle="Editar cierre"
               deleteQuestion="¿Eliminar este cierre?"
               deleteNotice="El cierre se borra y no se puede recuperar."
               entry={item.entry}

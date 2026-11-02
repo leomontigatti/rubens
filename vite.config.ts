@@ -60,8 +60,10 @@ export default defineConfig({
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
       "ui/no-bare-label": "error",
+      "ui/no-form-in-card": "error",
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
+      "ui/no-raw-sheet": "error",
       "ui/no-raw-table": "error",
       "ui/require-no-validate": "error",
       "react-hooks/rules-of-hooks": "error",
@@ -90,7 +92,26 @@ export default defineConfig({
           "shadcn/require-static-classes": "off",
           "ui/no-bare-label": "off",
           "ui/no-raw-form-element": "off",
+          "ui/no-raw-sheet": "off",
           "ui/no-raw-table": "off",
+        },
+      },
+      {
+        // The one place a side panel is drawn.
+        files: ["src/components/form-sheet.tsx"],
+        rules: {
+          "ui/no-raw-sheet": "off",
+        },
+      },
+      {
+        // A page that is only its form: it has no list to keep in view.
+        files: [
+          "src/routes/ingresar.tsx",
+          "src/routes/_app/cambiar-contrasena.tsx",
+          "src/routes/_app/disponibilidad/index.tsx",
+        ],
+        rules: {
+          "ui/no-form-in-card": "off",
         },
       },
       {

@@ -5,7 +5,6 @@ import type { FormEvent } from "react";
 
 import {
   AdminControls,
-  CreatePanel,
   ErrorAlert,
   FormActions,
   RefusalMessage,
@@ -13,6 +12,7 @@ import {
   useFormAction,
   NameField,
 } from "#/components/admin-form.tsx";
+import { CreateSheet, FormSheet } from "#/components/form-sheet.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
@@ -80,7 +80,7 @@ function PractitionerMedicalServices() {
         back={{ to: "/prestaciones", label: "Prestaciones" }}
         title={practitioner.displayName}
       />
-      <CreatePanel isAdmin={canEdit} label="Nueva prestación">
+      <CreateSheet canCreate={canEdit} label="Nueva prestación">
         {(close) => (
           <MedicalServiceForm
             idPrefix="new"
@@ -93,7 +93,7 @@ function PractitionerMedicalServices() {
             onDone={close}
           />
         )}
-      </CreatePanel>
+      </CreateSheet>
       {medicalServices.length === 0 ? (
         <EmptyState
           icon={StethoscopeIcon}
@@ -120,29 +120,6 @@ function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: bo
   const { medicalService } = props;
   const [editing, setEditing] = useState(false);
   const toggle = useAction();
-
-  if (editing) {
-    return (
-      <li>
-        <Card>
-          <CardContent>
-            <MedicalServiceForm
-              idPrefix={medicalService.id}
-              initial={medicalService}
-              submitLabel="Guardar"
-              onCancel={() => setEditing(false)}
-              onSubmit={(fields) =>
-                editMedicalService({
-                  data: { ...fields, medicalServiceId: medicalService.id },
-                })
-              }
-              onDone={() => setEditing(false)}
-            />
-          </CardContent>
-        </Card>
-      </li>
-    );
-  }
 
   return (
     <li>
@@ -174,6 +151,20 @@ function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: bo
           <ErrorAlert message={toggle.error} />
         </CardContent>
       </Card>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar prestación">
+        <MedicalServiceForm
+          idPrefix={medicalService.id}
+          initial={medicalService}
+          submitLabel="Guardar"
+          onCancel={() => setEditing(false)}
+          onSubmit={(fields) =>
+            editMedicalService({
+              data: { ...fields, medicalServiceId: medicalService.id },
+            })
+          }
+          onDone={() => setEditing(false)}
+        />
+      </FormSheet>
     </li>
   );
 }

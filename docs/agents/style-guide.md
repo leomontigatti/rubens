@@ -97,6 +97,21 @@ beside it.
   is more than one page. A patient search has no count, because it stops at its 20 best matches.
 - **A list page takes the full width.** Patient search text stays out of the URL.
 
+## Side panels
+
+- **A create or an edit opens in `FormSheet`** (`src/components/form-sheet.tsx`), never in the page,
+  so what it changes stays in view. `CreateSheet` is the button and its panel. The panel's title
+  names the action, the same words as the button that opens it. `pnpm lint` rejects the ui `Sheet`
+  (`ui/no-raw-sheet`) and a form in a card (`ui/no-form-in-card`).
+- **A record's page shows values, and each section's button opens the form**: `RecordSection`
+  (`src/components/record-section.tsx`).
+- **A click outside leaves the panel open**, so a stray click never loses what was typed. `Cancelar`,
+  the X and Escape close it.
+- **One width, and one panel at a time.** A step of a form stays in its panel; a question about it
+  goes in a dialog on top.
+- **A page that is only its form stays a page**: `/ingresar`, `/cambiar-contrasena`, and
+  `/disponibilidad`, which asks and answers.
+
 ## Forms
 
 What a form checks and when, after GOV.UK's

@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "cn";
 import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 
-import { ErrorAlert, fieldMessage } from "#/components/admin-form.tsx";
+import { ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import { FormSheet } from "#/components/form-sheet.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
@@ -20,7 +21,7 @@ import {
   practitionerColors,
 } from "#/lib/practitioner-colors.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
-import { practitionerUpdateSchema, rolesChangeSchema } from "#/lib/staff.ts";
+import { practitionerUpdateSchema, rolesChangeSchema, rolesLabel } from "#/lib/staff.ts";
 import type { PractitionerUpdate } from "#/lib/staff.ts";
 import {
   changeMemberActive,
@@ -106,18 +107,27 @@ function MemberHeading({ member }: { member: StaffMember }) {
   );
 }
 
-function Section(props: { title: string; children: ReactNode }) {
+function EditButton({ onClick }: { onClick: () => void }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{props.title}</CardTitle>
-      </CardHeader>
-      <CardContent>{props.children}</CardContent>
-    </Card>
+    <Button variant="outline" size="sm" onClick={onClick}>
+      Editar
+    </Button>
   );
 }
 
 function RolesSection({ member }: { member: StaffMember }) {
+  const [editing, setEditing] = useState(false);
+  return (
+    <RecordSection title="Roles" action={<EditButton onClick={() => setEditing(true)} />}>
+      <p>{rolesLabel(member.roles)}</p>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar roles">
+        <RolesForm member={member} onDone={() => setEditing(false)} />
+      </FormSheet>
+    </RecordSection>
+  );
+}
+
+function RolesForm({ member, onDone }: { member: StaffMember; onDone: () => void }) {
   const action = useAction();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -130,21 +140,17 @@ function RolesSection({ member }: { member: StaffMember }) {
       action.setError("Elegí al menos un rol.");
       return;
     }
-    await action.run(() => editRoles({ data: input.data }));
+    if (await action.run(() => editRoles({ data: input.data }))) {
+      onDone();
+    }
   }
 
   return (
-    <Section title="Roles">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-        <ErrorAlert message={action.error} />
-        <RoleCheckboxes idPrefix={member.memberId} initial={member.roles} />
-        <div>
-          <Button type="submit" disabled={action.pending}>
-            Guardar roles
-          </Button>
-        </div>
-      </form>
-    </Section>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      <ErrorAlert message={action.error} />
+      <RoleCheckboxes idPrefix={member.memberId} initial={member.roles} />
+      <FormActions pending={action.pending} submitLabel="Guardar" onCancel={onDone} />
+    </form>
   );
 }
 
@@ -158,6 +164,54 @@ const practitionerFieldMessages: Record<keyof PractitionerUpdate, string> = {
 };
 
 function PractitionerSection(props: { memberId: string; settings: PractitionerSettings }) {
+  const { settings } = props;
+  const [editing, setEditing] = useState(false);
+  return (
+    <RecordSection title="Profesional" action={<EditButton onClick={() => setEditing(true)} />}>
+      <dl className="grid gap-4 sm:grid-cols-2">
+        <Detail label="Nombre a mostrar" value={settings.displayName} />
+        <Detail label="Especialidad" value={settings.specialty} />
+        <Detail label="Intervalo de turnos" value={`${settings.gridMinutes} minutos`} />
+        <Detail label="Color en la agenda" value={<ColorName color={settings.color} />} />
+        <Detail
+          label="Historia clínica"
+          value={settings.keepsClinicalRecords ? "La lleva" : "No la lleva"}
+        />
+      </dl>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar profesional">
+        <PractitionerForm
+          memberId={props.memberId}
+          settings={settings}
+          onDone={() => setEditing(false)}
+        />
+      </FormSheet>
+    </RecordSection>
+  );
+}
+
+function ColorName({ color }: { color: PractitionerColor }) {
+  return (
+    <span className="flex items-center gap-2">
+      {practitionerColorLabels[color]}
+      <ColorSwatch color={color} />
+    </span>
+  );
+}
+
+function ColorSwatch({ color }: { color: PractitionerColor }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("size-4 shrink-0 rounded-full", practitionerColorClasses[color])}
+    />
+  );
+}
+
+function PractitionerForm(props: {
+  memberId: string;
+  settings: PractitionerSettings;
+  onDone: () => void;
+}) {
   const action = useAction();
   const { settings } = props;
 
@@ -177,57 +231,53 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
       action.setError(fieldMessage(practitionerFieldMessages, parsed.error));
       return;
     }
-    await action.run(() => editPractitioner({ data: update }));
+    if (await action.run(() => editPractitioner({ data: update }))) {
+      props.onDone();
+    }
   }
 
   return (
-    <Section title="Profesional">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-        <ErrorAlert message={action.error} />
-        <Field>
-          <FieldLabel htmlFor="displayName">Nombre a mostrar</FieldLabel>
-          <Input id="displayName" name="displayName" defaultValue={settings.displayName} required />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="specialty">Especialidad</FieldLabel>
-          <Input id="specialty" name="specialty" defaultValue={settings.specialty ?? ""} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="gridMinutes">Intervalo de turnos (minutos)</FieldLabel>
-          <Input
-            id="gridMinutes"
-            name="gridMinutes"
-            type="number"
-            min={5}
-            max={120}
-            defaultValue={settings.gridMinutes}
-            required
-            className="w-32 max-w-32"
-            aria-describedby="gridMinutes-hint"
-          />
-          <FieldDescription id="gridMinutes-hint">
-            Los horarios libres empiezan cada tantos minutos, contados desde la medianoche.
-          </FieldDescription>
-        </Field>
-        <ColorField initial={settings.color} />
-        <Field orientation="horizontal" className="w-fit">
-          {/* Keyed on the saved value: Base UI warns when an uncontrolled
-              checkbox's default changes, as it does after a save reloads. */}
-          <Checkbox
-            key={String(settings.keepsClinicalRecords)}
-            id="keepsClinicalRecords"
-            name="keepsClinicalRecords"
-            defaultChecked={settings.keepsClinicalRecords}
-          />
-          <FieldLabel htmlFor="keepsClinicalRecords">Lleva historia clínica</FieldLabel>
-        </Field>
-        <div>
-          <Button type="submit" disabled={action.pending}>
-            Guardar
-          </Button>
-        </div>
-      </form>
-    </Section>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      <ErrorAlert message={action.error} />
+      <Field>
+        <FieldLabel htmlFor="displayName">Nombre a mostrar</FieldLabel>
+        <Input id="displayName" name="displayName" defaultValue={settings.displayName} required />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="specialty">Especialidad</FieldLabel>
+        <Input id="specialty" name="specialty" defaultValue={settings.specialty ?? ""} />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="gridMinutes">Intervalo de turnos (minutos)</FieldLabel>
+        <Input
+          id="gridMinutes"
+          name="gridMinutes"
+          type="number"
+          min={5}
+          max={120}
+          defaultValue={settings.gridMinutes}
+          required
+          className="w-32 max-w-32"
+          aria-describedby="gridMinutes-hint"
+        />
+        <FieldDescription id="gridMinutes-hint">
+          Los horarios libres empiezan cada tantos minutos, contados desde la medianoche.
+        </FieldDescription>
+      </Field>
+      <ColorField initial={settings.color} />
+      <Field orientation="horizontal" className="w-fit">
+        {/* Keyed on the saved value: Base UI warns when an uncontrolled
+            checkbox's default changes, as it does after a save reloads. */}
+        <Checkbox
+          key={String(settings.keepsClinicalRecords)}
+          id="keepsClinicalRecords"
+          name="keepsClinicalRecords"
+          defaultChecked={settings.keepsClinicalRecords}
+        />
+        <FieldLabel htmlFor="keepsClinicalRecords">Lleva historia clínica</FieldLabel>
+      </Field>
+      <FormActions pending={action.pending} submitLabel="Guardar" onCancel={props.onDone} />
+    </form>
   );
 }
 
@@ -250,62 +300,84 @@ function ColorField(props: { initial: PractitionerColor }) {
             </NativeSelectOption>
           ))}
         </NativeSelect>
-        <span
-          aria-hidden
-          className={cn("size-4 shrink-0 rounded-full", practitionerColorClasses[color])}
-        />
+        <ColorSwatch color={color} />
       </div>
     </Field>
   );
 }
 
 function StartingPasswordSection({ memberId }: { memberId: string }) {
-  const action = useAction();
+  const [assigning, setAssigning] = useState(false);
   const [done, setDone] = useState(false);
+
+  function open() {
+    setDone(false);
+    setAssigning(true);
+  }
+
+  return (
+    <RecordSection
+      title="Contraseña inicial"
+      action={
+        <Button variant="outline" size="sm" onClick={open}>
+          Asignar
+        </Button>
+      }
+    >
+      {done ? (
+        <Alert variant="success">
+          <AlertTitle>Listo</AlertTitle>
+          <AlertDescription>
+            La persona tiene que cambiarla la próxima vez que ingrese.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <p className="text-muted-foreground">
+          Reemplaza la contraseña actual. La persona la usa para ingresar y la cambia al entrar.
+        </p>
+      )}
+      <FormSheet
+        open={assigning}
+        onClose={() => setAssigning(false)}
+        title="Asignar contraseña inicial"
+      >
+        <StartingPasswordForm
+          memberId={memberId}
+          onCancel={() => setAssigning(false)}
+          onDone={() => {
+            setAssigning(false);
+            setDone(true);
+          }}
+        />
+      </FormSheet>
+    </RecordSection>
+  );
+}
+
+function StartingPasswordForm(props: {
+  memberId: string;
+  onCancel: () => void;
+  onDone: () => void;
+}) {
+  const action = useAction();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = event.currentTarget;
-    const password = new FormData(form).get("password") as string;
-    setDone(false);
+    const password = new FormData(event.currentTarget).get("password") as string;
+    const { memberId } = props;
     if (await action.run(() => resetStartingPassword({ data: { memberId, password } }))) {
-      form.reset();
-      setDone(true);
+      props.onDone();
     }
   }
 
   return (
-    <Section title="Contraseña inicial">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-        <ErrorAlert message={action.error} />
-        {done && (
-          <Alert variant="success">
-            <AlertTitle>Listo</AlertTitle>
-            <AlertDescription>
-              La persona tiene que cambiarla la próxima vez que ingrese.
-            </AlertDescription>
-          </Alert>
-        )}
-        <Field>
-          <FieldLabel htmlFor="password">Contraseña inicial nueva</FieldLabel>
-          <Input
-            id="password"
-            name="password"
-            type="text"
-            autoComplete="off"
-            required
-            aria-describedby="password-hint"
-          />
-          <FieldDescription id="password-hint">
-            Reemplaza la contraseña actual. La persona la usa para ingresar y la cambia al entrar.
-          </FieldDescription>
-        </Field>
-        <div>
-          <Button type="submit" disabled={action.pending}>
-            Asignar contraseña inicial
-          </Button>
-        </div>
-      </form>
-    </Section>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      <ErrorAlert message={action.error} />
+      <Field>
+        <FieldLabel htmlFor="password">Contraseña inicial nueva</FieldLabel>
+        <Input id="password" name="password" type="text" autoComplete="off" required />
+      </Field>
+      <FormActions pending={action.pending} submitLabel="Asignar" onCancel={props.onCancel} />
+    </form>
   );
 }

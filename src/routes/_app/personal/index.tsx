@@ -2,7 +2,8 @@ import { UserCogIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
-import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
+import { CreateSheet } from "#/components/form-sheet.tsx";
 import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -44,9 +45,9 @@ function Staff() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Personal" />
-      <CreatePanel isAdmin label="Nueva persona">
+      <CreateSheet canCreate label="Nueva persona">
         {(close) => <StaffForm onCancel={close} onDone={close} />}
-      </CreatePanel>
+      </CreateSheet>
       <StaffTable staff={result.staff} />
     </div>
   );

@@ -1,12 +1,11 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 import type * as z from "zod";
 
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 
@@ -149,35 +148,5 @@ function ActiveToggle(props: {
       pending={false}
       onDeactivate={props.onToggleActive}
     />
-  );
-}
-
-/**
- * The admin's button that opens a creation form in a card. `children` gets the
- * function that closes it.
- */
-export function CreatePanel(props: {
-  isAdmin: boolean;
-  label: string;
-  children: (close: () => void) => ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  if (!props.isAdmin) {
-    return null;
-  }
-  if (!open) {
-    return (
-      <div>
-        <Button onClick={() => setOpen(true)}>{props.label}</Button>
-      </div>
-    );
-  }
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{props.label}</CardTitle>
-      </CardHeader>
-      <CardContent>{props.children(() => setOpen(false))}</CardContent>
-    </Card>
   );
 }

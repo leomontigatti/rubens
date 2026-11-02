@@ -8,6 +8,8 @@
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
 // - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
+// - `no-raw-sheet`: the ui `Sheet` where `FormSheet` belongs.
+// - `no-form-in-card`: a form inside a card, where `FormSheet` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -273,13 +275,72 @@ const noRawTable = {
   },
 };
 
+const noRawSheet = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A side panel is a FormSheet.",
+    },
+    messages: {
+      sheet:
+        "Use FormSheet from #/components/form-sheet.tsx: it owns the panel's width, its scrolling and how it closes, so a hand-made one drifts from it (style guide, Side panels).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value.endsWith("/components/ui/sheet.tsx")) {
+          context.report({ node, messageId: "sheet" });
+        }
+      },
+    };
+  },
+};
+
+const CARDS = new Set(["Card", "CardContent"]);
+
+// Whether `openingElement` sits inside a card, in the same JSX tree.
+function isInsideCard(openingElement) {
+  for (let node = openingElement.parent.parent; node; node = node.parent) {
+    if (node.type === "JSXElement" && CARDS.has(node.openingElement.name.name)) return true;
+  }
+  return false;
+}
+
+const isForm = (name) => name === "form" || name?.endsWith("Form");
+
+const noFormInCard = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A create or an edit opens in a FormSheet, never in the page.",
+    },
+    messages: {
+      form: "Open this form in a FormSheet from #/components/form-sheet.tsx: a form in the page pushes the list it belongs to out of view (style guide, Side panels).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        if (isForm(node.name.name) && isInsideCard(node)) {
+          context.report({ node, messageId: "form" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
     "no-bare-label": noBareLabel,
+    "no-form-in-card": noFormInCard,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
+    "no-raw-sheet": noRawSheet,
     "no-raw-table": noRawTable,
     "require-no-validate": requireNoValidate,
   },

@@ -23,12 +23,12 @@ import {
 import type { Office } from "#/server/offices.ts";
 import {
   AdminControls,
-  CreatePanel,
   ErrorAlert,
   FormActions,
   fieldMessage,
   NameField,
 } from "#/components/admin-form.tsx";
+import { CreateSheet, FormSheet } from "#/components/form-sheet.tsx";
 
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
 import type { ActionResult } from "#/routes/_app/sedes/-shared.tsx";
@@ -61,7 +61,7 @@ function Offices() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Sedes" actions={<ShowInactiveOffices />} />
-      <CreatePanel isAdmin={isAdmin} label="Nueva sede">
+      <CreateSheet canCreate={isAdmin} label="Nueva sede">
         {(close) => (
           <OfficeForm
             idPrefix="new"
@@ -72,7 +72,7 @@ function Offices() {
             onDone={close}
           />
         )}
-      </CreatePanel>
+      </CreateSheet>
       <OfficeList offices={result.offices} isAdmin={isAdmin} />
     </div>
   );
@@ -116,25 +116,6 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
   const [editing, setEditing] = useState(false);
   const toggle = useAction();
 
-  if (editing) {
-    return (
-      <li>
-        <Card>
-          <CardContent>
-            <OfficeForm
-              idPrefix={office.id}
-              initial={office}
-              submitLabel="Guardar"
-              onCancel={() => setEditing(false)}
-              onSubmit={(input) => editOffice({ data: { ...input, officeId: office.id } })}
-              onDone={() => setEditing(false)}
-            />
-          </CardContent>
-        </Card>
-      </li>
-    );
-  }
-
   return (
     <li>
       <Card>
@@ -170,6 +151,16 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
           <ErrorAlert message={toggle.error} />
         </CardContent>
       </Card>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar sede">
+        <OfficeForm
+          idPrefix={office.id}
+          initial={office}
+          submitLabel="Guardar"
+          onCancel={() => setEditing(false)}
+          onSubmit={(input) => editOffice({ data: { ...input, officeId: office.id } })}
+          onDone={() => setEditing(false)}
+        />
+      </FormSheet>
     </li>
   );
 }

@@ -64,6 +64,35 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(found.map(text).join()).toContain("DataTable");
   });
 
+  const rawSheetProbe = probe(
+    "raw-sheet.tsx",
+    `import { Sheet } from "#/components/ui/sheet.tsx";\n\nexport const Panel = () => <Sheet />;\n`,
+  );
+
+  it("reject a Sheet outside FormSheet, and say where the form belongs", () => {
+    const found = lint(rawSheetProbe).filter((d) => d.code.includes("no-raw-sheet"));
+
+    expect(found).toHaveLength(1);
+    expect(found.map(text).join()).toContain("FormSheet");
+  });
+
+  const formInCardProbe = probe(
+    "form-in-card.tsx",
+    `import { Card, CardContent } from "#/components/ui/card.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Inline = () => (\n  <Card>\n    <CardContent>\n      <form noValidate />\n      <RoomForm />\n    </CardContent>\n  </Card>\n);\n`,
+  );
+  const cardHeadingProbe = probe(
+    "card-heading.tsx",
+    `import { Card, CardContent } from "#/components/ui/card.tsx";\n\nexport const Plain = () => (\n  <Card>\n    <CardContent>Consultorio 1</CardContent>\n  </Card>\n);\n`,
+  );
+
+  it("reject a form in a card: it opens in a FormSheet", () => {
+    const found = lint(formInCardProbe).filter((d) => d.code.includes("no-form-in-card"));
+
+    expect(found).toHaveLength(2);
+    expect(found.map(text).join()).toContain("FormSheet");
+    expect(codes(cardHeadingProbe)).toEqual([]);
+  });
+
   const layoutProbe = probe(
     "layout.tsx",
     `${button}export const Save = () => <Button className="mt-4 w-full">Guardar</Button>;\n`,

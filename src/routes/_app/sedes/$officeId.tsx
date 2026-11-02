@@ -1,8 +1,10 @@
+import { BuildingIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -20,12 +22,12 @@ import {
 import type { Office, Room } from "#/server/offices.ts";
 import {
   AdminControls,
-  CreatePanel,
   ErrorAlert,
   FormActions,
   fieldMessage,
   NameField,
 } from "#/components/admin-form.tsx";
+import { CreateSheet, FormSheet } from "#/components/form-sheet.tsx";
 
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
 import type { ActionResult } from "#/routes/_app/sedes/-shared.tsx";
@@ -69,7 +71,7 @@ function OfficeRooms() {
         <h2 className="text-lg font-semibold">Consultorios</h2>
         <ShowInactiveRooms />
       </div>
-      <CreatePanel isAdmin={isAdmin && result.office.active} label="Nuevo consultorio">
+      <CreateSheet canCreate={isAdmin && result.office.active} label="Nuevo consultorio">
         {(close) => (
           <RoomForm
             idPrefix="new"
@@ -80,8 +82,8 @@ function OfficeRooms() {
             onDone={close}
           />
         )}
-      </CreatePanel>
-      <RoomList rooms={result.rooms} isAdmin={isAdmin} />
+      </CreateSheet>
+      <RoomList rooms={result.rooms} isAdmin={isAdmin} canAdd={isAdmin && result.office.active} />
     </div>
   );
 }
@@ -121,9 +123,18 @@ function ShowInactiveRooms() {
   );
 }
 
-function RoomList({ rooms, isAdmin }: { rooms: Room[]; isAdmin: boolean }) {
+function RoomList(props: { rooms: Room[]; isAdmin: boolean; canAdd: boolean }) {
+  const { rooms, isAdmin } = props;
+  const { inactivos } = Route.useSearch();
   if (rooms.length === 0) {
-    return <p className="text-muted-foreground">Esta sede todavía no tiene consultorios.</p>;
+    return (
+      <EmptyState
+        icon={BuildingIcon}
+        title="No hay consultorios para mostrar"
+        description={`Agregá uno con Nuevo consultorio${inactivos ? "" : ", o mirá los inactivos"}.`}
+        canAct={props.canAdd}
+      />
+    );
   }
   return (
     <ul className="flex flex-col gap-3">
@@ -137,25 +148,6 @@ function RoomList({ rooms, isAdmin }: { rooms: Room[]; isAdmin: boolean }) {
 function RoomItem({ room, isAdmin }: { room: Room; isAdmin: boolean }) {
   const [editing, setEditing] = useState(false);
   const toggle = useAction();
-
-  if (editing) {
-    return (
-      <li>
-        <Card>
-          <CardContent>
-            <RoomForm
-              idPrefix={room.id}
-              initial={room}
-              submitLabel="Guardar"
-              onCancel={() => setEditing(false)}
-              onSubmit={(fields) => editRoom({ data: { ...fields, roomId: room.id } })}
-              onDone={() => setEditing(false)}
-            />
-          </CardContent>
-        </Card>
-      </li>
-    );
-  }
 
   return (
     <li>
@@ -185,6 +177,16 @@ function RoomItem({ room, isAdmin }: { room: Room; isAdmin: boolean }) {
           <ErrorAlert message={toggle.error} />
         </CardContent>
       </Card>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar consultorio">
+        <RoomForm
+          idPrefix={room.id}
+          initial={room}
+          submitLabel="Guardar"
+          onCancel={() => setEditing(false)}
+          onSubmit={(fields) => editRoom({ data: { ...fields, roomId: room.id } })}
+          onDone={() => setEditing(false)}
+        />
+      </FormSheet>
     </li>
   );
 }

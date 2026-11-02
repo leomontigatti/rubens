@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 
 import {
   ErrorAlert,
@@ -10,7 +10,9 @@ import {
   useFormAction,
 } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import { FormSheet } from "#/components/form-sheet.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { Detail, RecordSection } from "#/components/record-section.tsx";
 import {
   PatientFields,
   PatientSaveFeedback,
@@ -29,7 +31,6 @@ import {
 import { patientSearchQueries } from "#/components/patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
   documentLabel,
@@ -185,40 +186,11 @@ function ActiveToggle({ patient }: { patient: Patient }) {
   );
 }
 
-function Section(props: { title: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{props.title}</CardTitle>
-        {props.action && <CardAction>{props.action}</CardAction>}
-      </CardHeader>
-      <CardContent>{props.children}</CardContent>
-    </Card>
-  );
-}
-
-function Detail(props: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-muted-foreground text-sm">{props.label}</dt>
-      <dd>{props.value ?? "—"}</dd>
-    </div>
-  );
-}
-
 function DetailsSection({ patient }: { patient: Patient }) {
   const [editing, setEditing] = useState(false);
 
-  if (editing) {
-    return (
-      <Section title="Datos">
-        <PatientEditForm patient={patient} onDone={() => setEditing(false)} />
-      </Section>
-    );
-  }
-
   return (
-    <Section
+    <RecordSection
       title="Datos"
       action={
         <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
@@ -238,7 +210,10 @@ function DetailsSection({ patient }: { patient: Patient }) {
         <Detail label="Correo electrónico" value={patient.email} />
         <Detail label="Dirección" value={patient.address} />
       </dl>
-    </Section>
+      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar datos">
+        <PatientEditForm patient={patient} onDone={() => setEditing(false)} />
+      </FormSheet>
+    </RecordSection>
   );
 }
 
@@ -298,27 +273,23 @@ function CoverageSection(props: {
 function CoverageCard(props: { patientId: string; coverages: Coverage[]; insurers: Insurer[] }) {
   const [adding, setAdding] = useState(false);
   return (
-    <Section
+    <RecordSection
       title="Coberturas"
       action={
-        !adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            Agregar cobertura
-          </Button>
-        )
+        <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+          Agregar cobertura
+        </Button>
       }
     >
-      <div className="flex flex-col gap-6">
-        {adding && (
-          <NewCoverageForm
-            patientId={props.patientId}
-            insurers={props.insurers}
-            onDone={() => setAdding(false)}
-          />
-        )}
-        <CoverageList coverages={props.coverages} insurers={props.insurers} />
-      </div>
-    </Section>
+      <CoverageList coverages={props.coverages} insurers={props.insurers} />
+      <FormSheet open={adding} onClose={() => setAdding(false)} title="Agregar cobertura">
+        <NewCoverageForm
+          patientId={props.patientId}
+          insurers={props.insurers}
+          onDone={() => setAdding(false)}
+        />
+      </FormSheet>
+    </RecordSection>
   );
 }
 
@@ -333,23 +304,23 @@ function GuardianSection(props: { patient: Patient; guardians: LoaderData["guard
 function GuardianCard(props: { patient: Patient; guardians: Guardian[] }) {
   const [adding, setAdding] = useState(false);
   return (
-    <Section
+    <RecordSection
       title="Responsables"
       action={
-        !adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            Agregar responsable
-          </Button>
-        )
+        <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+          Agregar responsable
+        </Button>
       }
     >
       <div className="flex flex-col gap-6">
         <MinorPrompt patient={props.patient} guardians={props.guardians} />
-        {adding && <NewGuardianForm patientId={props.patient.id} onDone={() => setAdding(false)} />}
         <GuardianList guardians={props.guardians} />
         <MessageContactChoice patient={props.patient} guardians={props.guardians} />
       </div>
-    </Section>
+      <FormSheet open={adding} onClose={() => setAdding(false)} title="Agregar responsable">
+        <NewGuardianForm patientId={props.patient.id} onDone={() => setAdding(false)} />
+      </FormSheet>
+    </RecordSection>
   );
 }
 
@@ -357,7 +328,7 @@ function WhatsappSection({ patient }: { patient: Patient }) {
   const action = useAction();
   const consent = !patient.whatsappConsent;
   return (
-    <Section title="WhatsApp">
+    <RecordSection title="WhatsApp">
       <div className="flex flex-col gap-4">
         <ErrorAlert message={action.error} />
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -382,7 +353,7 @@ function WhatsappSection({ patient }: { patient: Patient }) {
           </Button>
         </div>
       </div>
-    </Section>
+    </RecordSection>
   );
 }
 
@@ -392,7 +363,7 @@ function AppointmentsSection({ appointments }: { appointments: LoaderData["appoi
     return null;
   }
   return (
-    <Section title="Turnos">
+    <RecordSection title="Turnos">
       <div className="flex flex-col gap-6">
         <AppointmentList
           title="Próximos"
@@ -405,7 +376,7 @@ function AppointmentsSection({ appointments }: { appointments: LoaderData["appoi
           empty="No tiene turnos anteriores."
         />
       </div>
-    </Section>
+    </RecordSection>
   );
 }
 
@@ -478,7 +449,7 @@ const entityLabels: Record<string, string> = {
 function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, string> }) {
   const { entries, names } = props;
   return (
-    <Section title="Historial de cambios">
+    <RecordSection title="Historial de cambios">
       <ol className="flex flex-col gap-4">
         {entries.map((entry) => (
           <li key={entry.id} className="flex flex-col gap-1">
@@ -502,6 +473,6 @@ function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, 
           </li>
         ))}
       </ol>
-    </Section>
+    </RecordSection>
   );
 }
