@@ -66,22 +66,29 @@ function SelectField(props: {
   children: ReactNode;
 }) {
   const field = useFieldContext<string>();
+  const select = (
+    <NativeSelect
+      id={field.name}
+      name={field.name}
+      required={props.required}
+      value={field.state.value}
+      onChange={(event) => field.handleChange(event.target.value)}
+      onBlur={field.handleBlur}
+    >
+      {props.children}
+    </NativeSelect>
+  );
   return (
     <Field>
       <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
-      <div className="flex items-center gap-3">
-        <NativeSelect
-          id={field.name}
-          name={field.name}
-          required={props.required}
-          value={field.state.value}
-          onChange={(event) => field.handleChange(event.target.value)}
-          onBlur={field.handleBlur}
-        >
-          {props.children}
-        </NativeSelect>
-        {props.beside}
-      </div>
+      {props.beside ? (
+        <div className="flex items-center gap-3">
+          {select}
+          {props.beside}
+        </div>
+      ) : (
+        select
+      )}
     </Field>
   );
 }
