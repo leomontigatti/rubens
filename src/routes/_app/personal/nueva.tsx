@@ -54,7 +54,7 @@ function StaffForm() {
       action.setError(fieldMessage(fieldMessages, input.error));
       return;
     }
-    if (await action.run(() => addStaffMember({ data: input.data }))) {
+    if (await action.save(() => addStaffMember({ data: input.data }))) {
       page.leave();
     }
   }

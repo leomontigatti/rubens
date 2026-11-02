@@ -43,7 +43,7 @@ export function MedicalServiceForm(props: {
       action.setError(fieldMessage(fieldMessages, fields.error));
       return;
     }
-    if (await action.run(() => props.onSubmit(fields.data))) {
+    if (await action.save(() => props.onSubmit(fields.data))) {
       page.leave();
     }
   }

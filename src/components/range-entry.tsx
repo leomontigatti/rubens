@@ -72,7 +72,7 @@ export function EntryForm<R extends string>(props: {
       action.setError(entryErrorMessage(submitted));
       return;
     }
-    if (await action.run(() => submitted)) {
+    if (await action.save(() => submitted)) {
       page.leave();
     }
   }

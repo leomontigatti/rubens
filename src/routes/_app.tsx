@@ -6,7 +6,12 @@ import { AppSidebar } from "#/components/app-sidebar.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { authClient } from "#/lib/auth-client.ts";
-import { isSignedInAs, reloadOnSessionChange, startNewSession } from "#/lib/session-change.ts";
+import {
+  isSignedInAs,
+  reloadForNewSession,
+  reloadOnSessionChange,
+  startNewSession,
+} from "#/lib/session-change.ts";
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getToRescheduleCount } from "#/server/appointments.functions.ts";
@@ -52,7 +57,7 @@ function useSessionGuard(userId: string) {
 
   useEffect(() => {
     if (userId !== loadedAs.current) {
-      window.location.reload();
+      reloadForNewSession();
     }
   }, [userId]);
 
@@ -72,7 +77,7 @@ function useSessionGuard(userId: string) {
         return;
       }
       if (!isSignedInAs(result, loadedAs.current)) {
-        window.location.reload();
+        reloadForNewSession();
       }
     }
     void check();

@@ -42,7 +42,7 @@ function EndForm(props: { schedule: Schedule; initial: string }) {
       action.setError("Ingresá el último día del horario.");
       return;
     }
-    if (await action.run(() => finishSchedule({ data: input.data }))) {
+    if (await action.save(() => finishSchedule({ data: input.data }))) {
       page.leave();
     }
   }

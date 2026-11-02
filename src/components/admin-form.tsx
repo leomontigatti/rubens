@@ -25,16 +25,17 @@ export function fieldMessage<T extends string>(
 /**
  * Runs a server function, shows its refusal as the copy `messages` gives it,
  * and reloads the route's data when it succeeds, pending until that is done.
- * `run` resolves to whether it succeeded.
+ * `run` resolves to whether it succeeded; so does `save`, which reloads nothing.
  */
 export function useFormAction<R extends string>(messages: Record<R, string>) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function run(
-    action: () => Promise<{ ok: true } | { ok: false; reason: R }>,
-  ): Promise<boolean> {
+  type Action = () => Promise<{ ok: true } | { ok: false; reason: R }>;
+
+  /** What `run` and `save` share: whether it succeeded, with its refusal shown if not. */
+  async function attempt(action: Action, after?: () => Promise<void>): Promise<boolean> {
     setPending(true);
     setError(null);
     try {
@@ -43,14 +44,25 @@ export function useFormAction<R extends string>(messages: Record<R, string>) {
         setError(messages[result.reason]);
         return false;
       }
-      await router.invalidate();
+      await after?.();
       return true;
     } finally {
       setPending(false);
     }
   }
 
-  return { error, setError, pending, run };
+  return {
+    error,
+    setError,
+    pending,
+    run: (action: Action) => attempt(action, () => router.invalidate()),
+    /**
+     * For a form page, which leaves once saved. Going back reloads what it goes
+     * back to; reloading here would reload the form too, and what was saved can
+     * take the form away (a schedule ended yesterday can no longer be changed).
+     */
+    save: (action: Action) => attempt(action),
+  };
 }
 
 export function ErrorAlert({ message }: { message: string | null }) {

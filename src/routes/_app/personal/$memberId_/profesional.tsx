@@ -66,7 +66,7 @@ function PractitionerForm(props: { member: StaffMember; settings: PractitionerSe
       action.setError(fieldMessage(practitionerFieldMessages, parsed.error));
       return;
     }
-    if (await action.run(() => editPractitioner({ data: update }))) {
+    if (await action.save(() => editPractitioner({ data: update }))) {
       page.leave();
     }
   }

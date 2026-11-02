@@ -167,7 +167,7 @@ export function CoverageForm(props: {
       action.setError(fieldMessage(fieldMessages, checked.error));
       return;
     }
-    if (await action.run(() => props.onSubmit(checked.data))) {
+    if (await action.save(() => props.onSubmit(checked.data))) {
       page.leave();
     }
   }

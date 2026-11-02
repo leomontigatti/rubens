@@ -102,8 +102,9 @@ beside it.
 - **A create or an edit is a page of its own**, `FormPage` (`src/components/form-page.tsx`), never
   in a list, a card, a dialog or a side panel, until a case proves otherwise. `pnpm lint` rejects any
   other `<form>` (`ui/no-raw-form`). `CreateButton` opens a create's page.
-- **The fields take the page's width, outside any card.** The actions stay at the bottom of the
-  window: `Volver` on the left, `Descartar cambios` and the submit button on the right.
+- **The fields take the page's width, outside any card.** The actions close the form: `Volver` on
+  the left, `Descartar cambios` and the submit button on the right. On a long form they stick to the
+  bottom of the window.
 - **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
 - **`Descartar cambios` shows once something differs from what the form opened with.**
 - **While saving, the submit button is disabled and shows a spinner, and the other buttons are

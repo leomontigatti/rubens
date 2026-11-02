@@ -199,7 +199,7 @@ export function GuardianForm(props: GuardianFormProps) {
       action.setError(patientFieldMessage(checked.error));
       return;
     }
-    if (await action.run(() => props.onSubmit(fields))) {
+    if (await action.save(() => props.onSubmit(fields))) {
       page.leave();
     }
   }

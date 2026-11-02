@@ -25,6 +25,12 @@ export function isSignedInAs(
   return result.ok && result.viewer.userId === userId;
 }
 
+/** Loads this tab afresh, for whoever is signed in now. */
+export function reloadForNewSession(): void {
+  changing = true;
+  window.location.reload();
+}
+
 /** Tells the app's other tabs that the session changed, then loads `path` afresh here. */
 export function startNewSession(path: string): void {
   try {
@@ -45,13 +51,12 @@ export function startNewSession(path: string): void {
 export function reloadOnSessionChange(): () => void {
   const onStorage = (event: StorageEvent) => {
     if (event.key === storageKey) {
-      changing = true;
-      window.location.reload();
+      reloadForNewSession();
     }
   };
   const onPageShow = (event: PageTransitionEvent) => {
     if (event.persisted) {
-      window.location.reload();
+      reloadForNewSession();
     }
   };
   window.addEventListener("storage", onStorage);

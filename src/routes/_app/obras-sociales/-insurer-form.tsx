@@ -46,7 +46,7 @@ export function InsurerForm(props: {
       action.setError(fieldMessage(fieldMessages, input.error));
       return;
     }
-    if (await action.run(() => props.onSubmit(input.data))) {
+    if (await action.save(() => props.onSubmit(input.data))) {
       page.leave();
     }
   }

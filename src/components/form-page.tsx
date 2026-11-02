@@ -24,6 +24,7 @@ export function useFormPage(back: NavigateOptions) {
   const [dirty, setDirty] = useState(false);
   const [version, setVersion] = useState(0);
   const [discarding, setDiscarding] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const released = useRef(false);
   const mounted = useRef(false);
   const blocker = useBlocker({
@@ -47,6 +48,15 @@ export function useFormPage(back: NavigateOptions) {
     }
   }
 
+  /** Replaces this page with `target`, or returns to the page before it. */
+  function exit(target: NavigateOptions | null) {
+    if (target) {
+      void navigate({ ...target, replace: true });
+    } else {
+      router.history.back();
+    }
+  }
+
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
    * A save that ends after the user left moves nobody.
@@ -56,17 +66,15 @@ export function useFormPage(back: NavigateOptions) {
       return;
     }
     released.current = true;
-    if (to) {
-      void navigate({ ...to, replace: true });
-    } else {
-      goBack();
-    }
+    setLeaving(true);
+    exit(to ?? (canGoBack ? null : back));
   }
 
   return {
     dirty,
     setDirty,
     version,
+    leaving,
     goBack,
     leave,
     /** The question before discarding or leaving, open for either. */
@@ -112,7 +120,7 @@ function snapshot(form: HTMLFormElement): string {
 
 /**
  * A create or an edit on a page of its own: the fields take the page's width,
- * and the actions stay at the bottom of the window. `Descartar cambios` shows
+ * and the actions close the form, sticking to the bottom of the window on a long one. `Descartar cambios` shows
  * once something differs from what the form opened with. While `pending`, the
  * spinner is on the submit button, and the fields and other buttons wait: what
  * is typed then would be lost when the save goes back.
@@ -128,7 +136,9 @@ export function FormPage(props: {
   onDiscard: () => void;
   children: ReactNode;
 }) {
-  const { page, pending } = props;
+  const { page } = props;
+  // Going back waits for the page's data, and nothing here may run again meanwhile.
+  const pending = props.pending || page.leaving;
   const form = useRef<HTMLFormElement>(null);
   const opened = useRef("");
 
@@ -156,33 +166,7 @@ export function FormPage(props: {
         onSubmit={props.onSubmit}
       >
         <FieldSet disabled={pending}>{props.children}</FieldSet>
-        <div className="bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4">
-          <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
-            <ChevronLeftIcon data-icon="inline-start" aria-hidden />
-            Volver
-          </Button>
-          <div className="flex items-center gap-3">
-            {page.dirty && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                onClick={page.askToDiscard}
-              >
-                <Undo2Icon data-icon="inline-start" aria-hidden />
-                Descartar cambios
-              </Button>
-            )}
-            <Button type="submit" disabled={pending}>
-              {pending ? (
-                <Spinner data-icon="inline-start" aria-hidden />
-              ) : (
-                <CheckIcon data-icon="inline-start" aria-hidden />
-              )}
-              {props.submitLabel}
-            </Button>
-          </div>
-        </div>
+        <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
       </form>
       <ConfirmDialog
         open={page.asking}
@@ -196,6 +180,35 @@ export function FormPage(props: {
           page.discard();
         }}
       />
+    </div>
+  );
+}
+
+/** `Volver` on the left; `Descartar cambios`, once it applies, and the submit button on the right. */
+function FormPageActions(props: { page: FormPageControl; pending: boolean; submitLabel: string }) {
+  const { page, pending } = props;
+  return (
+    <div className="bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4">
+      <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
+        <ChevronLeftIcon data-icon="inline-start" aria-hidden />
+        Volver
+      </Button>
+      <div className="flex items-center gap-3">
+        {page.dirty && (
+          <Button type="button" variant="outline" disabled={pending} onClick={page.askToDiscard}>
+            <Undo2Icon data-icon="inline-start" aria-hidden />
+            Descartar cambios
+          </Button>
+        )}
+        <Button type="submit" disabled={pending}>
+          {pending ? (
+            <Spinner data-icon="inline-start" aria-hidden />
+          ) : (
+            <CheckIcon data-icon="inline-start" aria-hidden />
+          )}
+          {props.submitLabel}
+        </Button>
+      </div>
     </div>
   );
 }

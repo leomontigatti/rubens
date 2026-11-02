@@ -95,7 +95,7 @@ export function ScheduleForm(props: {
       action.setError(scheduleFieldMessage(submitted));
       return;
     }
-    if (await action.run(() => submitted)) {
+    if (await action.save(() => submitted)) {
       page.leave();
     }
   }

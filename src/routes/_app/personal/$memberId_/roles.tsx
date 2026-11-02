@@ -42,7 +42,7 @@ function RolesForm({ member }: { member: StaffMember }) {
       action.setError("Elegí al menos un rol.");
       return;
     }
-    if (await action.run(() => editRoles({ data: input.data }))) {
+    if (await action.save(() => editRoles({ data: input.data }))) {
       page.leave();
     }
   }
