@@ -36,11 +36,8 @@ export const staffInputSchema = z.object({
   roles: rolesSchema,
 });
 
-export const rolesChangeSchema = z.object({ memberId, roles: rolesSchema });
-
 /** A practitioner's settings; an empty specialty is stored as none. */
-export const practitionerUpdateSchema = z.object({
-  memberId,
+const practitionerSettingsSchema = z.object({
   displayName: z.string().trim().min(1).max(200),
   specialty: z
     .string()
@@ -54,6 +51,13 @@ export const practitionerUpdateSchema = z.object({
   color: z.enum(practitionerColors),
 });
 
+/** A member's roles and, for someone with settings, their practitioner settings. */
+export const memberUpdateSchema = z.object({
+  memberId,
+  roles: rolesSchema,
+  practitioner: practitionerSettingsSchema.optional(),
+});
+
 export const memberActiveChangeSchema = z.object({ memberId, active: z.boolean() });
 
 export const memberReferenceSchema = memberActiveChangeSchema.pick({ memberId: true });
@@ -61,8 +65,7 @@ export const memberReferenceSchema = memberActiveChangeSchema.pick({ memberId: t
 export const startingPasswordSchema = z.object({ memberId, password: z.string() });
 
 export type StaffInput = z.input<typeof staffInputSchema>;
-export type RolesChange = z.input<typeof rolesChangeSchema>;
-export type PractitionerUpdate = z.input<typeof practitionerUpdateSchema>;
+export type MemberUpdate = z.input<typeof memberUpdateSchema>;
 export type MemberActiveChange = z.input<typeof memberActiveChangeSchema>;
 export type MemberReference = z.input<typeof memberReferenceSchema>;
 export type StartingPasswordChange = z.input<typeof startingPasswordSchema>;

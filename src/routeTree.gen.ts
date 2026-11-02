@@ -43,8 +43,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
 import { Route as AppPacientesPatientIdEditarRouteImport } from './routes/_app/pacientes/$patientId_/editar'
 import { Route as AppPersonalMemberIdContrasenaRouteImport } from './routes/_app/personal/$memberId_/contrasena'
-import { Route as AppPersonalMemberIdProfesionalRouteImport } from './routes/_app/personal/$memberId_/profesional'
-import { Route as AppPersonalMemberIdRolesRouteImport } from './routes/_app/personal/$memberId_/roles'
+import { Route as AppPersonalMemberIdEditarRouteImport } from './routes/_app/personal/$memberId_/editar'
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
 import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
@@ -232,16 +231,10 @@ const AppPersonalMemberIdContrasenaRoute =
     path: '/personal/$memberId/contrasena',
     getParentRoute: () => AppRoute,
   } as any)
-const AppPersonalMemberIdProfesionalRoute =
-  AppPersonalMemberIdProfesionalRouteImport.update({
-    id: '/personal/$memberId_/profesional',
-    path: '/personal/$memberId/profesional',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppPersonalMemberIdRolesRoute =
-  AppPersonalMemberIdRolesRouteImport.update({
-    id: '/personal/$memberId_/roles',
-    path: '/personal/$memberId/roles',
+const AppPersonalMemberIdEditarRoute =
+  AppPersonalMemberIdEditarRouteImport.update({
+    id: '/personal/$memberId_/editar',
+    path: '/personal/$memberId/editar',
     getParentRoute: () => AppRoute,
   } as any)
 const AppPrestacionesPractitionerIdMedicalServiceIdRoute =
@@ -344,8 +337,7 @@ export interface FileRoutesByFullPath {
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
-  '/personal/$memberId/profesional': typeof AppPersonalMemberIdProfesionalRoute
-  '/personal/$memberId/roles': typeof AppPersonalMemberIdRolesRoute
+  '/personal/$memberId/editar': typeof AppPersonalMemberIdEditarRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
@@ -392,8 +384,7 @@ export interface FileRoutesByTo {
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
-  '/personal/$memberId/profesional': typeof AppPersonalMemberIdProfesionalRoute
-  '/personal/$memberId/roles': typeof AppPersonalMemberIdRolesRoute
+  '/personal/$memberId/editar': typeof AppPersonalMemberIdEditarRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
@@ -442,8 +433,7 @@ export interface FileRoutesById {
   '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/_app/pacientes/$patientId_/editar': typeof AppPacientesPatientIdEditarRoute
   '/_app/personal/$memberId_/contrasena': typeof AppPersonalMemberIdContrasenaRoute
-  '/_app/personal/$memberId_/profesional': typeof AppPersonalMemberIdProfesionalRoute
-  '/_app/personal/$memberId_/roles': typeof AppPersonalMemberIdRolesRoute
+  '/_app/personal/$memberId_/editar': typeof AppPersonalMemberIdEditarRoute
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
@@ -492,8 +482,7 @@ export interface FileRouteTypes {
     | '/horarios/$practitionerId/nuevo'
     | '/pacientes/$patientId/editar'
     | '/personal/$memberId/contrasena'
-    | '/personal/$memberId/profesional'
-    | '/personal/$memberId/roles'
+    | '/personal/$memberId/editar'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
@@ -540,8 +529,7 @@ export interface FileRouteTypes {
     | '/horarios/$practitionerId/nuevo'
     | '/pacientes/$patientId/editar'
     | '/personal/$memberId/contrasena'
-    | '/personal/$memberId/profesional'
-    | '/personal/$memberId/roles'
+    | '/personal/$memberId/editar'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
@@ -589,8 +577,7 @@ export interface FileRouteTypes {
     | '/_app/horarios/$practitionerId_/nuevo'
     | '/_app/pacientes/$patientId_/editar'
     | '/_app/personal/$memberId_/contrasena'
-    | '/_app/personal/$memberId_/profesional'
-    | '/_app/personal/$memberId_/roles'
+    | '/_app/personal/$memberId_/editar'
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
     | '/_app/sedes/$officeId_/editar'
@@ -850,18 +837,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPersonalMemberIdContrasenaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/personal/$memberId_/profesional': {
-      id: '/_app/personal/$memberId_/profesional'
-      path: '/personal/$memberId/profesional'
-      fullPath: '/personal/$memberId/profesional'
-      preLoaderRoute: typeof AppPersonalMemberIdProfesionalRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/personal/$memberId_/roles': {
-      id: '/_app/personal/$memberId_/roles'
-      path: '/personal/$memberId/roles'
-      fullPath: '/personal/$memberId/roles'
-      preLoaderRoute: typeof AppPersonalMemberIdRolesRouteImport
+    '/_app/personal/$memberId_/editar': {
+      id: '/_app/personal/$memberId_/editar'
+      path: '/personal/$memberId/editar'
+      fullPath: '/personal/$memberId/editar'
+      preLoaderRoute: typeof AppPersonalMemberIdEditarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/prestaciones/$practitionerId_/$medicalServiceId': {
@@ -976,8 +956,7 @@ interface AppRouteChildren {
   AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
   AppPacientesPatientIdEditarRoute: typeof AppPacientesPatientIdEditarRoute
   AppPersonalMemberIdContrasenaRoute: typeof AppPersonalMemberIdContrasenaRoute
-  AppPersonalMemberIdProfesionalRoute: typeof AppPersonalMemberIdProfesionalRoute
-  AppPersonalMemberIdRolesRoute: typeof AppPersonalMemberIdRolesRoute
+  AppPersonalMemberIdEditarRoute: typeof AppPersonalMemberIdEditarRoute
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
   AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
@@ -1023,8 +1002,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
   AppPacientesPatientIdEditarRoute: AppPacientesPatientIdEditarRoute,
   AppPersonalMemberIdContrasenaRoute: AppPersonalMemberIdContrasenaRoute,
-  AppPersonalMemberIdProfesionalRoute: AppPersonalMemberIdProfesionalRoute,
-  AppPersonalMemberIdRolesRoute: AppPersonalMemberIdRolesRoute,
+  AppPersonalMemberIdEditarRoute: AppPersonalMemberIdEditarRoute,
   AppPrestacionesPractitionerIdMedicalServiceIdRoute:
     AppPrestacionesPractitionerIdMedicalServiceIdRoute,
   AppPrestacionesPractitionerIdNuevaRoute:

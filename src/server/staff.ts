@@ -10,15 +10,13 @@ import { practitionerColors } from "#/lib/practitioner-colors.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import {
   memberActiveChangeSchema,
-  practitionerUpdateSchema,
-  rolesChangeSchema,
+  memberUpdateSchema,
   staffInputSchema,
   startingPasswordSchema,
 } from "#/lib/staff.ts";
 import type {
   MemberActiveChange,
-  PractitionerUpdate,
-  RolesChange,
+  MemberUpdate,
   StaffInput,
   StartingPasswordChange,
 } from "#/lib/staff.ts";
@@ -236,22 +234,23 @@ export async function createStaffMember(
 }
 
 /**
- * Replaces the member's roles. Granting `practitioner` creates their
- * practitioner row; removing it keeps the row.
+ * Replaces the member's roles and, when given, their practitioner settings, in
+ * one transaction: a refusal saves neither. Granting `practitioner` creates
+ * their practitioner row; removing it keeps the row.
  */
-export async function changeRoles(
+export async function updateMember(
   actor: Actor,
-  input: RolesChange,
+  input: MemberUpdate,
   database?: AnyDatabase,
 ): Promise<Result<{ member: StaffMember }>> {
   if (!isAdmin(actor)) {
     return forbidden;
   }
-  const parsed = rolesChangeSchema.safeParse(input);
+  const parsed = memberUpdateSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { memberId, roles } = parsed.data;
+  const { memberId, roles, practitioner: settings } = parsed.data;
   return withTenant(
     actor,
     async (tx) => {
@@ -262,47 +261,30 @@ export async function changeRoles(
       if (!roles.includes("admin") && (await isLastActiveAdmin(tx, actor, target))) {
         return lastAdmin;
       }
+      if (roles.includes("practitioner")) {
+        await ensurePractitioner(tx, actor, target);
+      }
+      if (settings && !(await saveSettings(tx, memberId, settings))) {
+        return notFound;
+      }
       await tx
         .update(member)
         .set({ role: roles.join(",") })
         .where(and(eq(member.id, memberId), eq(member.organizationId, actor.organizationId)));
-      if (roles.includes("practitioner")) {
-        await ensurePractitioner(tx, actor, target);
-      }
       return { ok: true as const, member: (await findStaffMember(tx, actor, memberId))! };
     },
     database,
   );
 }
 
-export async function updatePractitioner(
-  actor: Actor,
-  input: PractitionerUpdate,
-  database?: AnyDatabase,
-): Promise<Result<{ member: StaffMember }>> {
-  if (!isAdmin(actor)) {
-    return forbidden;
-  }
-  const parsed = practitionerUpdateSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidInput;
-  }
-  const { memberId, ...settings } = parsed.data;
-  return withTenant(
-    actor,
-    async (tx) => {
-      const updated = await tx
-        .update(practitioner)
-        .set(settings)
-        .where(eq(practitioner.memberId, memberId))
-        .returning({ id: practitioner.id });
-      if (updated.length === 0) {
-        return notFound;
-      }
-      return { ok: true as const, member: (await findStaffMember(tx, actor, memberId))! };
-    },
-    database,
-  );
+/** Saves the settings; false when the member has no practitioner row. */
+async function saveSettings(tx: Transaction, memberId: string, settings: PractitionerSettings) {
+  const updated = await tx
+    .update(practitioner)
+    .set(settings)
+    .where(eq(practitioner.memberId, memberId))
+    .returning({ id: practitioner.id });
+  return updated.length > 0;
 }
 
 /**

@@ -1,5 +1,4 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import type { ReactElement } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
@@ -36,7 +35,7 @@ function StaffMemberScreen() {
       <MemberHeading member={member} />
       <RolesSection member={member} />
       {member.practitioner && member.roles.includes("practitioner") && (
-        <PractitionerSection memberId={member.memberId} settings={member.practitioner} />
+        <PractitionerSection settings={member.practitioner} />
       )}
       <StartingPasswordSection memberId={member.memberId} />
     </div>
@@ -58,23 +57,18 @@ function MemberHeading({ member }: { member: StaffMember }) {
         status={!member.active && <Badge variant="secondary">Inactivo</Badge>}
         description={<p className="text-muted-foreground text-sm">{member.email}</p>}
         actions={
-          member.active ? (
-            <DeactivateButton
-              key={member.memberId}
-              question={`¿Desactivar a ${member.name}?`}
-              pending={toggle.pending}
-              countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
-              onDeactivate={() => void changeActive(false)}
-            />
-          ) : (
+          <>
             <Button
               variant="outline"
-              disabled={toggle.pending}
-              onClick={() => void changeActive(true)}
+              nativeButton={false}
+              render={
+                <Link to="/personal/$memberId/editar" params={{ memberId: member.memberId }} />
+              }
             >
-              Reactivar
+              Editar
             </Button>
-          )
+            <ActiveAction member={member} pending={toggle.pending} onChange={changeActive} />
+          </>
         }
       />
       <ErrorAlert message={toggle.error} />
@@ -82,35 +76,41 @@ function MemberHeading({ member }: { member: StaffMember }) {
   );
 }
 
-function EditLink({ link }: { link: ReactElement }) {
+function ActiveAction(props: {
+  member: StaffMember;
+  pending: boolean;
+  onChange: (active: boolean) => unknown;
+}) {
+  const { member, pending } = props;
+  if (member.active) {
+    return (
+      <DeactivateButton
+        key={member.memberId}
+        question={`¿Desactivar a ${member.name}?`}
+        pending={pending}
+        countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
+        onDeactivate={() => void props.onChange(false)}
+      />
+    );
+  }
   return (
-    <Button variant="outline" size="sm" nativeButton={false} render={link}>
-      Editar
+    <Button variant="outline" disabled={pending} onClick={() => void props.onChange(true)}>
+      Reactivar
     </Button>
   );
 }
 
 function RolesSection({ member }: { member: StaffMember }) {
-  const { memberId } = member;
   return (
-    <RecordSection
-      title="Roles"
-      action={<EditLink link={<Link to="/personal/$memberId/roles" params={{ memberId }} />} />}
-    >
+    <RecordSection title="Roles">
       <p>{rolesLabel(member.roles)}</p>
     </RecordSection>
   );
 }
 
-function PractitionerSection(props: { memberId: string; settings: PractitionerSettings }) {
-  const { settings, memberId } = props;
+function PractitionerSection({ settings }: { settings: PractitionerSettings }) {
   return (
-    <RecordSection
-      title="Profesional"
-      action={
-        <EditLink link={<Link to="/personal/$memberId/profesional" params={{ memberId }} />} />
-      }
-    >
+    <RecordSection title="Profesional">
       <dl className="grid gap-4 sm:grid-cols-2">
         <Detail label="Nombre a mostrar" value={settings.displayName} />
         <Detail label="Especialidad" value={settings.specialty} />

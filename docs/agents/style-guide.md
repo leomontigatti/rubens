@@ -114,8 +114,10 @@ beside it.
   a closed tab. `Descartar cambios` asks the same question, because it cannot be undone.
 - **A successful save goes back**, unless what comes next is on the new record: a registered patient
   opens their page. A save the page must confirm stays: the starting password's `Listo`.
-- **A record's page shows values, and each section's button opens the form**: `RecordSection`
-  (`src/components/record-section.tsx`).
+- **A record has one form for its own fields**: its page shows values in `RecordSection`s
+  (`src/components/record-section.tsx`), and one `Editar` opens them all, saved together in one
+  transaction. A record of its own, such as a coverage, and a one-off action, such as a starting
+  password, keep their own page.
 - **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
   `/disponibilidad`, which asks and answers.
 
