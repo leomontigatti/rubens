@@ -15,8 +15,8 @@ import type { ComponentProps, ReactNode } from "react";
 import { matchingRows } from "#/components/data-table-rows.ts";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
+import { SearchInput } from "#/components/search-input.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
 import {
   Table,
   TableBody,
@@ -63,6 +63,7 @@ interface Search {
   onChange: (value: string) => void;
   label: string;
   placeholder: string;
+  loading?: boolean;
 }
 
 function useColumnDefs<Row extends RowData>(columns: DataTableColumn<Row>[]) {
@@ -119,16 +120,12 @@ export function useServerDataTable<Row extends RowData>(options: DataTableOption
 }
 
 /**
- * The link to a row's record, in the column that names it: the whole row opens
- * it. It does not preload: moving the pointer down a list would read each record.
+ * The link to a row's record, in the cell that names it: `Button`'s link look on
+ * a real link, which a screen reader names as one and a reader can select.
  */
 export function RowLink(props: LinkProps & { children: ReactNode }) {
   return (
-    <Link
-      {...props}
-      preload={false}
-      className="font-medium underline-offset-4 after:absolute after:inset-0 hover:underline"
-    />
+    <Link {...props} className="text-primary font-medium underline-offset-4 hover:underline" />
   );
 }
 
@@ -145,7 +142,7 @@ export function DataTable<Row extends RowData>(props: {
     <div className="flex flex-col gap-3">
       <Toolbar search={props.search} filters={props.filters} />
       {table.getRowModel().rows.length === 0 ? props.empty : <Rows table={table} />}
-      <PageControls pager={props.pager} />
+      <Footer shown={table.getRowModel().rows.length} pager={props.pager} />
     </div>
   );
 }
@@ -179,7 +176,7 @@ function Rows<Row extends RowData>(props: { table: TanStackTable<typeof features
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className="relative h-10">
+            <TableRow key={row.id} className="h-10">
               {row.getAllCells().map((cell) => (
                 <TableCell key={cell.id}>
                   <FlexRender cell={cell} />
@@ -197,27 +194,34 @@ function Toolbar(props: { search: Search; filters?: ComponentProps<typeof Filter
   const { search, filters } = props;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Input
-        type="search"
-        className="w-full sm:w-80"
-        aria-label={search.label}
-        placeholder={search.placeholder}
-        value={search.value}
-        onChange={(event) => search.onChange(event.target.value)}
-      />
+      <SearchInput className="w-full sm:w-96" {...search} />
       {filters && <FilterBar {...filters} />}
     </div>
   );
 }
 
-function PageControls({ pager }: { pager?: Pager }) {
-  if (!pager || pager.pageCount <= 1) {
+function Footer({ shown, pager }: { shown: number; pager?: Pager }) {
+  if (!pager || shown === 0) {
     return null;
   }
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="text-muted-foreground text-sm">
-        Página {pager.page} de {pager.pageCount} · {pager.total} en total
+        {shown} de {pager.total} {pager.total === 1 ? "registro" : "registros"}
+      </span>
+      <PageControls pager={pager} />
+    </div>
+  );
+}
+
+function PageControls({ pager }: { pager: Pager }) {
+  if (pager.pageCount <= 1) {
+    return null;
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground text-sm">
+        Página {pager.page} de {pager.pageCount}
       </span>
       <Button
         variant="outline"

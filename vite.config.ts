@@ -87,6 +87,7 @@ export default defineConfig({
         rules: {
           "shadcn/no-restyle": "off",
           "shadcn/no-arbitrary-values": "off",
+          "shadcn/require-static-classes": "off",
           "ui/no-bare-label": "off",
           "ui/no-raw-form-element": "off",
           "ui/no-raw-table": "off",

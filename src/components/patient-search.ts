@@ -11,17 +11,26 @@ export function patientSearchKey(
   return [...patientSearchQueries, viewer.organizationId, viewer.userId, search] as const;
 }
 
-/**
- * Whether a previous search's results may stand in while this one is asked:
- * only as the same text being typed on, and never across the inactive filter.
- */
-export function continuesPatientSearch(
-  previousKey: ReturnType<typeof patientSearchKey> | undefined,
-  search: { query: string; includeInactive: boolean },
-) {
-  const previous = previousKey?.[4];
-  if (previous?.includeInactive !== search.includeInactive) {
-    return false;
+export interface PatientSearchState<Found> {
+  searching: boolean;
+  /** The answer to the text in the box: nothing else may stand in for it. */
+  found?: Found;
+  failed: boolean;
+}
+
+/** Where a search stands, from the text typed and the text the answer is for. */
+export function patientSearchState<Found>(
+  typed: string,
+  asked: string,
+  answer: { data?: Found; isError: boolean },
+): PatientSearchState<Found> {
+  if (typed.trim() === "") {
+    return { searching: false, failed: false };
   }
-  return previous.query.startsWith(search.query) || search.query.startsWith(previous.query);
+  if (typed !== asked) {
+    return { searching: true, failed: false };
+  }
+  return answer.isError
+    ? { searching: true, failed: true }
+    : { searching: true, found: answer.data, failed: false };
 }

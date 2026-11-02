@@ -86,10 +86,15 @@ beside it.
 - **A list of records is `DataTable`** (`src/components/data-table.tsx`): `useClientDataTable` when
   the loader sends the whole list, `useServerDataTable` when a list can grow without limit, so the
   server searches and pages it. The `ui/no-raw-table` lint rule rejects any other table.
-- **Rows are 40 px, with no actions column.** The column that names the record holds its
-  `RowLink`, which makes the whole row open it; every action lives on the record.
-- **One toolbar, above the table:** the search box, then `FilterBar`. A list's show-or-hide choices
+- **Rows are 40 px, with no actions column.** The cell that names the record holds its `RowLink`,
+  and only that link opens it, so the rest of a row can be selected and copied. Every action lives
+  on the record.
+- **One toolbar, above the table:** `SearchInput`, then `FilterBar`. A list's show-or-hide choices
   are filters, not buttons in the header.
+- **A server search waits 300 ms for typing to pause**, shows a spinner in the box, and shows only
+  the answer to the text in the box: earlier rows never stand in for it.
+- **The footer counts:** `25 de 36 registros`, on the left, with the pager on the right when there
+  is more than one page.
 - **A list page takes the full width.** Patient search text stays out of the URL.
 
 ## Forms

@@ -12,7 +12,9 @@ import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
-import { patientSearchKey, continuesPatientSearch } from "#/components/patient-search.ts";
+import { patientSearchKey, patientSearchState } from "#/components/patient-search.ts";
+import type { PatientSearchState } from "#/components/patient-search.ts";
+import { useDebounced } from "#/components/use-debounced.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
@@ -44,34 +46,24 @@ function Patients() {
 
 const inactiveHint = (shown?: boolean) => (shown ? "" : ", o mirá los inactivos");
 
-interface PatientSearch {
-  searching: boolean;
-  found?: Awaited<ReturnType<typeof findPatients>>;
-  failed: boolean;
-}
+const searchDelay = 300;
+
+type PatientSearch = PatientSearchState<Awaited<ReturnType<typeof findPatients>>>;
 
 /**
- * The patients matching what is typed. Each query is its own request; the
- * answer is the one for the current text, never a slower one to an earlier text.
+ * The patients matching what is typed, asked for once typing pauses. Each query
+ * is its own request, and only the answer to the text in the box is shown.
  */
-function usePatientSearch(query: string, inactivos?: boolean): PatientSearch {
+function usePatientSearch(typed: string, inactivos?: boolean): PatientSearch {
   const { viewer } = Route.useRouteContext();
-  const search = { query, includeInactive: inactivos === true };
-  const { data, isError } = useQuery({
+  const asked = useDebounced(typed, searchDelay);
+  const search = { query: asked, includeInactive: inactivos === true };
+  const answer = useQuery({
     queryKey: patientSearchKey(viewer, search),
     queryFn: () => findPatients({ data: search }),
-    placeholderData: (previous, previousQuery) =>
-      continuesPatientSearch(previousQuery?.queryKey, search) ? previous : undefined,
-    enabled: query.trim() !== "",
+    enabled: asked.trim() !== "",
   });
-  return searchState(query, data, isError);
-}
-
-function searchState(query: string, found: PatientSearch["found"], failed: boolean): PatientSearch {
-  if (query.trim() === "") {
-    return { searching: false, failed: false };
-  }
-  return failed ? { searching: true, failed } : { searching: true, found, failed };
+  return patientSearchState(typed, asked, answer);
 }
 
 /** The registry's page with no search; with one, only what it found. */
@@ -120,6 +112,7 @@ function Registry({ listed }: { listed: PatientPage }) {
           onChange: setQuery,
           label: "Buscar paciente",
           placeholder: "Buscar por nombre, documento o teléfono",
+          loading: search.searching && !search.found && !search.failed,
         }}
         filters={{
           groups: [statusFilter(inactivos)],
@@ -163,7 +156,7 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {
     );
   }
   if (!search.found) {
-    return <p className="text-muted-foreground text-sm">Buscando…</p>;
+    return null;
   }
   return (
     <EmptyState

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   patientSearchKey,
   patientSearchQueries,
-  continuesPatientSearch,
+  patientSearchState,
 } from "#/components/patient-search.ts";
 
 const search = { query: "juan", includeInactive: false };
@@ -26,25 +26,32 @@ describe("patientSearchKey", () => {
   });
 });
 
-describe("continuesPatientSearch", () => {
-  const viewer = { organizationId: "org-1", userId: "user-1" };
-  const shown = patientSearchKey(viewer, { query: "mar", includeInactive: true });
-  const next = (query: string, includeInactive = true) => ({ query, includeInactive });
+describe("patientSearchState", () => {
+  const answered = { data: "results", isError: false };
 
-  it("keeps results while the same text is typed on or deleted back", () => {
-    expect(continuesPatientSearch(shown, next("mari"))).toBe(true);
-    expect(continuesPatientSearch(shown, next("ma"))).toBe(true);
+  it("is no search with an empty box, whatever an earlier search answered", () => {
+    expect(patientSearchState("  ", "juan", answered)).toEqual({ searching: false, failed: false });
   });
 
-  it("drops results for a different text", () => {
-    expect(continuesPatientSearch(shown, next("juan"))).toBe(false);
+  it("holds no answer while the text differs from what was asked", () => {
+    expect(patientSearchState("juana", "juan", answered)).toEqual({
+      searching: true,
+      failed: false,
+    });
   });
 
-  it("drops results that may hold patients the filter now hides", () => {
-    expect(continuesPatientSearch(shown, next("mari", false))).toBe(false);
+  it("holds the answer to the text in the box", () => {
+    expect(patientSearchState("juan", "juan", answered)).toEqual({
+      searching: true,
+      found: "results",
+      failed: false,
+    });
   });
 
-  it("has nothing to keep before the first search", () => {
-    expect(continuesPatientSearch(undefined, next("mar"))).toBe(false);
+  it("holds no answer once the search failed, even one fetched earlier", () => {
+    expect(patientSearchState("juan", "juan", { data: "results", isError: true })).toEqual({
+      searching: true,
+      failed: true,
+    });
   });
 });
