@@ -1,4 +1,5 @@
 import { SearchIcon, XIcon } from "lucide-react";
+import { useRef } from "react";
 
 import {
   InputGroup,
@@ -21,12 +22,19 @@ export function SearchInput(props: {
   loading?: boolean;
   className?: string;
 }) {
+  const input = useRef<HTMLInputElement>(null);
+  // The clear button leaves with the text, so focus returns to the box.
+  const clear = () => {
+    props.onChange("");
+    input.current?.focus();
+  };
   return (
     <InputGroup className={props.className}>
       <InputGroupAddon>
         {props.loading ? <Spinner aria-label="Buscando" /> : <SearchIcon aria-hidden="true" />}
       </InputGroupAddon>
       <InputGroupInput
+        ref={input}
         aria-label={props.label}
         placeholder={props.placeholder}
         value={props.value}
@@ -34,11 +42,7 @@ export function SearchInput(props: {
       />
       {props.value && (
         <InputGroupAddon align="inline-end">
-          <InputGroupButton
-            size="icon-xs"
-            aria-label="Borrar búsqueda"
-            onClick={() => props.onChange("")}
-          >
+          <InputGroupButton size="icon-xs" aria-label="Borrar búsqueda" onClick={clear}>
             <XIcon />
           </InputGroupButton>
         </InputGroupAddon>

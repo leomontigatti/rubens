@@ -48,6 +48,10 @@ describe("patientSearchState", () => {
     });
   });
 
+  it("ignores a space typed after the words", () => {
+    expect(patientSearchState("juan ", "juan", answered).found).toBe("results");
+  });
+
   it("holds no answer once the search failed, even one fetched earlier", () => {
     expect(patientSearchState("juan", "juan", { data: "results", isError: true })).toEqual({
       searching: true,

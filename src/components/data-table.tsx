@@ -120,12 +120,17 @@ export function useServerDataTable<Row extends RowData>(options: DataTableOption
 }
 
 /**
- * The link to a row's record, in the cell that names it: `Button`'s link look on
- * a real link, which a screen reader names as one and a reader can select.
+ * The link to a row's record, in the cell that names it, with the look of a link
+ * `Button`: a real link, which a screen reader names as one and a reader can
+ * select. It does not preload: pointing down a list would read each record.
  */
 export function RowLink(props: LinkProps & { children: ReactNode }) {
   return (
-    <Link {...props} className="text-primary font-medium underline-offset-4 hover:underline" />
+    <Link
+      {...props}
+      preload={false}
+      className="text-primary font-medium underline-offset-4 hover:underline"
+    />
   );
 }
 

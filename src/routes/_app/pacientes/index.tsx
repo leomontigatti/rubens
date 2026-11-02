@@ -57,11 +57,11 @@ type PatientSearch = PatientSearchState<Awaited<ReturnType<typeof findPatients>>
 function usePatientSearch(typed: string, inactivos?: boolean): PatientSearch {
   const { viewer } = Route.useRouteContext();
   const asked = useDebounced(typed, searchDelay);
-  const search = { query: asked, includeInactive: inactivos === true };
+  const search = { query: asked.trim(), includeInactive: inactivos === true };
   const answer = useQuery({
     queryKey: patientSearchKey(viewer, search),
     queryFn: () => findPatients({ data: search }),
-    enabled: asked.trim() !== "",
+    enabled: search.query !== "",
   });
   return patientSearchState(typed, asked, answer);
 }

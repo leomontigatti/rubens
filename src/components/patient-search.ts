@@ -27,7 +27,7 @@ export function patientSearchState<Found>(
   if (typed.trim() === "") {
     return { searching: false, failed: false };
   }
-  if (typed !== asked) {
+  if (typed.trim() !== asked.trim()) {
     return { searching: true, failed: false };
   }
   return answer.isError
