@@ -1,7 +1,9 @@
+import { CalendarDaysIcon } from "lucide-react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -107,7 +109,11 @@ function Agenda() {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title="Agenda" />
-        <p className="text-muted-foreground">Todavía no hay consultorios.</p>
+        <EmptyState
+          icon={CalendarDaysIcon}
+          title="Todavía no hay consultorios"
+          description="Un administrador los agrega en Sedes."
+        />
       </div>
     );
   }

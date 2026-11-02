@@ -71,6 +71,14 @@ beside it.
 - **A filter's icon is the one the sidebar gives its concept.** A value's menu has no search; the
   picker gets one past seven values.
 
+## Empty states
+
+- **A page or a list with nothing to show is `EmptyState`** (`src/components/empty-state.tsx`,
+  `pnpm lint` enforces it: `ui/no-raw-empty-state`), with the icon the sidebar gives its concept.
+  Inside a form, a dialog, a menu or a section of a page, a sentence is enough.
+- **It says why and what to do next**, naming the button that does it. `canAct` hides it from
+  someone who cannot do it: without the permission, the title stands alone.
+
 ## Forms
 
 What a form checks and when, after GOV.UK's

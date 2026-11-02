@@ -1,5 +1,7 @@
+import { CalendarXIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
@@ -72,7 +74,12 @@ function ClosureList() {
         )}
       </CreatePanel>
       {result.closures.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no hay cierres.</p>
+        <EmptyState
+          icon={CalendarXIcon}
+          title="Todavía no hay cierres"
+          description="Agregá el primero con Nuevo cierre."
+          canAct={result.canEdit}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {result.closures.map((item) => (

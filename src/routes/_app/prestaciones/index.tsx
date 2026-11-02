@@ -1,5 +1,7 @@
+import { UserCogIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
@@ -24,7 +26,11 @@ function MedicalServicePractitioners() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Prestaciones" />
       {result.practitioners.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no hay profesionales.</p>
+        <EmptyState
+          icon={UserCogIcon}
+          title="Todavía no hay profesionales"
+          description="Un administrador los agrega en Personal."
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {result.practitioners.map((practitioner) => (

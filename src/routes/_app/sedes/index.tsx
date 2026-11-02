@@ -1,8 +1,10 @@
+import { BuildingIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -91,7 +93,14 @@ function ShowInactiveOffices() {
 
 function OfficeList({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean }) {
   if (offices.length === 0) {
-    return <p className="text-muted-foreground">Todavía no hay sedes.</p>;
+    return (
+      <EmptyState
+        icon={BuildingIcon}
+        title="Todavía no hay sedes"
+        description="Agregá la primera con Nueva sede."
+        canAct={isAdmin}
+      />
+    );
   }
   return (
     <ul className="flex flex-col gap-3">

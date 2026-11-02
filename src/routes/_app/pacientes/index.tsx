@@ -1,8 +1,10 @@
+import { UsersIcon } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
@@ -49,7 +51,11 @@ function Patients() {
       {query.trim() ? (
         <SearchResults query={query} />
       ) : (
-        <PatientList patients={result.patients} emptyMessage="Todavía no hay pacientes." />
+        <PatientList
+          patients={result.patients}
+          emptyTitle="Todavía no hay pacientes"
+          emptyDescription="Agregá el primero con Nuevo paciente."
+        />
       )}
     </div>
   );
@@ -126,14 +132,18 @@ function SearchResults({ query }: { query: string }) {
   return (
     <PatientList
       patients={data.patients}
-      emptyMessage="Ningún paciente coincide con la búsqueda."
+      emptyTitle="Ningún paciente coincide con la búsqueda"
+      emptyDescription="Probá con otro nombre, documento o teléfono."
     />
   );
 }
 
-function PatientList({ patients, emptyMessage }: { patients: Patient[]; emptyMessage: string }) {
+function PatientList(props: { patients: Patient[]; emptyTitle: string; emptyDescription: string }) {
+  const { patients } = props;
   if (patients.length === 0) {
-    return <p className="text-muted-foreground">{emptyMessage}</p>;
+    return (
+      <EmptyState icon={UsersIcon} title={props.emptyTitle} description={props.emptyDescription} />
+    );
   }
   return (
     <ul className="flex flex-col gap-3">

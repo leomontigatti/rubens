@@ -7,6 +7,7 @@
 // - `alert-structure`: an `Alert` without its title and description.
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
+// - `no-raw-empty-state`: a paragraph where `EmptyState` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -244,11 +245,40 @@ const noBareLabel = {
   },
 };
 
+function startsLikeEmptyState(node) {
+  const [first] = node.children;
+  return first?.type === "JSXText" && first.value.trim().startsWith("Todavía no");
+}
+
+const noRawEmptyState = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "A page or a list with nothing to show says so with EmptyState.",
+    },
+    messages: {
+      empty:
+        "Use EmptyState: it says why the page is empty and what to do next (style guide, Empty states).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXElement(node) {
+        if (node.openingElement.name.name === "p" && startsLikeEmptyState(node)) {
+          context.report({ node, messageId: "empty" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
     "no-bare-label": noBareLabel,
+    "no-raw-empty-state": noRawEmptyState,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "require-no-validate": requireNoValidate,

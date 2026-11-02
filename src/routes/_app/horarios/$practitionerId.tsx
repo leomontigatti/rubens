@@ -1,8 +1,10 @@
+import { ClockIcon } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { CreatePanel, ErrorAlert, FormActions, fieldMessage } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -108,7 +110,12 @@ function PractitionerSchedules() {
         )}
       </CreatePanel>
       {schedules.length === 0 ? (
-        <p className="text-muted-foreground">Todavía no tiene horarios.</p>
+        <EmptyState
+          icon={ClockIcon}
+          title="Todavía no tiene horarios"
+          description="Agregá el primero con Nuevo horario."
+          canAct={canEdit}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {schedules.map((schedule) => (

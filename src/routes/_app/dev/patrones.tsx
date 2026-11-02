@@ -1,8 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { BuildingIcon, UserRoundIcon } from "lucide-react";
+import { BuildingIcon, CalendarXIcon, UserRoundIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -105,6 +106,13 @@ function Patterns() {
         <div className="flex flex-wrap items-center gap-2">
           <PatternFilters />
         </div>
+      </Pattern>
+      <Pattern title="Sin datos">
+        <EmptyState
+          icon={CalendarXIcon}
+          title="Todavía no hay cierres"
+          description="Agregá el primero con Nuevo cierre."
+        />
       </Pattern>
       <Pattern title="Casilla">
         <Field orientation="horizontal" className="w-fit">

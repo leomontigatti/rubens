@@ -1,3 +1,4 @@
+import { ShieldIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -13,6 +14,7 @@ import {
   fieldMessage,
   useFormAction,
 } from "#/components/admin-form.tsx";
+import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -103,7 +105,14 @@ function ShowInactiveInsurers() {
 
 function InsurerList({ insurers, isAdmin }: { insurers: Insurer[]; isAdmin: boolean }) {
   if (insurers.length === 0) {
-    return <p className="text-muted-foreground">Todavía no hay obras sociales ni prepagas.</p>;
+    return (
+      <EmptyState
+        icon={ShieldIcon}
+        title="Todavía no hay obras sociales ni prepagas"
+        description="Agregá la primera con Nueva obra social o prepaga."
+        canAct={isAdmin}
+      />
+    );
   }
   return (
     <ul className="flex flex-col gap-3">

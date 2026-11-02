@@ -52,6 +52,22 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     );
   });
 
+  const rawEmptyProbe = probe(
+    "raw-empty.tsx",
+    `export const Nothing = () => <p className="text-muted-foreground">Todavía no hay sedes.</p>;\n`,
+  );
+  const otherTextProbe = probe(
+    "other-text.tsx",
+    `export const Note = () => <p className="text-sm">Sin responsables.</p>;\n`,
+  );
+
+  it("reject a hand-made empty state, but no other paragraph", () => {
+    expect(codes(rawEmptyProbe).filter((code) => code.includes("no-raw-empty-state")).length).toBe(
+      1,
+    );
+    expect(codes(otherTextProbe)).toEqual([]);
+  });
+
   const layoutProbe = probe(
     "layout.tsx",
     `${button}export const Save = () => <Button className="mt-4 w-full">Guardar</Button>;\n`,
