@@ -7,7 +7,8 @@ import type { Actor } from "#/lib/access.ts";
 import { receptionNoteChangeSchema } from "#/lib/appointments.ts";
 import type { ReceptionNoteChange } from "#/lib/appointments.ts";
 
-import { booksForSome, findBookablePractitioner, lockAppointment } from "#/server/appointments.ts";
+import { lockPlaced } from "#/server/appointment-placement.ts";
+import { booksForSome, findBookablePractitioner } from "#/server/appointments.ts";
 import { changedFields, recordAudit } from "#/server/audit.ts";
 
 // Editing an appointment's reception note, as booking writes it: whoever may
@@ -37,15 +38,7 @@ export async function editReceptionNote(
   return withTenant(
     actor,
     async (tx) => {
-      await lockAppointment(tx, appointmentId);
-      const [current] = await tx
-        .select({
-          practitionerId: appointment.practitionerId,
-          patientId: appointment.patientId,
-          receptionNote: appointment.receptionNote,
-        })
-        .from(appointment)
-        .where(eq(appointment.id, appointmentId));
+      const current = await lockPlaced(tx, appointmentId);
       if (!current) {
         return { ok: false as const, reason: "notFound" as const };
       }
