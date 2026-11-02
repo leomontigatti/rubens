@@ -62,6 +62,7 @@ export default defineConfig({
       "ui/no-bare-label": "error",
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
+      "ui/no-raw-table": "error",
       "ui/require-no-validate": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
@@ -88,6 +89,14 @@ export default defineConfig({
           "shadcn/no-arbitrary-values": "off",
           "ui/no-bare-label": "off",
           "ui/no-raw-form-element": "off",
+          "ui/no-raw-table": "off",
+        },
+      },
+      {
+        // The one place a table is drawn.
+        files: ["src/components/data-table.tsx"],
+        rules: {
+          "ui/no-raw-table": "off",
         },
       },
       {

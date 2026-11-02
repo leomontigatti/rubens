@@ -52,6 +52,18 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     );
   });
 
+  const rawTableProbe = probe(
+    "raw-table.tsx",
+    `import { Table } from "#/components/ui/table.tsx";\n\nexport const Lists = () => (\n  <>\n    <Table />\n    <table />\n  </>\n);\n`,
+  );
+
+  it("reject a table outside DataTable, and say where the list belongs", () => {
+    const found = lint(rawTableProbe).filter((d) => d.code.includes("no-raw-table"));
+
+    expect(found).toHaveLength(2);
+    expect(found.map(text).join()).toContain("DataTable");
+  });
+
   const layoutProbe = probe(
     "layout.tsx",
     `${button}export const Save = () => <Button className="mt-4 w-full">Guardar</Button>;\n`,

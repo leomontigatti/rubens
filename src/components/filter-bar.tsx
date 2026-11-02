@@ -27,7 +27,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "#/components/ui/popover
 export function FilterBar(props: {
   groups: FilterGroup[];
   onPick: (groupId: string, value: string) => void;
-  onRemove: (groupId: string) => void;
+  /** Left out when every group is required. */
+  onRemove?: (groupId: string) => void;
 }) {
   const applied = appliedGroups(props.groups);
   const addRef = useRef<HTMLButtonElement>(null);
@@ -48,7 +49,7 @@ export function FilterBar(props: {
           key={group.id}
           group={group}
           onPick={(value) => props.onPick(group.id, value)}
-          onRemove={() => props.onRemove(group.id)}
+          onRemove={() => props.onRemove?.(group.id)}
         />
       ))}
       <AddFilter ref={addRef} groups={addableGroups(props.groups)} onPick={props.onPick} />

@@ -80,6 +80,17 @@ beside it.
 - **It says why and what to do next**, naming the button that does it. `canAct` hides it from
   someone who cannot do it: without the permission, the title stands alone.
 
+## Tables
+
+- **A list of records is `DataTable`** (`src/components/data-table.tsx`): `useClientDataTable` when
+  the loader sends the whole list, `useServerDataTable` when a list can grow without limit, so the
+  server searches and pages it. The `ui/no-raw-table` lint rule rejects any other table.
+- **Rows are 40 px, with no actions column.** The column that names the record holds its
+  `RowLink`, which makes the whole row open it; every action lives on the record.
+- **One toolbar, above the table:** the search box, then `FilterBar`. A list's show-or-hide choices
+  are filters, not buttons in the header.
+- **A list page takes the full width.** Patient search text stays out of the URL.
+
 ## Forms
 
 What a form checks and when, after GOV.UK's
