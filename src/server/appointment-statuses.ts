@@ -7,9 +7,9 @@ import type { Actor } from "#/lib/access.ts";
 import { decideStatusChange, decideUndo } from "#/lib/appointment-statuses.ts";
 import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
 import {
-  activeAppointmentStatuses,
   appointmentIdSchema,
   cancellationSchema,
+  isActiveStatus,
   statusChangeSchema,
 } from "#/lib/appointments.ts";
 import type {
@@ -19,8 +19,8 @@ import type {
   StatusChangeInput,
 } from "#/lib/appointments.ts";
 
-import { checkRoomSpace } from "#/server/appointment-rooms.ts";
-import type { RoomRefusal } from "#/server/appointment-rooms.ts";
+import { checkRoomSpace } from "#/server/appointment-placement-steps.ts";
+import type { RoomRefusal } from "#/server/appointment-placement.ts";
 import { booksForSome, lockAppointment, updateAppointment } from "#/server/appointments.ts";
 import { changedFields, recordAudit } from "#/server/audit.ts";
 import { findPractitioner } from "#/server/schedules.ts";
@@ -81,10 +81,6 @@ async function findForChange(tx: Transaction, actor: Actor, appointmentId: strin
   const found = await findPractitioner(tx, actor, row.practitionerId, false);
   const statusActor: StatusActor = { roles: actor.roles, own: found?.canEdit === true };
   return { ...row, start: row.during.start, actor: statusActor };
-}
-
-function isActive(status: AppointmentStatus): boolean {
-  return (activeAppointmentStatuses as readonly AppointmentStatus[]).includes(status);
 }
 
 type Current = NonNullable<Awaited<ReturnType<typeof findForChange>>>;
@@ -225,7 +221,7 @@ export async function undoAppointmentStatus(
         return decided;
       }
       // Undone, a cancellation or a no-show holds the room again.
-      if (!isActive(current.status)) {
+      if (!isActiveStatus(current.status)) {
         const space = await checkRoomSpace(
           tx,
           current.roomId,

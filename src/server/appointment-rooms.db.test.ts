@@ -428,6 +428,30 @@ describe("moving an appointment to another room", () => {
 
     expect(await move(norteRoom.id, booked.id)).toEqual({ ok: false, reason: "otherOffice" });
   });
+
+  it("changes nothing and audits nothing when it is already in that room", async () => {
+    const booked = await bookedForJuan();
+    const before = await rowOf(booked.id);
+
+    expect(await move(world.room.id, booked.id)).toEqual({ ok: true });
+
+    expect(await rowOf(booked.id)).toEqual(before);
+    expect(await auditOf(booked.id)).toEqual([expect.objectContaining({ action: "create" })]);
+  });
+
+  it("does not find an appointment that no longer holds its time", async () => {
+    const booked = await bookedForJuan();
+    await asAppRole(db, (tx) =>
+      cancelAppointment(
+        world.receptionist,
+        { appointmentId: booked.id, cancelledBy: "patient" },
+        tx,
+      ),
+    );
+
+    expect(await move(third.id, booked.id)).toEqual({ ok: false, reason: "notFound" });
+    expect(await rowOf(booked.id)).toMatchObject({ roomId: world.room.id });
+  });
 });
 
 describe("who books overbookings and moves appointments", () => {

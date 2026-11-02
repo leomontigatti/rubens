@@ -26,6 +26,7 @@ import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
+import { insertRow, updateRow } from "#/server/appointment-placement-steps.ts";
 import { recordAudit } from "#/server/audit.ts";
 import { findFreeTimes, meets, toAvailableStarts } from "#/server/availability.ts";
 import type { AvailableStart } from "#/server/availability.ts";
@@ -74,21 +75,9 @@ const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 
-const overlapConstraints = ["appointment_practitioner_overlap", "appointment_room_overlap"];
-
 /** Whether the actor may book at all, before any row is read. */
 export function booksForSome(actor: Actor): boolean {
   return actsForEveryone(actor) || actor.roles.includes("practitioner");
-}
-
-/** Whether `error`, or an error it wraps, is a violation of the constraint `name`. */
-function violates(error: unknown, name: string): boolean {
-  for (let cause = error; cause instanceof Error; cause = cause.cause) {
-    if ("constraint" in cause && cause.constraint === name) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
@@ -99,17 +88,8 @@ export async function insertAppointment(
   tx: Transaction,
   values: typeof appointment.$inferInsert,
 ): Promise<{ ok: true; id: string } | { ok: false; reason: "timeTaken" }> {
-  try {
-    const [created] = await tx.transaction((savepoint) =>
-      savepoint.insert(appointment).values(values).returning({ id: appointment.id }),
-    );
-    return { ok: true, id: created!.id };
-  } catch (error) {
-    if (overlapConstraints.some((name) => violates(error, name))) {
-      return { ok: false, reason: "timeTaken" };
-    }
-    throw error;
-  }
+  const inserted = await insertRow(tx, values);
+  return inserted.ok ? inserted : { ok: false, reason: "timeTaken" };
 }
 
 /**
@@ -133,20 +113,8 @@ export async function updateAppointment(
   appointmentId: string,
   values: Partial<typeof appointment.$inferInsert>,
 ): Promise<{ ok: true } | { ok: false; reason: "timeTaken" }> {
-  try {
-    await tx.transaction((savepoint) =>
-      savepoint
-        .update(appointment)
-        .set({ ...values, updatedAt: new Date() })
-        .where(eq(appointment.id, appointmentId)),
-    );
-    return { ok: true };
-  } catch (error) {
-    if (overlapConstraints.some((name) => violates(error, name))) {
-      return { ok: false, reason: "timeTaken" };
-    }
-    throw error;
-  }
+  const updated = await updateRow(tx, appointmentId, values);
+  return updated.ok ? updated : { ok: false, reason: "timeTaken" };
 }
 
 function localDate(instant: Date, timeZone: string): string {

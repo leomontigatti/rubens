@@ -26,6 +26,10 @@ export const activeAppointmentStatuses = [
   "attended",
 ] as const satisfies readonly AppointmentStatus[];
 
+export function isActiveStatus(status: AppointmentStatus): boolean {
+  return (activeAppointmentStatuses as readonly AppointmentStatus[]).includes(status);
+}
+
 /** Who cancelled an appointment. */
 export const appointmentCancellers = ["patient", "business"] as const;
 
