@@ -6,9 +6,13 @@
 // - `require-no-validate`: a `<form>` without `noValidate`.
 // - `alert-structure`: an `Alert` without its title and description.
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
+// - `no-bare-label`: `Label` where `FieldLabel` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
+  ["fieldset", "FieldSet"],
+  ["label", "FieldLabel"],
+  ["legend", "FieldLegend"],
   ["select", "NativeSelect"],
   ["textarea", "Textarea"],
 ]);
@@ -217,10 +221,34 @@ const noRawPageTitle = {
   },
 };
 
+const noBareLabel = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "A field's label comes from the Field kit.",
+    },
+    messages: {
+      label:
+        "Use Field and FieldLabel from #/components/ui/field.tsx instead of Label: Field owns the spacing between a label, its input and its hint, so a hand-made wrapper drifts from it (style guide, Forms).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value.endsWith("/components/ui/label.tsx")) {
+          context.report({ node, messageId: "label" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
+    "no-bare-label": noBareLabel,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "require-no-validate": requireNoValidate,

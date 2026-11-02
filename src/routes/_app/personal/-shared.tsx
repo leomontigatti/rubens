@@ -1,6 +1,6 @@
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
 import type { Role } from "#/lib/access.ts";
 import { roleLabels } from "#/lib/staff.ts";
 
@@ -36,22 +36,24 @@ export function formRoles(form: FormData): string[] {
 
 export function RoleCheckboxes(props: { idPrefix: string; initial: readonly Role[] }) {
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-medium">Roles</legend>
-      {Object.entries(roleLabels).map(([role, label]) => (
-        <div key={role} className="flex items-center gap-2">
-          {/* Keyed on the saved value: Base UI warns when an uncontrolled
-              checkbox's default changes, as it does after a save reloads. */}
-          <Checkbox
-            key={String(props.initial.includes(role as Role))}
-            id={`${props.idPrefix}-role-${role}`}
-            name="roles"
-            value={role}
-            defaultChecked={props.initial.includes(role as Role)}
-          />
-          <Label htmlFor={`${props.idPrefix}-role-${role}`}>{label}</Label>
-        </div>
-      ))}
-    </fieldset>
+    <FieldSet>
+      <FieldLegend variant="label">Roles</FieldLegend>
+      <FieldGroup data-slot="checkbox-group">
+        {Object.entries(roleLabels).map(([role, label]) => (
+          <Field key={role} orientation="horizontal" className="w-fit">
+            {/* Keyed on the saved value: Base UI warns when an uncontrolled
+                checkbox's default changes, as it does after a save reloads. */}
+            <Checkbox
+              key={String(props.initial.includes(role as Role))}
+              id={`${props.idPrefix}-role-${role}`}
+              name="roles"
+              value={role}
+              defaultChecked={props.initial.includes(role as Role)}
+            />
+            <FieldLabel htmlFor={`${props.idPrefix}-role-${role}`}>{label}</FieldLabel>
+          </Field>
+        ))}
+      </FieldGroup>
+    </FieldSet>
   );
 }

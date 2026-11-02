@@ -8,7 +8,7 @@ import type { FormEvent } from "react";
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { rescheduleQueryOf } from "#/lib/booking-draft.ts";
 import type { BookingWarning, PickedStart } from "#/lib/booking-draft.ts";
 import { moveAppointment } from "#/server/appointments.functions.ts";
@@ -122,8 +122,8 @@ export function RescheduleForm(props: {
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="reschedule-duration">Duración (minutos)</Label>
+        <Field>
+          <FieldLabel htmlFor="reschedule-duration">Duración (minutos)</FieldLabel>
           <Input
             id="reschedule-duration"
             type="number"
@@ -136,16 +136,16 @@ export function RescheduleForm(props: {
             }}
             required
           />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="reschedule-date">Horarios libres desde</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="reschedule-date">Horarios libres desde</FieldLabel>
           <Input
             id="reschedule-date"
             type="date"
             value={date}
             onChange={(event) => event.target.value && setDate(event.target.value)}
           />
-        </div>
+        </Field>
       </div>
       {query && <FreeStartsOfWeek query={query} picked={picked} onPick={pick} />}
       <PatientWarnings

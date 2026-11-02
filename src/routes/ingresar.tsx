@@ -6,7 +6,7 @@ import { ErrorAlert } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { authClient } from "#/lib/auth-client.ts";
 import { startNewSession } from "#/lib/session-change.ts";
 import { readCredentials, signInErrorMessage } from "#/lib/sign-in.ts";
@@ -54,12 +54,12 @@ function SignIn() {
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             <ErrorAlert message={error} />
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Correo electrónico</Label>
+            <Field>
+              <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
               <Input id="email" name="email" type="email" autoComplete="email" required />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Contraseña</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="password">Contraseña</FieldLabel>
               <Input
                 id="password"
                 name="password"
@@ -67,7 +67,7 @@ function SignIn() {
                 autoComplete="current-password"
                 required
               />
-            </div>
+            </Field>
             <Button type="submit" disabled={pending}>
               Ingresar
             </Button>

@@ -12,7 +12,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   practitionerColorClasses,
@@ -184,16 +184,16 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
     <Section title="Profesional">
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <ErrorAlert message={action.error} />
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="displayName">Nombre a mostrar</Label>
+        <Field>
+          <FieldLabel htmlFor="displayName">Nombre a mostrar</FieldLabel>
           <Input id="displayName" name="displayName" defaultValue={settings.displayName} required />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="specialty">Especialidad</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="specialty">Especialidad</FieldLabel>
           <Input id="specialty" name="specialty" defaultValue={settings.specialty ?? ""} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="gridMinutes">Intervalo de turnos (minutos)</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="gridMinutes">Intervalo de turnos (minutos)</FieldLabel>
           <Input
             id="gridMinutes"
             name="gridMinutes"
@@ -202,14 +202,15 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
             max={120}
             defaultValue={settings.gridMinutes}
             required
-            className="w-32"
+            className="w-32 max-w-32"
+            aria-describedby="gridMinutes-hint"
           />
-          <p className="text-muted-foreground text-sm">
+          <FieldDescription id="gridMinutes-hint">
             Los horarios libres empiezan cada tantos minutos, contados desde la medianoche.
-          </p>
-        </div>
+          </FieldDescription>
+        </Field>
         <ColorField initial={settings.color} />
-        <div className="flex items-center gap-2">
+        <Field orientation="horizontal" className="w-fit">
           {/* Keyed on the saved value: Base UI warns when an uncontrolled
               checkbox's default changes, as it does after a save reloads. */}
           <Checkbox
@@ -218,8 +219,8 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
             name="keepsClinicalRecords"
             defaultChecked={settings.keepsClinicalRecords}
           />
-          <Label htmlFor="keepsClinicalRecords">Lleva historia clínica</Label>
-        </div>
+          <FieldLabel htmlFor="keepsClinicalRecords">Lleva historia clínica</FieldLabel>
+        </Field>
         <div>
           <Button type="submit" disabled={action.pending}>
             Guardar
@@ -234,8 +235,8 @@ function PractitionerSection(props: { memberId: string; settings: PractitionerSe
 function ColorField(props: { initial: PractitionerColor }) {
   const [color, setColor] = useState(props.initial);
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="color">Color en la agenda</Label>
+    <Field>
+      <FieldLabel htmlFor="color">Color en la agenda</FieldLabel>
       <div className="flex items-center gap-3">
         <NativeSelect
           id="color"
@@ -254,7 +255,7 @@ function ColorField(props: { initial: PractitionerColor }) {
           className={cn("size-4 shrink-0 rounded-full", practitionerColorClasses[color])}
         />
       </div>
-    </div>
+    </Field>
   );
 }
 
@@ -285,13 +286,20 @@ function StartingPasswordSection({ memberId }: { memberId: string }) {
             </AlertDescription>
           </Alert>
         )}
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Contraseña inicial nueva</Label>
-          <Input id="password" name="password" type="text" autoComplete="off" required />
-          <p className="text-muted-foreground text-sm">
+        <Field>
+          <FieldLabel htmlFor="password">Contraseña inicial nueva</FieldLabel>
+          <Input
+            id="password"
+            name="password"
+            type="text"
+            autoComplete="off"
+            required
+            aria-describedby="password-hint"
+          />
+          <FieldDescription id="password-hint">
             Reemplaza la contraseña actual. La persona la usa para ingresar y la cambia al entrar.
-          </p>
-        </div>
+          </FieldDescription>
+        </Field>
         <div>
           <Button type="submit" disabled={action.pending}>
             Asignar contraseña inicial

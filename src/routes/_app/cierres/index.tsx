@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CreatePanel, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   closureInputSchema,
@@ -123,8 +123,8 @@ function OfficeSelect(props: {
 }) {
   const id = `${props.idPrefix}-officeId`;
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>Sede</Label>
+    <Field>
+      <FieldLabel htmlFor={id}>Sede</FieldLabel>
       <NativeSelect id={id} name="officeId" defaultValue={props.initial ?? ""}>
         <NativeSelectOption value="">{wholeOrganization}</NativeSelectOption>
         {props.offices.map((office) => (
@@ -133,6 +133,6 @@ function OfficeSelect(props: {
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }

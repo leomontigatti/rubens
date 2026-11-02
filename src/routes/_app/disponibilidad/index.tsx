@@ -8,7 +8,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   availabilitySearchProblem,
@@ -133,8 +133,8 @@ function QueryForm(props: {
               <ErrorAlert message={error} />
             </div>
           )}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="practitionerId">Profesional</Label>
+          <Field>
+            <FieldLabel htmlFor="practitionerId">Profesional</FieldLabel>
             <NativeSelect
               id="practitionerId"
               name="practitionerId"
@@ -150,9 +150,9 @@ function QueryForm(props: {
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="firstDate">Fecha</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="firstDate">Fecha</FieldLabel>
             <Input
               id="firstDate"
               name="firstDate"
@@ -160,16 +160,16 @@ function QueryForm(props: {
               defaultValue={query.firstDate}
               required
             />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="view">Ver</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="view">Ver</FieldLabel>
             <NativeSelect id="view" name="view" defaultValue={query.week ? "semana" : "dia"}>
               <NativeSelectOption value="dia">El día</NativeSelectOption>
               <NativeSelectOption value="semana">7 días desde la fecha</NativeSelectOption>
             </NativeSelect>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="durationMinutes">Duración (minutos)</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="durationMinutes">Duración (minutos)</FieldLabel>
             <Input
               id="durationMinutes"
               name="durationMinutes"
@@ -179,7 +179,7 @@ function QueryForm(props: {
               defaultValue={query.durationMinutes}
               required
             />
-          </div>
+          </Field>
           <div>
             <Button type="submit">Ver disponibilidad</Button>
           </div>

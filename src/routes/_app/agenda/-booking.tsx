@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   bookingReducer,
@@ -338,8 +338,8 @@ function OverbookingFields(props: {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="overbooking-date">Fecha</Label>
+        <Field>
+          <FieldLabel htmlFor="overbooking-date">Fecha</FieldLabel>
           <Input
             id="overbooking-date"
             type="date"
@@ -347,9 +347,9 @@ function OverbookingFields(props: {
             onChange={(event) => onChange({ ...place, date: event.target.value })}
             required
           />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="overbooking-time">Hora</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="overbooking-time">Hora</FieldLabel>
           <Input
             id="overbooking-time"
             type="time"
@@ -357,10 +357,10 @@ function OverbookingFields(props: {
             onChange={(event) => onChange({ ...place, time: event.target.value })}
             required
           />
-        </div>
+        </Field>
       </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="overbooking-room">Consultorio</Label>
+      <Field>
+        <FieldLabel htmlFor="overbooking-room">Consultorio</FieldLabel>
         <NativeSelect
           id="overbooking-room"
           value={place.roomId}
@@ -374,10 +374,10 @@ function OverbookingFields(props: {
             </NativeSelectOption>
           ))}
         </NativeSelect>
-        <p id="overbooking-room-hint" className="text-muted-foreground text-xs">
+        <FieldDescription id="overbooking-room-hint">
           Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora.
-        </p>
-      </div>
+        </FieldDescription>
+      </Field>
     </>
   );
 }
@@ -388,8 +388,8 @@ function PractitionerField(props: {
   dispatch: Dispatch;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="booking-practitioner">Profesional</Label>
+    <Field>
+      <FieldLabel htmlFor="booking-practitioner">Profesional</FieldLabel>
       <NativeSelect
         id="booking-practitioner"
         value={props.value}
@@ -407,7 +407,7 @@ function PractitionerField(props: {
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }
 
@@ -423,8 +423,8 @@ function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
         value={props.draft.medicalService}
         dispatch={props.dispatch}
       />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="booking-duration">Duración (minutos)</Label>
+      <Field>
+        <FieldLabel htmlFor="booking-duration">Duración (minutos)</FieldLabel>
         <Input
           id="booking-duration"
           type="number"
@@ -437,7 +437,7 @@ function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
           }
           required
         />
-      </div>
+      </Field>
     </div>
   );
 }
@@ -471,8 +471,8 @@ function TypeField(props: {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="booking-medical-service">Prestación</Label>
+    <Field>
+      <FieldLabel htmlFor="booking-medical-service">Prestación</FieldLabel>
       <NativeSelect
         id="booking-medical-service"
         value={props.value?.id ?? ""}
@@ -488,7 +488,7 @@ function TypeField(props: {
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }
 
@@ -503,8 +503,8 @@ function FreeStartPicker(props: { draft: BookingDraft; defaultDate: string; disp
     return null;
   }
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="booking-date">Horarios libres desde</Label>
+    <Field>
+      <FieldLabel htmlFor="booking-date">Horarios libres desde</FieldLabel>
       <Input
         id="booking-date"
         type="date"
@@ -516,7 +516,7 @@ function FreeStartPicker(props: { draft: BookingDraft; defaultDate: string; disp
         picked={props.draft.start}
         onPick={(start) => props.dispatch({ type: "startPicked", start })}
       />
-    </div>
+    </Field>
   );
 }
 

@@ -8,7 +8,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { capacityLabel, roomUpdateSchema } from "#/lib/offices.ts";
 import {
   addRoom,
@@ -24,6 +24,7 @@ import {
   ErrorAlert,
   FormActions,
   fieldMessage,
+  NameField,
 } from "#/components/admin-form.tsx";
 
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
@@ -219,12 +220,9 @@ function RoomForm({ idPrefix, initial, submitLabel, onCancel, onSubmit, onDone }
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-name`}>Nombre</Label>
-        <Input id={`${idPrefix}-name`} name="name" defaultValue={initial.name} required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-capacity`}>Capacidad (profesionales a la vez)</Label>
+      <NameField idPrefix={idPrefix} initial={initial.name} />
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-capacity`}>Capacidad (profesionales a la vez)</FieldLabel>
         <Input
           id={`${idPrefix}-capacity`}
           name="capacity"
@@ -235,7 +233,7 @@ function RoomForm({ idPrefix, initial, submitLabel, onCancel, onSubmit, onDone }
           defaultValue={initial.capacity}
           required
         />
-      </div>
+      </Field>
       <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
     </form>
   );

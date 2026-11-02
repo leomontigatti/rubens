@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { Button } from "#/components/ui/button.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import {
   NativeSelect,
   NativeSelectOptGroup,
@@ -45,8 +45,8 @@ export function CalendarFilters(props: {
 /** A new room drops the other filters: its practitioners are others. */
 function RoomFilter(props: { roomId: string; roomChoices: RoomChoice[]; go: Go }) {
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="calendar-room">Consultorio</Label>
+    <Field className="w-auto">
+      <FieldLabel htmlFor="calendar-room">Consultorio</FieldLabel>
       <NativeSelect
         id="calendar-room"
         value={props.roomId}
@@ -68,14 +68,14 @@ function RoomFilter(props: { roomId: string; roomChoices: RoomChoice[]; go: Go }
           </NativeSelectOptGroup>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }
 
 function PractitionerFilter(props: { week: CalendarWeek; go: Go }) {
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="calendar-practitioner">Profesional</Label>
+    <Field className="w-auto">
+      <FieldLabel htmlFor="calendar-practitioner">Profesional</FieldLabel>
       <NativeSelect
         id="calendar-practitioner"
         value={props.week.filter.practitionerId ?? ""}
@@ -90,7 +90,7 @@ function PractitionerFilter(props: { week: CalendarWeek; go: Go }) {
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }
 
@@ -118,8 +118,8 @@ function MedicalServiceFilter(props: { week: CalendarWeek; go: Go }) {
     );
   }
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="calendar-medical-service">Prestación</Label>
+    <Field className="w-auto">
+      <FieldLabel htmlFor="calendar-medical-service">Prestación</FieldLabel>
       <NativeSelect
         id="calendar-medical-service"
         value={props.week.filter.medicalServiceId ?? ""}
@@ -132,7 +132,7 @@ function MedicalServiceFilter(props: { week: CalendarWeek; go: Go }) {
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }
 

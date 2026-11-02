@@ -10,12 +10,13 @@ import {
   RefusalMessage,
   fieldMessage,
   useFormAction,
+  NameField,
 } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { medicalServiceInputSchema } from "#/lib/medical-services.ts";
 import type { MedicalServiceFields } from "#/lib/medical-services.ts";
 import {
@@ -210,12 +211,9 @@ function MedicalServiceForm({
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <ErrorAlert message={action.error} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-name`}>Nombre</Label>
-        <Input id={`${idPrefix}-name`} name="name" defaultValue={initial.name} required />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-duration`}>Duración (minutos)</Label>
+      <NameField idPrefix={idPrefix} initial={initial.name} />
+      <Field>
+        <FieldLabel htmlFor={`${idPrefix}-duration`}>Duración (minutos)</FieldLabel>
         <Input
           id={`${idPrefix}-duration`}
           name="durationMinutes"
@@ -226,7 +224,7 @@ function MedicalServiceForm({
           defaultValue={initial.durationMinutes}
           required
         />
-      </div>
+      </Field>
       <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
     </form>
   );

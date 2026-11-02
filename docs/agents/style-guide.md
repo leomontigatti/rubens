@@ -9,6 +9,9 @@ rules and the repo's `ui` plugin (`scripts/oxlint-ui-plugin.mjs`), configured in
 page, they are current. Why a linter and not only this page:
 [design-system-enforcement.md](../research/design-system-enforcement.md).
 
+`/dev/patrones`, served only by `pnpm dev`, draws each pattern once. A pattern added here gets an
+entry there in the same PR.
+
 What is settled already:
 
 - The base is shadcn/ui on Tailwind 4, in the `base-nova` style, on Base UI (see [shadcn.md](./shadcn.md)).
@@ -64,9 +67,18 @@ What a form checks and when, after GOV.UK's
 [validation pattern](https://design-system.service.gov.uk/patterns/validation/) and the rules
 carried over from en-escena.
 
-- **Labels sit above the field.** A placeholder shows an example, never the label. A rule the
-  user needs while typing is a hint under the field: `PhoneField`
-  (`src/components/patient-form.tsx`).
+- **A field is `Field` with a `FieldLabel`, never a hand-made wrapper** (`pnpm lint` enforces it:
+  `ui/no-bare-label`). The label sits above the input. A placeholder shows an example, never the
+  label.
+- **A rule the user needs while typing is a hint under the field**: a `FieldDescription`, with
+  the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/patient-form.tsx`).
+- **Fields sit in a column or a grid**, where they fill their cell. In a `flex` row, a filter row
+  above all, each takes `className="w-auto"`, or it takes the whole line. An input
+  narrower than its field takes `max-w-*`: `Field` sets its children's `width`.
+- **A checkbox is a horizontal `Field` with `className="w-fit"`**, the box before its label:
+  without `w-fit` the label fills the row, and a click on the empty space ticks the box.
+  A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a
+  `FieldGroup data-slot="checkbox-group"`.
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
 - **Every `<form>` takes `noValidate`.** The browser's own `required` and `type="email"` popups
   speak the browser's language and style, and run before the form's own check. `required` stays

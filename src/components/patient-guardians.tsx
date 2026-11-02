@@ -5,14 +5,14 @@ import type * as z from "zod";
 import { ErrorAlert, FormActions, useFormAction } from "#/components/admin-form.tsx";
 import {
   DocumentInputs,
-  Field,
+  TextField,
   PhoneField,
   patientFieldMessage,
 } from "#/components/patient-form.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { guardianInputSchema, guardianUpdateSchema } from "#/lib/guardians.ts";
 import type { GuardianInput } from "#/lib/guardians.ts";
@@ -147,8 +147,8 @@ export function MessageContactChoice(props: { patient: Patient; guardians: Guard
   const current = props.guardians.find((guardian) => guardian.messageContact);
   const id = `${props.patient.id}-messageContact`;
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>Los mensajes van a</Label>
+    <Field>
+      <FieldLabel htmlFor={id}>Los mensajes van a</FieldLabel>
       <NativeSelect
         id={id}
         value={current?.id ?? ""}
@@ -170,7 +170,7 @@ export function MessageContactChoice(props: { patient: Patient; guardians: Guard
         ))}
       </NativeSelect>
       <ErrorAlert message={action.error} />
-    </div>
+    </Field>
   );
 }
 
@@ -238,14 +238,14 @@ function GuardianForm(props: GuardianFormProps) {
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
       <ErrorAlert message={action.error} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
+        <TextField
           id={id("name")}
           name="name"
           label="Nombre"
           defaultValue={props.initial.name}
           required
         />
-        <Field
+        <TextField
           id={id("relationship")}
           name="relationship"
           label="Relación"
@@ -256,7 +256,7 @@ function GuardianForm(props: GuardianFormProps) {
       </div>
       <PhoneField id={id("phone")} defaultValue={props.initial.phone} />
       <DocumentInputs idPrefix={props.idPrefix} initial={props.initial} />
-      <Field
+      <TextField
         id={id("email")}
         name="email"
         label="Correo electrónico"

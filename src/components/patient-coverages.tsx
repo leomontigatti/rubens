@@ -5,7 +5,7 @@ import { ErrorAlert, FormActions, fieldMessage, useFormAction } from "#/componen
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   coverageInputSchema,
@@ -227,23 +227,23 @@ function CoverageForm(props: CoverageFormProps) {
         initial={props.initial.insurerId}
       />
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={`${props.idPrefix}-plan`}>Plan</Label>
+        <Field>
+          <FieldLabel htmlFor={`${props.idPrefix}-plan`}>Plan</FieldLabel>
           <Input
             id={`${props.idPrefix}-plan`}
             name="plan"
             defaultValue={props.initial.plan ?? ""}
           />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={`${props.idPrefix}-memberNumber`}>Número de afiliado</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`${props.idPrefix}-memberNumber`}>Número de afiliado</FieldLabel>
           <Input
             id={`${props.idPrefix}-memberNumber`}
             name="memberNumber"
             defaultValue={props.initial.memberNumber}
             required
           />
-        </div>
+        </Field>
       </div>
       <FormActions
         pending={action.pending}
@@ -256,8 +256,8 @@ function CoverageForm(props: CoverageFormProps) {
 
 function InsurerSelect(props: { id: string; insurers: Insurer[]; initial: string }) {
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={props.id}>Obra social / prepaga</Label>
+    <Field>
+      <FieldLabel htmlFor={props.id}>Obra social / prepaga</FieldLabel>
       <NativeSelect id={props.id} name="insurerId" defaultValue={props.initial} required>
         <NativeSelectOption value="" disabled>
           Elegí una
@@ -268,6 +268,6 @@ function InsurerSelect(props: { id: string; insurers: Insurer[]; initial: string
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }

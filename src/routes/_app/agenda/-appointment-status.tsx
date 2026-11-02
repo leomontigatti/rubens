@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   appointmentStatusLabels,
@@ -140,8 +140,8 @@ export function CancelForm(props: {
 
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="cancelled-by">¿Quién cancela?</Label>
+      <Field>
+        <FieldLabel htmlFor="cancelled-by">¿Quién cancela?</FieldLabel>
         <NativeSelect id="cancelled-by" name="cancelledBy" defaultValue="patient">
           {appointmentCancellers.map((canceller) => (
             <NativeSelectOption key={canceller} value={canceller}>
@@ -149,11 +149,11 @@ export function CancelForm(props: {
             </NativeSelectOption>
           ))}
         </NativeSelect>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="cancellation-reason">Motivo (opcional)</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="cancellation-reason">Motivo (opcional)</FieldLabel>
         <Input id="cancellation-reason" name="reason" maxLength={cancellationReasonMaxLength} />
-      </div>
+      </Field>
       <ErrorAlert message={error} />
       <div className="flex gap-2">
         <Button type="submit" variant="destructive" disabled={pending}>

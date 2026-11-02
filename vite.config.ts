@@ -59,6 +59,7 @@ export default defineConfig({
       "shadcn/no-inline-styles": "error",
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
+      "ui/no-bare-label": "error",
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
       "ui/require-no-validate": "error",
@@ -85,6 +86,7 @@ export default defineConfig({
         rules: {
           "shadcn/no-restyle": "off",
           "shadcn/no-arbitrary-values": "off",
+          "ui/no-bare-label": "off",
           "ui/no-raw-form-element": "off",
         },
       },

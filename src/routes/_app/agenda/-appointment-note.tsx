@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { Label } from "#/components/ui/label.tsx";
+import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { receptionNoteMaxLength } from "#/lib/appointments.ts";
 import { editAppointmentNote } from "#/server/appointments.functions.ts";
 
@@ -26,8 +26,8 @@ export function ReceptionNoteField(props: {
   onChange: (receptionNote: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={props.id}>Nota de recepción (opcional)</Label>
+    <Field>
+      <FieldLabel htmlFor={props.id}>Nota de recepción (opcional)</FieldLabel>
       <Input
         id={props.id}
         value={props.value}
@@ -36,10 +36,10 @@ export function ReceptionNoteField(props: {
         onChange={(event) => props.onChange(event.target.value)}
         aria-describedby={`${props.id}-hint`}
       />
-      <p id={`${props.id}-hint`} className="text-muted-foreground text-xs">
+      <FieldDescription id={`${props.id}-hint`}>
         La información clínica va en la historia clínica, no acá.
-      </p>
-    </div>
+      </FieldDescription>
+    </Field>
   );
 }
 

@@ -32,6 +32,26 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(codes(titleProbe).filter((code) => code.includes("no-raw-page-title")).length).toBe(1);
   });
 
+  const bareLabelProbe = probe(
+    "bare-label.tsx",
+    `import { Label } from "#/components/ui/label.tsx";\n\nexport const Name = () => <Label htmlFor="name">Nombre</Label>;\n`,
+  );
+
+  it("reject a bare Label: a field's label comes from Field", () => {
+    expect(codes(bareLabelProbe).filter((code) => code.includes("no-bare-label")).length).toBe(1);
+  });
+
+  const rawFieldProbe = probe(
+    "raw-field.tsx",
+    `export const Days = () => (\n  <fieldset>\n    <legend>Días</legend>\n    <label htmlFor="monday">Lunes</label>\n  </fieldset>\n);\n`,
+  );
+
+  it("reject a raw label, fieldset or legend", () => {
+    expect(codes(rawFieldProbe).filter((code) => code.includes("no-raw-form-element")).length).toBe(
+      3,
+    );
+  });
+
   const layoutProbe = probe(
     "layout.tsx",
     `${button}export const Save = () => <Button className="mt-4 w-full">Guardar</Button>;\n`,
