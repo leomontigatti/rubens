@@ -52,6 +52,32 @@ function readSettings(form: FormData) {
   };
 }
 
+const sameRoles = (roles: string[], saved: readonly string[]) =>
+  roles.length === saved.length && roles.every((role) => saved.includes(role));
+
+/** Whether what the form holds is what it opened with: an empty specialty is none. */
+function sameSettings(form: ReturnType<typeof readSettings>, saved: PractitionerSettings) {
+  const opened = { ...saved, specialty: saved.specialty ?? "" };
+  return Object.entries(opened).every(([key, value]) => form[key as keyof typeof opened] === value);
+}
+
+function changedSettings(form: FormData, saved: PractitionerSettings | null) {
+  if (!saved) {
+    return undefined;
+  }
+  const settings = readSettings(form);
+  return sameSettings(settings, saved) ? undefined : settings;
+}
+
+/** Only what the form changed: a stale page must not restore what it left alone. */
+function changesIn(form: FormData, member: StaffMember) {
+  const roles = formRoles(form);
+  return {
+    roles: sameRoles(roles, member.roles) ? undefined : roles,
+    practitioner: changedSettings(form, shownSettings(member)),
+  };
+}
+
 function EditMember() {
   const result = Route.useLoaderData();
   if (!result.ok) {
@@ -74,11 +100,7 @@ function MemberForm({ member }: { member: StaffMember }) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const update = {
-      memberId,
-      roles: formRoles(form),
-      practitioner: settings ? readSettings(form) : undefined,
-    };
+    const update = { memberId, ...changesIn(form, member) };
     const parsed = memberUpdateSchema.safeParse(update);
     if (!parsed.success) {
       action.setError(memberFieldMessage(parsed.error));

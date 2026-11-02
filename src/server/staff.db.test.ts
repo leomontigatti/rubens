@@ -249,6 +249,39 @@ describe("changing roles", () => {
     });
   });
 
+  it("leaves the roles as they are when a save carries none", async () => {
+    const created = await newMember(["practitioner"]);
+    await asAppRole(db, (tx) =>
+      updateMember(
+        admin,
+        { memberId: created.memberId, roles: ["practitioner", "receptionist"] },
+        tx,
+      ),
+    );
+
+    const saved = await asAppRole(db, (tx) =>
+      updateMember(
+        admin,
+        {
+          memberId: created.memberId,
+          practitioner: {
+            displayName: "Dra. Gómez",
+            specialty: "",
+            keepsClinicalRecords: false,
+            gridMinutes: 20,
+            color: "color2",
+          },
+        },
+        tx,
+      ),
+    );
+
+    expect(saved.ok && saved.member.roles).toEqual(
+      expect.arrayContaining(["practitioner", "receptionist"]),
+    );
+    expect(saved.ok && saved.member.practitioner?.displayName).toBe("Dra. Gómez");
+  });
+
   it("saves neither when the roles are refused", async () => {
     const before = await asAppRole(db, (tx) =>
       updateMember(admin, { memberId: adminMemberId, roles: ["admin", "practitioner"] }, tx),

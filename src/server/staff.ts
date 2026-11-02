@@ -234,9 +234,9 @@ export async function createStaffMember(
 }
 
 /**
- * Replaces the member's roles and, when given, their practitioner settings, in
- * one transaction: a refusal saves neither. Granting `practitioner` creates
- * their practitioner row; removing it keeps the row.
+ * Replaces the member's roles, their practitioner settings, or both, in one
+ * transaction: a refusal saves neither. Granting `practitioner` creates their
+ * practitioner row; removing it keeps the row.
  */
 export async function updateMember(
   actor: Actor,
@@ -258,19 +258,21 @@ export async function updateMember(
       if (!target) {
         return notFound;
       }
-      if (!roles.includes("admin") && (await isLastActiveAdmin(tx, actor, target))) {
+      if (roles && !roles.includes("admin") && (await isLastActiveAdmin(tx, actor, target))) {
         return lastAdmin;
       }
-      if (roles.includes("practitioner")) {
+      if (roles?.includes("practitioner")) {
         await ensurePractitioner(tx, actor, target);
       }
       if (settings && !(await saveSettings(tx, memberId, settings))) {
         return notFound;
       }
-      await tx
-        .update(member)
-        .set({ role: roles.join(",") })
-        .where(and(eq(member.id, memberId), eq(member.organizationId, actor.organizationId)));
+      if (roles) {
+        await tx
+          .update(member)
+          .set({ role: roles.join(",") })
+          .where(and(eq(member.id, memberId), eq(member.organizationId, actor.organizationId)));
+      }
       return { ok: true as const, member: (await findStaffMember(tx, actor, memberId))! };
     },
     database,
