@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 
-import { ErrorAlert, NameField, fieldMessage } from "#/components/admin-form.tsx";
-import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { NameField, fieldMessage } from "#/components/admin-form.tsx";
+import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { officeInputSchema } from "#/lib/offices.ts";
@@ -45,16 +45,14 @@ export function OfficeForm(props: {
   }
 
   return (
-    <FormPage
+    <ActionFormPage
       page={page}
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
-      pending={action.pending}
-      onSubmit={(event) => void handleSubmit(event)}
-      onDiscard={() => action.setError(null)}
+      action={action}
+      onSubmit={handleSubmit}
     >
-      <ErrorAlert message={action.error} />
       <NameField idPrefix="office" initial={initial.name} />
       <Field>
         <FieldLabel htmlFor="office-address">Dirección</FieldLabel>
@@ -64,6 +62,6 @@ export function OfficeForm(props: {
         <FieldLabel htmlFor="office-timeZone">Zona horaria</FieldLabel>
         <Input id="office-timeZone" name="timeZone" defaultValue={initial.timeZone} required />
       </Field>
-    </FormPage>
+    </ActionFormPage>
   );
 }

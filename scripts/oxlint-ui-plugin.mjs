@@ -8,8 +8,7 @@
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
 // - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
-// - `no-raw-sheet`: the ui `Sheet` where `FormSheet` belongs.
-// - `no-form-in-card`: a form inside a card, where `FormSheet` belongs.
+// - `no-raw-form`: a `<form>` where `FormPage` belongs.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -275,65 +274,21 @@ const noRawTable = {
   },
 };
 
-const noRawSheet = {
+const noRawForm = {
   meta: {
     type: "problem",
     docs: {
-      description: "A side panel is a FormSheet.",
+      description: "A create or an edit is a FormPage.",
     },
     messages: {
-      sheet:
-        "Use FormSheet from #/components/form-sheet.tsx: it owns the panel's width, its scrolling and how it closes, so a hand-made one drifts from it (style guide, Side panels).",
-    },
-    schema: [],
-  },
-  create(context) {
-    return {
-      ImportDeclaration(node) {
-        if (node.source.value.endsWith("/components/ui/sheet.tsx")) {
-          context.report({ node, messageId: "sheet" });
-        }
-      },
-    };
-  },
-};
-
-const CARDS = new Set(["Card", "CardContent", "RecordSection"]);
-
-const HOLDERS = new Set([...CARDS, "FormSheet", "CreateSheet"]);
-
-const elementName = (node) => (node.type === "JSXElement" ? node.openingElement.name.name : null);
-
-// The nearest card or side panel around `openingElement`, in the same JSX tree.
-function nearestHolder(openingElement) {
-  let node = openingElement.parent.parent;
-  while (node && !HOLDERS.has(elementName(node))) node = node.parent;
-  return node;
-}
-
-// A form in a side panel is in its place, whatever holds the panel.
-function isInsideCard(openingElement) {
-  const holder = nearestHolder(openingElement);
-  return Boolean(holder) && CARDS.has(elementName(holder));
-}
-
-const isForm = (name) => name === "form" || name?.endsWith("Form");
-
-const noFormInCard = {
-  meta: {
-    type: "problem",
-    docs: {
-      description: "A create or an edit opens in a FormSheet, never in the page.",
-    },
-    messages: {
-      form: "Open this form in a FormSheet from #/components/form-sheet.tsx: a form in the page pushes the list it belongs to out of view (style guide, Side panels).",
+      form: "Use FormPage from #/components/form-page.tsx: it owns the actions, the spinner and the question before leaving with changes, so a hand-made form drifts from it (style guide, Form pages).",
     },
     schema: [],
   },
   create(context) {
     return {
       JSXOpeningElement(node) {
-        if (isForm(node.name.name) && isInsideCard(node)) {
+        if (node.name.name === "form") {
           context.report({ node, messageId: "form" });
         }
       },
@@ -346,10 +301,9 @@ export default {
   rules: {
     "alert-structure": alertStructure,
     "no-bare-label": noBareLabel,
-    "no-form-in-card": noFormInCard,
+    "no-raw-form": noRawForm,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
-    "no-raw-sheet": noRawSheet,
     "no-raw-table": noRawTable,
     "require-no-validate": requireNoValidate,
   },

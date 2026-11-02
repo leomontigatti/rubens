@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import * as z from "zod";
 
 import { EmptyState } from "#/components/empty-state.tsx";
+import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -37,13 +38,9 @@ function Offices() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Sedes" actions={<ShowInactiveOffices />} />
-      {isAdmin && (
-        <div>
-          <Button nativeButton={false} render={<Link to="/sedes/nueva" />}>
-            Nueva sede
-          </Button>
-        </div>
-      )}
+      <CreateButton can={isAdmin} link={<Link to="/sedes/nueva" />}>
+        Nueva sede
+      </CreateButton>
       <OfficeList offices={result.offices} isAdmin={isAdmin} />
     </div>
   );
@@ -84,7 +81,6 @@ function OfficeList({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean 
 }
 
 function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
-  const navigate = Route.useNavigate();
   const toggle = useAction();
 
   return (
@@ -108,9 +104,7 @@ function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
           <AdminControls
             isAdmin={isAdmin}
             active={office.active}
-            onEdit={() =>
-              void navigate({ to: "/sedes/$officeId/editar", params: { officeId: office.id } })
-            }
+            editLink={<Link to="/sedes/$officeId/editar" params={{ officeId: office.id }} />}
             deactivation={{
               question: `¿Desactivar ${office.name}?`,
               countUpcoming: () => getOfficeUpcomingCount({ data: { id: office.id } }),

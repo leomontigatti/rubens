@@ -9,6 +9,9 @@ const { probe, existing, lint } = lintProbes("ui");
 
 const codes = (...files: string[]) => lint(...files).map((d) => d.code);
 
+// A rule of its own: `<form>` is its own finding in the probes about something else.
+const besidesRawForm = (found: string[]) => found.filter((code) => code !== "ui(no-raw-form)");
+
 const button = `import { Button } from "#/components/ui/button.tsx";\n\n`;
 const alert = `import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";\n\n`;
 
@@ -64,49 +67,13 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(found.map(text).join()).toContain("DataTable");
   });
 
-  const rawSheetProbe = probe(
-    "raw-sheet.tsx",
-    `import { Sheet } from "#/components/ui/sheet.tsx";\n\nexport const Panel = () => <Sheet />;\n`,
-  );
+  const rawFormProbe = probe("raw-form.tsx", `export const Inline = () => <form noValidate />;\n`);
 
-  it("reject a Sheet outside FormSheet, and say where the form belongs", () => {
-    const found = lint(rawSheetProbe).filter((d) => d.code.includes("no-raw-sheet"));
+  it("reject a form outside FormPage, and say where it belongs", () => {
+    const found = lint(rawFormProbe).filter((d) => d.code.includes("no-raw-form"));
 
-    expect(found).toHaveLength(1);
-    expect(found.map(text).join()).toContain("FormSheet");
-  });
-
-  const formInCardProbe = probe(
-    "form-in-card.tsx",
-    `import { Card, CardContent } from "#/components/ui/card.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Inline = () => (\n  <Card>\n    <CardContent>\n      <form noValidate />\n      <RoomForm />\n    </CardContent>\n  </Card>\n);\n`,
-  );
-  const cardHeadingProbe = probe(
-    "card-heading.tsx",
-    `import { Card, CardContent } from "#/components/ui/card.tsx";\n\nexport const Plain = () => (\n  <Card>\n    <CardContent>Consultorio 1</CardContent>\n  </Card>\n);\n`,
-  );
-
-  const formInSectionProbe = probe(
-    "form-in-section.tsx",
-    `import { RecordSection } from "#/components/record-section.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Inline = () => (\n  <RecordSection title="Datos">\n    <RoomForm />\n  </RecordSection>\n);\n`,
-  );
-  const sheetInSectionProbe = probe(
-    "sheet-in-section.tsx",
-    `import { FormSheet } from "#/components/form-sheet.tsx";\nimport { RecordSection } from "#/components/record-section.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Panel = () => (\n  <RecordSection title="Datos">\n    <FormSheet open onClose={() => undefined} title="Editar datos">\n      <RoomForm />\n    </FormSheet>\n  </RecordSection>\n);\n`,
-  );
-
-  const createInSectionProbe = probe(
-    "create-in-section.tsx",
-    `import { CreateSheet } from "#/components/form-sheet.tsx";\nimport { RecordSection } from "#/components/record-section.tsx";\n\ndeclare const RoomForm: () => null;\n\nexport const Panel = () => (\n  <RecordSection title="Datos">\n    <CreateSheet canCreate label="Nuevo">\n      {() => <RoomForm />}\n    </CreateSheet>\n  </RecordSection>\n);\n`,
-  );
-
-  it("reject a form in a card: it opens in a FormSheet", () => {
-    const found = lint(formInCardProbe, formInSectionProbe).filter((d) =>
-      d.code.includes("no-form-in-card"),
-    );
-
-    expect(found).toHaveLength(3);
-    expect(found.map(text).join()).toContain("FormSheet");
-    expect(codes(cardHeadingProbe, sheetInSectionProbe, createInSectionProbe)).toEqual([]);
+    expect(found.filter((d) => !d.code.includes("no-raw-form-element"))).toHaveLength(1);
+    expect(found.map(text).join()).toContain("FormPage");
   });
 
   const layoutProbe = probe(
@@ -185,7 +152,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   );
 
   it("allow a raw element that has no look: hidden, visually hidden, or rendered by a ui component", () => {
-    expect(codes(rawAllowedProbe)).toEqual([]);
+    expect(besidesRawForm(codes(rawAllowedProbe))).toEqual([]);
   });
 
   const formValidatesProbe = probe(
@@ -206,7 +173,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   );
 
   it("allow a form that turns the browser's validation off", () => {
-    expect(codes(formNoValidateProbe)).toEqual([]);
+    expect(besidesRawForm(codes(formNoValidateProbe))).toEqual([]);
   });
 
   const alertPartsProbe = probe(

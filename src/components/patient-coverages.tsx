@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
-import { ErrorAlert, FormActions, fieldMessage, useFormAction } from "#/components/admin-form.tsx";
-import { FormSheet } from "#/components/form-sheet.tsx";
+import { ErrorAlert, fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -15,17 +15,12 @@ import {
   privateCoverageLabel,
 } from "#/lib/coverages.ts";
 import type { CoverageInput } from "#/lib/coverages.ts";
-import {
-  addPatientCoverage,
-  changePrimaryCoverage,
-  deleteCoverage,
-  editCoverage,
-} from "#/server/coverages.functions.ts";
+import { changePrimaryCoverage, deleteCoverage } from "#/server/coverages.functions.ts";
 import type { Coverage } from "#/server/coverages.ts";
 import type { Insurer } from "#/server/insurers.ts";
 
 // The coverages section of the patient page: the list, "Particular" when it is
-// empty, and the add and edit form, which offers active insurers only.
+// empty, and the add and edit page's form, which offers active insurers only.
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -56,37 +51,19 @@ function useAction() {
   return useFormAction(refusalMessages);
 }
 
-export function CoverageList(props: { coverages: Coverage[]; insurers: Insurer[] }) {
+export function CoverageList(props: { patientId: string; coverages: Coverage[] }) {
   if (props.coverages.length === 0) {
     return <p>{privateCoverageLabel}</p>;
   }
   return (
     <ul className="flex flex-col gap-4">
       {props.coverages.map((coverage) => (
-        <CoverageItem key={coverage.id} coverage={coverage} insurers={props.insurers} />
+        <li key={coverage.id} className="flex flex-wrap items-start justify-between gap-4">
+          <CoverageSummary coverage={coverage} />
+          <CoverageControls patientId={props.patientId} coverage={coverage} />
+        </li>
       ))}
     </ul>
-  );
-}
-
-function CoverageItem({ coverage, insurers }: { coverage: Coverage; insurers: Insurer[] }) {
-  const [editing, setEditing] = useState(false);
-
-  return (
-    <li className="flex flex-wrap items-start justify-between gap-4">
-      <CoverageSummary coverage={coverage} />
-      <CoverageControls coverage={coverage} onEdit={() => setEditing(true)} />
-      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar cobertura">
-        <CoverageForm
-          idPrefix={coverage.id}
-          initial={coverage}
-          insurers={offeredInsurers(insurers, coverage)}
-          submitLabel="Guardar"
-          onSubmit={(fields) => editCoverage({ data: { ...fields, coverageId: coverage.id } })}
-          onDone={() => setEditing(false)}
-        />
-      </FormSheet>
-    </li>
   );
 }
 
@@ -94,7 +71,7 @@ function CoverageItem({ coverage, insurers }: { coverage: Coverage; insurers: In
  * The insurers a coverage's form offers: the active ones, and the coverage's
  * own when it was deactivated since, so an edit can keep it.
  */
-function offeredInsurers(insurers: Insurer[], coverage: Coverage): Insurer[] {
+export function offeredInsurers(insurers: Insurer[], coverage: Coverage): Insurer[] {
   if (coverage.insurerActive) {
     return insurers;
   }
@@ -122,7 +99,7 @@ function CoverageSummary({ coverage }: { coverage: Coverage }) {
   );
 }
 
-function CoverageControls({ coverage, onEdit }: { coverage: Coverage; onEdit: () => void }) {
+function CoverageControls({ patientId, coverage }: { patientId: string; coverage: Coverage }) {
   const action = useAction();
   const data = { coverageId: coverage.id };
   return (
@@ -138,7 +115,17 @@ function CoverageControls({ coverage, onEdit }: { coverage: Coverage; onEdit: ()
             Hacer principal
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={onEdit}>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={
+            <Link
+              to="/pacientes/$patientId/coberturas/$coverageId"
+              params={{ patientId, coverageId: coverage.id }}
+            />
+          }
+        >
           Editar
         </Button>
         <Button
@@ -155,47 +142,17 @@ function CoverageControls({ coverage, onEdit }: { coverage: Coverage; onEdit: ()
   );
 }
 
-/** The form that adds a coverage to the patient. */
-export function NewCoverageForm(props: {
+export function CoverageForm(props: {
   patientId: string;
-  insurers: Insurer[];
-  onDone: () => void;
-}) {
-  if (props.insurers.length === 0) {
-    return (
-      <div className="flex flex-col items-start gap-4">
-        <p className="text-muted-foreground">
-          No hay obras sociales ni prepagas activas. Un administrador las agrega en "Obras
-          sociales".
-        </p>
-        <Button variant="ghost" onClick={props.onDone}>
-          Cancelar
-        </Button>
-      </div>
-    );
-  }
-  return (
-    <CoverageForm
-      idPrefix="new-coverage"
-      initial={{ insurerId: "", plan: null, memberNumber: "" }}
-      insurers={props.insurers}
-      submitLabel="Agregar"
-      onSubmit={(fields) => addPatientCoverage({ data: { ...fields, patientId: props.patientId } })}
-      onDone={props.onDone}
-    />
-  );
-}
-
-interface CoverageFormProps {
-  idPrefix: string;
+  title: string;
+  description: string;
   initial: CoverageFields;
   insurers: Insurer[];
   submitLabel: string;
   onSubmit: (fields: CoverageFields) => Promise<ActionResult>;
-  onDone: () => void;
-}
-
-function CoverageForm(props: CoverageFormProps) {
+}) {
+  const { patientId } = props;
+  const page = useFormPage({ to: "/pacientes/$patientId", params: { patientId } });
   const action = useAction();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -211,43 +168,40 @@ function CoverageForm(props: CoverageFormProps) {
       return;
     }
     if (await action.run(() => props.onSubmit(checked.data))) {
-      props.onDone();
+      page.leave();
     }
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <ErrorAlert message={action.error} />
+    <ActionFormPage
+      page={page}
+      title={props.title}
+      description={props.description}
+      submitLabel={props.submitLabel}
+      action={action}
+      onSubmit={handleSubmit}
+    >
       <InsurerSelect
-        id={`${props.idPrefix}-insurerId`}
+        id="coverage-insurerId"
         insurers={props.insurers}
         initial={props.initial.insurerId}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor={`${props.idPrefix}-plan`}>Plan</FieldLabel>
-          <Input
-            id={`${props.idPrefix}-plan`}
-            name="plan"
-            defaultValue={props.initial.plan ?? ""}
-          />
+          <FieldLabel htmlFor="coverage-plan">Plan</FieldLabel>
+          <Input id="coverage-plan" name="plan" defaultValue={props.initial.plan ?? ""} />
         </Field>
         <Field>
-          <FieldLabel htmlFor={`${props.idPrefix}-memberNumber`}>Número de afiliado</FieldLabel>
+          <FieldLabel htmlFor="coverage-memberNumber">Número de afiliado</FieldLabel>
           <Input
-            id={`${props.idPrefix}-memberNumber`}
+            id="coverage-memberNumber"
             name="memberNumber"
             defaultValue={props.initial.memberNumber}
             required
           />
         </Field>
       </div>
-      <FormActions
-        pending={action.pending}
-        submitLabel={props.submitLabel}
-        onCancel={props.onDone}
-      />
-    </form>
+    </ActionFormPage>
   );
 }
 

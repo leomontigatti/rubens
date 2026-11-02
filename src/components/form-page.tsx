@@ -2,8 +2,9 @@ import { useBlocker, useCanGoBack, useNavigate, useRouter } from "@tanstack/reac
 import type { NavigateOptions } from "@tanstack/react-router";
 import { CheckIcon, ChevronLeftIcon, Undo2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent, ReactElement, ReactNode } from "react";
 
+import { ErrorAlert } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -59,6 +60,8 @@ export function useFormPage(back: NavigateOptions) {
       setDiscarding(false);
       blocker.reset?.();
     },
+    /** Opens the form again from what is saved, for a save that stays on the page. */
+    reset: () => setVersion(version + 1),
     discard() {
       if (blocker.status === "blocked") {
         blocker.proceed();
@@ -71,6 +74,20 @@ export function useFormPage(back: NavigateOptions) {
 }
 
 type FormPageControl = ReturnType<typeof useFormPage>;
+
+/** The button that opens a create's page, for whoever may create. `link` is its `Link`. */
+export function CreateButton(props: { can: boolean; link: ReactElement; children: ReactNode }) {
+  if (!props.can) {
+    return null;
+  }
+  return (
+    <div>
+      <Button nativeButton={false} render={props.link}>
+        {props.children}
+      </Button>
+    </div>
+  );
+}
 
 /** What the form holds, to compare with what it opened with. */
 function snapshot(form: HTMLFormElement): string {
@@ -89,7 +106,7 @@ export function FormPage(props: {
   description?: string;
   submitLabel: string;
   pending: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => unknown;
   /** Clears what the last submit answered. */
   onDiscard: () => void;
   children: ReactNode;
@@ -163,5 +180,24 @@ export function FormPage(props: {
         }}
       />
     </div>
+  );
+}
+
+/** A `FormPage` that submits through `useFormAction`, whose refusal shows above the fields. */
+export function ActionFormPage(props: {
+  page: FormPageControl;
+  title: string;
+  description?: string;
+  submitLabel: string;
+  action: { pending: boolean; error: string | null; setError: (error: string | null) => void };
+  onSubmit: (event: FormEvent<HTMLFormElement>) => unknown;
+  children: ReactNode;
+}) {
+  const { action, children, ...page } = props;
+  return (
+    <FormPage {...page} pending={action.pending} onDiscard={() => action.setError(null)}>
+      <ErrorAlert message={action.error} />
+      {children}
+    </FormPage>
   );
 }

@@ -97,19 +97,25 @@ beside it.
   is more than one page. A patient search has no count, because it stops at its 20 best matches.
 - **A list page takes the full width.** Patient search text stays out of the URL.
 
-## Side panels
+## Form pages
 
-- **A create or an edit opens in `FormSheet`** (`src/components/form-sheet.tsx`), never in the page,
-  so what it changes stays in view. `CreateSheet` is the button and its panel. The panel's title
-  says the action and its object: `Editar` on a sede opens `Editar sede`. `pnpm lint` rejects the ui `Sheet`
-  (`ui/no-raw-sheet`) and a form in a card (`ui/no-form-in-card`).
+- **A create or an edit is a page of its own**, `FormPage` (`src/components/form-page.tsx`), never
+  in a list, a card, a dialog or a side panel, until a case proves otherwise. `pnpm lint` rejects any
+  other `<form>` (`ui/no-raw-form`). `CreateButton` opens a create's page.
+- **The fields take the page's width, outside any card.** The actions stay at the bottom of the
+  window: `Volver` on the left, `Descartar cambios` and the submit button on the right.
+- **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
+- **`Descartar cambios` shows once something differs from what the form opened with.**
+- **While saving, the submit button is disabled and shows a spinner, and the other buttons are
+  disabled with it.** The spinner is the visible reason a disabled button needs. With nothing
+  changed, the submit button stays enabled: nothing would say why it is not.
+- **Leaving with unsaved changes asks**, by any way out: `Volver`, the sidebar, the browser's back,
+  a closed tab. `Descartar cambios` asks the same question, because it cannot be undone.
+- **A successful save goes back**, unless what comes next is on the new record: a registered patient
+  opens their page. A save the page must confirm stays: the starting password's `Listo`.
 - **A record's page shows values, and each section's button opens the form**: `RecordSection`
   (`src/components/record-section.tsx`).
-- **A click outside leaves the panel open**, so a stray click never loses what was typed. `Cancelar`,
-  the X and Escape close it.
-- **One width, and one panel at a time.** A step of a form stays in its panel; a question about it
-  goes in a dialog on top.
-- **A page that is only its form stays a page**: `/ingresar`, `/cambiar-contrasena`, and
+- **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
   `/disponibilidad`, which asks and answers.
 
 ## Forms
@@ -187,16 +193,15 @@ Which channel carries a message, and where the user lands.
 | The form's own check failed                           | The error display above ([Forms](#forms)).                                                                                         |
 | The server refused the submit                         | The same display, with copy that says what to fix and names and links what blocks it: `DocumentTakenAlert`.                        |
 | A likely duplicate, which may be legitimate           | A confirmation that lists the matches and saves only when confirmed: `DuplicateWarning` (`src/components/patient-duplicates.tsx`). |
-| Saved, and the change shows on the screen             | No message: the closed panel and the updated row or page are the answer.                                                           |
+| Saved, and the change shows on the screen             | No message: the page it goes back to, with the updated row or value, is the answer.                                                |
 | Saved, and nothing on the screen shows it             | An `Alert` that stays: the starting password's `Listo.` (`src/routes/_app/personal/$memberId.tsx`).                                |
 | A field locked by the record's state                  | An `Alert` above the form listing every reason and what unlocks it, or saying nothing does; a lock icon alone explains nothing.    |
 | A condition to know before acting, found by the app   | A `warning` `Alert` on the page.                                                                                                   |
 | An action with no form failed, or the network dropped | A toast, once the app has one; it disappears on its own, so it never carries something the user must fix.                          |
 
-- **Stay on the page unless it stops making sense.** An edit or a create made in a panel stays,
-  and the screen's data reloads (`useFormAction`). A create whose next step is on the new
-  record goes there: a registered patient opens their page. Never navigate only to show a
-  message.
+- **After a save, a form page goes back**, and the screen's data reloads (`useFormAction`). A
+  create whose next step is on the new record goes there: a registered patient opens their page.
+  Never navigate only to show a message.
 - **A message is about one submit or one state.** A refusal of what was just submitted goes
   with the form; a state of the record (inactive, incomplete data) is a badge or an `Alert` on
   the page, shown to everyone who sees the record, whatever their role.

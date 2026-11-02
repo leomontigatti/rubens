@@ -1,36 +1,24 @@
 import { StethoscopeIcon } from "lucide-react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import {
   AdminControls,
   ErrorAlert,
-  FormActions,
   RefusalMessage,
-  fieldMessage,
   useFormAction,
-  NameField,
 } from "#/components/admin-form.tsx";
-import { CreateSheet, FormSheet } from "#/components/form-sheet.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
+import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { medicalServiceInputSchema } from "#/lib/medical-services.ts";
-import type { MedicalServiceFields } from "#/lib/medical-services.ts";
 import {
-  addMedicalService,
   changeMedicalServiceActive,
-  editMedicalService,
   getMedicalServices,
 } from "#/server/medical-services.functions.ts";
 import type { MedicalService } from "#/server/medical-services.ts";
 
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
-import type { RefusalReason } from "#/routes/_app/prestaciones/-shared.ts";
 
 export const Route = createFileRoute("/_app/prestaciones/$practitionerId")({
   loader: ({ params }) =>
@@ -48,19 +36,6 @@ export const Route = createFileRoute("/_app/prestaciones/$practitionerId")({
   }),
   component: PractitionerMedicalServices,
 });
-
-type ActionResult = { ok: true } | { ok: false; reason: RefusalReason };
-
-const fieldMessages: Record<keyof MedicalServiceFields | "practitionerId", string> = {
-  practitionerId: "No encontramos ese profesional.",
-  name: "Ingresá el nombre.",
-  durationMinutes: "La duración tiene que ser de 1 a 720 minutos.",
-};
-
-const newMedicalService: MedicalServiceFields = {
-  name: "",
-  durationMinutes: 30,
-};
 
 function useAction() {
   return useFormAction(refusalMessages);
@@ -80,20 +55,17 @@ function PractitionerMedicalServices() {
         back={{ to: "/prestaciones", label: "Prestaciones" }}
         title={practitioner.displayName}
       />
-      <CreateSheet canCreate={canEdit} label="Nueva prestación">
-        {(close) => (
-          <MedicalServiceForm
-            idPrefix="new"
-            initial={newMedicalService}
-            submitLabel="Crear"
-            onCancel={close}
-            onSubmit={(fields) =>
-              addMedicalService({ data: { ...fields, practitionerId: practitioner.id } })
-            }
-            onDone={close}
+      <CreateButton
+        can={canEdit}
+        link={
+          <Link
+            to="/prestaciones/$practitionerId/nueva"
+            params={{ practitionerId: practitioner.id }}
           />
-        )}
-      </CreateSheet>
+        }
+      >
+        Nueva prestación
+      </CreateButton>
       {medicalServices.length === 0 ? (
         <EmptyState
           icon={StethoscopeIcon}
@@ -118,7 +90,7 @@ function PractitionerMedicalServices() {
 
 function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: boolean }) {
   const { medicalService } = props;
-  const [editing, setEditing] = useState(false);
+  const { practitionerId } = Route.useParams();
   const toggle = useAction();
 
   return (
@@ -139,7 +111,12 @@ function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: bo
           <AdminControls
             isAdmin={props.canEdit}
             active={medicalService.active}
-            onEdit={() => setEditing(true)}
+            editLink={
+              <Link
+                to="/prestaciones/$practitionerId/$medicalServiceId"
+                params={{ practitionerId, medicalServiceId: medicalService.id }}
+              />
+            }
             onToggleActive={() =>
               void toggle.run(() =>
                 changeMedicalServiceActive({
@@ -151,79 +128,6 @@ function MedicalServiceItem(props: { medicalService: MedicalService; canEdit: bo
           <ErrorAlert message={toggle.error} />
         </CardContent>
       </Card>
-      <FormSheet open={editing} onClose={() => setEditing(false)} title="Editar prestación">
-        <MedicalServiceForm
-          idPrefix={medicalService.id}
-          initial={medicalService}
-          submitLabel="Guardar"
-          onCancel={() => setEditing(false)}
-          onSubmit={(fields) =>
-            editMedicalService({
-              data: { ...fields, medicalServiceId: medicalService.id },
-            })
-          }
-          onDone={() => setEditing(false)}
-        />
-      </FormSheet>
     </li>
-  );
-}
-
-interface MedicalServiceFormProps {
-  idPrefix: string;
-  initial: MedicalServiceFields;
-  submitLabel: string;
-  onCancel: () => void;
-  onSubmit: (fields: MedicalServiceFields) => Promise<ActionResult>;
-  onDone: () => void;
-}
-
-const fieldsSchema = medicalServiceInputSchema.omit({ practitionerId: true });
-
-function MedicalServiceForm({
-  idPrefix,
-  initial,
-  submitLabel,
-  onCancel,
-  onSubmit,
-  onDone,
-}: MedicalServiceFormProps) {
-  const action = useAction();
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const fields = fieldsSchema.safeParse({
-      name: form.get("name"),
-      durationMinutes: Number(form.get("durationMinutes")),
-    });
-    if (!fields.success) {
-      action.setError(fieldMessage(fieldMessages, fields.error));
-      return;
-    }
-    if (await action.run(() => onSubmit(fields.data))) {
-      onDone();
-    }
-  }
-
-  return (
-    <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      <ErrorAlert message={action.error} />
-      <NameField idPrefix={idPrefix} initial={initial.name} />
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-duration`}>Duración (minutos)</FieldLabel>
-        <Input
-          id={`${idPrefix}-duration`}
-          name="durationMinutes"
-          type="number"
-          min={1}
-          max={720}
-          step={1}
-          defaultValue={initial.durationMinutes}
-          required
-        />
-      </Field>
-      <FormActions pending={action.pending} submitLabel={submitLabel} onCancel={onCancel} />
-    </form>
   );
 }

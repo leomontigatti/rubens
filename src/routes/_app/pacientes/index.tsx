@@ -1,6 +1,6 @@
 import { CircleDotIcon, UsersIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -9,9 +9,8 @@ import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import type { FilterGroup } from "#/components/filter-groups.ts";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
-import { CreateSheet } from "#/components/form-sheet.tsx";
+import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { patientSearchKey, patientSearchState } from "#/components/patient-search.ts";
 import type { PatientSearchState } from "#/components/patient-search.ts";
@@ -20,7 +19,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { documentLabel, patientName, patientPageSize } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { findPatients, getPatients } from "#/server/patients.functions.ts";
-import type { ListedPatient, Patient, PatientPage } from "#/server/patients.ts";
+import type { ListedPatient, PatientPage } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/")({
   head: () => ({ meta: [{ title: "Pacientes · Rubens" }] }),
@@ -103,7 +102,9 @@ function Registry({ listed }: { listed: PatientPage }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Pacientes" />
-      <RegisterPanel />
+      <CreateButton can link={<Link to="/pacientes/nuevo" />}>
+        Nuevo paciente
+      </CreateButton>
       <DataTable
         table={table}
         search={{
@@ -194,21 +195,3 @@ const columns: DataTableColumn<ListedPatient>[] = [
     ),
   },
 ];
-
-function RegisterPanel() {
-  const navigate = useNavigate();
-  const showPatient = (patient: Patient) =>
-    void navigate({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
-
-  return (
-    <CreateSheet canCreate label="Nuevo paciente">
-      {(close) => (
-        <PatientRegistrationForm
-          onCancel={close}
-          onRegistered={showPatient}
-          onUseExisting={showPatient}
-        />
-      )}
-    </CreateSheet>
-  );
-}

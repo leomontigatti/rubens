@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactElement } from "react";
 import type * as z from "zod";
 
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
@@ -112,7 +112,8 @@ type Deactivation = Pick<ComponentProps<typeof DeactivateButton>, "question" | "
 export function AdminControls(props: {
   isAdmin: boolean;
   active: boolean;
-  onEdit: () => void;
+  /** The `Link` to the record's edit page. */
+  editLink: ReactElement;
   onToggleActive: () => void;
   deactivation?: Deactivation;
 }) {
@@ -121,7 +122,7 @@ export function AdminControls(props: {
   }
   return (
     <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={props.onEdit}>
+      <Button variant="outline" size="sm" nativeButton={false} render={props.editLink}>
         Editar
       </Button>
       <ActiveToggle {...props} />

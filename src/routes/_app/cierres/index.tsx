@@ -1,48 +1,20 @@
 import { CalendarXIcon } from "lucide-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { CreateSheet } from "#/components/form-sheet.tsx";
+import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { EntryForm, EntryItem, readRangeEntry } from "#/components/range-entry.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import {
-  closureInputSchema,
-  closureOfficeOptions,
-  closureUpdateSchema,
-} from "#/lib/time-ranges.ts";
-import {
-  addClosure,
-  editClosure,
-  getClosures,
-  removeClosure,
-} from "#/server/closures.functions.ts";
-import type { OfficeOption } from "#/server/closures.ts";
+import { EntryItem } from "#/components/range-entry.tsx";
+import { getClosures, removeClosure } from "#/server/closures.functions.ts";
+
+import { refusalMessages, wholeOrganization } from "#/routes/_app/cierres/-closure-fields.tsx";
 
 export const Route = createFileRoute("/_app/cierres/")({
   head: () => ({ meta: [{ title: "Cierres · Rubens" }] }),
   loader: () => getClosures(),
   component: ClosureList,
 });
-
-/** The copy for every refusal the closure server functions return. */
-const refusalMessages = {
-  unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
-  forbidden: "Solo un administrador puede cambiar cierres.",
-  mustChangePassword: "Elegí una contraseña nueva para continuar.",
-  invalidInput: "Revisá los datos ingresados.",
-  notFound: "No encontramos esa sede o ese cierre.",
-};
-
-const wholeOrganization = "Toda la organización";
-
-/** The office field: empty for the whole organization. */
-function readOfficeId(form: FormData): string | null {
-  const officeId = form.get("officeId") as string;
-  return officeId === "" ? null : officeId;
-}
 
 function ClosureList() {
   const result = Route.useLoaderData();
@@ -54,26 +26,9 @@ function ClosureList() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader title="Cierres" />
-      <CreateSheet canCreate={result.canEdit} label="Nuevo cierre">
-        {(close) => (
-          <EntryForm
-            idPrefix="new"
-            initial={null}
-            submitLabel="Crear cierre"
-            messages={refusalMessages}
-            onDone={close}
-            onSubmit={(form) => {
-              const input = closureInputSchema.safeParse({
-                officeId: readOfficeId(form),
-                entry: readRangeEntry(form),
-              });
-              return input.success ? addClosure({ data: input.data }) : input.error;
-            }}
-          >
-            <OfficeSelect idPrefix="new" offices={result.offices} initial={null} />
-          </EntryForm>
-        )}
-      </CreateSheet>
+      <CreateButton can={result.canEdit} link={<Link to="/cierres/nuevo" />}>
+        Nuevo cierre
+      </CreateButton>
       {result.closures.length === 0 ? (
         <EmptyState
           icon={CalendarXIcon}
@@ -87,61 +42,17 @@ function ClosureList() {
             <EntryItem
               key={item.id}
               title={item.officeName ?? wholeOrganization}
-              editTitle="Editar cierre"
               deleteQuestion="¿Eliminar este cierre?"
               deleteNotice="El cierre se borra y no se puede recuperar."
               entry={item.entry}
               canEdit={result.canEdit}
               messages={refusalMessages}
               onDelete={() => removeClosure({ data: { closureId: item.id } })}
-              renderEdit={(close) => (
-                <EntryForm
-                  idPrefix={item.id}
-                  initial={item.entry}
-                  submitLabel="Guardar"
-                  messages={refusalMessages}
-                  onDone={close}
-                  onSubmit={(form) => {
-                    const input = closureUpdateSchema.safeParse({
-                      closureId: item.id,
-                      officeId: readOfficeId(form),
-                      entry: readRangeEntry(form),
-                    });
-                    return input.success ? editClosure({ data: input.data }) : input.error;
-                  }}
-                >
-                  <OfficeSelect
-                    idPrefix={item.id}
-                    offices={closureOfficeOptions(result.offices, item)}
-                    initial={item.officeId}
-                  />
-                </EntryForm>
-              )}
+              editLink={<Link to="/cierres/$closureId" params={{ closureId: item.id }} />}
             />
           ))}
         </ul>
       )}
     </div>
-  );
-}
-
-function OfficeSelect(props: {
-  idPrefix: string;
-  offices: OfficeOption[];
-  initial: string | null;
-}) {
-  const id = `${props.idPrefix}-officeId`;
-  return (
-    <Field>
-      <FieldLabel htmlFor={id}>Sede</FieldLabel>
-      <NativeSelect id={id} name="officeId" defaultValue={props.initial ?? ""}>
-        <NativeSelectOption value="">{wholeOrganization}</NativeSelectOption>
-        {props.offices.map((office) => (
-          <NativeSelectOption key={office.id} value={office.id}>
-            {office.name}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </Field>
   );
 }
