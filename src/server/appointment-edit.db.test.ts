@@ -47,8 +47,8 @@ beforeEach(async () => {
   appointmentId = result.appointment.id;
 });
 
-/** Saves the appointment with `receptionNote`, in the room it is in unless `roomId`. */
-function edit(receptionNote: string, actor: Actor = world.receptionist, roomId = world.room.id) {
+/** Saves the appointment with `receptionNote`, moving it to `roomId` when given. */
+function edit(receptionNote: string, actor: Actor = world.receptionist, roomId?: string) {
   return asAppRole(db, (tx) =>
     updateAppointment(actor, { appointmentId, roomId, receptionNote }, tx),
   );
@@ -155,6 +155,16 @@ describe("reading one appointment", () => {
 describe("saving the room and the note together", () => {
   it("moves it to a room with space and changes the note", async () => {
     expect(await edit("Llega tarde", world.receptionist, world.otherRoom.id)).toEqual({ ok: true });
+
+    expect(await roomOf()).toBe(world.otherRoom.id);
+    expect(await noteOf()).toBe("Llega tarde");
+  });
+
+  it("leaves it in the room it is in now when only the note is sent", async () => {
+    // Someone else moved it after this page loaded the room it was in.
+    await edit("Trae estudios", world.receptionist, world.otherRoom.id);
+
+    expect(await edit("Llega tarde")).toEqual({ ok: true });
 
     expect(await roomOf()).toBe(world.otherRoom.id);
     expect(await noteOf()).toBe("Llega tarde");

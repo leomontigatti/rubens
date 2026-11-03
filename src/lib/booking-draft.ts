@@ -1,7 +1,12 @@
 import { tz } from "@date-fns/tz";
+import * as z from "zod";
 import { format } from "date-fns";
 
-import { bookingInputSchema, overbookingInputSchema } from "#/lib/appointments.ts";
+import {
+  bookingInputSchema,
+  overbookingInputSchema,
+  rescheduleSchema,
+} from "#/lib/appointments.ts";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import { shiftDate } from "#/lib/schedules.ts";
@@ -120,13 +125,19 @@ export const bookingFieldNames = { patientId: "patient" };
 /** An overbooking's start is typed in its time. */
 export const overbookingFieldNames = { patientId: "patient", start: "time" };
 
+/** A date input's value once it is a whole date: cleared, or half typed, it is none. */
+function isWholeDate(date: string): boolean {
+  return z.iso.date().safeParse(date).success;
+}
+
 /**
  * "Nuevo turno"'s free-times query: the week from `freeFrom`, once the form
  * has a practitioner, a medical service and a valid duration.
  */
 export function freeStartsQueryOf(values: BookingValues): AvailabilityQuery | null {
   const duration = durationMinutesSchema.safeParse(Number(values.durationMinutes));
-  if (!values.practitionerId || !values.medicalServiceId || !duration.success) {
+  const ready = values.practitionerId && values.medicalServiceId && isWholeDate(values.freeFrom);
+  if (!ready || !duration.success) {
     return null;
   }
   return {
@@ -148,7 +159,7 @@ export function rescheduleQueryOf(
   durationMinutes: number,
 ): AvailabilityQuery | null {
   const duration = durationMinutesSchema.safeParse(durationMinutes);
-  if (!duration.success) {
+  if (!duration.success || !isWholeDate(firstDate)) {
     return null;
   }
   return {
@@ -158,4 +169,20 @@ export function rescheduleQueryOf(
     durationMinutes: duration.data,
     appointmentId: appointment.id,
   };
+}
+
+/** The reschedule form's values: the duration as typed, and a free start from the week from `freeFrom`. */
+export interface RescheduleValues {
+  durationMinutes: string;
+  freeFrom: string;
+  start: PickedStart | null;
+}
+
+/** Where the reschedule form moves the appointment, or what the reschedule schema refused. */
+export function rescheduleRequestOf(values: RescheduleValues, appointmentId: string) {
+  return rescheduleSchema.safeParse({
+    appointmentId,
+    start: values.start?.start,
+    durationMinutes: Number(values.durationMinutes),
+  });
 }

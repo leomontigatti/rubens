@@ -80,7 +80,6 @@ const fieldMessages = {
   patientId: "Elegí un paciente.",
   practitionerId: "Elegí un profesional.",
   medicalServiceId: "Elegí una prestación.",
-  durationMinutes: "La duración tiene que ser un número entero de minutos, entre 1 y 720.",
   start: "Elegí un horario libre.",
   receptionNote: `La nota de recepción puede tener hasta ${receptionNoteMaxLength} caracteres.`,
   roomId: "Elegí un consultorio.",
@@ -137,7 +136,11 @@ function answerOf(refusal: BookingRefusal, office: OverbookingOffice | null): An
     return { ...noAnswer, warnings: refusal.warnings };
   }
   if (refusal.reason === "timeTaken") {
-    return { ...noAnswer, freshStarts: refusal.freeStarts };
+    return {
+      ...noAnswer,
+      freshStarts: refusal.freeStarts,
+      refusal: { field: "start", message: "Ese horario ya se ocupó. Elegí otro horario libre." },
+    };
   }
   return { ...noAnswer, refusal: refusalProblem(refusal, office) };
 }
@@ -167,18 +170,31 @@ function refusalField(reason: RefusalReason, office: OverbookingOffice | null): 
   return office && field === "start" ? "time" : field;
 }
 
+/** What a duration's check says: none typed, or not a valid one. */
+export function durationMessage(typed: string): string {
+  return typed.trim() === ""
+    ? "Ingresá la duración."
+    : "La duración tiene que ser un número entero de minutos, entre 1 y 720.";
+}
+
 /** What the form books, or what its check refused, under each field. */
 function requestOf(values: BookingValues, office: OverbookingOffice | null) {
+  const duration = { durationMinutes: durationMessage(values.durationMinutes) };
   if (office) {
     const parsed = overbookingRequestOf(values, office.timeZone);
+    const messages = messageIn({ ...overbookingMessages, ...duration });
     return parsed.success
       ? { overbooking: true as const, data: parsed.data }
-      : fieldProblems(parsed.error.issues, messageIn(overbookingMessages), overbookingFieldNames);
+      : fieldProblems(parsed.error.issues, messages, overbookingFieldNames);
   }
   const parsed = bookingRequestOf(values);
   return parsed.success
     ? { overbooking: false as const, data: parsed.data }
-    : fieldProblems(parsed.error.issues, messageIn(fieldMessages), bookingFieldNames);
+    : fieldProblems(
+        parsed.error.issues,
+        messageIn({ ...fieldMessages, ...duration }),
+        bookingFieldNames,
+      );
 }
 
 type BookingRequest = Exclude<ReturnType<typeof requestOf>, FieldProblem[]>;
@@ -237,8 +253,9 @@ function useBookingForm(props: BookingPageProps) {
       props.practitioners.map((practitioner) => practitioner.id),
       props.defaultDate,
     ),
-    // A change drops what the last attempt answered.
-    listeners: { onChange: () => setAnswer(noAnswer) },
+    // A warning confirmed after a change would book what it never warned about.
+    // A refusal stays until the next submit.
+    listeners: { onChange: () => setAnswer((last) => ({ ...last, warnings: null })) },
     onSubmit: ({ value }) => book(value, false),
   });
 
@@ -276,11 +293,7 @@ export function BookingPage(props: BookingPageProps) {
         </form.Field>
       }
     >
-      <WhoAndWhen form={form} props={props} ask={ask} />
-      <TimeTaken
-        starts={answer.freshStarts}
-        onPick={(start) => form.setFieldValue("start", start)}
-      />
+      <WhoAndWhen form={form} props={props} ask={ask} freshStarts={answer.freshStarts} />
       <form.AppField name="receptionNote">
         {(field) => (
           <field.TextField
@@ -302,7 +315,12 @@ export function BookingPage(props: BookingPageProps) {
 }
 
 /** The practitioner when there is a choice, the medical service and duration, and the start. */
-function WhoAndWhen(params: { form: BookingForm; props: BookingPageProps; ask: boolean }) {
+function WhoAndWhen(params: {
+  form: BookingForm;
+  props: BookingPageProps;
+  ask: boolean;
+  freshStarts: OfferedStart[] | null;
+}) {
   const { form, props } = params;
   const fixed = props.from !== null;
   return (
@@ -314,7 +332,7 @@ function WhoAndWhen(params: { form: BookingForm; props: BookingPageProps; ask: b
       {props.overbooking ? (
         <OverbookingFields form={form} rooms={props.overbooking.rooms} />
       ) : (
-        <StartField form={form} fixed={fixed} />
+        <StartField form={form} fixed={fixed} freshStarts={params.freshStarts} />
       )}
     </>
   );
@@ -415,7 +433,13 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
  * A booking's start: the one clicked, or picked from the practitioner's free
  * times for the duration, a week from a date.
  */
-function StartField({ form, fixed }: { form: BookingForm; fixed: boolean }) {
+function StartField(props: {
+  form: BookingForm;
+  fixed: boolean;
+  /** The free times left that day, after another booking took the one picked. */
+  freshStarts: OfferedStart[] | null;
+}) {
+  const { form, fixed } = props;
   const query = useStore(form.store, (state) => freeStartsQueryOf(state.values));
   return (
     <form.Field name="start">
@@ -433,6 +457,11 @@ function StartField({ form, fixed }: { form: BookingForm; fixed: boolean }) {
               onPick={field.handleChange}
             />
           )}
+          <FreshStarts
+            starts={props.freshStarts}
+            picked={field.state.value}
+            onPick={field.handleChange}
+          />
           <PickedSummary start={field.state.value} />
         </StartGroup>
       )}
@@ -485,25 +514,23 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
   );
 }
 
-/** Another booking took the time a moment before: fresh free times to pick from. */
-function TimeTaken(props: { starts: OfferedStart[] | null; onPick: (start: PickedStart) => void }) {
+/** The free times left that day, once another booking took the one picked. */
+function FreshStarts(props: {
+  starts: OfferedStart[] | null;
+  picked: PickedStart | null;
+  onPick: (start: PickedStart) => void;
+}) {
   if (!props.starts) {
     return null;
   }
+  if (props.starts.length === 0) {
+    return <p className="text-muted-foreground text-sm">No quedan horarios libres ese día.</p>;
+  }
   return (
-    <Alert variant="destructive">
-      <AlertTitle>Ese horario ya se ocupó</AlertTitle>
-      <AlertDescription>
-        <div className="flex flex-col gap-2">
-          <p>Elegí otro horario libre:</p>
-          {props.starts.length === 0 ? (
-            <p>No quedan horarios libres ese día.</p>
-          ) : (
-            <FreeStartList starts={props.starts} picked={null} onPick={props.onPick} />
-          )}
-        </div>
-      </AlertDescription>
-    </Alert>
+    <div className="flex flex-col gap-2">
+      <p className="text-sm">Horarios libres que quedan ese día:</p>
+      <FreeStartList starts={props.starts} picked={props.picked} onPick={props.onPick} />
+    </div>
   );
 }
 

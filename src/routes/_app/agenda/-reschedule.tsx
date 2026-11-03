@@ -5,16 +5,16 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
-import { durationMinutesSchema } from "#/lib/availability.ts";
-import { rescheduleQueryOf } from "#/lib/booking-draft.ts";
-import type { BookingWarning, PickedStart } from "#/lib/booking-draft.ts";
+import { rescheduleQueryOf, rescheduleRequestOf } from "#/lib/booking-draft.ts";
+import type { BookingWarning, RescheduleValues } from "#/lib/booking-draft.ts";
 import { moveAppointment } from "#/server/appointments.functions.ts";
 
 import { appointmentBack, appointmentSummary } from "#/routes/_app/agenda/-appointment-page.tsx";
 import type { LoadedAppointment } from "#/routes/_app/agenda/-appointment-page.tsx";
-import { PatientWarnings } from "#/routes/_app/agenda/-booking.tsx";
+import { PatientWarnings, durationMessage } from "#/routes/_app/agenda/-booking.tsx";
 import { FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
 
 // Rescheduling an appointment through the free-times picker: a new free time
@@ -71,33 +71,28 @@ interface Answer {
 
 const noAnswer: Answer = { warnings: null, refusal: null };
 
-interface RescheduleValues {
-  durationMinutes: string;
-  freeFrom: string;
-  start: PickedStart | null;
+/** What the form's check refused, under each field. */
+function problemsOf(issues: Parameters<typeof fieldProblems>[0], values: RescheduleValues) {
+  return fieldProblems(
+    issues,
+    messageIn({
+      start: "Elegí un horario libre.",
+      durationMinutes: durationMessage(values.durationMinutes),
+    }),
+  );
 }
 
-/** What the form's check refuses, under each field. */
-function problemsOf(values: RescheduleValues): FieldProblem[] {
-  const problems: FieldProblem[] = [];
-  if (!durationMinutesSchema.safeParse(Number(values.durationMinutes)).success) {
-    problems.push({
-      field: "durationMinutes",
-      message: "La duración tiene que ser un número entero de minutos, entre 1 y 720.",
-    });
-  }
-  if (!values.start) {
-    problems.push({ field: "start", message: "Elegí un horario libre." });
-  }
-  return problems;
-}
-
-function minutesOf(appointment: { start: Date; end: Date }): number {
-  return (+appointment.end - +appointment.start) / 60_000;
+/** The appointment's own duration, and its free times from its own day, nothing picked yet. */
+function initialValues({ appointment, office }: LoadedAppointment): RescheduleValues {
+  return {
+    durationMinutes: String((+appointment.end - +appointment.start) / 60_000),
+    freeFrom: format(appointment.start, "yyyy-MM-dd", { in: tz(office.timeZone) }),
+    start: null,
+  };
 }
 
 export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
-  const { appointment, office } = loaded;
+  const { appointment } = loaded;
   const page = useFormPage(appointmentBack);
   const queryClient = useQueryClient();
   const [answer, setAnswer] = useState<Answer>(noAnswer);
@@ -106,22 +101,15 @@ export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
   async function reschedule(values: RescheduleValues, confirmWarnings: boolean) {
     page.clearProblems();
     setAnswer(noAnswer);
-    const problems = problemsOf(values);
-    if (!values.start || problems.length > 0) {
-      page.showProblems(problems);
+    const request = rescheduleRequestOf(values, appointment.id);
+    if (!request.success) {
+      page.showProblems(problemsOf(request.error.issues, values));
       return;
     }
     setPending(true);
     let result: Awaited<ReturnType<typeof moveAppointment>>;
     try {
-      result = await moveAppointment({
-        data: {
-          appointmentId: appointment.id,
-          start: values.start.start,
-          durationMinutes: Number(values.durationMinutes),
-          confirmWarnings,
-        },
-      });
+      result = await moveAppointment({ data: { ...request.data, confirmWarnings } });
     } finally {
       setPending(false);
     }
@@ -146,12 +134,10 @@ export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
   }
 
   const form = useAppForm({
-    defaultValues: {
-      durationMinutes: String(minutesOf(appointment)),
-      freeFrom: format(appointment.start, "yyyy-MM-dd", { in: tz(office.timeZone) }),
-      start: null as PickedStart | null,
-    },
-    listeners: { onChange: () => setAnswer(noAnswer) },
+    defaultValues: initialValues(loaded),
+    // A warning confirmed after a change would move it where it never warned about.
+    // A refusal stays until the next submit.
+    listeners: { onChange: () => setAnswer((last) => ({ ...last, warnings: null })) },
     onSubmit: ({ value }) => reschedule(value, false),
   });
   const query = useStore(form.store, (state) =>

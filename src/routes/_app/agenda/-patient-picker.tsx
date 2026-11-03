@@ -26,17 +26,7 @@ export function PatientPicker(props: {
   }
 
   if (props.value) {
-    return (
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm">
-          <span className="text-muted-foreground">Paciente:</span>{" "}
-          <span className="font-medium">{props.value.name}</span>
-        </p>
-        <Button type="button" variant="outline" size="sm" onClick={() => choose(null)}>
-          Cambiar
-        </Button>
-      </div>
-    );
+    return <PickedPatientLine patient={props.value} onChange={() => choose(null)} />;
   }
   if (registering) {
     return (
@@ -56,6 +46,35 @@ export function PatientPicker(props: {
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * The patient picked. A refusal about them (inactive since) shows here, and
+ * `Cambiar` takes the focus, as the field to fix.
+ */
+function PickedPatientLine(props: { patient: PickedPatient; onChange: () => void }) {
+  const { problem, errorId, invalid } = useFieldProblem("patient");
+  return (
+    <Field data-invalid={invalid}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm">
+          <span className="text-muted-foreground">Paciente:</span>{" "}
+          <span className="font-medium">{props.patient.name}</span>
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={props.onChange}
+          aria-invalid={invalid}
+          aria-describedby={errorId}
+        >
+          Cambiar
+        </Button>
+      </div>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+    </Field>
   );
 }
 

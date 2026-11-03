@@ -6,6 +6,7 @@ import {
   initialBookingValues,
   overbookingRequestOf,
   rescheduleQueryOf,
+  rescheduleRequestOf,
 } from "#/lib/booking-draft.ts";
 import type { BookingValues } from "#/lib/booking-draft.ts";
 
@@ -123,6 +124,16 @@ describe("the free times a new booking asks for", () => {
     });
     expect(freeStartsQueryOf({ ...withMedicalService, durationMinutes: "721" })).toBeNull();
   });
+
+  it("asks nothing while the date is cleared or half typed", () => {
+    const ready = {
+      ...initialBookingValues(null, [juan], ""),
+      medicalServiceId: consulta.id,
+      durationMinutes: "40",
+    };
+    expect(freeStartsQueryOf(ready)).toBeNull();
+    expect(freeStartsQueryOf({ ...ready, freeFrom: "0002-01-0" })).toBeNull();
+  });
 });
 
 describe("the reschedule picker's query", () => {
@@ -141,5 +152,39 @@ describe("the reschedule picker's query", () => {
   it("asks nothing while the duration is not a valid one", () => {
     expect(rescheduleQueryOf(moved, "2099-01-05", 0)).toBeNull();
     expect(rescheduleQueryOf(moved, "2099-01-05", Number.NaN)).toBeNull();
+  });
+
+  it("asks nothing while the date is cleared", () => {
+    expect(rescheduleQueryOf(moved, "", 45)).toBeNull();
+  });
+});
+
+describe("what a reschedule form moves", () => {
+  const appointmentId = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a06";
+
+  it("moves the appointment to the start picked, for the duration typed", () => {
+    expect(
+      rescheduleRequestOf(
+        { durationMinutes: "45", freeFrom: "2099-01-05", start: nine },
+        appointmentId,
+      ).data,
+    ).toEqual({
+      appointmentId,
+      start: nine.start,
+      durationMinutes: 45,
+      overbooking: false,
+      roomId: null,
+    });
+  });
+
+  it("refuses a missing start and a duration outside 1 to 720 minutes", () => {
+    expect(
+      refusedPaths(
+        rescheduleRequestOf(
+          { durationMinutes: "", freeFrom: "2099-01-05", start: null },
+          appointmentId,
+        ),
+      ),
+    ).toEqual(["start", "durationMinutes"]);
   });
 });

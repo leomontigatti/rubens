@@ -35,7 +35,7 @@ const refusalMessages = {
   forbidden: "Solo recepción, un administrador o el propio profesional pueden cambiar el turno.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
-  notFound: "Ese turno ya no está activo: solo se le cambia la nota.",
+  notFound: "No encontramos ese turno, o ya no ocupa su horario: volvé a abrirlo.",
   practitionerInactive: "Ese profesional está inactivo.",
   otherOffice: "Ese consultorio es de otra sede.",
   roomInactive: "Ese consultorio está desactivado.",
@@ -79,7 +79,12 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
   const form = useAppForm({
     defaultValues: { roomId: appointment.roomId, receptionNote: appointment.receptionNote ?? "" },
     onSubmit: async ({ value }) => {
-      const input = appointmentUpdateSchema.safeParse({ ...value, appointmentId: appointment.id });
+      const input = appointmentUpdateSchema.safeParse({
+        appointmentId: appointment.id,
+        // A room the user did not change is not sent: someone may have moved it since.
+        roomId: value.roomId === appointment.roomId ? undefined : value.roomId,
+        receptionNote: value.receptionNote,
+      });
       if (!input.success) {
         page.showProblems(fieldProblems(input.error.issues, messageIn(fieldMessages)));
         return;

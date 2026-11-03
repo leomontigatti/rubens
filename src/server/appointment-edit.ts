@@ -92,9 +92,9 @@ function listMoveRooms(tx: Transaction, officeId: string, currentRoomId: string)
 }
 
 /**
- * Saves the appointment's room and reception note. A new room, at the same
- * time, is for an active appointment, and needs space; when it is refused,
- * the note is not saved either.
+ * Saves the appointment's reception note, and moves it to `roomId` when
+ * given. A new room, at the same time, is for an active appointment, and
+ * needs space; when it is refused, the note is not saved either.
  */
 export async function updateAppointment(
   actor: Actor,
@@ -120,7 +120,7 @@ export async function updateAppointment(
       if (!found.ok) {
         return found;
       }
-      if (roomId !== placed.roomId) {
+      if (roomId !== undefined && roomId !== placed.roomId) {
         if (!isActiveStatus(placed.status)) {
           return notFound;
         }

@@ -122,12 +122,13 @@ export const cancellationSchema = z.object({
 export type CancellationInput = z.input<typeof cancellationSchema>;
 
 /**
- * An appointment's own fields, saved together: its room, another of its
- * office at the same time, and its reception note.
+ * An appointment's own fields, saved together: its reception note, and a new
+ * room, another of its office at the same time, only when the user picked
+ * one. With none, it stays where it is now, though moved since the form loaded.
  */
 export const appointmentUpdateSchema = z.object({
   appointmentId: z.uuid(),
-  roomId: z.uuid(),
+  roomId: z.uuid().optional(),
   receptionNote: receptionNoteSchema,
 });
 
