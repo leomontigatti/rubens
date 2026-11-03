@@ -2,20 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type {
   AppointmentIdInput,
+  AppointmentUpdate,
   BookingInput,
   CalendarWeekQuery,
   CancellationInput,
   OverbookingInput,
-  ReceptionNoteChange,
   RescheduleInput,
-  RoomMove,
   StatusChangeInput,
   WarningConfirmation,
 } from "#/lib/appointments.ts";
 
-import { editReceptionNote } from "#/server/appointment-notes.ts";
+import { getAppointment, updateAppointment } from "#/server/appointment-edit.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
-import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms.ts";
+import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import {
   cancelAppointment,
   changeAppointmentStatus,
@@ -44,9 +43,13 @@ export const addOverbooking = createServerFn({ method: "POST" })
   .validator((data: OverbookingInput & WarningConfirmation) => data)
   .handler(({ data }) => withActor(bookers, (actor) => bookOverbooking(actor, data)));
 
-export const changeAppointmentRoom = createServerFn({ method: "POST" })
-  .validator((data: RoomMove) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => moveAppointmentRoom(actor, data)));
+export const getAppointmentRecord = createServerFn({ method: "GET" })
+  .validator((data: AppointmentIdInput) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => getAppointment(actor, data)));
+
+export const saveAppointment = createServerFn({ method: "POST" })
+  .validator((data: AppointmentUpdate) => data)
+  .handler(({ data }) => withActor(bookers, (actor) => updateAppointment(actor, data)));
 
 export const setAppointmentStatus = createServerFn({ method: "POST" })
   .validator((data: StatusChangeInput) => data)
@@ -59,10 +62,6 @@ export const markAppointmentCancelled = createServerFn({ method: "POST" })
 export const undoStatusChange = createServerFn({ method: "POST" })
   .validator((data: AppointmentIdInput) => data)
   .handler(({ data }) => withActor(bookers, (actor) => undoAppointmentStatus(actor, data)));
-
-export const editAppointmentNote = createServerFn({ method: "POST" })
-  .validator((data: ReceptionNoteChange) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => editReceptionNote(actor, data)));
 
 export const moveAppointment = createServerFn({ method: "POST" })
   .validator((data: RescheduleInput & WarningConfirmation) => data)

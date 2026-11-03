@@ -1,37 +1,24 @@
 import { CalendarSyncIcon } from "lucide-react";
 import { tz } from "@date-fns/tz";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { cn } from "cn";
 import { format } from "date-fns";
-import { useState } from "react";
 
 import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "#/components/ui/dialog.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
 import type { ToRescheduleEntry, ToRescheduleReason } from "#/server/to-reschedule.ts";
-
-import { CancelForm } from "#/routes/_app/agenda/-appointment-status.tsx";
-import { RescheduleForm } from "#/routes/_app/agenda/-reschedule.tsx";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
 // that time off, a closure or a schedule change left outside working time, of
 // someone deactivated or in a deactivated place, soonest first, for reception
 // to call each patient.
-// Each one is rescheduled or cancelled from here, with the agenda's own forms;
-// one of someone deactivated is refused a new time until they are reactivated,
-// and one in a deactivated place is told why free times may be missing.
+// Each one opens the agenda's own pages to reschedule or cancel it; one of
+// someone deactivated cannot take a new time until they are reactivated, and
+// one in a deactivated place is told why free times may be missing.
 
 export const Route = createFileRoute("/_app/a-reprogramar/")({
   head: () => ({ meta: [{ title: "Turnos a reprogramar · Rubens" }] }),
@@ -65,19 +52,12 @@ const placeRemedies: Partial<Record<ToRescheduleReason, string>> = {
   roomInactive: "reactivar el consultorio",
 };
 
-/** The entry being acted on, and whether to reschedule or cancel it. */
-interface Picked {
-  entry: ToRescheduleEntry;
-  action: "reschedule" | "cancel";
-}
-
 function localDateTime(instant: Date, timeZone: string) {
   return format(instant, "dd/MM/yyyy HH:mm", { in: tz(timeZone) });
 }
 
 function ToRescheduleList() {
   const result = Route.useLoaderData();
-  const [picked, setPicked] = useState<Picked | null>(null);
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
@@ -94,21 +74,28 @@ function ToRescheduleList() {
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border">
           {result.appointments.map((entry) => (
-            <EntryRow
-              key={entry.id}
-              entry={entry}
-              onPick={(action) => setPicked({ entry, action })}
-            />
+            <EntryRow key={entry.id} entry={entry} />
           ))}
         </ul>
       )}
-      <EntryDialog picked={picked} onClose={() => setPicked(null)} />
     </div>
   );
 }
 
-function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["action"]) => void }) {
-  const { entry } = props;
+/** Why the entry cannot move yet, or what else would bring free times back. */
+function entryNote(reason: ToRescheduleReason): string | null {
+  if (blockedReasons.includes(reason)) {
+    return "No se puede reprogramar hasta que un administrador lo reactive.";
+  }
+  const placeRemedy = placeRemedies[reason];
+  return placeRemedy
+    ? `Solo hay horarios libres en consultorios activos. Si no aparece ninguno, un administrador puede ${placeRemedy} o cargarle otro horario al profesional.`
+    : null;
+}
+
+function EntryRow({ entry }: { entry: ToRescheduleEntry }) {
+  const params = { appointmentId: entry.id };
+  const note = entryNote(entry.reason);
   return (
     <li className="flex flex-wrap items-center gap-4 p-4">
       <div
@@ -123,90 +110,28 @@ function EntryRow(props: { entry: ToRescheduleEntry; onPick: (action: Picked["ac
           {entry.roomName}
         </p>
         <p className="text-muted-foreground">{reasonLabels[entry.reason]}</p>
+        {note && <p className="text-muted-foreground">{note}</p>}
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => props.onPick("reschedule")}>
-          Reprogramar
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => props.onPick("cancel")}>
+        {!blockedReasons.includes(entry.reason) && (
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link to="/agenda/turnos/$appointmentId/reprogramar" params={params} />}
+          >
+            Reprogramar
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link to="/agenda/turnos/$appointmentId/cancelar" params={params} />}
+        >
           Cancelar
         </Button>
       </div>
     </li>
-  );
-}
-
-function EntryAction(props: { picked: Picked; onClose: () => void }) {
-  const { entry, action } = props.picked;
-  if (action === "cancel") {
-    return (
-      <CancelForm
-        key={entry.id}
-        appointmentId={entry.id}
-        onDone={props.onClose}
-        onBack={props.onClose}
-      />
-    );
-  }
-  if (blockedReasons.includes(entry.reason)) {
-    return (
-      <>
-        <Alert variant="info">
-          <AlertTitle>No se puede reprogramar</AlertTitle>
-          <AlertDescription>
-            El profesional o el paciente está desactivado. Un administrador puede reactivarlo.
-          </AlertDescription>
-        </Alert>
-        <DialogFooter>
-          <Button variant="outline" onClick={props.onClose}>
-            Cerrar
-          </Button>
-        </DialogFooter>
-      </>
-    );
-  }
-  const placeRemedy = placeRemedies[entry.reason];
-  return (
-    <>
-      {placeRemedy && (
-        <Alert variant="info">
-          <AlertTitle>{reasonLabels[entry.reason]}</AlertTitle>
-          <AlertDescription>
-            Solo hay horarios libres en consultorios activos. Si no aparece ninguno, un
-            administrador puede {placeRemedy} o cargarle otro horario al profesional.
-          </AlertDescription>
-        </Alert>
-      )}
-      <RescheduleForm
-        key={entry.id}
-        appointment={entry}
-        practitionerId={entry.practitioner.id}
-        timeZone={entry.timeZone}
-        onDone={props.onClose}
-        onBack={props.onClose}
-      />
-    </>
-  );
-}
-
-function EntryDialog(props: { picked: Picked | null; onClose: () => void }) {
-  const { picked } = props;
-  return (
-    <Dialog open={picked !== null} onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent className="max-h-svh overflow-y-auto sm:max-w-md">
-        {picked && (
-          <>
-            <DialogHeader>
-              <DialogTitle>{picked.entry.patientName}</DialogTitle>
-              <DialogDescription>
-                {localDateTime(picked.entry.start, picked.entry.timeZone)} con{" "}
-                {picked.entry.practitioner.displayName} · {picked.entry.medicalServiceName}
-              </DialogDescription>
-            </DialogHeader>
-            <EntryAction picked={picked} onClose={props.onClose} />
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }

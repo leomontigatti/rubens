@@ -30,7 +30,7 @@ export const FormProblemsContext = createContext<FieldProblem[]>([]);
 const joinIds = (...ids: (string | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
 
 /** A field's problem, and what its input needs to say so to a screen reader. */
-function useFieldProblem(name: string) {
+export function useFieldProblem(name: string) {
   const problem = useContext(FormProblemsContext).find((one) => one.field === name)?.message;
   return problem
     ? { problem, errorId: `${name}-error`, invalid: true as const }
@@ -43,7 +43,7 @@ function FieldHint(props: { id?: string; children?: string }) {
 }
 
 /** Under the field. No live region: focus moves to the first one, which reads it out. */
-function FieldProblemText(props: { id?: string; children?: string }) {
+export function FieldProblemText(props: { id?: string; children?: string }) {
   return props.id ? (
     <FieldError id={props.id} role={undefined}>
       {props.children}
@@ -53,7 +53,7 @@ function FieldProblemText(props: { id?: string; children?: string }) {
 
 type InputProps = Pick<
   ComponentProps<typeof Input>,
-  "type" | "required" | "autoComplete" | "min" | "max" | "step" | "placeholder"
+  "type" | "required" | "autoComplete" | "min" | "max" | "step" | "placeholder" | "maxLength"
 >;
 
 function TextField(
@@ -92,6 +92,7 @@ function TextField(
 
 function SelectField(props: {
   label: string;
+  hint?: string;
   required?: boolean;
   /** What sits beside the select, such as a colour's swatch. */
   beside?: ReactNode;
@@ -99,6 +100,7 @@ function SelectField(props: {
 }) {
   const field = useFieldContext<string>();
   const { problem, errorId, invalid } = useFieldProblem(field.name);
+  const hintId = props.hint ? `${field.name}-hint` : undefined;
   const select = (
     <NativeSelect
       id={field.name}
@@ -108,7 +110,7 @@ function SelectField(props: {
       onChange={(event) => field.handleChange(event.target.value)}
       onBlur={field.handleBlur}
       aria-invalid={invalid}
-      aria-describedby={errorId}
+      aria-describedby={joinIds(hintId, errorId)}
     >
       {props.children}
     </NativeSelect>
@@ -124,6 +126,7 @@ function SelectField(props: {
       ) : (
         select
       )}
+      <FieldHint id={hintId}>{props.hint}</FieldHint>
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );

@@ -1,193 +1,138 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  bookingReducer,
   bookingRequestOf,
   freeStartsQueryOf,
-  initialBookingDraft,
+  initialBookingValues,
   overbookingRequestOf,
   rescheduleQueryOf,
+  rescheduleRequestOf,
 } from "#/lib/booking-draft.ts";
-import type { BookingDraft, BookingEvent } from "#/lib/booking-draft.ts";
+import type { BookingValues } from "#/lib/booking-draft.ts";
 
 const zone = "America/Argentina/Buenos_Aires";
 // Ids are uuids, as the booking schemas read them.
 const juan = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a01";
 const lucia = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a02";
-const maria = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a04";
+const maria = { id: "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a04", name: "María Fernández" };
 const room3 = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a05";
 const nine = { start: new Date("2099-01-05T12:00:00Z"), roomName: "Consultorio 1", timeZone: zone };
-const ten = {
-  start: new Date("2099-01-05T13:00:00Z"),
-  officeName: "Sede Centro",
-  roomName: "Consultorio 1",
-  timeZone: zone,
-};
 const consulta = { id: "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a03", durationMinutes: 40 };
 
-function run(draft: BookingDraft, ...events: BookingEvent[]) {
-  return events.reduce(bookingReducer, draft);
-}
-
-const fromSlot = initialBookingDraft(nine, [juan]);
-
-describe("the booking draft", () => {
-  it("starts from a clicked free cell with its start and only free practitioner, or the only practitioner", () => {
-    expect(fromSlot).toMatchObject({ practitionerId: juan, start: nine, medicalService: null });
-    expect(initialBookingDraft(null, [juan])).toMatchObject({ practitionerId: juan });
-    expect(initialBookingDraft(null, [juan, lucia])).toMatchObject({ practitionerId: "" });
+describe("a new booking form", () => {
+  it("starts from a clicked free cell with its start, and its only free practitioner", () => {
+    expect(initialBookingValues(nine, [juan], "2099-01-05")).toMatchObject({
+      practitionerId: juan,
+      start: nine,
+      medicalServiceId: "",
+      durationMinutes: "",
+    });
+    expect(initialBookingValues(nine, [juan, lucia], "2099-01-05")).toMatchObject({
+      practitionerId: "",
+      start: nine,
+    });
   });
 
   it("takes the medical service the calendar is narrowed to, with its duration", () => {
-    expect(initialBookingDraft({ ...nine, medicalService: consulta }, [juan])).toMatchObject({
-      practitionerId: juan,
-      medicalService: consulta,
-      durationMinutes: 40,
-      start: nine,
-    });
-  });
-
-  it("asks which of a cell's free practitioners, keeping the cell's start", () => {
-    const fromCell = initialBookingDraft(nine, [juan, lucia]);
-
-    expect(fromCell).toMatchObject({ practitionerId: "", start: nine });
-    expect(run(fromCell, { type: "practitionerChosen", practitionerId: lucia })).toMatchObject({
-      practitionerId: lucia,
-      start: nine,
-    });
-  });
-
-  it("takes the medical service's duration as a default the user can change", () => {
-    const withMedicalService = run(fromSlot, {
-      type: "medicalServiceChosen",
-      medicalService: consulta,
-    });
-    expect(withMedicalService.durationMinutes).toBe(40);
     expect(
-      run(withMedicalService, { type: "durationChanged", durationMinutes: 60 }).durationMinutes,
-    ).toBe(60);
+      initialBookingValues({ ...nine, medicalService: consulta }, [juan], "2099-01-05"),
+    ).toMatchObject({ medicalServiceId: consulta.id, durationMinutes: "40" });
   });
 
-  it("drops the medical service, duration and a picked start when another practitioner is chosen", () => {
-    const changed = run(
-      initialBookingDraft(null, [juan, lucia]),
-      { type: "practitionerChosen", practitionerId: juan },
-      { type: "medicalServiceChosen", medicalService: consulta },
-      { type: "startPicked", start: nine },
-      { type: "practitionerChosen", practitionerId: lucia },
-    );
-
-    expect(changed).toMatchObject({ medicalService: null, durationMinutes: null, start: null });
-  });
-
-  it("drops the picked start and offers the fresh ones when the time was taken", () => {
-    const taken = run(fromSlot, { type: "timeTaken", freshStarts: [ten] });
-    expect(taken).toMatchObject({ start: null, freshStarts: [ten] });
-
-    expect(run(taken, { type: "startPicked", start: ten })).toMatchObject({
-      start: ten,
-      freshStarts: null,
+  it("gives an overbooking the start's local date and time, or the date viewed", () => {
+    expect(initialBookingValues(nine, [juan], "2099-01-12")).toMatchObject({
+      date: "2099-01-05",
+      time: "09:00",
     });
-  });
-
-  it("clears a patient warning once the time or the patient changes, not the note", () => {
-    const warned = run(fromSlot, {
-      type: "warned",
-      warnings: [
-        {
-          kind: "sameDay",
-          start: ten.start,
-          end: ten.start,
-          practitionerName: "Lucía",
-          timeZone: zone,
-        },
-      ],
+    expect(initialBookingValues(null, [juan], "2099-01-12")).toMatchObject({
+      date: "2099-01-12",
+      time: "",
+      start: null,
     });
-
-    expect(run(warned, { type: "noteChanged", receptionNote: "x" }).warnings).not.toBeNull();
-    expect(run(warned, { type: "startPicked", start: ten }).warnings).toBeNull();
-    expect(run(warned, { type: "patientPicked", patientId: "pedro" }).warnings).toBeNull();
   });
 });
 
-describe("what a draft books", () => {
-  it("needs a patient, a medical service, a duration of 1 to 720 minutes and a start", () => {
-    const ready = run(
-      fromSlot,
-      { type: "patientPicked", patientId: maria },
-      { type: "medicalServiceChosen", medicalService: consulta },
-      { type: "noteChanged", receptionNote: "Trae estudios" },
-    );
+const ready: BookingValues = {
+  ...initialBookingValues(nine, [juan], "2099-01-05"),
+  patient: maria,
+  medicalServiceId: consulta.id,
+  durationMinutes: "40",
+  receptionNote: "Trae estudios",
+};
 
-    expect(bookingRequestOf(ready)).toEqual({
-      patientId: maria,
+function refusedPaths(result: { success: boolean; error?: { issues: { path: PropertyKey[] }[] } }) {
+  return result.error?.issues.map((issue) => issue.path.join(".")) ?? [];
+}
+
+describe("what a booking form books", () => {
+  it("books the patient, practitioner, medical service, duration and start", () => {
+    expect(bookingRequestOf(ready).data).toEqual({
+      patientId: maria.id,
       practitionerId: juan,
       medicalServiceId: consulta.id,
       start: nine.start,
       durationMinutes: 40,
       receptionNote: "Trae estudios",
     });
-    expect(
-      bookingRequestOf(run(ready, { type: "durationChanged", durationMinutes: 0 })),
-    ).toBeNull();
-    expect(bookingRequestOf(run(ready, { type: "patientPicked", patientId: null }))).toBeNull();
-    expect(bookingRequestOf(run(ready, { type: "startPicked", start: null }))).toBeNull();
+  });
+
+  it("refuses what is missing, and a duration outside 1 to 720 minutes", () => {
+    const empty = initialBookingValues(null, [], "2099-01-05");
+    expect(refusedPaths(bookingRequestOf(empty))).toEqual([
+      "patientId",
+      "practitionerId",
+      "medicalServiceId",
+      "start",
+      "durationMinutes",
+    ]);
+    expect(refusedPaths(bookingRequestOf({ ...ready, durationMinutes: "721" }))).toEqual([
+      "durationMinutes",
+    ]);
   });
 });
 
-describe("what an overbooking draft books", () => {
-  const ready = run(
-    initialBookingDraft(null, [juan]),
-    { type: "patientPicked", patientId: maria },
-    { type: "medicalServiceChosen", medicalService: consulta },
-  );
+describe("what an overbooking form books", () => {
+  const typed = { ...ready, start: null, date: "2099-01-05", time: "09:10" };
 
   it("books the local date and time in the office's zone, in the schedule's room unless one is picked", () => {
-    expect(
-      overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: "" }, zone),
-    ).toEqual({
-      patientId: maria,
-      practitionerId: juan,
-      medicalServiceId: consulta.id,
+    expect(overbookingRequestOf(typed, zone).data).toMatchObject({
       start: new Date("2099-01-05T12:10:00Z"),
-      durationMinutes: 40,
-      receptionNote: null,
       roomId: null,
     });
-    expect(
-      overbookingRequestOf(ready, { date: "2099-01-05", time: "09:10", roomId: room3 }, zone),
-    ).toMatchObject({ roomId: room3 });
+    expect(overbookingRequestOf({ ...typed, roomId: room3 }, zone).data).toMatchObject({
+      roomId: room3,
+    });
   });
 
   it("needs a date and a time", () => {
-    expect(overbookingRequestOf(ready, { date: "", time: "09:10", roomId: "" }, zone)).toBeNull();
-    expect(
-      overbookingRequestOf(ready, { date: "2099-01-05", time: "", roomId: "" }, zone),
-    ).toBeNull();
+    expect(refusedPaths(overbookingRequestOf({ ...typed, date: "" }, zone))).toEqual(["start"]);
+    expect(refusedPaths(overbookingRequestOf({ ...typed, time: "" }, zone))).toEqual(["start"]);
   });
 });
 
 describe("the free times a new booking asks for", () => {
   it("asks for the week from the date once a practitioner, a medical service and a duration are set", () => {
-    const fresh = initialBookingDraft(null, [juan]);
-    expect(freeStartsQueryOf(fresh, "2099-01-05")).toBeNull();
+    const fresh = initialBookingValues(null, [juan], "2099-01-05");
+    expect(freeStartsQueryOf(fresh)).toBeNull();
 
-    const withMedicalService = run(fresh, {
-      type: "medicalServiceChosen",
-      medicalService: consulta,
-    });
-    expect(freeStartsQueryOf(withMedicalService, "2099-01-05")).toEqual({
+    const withMedicalService = { ...fresh, medicalServiceId: consulta.id, durationMinutes: "40" };
+    expect(freeStartsQueryOf(withMedicalService)).toEqual({
       practitionerId: juan,
       firstDate: "2099-01-05",
       lastDate: "2099-01-11",
       durationMinutes: 40,
     });
-    expect(
-      freeStartsQueryOf(
-        run(withMedicalService, { type: "durationChanged", durationMinutes: 721 }),
-        "2099-01-05",
-      ),
-    ).toBeNull();
+    expect(freeStartsQueryOf({ ...withMedicalService, durationMinutes: "721" })).toBeNull();
+  });
+
+  it("asks nothing while the date is cleared or half typed", () => {
+    const ready = {
+      ...initialBookingValues(null, [juan], ""),
+      medicalServiceId: consulta.id,
+      durationMinutes: "40",
+    };
+    expect(freeStartsQueryOf(ready)).toBeNull();
+    expect(freeStartsQueryOf({ ...ready, freeFrom: "0002-01-0" })).toBeNull();
   });
 });
 
@@ -207,5 +152,39 @@ describe("the reschedule picker's query", () => {
   it("asks nothing while the duration is not a valid one", () => {
     expect(rescheduleQueryOf(moved, "2099-01-05", 0)).toBeNull();
     expect(rescheduleQueryOf(moved, "2099-01-05", Number.NaN)).toBeNull();
+  });
+
+  it("asks nothing while the date is cleared", () => {
+    expect(rescheduleQueryOf(moved, "", 45)).toBeNull();
+  });
+});
+
+describe("what a reschedule form moves", () => {
+  const appointmentId = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a06";
+
+  it("moves the appointment to the start picked, for the duration typed", () => {
+    expect(
+      rescheduleRequestOf(
+        { durationMinutes: "45", freeFrom: "2099-01-05", start: nine },
+        appointmentId,
+      ).data,
+    ).toEqual({
+      appointmentId,
+      start: nine.start,
+      durationMinutes: 45,
+      overbooking: false,
+      roomId: null,
+    });
+  });
+
+  it("refuses a missing start and a duration outside 1 to 720 minutes", () => {
+    expect(
+      refusedPaths(
+        rescheduleRequestOf(
+          { durationMinutes: "", freeFrom: "2099-01-05", start: null },
+          appointmentId,
+        ),
+      ),
+    ).toEqual(["start", "durationMinutes"]);
   });
 });

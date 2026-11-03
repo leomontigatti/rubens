@@ -1,66 +1,54 @@
 import { tz } from "@date-fns/tz";
 import { useQuery } from "@tanstack/react-query";
-import { useRouteContext, useRouter } from "@tanstack/react-router";
+import { useRouteContext } from "@tanstack/react-router";
+import type { NavigateOptions } from "@tanstack/react-router";
+import { useStore } from "@tanstack/react-form";
 import { format } from "date-fns";
-import { useReducer, useState } from "react";
-import type { FormEvent } from "react";
+import { useState } from "react";
 
-import { ErrorAlert } from "#/components/admin-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
+import type { FieldProblem } from "#/components/form-problems.ts";
+import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { receptionNoteMaxLength } from "#/lib/appointments.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "#/components/ui/dialog.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import {
-  bookingReducer,
+  bookingFieldNames,
   bookingRequestOf,
   freeStartsQueryOf,
-  initialBookingDraft,
+  initialBookingValues,
+  overbookingFieldNames,
   overbookingRequestOf,
 } from "#/lib/booking-draft.ts";
 import type {
-  BookingDraft,
-  BookingEvent,
+  BookingStart,
+  BookingValues,
   BookingWarning,
-  OverbookingPlace,
+  OfferedStart,
   PickedStart,
 } from "#/lib/booking-draft.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
 import type { RoomOccupant } from "#/server/appointment-placement.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
-import type { AvailableStart } from "#/server/availability.ts";
-import { ReceptionNoteField } from "#/routes/_app/agenda/-appointment-note.tsx";
-import { FreeStartList, FreeStartsOfWeek } from "#/routes/_app/agenda/-free-starts.tsx";
+import { FreeStartList, FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
 import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 
-// Booking a patient, from either entry: a free cell clicked on the calendar,
-// which fixes the time and the room, and the practitioner unless several are
-// free there, or "Nuevo turno", which picks the practitioner, the medical
-// service and then a free time for that duration. An overbooking takes a
-// typed date and time instead, and a room when it falls outside the
-// practitioner's schedules.
-
-export interface BookingSlot extends PickedStart {
-  /** Who can be booked there: the practitioners free in the cell, or the overbooked one. */
-  practitioners: { id: string; displayName: string }[];
-  /** The medical service the calendar is narrowed to. */
-  medicalService?: { id: string; durationMinutes: number } | null;
-}
+// Booking a patient on a page of its own, from either entry: a free cell
+// clicked on the calendar, which fixes the time and the room, and the
+// practitioner unless several are free there, or "Nuevo turno", which picks
+// the practitioner, the medical service and then a free time for that
+// duration. An overbooking takes a typed date and time instead, and a room
+// when it falls outside the practitioner's schedules.
 
 /** The copy for every refusal booking can return. */
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
   forbidden: "Solo recepción, un administrador o el propio profesional pueden dar turnos.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
-  invalidInput: "Revisá la duración y la nota de recepción.",
+  invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos el paciente, el profesional o la prestación.",
   practitionerInactive: "Ese profesional está inactivo.",
   patientInactive: "Ese paciente está inactivo.",
@@ -73,8 +61,32 @@ const refusalMessages = {
   officeInactive: "La sede de ese consultorio está desactivada.",
 };
 
-/** The refusals that mean someone took the time since the calendar was read. */
-const takenRefusals: readonly string[] = ["timeTaken", "roomFull"];
+type RefusalReason = keyof typeof refusalMessages;
+
+/** The refusals about one field, by the form's name for it; the start's is a booking's. */
+const refusalFields: Partial<Record<RefusalReason, string>> = {
+  patientInactive: "patient",
+  practitionerInactive: "practitionerId",
+  medicalServiceInactive: "medicalServiceId",
+  notFree: "start",
+  timeOff: "start",
+  closed: "start",
+  roomRequired: "roomId",
+  roomInactive: "roomId",
+};
+
+/** What the form's check says of each field it refuses. */
+const fieldMessages = {
+  patientId: "Elegí un paciente.",
+  practitionerId: "Elegí un profesional.",
+  medicalServiceId: "Elegí una prestación.",
+  start: "Elegí un horario libre.",
+  receptionNote: `La nota de recepción puede tener hasta ${receptionNoteMaxLength} caracteres.`,
+  roomId: "Elegí un consultorio.",
+};
+
+/** An overbooking's start is typed, in its date and time. */
+const overbookingMessages = { ...fieldMessages, start: "Ingresá la fecha y la hora." };
 
 /**
  * Why the room has no space: who holds it at that time. None when the
@@ -105,120 +117,117 @@ export interface OverbookingOffice {
   timeZone: string;
 }
 
-export function BookingDialog(props: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** The free cell clicked on the calendar, or the appointment an overbooking goes over. */
-  slot: BookingSlot | null;
-  practitioners: { id: string; displayName: string }[];
-  defaultDate: string;
-  /** Set for an overbooking. */
-  overbooking: OverbookingOffice | null;
-}) {
-  return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-h-svh overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{props.overbooking ? "Sobreturno" : "Nuevo turno"}</DialogTitle>
-          {props.slot?.practitioners.length === 1 && (
-            <DialogDescription>{props.slot.practitioners[0]!.displayName}</DialogDescription>
-          )}
-        </DialogHeader>
-        {props.open && (
-          <BookingForm
-            slot={props.slot}
-            practitioners={props.practitioners}
-            defaultDate={props.defaultDate}
-            overbooking={props.overbooking}
-            onDone={() => props.onOpenChange(false)}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type Dispatch = (event: BookingEvent) => void;
-
 type BookingRefusal =
   | Exclude<Awaited<ReturnType<typeof addAppointment>>, { ok: true }>
   | Exclude<Awaited<ReturnType<typeof addOverbooking>>, { ok: true }>;
 
-/** An overbooking's place to start from: the clicked appointment's time, or the date viewed. */
-function initialPlace(slot: BookingSlot | null, defaultDate: string): OverbookingPlace {
-  if (!slot) {
-    return { date: defaultDate, time: "", roomId: "" };
-  }
-  const [date, time] = format(slot.start, "yyyy-MM-dd HH:mm", { in: tz(slot.timeZone) }).split(" ");
-  return { date: date!, time: time!, roomId: "" };
+/** What the last attempt answered: warnings to confirm past, fresh free times, or a refusal. */
+interface Answer {
+  warnings: BookingWarning[] | null;
+  freshStarts: OfferedStart[] | null;
+  refusal: FieldProblem | null;
 }
 
-/** What the form books: a booking at a free start, or an overbooking at the typed place. */
-function requestOf(draft: BookingDraft, place: OverbookingPlace, office: OverbookingOffice | null) {
-  if (!office) {
-    const booking = bookingRequestOf(draft);
-    return booking && { overbooking: false as const, data: booking };
+const noAnswer: Answer = { warnings: null, freshStarts: null, refusal: null };
+
+/** What a refusal answers. */
+function answerOf(refusal: BookingRefusal, office: OverbookingOffice | null): Answer {
+  if (refusal.reason === "patientWarning") {
+    return { ...noAnswer, warnings: refusal.warnings };
   }
-  const overbooking = overbookingRequestOf(draft, place, office.timeZone);
-  return overbooking && { overbooking: true as const, data: overbooking };
+  if (refusal.reason === "timeTaken") {
+    return {
+      ...noAnswer,
+      freshStarts: refusal.freeStarts,
+      refusal: { field: "start", message: "Ese horario ya se ocupó. Elegí otro horario libre." },
+    };
+  }
+  return { ...noAnswer, refusal: refusalProblem(refusal, office) };
 }
 
-function send(request: NonNullable<ReturnType<typeof requestOf>>, confirmWarnings: boolean) {
+type PlainRefusal = Exclude<BookingRefusal, { reason: "patientWarning" | "timeTaken" }>;
+
+/** A refusal under its field; an overbooking's room is the field a full room is about. */
+function refusalProblem(refusal: PlainRefusal, office: OverbookingOffice | null): FieldProblem {
+  if (refusal.reason === "roomFull") {
+    return roomFullProblem(refusal.occupants, office);
+  }
+  return { field: refusalField(refusal.reason, office), message: refusalMessages[refusal.reason] };
+}
+
+function roomFullProblem(
+  occupants: RoomOccupant[],
+  office: OverbookingOffice | null,
+): FieldProblem {
+  // A booking's refusals hold no zone; its office is the default one.
+  const timeZone = office?.timeZone ?? defaultTimeZone;
+  return { field: office ? "roomId" : "start", message: roomFullMessage(occupants, timeZone) };
+}
+
+/** An overbooking's start is typed in its time. */
+function refusalField(reason: RefusalReason, office: OverbookingOffice | null): string {
+  const field = refusalFields[reason] ?? "";
+  return office && field === "start" ? "time" : field;
+}
+
+/** What a duration's check says: none typed, or not a valid one. */
+export function durationMessage(typed: string): string {
+  return typed.trim() === ""
+    ? "Ingresá la duración."
+    : "La duración tiene que ser un número entero de minutos, entre 1 y 720.";
+}
+
+/** What the form books, or what its check refused, under each field. */
+function requestOf(values: BookingValues, office: OverbookingOffice | null) {
+  const duration = { durationMinutes: durationMessage(values.durationMinutes) };
+  if (office) {
+    const parsed = overbookingRequestOf(values, office.timeZone);
+    const messages = messageIn({ ...overbookingMessages, ...duration });
+    return parsed.success
+      ? { overbooking: true as const, data: parsed.data }
+      : fieldProblems(parsed.error.issues, messages, overbookingFieldNames);
+  }
+  const parsed = bookingRequestOf(values);
+  return parsed.success
+    ? { overbooking: false as const, data: parsed.data }
+    : fieldProblems(
+        parsed.error.issues,
+        messageIn({ ...fieldMessages, ...duration }),
+        bookingFieldNames,
+      );
+}
+
+type BookingRequest = Exclude<ReturnType<typeof requestOf>, FieldProblem[]>;
+
+function send(request: BookingRequest, confirmWarnings: boolean) {
   return request.overbooking
     ? addOverbooking({ data: { ...request.data, confirmWarnings } })
     : addAppointment({ data: { ...request.data, confirmWarnings } });
 }
 
-/** What a refusal does to the draft. */
-function refusalEvent(refusal: BookingRefusal, timeZone: string): BookingEvent {
-  switch (refusal.reason) {
-    case "roomFull":
-      return { type: "failed", error: roomFullMessage(refusal.occupants, timeZone) };
-    case "patientWarning":
-      return { type: "warned", warnings: refusal.warnings };
-    case "timeTaken":
-      return { type: "timeTaken", freshStarts: refusal.freeStarts };
-    default:
-      return { type: "failed", error: refusalMessages[refusal.reason] };
-  }
-}
-
-/**
- * Whom the form books for: the practitioners free in the clicked cell, asking
- * only when there are several, or anyone from "Nuevo turno".
- */
-function practitionerChoices(
-  slot: BookingSlot | null,
-  practitioners: { id: string; displayName: string }[],
-) {
-  if (!slot) {
-    return { choices: practitioners, ask: true };
-  }
-  return { choices: slot.practitioners, ask: slot.practitioners.length > 1 };
-}
-
-function BookingForm(props: {
-  slot: BookingSlot | null;
+export interface BookingPageProps {
+  /** Where `Volver` goes when the page was opened from a link. */
+  back: NavigateOptions;
+  /** The clicked free cell, or the appointment an overbooking goes over. */
+  from: BookingStart | null;
+  /** Whom the form books for; it asks only when there are several. */
   practitioners: { id: string; displayName: string }[];
   defaultDate: string;
+  /** Set for an overbooking. */
   overbooking: OverbookingOffice | null;
-  onDone: () => void;
-}) {
-  const router = useRouter();
-  const { choices, ask } = practitionerChoices(props.slot, props.practitioners);
-  const [draft, dispatch] = useReducer(
-    bookingReducer,
-    initialBookingDraft(
-      props.slot,
-      choices.map((practitioner) => practitioner.id),
-    ),
-  );
-  const [pending, setPending] = useState(false);
-  const [place, setPlace] = useState(() => initialPlace(props.slot, props.defaultDate));
-  const request = requestOf(draft, place, props.overbooking);
+}
 
-  async function book(confirmWarnings: boolean) {
-    if (!request) {
+function useBookingForm(props: BookingPageProps) {
+  const page = useFormPage(props.back);
+  const [answer, setAnswer] = useState<Answer>(noAnswer);
+  const [pending, setPending] = useState(false);
+
+  async function book(values: BookingValues, confirmWarnings: boolean) {
+    page.clearProblems();
+    setAnswer(noAnswer);
+    const request = requestOf(values, props.overbooking);
+    if (Array.isArray(request)) {
+      page.showProblems(request);
       return;
     }
     setPending(true);
@@ -229,216 +238,148 @@ function BookingForm(props: {
       setPending(false);
     }
     if (result.ok) {
-      await router.invalidate();
-      props.onDone();
+      page.leave();
       return;
     }
-    await settle(result);
-  }
-
-  async function settle(refusal: BookingRefusal) {
-    // An overbooking's times are read in its office's zone; a booking's refusals hold none.
-    dispatch(refusalEvent(refusal, props.overbooking?.timeZone ?? defaultTimeZone));
-    if (takenRefusals.includes(refusal.reason)) {
-      // The calendar behind the dialog shows the time taken too.
-      await router.invalidate();
+    if (result.reason === "timeTaken") {
+      form.setFieldValue("start", null);
     }
+    setAnswer(answerOf(result, props.overbooking));
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void book(false);
-  }
+  const form = useAppForm({
+    defaultValues: initialBookingValues(
+      props.from,
+      props.practitioners.map((practitioner) => practitioner.id),
+      props.defaultDate,
+    ),
+    // A warning confirmed after a change would book what it never warned about,
+    // and the times left were for what was asked then; picking one of them keeps
+    // the list, the only picker on a page opened from a cell. A refusal stays
+    // until the next submit.
+    listeners: {
+      onChange: ({ fieldApi }) =>
+        setAnswer((last) => ({
+          ...noAnswer,
+          refusal: last.refusal,
+          freshStarts: fieldApi.name === "start" ? last.freshStarts : null,
+        })),
+    },
+    onSubmit: ({ value }) => book(value, false),
+  });
+
+  return {
+    page,
+    form,
+    answer,
+    refusals: answer.refusal ? [answer.refusal] : undefined,
+    clearAnswer: () => setAnswer(noAnswer),
+    pending,
+    book,
+  };
+}
+
+type BookingForm = ReturnType<typeof useBookingForm>["form"];
+
+export function BookingPage(props: BookingPageProps) {
+  const { page, form, answer, refusals, clearAnswer, pending, book } = useBookingForm(props);
+  // Asks among several, or none to pick from; one is named under the title.
+  const ask = props.practitioners.length !== 1;
 
   return (
-    // The picker sits outside the form: its quick registration is a form of its own.
-    <div className="flex flex-col gap-4">
-      <PatientPicker onChange={(patientId) => dispatch({ type: "patientPicked", patientId })} />
-      <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
-        {ask && (
-          <PractitionerField
-            practitioners={choices}
-            value={draft.practitionerId}
-            dispatch={dispatch}
+    <FormPage
+      page={page}
+      form={form}
+      title={props.overbooking ? "Sobreturno" : "Nuevo turno"}
+      description={ask ? undefined : props.practitioners[0]!.displayName}
+      submitLabel="Dar turno"
+      pending={pending}
+      refusals={refusals}
+      onClear={clearAnswer}
+      lead={
+        <form.Field name="patient">
+          {(field) => <PatientPicker value={field.state.value} onChange={field.handleChange} />}
+        </form.Field>
+      }
+    >
+      <WhoAndWhen form={form} props={props} ask={ask} freshStarts={answer.freshStarts} />
+      <form.AppField name="receptionNote">
+        {(field) => (
+          <field.TextField
+            label="Nota de recepción (opcional)"
+            hint="La información clínica va en la historia clínica, no acá."
+            placeholder="Por ejemplo: trae radiografías"
+            maxLength={receptionNoteMaxLength}
           />
         )}
-        <TypeAndDuration draft={draft} dispatch={dispatch} />
-        {props.overbooking ? (
-          <OverbookingFields
-            place={place}
-            rooms={props.overbooking.rooms}
-            onChange={(changed) => {
-              setPlace(changed);
-              // A new place drops what the last attempt answered.
-              dispatch({ type: "startPicked", start: draft.start });
-            }}
-          />
-        ) : (
-          <FreeStart
-            slot={props.slot}
-            draft={draft}
-            defaultDate={props.defaultDate}
-            dispatch={dispatch}
-          />
-        )}
-        <ReceptionNoteField
-          id="booking-note"
-          value={draft.receptionNote}
-          onChange={(receptionNote) => dispatch({ type: "noteChanged", receptionNote })}
-        />
-        <PatientWarnings
-          warnings={draft.warnings}
-          pending={pending}
-          onConfirm={() => void book(true)}
-          confirmLabel="Dar turno igual"
-        />
-        <ErrorAlert message={draft.error} />
-        <div className="flex gap-2">
-          <Button type="submit" disabled={pending || !request}>
-            Dar turno
-          </Button>
-          <Button type="button" variant="ghost" onClick={props.onDone}>
-            Cancelar
-          </Button>
-        </div>
-      </form>
-    </div>
+      </form.AppField>
+      <PatientWarnings
+        warnings={answer.warnings}
+        pending={pending}
+        onConfirm={() => void book(form.state.values, true)}
+        confirmLabel="Dar turno igual"
+      />
+    </FormPage>
   );
 }
 
-/** The free start of a booking: picked from the free times, or the one clicked. */
-function FreeStart(props: {
-  slot: BookingSlot | null;
-  draft: BookingDraft;
-  defaultDate: string;
-  dispatch: Dispatch;
+/** The practitioner when there is a choice, the medical service and duration, and the start. */
+function WhoAndWhen(params: {
+  form: BookingForm;
+  props: BookingPageProps;
+  ask: boolean;
+  freshStarts: OfferedStart[] | null;
 }) {
+  const { form, props } = params;
+  const fixed = props.from !== null;
   return (
     <>
-      {!props.slot && (
-        <FreeStartPicker
-          draft={props.draft}
-          defaultDate={props.defaultDate}
-          dispatch={props.dispatch}
-        />
+      {params.ask && (
+        <PractitionerField form={form} practitioners={props.practitioners} fixed={fixed} />
       )}
-      <TimeTaken starts={props.draft.freshStarts} dispatch={props.dispatch} />
-      <PickedSummary start={props.draft.start} />
+      <TypeAndDuration form={form} />
+      {props.overbooking ? (
+        <OverbookingFields form={form} rooms={props.overbooking.rooms} />
+      ) : (
+        <StartField form={form} fixed={fixed} freshStarts={params.freshStarts} />
+      )}
     </>
   );
 }
 
-/** An overbooking's local date and time, and its room when outside the schedules. */
-function OverbookingFields(props: {
-  place: OverbookingPlace;
-  rooms: { id: string; name: string }[];
-  onChange: (place: OverbookingPlace) => void;
+/** Whom to book for, among several; a new one drops the medical service, and a start not fixed. */
+function PractitionerField(props: {
+  form: BookingForm;
+  practitioners: { id: string; displayName: string }[];
+  fixed: boolean;
 }) {
-  const { place, onChange } = props;
+  const { form } = props;
   return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="overbooking-date">Fecha</FieldLabel>
-          <Input
-            id="overbooking-date"
-            type="date"
-            value={place.date}
-            onChange={(event) => onChange({ ...place, date: event.target.value })}
-            required
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="overbooking-time">Hora</FieldLabel>
-          <Input
-            id="overbooking-time"
-            type="time"
-            value={place.time}
-            onChange={(event) => onChange({ ...place, time: event.target.value })}
-            required
-          />
-        </Field>
-      </div>
-      <Field>
-        <FieldLabel htmlFor="overbooking-room">Consultorio</FieldLabel>
-        <NativeSelect
-          id="overbooking-room"
-          value={place.roomId}
-          onChange={(event) => onChange({ ...place, roomId: event.target.value })}
-          aria-describedby="overbooking-room-hint"
-        >
-          <NativeSelectOption value="">El del horario del profesional</NativeSelectOption>
-          {props.rooms.map((room) => (
-            <NativeSelectOption key={room.id} value={room.id}>
-              {room.name}
+    <form.AppField
+      name="practitionerId"
+      listeners={{
+        onChange: () => {
+          form.setFieldValue("medicalServiceId", "");
+          form.setFieldValue("durationMinutes", "");
+          if (!props.fixed) {
+            form.setFieldValue("start", null);
+          }
+        },
+      }}
+    >
+      {(field) => (
+        <field.SelectField label="Profesional" required>
+          <NativeSelectOption value="" disabled>
+            Elegí un profesional
+          </NativeSelectOption>
+          {props.practitioners.map((practitioner) => (
+            <NativeSelectOption key={practitioner.id} value={practitioner.id}>
+              {practitioner.displayName}
             </NativeSelectOption>
           ))}
-        </NativeSelect>
-        <FieldDescription id="overbooking-room-hint">
-          Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora.
-        </FieldDescription>
-      </Field>
-    </>
-  );
-}
-
-function PractitionerField(props: {
-  practitioners: { id: string; displayName: string }[];
-  value: string;
-  dispatch: Dispatch;
-}) {
-  return (
-    <Field>
-      <FieldLabel htmlFor="booking-practitioner">Profesional</FieldLabel>
-      <NativeSelect
-        id="booking-practitioner"
-        value={props.value}
-        onChange={(event) =>
-          props.dispatch({ type: "practitionerChosen", practitionerId: event.target.value })
-        }
-        required
-      >
-        <NativeSelectOption value="" disabled>
-          Elegí un profesional
-        </NativeSelectOption>
-        {props.practitioners.map((practitioner) => (
-          <NativeSelectOption key={practitioner.id} value={practitioner.id}>
-            {practitioner.displayName}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </Field>
-  );
-}
-
-/** The practitioner's active medical services, and the duration, which starts at the service's. */
-function TypeAndDuration(props: { draft: BookingDraft; dispatch: Dispatch }) {
-  if (!props.draft.practitionerId) {
-    return null;
-  }
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <TypeField
-        practitionerId={props.draft.practitionerId}
-        value={props.draft.medicalService}
-        dispatch={props.dispatch}
-      />
-      <Field>
-        <FieldLabel htmlFor="booking-duration">Duración (minutos)</FieldLabel>
-        <Input
-          id="booking-duration"
-          type="number"
-          min={1}
-          max={720}
-          value={props.draft.durationMinutes ?? ""}
-          disabled={!props.draft.medicalService}
-          onChange={(event) =>
-            props.dispatch({ type: "durationChanged", durationMinutes: Number(event.target.value) })
-          }
-          required
-        />
-      </Field>
-    </div>
+        </field.SelectField>
+      )}
+    </form.AppField>
   );
 }
 
@@ -447,76 +388,125 @@ function servicePlaceholder(services: readonly unknown[] | undefined): string {
   return services?.length === 0 ? "Este profesional no tiene prestaciones" : "Elegí una prestación";
 }
 
-function TypeField(props: {
-  practitionerId: string;
-  value: { id: string } | null;
-  dispatch: Dispatch;
-}) {
+/**
+ * The practitioner's active medical services, and the duration, which starts
+ * at the service's, once a practitioner is chosen.
+ */
+function TypeAndDuration({ form }: { form: BookingForm }) {
   const { viewer } = useRouteContext({ from: "/_app" });
+  const practitionerId = useStore(form.store, (state) => state.values.practitionerId);
   const { data } = useQuery({
-    queryKey: ["medicalServices", viewer.organizationId, viewer.userId, props.practitionerId],
-    queryFn: () =>
-      getMedicalServices({
-        data: { practitionerId: props.practitionerId, includeInactive: false },
-      }),
+    queryKey: ["medicalServices", viewer.organizationId, viewer.userId, practitionerId],
+    queryFn: () => getMedicalServices({ data: { practitionerId, includeInactive: false } }),
     select: (result) => (result.ok ? result.medicalServices : []),
+    enabled: practitionerId !== "",
   });
-  const options = data ?? [];
-
-  function choose(id: string) {
-    props.dispatch({
-      type: "medicalServiceChosen",
-      medicalService: options.find((option) => option.id === id),
-    });
+  if (!practitionerId) {
+    return null;
   }
-
+  const options = data ?? [];
   return (
-    <Field>
-      <FieldLabel htmlFor="booking-medical-service">Prestación</FieldLabel>
-      <NativeSelect
-        id="booking-medical-service"
-        value={props.value?.id ?? ""}
-        onChange={(event) => choose(event.target.value)}
-        required
+    <div className="grid gap-4 sm:grid-cols-2">
+      <form.AppField
+        name="medicalServiceId"
+        listeners={{
+          onChange: ({ value }) => {
+            const chosen = options.find((option) => option.id === value);
+            form.setFieldValue("durationMinutes", chosen ? String(chosen.durationMinutes) : "");
+          },
+        }}
       >
-        <NativeSelectOption value="" disabled>
-          {servicePlaceholder(data)}
-        </NativeSelectOption>
-        {options.map((option) => (
-          <NativeSelectOption key={option.id} value={option.id}>
-            {option.name} ({option.durationMinutes} min)
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </Field>
+        {(field) => (
+          <field.SelectField label="Prestación" required>
+            <NativeSelectOption value="" disabled>
+              {servicePlaceholder(data)}
+            </NativeSelectOption>
+            {options.map((option) => (
+              <NativeSelectOption key={option.id} value={option.id}>
+                {option.name} ({option.durationMinutes} min)
+              </NativeSelectOption>
+            ))}
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.AppField name="durationMinutes">
+        {(field) => (
+          <field.TextField label="Duración (minutos)" type="number" min={1} max={720} required />
+        )}
+      </form.AppField>
+    </div>
   );
 }
 
 /**
- * "Nuevo turno"'s free starts for the practitioner and duration, a week from a
- * date, once the medical service is chosen.
+ * A booking's start: the one clicked, or picked from the practitioner's free
+ * times for the duration, a week from a date.
  */
-function FreeStartPicker(props: { draft: BookingDraft; defaultDate: string; dispatch: Dispatch }) {
-  const [date, setDate] = useState(props.defaultDate);
-  const query = freeStartsQueryOf(props.draft, date);
-  if (!query) {
-    return null;
-  }
+function StartField(props: {
+  form: BookingForm;
+  fixed: boolean;
+  /** The free times left that day, after another booking took the one picked. */
+  freshStarts: OfferedStart[] | null;
+}) {
+  const { form, fixed } = props;
+  const query = useStore(form.store, (state) => freeStartsQueryOf(state.values));
   return (
-    <Field>
-      <FieldLabel htmlFor="booking-date">Horarios libres desde</FieldLabel>
-      <Input
-        id="booking-date"
-        type="date"
-        value={date}
-        onChange={(event) => event.target.value && setDate(event.target.value)}
-      />
-      <FreeStartsOfWeek
-        query={query}
-        picked={props.draft.start}
-        onPick={(start) => props.dispatch({ type: "startPicked", start })}
-      />
-    </Field>
+    <form.Field name="start">
+      {(field) => (
+        <StartGroup>
+          {!fixed && (
+            <form.AppField name="freeFrom">
+              {(from) => <from.TextField label="Horarios libres desde" type="date" inline />}
+            </form.AppField>
+          )}
+          {!fixed && query && (
+            <FreeStartsOfWeek
+              query={query}
+              picked={field.state.value}
+              onPick={field.handleChange}
+            />
+          )}
+          <FreshStarts
+            starts={props.freshStarts}
+            picked={field.state.value}
+            onPick={field.handleChange}
+          />
+          <PickedSummary start={field.state.value} />
+        </StartGroup>
+      )}
+    </form.Field>
+  );
+}
+
+/** An overbooking's local date and time, and its room when outside the schedules. */
+function OverbookingFields(props: { form: BookingForm; rooms: { id: string; name: string }[] }) {
+  const { form } = props;
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <form.AppField name="date">
+          {(field) => <field.TextField label="Fecha" type="date" required />}
+        </form.AppField>
+        <form.AppField name="time">
+          {(field) => <field.TextField label="Hora" type="time" required />}
+        </form.AppField>
+      </div>
+      <form.AppField name="roomId">
+        {(field) => (
+          <field.SelectField
+            label="Consultorio"
+            hint="Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora."
+          >
+            <NativeSelectOption value="">El del horario del profesional</NativeSelectOption>
+            {props.rooms.map((room) => (
+              <NativeSelectOption key={room.id} value={room.id}>
+                {room.name}
+              </NativeSelectOption>
+            ))}
+          </field.SelectField>
+        )}
+      </form.AppField>
+    </>
   );
 }
 
@@ -533,29 +523,23 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
   );
 }
 
-/** Another booking took the time a moment before: fresh free times to pick from. */
-function TimeTaken(props: { starts: AvailableStart[] | null; dispatch: Dispatch }) {
+/** The free times left that day, once another booking took the one picked. */
+function FreshStarts(props: {
+  starts: OfferedStart[] | null;
+  picked: PickedStart | null;
+  onPick: (start: PickedStart) => void;
+}) {
   if (!props.starts) {
     return null;
   }
+  if (props.starts.length === 0) {
+    return <p className="text-muted-foreground text-sm">No quedan horarios libres ese día.</p>;
+  }
   return (
-    <Alert variant="destructive">
-      <AlertTitle>Ese horario ya se ocupó</AlertTitle>
-      <AlertDescription>
-        <div className="flex flex-col gap-2">
-          <p>Elegí otro horario libre:</p>
-          {props.starts.length === 0 ? (
-            <p>No quedan horarios libres ese día.</p>
-          ) : (
-            <FreeStartList
-              starts={props.starts}
-              picked={null}
-              onPick={(start) => props.dispatch({ type: "startPicked", start })}
-            />
-          )}
-        </div>
-      </AlertDescription>
-    </Alert>
+    <div className="flex flex-col gap-2">
+      <p className="text-sm">Horarios libres que quedan ese día:</p>
+      <FreeStartList starts={props.starts} picked={props.picked} onPick={props.onPick} />
+    </div>
   );
 }
 

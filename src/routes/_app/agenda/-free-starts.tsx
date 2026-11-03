@@ -1,7 +1,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 
+import type { ReactNode } from "react";
+
 import { ErrorAlert } from "#/components/admin-form.tsx";
+import { FieldProblemText, useFieldProblem } from "#/components/app-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { freeStartsByDay } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
@@ -63,6 +66,28 @@ export function FreeStartList(props: {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * A form's `start`: what picks it, and its problem. Focus comes here when it
+ * is refused, as to a field.
+ */
+export function StartGroup({ children }: { children: ReactNode }) {
+  const { problem, errorId, invalid } = useFieldProblem("start");
+  return (
+    <div
+      id="start"
+      role="group"
+      aria-label="Horario"
+      tabIndex={-1}
+      aria-invalid={invalid}
+      aria-describedby={errorId}
+      className="flex flex-col gap-3 outline-none"
+    >
+      {children}
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </div>
   );
 }
