@@ -33,6 +33,9 @@ export function useFormPage(back: NavigateOptions) {
   const [problemsShown, setProblemsShown] = useState(0);
   const released = useRef(false);
   const mounted = useRef(false);
+  // The form's own address: once the router's location differs, the user is on
+  // the way somewhere else, though the form stays mounted until that page loads.
+  const home = useRef(router.state.location.pathname);
   const blocker = useBlocker({
     shouldBlockFn: () => dirty && !released.current,
     enableBeforeUnload: () => dirty && !isSessionChanging(),
@@ -54,6 +57,9 @@ export function useFormPage(back: NavigateOptions) {
     }
   }
 
+  /** Whether the user left the form, or is on the way to another page. */
+  const userLeft = () => !mounted.current || router.state.location.pathname !== home.current;
+
   /** Where going back leads: the page before this one, or `back` when there is none. */
   const previous = () => (canGoBack ? null : back);
 
@@ -68,11 +74,12 @@ export function useFormPage(back: NavigateOptions) {
 
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
-   * A save that ends after the user left moves nobody, and refreshes where they are.
+   * A save that ends after the user left, or while they are leaving, moves
+   * nobody, and refreshes where they are going.
    * It leaves once: a save and a delete that both succeed go back one page.
    */
   function leave(to?: NavigateOptions) {
-    if (!mounted.current) {
+    if (userLeft()) {
       void router.invalidate();
       return;
     }
