@@ -59,7 +59,9 @@ T3 Code, and the Claude Code and Codex sessions it starts, inherit PATH from the
 session. That session reads `~/.profile`, not `~/.bashrc`, so a tool directory added only in
 `~/.bashrc` is on PATH in a terminal and missing in an agent's shell. This machine needs fnm's
 default Node directory (`node` and `pnpm`) and pnpm's global bin directory (`playwright-cli`)
-there, both in `~/.profile`. A change takes effect at the next login.
+there, both in `~/.profile`. `gitleaks` needs no entry: `/usr/local/bin`, where
+[ci.md](../operations/ci.md#installing-gitleaks-locally) installs it, and `~/.local/bin`, which
+the default `~/.profile` adds, are both on that PATH. A change takes effect at the next login.
 
 When the `SessionStart` warning fires, the fix is that profile line, made by the user. A session
 does not prefix its commands with `export PATH=…`: that hides the cause from the next session.
