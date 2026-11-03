@@ -1,3 +1,4 @@
+import { CircleDotIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // What `FilterBar` shows: which groups are applied, which can be added, and how
@@ -54,3 +55,27 @@ export function optionSections(options: FilterOption[]) {
   }
   return [...sections].map(([name, listed]) => ({ name, options: listed }));
 }
+
+/**
+ * The `Estado` filter of a list that hides inactive records until asked: its
+ * active ones, or all of them. `labels` agree with the records' gender.
+ */
+export function statusFilter(
+  showsAll: boolean | undefined,
+  labels: { active: string; all: string },
+): FilterGroup {
+  return {
+    id: "estado",
+    label: "Estado",
+    icon: CircleDotIcon,
+    required: true,
+    value: showsAll ? "todos" : "activos",
+    options: [
+      { value: "activos", label: labels.active },
+      { value: "todos", label: labels.all },
+    ],
+  };
+}
+
+/** The search value a status filter's pick puts in the address: set only to show all. */
+export const showsAllPick = (value: string | null) => (value === "todos" ? true : undefined);

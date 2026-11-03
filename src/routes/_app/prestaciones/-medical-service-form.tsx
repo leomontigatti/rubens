@@ -2,6 +2,7 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { medicalServiceInputSchema } from "#/lib/medical-services.ts";
 import type { MedicalServiceFields } from "#/lib/medical-services.ts";
 
@@ -24,9 +25,11 @@ export function MedicalServiceForm(props: {
   description?: string;
   initial: MedicalServiceFields;
   submitLabel: string;
+  /** On an edit: the record's status and actions. */
+  record?: RecordHeader;
   onSubmit: (fields: MedicalServiceFields) => Promise<ActionResult>;
 }) {
-  const { initial, practitionerId } = props;
+  const { initial, practitionerId, onSubmit, ...shown } = props;
   const page = useFormPage({ to: "/prestaciones/$practitionerId", params: { practitionerId } });
   const action = useFormAction(refusalMessages);
 
@@ -41,21 +44,14 @@ export function MedicalServiceForm(props: {
         page.showProblems(fieldProblems(fields.error.issues, messageIn(fieldMessages)));
         return;
       }
-      if (await action.save(() => props.onSubmit(fields.data))) {
+      if (await action.save(() => onSubmit(fields.data))) {
         page.leave();
       }
     },
   });
 
   return (
-    <ActionFormPage
-      page={page}
-      form={form}
-      title={props.title}
-      description={props.description}
-      submitLabel={props.submitLabel}
-      action={action}
-    >
+    <ActionFormPage page={page} form={form} action={action} {...shown}>
       <form.AppField name="name">
         {(field) => <field.TextField label="Nombre" required />}
       </form.AppField>

@@ -3,6 +3,7 @@ import type * as z from "zod";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { roomUpdateSchema } from "#/lib/offices.ts";
 
 import { useAction } from "#/routes/_app/sedes/-shared.tsx";
@@ -23,9 +24,11 @@ export function RoomForm(props: {
   description?: string;
   initial: RoomFields;
   submitLabel: string;
+  /** On an edit: the record's status and actions. */
+  record?: RecordHeader;
   onSubmit: (fields: RoomFields) => Promise<ActionResult>;
 }) {
-  const { initial, officeId } = props;
+  const { initial, officeId, onSubmit, ...shown } = props;
   const page = useFormPage({ to: "/sedes/$officeId", params: { officeId } });
   const action = useAction();
 
@@ -37,21 +40,14 @@ export function RoomForm(props: {
         page.showProblems(fieldProblems(fields.error.issues, messageIn(fieldMessages)));
         return;
       }
-      if (await action.save(() => props.onSubmit(fields.data))) {
+      if (await action.save(() => onSubmit(fields.data))) {
         page.leave();
       }
     },
   });
 
   return (
-    <ActionFormPage
-      page={page}
-      form={form}
-      title={props.title}
-      description={props.description}
-      submitLabel={props.submitLabel}
-      action={action}
-    >
+    <ActionFormPage page={page} form={form} action={action} {...shown}>
       <form.AppField name="name">
         {(field) => <field.TextField label="Nombre" required />}
       </form.AppField>

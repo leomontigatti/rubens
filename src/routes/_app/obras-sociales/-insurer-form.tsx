@@ -2,6 +2,7 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { insurerInputSchema, insurerKindLabels, insurerKinds } from "#/lib/coverages.ts";
 import type { InsurerInput } from "#/lib/coverages.ts";
@@ -31,9 +32,11 @@ export function InsurerForm(props: {
   description?: string;
   initial: InsurerInput;
   submitLabel: string;
+  /** On an edit: the record's status and actions. */
+  record?: RecordHeader;
   onSubmit: (input: InsurerInput) => Promise<ActionResult>;
 }) {
-  const { initial } = props;
+  const { initial, onSubmit, ...shown } = props;
   const page = useFormPage({ to: "/obras-sociales" });
   const action = useAction();
 
@@ -45,21 +48,14 @@ export function InsurerForm(props: {
         page.showProblems(fieldProblems(input.error.issues, messageIn(fieldMessages)));
         return;
       }
-      if (await action.save(() => props.onSubmit(input.data))) {
+      if (await action.save(() => onSubmit(input.data))) {
         page.leave();
       }
     },
   });
 
   return (
-    <ActionFormPage
-      page={page}
-      form={form}
-      title={props.title}
-      description={props.description}
-      submitLabel={props.submitLabel}
-      action={action}
-    >
+    <ActionFormPage page={page} form={form} action={action} {...shown}>
       <form.AppField name="name">
         {(field) => <field.TextField label="Nombre" required />}
       </form.AppField>

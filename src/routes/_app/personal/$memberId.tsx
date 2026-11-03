@@ -1,7 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { ErrorAlert } from "#/components/admin-form.tsx";
-import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import { ActiveToggle, ErrorAlert } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
@@ -67,36 +66,22 @@ function MemberHeading({ member }: { member: StaffMember }) {
             >
               Editar
             </Button>
-            <ActiveAction member={member} pending={toggle.pending} onChange={changeActive} />
+            <ActiveToggle
+              key={member.memberId}
+              active={member.active}
+              pending={toggle.pending}
+              onChange={(active) => void changeActive(active)}
+              deactivation={{
+                question: `¿Desactivar a ${member.name}?`,
+                countUpcoming: () =>
+                  getMemberUpcomingCount({ data: { memberId: member.memberId } }),
+              }}
+            />
           </>
         }
       />
       <ErrorAlert message={toggle.error} />
     </div>
-  );
-}
-
-function ActiveAction(props: {
-  member: StaffMember;
-  pending: boolean;
-  onChange: (active: boolean) => unknown;
-}) {
-  const { member, pending } = props;
-  if (member.active) {
-    return (
-      <DeactivateButton
-        key={member.memberId}
-        question={`¿Desactivar a ${member.name}?`}
-        pending={pending}
-        countUpcoming={() => getMemberUpcomingCount({ data: { memberId: member.memberId } })}
-        onDeactivate={() => void props.onChange(false)}
-      />
-    );
-  }
-  return (
-    <Button variant="outline" disabled={pending} onClick={() => void props.onChange(true)}>
-      Reactivar
-    </Button>
   );
 }
 

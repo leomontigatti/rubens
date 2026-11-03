@@ -8,8 +8,11 @@ import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { activeRecord } from "#/components/admin-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { EntryForm } from "#/components/range-entry.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -107,7 +110,7 @@ function PatternFilters() {
   );
 }
 
-function PatternFormPage() {
+function PatternFormPage(props: { title: string; record?: RecordHeader }) {
   const page = useFormPage({ to: "/dev/patrones" });
   const form = useAppForm({
     defaultValues: { service: "" },
@@ -117,8 +120,9 @@ function PatternFormPage() {
     <FormPage
       page={page}
       form={form}
-      title="Nueva prestación"
-      submitLabel="Crear"
+      title={props.title}
+      submitLabel={props.record ? "Guardar" : "Crear"}
+      record={props.record}
       pending={false}
       onClear={() => undefined}
     >
@@ -127,12 +131,51 @@ function PatternFormPage() {
   );
 }
 
+/** An edit page that is its record's only page: its status and toggle beside the title. */
+function PatternRecordFormPage() {
+  const [active, setActive] = useState(true);
+  return (
+    <PatternFormPage
+      title="Editar prestación"
+      record={activeRecord({
+        active,
+        inactiveLabel: "Inactiva",
+        toggle: { pending: false, error: null },
+        onChange: setActive,
+      })}
+    />
+  );
+}
+
+/** A delete beside the title: it asks first; here it is refused, so the page stays. */
+function PatternDeletionFormPage() {
+  return (
+    <EntryForm
+      back={{ to: "/dev/patrones" }}
+      title="Editar cierre"
+      initial={{ kind: "days", firstDate: "2026-12-24", lastDate: "2026-12-25" }}
+      submitLabel="Guardar"
+      messages={{ example: "Es un ejemplo: no se elimina nada." }}
+      deletion={{
+        question: "¿Eliminar este cierre?",
+        notice: "El cierre se borra y no se puede recuperar.",
+        onDelete: () => Promise.resolve({ ok: false, reason: "example" as const }),
+      }}
+      onSubmit={() => Promise.resolve({ ok: false, reason: "example" as const })}
+    />
+  );
+}
+
 function Patterns() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Patrones" description="Cómo se ve cada patrón de la guía de estilo." />
       <Pattern title="Página de formulario">
-        <PatternFormPage />
+        <PatternFormPage title="Nueva prestación" />
+      </Pattern>
+      <Pattern title="Edición de un registro sin página propia">
+        <PatternRecordFormPage />
+        <PatternDeletionFormPage />
       </Pattern>
       <Pattern title="Sección de un registro">
         <RecordSection

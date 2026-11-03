@@ -5,6 +5,8 @@ import {
   appliedGroups,
   matchingOptions,
   optionSections,
+  showsAllPick,
+  statusFilter,
 } from "#/components/filter-groups.ts";
 import type { FilterGroup } from "#/components/filter-groups.ts";
 
@@ -68,5 +70,18 @@ describe("filter groups", () => {
     const options = [{ value: "1", label: "Uno" }];
 
     expect(optionSections(options)).toEqual([{ name: undefined, options }]);
+  });
+
+  it("show a list's active records until all are asked for", () => {
+    const labels = { active: "Activas", all: "Todas" };
+
+    expect(appliedGroups([statusFilter(undefined, labels)])[0]?.selected.label).toBe("Activas");
+    expect(appliedGroups([statusFilter(true, labels)])[0]?.selected.label).toBe("Todas");
+  });
+
+  it("put only a pick of all records in the address", () => {
+    expect(showsAllPick("todos")).toBe(true);
+    expect(showsAllPick("activos")).toBeUndefined();
+    expect(showsAllPick(null)).toBeUndefined();
   });
 });

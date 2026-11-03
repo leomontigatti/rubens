@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm, readRangeEntry } from "#/components/range-entry.tsx";
 import { timeOffUpdateSchema } from "#/lib/time-ranges.ts";
-import { editTimeOff, getTimeOff } from "#/server/time-off.functions.ts";
+import { editTimeOff, getTimeOff, removeTimeOff } from "#/server/time-off.functions.ts";
 
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
 
@@ -34,6 +34,11 @@ function EditTimeOff() {
       initial={item.entry}
       submitLabel="Guardar"
       messages={refusalMessages}
+      deletion={{
+        question: "¿Eliminar esta licencia?",
+        notice: "La licencia se borra y no se puede recuperar.",
+        onDelete: () => removeTimeOff({ data: { timeOffId } }),
+      }}
       onSubmit={(values) => {
         const input = timeOffUpdateSchema.safeParse({ timeOffId, entry: readRangeEntry(values) });
         return input.success ? editTimeOff({ data: input.data }) : input.error;

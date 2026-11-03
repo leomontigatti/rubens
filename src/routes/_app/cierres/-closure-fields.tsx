@@ -10,7 +10,11 @@ export const refusalMessages = {
   notFound: "No encontramos esa sede o ese cierre.",
 };
 
-export const wholeOrganization = "Toda la organización";
+const wholeOrganization = "Toda la organización";
+
+/** What a closure closes: its office, or the whole organization. */
+export const closurePlace = (closure: { officeName: string | null }) =>
+  closure.officeName ?? wholeOrganization;
 
 /** The office the form holds: empty for the whole organization. */
 export const readOfficeId = (owner: string): string | null => (owner === "" ? null : owner);

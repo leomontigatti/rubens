@@ -54,6 +54,9 @@ export function useFormPage(back: NavigateOptions) {
     }
   }
 
+  /** Where going back leads: the page before this one, or `back` when there is none. */
+  const previous = () => (canGoBack ? null : back);
+
   /** Replaces this page with `target`, or returns to the page before it. */
   function exit(target: NavigateOptions | null) {
     if (target) {
@@ -66,15 +69,19 @@ export function useFormPage(back: NavigateOptions) {
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
    * A save that ends after the user left moves nobody, and refreshes where they are.
+   * It leaves once: a save and a delete that both succeed go back one page.
    */
   function leave(to?: NavigateOptions) {
     if (!mounted.current) {
       void router.invalidate();
       return;
     }
+    if (released.current) {
+      return;
+    }
     released.current = true;
     setLeaving(true);
-    exit(to ?? (canGoBack ? null : back));
+    exit(to ?? previous());
   }
 
   return {
@@ -111,6 +118,18 @@ export function useFormPage(back: NavigateOptions) {
 }
 
 type FormPageControl = ReturnType<typeof useFormPage>;
+
+/**
+ * What an edit page shows of its record beside its title, when the edit page
+ * is the record's only page: its status, its actions (deactivate, delete) and
+ * their refusal.
+ */
+export interface RecordHeader {
+  status?: ReactNode;
+  /** The actions, disabled while `busy`: the form saves, or the page leaves. */
+  actions: (busy: boolean) => ReactNode;
+  error: string | null;
+}
 
 /** The button that opens a create's page, for whoever may create. `link` is its `Link`. */
 export function CreateButton(props: { can: boolean; link: ReactElement; children: ReactNode }) {
@@ -156,9 +175,10 @@ export function FormPage(props: {
    * such as the patient picker's quick registration.
    */
   lead?: ReactNode;
+  record?: RecordHeader;
   children: ReactNode;
 }) {
-  const { page, form, refusals = noRefusals } = props;
+  const { page, form, record = noRecord, refusals = noRefusals } = props;
   const problems = [...page.problems, ...refusals];
   const content = useRef<HTMLDivElement>(null);
   const alert = useRef<HTMLDivElement>(null);
@@ -182,11 +202,11 @@ export function FormPage(props: {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      <FormPageHeader
         title={props.title}
-        description={
-          props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
-        }
+        description={props.description}
+        record={record}
+        pending={pending}
       />
       <FormProblemsContext.Provider value={problems}>
         {/* A discard remounts the form: what its fields keep of their own goes too. */}
@@ -214,6 +234,31 @@ export function FormPage(props: {
         }}
       />
     </div>
+  );
+}
+
+const noRecord: RecordHeader = { actions: () => null, error: null };
+
+/** The page's title, with its record's status and actions, which wait while it saves or leaves. */
+function FormPageHeader(props: {
+  title: string;
+  description?: string;
+  record: RecordHeader;
+  pending: boolean;
+}) {
+  const { record } = props;
+  return (
+    <>
+      <PageHeader
+        title={props.title}
+        status={record.status}
+        description={
+          props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
+        }
+        actions={record.actions(props.pending)}
+      />
+      <ErrorAlert message={record.error} />
+    </>
   );
 }
 
@@ -280,6 +325,7 @@ export function ActionFormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
+  record?: RecordHeader;
   action: {
     pending: boolean;
     error: string | null;

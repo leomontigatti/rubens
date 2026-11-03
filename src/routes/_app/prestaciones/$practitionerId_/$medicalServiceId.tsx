@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
-import { editMedicalService, getMedicalServices } from "#/server/medical-services.functions.ts";
+import { activeRecord, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
+import {
+  changeMedicalServiceActive,
+  editMedicalService,
+  getMedicalServices,
+} from "#/server/medical-services.functions.ts";
 
 import { MedicalServiceForm } from "#/routes/_app/prestaciones/-medical-service-form.tsx";
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
@@ -16,6 +20,7 @@ export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/$medic
 function EditMedicalService() {
   const result = Route.useLoaderData();
   const { medicalServiceId } = Route.useParams();
+  const toggle = useFormAction(refusalMessages);
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
@@ -33,6 +38,15 @@ function EditMedicalService() {
       description={medicalService.name}
       initial={medicalService}
       submitLabel="Guardar"
+      record={activeRecord({
+        active: medicalService.active,
+        inactiveLabel: "Inactiva",
+        toggle,
+        onChange: (active) =>
+          void toggle.run(() =>
+            changeMedicalServiceActive({ data: { id: medicalServiceId, active } }),
+          ),
+      })}
       onSubmit={(fields) => editMedicalService({ data: { ...fields, medicalServiceId } })}
     />
   );

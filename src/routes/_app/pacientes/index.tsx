@@ -1,4 +1,4 @@
-import { CircleDotIcon, UsersIcon } from "lucide-react";
+import { UsersIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -7,7 +7,7 @@ import * as z from "zod";
 import { DataTable, RowLink, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
-import type { FilterGroup } from "#/components/filter-groups.ts";
+import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -97,7 +97,7 @@ function Registry({ listed }: { listed: PatientPage }) {
       void navigate({ search: (previous) => ({ ...previous, pagina }) }),
   };
   const changeStatus = (value: string | null) =>
-    void navigate({ search: { inactivos: value === "todos" ? true : undefined } });
+    void navigate({ search: { inactivos: showsAllPick(value) } });
 
   return (
     <div className="flex flex-col gap-6">
@@ -115,7 +115,7 @@ function Registry({ listed }: { listed: PatientPage }) {
           loading: search.searching && !search.found && !search.failed,
         }}
         filters={{
-          groups: [statusFilter(inactivos)],
+          groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
           onPick: (_id, value) => changeStatus(value),
           onRemove: () => changeStatus(null),
         }}
@@ -124,20 +124,6 @@ function Registry({ listed }: { listed: PatientPage }) {
       />
     </div>
   );
-}
-
-function statusFilter(inactivos?: boolean): FilterGroup {
-  return {
-    id: "estado",
-    label: "Estado",
-    icon: CircleDotIcon,
-    required: true,
-    value: inactivos ? "todos" : "activos",
-    options: [
-      { value: "activos", label: "Activos" },
-      { value: "todos", label: "Todos" },
-    ],
-  };
 }
 
 function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {

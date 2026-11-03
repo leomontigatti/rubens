@@ -3,9 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm, readRangeEntry } from "#/components/range-entry.tsx";
 import { closureOfficeOptions, closureUpdateSchema } from "#/lib/time-ranges.ts";
-import { editClosure, getClosures } from "#/server/closures.functions.ts";
+import { editClosure, getClosures, removeClosure } from "#/server/closures.functions.ts";
 
 import {
+  closurePlace,
   officeField,
   readOfficeId,
   refusalMessages,
@@ -34,10 +35,16 @@ function EditClosure() {
     <EntryForm
       back={{ to: "/cierres" }}
       title="Editar cierre"
+      description={closurePlace(closure)}
       initial={closure.entry}
       submitLabel="Guardar"
       owner={officeField(closureOfficeOptions(result.offices, closure), closure.officeId)}
       messages={refusalMessages}
+      deletion={{
+        question: "¿Eliminar este cierre?",
+        notice: "El cierre se borra y no se puede recuperar.",
+        onDelete: () => removeClosure({ data: { closureId } }),
+      }}
       onSubmit={(values) => {
         const input = closureUpdateSchema.safeParse({
           closureId,

@@ -120,6 +120,11 @@ beside it.
   (`src/components/record-section.tsx`), and one `Editar` opens them all, saved together in one
   transaction. A record of its own, such as a coverage, and a one-off action, such as a starting
   password, keep their own page.
+- **When the edit page is a record's only page, its actions sit beside its title**: `Desactivar` or
+  `Reactivar`, with an `Inactiva` badge (`activeRecord`, `src/components/admin-form.tsx`), or
+  `Eliminar`, which asks first and goes back to the list (`FormPage`'s `record`). A record with a
+  page of its own, such as an office (`Sedes`), has them in that page's header beside `Editar`.
+  Its list's name cell links only for someone who may open the page, and is plain text otherwise.
 - **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
   `/disponibilidad`, which asks and answers.
 
