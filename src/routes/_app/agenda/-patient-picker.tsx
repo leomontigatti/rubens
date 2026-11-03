@@ -12,6 +12,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  useComboboxAnchor,
 } from "#/components/ui/combobox.tsx";
 import { Field, FieldError, FieldLabel } from "#/components/ui/field.tsx";
 import { InputGroupAddon } from "#/components/ui/input-group.tsx";
@@ -78,10 +79,14 @@ function PatientCombobox(props: {
   const searchProblem = patientSearchProblem(search);
   const searchErrorId = searchProblem ? "patient-search-error" : undefined;
   const { problem, errorId, invalid } = useFieldProblem("patient");
+  // A failed search marks the field like any problem of its own.
+  const marked = invalid ?? (searchProblem ? true : undefined);
   const found = patientSearchMatches(search)?.map(picked);
+  // The list takes the box's whole width, not the bare input's.
+  const anchor = useComboboxAnchor();
 
   return (
-    <Field data-invalid={invalid}>
+    <Field data-invalid={marked}>
       <FieldLabel htmlFor="patient">Paciente</FieldLabel>
       <Combobox
         items={found ?? []}
@@ -95,21 +100,27 @@ function PatientCombobox(props: {
         itemToStringLabel={(patient) => patient.name}
         isItemEqualToValue={(patient, value) => patient.id === value.id}
       >
-        <ComboboxInput
-          id="patient"
-          className="w-full"
-          placeholder="Buscar por nombre, documento o teléfono"
-          showTrigger={false}
-          showClear={props.value !== null}
-          clearLabel="Borrar paciente"
-          aria-invalid={invalid}
-          aria-describedby={joinIds(errorId, searchErrorId)}
-        >
-          <InputGroupAddon>
-            {search.waiting ? <Spinner aria-label="Buscando" /> : <SearchIcon aria-hidden="true" />}
-          </InputGroupAddon>
-        </ComboboxInput>
-        <ComboboxContent>
+        <div ref={anchor}>
+          <ComboboxInput
+            id="patient"
+            className="w-full"
+            placeholder="Buscar por nombre, documento o teléfono"
+            showTrigger={false}
+            showClear={props.value !== null}
+            clearLabel="Borrar paciente"
+            aria-invalid={marked}
+            aria-describedby={joinIds(errorId, searchErrorId)}
+          >
+            <InputGroupAddon>
+              {search.waiting ? (
+                <Spinner aria-label="Buscando" />
+              ) : (
+                <SearchIcon aria-hidden="true" />
+              )}
+            </InputGroupAddon>
+          </ComboboxInput>
+        </div>
+        <ComboboxContent anchor={anchor}>
           <ComboboxEmpty>Ningún paciente coincide con la búsqueda.</ComboboxEmpty>
           <ComboboxList>
             {(patient: PickedPatient) => (
