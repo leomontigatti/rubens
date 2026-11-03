@@ -26,3 +26,8 @@ if ! git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
   exit 1
 fi
 pnpm check:fallow
+# Whole-tree checks CI's `checks` job runs, each under two seconds, so a commit
+# catches what would otherwise fail only after a push. CI still runs them all.
+pnpm check:comment-language
+pnpm check:labels
+pnpm check:file-tokens
