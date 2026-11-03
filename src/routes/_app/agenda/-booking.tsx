@@ -254,9 +254,17 @@ function useBookingForm(props: BookingPageProps) {
       props.defaultDate,
     ),
     // A warning confirmed after a change would book what it never warned about,
-    // and the times left were for what was asked then. A refusal stays until the
-    // next submit.
-    listeners: { onChange: () => setAnswer((last) => ({ ...noAnswer, refusal: last.refusal })) },
+    // and the times left were for what was asked then; picking one of them keeps
+    // the list, the only picker on a page opened from a cell. A refusal stays
+    // until the next submit.
+    listeners: {
+      onChange: ({ fieldApi }) =>
+        setAnswer((last) => ({
+          ...noAnswer,
+          refusal: last.refusal,
+          freshStarts: fieldApi.name === "start" ? last.freshStarts : null,
+        })),
+    },
     onSubmit: ({ value }) => book(value, false),
   });
 
