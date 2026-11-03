@@ -1,6 +1,13 @@
 import type { Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+// Only the pool's reuse is under test. Each re-import would otherwise transform
+// the schema and drizzle again, which outlasts the test timeout under a full run.
+vi.mock("./schema/index.ts", () => ({}));
+vi.mock("drizzle-orm/node-postgres", () => ({
+  drizzle: (client: Pool) => ({ $client: client }),
+}));
+
 const opened = new Set<Pool>();
 
 async function importPool(): Promise<Pool> {
