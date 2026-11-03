@@ -44,7 +44,10 @@ current `main`.
    context that never runs stays pending and blocks the merge.
 3. **gitleaks** over `origin/main..HEAD` (the PR's own commits). Rules in
    `.gitleaks.toml`. The same scan runs locally as the first line of
-   `.vite-hooks/pre-commit`, where it is optional; CI is the blocking half.
+   `.vite-hooks/pre-commit`, which warns when the binary is missing; CI is the blocking
+   half. gitleaks and GitHub push protection are the secret scans; the GitGuardian app
+   was removed on 2026-11-03 because its non-required check duplicated them and
+   flagged test literals.
 4. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
    Node from `.nvmrc` and pnpm from `packageManager`.
 5. **`pnpm check`** (`vp check`): format, lint and typecheck.
@@ -119,8 +122,10 @@ The migration checks and the audit compare against `origin/main`; fetch it first
 
 ### Installing gitleaks locally
 
-Optional: the pre-commit hook warns and skips when the binary is absent. Use the version
-`GITLEAKS_VERSION` names in `ci.yml`:
+Required on every machine that commits. The pre-commit hook only warns and skips when the
+binary is absent, and the repo is public, so CI catches a leak only after it is pushed.
+`.agents/required-tools` lists it, so a session without it is warned at its start. Use the
+version `GITLEAKS_VERSION` names in `ci.yml`:
 
 ```sh
 curl -fsSL -o /tmp/gitleaks.tar.gz \
