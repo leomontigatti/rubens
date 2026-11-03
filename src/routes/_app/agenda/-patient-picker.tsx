@@ -2,32 +2,35 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { FieldProblemText, useFieldProblem } from "#/components/app-form.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientSearchKey } from "#/components/patient-search.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
+import type { PickedPatient } from "#/lib/booking-draft.ts";
 import { patientName } from "#/lib/patients.ts";
 import { findPatients } from "#/server/patients.functions.ts";
 import type { Patient } from "#/server/patients.ts";
 
 /** Finds the patient with the search box, or registers one on the spot. */
-export function PatientPicker(props: { onChange: (patientId: string | null) => void }) {
-  const [patient, setPatient] = useState<Patient | null>(null);
+export function PatientPicker(props: {
+  value: PickedPatient | null;
+  onChange: (patient: PickedPatient | null) => void;
+}) {
   const [registering, setRegistering] = useState(false);
 
   function choose(chosen: Patient | null) {
-    setPatient(chosen);
     setRegistering(false);
-    props.onChange(chosen?.id ?? null);
+    props.onChange(chosen && { id: chosen.id, name: patientName(chosen) });
   }
 
-  if (patient) {
+  if (props.value) {
     return (
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm">
           <span className="text-muted-foreground">Paciente:</span>{" "}
-          <span className="font-medium">{patientName(patient)}</span>
+          <span className="font-medium">{props.value.name}</span>
         </p>
         <Button type="button" variant="outline" size="sm" onClick={() => choose(null)}>
           Cambiar
@@ -68,16 +71,21 @@ function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
     select: (result) => (result.ok ? result.patients : []),
   });
 
+  const { problem, errorId, invalid } = useFieldProblem("patient");
+
   return (
-    <Field>
-      <FieldLabel htmlFor="booking-patient">Paciente</FieldLabel>
+    <Field data-invalid={invalid}>
+      <FieldLabel htmlFor="patient">Paciente</FieldLabel>
       <Input
-        id="booking-patient"
+        id="patient"
         type="search"
         placeholder="Buscar por nombre, documento o teléfono"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
+        aria-invalid={invalid}
+        aria-describedby={errorId}
       />
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
       {query.trim() && <PatientResults patients={data} onChoose={props.onChoose} />}
     </Field>
   );

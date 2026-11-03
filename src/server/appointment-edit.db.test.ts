@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { appointment, auditLog } from "#/db/schema/index.ts";
+import { appointment, auditLog, room } from "#/db/schema/index.ts";
 import { withTenant } from "#/db/tenant.ts";
 import type { Actor } from "#/lib/access.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
@@ -9,7 +9,7 @@ import type { BookingWorld } from "#/test-support/scheduling.ts";
 
 import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { editReceptionNote } from "#/server/appointment-notes.ts";
+import { getAppointment, updateAppointment } from "#/server/appointment-edit.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 
 // Every service call runs as the app role. 2099-01-05 is a Monday; Juan works
@@ -47,8 +47,23 @@ beforeEach(async () => {
   appointmentId = result.appointment.id;
 });
 
-function edit(receptionNote: string, actor: Actor = world.receptionist) {
-  return asAppRole(db, (tx) => editReceptionNote(actor, { appointmentId, receptionNote }, tx));
+/** Saves the appointment with `receptionNote`, in the room it is in unless `roomId`. */
+function edit(receptionNote: string, actor: Actor = world.receptionist, roomId = world.room.id) {
+  return asAppRole(db, (tx) =>
+    updateAppointment(actor, { appointmentId, roomId, receptionNote }, tx),
+  );
+}
+
+function read(actor: Actor = world.receptionist) {
+  return asAppRole(db, (tx) => getAppointment(actor, { appointmentId }, tx));
+}
+
+async function roomOf() {
+  const [row] = await db
+    .select({ roomId: appointment.roomId })
+    .from(appointment)
+    .where(eq(appointment.id, appointmentId));
+  return row!.roomId;
 }
 
 async function noteOf() {
@@ -74,7 +89,7 @@ function auditOf() {
   );
 }
 
-describe("editing the reception note", () => {
+describe("saving the reception note", () => {
   it("changes the note and audits it about the patient, before and after", async () => {
     expect(await edit("  Llega tarde  ")).toEqual({ ok: true });
 
@@ -96,5 +111,63 @@ describe("editing the reception note", () => {
     expect(await edit("Otra", world.lucia.actor)).toEqual({ ok: false, reason: "forbidden" });
     expect(await edit("Propia", world.juan.actor)).toEqual({ ok: true });
     expect(await noteOf()).toBe("Propia");
+  });
+});
+
+describe("reading one appointment", () => {
+  it("draws it as the calendar does, with its office's zone and rooms", async () => {
+    const result = await read();
+
+    expect(result).toMatchObject({
+      ok: true,
+      appointment: {
+        id: appointmentId,
+        patientName: expect.stringContaining("María"),
+        roomId: world.room.id,
+        receptionNote: "Trae estudios",
+        status: "booked",
+      },
+      office: {
+        timeZone: "America/Argentina/Buenos_Aires",
+        rooms: [
+          { id: world.room.id, name: "Consultorio 1" },
+          { id: world.otherRoom.id, name: "Consultorio 2" },
+        ],
+      },
+    });
+  });
+
+  it("lists its own room though deactivated, and no other inactive room", async () => {
+    await db.update(room).set({ active: false });
+
+    expect(await read()).toMatchObject({
+      ok: true,
+      office: { rooms: [{ id: world.room.id, name: "Consultorio 1" }] },
+    });
+  });
+
+  it("is its own practitioner's, and not another practitioner's", async () => {
+    expect(await read(world.juan.actor)).toMatchObject({ ok: true });
+    expect(await read(world.lucia.actor)).toEqual({ ok: false, reason: "notFound" });
+  });
+});
+
+describe("saving the room and the note together", () => {
+  it("moves it to a room with space and changes the note", async () => {
+    expect(await edit("Llega tarde", world.receptionist, world.otherRoom.id)).toEqual({ ok: true });
+
+    expect(await roomOf()).toBe(world.otherRoom.id);
+    expect(await noteOf()).toBe("Llega tarde");
+  });
+
+  it("keeps the note as it was when the room is refused", async () => {
+    await world.addSchedule({ practitionerId: world.lucia.id, roomId: world.otherRoom.id });
+
+    expect(await edit("Llega tarde", world.receptionist, world.otherRoom.id)).toMatchObject({
+      ok: false,
+      reason: "roomFull",
+    });
+    expect(await roomOf()).toBe(world.room.id);
+    expect(await noteOf()).toBe("Trae estudios");
   });
 });

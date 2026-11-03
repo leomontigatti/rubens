@@ -9,7 +9,8 @@ import type { RangeEntry } from "#/lib/time-ranges.ts";
 
 import { asAppRole, sharedTestDatabase } from "../../tests/db/harness.ts";
 import type { TestDatabase } from "../../tests/db/harness.ts";
-import { bookOverbooking, moveAppointmentRoom } from "#/server/appointment-rooms.ts";
+import { updateAppointment } from "#/server/appointment-edit.ts";
+import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import { cancelAppointment } from "#/server/appointment-statuses.ts";
 import { createBookingWorld } from "#/test-support/scheduling.ts";
 import type { BookingWorld } from "#/test-support/scheduling.ts";
@@ -114,8 +115,11 @@ function auditOf(id: string) {
   );
 }
 
+/** Saves the appointment with a new room and its note as booked: none. */
 function move(roomId: string, appointmentId: string, actor: Actor = world.receptionist) {
-  return asAppRole(db, (tx) => moveAppointmentRoom(actor, { appointmentId, roomId }, tx));
+  return asAppRole(db, (tx) =>
+    updateAppointment(actor, { appointmentId, roomId, receptionNote: null }, tx),
+  );
 }
 
 describe("an overbooking on top of another appointment", () => {

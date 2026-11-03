@@ -1,21 +1,21 @@
 import { tz } from "@date-fns/tz";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
+import { useStore } from "@tanstack/react-form";
 import { format } from "date-fns";
 import { useState } from "react";
-import type { FormEvent } from "react";
 
-import { ErrorAlert } from "#/components/admin-form.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
+import type { FieldProblem } from "#/components/form-problems.ts";
+import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { durationMinutesSchema } from "#/lib/availability.ts";
 import { rescheduleQueryOf } from "#/lib/booking-draft.ts";
 import type { BookingWarning, PickedStart } from "#/lib/booking-draft.ts";
 import { moveAppointment } from "#/server/appointments.functions.ts";
-import type { DayAppointment } from "#/server/appointments.ts";
 
+import { appointmentBack, appointmentSummary } from "#/routes/_app/agenda/-appointment-page.tsx";
+import type { LoadedAppointment } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { PatientWarnings } from "#/routes/_app/agenda/-booking.tsx";
-import { FreeStartsOfWeek } from "#/routes/_app/agenda/-free-starts.tsx";
+import { FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
 
 // Rescheduling an appointment through the free-times picker: a new free time
 // of the same practitioner, a week from a date, which brings its schedule's
@@ -40,46 +40,75 @@ const refusalMessages = {
   timeTaken: "Ese horario ya se ocupó. Elegí otro horario libre.",
 };
 
+type RefusalReason = keyof typeof refusalMessages;
+
+/** The refusals about no field: who or what is inactive, or the request itself. */
+const generalRefusals: readonly RefusalReason[] = [
+  "unauthenticated",
+  "forbidden",
+  "mustChangePassword",
+  "notFound",
+  "practitionerInactive",
+  "patientInactive",
+  "medicalServiceInactive",
+];
+
+function refusalOf(reason: RefusalReason): FieldProblem {
+  if (reason === "invalidInput") {
+    return { field: "durationMinutes", message: refusalMessages.invalidInput };
+  }
+  return {
+    field: generalRefusals.includes(reason) ? "" : "start",
+    message: refusalMessages[reason],
+  };
+}
+
 /** What the last attempt answered: warnings to confirm past, or a refusal. */
 interface Answer {
   warnings: BookingWarning[] | null;
-  error: string | null;
+  refusal: FieldProblem | null;
 }
 
-const noAnswer: Answer = { warnings: null, error: null };
+const noAnswer: Answer = { warnings: null, refusal: null };
 
-/** The appointment being moved: only its id and its time are read. */
-type Rescheduled = Pick<DayAppointment, "id" | "start" | "end">;
+interface RescheduleValues {
+  durationMinutes: string;
+  freeFrom: string;
+  start: PickedStart | null;
+}
 
-function minutesOf(appointment: Rescheduled): number {
+/** What the form's check refuses, under each field. */
+function problemsOf(values: RescheduleValues): FieldProblem[] {
+  const problems: FieldProblem[] = [];
+  if (!durationMinutesSchema.safeParse(Number(values.durationMinutes)).success) {
+    problems.push({
+      field: "durationMinutes",
+      message: "La duración tiene que ser un número entero de minutos, entre 1 y 720.",
+    });
+  }
+  if (!values.start) {
+    problems.push({ field: "start", message: "Elegí un horario libre." });
+  }
+  return problems;
+}
+
+function minutesOf(appointment: { start: Date; end: Date }): number {
   return (+appointment.end - +appointment.start) / 60_000;
 }
 
-export function RescheduleForm(props: {
-  appointment: Rescheduled;
-  practitionerId: string;
-  timeZone: string;
-  onDone: () => void;
-  onBack: () => void;
-}) {
-  const { appointment } = props;
-  const router = useRouter();
+export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
+  const { appointment, office } = loaded;
+  const page = useFormPage(appointmentBack);
   const queryClient = useQueryClient();
-  const [durationMinutes, setDurationMinutes] = useState(() => minutesOf(appointment));
-  const [date, setDate] = useState(() =>
-    format(appointment.start, "yyyy-MM-dd", { in: tz(props.timeZone) }),
-  );
-  const [picked, setPicked] = useState<PickedStart | null>(null);
   const [answer, setAnswer] = useState<Answer>(noAnswer);
   const [pending, setPending] = useState(false);
-  const query = rescheduleQueryOf(
-    { id: appointment.id, practitionerId: props.practitionerId },
-    date,
-    durationMinutes,
-  );
 
-  async function reschedule(confirmWarnings: boolean) {
-    if (!picked) {
+  async function reschedule(values: RescheduleValues, confirmWarnings: boolean) {
+    page.clearProblems();
+    setAnswer(noAnswer);
+    const problems = problemsOf(values);
+    if (!values.start || problems.length > 0) {
+      page.showProblems(problems);
       return;
     }
     setPending(true);
@@ -88,8 +117,8 @@ export function RescheduleForm(props: {
       result = await moveAppointment({
         data: {
           appointmentId: appointment.id,
-          start: picked.start,
-          durationMinutes,
+          start: values.start.start,
+          durationMinutes: Number(values.durationMinutes),
           confirmWarnings,
         },
       });
@@ -97,72 +126,85 @@ export function RescheduleForm(props: {
       setPending(false);
     }
     if (result.ok) {
-      await router.invalidate();
-      props.onDone();
-    } else if (result.reason === "patientWarning") {
-      setAnswer({ warnings: result.warnings, error: null });
+      page.leave();
     } else {
-      // A refusal drops the pick, and the picker below reloads the free times.
-      setPicked(null);
-      setAnswer({ warnings: null, error: refusalMessages[result.reason] });
-      await queryClient.invalidateQueries({ queryKey: ["freeTimes"] });
+      await settle(result);
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void reschedule(false);
+  async function settle(
+    refusal: Exclude<Awaited<ReturnType<typeof moveAppointment>>, { ok: true }>,
+  ) {
+    if (refusal.reason === "patientWarning") {
+      setAnswer({ warnings: refusal.warnings, refusal: null });
+      return;
+    }
+    // A refusal drops the pick, and the picker reloads the free times.
+    form.setFieldValue("start", null);
+    setAnswer({ warnings: null, refusal: refusalOf(refusal.reason) });
+    await queryClient.invalidateQueries({ queryKey: ["freeTimes"] });
   }
 
-  function pick(start: PickedStart | null) {
-    setPicked(start);
-    setAnswer(noAnswer);
-  }
+  const form = useAppForm({
+    defaultValues: {
+      durationMinutes: String(minutesOf(appointment)),
+      freeFrom: format(appointment.start, "yyyy-MM-dd", { in: tz(office.timeZone) }),
+      start: null as PickedStart | null,
+    },
+    listeners: { onChange: () => setAnswer(noAnswer) },
+    onSubmit: ({ value }) => reschedule(value, false),
+  });
+  const query = useStore(form.store, (state) =>
+    rescheduleQueryOf(
+      { id: appointment.id, practitionerId: appointment.practitionerId },
+      state.values.freeFrom,
+      Number(state.values.durationMinutes),
+    ),
+  );
 
   return (
-    <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
+    <FormPage
+      page={page}
+      form={form}
+      title="Reprogramar turno"
+      description={appointmentSummary(loaded)}
+      submitLabel="Reprogramar"
+      pending={pending}
+      refusals={answer.refusal ? [answer.refusal] : undefined}
+      onClear={() => setAnswer(noAnswer)}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="reschedule-duration">Duración (minutos)</FieldLabel>
-          <Input
-            id="reschedule-duration"
-            type="number"
-            min={1}
-            max={720}
-            value={durationMinutes}
-            onChange={(event) => {
-              setDurationMinutes(Number(event.target.value));
-              pick(null);
-            }}
-            required
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="reschedule-date">Horarios libres desde</FieldLabel>
-          <Input
-            id="reschedule-date"
-            type="date"
-            value={date}
-            onChange={(event) => event.target.value && setDate(event.target.value)}
-          />
-        </Field>
+        <form.AppField
+          name="durationMinutes"
+          listeners={{ onChange: () => form.setFieldValue("start", null) }}
+        >
+          {(field) => (
+            <field.TextField label="Duración (minutos)" type="number" min={1} max={720} required />
+          )}
+        </form.AppField>
+        <form.AppField name="freeFrom">
+          {(field) => <field.TextField label="Horarios libres desde" type="date" />}
+        </form.AppField>
       </div>
-      {query && <FreeStartsOfWeek query={query} picked={picked} onPick={pick} />}
+      <form.Field name="start">
+        {(field) => (
+          <StartGroup>
+            {query && (
+              <FreeStartsOfWeek
+                query={query}
+                picked={field.state.value}
+                onPick={field.handleChange}
+              />
+            )}
+          </StartGroup>
+        )}
+      </form.Field>
       <PatientWarnings
         warnings={answer.warnings}
         pending={pending}
-        onConfirm={() => void reschedule(true)}
+        onConfirm={() => void reschedule(form.state.values, true)}
         confirmLabel="Reprogramar igual"
       />
-      <ErrorAlert message={answer.error} />
-      <div className="flex gap-2">
-        <Button type="submit" disabled={pending || !picked}>
-          Reprogramar
-        </Button>
-        <Button type="button" variant="ghost" onClick={props.onBack}>
-          Volver
-        </Button>
-      </div>
-    </form>
+    </FormPage>
   );
 }

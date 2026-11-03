@@ -102,6 +102,8 @@ beside it.
 - **A create or an edit is a page of its own**, `FormPage` (`src/components/form-page.tsx`), never
   in a list, a card, a dialog or a side panel, until a case proves otherwise. `pnpm lint` rejects any
   other `<form>` (`ui/no-raw-form`). `CreateButton` opens a create's page.
+- **A form that holds a form of its own goes in `lead`**, above the form element: booking's patient
+  picker, whose quick registration submits apart. Its problems still show under its field.
 - **The fields take the page's width, outside any card.** The actions close the form: `Volver` on
   the left, `Descartar cambios` and the submit button on the right. On a long form they stick to the
   bottom of the window.
@@ -172,9 +174,8 @@ argument names them (`emailTaken`). A refusal about no field is the only error a
 `ErrorAlert`, and takes the focus. A refusal the page must link from keeps its own `Alert` and marks
 the field: `DocumentTakenAlert`.
 
-The agenda's forms show one problem in an `ErrorAlert` until they move to `FormPage`, its patient
-registration aside, and so do the forms outside it: `/ingresar`, `/cambiar-contrasena`,
-`/disponibilidad`.
+The pages that are only their form show one problem in an `ErrorAlert`: `/ingresar`,
+`/cambiar-contrasena`, `/disponibilidad`.
 
 ## Alerts
 

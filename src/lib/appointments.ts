@@ -68,11 +68,6 @@ export const overbookingInputSchema = bookingInputSchema.extend({
 
 export type OverbookingInput = z.input<typeof overbookingInputSchema>;
 
-/** Moving an appointment to another room of its office, at the same time. */
-export const roomMoveSchema = z.object({ appointmentId: z.uuid(), roomId: z.uuid() });
-
-export type RoomMove = z.input<typeof roomMoveSchema>;
-
 /** Sent with a booking to save it although the patient warning was shown. */
 export interface WarningConfirmation {
   confirmWarnings?: boolean;
@@ -126,13 +121,17 @@ export const cancellationSchema = z.object({
 
 export type CancellationInput = z.input<typeof cancellationSchema>;
 
-/** A new reception note for an appointment. */
-export const receptionNoteChangeSchema = z.object({
+/**
+ * An appointment's own fields, saved together: its room, another of its
+ * office at the same time, and its reception note.
+ */
+export const appointmentUpdateSchema = z.object({
   appointmentId: z.uuid(),
+  roomId: z.uuid(),
   receptionNote: receptionNoteSchema,
 });
 
-export type ReceptionNoteChange = z.input<typeof receptionNoteChangeSchema>;
+export type AppointmentUpdate = z.input<typeof appointmentUpdateSchema>;
 
 /** One appointment, named by its id. */
 export const appointmentIdSchema = z.object({ appointmentId: z.uuid() });

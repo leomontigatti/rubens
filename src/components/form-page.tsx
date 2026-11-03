@@ -151,11 +151,16 @@ export function FormPage(props: {
   refusals?: FieldProblem[];
   /** Clears what the last submit answered. */
   onClear: () => void;
+  /**
+   * Above the fields, outside the form element: what holds a form of its own,
+   * such as the patient picker's quick registration.
+   */
+  lead?: ReactNode;
   children: ReactNode;
 }) {
   const { page, form, refusals = noRefusals } = props;
   const problems = [...page.problems, ...refusals];
-  const formElement = useRef<HTMLFormElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const alert = useRef<HTMLDivElement>(null);
   // Going back waits for the page's data, and nothing here may run again meanwhile.
   const pending = props.pending || page.leaving;
@@ -166,7 +171,7 @@ export function FormPage(props: {
 
   // Whichever way the problems arrived.
   const refused = refusalText(refusals);
-  useEffect(() => focusProblem(formElement.current, alert.current), [page.problemsShown, refused]);
+  useEffect(() => focusProblem(content.current, alert.current), [page.problemsShown, refused]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -183,20 +188,17 @@ export function FormPage(props: {
           props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
         }
       />
-      <form
-        // A discard remounts the form: what its fields keep of their own goes too.
-        key={page.version}
-        ref={formElement}
-        noValidate
-        className="flex flex-col gap-4"
-        onSubmit={submit}
-      >
-        <FormProblemsContext.Provider value={problems}>
+      <FormProblemsContext.Provider value={problems}>
+        {/* A discard remounts the form: what its fields keep of their own goes too. */}
+        <div key={page.version} ref={content} className="flex flex-col gap-4">
           <RefusalAlert focusRef={alert} problems={problems} />
-          <FieldSet disabled={pending}>{props.children}</FieldSet>
-        </FormProblemsContext.Provider>
-        <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
-      </form>
+          {props.lead && <FieldSet disabled={pending}>{props.lead}</FieldSet>}
+          <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
+            <FieldSet disabled={pending}>{props.children}</FieldSet>
+            <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
+          </form>
+        </div>
+      </FormProblemsContext.Provider>
       <ConfirmDialog
         open={page.asking}
         onOpenChange={(open) => !open && page.keepEditing()}
@@ -216,11 +218,11 @@ export function FormPage(props: {
 }
 
 /**
- * Takes the user to what was refused: the first refused field in the form, or
+ * Takes the user to what was refused: the first refused field in `content`, or
  * `alert` for a refusal about no field.
  */
-export function focusProblem(form: HTMLElement | null, alert: HTMLElement | null) {
-  (form?.querySelector<HTMLElement>("[aria-invalid=true]") ?? alert)?.focus();
+export function focusProblem(content: HTMLElement | null, alert: HTMLElement | null) {
+  (content?.querySelector<HTMLElement>("[aria-invalid=true]") ?? alert)?.focus();
 }
 
 /** The one error above the form: a refusal about no field. */

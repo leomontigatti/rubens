@@ -13,13 +13,10 @@ import { visibleWeekHours } from "#/lib/calendar-layout.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatLocalDate, shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import { getCalendarWeekView } from "#/server/appointments.functions.ts";
-import { getAvailabilityPractitioners } from "#/server/availability.functions.ts";
 import type { CalendarAppointment, CalendarWeek } from "#/server/calendar-week.ts";
 
 import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
 import type { PickedAppointment } from "#/routes/_app/agenda/-appointment.tsx";
-import { BookingDialog } from "#/routes/_app/agenda/-booking.tsx";
-import type { BookingSlot } from "#/routes/_app/agenda/-booking.tsx";
 import { DayColumn, TimeAxis } from "#/routes/_app/agenda/-calendar.tsx";
 import type { PickedCell } from "#/routes/_app/agenda/-calendar.tsx";
 import type { CalendarSearch } from "#/routes/_app/agenda/-filter-changes.ts";
@@ -59,27 +56,20 @@ export const Route = createFileRoute("/_app/agenda/")({
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
     const date = deps.fecha ?? today(defaultTimeZone);
-    const [calendar, practitioners] = await Promise.all([
-      getCalendarWeekView({
-        data: {
-          roomId: deps.consultorio,
-          date,
-          practitionerId: deps.profesional,
-          medicalServiceId: deps.prestacion,
-          includeCancelledAndNoShow: deps.cancelados === true,
-        },
-      }),
-      getAvailabilityPractitioners(),
-    ]);
+    const calendar = await getCalendarWeekView({
+      data: {
+        roomId: deps.consultorio,
+        date,
+        practitionerId: deps.profesional,
+        medicalServiceId: deps.prestacion,
+        includeCancelledAndNoShow: deps.cancelados === true,
+      },
+    });
     if (!calendar.ok) {
       return calendar;
     }
-    if (!practitioners.ok) {
-      return practitioners;
-    }
     return {
       ...calendar,
-      practitioners: practitioners.practitioners,
       search: viewedSearch({ ...deps, fecha: mondayOf(date) }, calendar.week),
     };
   },
@@ -93,12 +83,6 @@ const refusalMessages = {
   invalidInput: "Revisá el consultorio y la fecha.",
   notFound: "No encontramos ese consultorio.",
 };
-
-/** What the booking dialog opens on: a free cell or none, and whether for an overbooking. */
-interface BookingStart {
-  slot: BookingSlot | null;
-  overbooking: boolean;
-}
 
 function Agenda() {
   const result = Route.useLoaderData();
@@ -119,33 +103,19 @@ function Agenda() {
       </div>
     );
   }
-  return (
-    <Calendar
-      week={result.week}
-      roomChoices={result.roomChoices}
-      practitioners={result.practitioners}
-      search={result.search}
-    />
-  );
+  return <Calendar week={result.week} roomChoices={result.roomChoices} search={result.search} />;
 }
 
 function Calendar(props: {
   week: CalendarWeek;
   roomChoices: Parameters<typeof CalendarFilters>[0]["roomChoices"];
-  practitioners: { id: string; displayName: string }[];
   search: DatedSearch;
 }) {
-  const { week } = props;
-  const [start, setStart] = useState<BookingStart>({ slot: null, overbooking: false });
-  const [booking, setBooking] = useState(false);
+  const { week, search } = props;
+  const navigate = useNavigate();
   const [picked, setPicked] = useState<PickedAppointment | null>(null);
-  const office = { rooms: week.office.rooms, timeZone: week.office.timeZone };
-
-  function openBooking(slot: BookingSlot | null, overbooking: boolean) {
-    setPicked(null);
-    setStart({ slot, overbooking });
-    setBooking(true);
-  }
+  // A booking's page opens on the room and week viewed.
+  const viewed = { consultorio: week.room.id, fecha: search.fecha };
 
   return (
     <div className="flex flex-col gap-6">
@@ -153,18 +123,38 @@ function Calendar(props: {
         title="Agenda"
         actions={
           <>
-            <Button variant="outline" onClick={() => openBooking(null, true)}>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link to="/agenda/sobreturnos/nuevo" search={viewed} />}
+            >
               Sobreturno
             </Button>
-            <Button onClick={() => openBooking(null, false)}>Nuevo turno</Button>
+            <Button
+              nativeButton={false}
+              render={<Link to="/agenda/turnos/nuevo" search={viewed} />}
+            >
+              Nuevo turno
+            </Button>
           </>
         }
       />
-      <CalendarFilters week={week} roomChoices={props.roomChoices} search={props.search} />
-      <WeekNavigation search={props.search} />
+      <CalendarFilters week={week} roomChoices={props.roomChoices} search={search} />
+      <WeekNavigation search={search} />
       <WeekGrid
         week={week}
-        onPick={(cell) => openBooking(slotOf(week, cell), false)}
+        onPick={(cell) =>
+          void navigate({
+            to: "/agenda/turnos/nuevo",
+            search: {
+              ...viewed,
+              // The medical service filtered starts the form, with its duration.
+              prestacion: week.filter.medicalServiceId ?? undefined,
+              inicio: cell.start.toISOString(),
+              profesionales: cell.practitionerIds,
+            },
+          })
+        }
         onOpen={(appointment) =>
           setPicked({
             appointment,
@@ -175,35 +165,13 @@ function Calendar(props: {
           })
         }
       />
-      <BookingDialog
-        open={booking}
-        onOpenChange={setBooking}
-        slot={start.slot}
-        practitioners={props.practitioners}
-        defaultDate={props.search.fecha}
-        overbooking={start.overbooking ? office : null}
-      />
       <AppointmentDialog
         picked={picked}
         onClose={() => setPicked(null)}
-        office={office}
-        onOverbook={(slot) => openBooking(slot, true)}
+        viewed={{ timeZone: week.office.timeZone, roomId: week.room.id, date: search.fecha }}
       />
     </div>
   );
-}
-
-/** A clicked cell as the booking form starts from it: the room, and the filtered medical service. */
-function slotOf(week: CalendarWeek, cell: PickedCell): BookingSlot {
-  const free = new Set(cell.practitionerIds);
-  return {
-    start: cell.start,
-    roomName: week.room.name,
-    timeZone: week.office.timeZone,
-    practitioners: week.practitioners.filter((one) => free.has(one.id)),
-    medicalService:
-      week.medicalServices.find((one) => one.id === week.filter.medicalServiceId) ?? null,
-  };
 }
 
 /** The week before and after, and a date to jump to. */
@@ -230,17 +198,32 @@ function WeekNavigation(props: { search: DatedSearch }) {
       >
         Semana siguiente
       </Button>
-      <Input
-        aria-label="Ir a la fecha"
-        type="date"
-        className="w-auto"
-        defaultValue={search.fecha}
+      <DateJump
+        // A new week starts it over from that week.
         key={search.fecha}
-        onChange={(event) =>
-          event.target.value && void navigate({ to: "/agenda", search: linkTo(event.target.value) })
-        }
+        date={search.fecha}
+        onJump={(fecha) => void navigate({ to: "/agenda", search: linkTo(fecha) })}
       />
     </div>
+  );
+}
+
+/** A date to jump to, which holds what is typed until it is a whole date. */
+function DateJump(props: { date: string; onJump: (date: string) => void }) {
+  const [typed, setTyped] = useState(props.date);
+  return (
+    <Input
+      aria-label="Ir a la fecha"
+      type="date"
+      className="w-auto"
+      value={typed}
+      onChange={(event) => {
+        setTyped(event.target.value);
+        if (event.target.value) {
+          props.onJump(event.target.value);
+        }
+      }}
+    />
   );
 }
 

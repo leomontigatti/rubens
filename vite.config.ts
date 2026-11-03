@@ -97,14 +97,14 @@ export default defineConfig({
       },
       {
         // The one place a form is drawn; the pages that are only their form, with
-        // no list to return to; and the agenda, which moves in its own change.
+        // no list to return to; and the patient's quick registration, a form of its
+        // own inside booking.
         files: [
           "src/components/form-page.tsx",
           "src/components/patient-form.tsx",
           "src/routes/ingresar.tsx",
           "src/routes/_app/cambiar-contrasena.tsx",
           "src/routes/_app/disponibilidad/index.tsx",
-          "src/routes/_app/agenda/**",
           "**/*.test.tsx",
         ],
         rules: {

@@ -1,12 +1,14 @@
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
+
 import { bookingInputSchema, overbookingInputSchema } from "#/lib/appointments.ts";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 
-// The booking form's state, from either entry (docs/domain/appointments.md §
-// Booking): what is picked so far, and what the last attempt answered. Pure,
-// so the form only renders it.
+// The booking form's values, from either entry (docs/domain/appointments.md §
+// Booking), and what they book: pure, so the form only renders them.
 
 /** A start picked for the booking, with where it is and how to show it. */
 export interface PickedStart {
@@ -28,156 +30,109 @@ export interface BookingWarning {
   timeZone: string;
 }
 
-export interface BookingDraft {
-  patientId: string | null;
-  practitionerId: string;
-  medicalService: { id: string; durationMinutes: number } | null;
-  durationMinutes: number | null;
-  start: PickedStart | null;
-  /** Set from a clicked cell: its start holds whichever free practitioner is chosen. */
-  startFixed: boolean;
-  receptionNote: string;
-  /** The patient warning the last attempt returned, until the time or patient changes. */
-  warnings: BookingWarning[] | null;
-  /** Fresh free starts after another booking took the time. */
-  freshStarts: OfferedStart[] | null;
-  error: string | null;
+/** The patient picked, with the name the form shows. */
+export interface PickedPatient {
+  id: string;
+  name: string;
 }
-
-export type BookingEvent =
-  | { type: "patientPicked"; patientId: string | null }
-  | { type: "practitionerChosen"; practitionerId: string }
-  | {
-      type: "medicalServiceChosen";
-      medicalService: { id: string; durationMinutes: number } | null | undefined;
-    }
-  | { type: "durationChanged"; durationMinutes: number }
-  | { type: "startPicked"; start: PickedStart | null }
-  | { type: "noteChanged"; receptionNote: string }
-  | { type: "warned"; warnings: BookingWarning[] }
-  | { type: "timeTaken"; freshStarts: OfferedStart[] }
-  | { type: "failed"; error: string };
 
 /**
- * A new draft, among `practitionerIds`, the only one when there is one: from
- * a clicked free cell, those free there, with its start and the medical
- * service the calendar is narrowed to; from "Nuevo turno", everyone.
+ * The booking form's values. A booking picks a free `start`, from the week
+ * from `freeFrom` unless a clicked cell fixed it; an overbooking types its
+ * local `date` and `time`, and a room or none. Numbers hold their text, as typed.
  */
-export function initialBookingDraft(
-  slot: (PickedStart & { medicalService?: { id: string; durationMinutes: number } | null }) | null,
-  practitionerIds: readonly string[],
-): BookingDraft {
-  const medicalService = slot?.medicalService ?? null;
-  return {
-    patientId: null,
-    practitionerId: practitionerIds.length === 1 ? practitionerIds[0]! : "",
-    medicalService,
-    durationMinutes: medicalService?.durationMinutes ?? null,
-    start: slot && { start: slot.start, roomName: slot.roomName, timeZone: slot.timeZone },
-    startFixed: slot !== null,
-    receptionNote: "",
-    warnings: null,
-    freshStarts: null,
-    error: null,
-  };
-}
-
-const answered = { warnings: null, freshStarts: null, error: null };
-
-export function bookingReducer(draft: BookingDraft, event: BookingEvent): BookingDraft {
-  switch (event.type) {
-    case "patientPicked":
-      return { ...draft, ...answered, patientId: event.patientId };
-    case "practitionerChosen":
-      // A medical service and a picked start belong to one practitioner.
-      return {
-        ...draft,
-        ...answered,
-        practitionerId: event.practitionerId,
-        medicalService: null,
-        durationMinutes: null,
-        start: draft.startFixed ? draft.start : null,
-      };
-    case "medicalServiceChosen":
-      return {
-        ...draft,
-        ...answered,
-        medicalService: event.medicalService ?? null,
-        durationMinutes: event.medicalService?.durationMinutes ?? null,
-      };
-    case "durationChanged":
-      return { ...draft, ...answered, durationMinutes: event.durationMinutes };
-    case "startPicked":
-      return { ...draft, ...answered, start: event.start };
-    case "noteChanged":
-      return { ...draft, receptionNote: event.receptionNote };
-    case "warned":
-      return { ...draft, ...answered, warnings: event.warnings };
-    case "timeTaken":
-      return { ...draft, ...answered, start: null, freshStarts: event.freshStarts };
-    case "failed":
-      return { ...draft, ...answered, error: event.error };
-  }
-}
-
-/** What the draft books but the start and the room, as the booking schemas read it. */
-function partialInputOf(draft: BookingDraft) {
-  return {
-    patientId: draft.patientId,
-    practitionerId: draft.practitionerId,
-    medicalServiceId: draft.medicalService?.id,
-    durationMinutes: draft.durationMinutes,
-    receptionNote: draft.receptionNote,
-  };
-}
-
-/** What the draft books, once the booking schema accepts it. */
-export function bookingRequestOf(draft: BookingDraft) {
-  const parsed = bookingInputSchema.safeParse({
-    ...partialInputOf(draft),
-    start: draft.start?.start,
-  });
-  return parsed.success ? parsed.data : null;
-}
-
-/** Where and when an overbooking is typed in: a local date and `HH:MM`, and a room or none. */
-export interface OverbookingPlace {
+export interface BookingValues {
+  patient: PickedPatient | null;
+  practitionerId: string;
+  medicalServiceId: string;
+  durationMinutes: string;
+  start: PickedStart | null;
+  freeFrom: string;
   date: string;
   time: string;
   /** Empty for the room of the schedule the overbooking falls in. */
   roomId: string;
+  receptionNote: string;
 }
 
-/** What an overbooking draft books, its local date and time read in `timeZone`. */
-export function overbookingRequestOf(
-  draft: BookingDraft,
-  place: OverbookingPlace,
-  timeZone: string,
-) {
-  const parsed = overbookingInputSchema.safeParse({
-    ...partialInputOf(draft),
-    start: instantOf(place.date, place.time, timeZone),
-    roomId: place.roomId || null,
-  });
-  return parsed.success ? parsed.data : null;
+/** Where a booking starts from: a clicked free cell, or an appointment an overbooking goes over. */
+export interface BookingStart extends PickedStart {
+  /** The medical service the calendar is narrowed to. */
+  medicalService?: { id: string; durationMinutes: number } | null;
 }
 
 /**
- * "Nuevo turno"'s free-times query: the week from `firstDate`, once the draft
+ * A new form, among `practitionerIds`, the only one when there is one. From a
+ * clicked free cell, its start and the medical service the calendar is
+ * narrowed to; for an overbooking, the start's local date and time.
+ */
+export function initialBookingValues(
+  from: BookingStart | null,
+  practitionerIds: readonly string[],
+  defaultDate: string,
+): BookingValues {
+  const medicalService = from?.medicalService ?? null;
+  const [date, time] = from
+    ? format(from.start, "yyyy-MM-dd HH:mm", { in: tz(from.timeZone) }).split(" ")
+    : [defaultDate, ""];
+  return {
+    patient: null,
+    practitionerId: practitionerIds.length === 1 ? practitionerIds[0]! : "",
+    medicalServiceId: medicalService?.id ?? "",
+    durationMinutes: medicalService ? String(medicalService.durationMinutes) : "",
+    start: from && { start: from.start, roomName: from.roomName, timeZone: from.timeZone },
+    freeFrom: defaultDate,
+    date: date!,
+    time: time!,
+    roomId: "",
+    receptionNote: "",
+  };
+}
+
+/** What the form books but the start and the room, as the booking schemas read it. */
+function partialInputOf(values: BookingValues) {
+  return {
+    patientId: values.patient?.id,
+    practitionerId: values.practitionerId,
+    medicalServiceId: values.medicalServiceId,
+    durationMinutes: Number(values.durationMinutes),
+    receptionNote: values.receptionNote,
+  };
+}
+
+/** What the form books at a free start, or what the booking schema refused. */
+export function bookingRequestOf(values: BookingValues) {
+  return bookingInputSchema.safeParse({ ...partialInputOf(values), start: values.start?.start });
+}
+
+/** What an overbooking books, its local date and time read in `timeZone`, or what was refused. */
+export function overbookingRequestOf(values: BookingValues, timeZone: string) {
+  return overbookingInputSchema.safeParse({
+    ...partialInputOf(values),
+    start: values.date && values.time ? instantOf(values.date, values.time, timeZone) : undefined,
+    roomId: values.roomId || null,
+  });
+}
+
+/** The form's field for each input the booking schemas name otherwise. */
+export const bookingFieldNames = { patientId: "patient" };
+
+/** An overbooking's start is typed in its time. */
+export const overbookingFieldNames = { patientId: "patient", start: "time" };
+
+/**
+ * "Nuevo turno"'s free-times query: the week from `freeFrom`, once the form
  * has a practitioner, a medical service and a valid duration.
  */
-export function freeStartsQueryOf(
-  draft: BookingDraft,
-  firstDate: string,
-): AvailabilityQuery | null {
-  const duration = durationMinutesSchema.safeParse(draft.durationMinutes);
-  if (!draft.practitionerId || !draft.medicalService || !duration.success) {
+export function freeStartsQueryOf(values: BookingValues): AvailabilityQuery | null {
+  const duration = durationMinutesSchema.safeParse(Number(values.durationMinutes));
+  if (!values.practitionerId || !values.medicalServiceId || !duration.success) {
     return null;
   }
   return {
-    practitionerId: draft.practitionerId,
-    firstDate,
-    lastDate: shiftDate(firstDate, 6),
+    practitionerId: values.practitionerId,
+    firstDate: values.freeFrom,
+    lastDate: shiftDate(values.freeFrom, 6),
     durationMinutes: duration.data,
   };
 }

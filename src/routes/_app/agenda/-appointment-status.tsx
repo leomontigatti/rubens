@@ -1,31 +1,21 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 
 import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
-import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   appointmentStatusLabels,
   cancellationText,
-  cancellerLabels,
   statusActionLabels,
 } from "#/lib/appointment-statuses.ts";
-import { appointmentCancellers, cancellationReasonMaxLength } from "#/lib/appointments.ts";
-import {
-  markAppointmentCancelled,
-  setAppointmentStatus,
-  undoStatusChange,
-} from "#/server/appointments.functions.ts";
+import { setAppointmentStatus, undoStatusChange } from "#/server/appointments.functions.ts";
 import type { DayAppointment } from "#/server/appointments.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 
 // An appointment's status in its dialog: what it is, the changes the viewer
-// may make now, cancelling with who and why, and the same-day undo.
+// may make now, a link to cancelling it, and the same-day undo.
 
-const refusalMessages = {
+export const statusRefusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
   forbidden: "Tu rol no permite ese cambio en este turno.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
@@ -43,8 +33,7 @@ const refusalMessages = {
 
 export function StatusSection(props: { appointment: DayAppointment; onDone: () => void }) {
   const { appointment } = props;
-  const [cancelling, setCancelling] = useState(false);
-  const { run, pending, error } = useFormAction(refusalMessages);
+  const { run, pending, error } = useFormAction(statusRefusalMessages);
 
   async function act(action: () => ReturnType<typeof setAppointmentStatus>) {
     if (await run(action)) {
@@ -52,22 +41,24 @@ export function StatusSection(props: { appointment: DayAppointment; onDone: () =
     }
   }
 
-  if (cancelling) {
-    return (
-      <CancelForm
-        appointmentId={appointment.id}
-        onDone={props.onDone}
-        onBack={() => setCancelling(false)}
-      />
-    );
-  }
   return (
     <div className="flex flex-col gap-3">
       <StatusLine appointment={appointment} />
       <div className="flex flex-wrap gap-2">
         {appointment.actions.map((status) =>
           status === "cancelled" ? (
-            <Button key={status} variant="outline" size="sm" onClick={() => setCancelling(true)}>
+            <Button
+              key={status}
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={
+                <Link
+                  to="/agenda/turnos/$appointmentId/cancelar"
+                  params={{ appointmentId: appointment.id }}
+                />
+              }
+            >
               {statusActionLabels[status]}
             </Button>
           ) : (
@@ -113,56 +104,5 @@ function StatusLine({ appointment }: { appointment: DayAppointment }) {
       </p>
       <p className="text-muted-foreground">{cancellationText(appointment)}</p>
     </div>
-  );
-}
-
-export function CancelForm(props: {
-  appointmentId: string;
-  onDone: () => void;
-  onBack: () => void;
-}) {
-  const { run, pending, error } = useFormAction(refusalMessages);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const cancelledBy = form.get("cancelledBy") === "business" ? "business" : "patient";
-    const reason = form.get("reason");
-    const data = {
-      appointmentId: props.appointmentId,
-      cancelledBy,
-      reason: typeof reason === "string" ? reason : "",
-    } as const;
-    if (await run(() => markAppointmentCancelled({ data }))) {
-      props.onDone();
-    }
-  }
-
-  return (
-    <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-      <Field>
-        <FieldLabel htmlFor="cancelled-by">¿Quién cancela?</FieldLabel>
-        <NativeSelect id="cancelled-by" name="cancelledBy" defaultValue="patient">
-          {appointmentCancellers.map((canceller) => (
-            <NativeSelectOption key={canceller} value={canceller}>
-              {cancellerLabels[canceller]}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </Field>
-      <Field>
-        <FieldLabel htmlFor="cancellation-reason">Motivo (opcional)</FieldLabel>
-        <Input id="cancellation-reason" name="reason" maxLength={cancellationReasonMaxLength} />
-      </Field>
-      <ErrorAlert message={error} />
-      <div className="flex gap-2">
-        <Button type="submit" variant="destructive" disabled={pending}>
-          Cancelar turno
-        </Button>
-        <Button type="button" variant="ghost" onClick={props.onBack}>
-          Volver
-        </Button>
-      </div>
-    </form>
   );
 }

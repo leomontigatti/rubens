@@ -40,6 +40,8 @@ import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
+import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
 import { Route as AppPacientesPatientIdEditarRouteImport } from './routes/_app/pacientes/$patientId_/editar'
 import { Route as AppPersonalMemberIdContrasenaRouteImport } from './routes/_app/personal/$memberId_/contrasena'
@@ -47,6 +49,9 @@ import { Route as AppPersonalMemberIdEditarRouteImport } from './routes/_app/per
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
 import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
+import { Route as AppAgendaTurnosAppointmentIdCancelarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/cancelar'
+import { Route as AppAgendaTurnosAppointmentIdEditarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/editar'
+import { Route as AppAgendaTurnosAppointmentIdReprogramarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/reprogramar'
 import { Route as AppHorariosPractitionerIdScheduleIdCambiarRouteImport } from './routes/_app/horarios/$practitionerId_/$scheduleId/cambiar'
 import { Route as AppHorariosPractitionerIdScheduleIdTerminarRouteImport } from './routes/_app/horarios/$practitionerId_/$scheduleId/terminar'
 import { Route as AppPacientesPatientIdCoberturasCoverageIdRouteImport } from './routes/_app/pacientes/$patientId_/coberturas/$coverageId'
@@ -213,6 +218,17 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAgendaSobreturnosNuevoRoute =
+  AppAgendaSobreturnosNuevoRouteImport.update({
+    id: '/agenda/sobreturnos/nuevo',
+    path: '/agenda/sobreturnos/nuevo',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAgendaTurnosNuevoRoute = AppAgendaTurnosNuevoRouteImport.update({
+  id: '/agenda/turnos/nuevo',
+  path: '/agenda/turnos/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHorariosPractitionerIdNuevoRoute =
   AppHorariosPractitionerIdNuevoRouteImport.update({
     id: '/horarios/$practitionerId_/nuevo',
@@ -254,6 +270,24 @@ const AppSedesOfficeIdEditarRoute = AppSedesOfficeIdEditarRouteImport.update({
   path: '/sedes/$officeId/editar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgendaTurnosAppointmentIdCancelarRoute =
+  AppAgendaTurnosAppointmentIdCancelarRouteImport.update({
+    id: '/agenda/turnos/$appointmentId/cancelar',
+    path: '/agenda/turnos/$appointmentId/cancelar',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAgendaTurnosAppointmentIdEditarRoute =
+  AppAgendaTurnosAppointmentIdEditarRouteImport.update({
+    id: '/agenda/turnos/$appointmentId/editar',
+    path: '/agenda/turnos/$appointmentId/editar',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAgendaTurnosAppointmentIdReprogramarRoute =
+  AppAgendaTurnosAppointmentIdReprogramarRouteImport.update({
+    id: '/agenda/turnos/$appointmentId/reprogramar',
+    path: '/agenda/turnos/$appointmentId/reprogramar',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppHorariosPractitionerIdScheduleIdCambiarRoute =
   AppHorariosPractitionerIdScheduleIdCambiarRouteImport.update({
     id: '/horarios/$practitionerId_/$scheduleId/cambiar',
@@ -334,6 +368,8 @@ export interface FileRoutesByFullPath {
   '/personal/': typeof AppPersonalIndexRoute
   '/prestaciones/': typeof AppPrestacionesIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
+  '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
+  '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
@@ -341,6 +377,9 @@ export interface FileRoutesByFullPath {
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
+  '/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
+  '/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
   '/horarios/$practitionerId/$scheduleId/cambiar': typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
   '/horarios/$practitionerId/$scheduleId/terminar': typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
   '/pacientes/$patientId/coberturas/$coverageId': typeof AppPacientesPatientIdCoberturasCoverageIdRoute
@@ -381,6 +420,8 @@ export interface FileRoutesByTo {
   '/personal': typeof AppPersonalIndexRoute
   '/prestaciones': typeof AppPrestacionesIndexRoute
   '/sedes': typeof AppSedesIndexRoute
+  '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
+  '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
@@ -388,6 +429,9 @@ export interface FileRoutesByTo {
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
+  '/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
+  '/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
   '/horarios/$practitionerId/$scheduleId/cambiar': typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
   '/horarios/$practitionerId/$scheduleId/terminar': typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
   '/pacientes/$patientId/coberturas/$coverageId': typeof AppPacientesPatientIdCoberturasCoverageIdRoute
@@ -430,6 +474,8 @@ export interface FileRoutesById {
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/prestaciones/': typeof AppPrestacionesIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
+  '/_app/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
+  '/_app/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/_app/pacientes/$patientId_/editar': typeof AppPacientesPatientIdEditarRoute
   '/_app/personal/$memberId_/contrasena': typeof AppPersonalMemberIdContrasenaRoute
@@ -437,6 +483,9 @@ export interface FileRoutesById {
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
+  '/_app/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
+  '/_app/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
+  '/_app/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
   '/_app/horarios/$practitionerId_/$scheduleId/cambiar': typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
   '/_app/horarios/$practitionerId_/$scheduleId/terminar': typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
   '/_app/pacientes/$patientId_/coberturas/$coverageId': typeof AppPacientesPatientIdCoberturasCoverageIdRoute
@@ -479,6 +528,8 @@ export interface FileRouteTypes {
     | '/personal/'
     | '/prestaciones/'
     | '/sedes/'
+    | '/agenda/sobreturnos/nuevo'
+    | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
     | '/pacientes/$patientId/editar'
     | '/personal/$memberId/contrasena'
@@ -486,6 +537,9 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
+    | '/agenda/turnos/$appointmentId/cancelar'
+    | '/agenda/turnos/$appointmentId/editar'
+    | '/agenda/turnos/$appointmentId/reprogramar'
     | '/horarios/$practitionerId/$scheduleId/cambiar'
     | '/horarios/$practitionerId/$scheduleId/terminar'
     | '/pacientes/$patientId/coberturas/$coverageId'
@@ -526,6 +580,8 @@ export interface FileRouteTypes {
     | '/personal'
     | '/prestaciones'
     | '/sedes'
+    | '/agenda/sobreturnos/nuevo'
+    | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
     | '/pacientes/$patientId/editar'
     | '/personal/$memberId/contrasena'
@@ -533,6 +589,9 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
+    | '/agenda/turnos/$appointmentId/cancelar'
+    | '/agenda/turnos/$appointmentId/editar'
+    | '/agenda/turnos/$appointmentId/reprogramar'
     | '/horarios/$practitionerId/$scheduleId/cambiar'
     | '/horarios/$practitionerId/$scheduleId/terminar'
     | '/pacientes/$patientId/coberturas/$coverageId'
@@ -574,6 +633,8 @@ export interface FileRouteTypes {
     | '/_app/personal/'
     | '/_app/prestaciones/'
     | '/_app/sedes/'
+    | '/_app/agenda/sobreturnos/nuevo'
+    | '/_app/agenda/turnos/nuevo'
     | '/_app/horarios/$practitionerId_/nuevo'
     | '/_app/pacientes/$patientId_/editar'
     | '/_app/personal/$memberId_/contrasena'
@@ -581,6 +642,9 @@ export interface FileRouteTypes {
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
     | '/_app/sedes/$officeId_/editar'
+    | '/_app/agenda/turnos/$appointmentId/cancelar'
+    | '/_app/agenda/turnos/$appointmentId/editar'
+    | '/_app/agenda/turnos/$appointmentId/reprogramar'
     | '/_app/horarios/$practitionerId_/$scheduleId/cambiar'
     | '/_app/horarios/$practitionerId_/$scheduleId/terminar'
     | '/_app/pacientes/$patientId_/coberturas/$coverageId'
@@ -816,6 +880,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/agenda/sobreturnos/nuevo': {
+      id: '/_app/agenda/sobreturnos/nuevo'
+      path: '/agenda/sobreturnos/nuevo'
+      fullPath: '/agenda/sobreturnos/nuevo'
+      preLoaderRoute: typeof AppAgendaSobreturnosNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/turnos/nuevo': {
+      id: '/_app/agenda/turnos/nuevo'
+      path: '/agenda/turnos/nuevo'
+      fullPath: '/agenda/turnos/nuevo'
+      preLoaderRoute: typeof AppAgendaTurnosNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/horarios/$practitionerId_/nuevo': {
       id: '/_app/horarios/$practitionerId_/nuevo'
       path: '/horarios/$practitionerId/nuevo'
@@ -863,6 +941,27 @@ declare module '@tanstack/react-router' {
       path: '/sedes/$officeId/editar'
       fullPath: '/sedes/$officeId/editar'
       preLoaderRoute: typeof AppSedesOfficeIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/turnos/$appointmentId/cancelar': {
+      id: '/_app/agenda/turnos/$appointmentId/cancelar'
+      path: '/agenda/turnos/$appointmentId/cancelar'
+      fullPath: '/agenda/turnos/$appointmentId/cancelar'
+      preLoaderRoute: typeof AppAgendaTurnosAppointmentIdCancelarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/turnos/$appointmentId/editar': {
+      id: '/_app/agenda/turnos/$appointmentId/editar'
+      path: '/agenda/turnos/$appointmentId/editar'
+      fullPath: '/agenda/turnos/$appointmentId/editar'
+      preLoaderRoute: typeof AppAgendaTurnosAppointmentIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/turnos/$appointmentId/reprogramar': {
+      id: '/_app/agenda/turnos/$appointmentId/reprogramar'
+      path: '/agenda/turnos/$appointmentId/reprogramar'
+      fullPath: '/agenda/turnos/$appointmentId/reprogramar'
+      preLoaderRoute: typeof AppAgendaTurnosAppointmentIdReprogramarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/horarios/$practitionerId_/$scheduleId/cambiar': {
@@ -953,6 +1052,8 @@ interface AppRouteChildren {
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppPrestacionesIndexRoute: typeof AppPrestacionesIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
+  AppAgendaSobreturnosNuevoRoute: typeof AppAgendaSobreturnosNuevoRoute
+  AppAgendaTurnosNuevoRoute: typeof AppAgendaTurnosNuevoRoute
   AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
   AppPacientesPatientIdEditarRoute: typeof AppPacientesPatientIdEditarRoute
   AppPersonalMemberIdContrasenaRoute: typeof AppPersonalMemberIdContrasenaRoute
@@ -960,6 +1061,9 @@ interface AppRouteChildren {
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
   AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
+  AppAgendaTurnosAppointmentIdCancelarRoute: typeof AppAgendaTurnosAppointmentIdCancelarRoute
+  AppAgendaTurnosAppointmentIdEditarRoute: typeof AppAgendaTurnosAppointmentIdEditarRoute
+  AppAgendaTurnosAppointmentIdReprogramarRoute: typeof AppAgendaTurnosAppointmentIdReprogramarRoute
   AppHorariosPractitionerIdScheduleIdCambiarRoute: typeof AppHorariosPractitionerIdScheduleIdCambiarRoute
   AppHorariosPractitionerIdScheduleIdTerminarRoute: typeof AppHorariosPractitionerIdScheduleIdTerminarRoute
   AppPacientesPatientIdCoberturasCoverageIdRoute: typeof AppPacientesPatientIdCoberturasCoverageIdRoute
@@ -999,6 +1103,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppPrestacionesIndexRoute: AppPrestacionesIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
+  AppAgendaSobreturnosNuevoRoute: AppAgendaSobreturnosNuevoRoute,
+  AppAgendaTurnosNuevoRoute: AppAgendaTurnosNuevoRoute,
   AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
   AppPacientesPatientIdEditarRoute: AppPacientesPatientIdEditarRoute,
   AppPersonalMemberIdContrasenaRoute: AppPersonalMemberIdContrasenaRoute,
@@ -1008,6 +1114,12 @@ const AppRouteChildren: AppRouteChildren = {
   AppPrestacionesPractitionerIdNuevaRoute:
     AppPrestacionesPractitionerIdNuevaRoute,
   AppSedesOfficeIdEditarRoute: AppSedesOfficeIdEditarRoute,
+  AppAgendaTurnosAppointmentIdCancelarRoute:
+    AppAgendaTurnosAppointmentIdCancelarRoute,
+  AppAgendaTurnosAppointmentIdEditarRoute:
+    AppAgendaTurnosAppointmentIdEditarRoute,
+  AppAgendaTurnosAppointmentIdReprogramarRoute:
+    AppAgendaTurnosAppointmentIdReprogramarRoute,
   AppHorariosPractitionerIdScheduleIdCambiarRoute:
     AppHorariosPractitionerIdScheduleIdCambiarRoute,
   AppHorariosPractitionerIdScheduleIdTerminarRoute:
