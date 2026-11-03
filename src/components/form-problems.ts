@@ -5,8 +5,6 @@ export interface FieldProblem {
   /** The form's field; empty for a problem about no field. */
   field: string;
   message: string;
-  /** Left out of the summary: something else on the page already says it. */
-  unsummarized?: boolean;
 }
 
 type Issue = z.core.$ZodIssue;

@@ -161,19 +161,20 @@ carried over from en-escena.
   setting that takes effect on its own and reads as on or off.
 - **A long form splits into titled sections**, never cards nested in cards.
 
-**Where the error shows** (after GOV.UK's pattern). Each error sits under its field, the input
-marked `aria-invalid` and pointing at it with `aria-describedby`. A summary of every error sits in
-an `Alert` above the form, each one linking to its field, and focus moves to it. `FormPage` does all
-of this: a form passes what its schema refused through `fieldProblems`
+**Where the error shows.** Each error sits under its field, the input marked `aria-invalid` and
+pointing at it with `aria-describedby`, and focus moves to the first refused field, which brings it
+into view. `FormPage` does all of this: a form passes what its schema refused through `fieldProblems`
 (`src/components/form-problems.ts`), and `page.showProblems` shows it. An error stays until the next
-submit.
+submit. There is no summary of the fields' errors: on forms this short it only repeats them.
 
 A server refusal about one field shows the same way, under that field: `useFormAction`'s second
-argument names them (`emailTaken`). A refusal about no field stays in the summary. A refusal the
-page must link from keeps its own `Alert` and marks the field: `DocumentTakenAlert`.
+argument names them (`emailTaken`). A refusal about no field is the only error above the form, in an
+`ErrorAlert`, and takes the focus. A refusal the page must link from keeps its own `Alert` and marks
+the field: `DocumentTakenAlert`.
 
 The agenda's forms show one problem in an `ErrorAlert` until they move to `FormPage`, its patient
-registration aside, and so do the forms outside it: `/ingresar`, `/cambiar-contrasena`, `/disponibilidad`.
+registration aside, and so do the forms outside it: `/ingresar`, `/cambiar-contrasena`,
+`/disponibilidad`.
 
 ## Alerts
 

@@ -42,7 +42,7 @@ function FieldHint(props: { id?: string; children?: string }) {
   return props.id ? <FieldDescription id={props.id}>{props.children}</FieldDescription> : null;
 }
 
-/** Under the field. The summary above the form is what gets announced. */
+/** Under the field. No live region: focus moves to the first one, which reads it out. */
 function FieldProblemText(props: { id?: string; children?: string }) {
   return props.id ? (
     <FieldError id={props.id} role={undefined}>

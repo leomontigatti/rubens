@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
@@ -23,29 +22,24 @@ import type { DuplicateCandidate, DuplicateMatch, Patient } from "#/server/patie
 
 /** The refusal of a document another patient has, with a link to them. */
 export function DocumentTakenAlert({ holder }: { holder: Patient | null }) {
-  const alert = useRef<HTMLDivElement>(null);
-  useEffect(() => alert.current?.focus(), [holder]);
-
   if (!holder) {
     return null;
   }
   return (
-    <div ref={alert} tabIndex={-1} className="outline-none">
-      <Alert variant="destructive">
-        <AlertTitle>Ese documento ya está registrado</AlertTitle>
-        <AlertDescription>
-          Lo tiene{" "}
-          <Link
-            to="/pacientes/$patientId"
-            params={{ patientId: holder.id }}
-            className="underline underline-offset-4"
-          >
-            {patientName(holder)}
-          </Link>
-          .
-        </AlertDescription>
-      </Alert>
-    </div>
+    <Alert variant="destructive">
+      <AlertTitle>Ese documento ya está registrado</AlertTitle>
+      <AlertDescription>
+        Lo tiene{" "}
+        <Link
+          to="/pacientes/$patientId"
+          params={{ patientId: holder.id }}
+          className="underline underline-offset-4"
+        >
+          {patientName(holder)}
+        </Link>
+        .
+      </AlertDescription>
+    </Alert>
   );
 }
 

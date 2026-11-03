@@ -8,7 +8,7 @@ import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
 import { FormProblemsContext, useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
-import { FormPage, ProblemSummary, useFormPage } from "#/components/form-page.tsx";
+import { FormPage, focusProblem, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
 import { patientSearchQueries } from "#/components/patient-search.ts";
@@ -66,11 +66,11 @@ export function usePatientSave<I extends object>(
   };
 }
 
-/** What a save refused, for the summary, and the number field a taken document marks. */
+/** What a save refused, and the number field a taken document marks. */
 export function patientRefusals(save: RefusalState): FieldProblem[] {
   const refusals: FieldProblem[] = save.error ? [{ field: "", message: save.error }] : [];
   return save.holder
-    ? [...refusals, { field: "documentNumber", message: documentTaken, unsummarized: true }]
+    ? [...refusals, { field: "documentNumber", message: documentTaken }]
     : refusals;
 }
 
@@ -282,9 +282,9 @@ export function PatientRegistrationForm(props: {
 }) {
   const [problems, setProblems] = useState<FieldProblem[]>([]);
   const { save, form } = usePatientRegistration(props.onRegistered, setProblems);
-  const summary = useRef<HTMLDivElement>(null);
+  const element = useRef<HTMLFormElement>(null);
 
-  useEffect(() => summary.current?.focus(), [problems]);
+  useEffect(() => focusProblem(element.current, null), [problems]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -294,9 +294,8 @@ export function PatientRegistrationForm(props: {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
+    <form ref={element} className="flex flex-col gap-4" onSubmit={submit} noValidate>
       <ErrorAlert message={save.error} />
-      <ProblemSummary focusRef={summary} problems={problems} />
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
       <FormProblemsContext.Provider value={[...problems, ...patientRefusals(save)]}>
         <RegistrationFields form={form} />

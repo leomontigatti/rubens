@@ -4,13 +4,13 @@ import { useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { CheckIcon, ChevronLeftIcon, Undo2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, MouseEvent, ReactElement, ReactNode, Ref } from "react";
+import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 
+import { ErrorAlert } from "#/components/admin-form.tsx";
 import { FormProblemsContext } from "#/components/app-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { FieldSet } from "#/components/ui/field.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
@@ -147,7 +147,7 @@ export function FormPage(props: {
   description?: string;
   submitLabel: string;
   pending: boolean;
-  /** What the server refused, for the summary and any field it names. */
+  /** What the server refused: under the field it names, or above the form. */
   refusals?: FieldProblem[];
   /** Clears what the last submit answered. */
   onClear: () => void;
@@ -155,8 +155,8 @@ export function FormPage(props: {
 }) {
   const { page, form, refusals = noRefusals } = props;
   const problems = [...page.problems, ...refusals];
-  const summarized = problems.filter((problem) => !problem.unsummarized);
-  const summary = useRef<HTMLDivElement>(null);
+  const formElement = useRef<HTMLFormElement>(null);
+  const alert = useRef<HTMLDivElement>(null);
   // Going back waits for the page's data, and nothing here may run again meanwhile.
   const pending = props.pending || page.leaving;
   const unchanged = useStore(form.store, (state) => state.isDefaultValue);
@@ -164,9 +164,9 @@ export function FormPage(props: {
 
   useEffect(() => setDirty(!unchanged), [setDirty, unchanged]);
 
-  // Focus goes to the summary, whichever way the problems arrived.
+  // Whichever way the problems arrived.
   const refused = refusalText(refusals);
-  useEffect(() => summary.current?.focus(), [page.problemsShown, refused]);
+  useEffect(() => focusProblem(formElement.current, alert.current), [page.problemsShown, refused]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -186,12 +186,13 @@ export function FormPage(props: {
       <form
         // A discard remounts the form: what its fields keep of their own goes too.
         key={page.version}
+        ref={formElement}
         noValidate
         className="flex flex-col gap-4"
         onSubmit={submit}
       >
         <FormProblemsContext.Provider value={problems}>
-          <ProblemSummary focusRef={summary} problems={summarized} />
+          <RefusalAlert focusRef={alert} problems={problems} />
           <FieldSet disabled={pending}>{props.children}</FieldSet>
         </FormProblemsContext.Provider>
         <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
@@ -215,53 +216,28 @@ export function FormPage(props: {
 }
 
 /**
- * Focuses the field by hand: following the link would be a navigation, and a
- * changed form would ask before leaving. A group of checkboxes takes its first.
+ * Takes the user to what was refused: the first refused field in the form, or
+ * `alert` for a refusal about no field.
  */
-function focusField(event: MouseEvent, field: string) {
-  event.preventDefault();
-  const target = document.getElementById(field);
-  (target?.matches("fieldset")
-    ? target.querySelector<HTMLElement>("[role=checkbox]")
-    : target
-  )?.focus();
+export function focusProblem(form: HTMLElement | null, alert: HTMLElement | null) {
+  (form?.querySelector<HTMLElement>("[aria-invalid=true]") ?? alert)?.focus();
 }
 
-/** Every problem of the last submit; one about a field links to it. */
-export function ProblemSummary({
+/** The one error above the form: a refusal about no field. */
+function RefusalAlert({
   focusRef,
   problems,
 }: {
   focusRef: Ref<HTMLDivElement>;
   problems: FieldProblem[];
 }) {
-  if (problems.length === 0) {
+  const refusal = problems.find((problem) => !problem.field);
+  if (!refusal) {
     return null;
   }
   return (
     <div ref={focusRef} tabIndex={-1} className="outline-none">
-      <Alert variant="destructive">
-        <AlertTitle>Hay un problema</AlertTitle>
-        <AlertDescription>
-          <ul className="flex flex-col gap-1">
-            {problems.map(({ field, message }) => (
-              <li key={message}>
-                {field ? (
-                  <a
-                    href={`#${field}`}
-                    className="underline underline-offset-4"
-                    onClick={(event) => focusField(event, field)}
-                  >
-                    {message}
-                  </a>
-                ) : (
-                  message
-                )}
-              </li>
-            ))}
-          </ul>
-        </AlertDescription>
-      </Alert>
+      <ErrorAlert message={refusal.message} />
     </div>
   );
 }
