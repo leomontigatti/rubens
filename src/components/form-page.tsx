@@ -4,11 +4,13 @@ import { useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { CheckIcon, ChevronLeftIcon, Undo2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactElement, ReactNode } from "react";
+import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 
-import { ErrorAlert } from "#/components/admin-form.tsx";
+import { FormProblemsContext } from "#/components/app-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import type { FieldProblem } from "#/components/form-problems.ts";
 import { PageHeader } from "#/components/page-header.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { FieldSet } from "#/components/ui/field.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
@@ -27,6 +29,8 @@ export function useFormPage(back: NavigateOptions) {
   const [version, setVersion] = useState(0);
   const [discarding, setDiscarding] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [problems, setProblems] = useState<FieldProblem[]>([]);
+  const [problemsShown, setProblemsShown] = useState(0);
   const released = useRef(false);
   const mounted = useRef(false);
   const blocker = useBlocker({
@@ -78,6 +82,14 @@ export function useFormPage(back: NavigateOptions) {
     setDirty,
     version,
     leaving,
+    problems,
+    problemsShown,
+    /** Shows what the form's check refused, under each field and in the summary. */
+    showProblems(refused: FieldProblem[]) {
+      setProblems(refused);
+      setProblemsShown((shown) => shown + 1);
+    },
+    clearProblems: () => setProblems([]),
     goBack,
     leave,
     /** The question before discarding or leaving, open for either. */
@@ -114,6 +126,10 @@ export function CreateButton(props: { can: boolean; link: ReactElement; children
   );
 }
 
+const noRefusals: FieldProblem[] = [];
+
+const refusalText = (refusals: FieldProblem[]) => refusals.map((refusal) => refusal.message).join();
+
 /** What `FormPage` needs of `useAppForm`'s form. */
 type PageForm = Pick<AnyFormApi, "store" | "handleSubmit" | "reset">;
 
@@ -131,11 +147,16 @@ export function FormPage(props: {
   description?: string;
   submitLabel: string;
   pending: boolean;
+  /** What the server refused, for the summary and any field it names. */
+  refusals?: FieldProblem[];
   /** Clears what the last submit answered. */
-  onDiscard: () => void;
+  onClear: () => void;
   children: ReactNode;
 }) {
-  const { page, form } = props;
+  const { page, form, refusals = noRefusals } = props;
+  const problems = [...page.problems, ...refusals];
+  const summarized = problems.filter((problem) => !problem.unsummarized);
+  const summary = useRef<HTMLDivElement>(null);
   // Going back waits for the page's data, and nothing here may run again meanwhile.
   const pending = props.pending || page.leaving;
   const unchanged = useStore(form.store, (state) => state.isDefaultValue);
@@ -143,8 +164,14 @@ export function FormPage(props: {
 
   useEffect(() => setDirty(!unchanged), [setDirty, unchanged]);
 
+  // Focus goes to the summary, whichever way the problems arrived.
+  const refused = refusalText(refusals);
+  useEffect(() => summary.current?.focus(), [page.problemsShown, refused]);
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    page.clearProblems();
+    props.onClear();
     void form.handleSubmit();
   }
 
@@ -163,7 +190,10 @@ export function FormPage(props: {
         className="flex flex-col gap-4"
         onSubmit={submit}
       >
-        <FieldSet disabled={pending}>{props.children}</FieldSet>
+        <FormProblemsContext.Provider value={problems}>
+          <ProblemSummary focusRef={summary} problems={summarized} />
+          <FieldSet disabled={pending}>{props.children}</FieldSet>
+        </FormProblemsContext.Provider>
         <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
       </form>
       <ConfirmDialog
@@ -175,10 +205,40 @@ export function FormPage(props: {
         confirmLabel="Descartar cambios"
         onConfirm={() => {
           form.reset();
-          props.onDiscard();
+          page.clearProblems();
+          props.onClear();
           page.discard();
         }}
       />
+    </div>
+  );
+}
+
+/** Every problem of the last submit; one about a field links to it. */
+function ProblemSummary(props: { focusRef: Ref<HTMLDivElement>; problems: FieldProblem[] }) {
+  if (props.problems.length === 0) {
+    return null;
+  }
+  return (
+    <div ref={props.focusRef} tabIndex={-1} className="outline-none">
+      <Alert variant="destructive">
+        <AlertTitle>Hay un problema</AlertTitle>
+        <AlertDescription>
+          <ul className="flex flex-col gap-1">
+            {props.problems.map(({ field, message }) => (
+              <li key={message}>
+                {field ? (
+                  <a href={`#${field}`} className="underline underline-offset-4">
+                    {message}
+                  </a>
+                ) : (
+                  message
+                )}
+              </li>
+            ))}
+          </ul>
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }
@@ -219,13 +279,23 @@ export function ActionFormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
-  action: { pending: boolean; error: string | null; setError: (error: string | null) => void };
+  action: {
+    pending: boolean;
+    error: string | null;
+    errorField: string;
+    setError: (error: string | null) => void;
+  };
   children: ReactNode;
 }) {
   const { action, children, ...page } = props;
+  const refusals = action.error ? [{ field: action.errorField, message: action.error }] : undefined;
   return (
-    <FormPage {...page} pending={action.pending} onDiscard={() => action.setError(null)}>
-      <ErrorAlert message={action.error} />
+    <FormPage
+      {...page}
+      pending={action.pending}
+      refusals={refusals}
+      onClear={() => action.setError(null)}
+    >
       {children}
     </FormPage>
   );

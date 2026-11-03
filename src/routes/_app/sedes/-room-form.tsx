@@ -1,7 +1,7 @@
 import type * as z from "zod";
 
-import { fieldMessage } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { roomUpdateSchema } from "#/lib/offices.ts";
 
@@ -34,7 +34,7 @@ export function RoomForm(props: {
     onSubmit: async ({ value }) => {
       const fields = roomFieldsSchema.safeParse({ ...value, capacity: Number(value.capacity) });
       if (!fields.success) {
-        action.setError(fieldMessage(fieldMessages, fields.error));
+        page.showProblems(fieldProblems(fields.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => props.onSubmit(fields.data))) {

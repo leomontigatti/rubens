@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
+import { fieldProblems } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import {
   PatientFields,
   PatientSaveFeedback,
-  patientFieldMessage,
+  patientMessage,
+  patientRefusals,
   usePatientForm,
   usePatientSave,
 } from "#/components/patient-form.tsx";
@@ -40,7 +42,7 @@ function PatientEditForm({ patient }: { patient: Patient }) {
     const update = { ...input, patientId: patient.id };
     const parsed = patientUpdateSchema.safeParse(update);
     if (!parsed.success) {
-      save.setError(patientFieldMessage(parsed.error));
+      page.showProblems(fieldProblems(parsed.error.issues, patientMessage));
       return;
     }
     await save.submit(update);
@@ -54,7 +56,8 @@ function PatientEditForm({ patient }: { patient: Patient }) {
       description={patientName(patient)}
       submitLabel="Guardar"
       pending={save.pending}
-      onDiscard={save.dismiss}
+      refusals={patientRefusals(save)}
+      onClear={save.dismiss}
     >
       <PatientSaveFeedback
         save={save}

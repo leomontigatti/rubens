@@ -1,7 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ComponentProps, ReactElement } from "react";
-import type * as z from "zod";
 
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
@@ -11,23 +10,19 @@ import { Button } from "#/components/ui/button.tsx";
 // step every form and button goes through, its error copy, and the admin
 // controls.
 
-/** The message for the first field `error` names, from `messages`. */
-export function fieldMessage<T extends string>(
-  messages: Record<T, string>,
-  error: z.ZodError,
-): string {
-  const [issue] = error.issues;
-  return messages[issue!.path[0] as T];
-}
-
 /**
  * Runs a server function, shows its refusal as the copy `messages` gives it,
  * and reloads the route's data when it succeeds, pending until that is done.
  * `run` resolves to whether it succeeded; so does `save`, which reloads nothing.
  */
-export function useFormAction<R extends string>(messages: Record<R, string>) {
+export function useFormAction<R extends string>(
+  messages: Record<R, string>,
+  /** The refusals about one field, by the form's name for it. */
+  refusalFields: Partial<Record<R, string>> = {},
+) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState("");
   const [pending, setPending] = useState(false);
 
   type Action = () => Promise<{ ok: true } | { ok: false; reason: R }>;
@@ -40,6 +35,7 @@ export function useFormAction<R extends string>(messages: Record<R, string>) {
       const result = await action();
       if (!result.ok) {
         setError(messages[result.reason]);
+        setErrorField(refusalFields[result.reason] ?? "");
         return false;
       }
       await after?.();
@@ -51,6 +47,7 @@ export function useFormAction<R extends string>(messages: Record<R, string>) {
 
   return {
     error,
+    errorField,
     setError,
     pending,
     run: (action: Action) => attempt(action, () => router.invalidate()),

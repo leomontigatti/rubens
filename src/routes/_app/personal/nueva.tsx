@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { fieldMessage } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { staffInputSchema } from "#/lib/staff.ts";
 import type { StaffInput } from "#/lib/staff.ts";
@@ -38,7 +38,7 @@ function StaffForm() {
     onSubmit: async ({ value }) => {
       const input = staffInputSchema.safeParse(value);
       if (!input.success) {
-        action.setError(fieldMessage(fieldMessages, input.error));
+        page.showProblems(fieldProblems(input.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => addStaffMember({ data: input.data }))) {

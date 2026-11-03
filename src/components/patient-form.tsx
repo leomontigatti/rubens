@@ -5,14 +5,12 @@ import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { FormProblemsContext, useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
+import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
-import {
-  initialSaveState,
-  patientRefusalMessages,
-  saveReducer,
-} from "#/components/patient-save.ts";
+import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
 import { patientSearchQueries } from "#/components/patient-search.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
@@ -62,14 +60,21 @@ export function usePatientSave<I extends object>(
 
   return {
     ...state,
-    setError: (message: string) => dispatch({ type: "invalid", message }),
     submit: (next: I) => save(next, false),
     confirm: () => state.input && save(state.input, true),
     dismiss: () => dispatch({ type: "dismissed" }),
   };
 }
 
-/** The error, the document refusal and the duplicate warning of a patient form. */
+/** What a save refused, for the summary, and the number field a taken document marks. */
+export function patientRefusals(save: RefusalState): FieldProblem[] {
+  const refusals: FieldProblem[] = save.error ? [{ field: "", message: save.error }] : [];
+  return save.holder
+    ? [...refusals, { field: "documentNumber", message: documentTaken, unsummarized: true }]
+    : refusals;
+}
+
+/** The document refusal and the duplicate warning of a patient form. */
 export function PatientSaveFeedback(props: {
   save: RefusalState & { pending: boolean; confirm: () => unknown; dismiss: () => void };
   confirmLabel: string;
@@ -78,7 +83,6 @@ export function PatientSaveFeedback(props: {
   const { save } = props;
   return (
     <>
-      <ErrorAlert message={save.error} />
       <DocumentTakenAlert holder={save.holder} />
       <DuplicateWarning
         candidates={save.candidates}
@@ -91,6 +95,8 @@ export function PatientSaveFeedback(props: {
     </>
   );
 }
+
+const documentTaken = "Ese documento ya está registrado.";
 
 const fieldMessages: Record<string, string> = {
   firstName: "Ingresá el nombre.",
@@ -111,14 +117,9 @@ const fieldMessages: Record<string, string> = {
   invalidDni: "El DNI tiene que ser un número, con o sin puntos.",
 };
 
-/** The copy for the first problem `error` names. */
-export function patientFieldMessage(error: z.ZodError): string {
-  const [issue] = error.issues;
-  const field = String(issue!.path[0]);
-  return (
-    fieldMessages[issue!.message] ?? fieldMessages[field] ?? patientRefusalMessages.invalidInput
-  );
-}
+/** The copy for a patient's or guardian's field: the phone and the document carry their own. */
+export const patientMessage = (issue: z.core.$ZodIssue) =>
+  fieldMessages[issue.message] ?? messageIn(fieldMessages)(issue);
 
 const noPatient = {
   firstName: "",
@@ -232,7 +233,10 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
 }
 
 /** The submit step of registering a patient, for its page and for the booking's picker. */
-function usePatientRegistration(onRegistered: (patient: Patient) => void) {
+function usePatientRegistration(
+  onRegistered: (patient: Patient) => void,
+  showProblems: (problems: FieldProblem[]) => void,
+) {
   const save = usePatientSave(
     (data: PatientInput & DuplicateConfirmation) => addPatient({ data }),
     onRegistered,
@@ -240,7 +244,7 @@ function usePatientRegistration(onRegistered: (patient: Patient) => void) {
   const form = usePatientForm(undefined, async (raw) => {
     const parsed = patientInputSchema.safeParse(raw);
     if (!parsed.success) {
-      save.setError(patientFieldMessage(parsed.error));
+      showProblems(fieldProblems(parsed.error.issues, patientMessage));
       return;
     }
     await save.submit(raw);
@@ -276,17 +280,22 @@ export function PatientRegistrationForm(props: {
   onUseExisting: (patient: Patient) => void;
   onCancel: () => void;
 }) {
-  const { save, form } = usePatientRegistration(props.onRegistered);
+  const [problems, setProblems] = useState<FieldProblem[]>([]);
+  const { save, form } = usePatientRegistration(props.onRegistered, setProblems);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setProblems([]);
     void form.handleSubmit();
   }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
+      <ErrorAlert message={save.error} />
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
-      <RegistrationFields form={form} />
+      <FormProblemsContext.Provider value={[...problems, ...patientRefusals(save)]}>
+        <RegistrationFields form={form} />
+      </FormProblemsContext.Provider>
       <FormActions
         pending={save.pending}
         submitLabel="Registrar paciente"
@@ -301,7 +310,7 @@ export function PatientRegistrationPage() {
   const page = useFormPage({ to: "/pacientes" });
   const showPatient = (patient: Patient) =>
     page.leave({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
-  const { save, form } = usePatientRegistration(showPatient);
+  const { save, form } = usePatientRegistration(showPatient, page.showProblems);
   return (
     <FormPage
       page={page}
@@ -309,7 +318,8 @@ export function PatientRegistrationPage() {
       title="Nuevo paciente"
       submitLabel="Registrar paciente"
       pending={save.pending}
-      onDiscard={save.dismiss}
+      refusals={patientRefusals(save)}
+      onClear={save.dismiss}
     >
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={showPatient} />
       <RegistrationFields form={form} />

@@ -41,7 +41,6 @@ export type SaveEvent<I> =
   /** The server answered, or the call threw. */
   | { type: "settled" }
   | { type: "refused"; result: Exclude<SaveResult, { ok: true }> }
-  | { type: "invalid"; message: string }
   | { type: "dismissed" };
 
 const noRefusal: RefusalState = { error: null, holder: null, candidates: [] };
@@ -68,8 +67,6 @@ export function saveReducer<I>(state: SaveState<I>, event: SaveEvent<I>): SaveSt
       return { ...state, pending: false };
     case "refused":
       return { ...state, ...refusalState(event.result) };
-    case "invalid":
-      return { ...state, ...noRefusal, error: event.message };
     case "dismissed":
       return { ...state, ...noRefusal };
   }

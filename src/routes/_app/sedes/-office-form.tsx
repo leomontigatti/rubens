@@ -1,5 +1,5 @@
-import { fieldMessage } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { officeInputSchema } from "#/lib/offices.ts";
 import type { OfficeInput } from "#/lib/offices.ts";
@@ -33,7 +33,7 @@ export function OfficeForm(props: {
     onSubmit: async ({ value }) => {
       const input = officeInputSchema.safeParse(value);
       if (!input.success) {
-        action.setError(fieldMessage(fieldMessages, input.error));
+        page.showProblems(fieldProblems(input.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => props.onSubmit(input.data))) {

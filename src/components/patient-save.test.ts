@@ -66,14 +66,4 @@ describe("saveReducer", () => {
     );
     expect(state).toMatchObject({ candidates: [], input: { firstName: "Ana" } });
   });
-
-  it("a field's problem replaces whatever was shown", () => {
-    const state = run(
-      { type: "sent", input: { firstName: "Ana" } },
-      { type: "settled" },
-      { type: "refused", result: { ok: false, reason: "documentTaken", patient: holder } },
-      { type: "invalid", message: "Ingresá el apellido." },
-    );
-    expect(state).toMatchObject({ holder: null, error: "Ingresá el apellido." });
-  });
 });

@@ -3,10 +3,11 @@ import type * as z from "zod";
 
 import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import {
   documentTypeOptions,
-  patientFieldMessage,
+  patientMessage,
   phoneFieldProps,
 } from "#/components/patient-form.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
@@ -190,7 +191,7 @@ export function GuardianForm(props: GuardianFormProps) {
       };
       const checked = props.schema.safeParse({ ...fields, ...props.ids });
       if (!checked.success) {
-        action.setError(patientFieldMessage(checked.error));
+        page.showProblems(fieldProblems(checked.error.issues, patientMessage));
         return;
       }
       if (await action.save(() => props.onSubmit(fields))) {

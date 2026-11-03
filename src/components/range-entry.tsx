@@ -5,6 +5,7 @@ import type * as z from "zod";
 
 import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -49,13 +50,8 @@ const fieldMessages: Record<EntryField, string> = {
   end: "El fin tiene que ser posterior al inicio.",
 };
 
-/** The copy for the first field a time-off or closure schema refused. */
-function entryErrorMessage(error: z.ZodError): string {
-  const field = error.issues[0]?.path.at(-1);
-  return typeof field === "string" && Object.hasOwn(fieldMessages, field)
-    ? fieldMessages[field as EntryField]
-    : "Revisá los datos ingresados.";
-}
+/** The form holds who or where the entry is for in one field. */
+const entryFieldNames = { practitionerId: "owner", officeId: "owner" };
 
 /** What the form opens with: the entry's fields, and none for the other kind. */
 function entryValues(initial: RangeEntry | null, owner: string): EntryValues {
@@ -86,7 +82,9 @@ export function EntryForm<R extends string>(props: {
     onSubmit: async ({ value }) => {
       const submitted = props.onSubmit(value);
       if (!(submitted instanceof Promise)) {
-        action.setError(entryErrorMessage(submitted));
+        page.showProblems(
+          fieldProblems(submitted.issues, messageIn(fieldMessages), entryFieldNames),
+        );
         return;
       }
       if (await action.save(() => submitted)) {

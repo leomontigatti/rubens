@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type * as z from "zod";
-
 import { pickedIn, useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
@@ -30,12 +29,6 @@ const fieldMessages: Record<string, string> = {
   gridMinutes: "El intervalo tiene que ser un número de minutos entre 5 y 120.",
   color: "Elegí un color.",
 };
-
-/** The copy for the first field the schema refused, nested or not. */
-function memberFieldMessage(error: z.ZodError): string {
-  const field = error.issues[0]!.path.find((part) => String(part) in fieldMessages);
-  return fieldMessages[String(field)] ?? "Revisá los datos ingresados.";
-}
 
 type SettingsValues = Omit<PractitionerSettings, "specialty" | "gridMinutes" | "color"> & {
   specialty: string;
@@ -120,7 +113,7 @@ function MemberForm({ member }: { member: StaffMember }) {
       const update = { memberId, ...changesIn(value, member) };
       const parsed = memberUpdateSchema.safeParse(update);
       if (!parsed.success) {
-        action.setError(memberFieldMessage(parsed.error));
+        page.showProblems(fieldProblems(parsed.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => editMember({ data: { ...update, roles: parsed.data.roles } }))) {

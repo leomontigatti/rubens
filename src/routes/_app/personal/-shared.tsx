@@ -23,7 +23,11 @@ const refusalMessages = {
 export type RefusalReason = keyof typeof refusalMessages;
 
 export function useAction() {
-  return useFormAction(refusalMessages);
+  return useFormAction(refusalMessages, {
+    emailTaken: "email",
+    passwordTooShort: "password",
+    passwordTooLong: "password",
+  });
 }
 
 export function RefusalAlert({ reason }: { reason: RefusalReason }) {
