@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { FieldProblemText, useFieldProblem } from "#/components/app-form.tsx";
+import { FieldProblemText, joinIds, useFieldProblem } from "#/components/app-form.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import { patientSearchProblem } from "#/components/patient-search.ts";
 import { SearchInput } from "#/components/search-input.tsx";
@@ -80,6 +80,8 @@ function PickedPatientLine(props: { patient: PickedPatient; onChange: () => void
 function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
   const [query, setQuery] = useState("");
   const search = usePatientSearch(query);
+  const searchProblem = patientSearchProblem(search);
+  const searchErrorId = searchProblem ? "patient-search-error" : undefined;
   const { problem, errorId, invalid } = useFieldProblem("patient");
 
   return (
@@ -92,33 +94,32 @@ function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
         onChange={setQuery}
         loading={search.waiting}
         aria-invalid={invalid}
-        aria-describedby={errorId}
+        aria-describedby={joinIds(errorId, searchErrorId)}
       />
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
-      <PatientResults search={search} onChoose={props.onChoose} />
+      {searchProblem ? (
+        <FieldError id={searchErrorId}>{searchProblem}</FieldError>
+      ) : (
+        <PatientResults found={search.found} onChoose={props.onChoose} />
+      )}
     </Field>
   );
 }
 
 /** Only the answer to the text in the box: nothing while it is on its way. */
-function PatientResults(props: { search: Search; onChoose: (patient: Patient) => void }) {
-  const problem = patientSearchProblem(props.search);
-  if (problem) {
-    return <FieldError>{problem}</FieldError>;
+function PatientResults(props: { found: Search["found"]; onChoose: (patient: Patient) => void }) {
+  if (!props.found?.ok) {
+    return null;
   }
-  const { found } = props.search;
-  return found?.ok ? <PatientList patients={found.patients} onChoose={props.onChoose} /> : null;
-}
-
-function PatientList(props: { patients: Patient[]; onChoose: (patient: Patient) => void }) {
-  if (props.patients.length === 0) {
+  const { patients } = props.found;
+  if (patients.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">Ningún paciente coincide con la búsqueda.</p>
     );
   }
   return (
     <ul className="flex flex-col gap-1">
-      {props.patients.map((patient) => (
+      {patients.map((patient) => (
         <li key={patient.id}>
           <Button type="button" variant="ghost" size="sm" onClick={() => props.onChoose(patient)}>
             {patientName(patient)}

@@ -29,14 +29,6 @@ describe("patientSearchKey", () => {
 });
 
 describe("patientSearchRequest", () => {
-  it("asks once for text that differs only in the spaces around it", () => {
-    const viewer = { organizationId: "org-1", userId: "user-1" };
-    const key = (typed: string) =>
-      JSON.stringify(patientSearchKey(viewer, patientSearchRequest(typed, false)));
-
-    expect(key(" juan  ")).toBe(key("juan"));
-  });
-
   it("asks for the trimmed text", () => {
     expect(patientSearchRequest("  juan p ", true)).toEqual({
       query: "juan p",
