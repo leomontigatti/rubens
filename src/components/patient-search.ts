@@ -45,11 +45,20 @@ export function patientSearchState<Found>(
     : { searching: true, waiting: answer.data === undefined, found: answer.data, failed: false };
 }
 
+type PatientRefusal = keyof typeof patientRefusalMessages;
+
+/** The patients the answer to the text in the box found; nothing until there is one. */
+export function patientSearchMatches<Match>(
+  search: PatientSearchState<
+    { ok: true; patients: Match[] } | { ok: false; reason: PatientRefusal }
+  >,
+): Match[] | undefined {
+  return search.found?.ok ? search.found.patients : undefined;
+}
+
 /** What to say instead of the results: a refusal, a failure, or nothing. */
 export function patientSearchProblem(
-  search: PatientSearchState<
-    { ok: true } | { ok: false; reason: keyof typeof patientRefusalMessages }
-  >,
+  search: PatientSearchState<{ ok: true } | { ok: false; reason: PatientRefusal }>,
 ) {
   if (search.found && !search.found.ok) {
     return patientRefusalMessages[search.found.reason];

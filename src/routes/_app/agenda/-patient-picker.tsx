@@ -1,16 +1,30 @@
+import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 
 import { FieldProblemText, joinIds, useFieldProblem } from "#/components/app-form.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
-import { patientSearchProblem } from "#/components/patient-search.ts";
-import { SearchInput } from "#/components/search-input.tsx";
+import { patientSearchMatches, patientSearchProblem } from "#/components/patient-search.ts";
 import { Button } from "#/components/ui/button.tsx";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "#/components/ui/combobox.tsx";
 import { Field, FieldError, FieldLabel } from "#/components/ui/field.tsx";
+import { InputGroupAddon } from "#/components/ui/input-group.tsx";
+import { Spinner } from "#/components/ui/spinner.tsx";
 import { usePatientSearch } from "#/components/use-patient-search.ts";
-import type { PatientSearch as Search } from "#/components/use-patient-search.ts";
 import type { PickedPatient } from "#/lib/booking-draft.ts";
 import { patientName } from "#/lib/patients.ts";
 import type { Patient } from "#/server/patients.ts";
+
+const picked = (patient: Patient): PickedPatient => ({
+  id: patient.id,
+  name: patientName(patient),
+});
 
 /** Finds the patient with the search box, or registers one on the spot. */
 export function PatientPicker(props: {
@@ -19,26 +33,23 @@ export function PatientPicker(props: {
 }) {
   const [registering, setRegistering] = useState(false);
 
-  function choose(chosen: Patient | null) {
+  function registered(patient: Patient) {
     setRegistering(false);
-    props.onChange(chosen && { id: chosen.id, name: patientName(chosen) });
+    props.onChange(picked(patient));
   }
 
-  if (props.value) {
-    return <PickedPatientLine patient={props.value} onChange={() => choose(null)} />;
-  }
   if (registering) {
     return (
       <PatientRegistrationForm
-        onRegistered={choose}
-        onUseExisting={choose}
+        onRegistered={registered}
+        onUseExisting={registered}
         onCancel={() => setRegistering(false)}
       />
     );
   }
   return (
     <div className="flex flex-col gap-2">
-      <PatientSearch onChoose={choose} />
+      <PatientCombobox value={props.value} onChange={props.onChange} />
       <div>
         <Button type="button" variant="link" onClick={() => setRegistering(true)}>
           Registrar paciente nuevo
@@ -49,83 +60,76 @@ export function PatientPicker(props: {
 }
 
 /**
- * The patient picked. A refusal about them (inactive since) shows here, and
- * `Cambiar` takes the focus, as the field to fix.
+ * The patient picked stays in the box. Typing searches the server, and the list
+ * opens only on the answer to the text in the box. A refusal about the patient
+ * (inactive since) shows under the box, which takes the focus.
  */
-function PickedPatientLine(props: { patient: PickedPatient; onChange: () => void }) {
-  const { problem, errorId, invalid } = useFieldProblem("patient");
-  return (
-    <Field data-invalid={invalid}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm">
-          <span className="text-muted-foreground">Paciente:</span>{" "}
-          <span className="font-medium">{props.patient.name}</span>
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={props.onChange}
-          aria-invalid={invalid}
-          aria-describedby={errorId}
-        >
-          Cambiar
-        </Button>
-      </div>
-      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
-    </Field>
-  );
-}
-
-function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
+function PatientCombobox(props: {
+  value: PickedPatient | null;
+  onChange: (patient: PickedPatient | null) => void;
+}) {
+  const [text, setText] = useState(props.value?.name ?? "");
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
   const search = usePatientSearch(query);
   const searchProblem = patientSearchProblem(search);
   const searchErrorId = searchProblem ? "patient-search-error" : undefined;
   const { problem, errorId, invalid } = useFieldProblem("patient");
+  const found = patientSearchMatches(search)?.map(picked);
 
   return (
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor="patient">Paciente</FieldLabel>
-      <SearchInput
-        id="patient"
-        placeholder="Buscar por nombre, documento o teléfono"
-        value={query}
-        onChange={setQuery}
-        loading={search.waiting}
-        aria-invalid={invalid}
-        aria-describedby={joinIds(errorId, searchErrorId)}
-      />
+      <Combobox
+        items={found ?? []}
+        filter={null}
+        value={props.value}
+        onValueChange={props.onChange}
+        inputValue={text}
+        onInputValueChange={(next, { reason }) => {
+          // The list closes while a search runs, and closing would wipe what was typed.
+          if (reason === "input-clear") {
+            return;
+          }
+          setText(next);
+          // Only typing searches, and it drops the patient picked: the box shows one or the other.
+          setQuery(reason === "input-change" ? next : "");
+          if (reason === "input-change" && props.value) {
+            props.onChange(null);
+          }
+        }}
+        open={open && found !== undefined}
+        onOpenChange={setOpen}
+        itemToStringLabel={(patient) => patient.name}
+        isItemEqualToValue={(patient, value) => patient.id === value.id}
+      >
+        <ComboboxInput
+          id="patient"
+          className="w-full"
+          placeholder="Buscar por nombre, documento o teléfono"
+          showTrigger={false}
+          showClear={props.value !== null}
+          clearLabel="Borrar paciente"
+          aria-invalid={invalid}
+          aria-describedby={joinIds(errorId, searchErrorId)}
+        >
+          <InputGroupAddon>
+            {search.waiting ? <Spinner aria-label="Buscando" /> : <SearchIcon aria-hidden="true" />}
+          </InputGroupAddon>
+        </ComboboxInput>
+        <ComboboxContent>
+          <ComboboxEmpty>Ningún paciente coincide con la búsqueda.</ComboboxEmpty>
+          <ComboboxList>
+            {(patient: PickedPatient) => (
+              <ComboboxItem key={patient.id} value={patient}>
+                {patient.name}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
-      {searchProblem ? (
-        <FieldError id={searchErrorId}>{searchProblem}</FieldError>
-      ) : (
-        <PatientResults found={search.found} onChoose={props.onChoose} />
-      )}
+      {searchProblem && <FieldError id={searchErrorId}>{searchProblem}</FieldError>}
     </Field>
-  );
-}
-
-/** Only the answer to the text in the box: nothing while it is on its way. */
-function PatientResults(props: { found: Search["found"]; onChoose: (patient: Patient) => void }) {
-  if (!props.found?.ok) {
-    return null;
-  }
-  const { patients } = props.found;
-  if (patients.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">Ningún paciente coincide con la búsqueda.</p>
-    );
-  }
-  return (
-    <ul className="flex flex-col gap-1">
-      {patients.map((patient) => (
-        <li key={patient.id}>
-          <Button type="button" variant="ghost" size="sm" onClick={() => props.onChoose(patient)}>
-            {patientName(patient)}
-          </Button>
-        </li>
-      ))}
-    </ul>
   );
 }

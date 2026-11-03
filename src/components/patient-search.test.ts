@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   patientSearchKey,
+  patientSearchMatches,
   patientSearchProblem,
   patientSearchQueries,
   patientSearchRequest,
@@ -110,5 +111,32 @@ describe("patientSearchProblem", () => {
     expect(patientSearchProblem({ searching: true, waiting: false, failed: true })).toBe(
       "No pudimos buscar. Probá de nuevo.",
     );
+  });
+});
+
+describe("patientSearchMatches", () => {
+  const answered = (patients: string[]) => ({
+    searching: true,
+    waiting: false,
+    found: { ok: true as const, patients },
+    failed: false,
+  });
+
+  it("is the patients the answer to the text in the box found, none included", () => {
+    expect(patientSearchMatches(answered(["Juan Pérez"]))).toEqual(["Juan Pérez"]);
+    expect(patientSearchMatches(answered([]))).toEqual([]);
+  });
+
+  it("is nothing while the answer is on its way, refused or failed", () => {
+    expect(patientSearchMatches({ searching: true, waiting: true, failed: false })).toBeUndefined();
+    expect(
+      patientSearchMatches({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBeUndefined();
+    expect(patientSearchMatches({ searching: true, waiting: false, failed: true })).toBeUndefined();
   });
 });
