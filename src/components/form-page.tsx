@@ -1,4 +1,10 @@
-import { useBlocker, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
+import {
+  useBlocker,
+  useCanGoBack,
+  useNavigate,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import type { NavigateOptions } from "@tanstack/react-router";
 import { useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
@@ -9,6 +15,7 @@ import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { FormProblemsContext } from "#/components/app-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { isStillOn } from "#/components/form-page-location.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -25,6 +32,10 @@ export function useFormPage(back: NavigateOptions) {
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
+  // The page this render shows: a route reused across records renders each one.
+  const shown = useRouterState({
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
+  });
   const [dirty, setDirty] = useState(false);
   const [version, setVersion] = useState(0);
   const [discarding, setDiscarding] = useState(false);
@@ -55,15 +66,13 @@ export function useFormPage(back: NavigateOptions) {
   }
 
   /**
-   * Whether the user left the form, or is on the way to another page: a
-   * navigation still loading keeps the form mounted, with the router's location
-   * already past the one it resolved.
+   * Whether the user left the page this render shows, or is on the way to
+   * another: a navigation still loading keeps the form mounted, and so does
+   * one to another record of the same route.
    */
   function userLeft() {
     const { location, resolvedLocation } = router.state;
-    return (
-      !mounted.current || (resolvedLocation?.pathname ?? location.pathname) !== location.pathname
-    );
+    return !mounted.current || !isStillOn(shown, location, resolvedLocation);
   }
 
   /** Where going back leads: the page before this one, or `back` when there is none. */
@@ -81,7 +90,9 @@ export function useFormPage(back: NavigateOptions) {
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
    * A save that ends after the user left, or while they are leaving, moves
-   * nobody, and refreshes where they are going.
+   * nobody, and refreshes where they are going. A save calls the `leave` of the
+   * render it started from, which knows that render's page: one kept in a ref
+   * would take the page the form shows when the save ends.
    * It leaves once: a save and a delete that both succeed go back one page.
    */
   function leave(to?: NavigateOptions) {

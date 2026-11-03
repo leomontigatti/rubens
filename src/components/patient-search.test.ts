@@ -2,7 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   patientSearchKey,
+  patientSearchProblem,
   patientSearchQueries,
+  patientSearchRequest,
   patientSearchState,
 } from "#/components/patient-search.ts";
 
@@ -26,16 +28,30 @@ describe("patientSearchKey", () => {
   });
 });
 
+describe("patientSearchRequest", () => {
+  it("asks for the trimmed text", () => {
+    expect(patientSearchRequest("  juan p ", true)).toEqual({
+      query: "juan p",
+      includeInactive: true,
+    });
+  });
+});
+
 describe("patientSearchState", () => {
   const answered = { data: "results", isError: false };
 
   it("is no search with an empty box, whatever an earlier search answered", () => {
-    expect(patientSearchState("  ", "juan", answered)).toEqual({ searching: false, failed: false });
+    expect(patientSearchState("  ", "juan", answered)).toEqual({
+      searching: false,
+      waiting: false,
+      failed: false,
+    });
   });
 
   it("holds no answer while the text differs from what was asked", () => {
     expect(patientSearchState("juana", "juan", answered)).toEqual({
       searching: true,
+      waiting: true,
       failed: false,
     });
   });
@@ -43,6 +59,7 @@ describe("patientSearchState", () => {
   it("holds the answer to the text in the box", () => {
     expect(patientSearchState("juan", "juan", answered)).toEqual({
       searching: true,
+      waiting: false,
       found: "results",
       failed: false,
     });
@@ -55,7 +72,43 @@ describe("patientSearchState", () => {
   it("holds no answer once the search failed, even one fetched earlier", () => {
     expect(patientSearchState("juan", "juan", { data: "results", isError: true })).toEqual({
       searching: true,
+      waiting: false,
       failed: true,
     });
+  });
+
+  it("waits while the text in the box has not been answered yet", () => {
+    expect(patientSearchState("juan", "juan", { isError: false }).waiting).toBe(true);
+  });
+});
+
+describe("patientSearchProblem", () => {
+  it("is nothing while there is no answer or the answer is a list", () => {
+    expect(patientSearchProblem({ searching: true, waiting: true, failed: false })).toBeNull();
+    expect(
+      patientSearchProblem({
+        searching: true,
+        waiting: false,
+        found: { ok: true },
+        failed: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("says why the search was refused", () => {
+    expect(
+      patientSearchProblem({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBe("Tu sesión terminó. Ingresá de nuevo.");
+  });
+
+  it("says the search failed", () => {
+    expect(patientSearchProblem({ searching: true, waiting: false, failed: true })).toBe(
+      "No pudimos buscar. Probá de nuevo.",
+    );
   });
 });

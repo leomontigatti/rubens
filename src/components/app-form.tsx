@@ -27,7 +27,8 @@ const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
 /** What the last submit refused, which each field finds its own in. */
 export const FormProblemsContext = createContext<FieldProblem[]>([]);
 
-const joinIds = (...ids: (string | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
+export const joinIds = (...ids: (string | undefined)[]) =>
+  ids.filter(Boolean).join(" ") || undefined;
 
 /** A field's problem, and what its input needs to say so to a screen reader. */
 export function useFieldProblem(name: string) {
