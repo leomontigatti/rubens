@@ -45,10 +45,19 @@ const fieldMessages: Record<EntryField, string> = {
   practitionerId: "Elegí un profesional.",
   officeId: "Elegí una sede.",
   firstDate: "Ingresá el primer día.",
-  lastDate: "El último día no puede ser anterior al primero.",
+  lastDate: "Ingresá el último día.",
   start: "Ingresá el inicio.",
-  end: "El fin tiene que ser posterior al inicio.",
+  end: "Ingresá el fin.",
 };
+
+/** The copy for the ranges the schemas refuse, by their issue's message. */
+const rangeMessages: Record<string, string> = {
+  lastBeforeFirst: "El último día no puede ser anterior al primero.",
+  endBeforeStart: "El fin tiene que ser posterior al inicio.",
+};
+
+const entryMessage = (issue: z.core.$ZodIssue) =>
+  rangeMessages[issue.message] ?? messageIn(fieldMessages)(issue);
 
 /** The form holds who or where the entry is for in one field. */
 const entryFieldNames = { practitionerId: "owner", officeId: "owner" };
@@ -82,9 +91,7 @@ export function EntryForm<R extends string>(props: {
     onSubmit: async ({ value }) => {
       const submitted = props.onSubmit(value);
       if (!(submitted instanceof Promise)) {
-        page.showProblems(
-          fieldProblems(submitted.issues, messageIn(fieldMessages), entryFieldNames),
-        );
+        page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames));
         return;
       }
       if (await action.save(() => submitted)) {

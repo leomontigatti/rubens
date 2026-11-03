@@ -215,17 +215,23 @@ export function FormPage(props: {
 }
 
 /** Every problem of the last submit; one about a field links to it. */
-function ProblemSummary(props: { focusRef: Ref<HTMLDivElement>; problems: FieldProblem[] }) {
-  if (props.problems.length === 0) {
+function ProblemSummary({
+  focusRef,
+  problems,
+}: {
+  focusRef: Ref<HTMLDivElement>;
+  problems: FieldProblem[];
+}) {
+  if (problems.length === 0) {
     return null;
   }
   return (
-    <div ref={props.focusRef} tabIndex={-1} className="outline-none">
+    <div ref={focusRef} tabIndex={-1} className="outline-none">
       <Alert variant="destructive">
         <AlertTitle>Hay un problema</AlertTitle>
         <AlertDescription>
           <ul className="flex flex-col gap-1">
-            {props.problems.map(({ field, message }) => (
+            {problems.map(({ field, message }) => (
               <li key={message}>
                 {field ? (
                   <a href={`#${field}`} className="underline underline-offset-4">
