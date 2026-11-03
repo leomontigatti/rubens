@@ -1,9 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { editRoom, getOfficeWithRooms } from "#/server/offices.functions.ts";
+import { activeRecord } from "#/components/admin-form.tsx";
+import {
+  changeRoomActive,
+  editRoom,
+  getOfficeWithRooms,
+  getRoomUpcomingCount,
+} from "#/server/offices.functions.ts";
 
 import { RoomForm } from "#/routes/_app/sedes/-room-form.tsx";
-import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
+import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/$officeId_/consultorios/$roomId")({
   loader: ({ params }) =>
@@ -16,6 +22,7 @@ function EditRoom() {
   const { viewer } = Route.useRouteContext();
   const result = Route.useLoaderData();
   const { officeId, roomId } = Route.useParams();
+  const toggle = useAction();
   if (!result.ok) {
     return <RefusalAlert reason={result.reason} />;
   }
@@ -33,6 +40,17 @@ function EditRoom() {
       description={room.name}
       initial={room}
       submitLabel="Guardar"
+      record={activeRecord({
+        active: room.active,
+        inactiveLabel: "Inactivo",
+        toggle,
+        onChange: (active) =>
+          void toggle.run(() => changeRoomActive({ data: { id: roomId, active } })),
+        deactivation: {
+          question: `¿Desactivar ${room.name}?`,
+          countUpcoming: () => getRoomUpcomingCount({ data: { id: roomId } }),
+        },
+      })}
       onSubmit={(fields) => editRoom({ data: { ...fields, roomId } })}
     />
   );

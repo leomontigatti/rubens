@@ -1,21 +1,20 @@
 import type { NavigateOptions } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type * as z from "zod";
 
-import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
+import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { Card, CardContent } from "#/components/ui/card.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { rangeEntryLabel } from "#/lib/time-ranges.ts";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 
 // The pieces the time-off and closure screens share: a form whose fields say
-// when (whole days or a range of hours), and a list item with edit and delete.
+// when (whole days or a range of hours), and the delete on its edit page.
 
 type Kind = RangeEntry["kind"];
 
@@ -68,6 +67,12 @@ function entryValues(initial: RangeEntry | null, owner: string): EntryValues {
   return initial ? { ...empty, ...initial } : { ...empty, kind: "days" };
 }
 
+interface Deletion<R extends string> {
+  question: string;
+  notice: string;
+  onDelete: () => Promise<Outcome<R>>;
+}
+
 /**
  * A time-off or closure form on its page. `owner`, when given, is the field
  * before the range. `onSubmit` returns the server call, or the validation error
@@ -81,11 +86,14 @@ export function EntryForm<R extends string>(props: {
   owner?: { label: string; initial: string; required?: boolean; options: ReactNode };
   submitLabel: string;
   messages: Record<R, string>;
+  /** On an edit: the entry's delete, its only page being this one. */
+  deletion?: Deletion<R>;
   onSubmit: (values: EntryValues) => Promise<Outcome<R>> | z.ZodError;
 }) {
   const { owner } = props;
   const page = useFormPage(props.back);
   const action = useFormAction(props.messages);
+  const record = useDeletion(props.deletion, props.messages, () => page.leave());
   const form = useAppForm({
     defaultValues: entryValues(props.initial, owner?.initial ?? ""),
     onSubmit: async ({ value }) => {
@@ -107,6 +115,7 @@ export function EntryForm<R extends string>(props: {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
+      record={record}
       action={action}
     >
       {owner && (
@@ -146,61 +155,37 @@ export function EntryForm<R extends string>(props: {
   );
 }
 
-/** A time off or closure in its list, with edit and delete for those who may. */
-export function EntryItem<R extends string>(props: {
-  title: string;
-  deleteQuestion: string;
-  deleteNotice: string;
-  entry: RangeEntry;
-  canEdit: boolean;
-  messages: Record<R, string>;
-  onDelete: () => Promise<Outcome<R>>;
-  /** The `Link` to the entry's edit page. */
-  editLink: ReactElement;
-}) {
-  const remove = useFormAction(props.messages);
+/** The delete on an entry's edit page: it asks first, then leaves for the list. */
+function useDeletion<R extends string>(
+  deletion: Deletion<R> | undefined,
+  messages: Record<R, string>,
+  leave: () => void,
+): RecordHeader | undefined {
+  const remove = useFormAction(messages);
   const [confirming, setConfirming] = useState(false);
-
-  return (
-    <li>
-      <Card>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium">{props.title}</span>
-              <span className="text-muted-foreground text-sm">{rangeEntryLabel(props.entry)}</span>
-            </div>
-            {props.canEdit && (
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" nativeButton={false} render={props.editLink}>
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={remove.pending}
-                    onClick={() => setConfirming(true)}
-                  >
-                    Eliminar
-                  </Button>
-                </div>
-                <ErrorAlert message={remove.error} />
-                <ConfirmDialog
-                  open={confirming}
-                  onOpenChange={setConfirming}
-                  title={props.deleteQuestion}
-                  description={props.deleteNotice}
-                  confirmLabel="Eliminar"
-                  onConfirm={() => void remove.run(props.onDelete)}
-                />
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </li>
-  );
+  if (!deletion) {
+    return undefined;
+  }
+  return {
+    actions: (
+      <>
+        <Button variant="outline" disabled={remove.pending} onClick={() => setConfirming(true)}>
+          Eliminar
+        </Button>
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title={deletion.question}
+          description={deletion.notice}
+          confirmLabel="Eliminar"
+          onConfirm={() =>
+            void remove.save(deletion.onDelete).then((deleted) => deleted && leave())
+          }
+        />
+      </>
+    ),
+    error: remove.error,
+  };
 }
 
 /** Each kind's two inputs: their input type, and each field's name and label. */

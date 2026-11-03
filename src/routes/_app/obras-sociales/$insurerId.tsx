@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
-import { editInsurer, getInsurers } from "#/server/insurers.functions.ts";
+import { activeRecord, RefusalMessage } from "#/components/admin-form.tsx";
+import { changeInsurerActive, editInsurer, getInsurers } from "#/server/insurers.functions.ts";
 
-import { InsurerForm, refusalMessages } from "#/routes/_app/obras-sociales/-insurer-form.tsx";
+import {
+  InsurerForm,
+  refusalMessages,
+  useAction,
+} from "#/routes/_app/obras-sociales/-insurer-form.tsx";
 
 export const Route = createFileRoute("/_app/obras-sociales/$insurerId")({
   loader: () => getInsurers({ data: { includeInactive: true } }),
@@ -15,6 +19,7 @@ function EditInsurer() {
   const { viewer } = Route.useRouteContext();
   const result = Route.useLoaderData();
   const { insurerId } = Route.useParams();
+  const toggle = useAction();
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
@@ -31,6 +36,13 @@ function EditInsurer() {
       description={insurer.name}
       initial={insurer}
       submitLabel="Guardar"
+      record={activeRecord({
+        active: insurer.active,
+        inactiveLabel: "Inactiva",
+        toggle,
+        onChange: (active) =>
+          void toggle.run(() => changeInsurerActive({ data: { id: insurerId, active } })),
+      })}
       onSubmit={(input) => editInsurer({ data: { ...input, insurerId } })}
     />
   );

@@ -112,6 +112,17 @@ export function useFormPage(back: NavigateOptions) {
 
 type FormPageControl = ReturnType<typeof useFormPage>;
 
+/**
+ * What an edit page shows of its record beside its title, when the edit page
+ * is the record's only page: its status, its actions (deactivate, delete) and
+ * their refusal.
+ */
+export interface RecordHeader {
+  status?: ReactNode;
+  actions: ReactNode;
+  error: string | null;
+}
+
 /** The button that opens a create's page, for whoever may create. `link` is its `Link`. */
 export function CreateButton(props: { can: boolean; link: ReactElement; children: ReactNode }) {
   if (!props.can) {
@@ -156,9 +167,10 @@ export function FormPage(props: {
    * such as the patient picker's quick registration.
    */
   lead?: ReactNode;
+  record?: RecordHeader;
   children: ReactNode;
 }) {
-  const { page, form, refusals = noRefusals } = props;
+  const { page, form, record = noRecord, refusals = noRefusals } = props;
   const problems = [...page.problems, ...refusals];
   const content = useRef<HTMLDivElement>(null);
   const alert = useRef<HTMLDivElement>(null);
@@ -182,12 +194,7 @@ export function FormPage(props: {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={props.title}
-        description={
-          props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
-        }
-      />
+      <FormPageHeader title={props.title} description={props.description} record={record} />
       <FormProblemsContext.Provider value={problems}>
         {/* A discard remounts the form: what its fields keep of their own goes too. */}
         <div key={page.version} ref={content} className="flex flex-col gap-4">
@@ -214,6 +221,25 @@ export function FormPage(props: {
         }}
       />
     </div>
+  );
+}
+
+const noRecord: RecordHeader = { actions: null, error: null };
+
+function FormPageHeader(props: { title: string; description?: string; record: RecordHeader }) {
+  const { record } = props;
+  return (
+    <>
+      <PageHeader
+        title={props.title}
+        status={record.status}
+        description={
+          props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
+        }
+        actions={record.actions}
+      />
+      <ErrorAlert message={record.error} />
+    </>
   );
 }
 
@@ -280,6 +306,7 @@ export function ActionFormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
+  record?: RecordHeader;
   action: {
     pending: boolean;
     error: string | null;

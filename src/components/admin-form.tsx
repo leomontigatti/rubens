@@ -1,14 +1,16 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ComponentProps, ReactElement } from "react";
+import type { ComponentProps } from "react";
 
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 
 // The pieces the admin screens (offices and rooms, staff) share: the submit
-// step every form and button goes through, its error copy, and the admin
-// controls.
+// step every form and button goes through, its error copy, and a record's
+// deactivate or reactivate button.
 
 /**
  * Runs a server function, shows its refusal as the copy `messages` gives it,
@@ -101,48 +103,56 @@ export function FormActions(props: {
 type Deactivation = Pick<ComponentProps<typeof DeactivateButton>, "question" | "countUpcoming">;
 
 /**
- * Edit and deactivate or reactivate, shown to admins only. `deactivation` is for
- * a record whose deactivation sends appointments to the "to reschedule" list.
+ * Deactivates or reactivates the record on its page. `deactivation` is for a
+ * record whose deactivation sends appointments to the "to reschedule" list: it
+ * asks first when it does.
  */
-export function AdminControls(props: {
-  isAdmin: boolean;
+export function ActiveToggle(props: {
   active: boolean;
-  /** The `Link` to the record's edit page. */
-  editLink: ReactElement;
-  onToggleActive: () => void;
+  pending: boolean;
+  onChange: (active: boolean) => void;
   deactivation?: Deactivation;
 }) {
-  if (!props.isAdmin) {
-    return null;
-  }
-  return (
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" nativeButton={false} render={props.editLink}>
-        Editar
-      </Button>
-      <ActiveToggle {...props} />
-    </div>
-  );
-}
-
-function ActiveToggle(props: {
-  active: boolean;
-  onToggleActive: () => void;
-  deactivation?: Deactivation;
-}) {
-  if (!props.active || !props.deactivation) {
+  const { active, pending, deactivation } = props;
+  if (active && deactivation) {
     return (
-      <Button variant="outline" size="sm" onClick={props.onToggleActive}>
-        {props.active ? "Desactivar" : "Reactivar"}
-      </Button>
+      <DeactivateButton
+        {...deactivation}
+        pending={pending}
+        onDeactivate={() => props.onChange(false)}
+      />
     );
   }
   return (
-    <DeactivateButton
-      {...props.deactivation}
-      size="sm"
-      pending={false}
-      onDeactivate={props.onToggleActive}
-    />
+    <Button variant="outline" disabled={pending} onClick={() => props.onChange(!active)}>
+      {active ? "Desactivar" : "Reactivar"}
+    </Button>
   );
+}
+
+/**
+ * The header of an edit page that is its record's only page: a badge saying
+ * `inactiveLabel` while the record is inactive, and its `ActiveToggle`, which
+ * runs through `toggle`, the page's `useFormAction`.
+ */
+export function activeRecord(props: {
+  active: boolean;
+  inactiveLabel: string;
+  toggle: { pending: boolean; error: string | null };
+  onChange: (active: boolean) => void;
+  deactivation?: Deactivation;
+}): RecordHeader {
+  const { active, toggle } = props;
+  return {
+    status: !active && <Badge variant="secondary">{props.inactiveLabel}</Badge>,
+    actions: (
+      <ActiveToggle
+        active={active}
+        pending={toggle.pending}
+        onChange={props.onChange}
+        deactivation={props.deactivation}
+      />
+    ),
+    error: toggle.error,
+  };
 }

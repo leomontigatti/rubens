@@ -2,25 +2,21 @@ import { BuildingIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import * as z from "zod";
 
+import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
+import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import { Card, CardContent } from "#/components/ui/card.tsx";
-import {
-  changeOfficeActive,
-  getOfficeUpcomingCount,
-  getOffices,
-} from "#/server/offices.functions.ts";
+import { getOffices } from "#/server/offices.functions.ts";
 import type { Office } from "#/server/offices.ts";
-import { AdminControls, ErrorAlert } from "#/components/admin-form.tsx";
 
-import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
+import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/")({
   head: () => ({ meta: [{ title: "Sedes · Rubens" }] }),
-  validateSearch: z.object({ inactivas: z.boolean().optional() }),
+  validateSearch: z.object({ inactivas: z.boolean().optional().catch(undefined) }),
   loaderDeps: ({ search }) => ({ includeInactive: search.inactivas ?? false }),
   loader: ({ deps }) => getOffices({ data: deps }),
   component: Offices,
@@ -36,88 +32,74 @@ function Offices() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PageHeader title="Sedes" actions={<ShowInactiveOffices />} />
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Sedes" />
       <CreateButton can={isAdmin} link={<Link to="/sedes/nueva" />}>
         Nueva sede
       </CreateButton>
-      <OfficeList offices={result.offices} isAdmin={isAdmin} />
+      <OfficeTable offices={result.offices} isAdmin={isAdmin} />
     </div>
   );
 }
 
-function ShowInactiveOffices() {
+const columns: DataTableColumn<Office>[] = [
+  {
+    id: "name",
+    header: "Nombre",
+    cell: (office) => (
+      <RowLink to="/sedes/$officeId" params={{ officeId: office.id }}>
+        {office.name}
+      </RowLink>
+    ),
+  },
+  { id: "address", header: "Dirección", cell: (office) => office.address },
+  { id: "timeZone", header: "Zona horaria", cell: (office) => office.timeZone },
+  {
+    id: "status",
+    header: "Estado",
+    cell: (office) => !office.active && <Badge variant="secondary">Inactiva</Badge>,
+  },
+];
+
+function OfficeTable({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean }) {
   const { inactivas } = Route.useSearch();
-  return (
-    <Button
-      variant="outline"
-      nativeButton={false}
-      render={<Link to="/sedes" search={{ inactivas: inactivas ? undefined : true }} />}
-    >
-      {inactivas ? "Ocultar inactivas" : "Mostrar inactivas"}
-    </Button>
-  );
-}
-
-function OfficeList({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean }) {
-  const { inactivas } = Route.useSearch();
-  if (offices.length === 0) {
-    return (
-      <EmptyState
-        icon={BuildingIcon}
-        title="No hay sedes para mostrar"
-        description={`Agregá una con Nueva sede${inactivas ? "" : ", o mirá las inactivas"}.`}
-        canAct={isAdmin}
-      />
-    );
-  }
-  return (
-    <ul className="flex flex-col gap-3">
-      {offices.map((office) => (
-        <OfficeItem key={office.id} office={office} isAdmin={isAdmin} />
-      ))}
-    </ul>
-  );
-}
-
-function OfficeItem({ office, isAdmin }: { office: Office; isAdmin: boolean }) {
-  const toggle = useAction();
+  const navigate = Route.useNavigate();
+  const { table, pager, query, setQuery } = useClientDataTable({
+    rows: offices,
+    columns,
+    getRowId: (office) => office.id,
+    searchText: (office) => `${office.name} ${office.address}`,
+  });
+  const changeStatus = (value: string | null) =>
+    void navigate({ search: { inactivas: showsAllPick(value) } });
 
   return (
-    <li>
-      <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <Link
-                to="/sedes/$officeId"
-                params={{ officeId: office.id }}
-                className="font-medium underline-offset-4 hover:underline"
-              >
-                {office.name}
-              </Link>
-              {!office.active && <Badge variant="secondary">Inactiva</Badge>}
-            </div>
-            <span className="text-muted-foreground text-sm">{office.address}</span>
-            <span className="text-muted-foreground text-sm">{office.timeZone}</span>
-          </div>
-          <AdminControls
-            isAdmin={isAdmin}
-            active={office.active}
-            editLink={<Link to="/sedes/$officeId/editar" params={{ officeId: office.id }} />}
-            deactivation={{
-              question: `¿Desactivar ${office.name}?`,
-              countUpcoming: () => getOfficeUpcomingCount({ data: { id: office.id } }),
-            }}
-            onToggleActive={() =>
-              void toggle.run(() =>
-                changeOfficeActive({ data: { id: office.id, active: !office.active } }),
-              )
-            }
+    <DataTable
+      table={table}
+      pager={pager}
+      search={{
+        value: query,
+        onChange: setQuery,
+        label: "Buscar sede",
+        placeholder: "Buscar por nombre o dirección",
+      }}
+      filters={{
+        groups: [statusFilter(inactivas, { active: "Activas", all: "Todas" })],
+        onPick: (_id, value) => changeStatus(value),
+        onRemove: () => changeStatus(null),
+      }}
+      empty={
+        offices.length === 0 ? (
+          <EmptyState
+            icon={BuildingIcon}
+            title="No hay sedes para mostrar"
+            description={`Agregá una con Nueva sede${inactivas ? "" : ", o mirá las inactivas"}.`}
+            canAct={isAdmin}
           />
-          <ErrorAlert message={toggle.error} />
-        </CardContent>
-      </Card>
-    </li>
+        ) : (
+          <NoMatches icon={BuildingIcon} />
+        )
+      }
+    />
   );
 }
