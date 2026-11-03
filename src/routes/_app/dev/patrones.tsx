@@ -12,6 +12,7 @@ import { activeRecord } from "#/components/admin-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { MorePatientMatches } from "#/components/patient-search-more.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -228,6 +229,9 @@ function Patterns() {
       </Pattern>
       <Pattern title="Tabla">
         <PatternTable />
+      </Pattern>
+      <Pattern title="Búsqueda de pacientes con más coincidencias">
+        <MorePatientMatches found={{ patients: Array.from({ length: 20 }), more: true }} />
       </Pattern>
       <Pattern title="Sin datos">
         <EmptyState

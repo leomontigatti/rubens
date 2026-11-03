@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { FieldProblemText, useFieldProblem } from "#/components/app-form.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
+import { MorePatientMatches } from "#/components/patient-search-more.tsx";
 import { patientSearchKey } from "#/components/patient-search.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -87,7 +88,7 @@ function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
     queryFn: () => findPatients({ data: search }),
     enabled: query.trim() !== "",
     placeholderData: keepPreviousData,
-    select: (result) => (result.ok ? result.patients : []),
+    select: (result) => (result.ok ? result : { patients: [], more: false }),
   });
 
   const { problem, errorId, invalid } = useFieldProblem("patient");
@@ -105,7 +106,8 @@ function PatientSearch(props: { onChoose: (patient: Patient) => void }) {
         aria-describedby={errorId}
       />
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
-      {query.trim() && <PatientResults patients={data} onChoose={props.onChoose} />}
+      {query.trim() && <PatientResults patients={data?.patients} onChoose={props.onChoose} />}
+      {query.trim() && <MorePatientMatches found={data} />}
     </Field>
   );
 }

@@ -12,6 +12,7 @@ import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
+import { MorePatientMatches } from "#/components/patient-search-more.tsx";
 import { patientSearchKey, patientSearchState } from "#/components/patient-search.ts";
 import type { PatientSearchState } from "#/components/patient-search.ts";
 import { useDebounced } from "#/components/use-debounced.ts";
@@ -105,23 +106,26 @@ function Registry({ listed }: { listed: PatientPage }) {
       <CreateButton can link={<Link to="/pacientes/nuevo" />}>
         Nuevo paciente
       </CreateButton>
-      <DataTable
-        table={table}
-        search={{
-          value: query,
-          onChange: setQuery,
-          label: "Buscar paciente",
-          placeholder: "Buscar por nombre, documento o teléfono",
-          loading: search.searching && !search.found && !search.failed,
-        }}
-        filters={{
-          groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
-          onPick: (_id, value) => changeStatus(value),
-          onRemove: () => changeStatus(null),
-        }}
-        pager={search.searching ? undefined : pager}
-        empty={<NoPatients search={search} inactivos={inactivos} />}
-      />
+      <div className="flex flex-col gap-3">
+        <DataTable
+          table={table}
+          search={{
+            value: query,
+            onChange: setQuery,
+            label: "Buscar paciente",
+            placeholder: "Buscar por nombre, documento o teléfono",
+            loading: search.searching && !search.found && !search.failed,
+          }}
+          filters={{
+            groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
+            onPick: (_id, value) => changeStatus(value),
+            onRemove: () => changeStatus(null),
+          }}
+          pager={search.searching ? undefined : pager}
+          empty={<NoPatients search={search} inactivos={inactivos} />}
+        />
+        <MorePatientMatches found={search.found} />
+      </div>
     </div>
   );
 }

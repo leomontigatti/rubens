@@ -94,7 +94,8 @@ beside it.
 - **A server search waits 300 ms for typing to pause**, shows a spinner in the box, and shows only
   the answer to the text in the box: earlier rows never stand in for it.
 - **The footer counts:** `25 de 36 registros`, on the left, with the pager on the right when there
-  is more than one page. A patient search has no count, because it stops at its 20 best matches.
+  is more than one page. A patient search has no count: it stops at its 20 best matches, and when
+  more patients match, a muted line under the results says so and asks for more text.
 - **A list page takes the full width.** Patient search text stays out of the URL.
 
 ## Form pages

@@ -334,13 +334,14 @@ function searchTerms(query: string) {
 /**
  * Finds patients as reception types: every word of the query in any of their
  * names, in any order and with or without accents, a near miss included;
- * digits in their document or phone too. Best matches first.
+ * digits in their document or phone too. Best matches first, the first 20 of
+ * them, with `more` when others match too.
  */
 export async function searchPatients(
   actor: Actor,
   options: SearchOptions,
   database?: AnyDatabase,
-): Promise<Result<{ patients: ListedPatient[] }>> {
+): Promise<Result<{ patients: ListedPatient[]; more: boolean }>> {
   if (!canEdit(actor)) {
     return forbidden;
   }
@@ -350,7 +351,7 @@ export async function searchPatients(
   }
   const { words, digits, phone } = searchTerms(parsed.data.query);
   if (words.length === 0) {
-    return { ok: true, patients: [] };
+    return { ok: true, patients: [], more: false };
   }
   const nameMatches = and(
     ...words.map(
@@ -380,8 +381,12 @@ export async function searchPatients(
           ),
         )
         .orderBy(desc(score), asc(patient.lastName), asc(patient.firstName))
-        .limit(searchLimit);
-      return { ok: true as const, patients: rows.map(toPatient) };
+        .limit(searchLimit + 1);
+      return {
+        ok: true as const,
+        patients: rows.slice(0, searchLimit).map(toPatient),
+        more: rows.length > searchLimit,
+      };
     },
     database,
   );
