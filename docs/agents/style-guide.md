@@ -172,8 +172,8 @@ A server refusal about one field shows the same way, under that field: `useFormA
 argument names them (`emailTaken`). A refusal about no field stays in the summary. A refusal the
 page must link from keeps its own `Alert` and marks the field: `DocumentTakenAlert`.
 
-The agenda's forms show one problem in an `ErrorAlert` until they move to `FormPage`, and so do the
-forms outside it: `/ingresar`, `/cambiar-contrasena`, `/disponibilidad`.
+The agenda's forms show one problem in an `ErrorAlert` until they move to `FormPage`, its patient
+registration aside, and so do the forms outside it: `/ingresar`, `/cambiar-contrasena`, `/disponibilidad`.
 
 ## Alerts
 

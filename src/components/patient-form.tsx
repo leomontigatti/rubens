@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type * as z from "zod";
 
@@ -8,7 +8,7 @@ import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
 import { FormProblemsContext, useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
-import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { FormPage, ProblemSummary, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
 import { patientSearchQueries } from "#/components/patient-search.ts";
@@ -282,16 +282,21 @@ export function PatientRegistrationForm(props: {
 }) {
   const [problems, setProblems] = useState<FieldProblem[]>([]);
   const { save, form } = usePatientRegistration(props.onRegistered, setProblems);
+  const summary = useRef<HTMLDivElement>(null);
+
+  useEffect(() => summary.current?.focus(), [problems]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setProblems([]);
+    save.dismiss();
     void form.handleSubmit();
   }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
       <ErrorAlert message={save.error} />
+      <ProblemSummary focusRef={summary} problems={problems} />
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
       <FormProblemsContext.Provider value={[...problems, ...patientRefusals(save)]}>
         <RegistrationFields form={form} />

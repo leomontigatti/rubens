@@ -171,7 +171,7 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
   }
 
   return (
-    <FieldSet id={field.name} data-invalid={invalid} aria-describedby={errorId}>
+    <FieldSet id={field.name} data-invalid={invalid}>
       <FieldLegend variant="label">{props.legend}</FieldLegend>
       <FieldGroup
         data-slot="checkbox-group"
@@ -185,6 +185,8 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
                 id={id}
                 checked={picked.includes(option.value)}
                 disabled={submitting}
+                aria-invalid={invalid}
+                aria-describedby={errorId}
                 onCheckedChange={(checked) => toggle(option.value, checked)}
               />
               <FieldLabel htmlFor={id}>{option.label}</FieldLabel>

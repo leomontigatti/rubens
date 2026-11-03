@@ -4,7 +4,7 @@ import { useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { CheckIcon, ChevronLeftIcon, Undo2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
+import type { FormEvent, MouseEvent, ReactElement, ReactNode, Ref } from "react";
 
 import { FormProblemsContext } from "#/components/app-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
@@ -214,8 +214,21 @@ export function FormPage(props: {
   );
 }
 
+/**
+ * Focuses the field by hand: following the link would be a navigation, and a
+ * changed form would ask before leaving. A group of checkboxes takes its first.
+ */
+function focusField(event: MouseEvent, field: string) {
+  event.preventDefault();
+  const target = document.getElementById(field);
+  (target?.matches("fieldset")
+    ? target.querySelector<HTMLElement>("[role=checkbox]")
+    : target
+  )?.focus();
+}
+
 /** Every problem of the last submit; one about a field links to it. */
-function ProblemSummary({
+export function ProblemSummary({
   focusRef,
   problems,
 }: {
@@ -234,7 +247,11 @@ function ProblemSummary({
             {problems.map(({ field, message }) => (
               <li key={message}>
                 {field ? (
-                  <a href={`#${field}`} className="underline underline-offset-4">
+                  <a
+                    href={`#${field}`}
+                    className="underline underline-offset-4"
+                    onClick={(event) => focusField(event, field)}
+                  >
                     {message}
                   </a>
                 ) : (
