@@ -54,6 +54,18 @@ export function useFormPage(back: NavigateOptions) {
     }
   }
 
+  /**
+   * Whether the user left the form, or is on the way to another page: a
+   * navigation still loading keeps the form mounted, with the router's location
+   * already past the one it resolved.
+   */
+  function userLeft() {
+    const { location, resolvedLocation } = router.state;
+    return (
+      !mounted.current || (resolvedLocation?.pathname ?? location.pathname) !== location.pathname
+    );
+  }
+
   /** Where going back leads: the page before this one, or `back` when there is none. */
   const previous = () => (canGoBack ? null : back);
 
@@ -68,11 +80,12 @@ export function useFormPage(back: NavigateOptions) {
 
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
-   * A save that ends after the user left moves nobody, and refreshes where they are.
+   * A save that ends after the user left, or while they are leaving, moves
+   * nobody, and refreshes where they are going.
    * It leaves once: a save and a delete that both succeed go back one page.
    */
   function leave(to?: NavigateOptions) {
-    if (!mounted.current) {
+    if (userLeft()) {
       void router.invalidate();
       return;
     }
