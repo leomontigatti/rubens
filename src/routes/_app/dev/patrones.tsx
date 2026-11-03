@@ -109,7 +109,10 @@ function PatternFilters() {
 
 function PatternFormPage() {
   const page = useFormPage({ to: "/dev/patrones" });
-  const form = useAppForm({ defaultValues: { service: "" } });
+  const form = useAppForm({
+    defaultValues: { service: "" },
+    onSubmit: () => page.showProblems([{ field: "service", message: "Ingresá el nombre." }]),
+  });
   return (
     <FormPage
       page={page}
@@ -117,7 +120,7 @@ function PatternFormPage() {
       title="Nueva prestación"
       submitLabel="Crear"
       pending={false}
-      onDiscard={() => undefined}
+      onClear={() => undefined}
     >
       <form.AppField name="service">{(field) => <field.TextField label="Nombre" />}</form.AppField>
     </FormPage>

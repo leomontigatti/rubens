@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import type * as z from "zod";
 
-import { fieldMessage } from "#/components/admin-form.tsx";
 import { pickedIn, useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { scheduleState, today, weekdayLabels } from "#/lib/schedules.ts";
@@ -33,10 +33,11 @@ const rangeMessages: Record<string, string> = {
   lastBeforeFirst: "La fecha de fin no puede ser anterior a la de inicio.",
 };
 
-/** The message for the first problem `error` names. */
-function scheduleFieldMessage(error: z.ZodError): string {
-  return rangeMessages[error.issues[0]!.message] ?? fieldMessage(fieldMessages, error);
-}
+const scheduleMessage = (issue: z.core.$ZodIssue) =>
+  rangeMessages[issue.message] ?? messageIn(fieldMessages)(issue);
+
+/** The form holds the start and the change's date in one field. */
+const scheduleFieldNames = { firstDate: "date", from: "date" };
 
 export interface FormFields {
   date: string;
@@ -104,7 +105,7 @@ export function ScheduleForm(props: {
     onSubmit: async ({ value }) => {
       const submitted = props.onSubmit(readValues(value));
       if (!(submitted instanceof Promise)) {
-        action.setError(scheduleFieldMessage(submitted));
+        page.showProblems(fieldProblems(submitted.issues, scheduleMessage, scheduleFieldNames));
         return;
       }
       if (await action.save(() => submitted)) {

@@ -1,11 +1,15 @@
 import { createFormHook, createFormHookContexts, useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
+import { createContext, useContext } from "react";
 import type { ComponentProps, ReactNode } from "react";
+
+import type { FieldProblem } from "#/components/form-problems.ts";
 
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -20,7 +24,32 @@ import { NativeSelect } from "#/components/ui/native-select.tsx";
 
 const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
 
-const hintIdFor = (name: string, hint?: string) => (hint ? `${name}-hint` : undefined);
+/** What the last submit refused, which each field finds its own in. */
+export const FormProblemsContext = createContext<FieldProblem[]>([]);
+
+const joinIds = (...ids: (string | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
+
+/** A field's problem, and what its input needs to say so to a screen reader. */
+function useFieldProblem(name: string) {
+  const problem = useContext(FormProblemsContext).find((one) => one.field === name)?.message;
+  return problem
+    ? { problem, errorId: `${name}-error`, invalid: true as const }
+    : { problem, errorId: undefined, invalid: undefined };
+}
+
+/** The hint a field's input points at, when it has one. */
+function FieldHint(props: { id?: string; children?: string }) {
+  return props.id ? <FieldDescription id={props.id}>{props.children}</FieldDescription> : null;
+}
+
+/** Under the field. No live region: focus moves to the first one, which reads it out. */
+function FieldProblemText(props: { id?: string; children?: string }) {
+  return props.id ? (
+    <FieldError id={props.id} role={undefined}>
+      {props.children}
+    </FieldError>
+  ) : null;
+}
 
 type InputProps = Pick<
   ComponentProps<typeof Input>,
@@ -39,9 +68,10 @@ function TextField(
 ) {
   const { label, hint, inline, narrow, ...input } = props;
   const field = useFieldContext<string>();
-  const hintId = hintIdFor(field.name, hint);
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
+  const hintId = hint ? `${field.name}-hint` : undefined;
   return (
-    <Field className={inline ? "w-auto" : undefined}>
+    <Field className={inline ? "w-auto" : undefined} data-invalid={invalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <Input
         {...input}
@@ -51,9 +81,11 @@ function TextField(
         value={field.state.value}
         onChange={(event) => field.handleChange(event.target.value)}
         onBlur={field.handleBlur}
-        aria-describedby={hintId}
+        aria-invalid={invalid}
+        aria-describedby={joinIds(hintId, errorId)}
       />
-      {hintId && <FieldDescription id={hintId}>{hint}</FieldDescription>}
+      <FieldHint id={hintId}>{hint}</FieldHint>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );
 }
@@ -66,6 +98,7 @@ function SelectField(props: {
   children: ReactNode;
 }) {
   const field = useFieldContext<string>();
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
   const select = (
     <NativeSelect
       id={field.name}
@@ -74,12 +107,14 @@ function SelectField(props: {
       value={field.state.value}
       onChange={(event) => field.handleChange(event.target.value)}
       onBlur={field.handleBlur}
+      aria-invalid={invalid}
+      aria-describedby={errorId}
     >
       {props.children}
     </NativeSelect>
   );
   return (
-    <Field>
+    <Field data-invalid={invalid}>
       <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
       {props.beside ? (
         <div className="flex items-center gap-3">
@@ -89,6 +124,7 @@ function SelectField(props: {
       ) : (
         select
       )}
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );
 }
@@ -126,6 +162,7 @@ export function pickedIn(options: Option[], picked: readonly string[]): string[]
 function CheckboxGroupField(props: { legend: string; options: Option[]; row?: boolean }) {
   const field = useFieldContext<string[]>();
   const submitting = useSubmitting(field.form);
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
   const picked = field.state.value;
 
   function toggle(value: string, checked: boolean) {
@@ -134,7 +171,7 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
   }
 
   return (
-    <FieldSet>
+    <FieldSet id={field.name} data-invalid={invalid}>
       <FieldLegend variant="label">{props.legend}</FieldLegend>
       <FieldGroup
         data-slot="checkbox-group"
@@ -148,6 +185,8 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
                 id={id}
                 checked={picked.includes(option.value)}
                 disabled={submitting}
+                aria-invalid={invalid}
+                aria-describedby={errorId}
                 onCheckedChange={(checked) => toggle(option.value, checked)}
               />
               <FieldLabel htmlFor={id}>{option.label}</FieldLabel>
@@ -155,6 +194,7 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
           );
         })}
       </FieldGroup>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </FieldSet>
   );
 }

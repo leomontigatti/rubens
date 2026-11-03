@@ -1,5 +1,6 @@
-import { fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { medicalServiceInputSchema } from "#/lib/medical-services.ts";
 import type { MedicalServiceFields } from "#/lib/medical-services.ts";
@@ -37,7 +38,7 @@ export function MedicalServiceForm(props: {
         durationMinutes: Number(value.durationMinutes),
       });
       if (!fields.success) {
-        action.setError(fieldMessage(fieldMessages, fields.error));
+        page.showProblems(fieldProblems(fields.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => props.onSubmit(fields.data))) {

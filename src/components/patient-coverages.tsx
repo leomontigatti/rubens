@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 
-import { ErrorAlert, fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -161,7 +162,7 @@ export function CoverageForm(props: {
     onSubmit: async ({ value }) => {
       const checked = coverageFieldsSchema.safeParse(value);
       if (!checked.success) {
-        action.setError(fieldMessage(fieldMessages, checked.error));
+        page.showProblems(fieldProblems(checked.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => props.onSubmit(checked.data))) {

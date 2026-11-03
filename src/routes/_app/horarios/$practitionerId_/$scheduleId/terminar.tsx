@@ -35,7 +35,7 @@ function EndForm(props: { schedule: Schedule; initial: string }) {
     onSubmit: async ({ value }) => {
       const input = scheduleEndSchema.safeParse({ scheduleId: props.schedule.id, ...value });
       if (!input.success) {
-        action.setError("Ingresá el último día del horario.");
+        page.showProblems([{ field: "lastDate", message: "Ingresá el último día del horario." }]);
         return;
       }
       if (await action.save(() => finishSchedule({ data: input.data }))) {

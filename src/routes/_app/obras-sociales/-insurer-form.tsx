@@ -1,5 +1,6 @@
-import { fieldMessage, useFormAction } from "#/components/admin-form.tsx";
+import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { insurerInputSchema, insurerKindLabels, insurerKinds } from "#/lib/coverages.ts";
@@ -22,7 +23,7 @@ const fieldMessages: Record<keyof InsurerInput, string> = {
 };
 
 export function useAction() {
-  return useFormAction(refusalMessages);
+  return useFormAction(refusalMessages, { nameTaken: "name" });
 }
 
 export function InsurerForm(props: {
@@ -41,7 +42,7 @@ export function InsurerForm(props: {
     onSubmit: async ({ value }) => {
       const input = insurerInputSchema.safeParse(value);
       if (!input.success) {
-        action.setError(fieldMessage(fieldMessages, input.error));
+        page.showProblems(fieldProblems(input.error.issues, messageIn(fieldMessages)));
         return;
       }
       if (await action.save(() => props.onSubmit(input.data))) {
