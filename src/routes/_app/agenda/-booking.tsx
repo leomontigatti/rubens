@@ -253,9 +253,10 @@ function useBookingForm(props: BookingPageProps) {
       props.practitioners.map((practitioner) => practitioner.id),
       props.defaultDate,
     ),
-    // A warning confirmed after a change would book what it never warned about.
-    // A refusal stays until the next submit.
-    listeners: { onChange: () => setAnswer((last) => ({ ...last, warnings: null })) },
+    // A warning confirmed after a change would book what it never warned about,
+    // and the times left were for what was asked then. A refusal stays until the
+    // next submit.
+    listeners: { onChange: () => setAnswer((last) => ({ ...noAnswer, refusal: last.refusal })) },
     onSubmit: ({ value }) => book(value, false),
   });
 
