@@ -85,7 +85,9 @@ non-zero when one failed. After a force-push, check the run id it reports agains
 Every external tool is pinned to an exact version, and every action to a commit SHA
 with its tag in a comment. Dependabot opens weekly PRs for minor and patch updates
 of npm packages and action pins (`.github/dependabot.yml`), and majors stay a
-hand-written issue.
+hand-written issue. Every `vite-plus` and `nitro` update, and every `better-auth`
+minor, is bumped by hand too; the reason for each is a comment in that file. A `vite-plus` bump moves the
+`vite` and `vitest` overrides in `pnpm-workspace.yaml` in the same commit.
 
 | Pin                                        | Where                                        | Source of the value                                 |
 | ------------------------------------------ | -------------------------------------------- | --------------------------------------------------- |
