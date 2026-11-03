@@ -20,5 +20,5 @@ audit:
 # get the same copies (node_modules/vite-plus/README.md, "Manual Installation").
 # Bump both with `vite-plus`: `vp toolchain vitest` prints the bundled version.
 overrides:
-  vite@*: npm:@voidzero-dev/vite-plus-core@1.1.0
-  vitest@*: 5.0.3
+  vite@*: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vitest@*: 5.0.5
