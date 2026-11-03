@@ -11,8 +11,9 @@ From a fresh clone to a running dev server, with a database, migrations and the 
   A global install is optional.
 - **Git 2.32 or later**, for `vp staged` in the pre-commit hook.
 - **Docker**, for the local Postgres 17 container.
-- **gitleaks 8.30.1** (optional): the pre-commit hook runs it when present, and warns
-  otherwise. CI runs it blocking. Install instructions:
+- **gitleaks 8.30.1**: the pre-commit hook runs it when present, and only warns otherwise;
+  CI runs it blocking, but the repo is public, so a leak CI catches is already pushed.
+  Install instructions:
   `docs/operations/ci.md`, "Running the gates locally".
 
 ## First run
@@ -102,7 +103,8 @@ file, so editing even a comment makes the production container refuse to start.
 
 `.vite-hooks/pre-commit` runs on every commit:
 
-1. gitleaks over the staged diff, if it is installed (`.gitleaks.toml`);
+1. gitleaks over the staged diff (`.gitleaks.toml`); it warns and continues when the binary
+   is missing;
 2. `vp staged`, which runs `vp check --fix` on the staged files (the `staged` block in
    `vite.config.ts`), and re-stages what it fixed;
 3. `pnpm typecheck` over the whole project;
