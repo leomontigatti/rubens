@@ -54,6 +54,9 @@ export function useFormPage(back: NavigateOptions) {
     }
   }
 
+  /** Where going back leads: the page before this one, or `back` when there is none. */
+  const previous = () => (canGoBack ? null : back);
+
   /** Replaces this page with `target`, or returns to the page before it. */
   function exit(target: NavigateOptions | null) {
     if (target) {
@@ -66,15 +69,19 @@ export function useFormPage(back: NavigateOptions) {
   /**
    * Leaves without asking: what is saved, or a way out the form itself offers.
    * A save that ends after the user left moves nobody, and refreshes where they are.
+   * It leaves once: a save and a delete that both succeed go back one page.
    */
   function leave(to?: NavigateOptions) {
     if (!mounted.current) {
       void router.invalidate();
       return;
     }
+    if (released.current) {
+      return;
+    }
     released.current = true;
     setLeaving(true);
-    exit(to ?? (canGoBack ? null : back));
+    exit(to ?? previous());
   }
 
   return {
@@ -119,7 +126,8 @@ type FormPageControl = ReturnType<typeof useFormPage>;
  */
 export interface RecordHeader {
   status?: ReactNode;
-  actions: ReactNode;
+  /** The actions, disabled while `busy`: the form saves, or the page leaves. */
+  actions: (busy: boolean) => ReactNode;
   error: string | null;
 }
 
@@ -194,7 +202,12 @@ export function FormPage(props: {
 
   return (
     <div className="flex flex-col gap-6">
-      <FormPageHeader title={props.title} description={props.description} record={record} />
+      <FormPageHeader
+        title={props.title}
+        description={props.description}
+        record={record}
+        pending={pending}
+      />
       <FormProblemsContext.Provider value={problems}>
         {/* A discard remounts the form: what its fields keep of their own goes too. */}
         <div key={page.version} ref={content} className="flex flex-col gap-4">
@@ -224,9 +237,15 @@ export function FormPage(props: {
   );
 }
 
-const noRecord: RecordHeader = { actions: null, error: null };
+const noRecord: RecordHeader = { actions: () => null, error: null };
 
-function FormPageHeader(props: { title: string; description?: string; record: RecordHeader }) {
+/** The page's title, with its record's status and actions, which wait while it saves or leaves. */
+function FormPageHeader(props: {
+  title: string;
+  description?: string;
+  record: RecordHeader;
+  pending: boolean;
+}) {
   const { record } = props;
   return (
     <>
@@ -236,7 +255,7 @@ function FormPageHeader(props: { title: string; description?: string; record: Re
         description={
           props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
         }
-        actions={record.actions}
+        actions={record.actions(props.pending)}
       />
       <ErrorAlert message={record.error} />
     </>

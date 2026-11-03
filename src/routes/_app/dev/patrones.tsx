@@ -12,6 +12,7 @@ import { activeRecord } from "#/components/admin-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { EntryForm } from "#/components/range-entry.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -146,6 +147,25 @@ function PatternRecordFormPage() {
   );
 }
 
+/** A delete beside the title: it asks first; here it is refused, so the page stays. */
+function PatternDeletionFormPage() {
+  return (
+    <EntryForm
+      back={{ to: "/dev/patrones" }}
+      title="Editar cierre"
+      initial={{ kind: "days", firstDate: "2026-12-24", lastDate: "2026-12-25" }}
+      submitLabel="Guardar"
+      messages={{ example: "Es un ejemplo: no se elimina nada." }}
+      deletion={{
+        question: "¿Eliminar este cierre?",
+        notice: "El cierre se borra y no se puede recuperar.",
+        onDelete: () => Promise.resolve({ ok: false, reason: "example" as const }),
+      }}
+      onSubmit={() => Promise.resolve({ ok: false, reason: "example" as const })}
+    />
+  );
+}
+
 function Patterns() {
   return (
     <div className="flex flex-col gap-8">
@@ -155,6 +175,7 @@ function Patterns() {
       </Pattern>
       <Pattern title="Edición de un registro sin página propia">
         <PatternRecordFormPage />
+        <PatternDeletionFormPage />
       </Pattern>
       <Pattern title="Sección de un registro">
         <RecordSection

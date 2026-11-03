@@ -167,9 +167,13 @@ function useDeletion<R extends string>(
     return undefined;
   }
   return {
-    actions: (
+    actions: (busy) => (
       <>
-        <Button variant="outline" disabled={remove.pending} onClick={() => setConfirming(true)}>
+        <Button
+          variant="outline"
+          disabled={remove.pending || busy}
+          onClick={() => setConfirming(true)}
+        >
           Eliminar
         </Button>
         <ConfirmDialog

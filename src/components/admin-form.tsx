@@ -145,10 +145,10 @@ export function activeRecord(props: {
   const { active, toggle } = props;
   return {
     status: !active && <Badge variant="secondary">{props.inactiveLabel}</Badge>,
-    actions: (
+    actions: (busy) => (
       <ActiveToggle
         active={active}
-        pending={toggle.pending}
+        pending={toggle.pending || busy}
         onChange={props.onChange}
         deactivation={props.deactivation}
       />
