@@ -283,8 +283,12 @@ export function PatientRegistrationForm(props: {
   const [problems, setProblems] = useState<FieldProblem[]>([]);
   const { save, form } = usePatientRegistration(props.onRegistered, setProblems);
   const element = useRef<HTMLFormElement>(null);
+  const alert = useRef<HTMLDivElement>(null);
 
-  useEffect(() => focusProblem(element.current, null), [problems]);
+  useEffect(
+    () => focusProblem(element.current, alert.current),
+    [problems, save.holder, save.error],
+  );
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -295,7 +299,11 @@ export function PatientRegistrationForm(props: {
 
   return (
     <form ref={element} className="flex flex-col gap-4" onSubmit={submit} noValidate>
-      <ErrorAlert message={save.error} />
+      {save.error && (
+        <div ref={alert} tabIndex={-1} className="outline-none">
+          <ErrorAlert message={save.error} />
+        </div>
+      )}
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
       <FormProblemsContext.Provider value={[...problems, ...patientRefusals(save)]}>
         <RegistrationFields form={form} />
