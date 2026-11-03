@@ -10,23 +10,26 @@ Amended 2026-11-02 (#91): `rrule` is dropped. It came with the bootstrap and not
 ever imported it: schedules are weekdays with times and validity dates, expanded with
 `date-fns` ([ADR-0003](./0003-scheduling-and-clinical-records.md)).
 
+Amended 2026-11-02: TanStack Virtual is dropped. Nothing imported it, and no list needs it: the
+patient registry is paged and the calendar is a fixed grid. A list that grows past paging adds it back.
+
 Rubens is a booking app for a health care business: receptionists and
 professionals, several offices, rooms that are shared or exclusive, and — for the
 professionals whose practice needs it — a clinical history per patient. The stack
 was chosen for that shape, not inherited wholesale from En Escena.
 
-| Concern         | Choice                                                  |
-| --------------- | ------------------------------------------------------- |
-| Framework       | TanStack Start (React 19), served by Nitro on Node      |
-| Toolchain       | Vite+ (`vp`): Vite, Vitest, Oxlint, Oxfmt, Rolldown     |
-| Database        | Postgres 17                                             |
-| ORM             | Drizzle, with raw SQL migrations where Drizzle stops    |
-| Auth            | Better Auth with the organization plugin                |
-| Client data     | TanStack Query; TanStack Form, Table and Virtual for UI |
-| Validation      | Zod 4                                                   |
-| Background jobs | pg-boss, in the same Postgres                           |
-| Dates           | `date-fns` 4 and `@date-fns/tz`                         |
-| UI              | shadcn/ui on Base UI and Tailwind 4                     |
+| Concern         | Choice                                               |
+| --------------- | ---------------------------------------------------- |
+| Framework       | TanStack Start (React 19), served by Nitro on Node   |
+| Toolchain       | Vite+ (`vp`): Vite, Vitest, Oxlint, Oxfmt, Rolldown  |
+| Database        | Postgres 17                                          |
+| ORM             | Drizzle, with raw SQL migrations where Drizzle stops |
+| Auth            | Better Auth with the organization plugin             |
+| Client data     | TanStack Query; TanStack Form and Table for UI       |
+| Validation      | Zod 4                                                |
+| Background jobs | pg-boss, in the same Postgres                        |
+| Dates           | `date-fns` 4 and `@date-fns/tz`                      |
+| UI              | shadcn/ui on Base UI and Tailwind 4                  |
 
 ## Why each, where it was a real trade-off
 
