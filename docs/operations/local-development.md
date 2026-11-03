@@ -105,7 +105,10 @@ file, so editing even a comment makes the production container refuse to start.
 1. gitleaks over the staged diff, if it is installed (`.gitleaks.toml`);
 2. `vp staged`, which runs `vp check --fix` on the staged files (the `staged` block in
    `vite.config.ts`), and re-stages what it fixed;
-3. `pnpm typecheck` over the whole project.
+3. `pnpm typecheck` over the whole project;
+4. `pnpm check:fallow`, against `origin/main` ([fallow.md](../agents/fallow.md));
+5. the whole-tree checks CI also runs, each under two seconds: `pnpm check:comment-language`,
+   `pnpm check:labels` and `pnpm check:file-tokens`.
 
 Any failure stops the commit. To check that the hook is installed in this clone:
 
