@@ -18,6 +18,7 @@ import { InputGroupAddon } from "#/components/ui/input-group.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { usePatientSearch } from "#/components/use-patient-search.ts";
 import type { PickedPatient } from "#/lib/booking-draft.ts";
+import { patientBoxChange } from "#/routes/_app/agenda/-patient-box.ts";
 import { patientName } from "#/lib/patients.ts";
 import type { Patient } from "#/server/patients.ts";
 
@@ -50,11 +51,14 @@ export function PatientPicker(props: {
   return (
     <div className="flex flex-col gap-2">
       <PatientCombobox value={props.value} onChange={props.onChange} />
-      <div>
-        <Button type="button" variant="link" onClick={() => setRegistering(true)}>
-          Registrar paciente nuevo
-        </Button>
-      </div>
+      {/* Only with no patient picked: registering hides the box, and a hidden pick would still book. */}
+      {!props.value && (
+        <div>
+          <Button type="button" variant="link" onClick={() => setRegistering(true)}>
+            Registrar paciente nuevo
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -68,10 +72,9 @@ function PatientCombobox(props: {
   value: PickedPatient | null;
   onChange: (patient: PickedPatient | null) => void;
 }) {
-  const [text, setText] = useState(props.value?.name ?? "");
-  const [query, setQuery] = useState("");
+  const box = usePatientBox(props.value, props.onChange);
   const [open, setOpen] = useState(false);
-  const search = usePatientSearch(query);
+  const search = usePatientSearch(box.query);
   const searchProblem = patientSearchProblem(search);
   const searchErrorId = searchProblem ? "patient-search-error" : undefined;
   const { problem, errorId, invalid } = useFieldProblem("patient");
@@ -85,19 +88,8 @@ function PatientCombobox(props: {
         filter={null}
         value={props.value}
         onValueChange={props.onChange}
-        inputValue={text}
-        onInputValueChange={(next, { reason }) => {
-          // The list closes while a search runs, and closing would wipe what was typed.
-          if (reason === "input-clear") {
-            return;
-          }
-          setText(next);
-          // Only typing searches, and it drops the patient picked: the box shows one or the other.
-          setQuery(reason === "input-change" ? next : "");
-          if (reason === "input-change" && props.value) {
-            props.onChange(null);
-          }
-        }}
+        inputValue={box.text}
+        onInputValueChange={box.change}
         open={open && found !== undefined}
         onOpenChange={setOpen}
         itemToStringLabel={(patient) => patient.name}
@@ -132,4 +124,22 @@ function PatientCombobox(props: {
       {searchProblem && <FieldError id={searchErrorId}>{searchProblem}</FieldError>}
     </Field>
   );
+}
+
+/** The box's text and what it searches for, as `patientBoxChange` moves them. */
+function usePatientBox(value: PickedPatient | null, onChange: (patient: null) => void) {
+  const [text, setText] = useState(value?.name ?? "");
+  const [query, setQuery] = useState("");
+  function change(next: string, { reason }: { reason: string }) {
+    const moved = patientBoxChange(next, reason, value !== null);
+    if (!moved) {
+      return;
+    }
+    setText(moved.text);
+    setQuery(moved.query);
+    if (moved.dropPick) {
+      onChange(null);
+    }
+  }
+  return { text, query, change };
 }
