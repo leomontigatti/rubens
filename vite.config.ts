@@ -66,6 +66,7 @@ export default defineConfig({
       "ui/no-raw-table": "error",
       "ui/no-uncontrolled-input": "error",
       "ui/require-no-validate": "error",
+      "ui/require-post-method": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
       "import/no-cycle": "error",

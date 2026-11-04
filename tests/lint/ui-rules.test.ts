@@ -160,7 +160,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
 
   const rawAllowedProbe = probe(
     "raw-allowed.tsx",
-    `${button}export const Form = () => (\n  <form noValidate>\n    <input type="hidden" name="id" value="1" />\n    <input type="file" className="sr-only" />\n    <Button render={<button type="submit" />}>Guardar</Button>\n    <Button render={(props) => <button {...props} />}>Enviar</Button>\n    <Button\n      render={(props) => {\n        return <button {...props} />;\n      }}\n    >\n      Volver\n    </Button>\n    <Button\n      render={(props) => {\n        if (props.className) return <button {...props} />;\n        return <a {...props} />;\n      }}\n    >\n      Ir\n    </Button>\n  </form>\n);\n`,
+    `${button}export const Form = () => (\n  <form method="post" noValidate>\n    <input type="hidden" name="id" value="1" />\n    <input type="file" className="sr-only" />\n    <Button render={<button type="submit" />}>Guardar</Button>\n    <Button render={(props) => <button {...props} />}>Enviar</Button>\n    <Button\n      render={(props) => {\n        return <button {...props} />;\n      }}\n    >\n      Volver\n    </Button>\n    <Button\n      render={(props) => {\n        if (props.className) return <button {...props} />;\n        return <a {...props} />;\n      }}\n    >\n      Ir\n    </Button>\n  </form>\n);\n`,
   );
 
   it("allow a raw element that has no look: hidden, visually hidden, or rendered by a ui component", () => {
@@ -181,11 +181,31 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
 
   const formNoValidateProbe = probe(
     "form-no-validate.tsx",
-    `export const Forms = () => (\n  <>\n    <form noValidate />\n    <form noValidate={true} />\n  </>\n);\n`,
+    `export const Forms = () => (\n  <>\n    <form method="post" noValidate />\n    <form method="post" noValidate={true} />\n  </>\n);\n`,
   );
 
   it("allow a form that turns the browser's validation off", () => {
     expect(besidesRawForm(codes(formNoValidateProbe))).toEqual([]);
+  });
+
+  const formGetsProbe = probe(
+    "form-gets.tsx",
+    `export const Forms = () => (\n  <>\n    <form noValidate />\n    <form method="get" noValidate />\n  </>\n);\n`,
+  );
+
+  it("reject a form a native submit would send as a GET", () => {
+    const found = lint(formGetsProbe).filter((d) => d.code.includes("require-post-method"));
+
+    expect(found).toHaveLength(2);
+  });
+
+  const formPostsProbe = probe(
+    "form-posts.tsx",
+    `export const Forms = () => (\n  <>\n    <form method="post" noValidate />\n    <form method={"post"} noValidate />\n  </>\n);\n`,
+  );
+
+  it("allow a form that posts", () => {
+    expect(besidesRawForm(codes(formPostsProbe))).toEqual([]);
   });
 
   const alertPartsProbe = probe(
