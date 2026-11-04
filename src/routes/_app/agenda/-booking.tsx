@@ -297,9 +297,7 @@ export function BookingPage(props: BookingPageProps) {
       refusals={refusals}
       onClear={clearAnswer}
       lead={
-        <form.Field name="patient">
-          {(field) => <PatientPicker value={field.state.value} onChange={field.handleChange} />}
-        </form.Field>
+        <form.AppField name="patient">{(field) => <PatientPicker field={field} />}</form.AppField>
       }
     >
       <WhoAndWhen form={form} props={props} ask={ask} freshStarts={answer.freshStarts} />

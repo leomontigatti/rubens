@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -34,7 +35,10 @@ export function useFormAction<R extends string>(
     setPending(true);
     setError(null);
     try {
-      const result = await action();
+      const result = await serverAnswer("form-action", shownPath(router), action);
+      if (!result) {
+        return false;
+      }
       if (!result.ok) {
         setError(messages[result.reason]);
         setErrorField(refusalFields[result.reason] ?? "");

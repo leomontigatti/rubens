@@ -94,7 +94,8 @@ beside it.
 - **A server search waits 300 ms for typing to pause**, shows a spinner in the box, and shows only
   the answer to the text in the box: earlier rows never stand in for it.
 - **The footer counts:** `25 de 36 registros`, on the left, with the pager on the right when there
-  is more than one page. A patient search has no count, because it stops at its 20 best matches.
+  is more than one page. A patient search has no count: it stops at its 20 best matches, and when
+  more patients match, a muted line under the results says so and asks for more text.
 - **A list page takes the full width.** Patient search text stays out of the URL.
 
 ## Form pages
@@ -136,7 +137,11 @@ carried over from en-escena.
 
 - **A form's values live in `useAppForm`** (`src/components/app-form.tsx`, on TanStack Form): each
   field is a `form.AppField` with one of its field components, and a form needing a new kind adds
-  one there. `pnpm lint` rejects an uncontrolled input (`ui/no-uncontrolled-input`).
+  one there. `pnpm lint` rejects an uncontrolled input (`ui/no-uncontrolled-input`). The pages
+  that are only their form (`/ingresar`, `/cambiar-contrasena`, `/disponibilidad`) are the
+  exception: they read the form's `FormData` on submit and show one problem in an `ErrorAlert`,
+  with no per-field errors or unsaved changes for the form kit to hold. Their inputs stay
+  uncontrolled, so what the browser autofills or a user types before hydration is what submits.
 - **A field is `Field` with a `FieldLabel`, never a hand-made wrapper** (`pnpm lint` enforces it:
   `ui/no-bare-label`). The label sits above the input. A placeholder shows an example, never the
   label.
@@ -150,6 +155,9 @@ carried over from en-escena.
   A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a
   `FieldGroup data-slot="checkbox-group"`.
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
+- **Every `<form>` takes `method="post"`.** Submitted before the page hydrates, the browser sends
+  the form on its own, and a GET puts every field, a password included, in the URL, the history and
+  any access log. `pnpm lint` enforces it (`ui/require-post-method`).
 - **Every `<form>` takes `noValidate`.** The browser's own `required` and `type="email"` popups
   speak the browser's language and style, and run before the form's own check. `required` stays
   on the input for what it tells a screen reader. `pnpm lint` enforces it
@@ -162,6 +170,10 @@ carried over from en-escena.
   the first, what is wrong and an example for the second
   (`Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.`).
 - **A refusal keeps everything the user typed**, the fields that passed included.
+- **One record picked from a server search is the form kit's `ComboboxField`**
+  (`src/components/app-form.tsx`), as booking's patient picker: it searches as [Tables](#tables)
+  says, its list opens only on the answer to the text in the box, and the record picked stays in
+  the box.
 - **Several options are picked in place**, as a group of checkboxes (a schedule's days, a
   member's roles), never in a popover that covers what follows.
 - **A `Checkbox` for a boolean submitted with the form**; a switch, once there is one, for a
@@ -202,21 +214,26 @@ draws that variant's one icon itself.
 - **The semantic colours are not the brand's.** `success`, `info` and `warning` are tokens of
   their own; check them against the brand palette when it lands (#37). Their text keeps 4.5:1 on
   their tint, which is why tints are 6%.
+- **A toast is an alert's kind of message too.** `toast.add` takes the alert variant as its
+  `type` (`type: "destructive"` for an error), and the toast draws in that variant's colours
+  and icon, from the same `alertTones` and `alertIcons` the `Alert` uses
+  (`src/components/ui/alert.tsx`). A new kind of toast picks one of the variants above, never
+  colours of its own.
 
 ## After a submit
 
 Which channel carries a message, and where the user lands.
 
-| What happened                                         | Channel                                                                                                                            |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| The form's own check failed                           | The error display above ([Forms](#forms)).                                                                                         |
-| The server refused the submit                         | The same display, with copy that says what to fix and names and links what blocks it: `DocumentTakenAlert`.                        |
-| A likely duplicate, which may be legitimate           | A confirmation that lists the matches and saves only when confirmed: `DuplicateWarning` (`src/components/patient-duplicates.tsx`). |
-| Saved, and the change shows on the screen             | No message: the page it goes back to, with the updated row or value, is the answer.                                                |
-| Saved, and nothing on the screen shows it             | An `Alert` that stays: the starting password's `Listo.` (`src/routes/_app/personal/$memberId.tsx`).                                |
-| A field locked by the record's state                  | An `Alert` above the form listing every reason and what unlocks it, or saying nothing does; a lock icon alone explains nothing.    |
-| A condition to know before acting, found by the app   | A `warning` `Alert` on the page.                                                                                                   |
-| An action with no form failed, or the network dropped | A toast, once the app has one; it disappears on its own, so it never carries something the user must fix.                          |
+| What happened                                         | Channel                                                                                                                                                                                |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The form's own check failed                           | The error display above ([Forms](#forms)).                                                                                                                                             |
+| The server refused the submit                         | The same display, with copy that says what to fix and names and links what blocks it: `DocumentTakenAlert`.                                                                            |
+| A likely duplicate, which may be legitimate           | A confirmation that lists the matches and saves only when confirmed: `DuplicateWarning` (`src/components/patient-duplicates.tsx`).                                                     |
+| Saved, and the change shows on the screen             | No message: the page it goes back to, with the updated row or value, is the answer.                                                                                                    |
+| Saved, and nothing on the screen shows it             | An `Alert` that stays: the starting password's `Listo.` (`src/routes/_app/personal/$memberId.tsx`).                                                                                    |
+| A field locked by the record's state                  | An `Alert` above the form listing every reason and what unlocks it, or saying nothing does; a lock icon alone explains nothing.                                                        |
+| A condition to know before acting, found by the app   | A `warning` `Alert` on the page.                                                                                                                                                       |
+| An action with no form failed, or the network dropped | A toast (`toast.add` from `#/components/ui/toast.tsx`; a submit's thrown call goes through `serverAnswer`); it disappears on its own, so it never carries something the user must fix. |
 
 - **After a save, a form page goes back**, and the screen's data reloads (`useFormAction`). A
   create whose next step is on the new record goes there: a registered patient opens their page.

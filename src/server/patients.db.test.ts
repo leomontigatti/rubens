@@ -506,11 +506,6 @@ describe("searching patients", () => {
     expect(await search("pereyra")).toEqual(["Juan Pereyra", "Pedro Gómez Pereyra"]);
   });
 
-  it("finds nothing for a name no patient has, or an empty query", async () => {
-    expect(await search("rodríguez")).toEqual([]);
-    expect(await search("  ")).toEqual([]);
-  });
-
   it("leaves deactivated patients out unless asked for", async () => {
     const all = await asAppRole(db, (tx) => listPatients(admin, { includeInactive: false }, tx));
     const majo = all.ok ? all.patients.find((row) => row.chosenName === "Majo") : undefined;
@@ -520,8 +515,14 @@ describe("searching patients", () => {
     expect(await search("majo", true)).toEqual(["Majo Núñez"]);
   });
 
-  it("returns a limited number of results", async () => {
-    for (let index = 0; index < 25; index += 1) {
+  it("stops at 20 matches, and says when there are more", async () => {
+    const searchSosa = async () => {
+      const result = await asAppRole(db, (tx) =>
+        searchPatients(receptionist, { query: "sosa", includeInactive: false }, tx),
+      );
+      return result.ok && { shown: result.patients.length, more: result.more };
+    };
+    for (let index = 0; index < 20; index += 1) {
       await register(receptionist, {
         firstName: `Ana${index}`,
         lastName: "Sosa",
@@ -529,7 +530,25 @@ describe("searching patients", () => {
       });
     }
 
-    expect(await search("sosa")).toHaveLength(20);
+    expect(await searchSosa()).toEqual({ shown: 20, more: false });
+
+    await register(receptionist, {
+      firstName: "Ana20",
+      lastName: "Sosa",
+      phone: "0351 15 500-1020",
+    });
+
+    expect(await searchSosa()).toEqual({ shown: 20, more: true });
+  });
+
+  it("finds nothing, and no more, for a name no patient has or an empty query", async () => {
+    for (const query of ["rodríguez", "  "]) {
+      const result = await asAppRole(db, (tx) =>
+        searchPatients(receptionist, { query, includeInactive: false }, tx),
+      );
+
+      expect(result).toEqual({ ok: true, patients: [], more: false });
+    }
   });
 });
 

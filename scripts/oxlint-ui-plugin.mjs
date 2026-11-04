@@ -4,6 +4,7 @@
 //
 // - `no-raw-form-element`: a raw form element where a ui component exists.
 // - `require-no-validate`: a `<form>` without `noValidate`.
+// - `require-post-method`: a `<form>` without `method="post"`.
 // - `alert-structure`: an `Alert` without its title and description.
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
@@ -135,6 +136,31 @@ const requireNoValidate = {
       JSXOpeningElement(node) {
         if (node.name.type !== "JSXIdentifier" || node.name.name !== "form") return;
         if (!setsNoValidate(node)) context.report({ node, messageId: "missing" });
+      },
+    };
+  },
+};
+
+const requirePostMethod = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        'A <form> takes method="post", so a native submit keeps its fields out of the URL.',
+    },
+    messages: {
+      missing:
+        'Add method="post" to the <form>: submitted before the page hydrates, the browser sends it on its own, and without it as a GET, which puts every field, a password included, in the URL, the history and any access log.',
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        if (node.name.type !== "JSXIdentifier" || node.name.name !== "form") return;
+        if (stringAttribute(node, "method")?.toLowerCase() !== "post") {
+          context.report({ node, messageId: "missing" });
+        }
       },
     };
   },
@@ -331,5 +357,6 @@ export default {
     "no-raw-table": noRawTable,
     "no-uncontrolled-input": noUncontrolledInput,
     "require-no-validate": requireNoValidate,
+    "require-post-method": requirePostMethod,
   },
 };
