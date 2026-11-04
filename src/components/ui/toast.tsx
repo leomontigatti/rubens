@@ -1,19 +1,15 @@
-// Local edit: the screen-reader labels (the viewport's and the close button's)
-// are in Spanish, the UI's language. Keep them on a shadcn sync.
+// Local edits, kept on a shadcn sync: the screen-reader labels (the viewport's
+// and the close button's) are in Spanish, the UI's language; and a toast's
+// `type` is an alert variant, drawn in that variant's colors and icon, so a
+// message reads the same as an alert or a toast (style guide, Alerts).
 
-import * as React from "react";
 import { Toast as ToastPrimitive } from "@base-ui/react/toast";
 import { cn } from "cn";
 
+import { alertIcons, alertTones } from "#/components/ui/alert.tsx";
+import type { AlertVariant } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import {
-  XIcon,
-  CircleCheckIcon,
-  InfoIcon,
-  TriangleAlertIcon,
-  OctagonXIcon,
-  Loader2Icon,
-} from "lucide-react";
+import { XIcon, Loader2Icon } from "lucide-react";
 
 const toast = ToastPrimitive.createToastManager();
 
@@ -136,30 +132,15 @@ function ToastClose({
   );
 }
 
+/** The alert variant a toast's `type` names, if it names one. */
+function toastTone(type: string | undefined): AlertVariant | null {
+  return type && Object.hasOwn(alertTones, type) ? (type as AlertVariant) : null;
+}
+
 function ToastIcon({ type }: { type: string | undefined }) {
-  let icon: React.ReactNode = null;
-
-  if (type === "success") {
-    icon = <CircleCheckIcon aria-hidden="true" />;
-  }
-
-  if (type === "info") {
-    icon = <InfoIcon aria-hidden="true" />;
-  }
-
-  if (type === "warning") {
-    icon = <TriangleAlertIcon aria-hidden="true" />;
-  }
-
-  if (type === "error") {
-    icon = <OctagonXIcon className="text-destructive" aria-hidden="true" />;
-  }
-
-  if (type === "loading") {
-    icon = <Loader2Icon className="animate-spin" aria-hidden="true" />;
-  }
-
-  if (!icon) {
+  const tone = toastTone(type);
+  const Icon = tone ? alertIcons[tone] : type === "loading" ? Loader2Icon : null;
+  if (!Icon) {
     return null;
   }
 
@@ -168,7 +149,7 @@ function ToastIcon({ type }: { type: string | undefined }) {
       data-slot="toast-icon"
       className="shrink-0 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4"
     >
-      {icon}
+      <Icon className={type === "loading" ? "animate-spin" : undefined} aria-hidden="true" />
     </span>
   );
 }
@@ -176,19 +157,25 @@ function ToastIcon({ type }: { type: string | undefined }) {
 function ToastList() {
   const { toasts } = ToastPrimitive.useToastManager();
 
-  return toasts.map((toastItem) => (
-    <Toast key={toastItem.id} toast={toastItem}>
-      <ToastContent>
-        <ToastIcon type={toastItem.type} />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <ToastTitle />
-          <ToastDescription />
-        </div>
-        <ToastAction />
-        <ToastClose />
-      </ToastContent>
-    </Toast>
-  ));
+  return toasts.map((toastItem) => {
+    const tone = toastTone(toastItem.type);
+    return (
+      // The tint is translucent: it goes on the content, over the toast's opaque background.
+      <Toast key={toastItem.id} toast={toastItem} className={tone ? "border-0" : undefined}>
+        <ToastContent
+          className={tone ? cn(alertTones[tone], "rounded-[inherit] border") : undefined}
+        >
+          <ToastIcon type={toastItem.type} />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <ToastTitle />
+            <ToastDescription className={tone ? "text-current" : undefined} />
+          </div>
+          <ToastAction />
+          <ToastClose className={tone ? "text-current hover:text-current" : undefined} />
+        </ToastContent>
+      </Toast>
+    );
+  });
 }
 
 function Toaster({ children, toastManager = toast, ...props }: ToastPrimitive.Provider.Props) {

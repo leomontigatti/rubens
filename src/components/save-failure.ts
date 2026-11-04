@@ -5,7 +5,7 @@ import type { AnyRouter } from "@tanstack/react-router";
 
 import { toast } from "#/components/ui/toast.tsx";
 
-const saveFailedMessage = "No pudimos guardar. Probá de nuevo.";
+const saveFailedMessage = "No pudimos completar la acción. Probá de nuevo.";
 
 /**
  * The server's answer, or null when the call threw. A toast tells the user:
@@ -32,9 +32,9 @@ export async function serverAnswer<T>(
   }
 }
 
-/** The toast a thrown save shows. */
+/** The toast a server call that threw shows: a save, or any other action. */
 export function showSaveFailed() {
-  toast.add({ title: saveFailedMessage, type: "error" });
+  toast.add({ title: saveFailedMessage, type: "destructive" });
 }
 
 /** The page on screen: while a navigation loads, the form left behind is still shown. */

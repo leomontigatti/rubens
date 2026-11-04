@@ -17,7 +17,7 @@ describe("serverAnswer", () => {
     });
 
     expect(answer).toBeNull();
-    expect(add).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }));
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ type: "destructive" }));
     expect(log).toHaveBeenCalledOnce();
     const line = log.mock.calls[0]!.join(" ");
     expect(line).toContain("[save-failed]");

@@ -207,6 +207,11 @@ draws that variant's one icon itself.
 - **The semantic colours are not the brand's.** `success`, `info` and `warning` are tokens of
   their own; check them against the brand palette when it lands (#37). Their text keeps 4.5:1 on
   their tint, which is why tints are 6%.
+- **A toast is an alert's kind of message too.** `toast.add` takes the alert variant as its
+  `type` (`type: "destructive"` for an error), and the toast draws in that variant's colours
+  and icon, from the same `alertTones` and `alertIcons` the `Alert` uses
+  (`src/components/ui/alert.tsx`). A new kind of toast picks one of the variants above, never
+  colours of its own.
 
 ## After a submit
 
