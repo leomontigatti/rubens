@@ -63,6 +63,18 @@ comment stating its wake-up trigger ("the first clinic asks for online payments"
 one it is `priority:later`. Deciding against is a different thing: parked will be done when
 the trigger fires, a rejected issue is closed.
 
+A race is weighed as the `implement` skill's step 2 says, with the actors from
+[review.md](review.md#hotspots). The usual recommendations here, which a measured frequency
+or the fix's cost overrides:
+
+- silent: an overlap that slips past the exclusion constraints, an appointment lost, or patient
+  data reaching another organization: `priority:next`, and `priority:urgent` once a clinic is live;
+- loud (a refusal or an error the receptionist retries) with nothing lost: `priority:later` at
+  most;
+- a window that needs one person in two places at once, or opens a few times a year:
+  `priority:parked` with what would widen it, or closed as not planned when the fix costs more
+  than the hits.
+
 | Type label    | Meaning                                                                   |
 | ------------- | ------------------------------------------------------------------------- |
 | `bug`         | Wrong behaviour today                                                     |

@@ -64,6 +64,17 @@ organization's id); a clinical note edited without keeping its earlier version, 
 numbers, appointment times, clinical text) that reaches a log, an error message, an alert or a
 job's log line or payload outside our own Postgres.
 
+**Who acts concurrently**, for weighing a race (the `implement` skill, step 2). Rubens is not
+deployed, so these actors are expected, not measured. Inside one `organization`: `receptionist`s at
+a front desk booking, rescheduling and cancelling into the same rooms and hours; `practitioner`s and
+`admin`s editing the `schedule`s, `timeOff` and `closure`s those `appointment`s sit in; and pg-boss
+jobs (a `reminder`) acting on the same appointments. A `patient` does not sign in, and organizations
+share no rows, so organizations never race each other. Two receptionists taking the same free slot
+is the everyday race, and the exclusion constraints
+([ADR-0003](../adr/0003-scheduling-and-clinical-records.md)) turn it into a refusal the second one
+sees. The expected peaks are the start of the clinic day and an agenda opening. Once deployed,
+measure appointments created per minute per `office`.
+
 ## Breadth
 
 - **Entry points.** A behaviour reachable from the admin is usually reachable from the portal
