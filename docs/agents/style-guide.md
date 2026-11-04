@@ -214,21 +214,26 @@ draws that variant's one icon itself.
 - **The semantic colours are not the brand's.** `success`, `info` and `warning` are tokens of
   their own; check them against the brand palette when it lands (#37). Their text keeps 4.5:1 on
   their tint, which is why tints are 6%.
+- **A toast is an alert's kind of message too.** `toast.add` takes the alert variant as its
+  `type` (`type: "destructive"` for an error), and the toast draws in that variant's colours
+  and icon, from the same `alertTones` and `alertIcons` the `Alert` uses
+  (`src/components/ui/alert.tsx`). A new kind of toast picks one of the variants above, never
+  colours of its own.
 
 ## After a submit
 
 Which channel carries a message, and where the user lands.
 
-| What happened                                         | Channel                                                                                                                            |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| The form's own check failed                           | The error display above ([Forms](#forms)).                                                                                         |
-| The server refused the submit                         | The same display, with copy that says what to fix and names and links what blocks it: `DocumentTakenAlert`.                        |
-| A likely duplicate, which may be legitimate           | A confirmation that lists the matches and saves only when confirmed: `DuplicateWarning` (`src/components/patient-duplicates.tsx`). |
-| Saved, and the change shows on the screen             | No message: the page it goes back to, with the updated row or value, is the answer.                                                |
-| Saved, and nothing on the screen shows it             | An `Alert` that stays: the starting password's `Listo.` (`src/routes/_app/personal/$memberId.tsx`).                                |
-| A field locked by the record's state                  | An `Alert` above the form listing every reason and what unlocks it, or saying nothing does; a lock icon alone explains nothing.    |
-| A condition to know before acting, found by the app   | A `warning` `Alert` on the page.                                                                                                   |
-| An action with no form failed, or the network dropped | A toast, once the app has one; it disappears on its own, so it never carries something the user must fix.                          |
+| What happened                                         | Channel                                                                                                                                                                                |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The form's own check failed                           | The error display above ([Forms](#forms)).                                                                                                                                             |
+| The server refused the submit                         | The same display, with copy that says what to fix and names and links what blocks it: `DocumentTakenAlert`.                                                                            |
+| A likely duplicate, which may be legitimate           | A confirmation that lists the matches and saves only when confirmed: `DuplicateWarning` (`src/components/patient-duplicates.tsx`).                                                     |
+| Saved, and the change shows on the screen             | No message: the page it goes back to, with the updated row or value, is the answer.                                                                                                    |
+| Saved, and nothing on the screen shows it             | An `Alert` that stays: the starting password's `Listo.` (`src/routes/_app/personal/$memberId.tsx`).                                                                                    |
+| A field locked by the record's state                  | An `Alert` above the form listing every reason and what unlocks it, or saying nothing does; a lock icon alone explains nothing.                                                        |
+| A condition to know before acting, found by the app   | A `warning` `Alert` on the page.                                                                                                                                                       |
+| An action with no form failed, or the network dropped | A toast (`toast.add` from `#/components/ui/toast.tsx`; a submit's thrown call goes through `serverAnswer`); it disappears on its own, so it never carries something the user must fix. |
 
 - **After a save, a form page goes back**, and the screen's data reloads (`useFormAction`). A
   create whose next step is on the new record goes there: a registered patient opens their page.

@@ -12,6 +12,7 @@ import { FormPage, focusProblem, useFormPage } from "#/components/form-page.tsx"
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
 import { patientSearchQueries } from "#/components/patient-search.ts";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
@@ -39,10 +40,12 @@ export function usePatientSave<I extends object>(
 
   async function save(next: I, confirmDuplicates: boolean) {
     dispatch({ type: "sent", input: next });
-    let result: SaveResult;
+    let result: SaveResult | null;
     try {
-      result = await send({ ...next, confirmDuplicates });
-      if (result.ok) {
+      result = await serverAnswer("patient-save", shownPath(router), () =>
+        send({ ...next, confirmDuplicates }),
+      );
+      if (result?.ok) {
         await Promise.all([
           router.invalidate(),
           queryClient.invalidateQueries({ queryKey: patientSearchQueries }),
@@ -50,6 +53,9 @@ export function usePatientSave<I extends object>(
       }
     } finally {
       dispatch({ type: "settled" });
+    }
+    if (!result) {
+      return;
     }
     if (!result.ok) {
       dispatch({ type: "refused", result });

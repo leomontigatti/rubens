@@ -15,6 +15,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { MorePatientMatches } from "#/components/patient-search-more.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
+import { showSaveFailed } from "#/components/save-failure.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -246,6 +247,11 @@ function Patterns() {
           title="Todavía no hay cierres"
           description="Agregá el primero con Nuevo cierre."
         />
+      </Pattern>
+      <Pattern title="Aviso de un guardado que falló">
+        <Button variant="outline" className="w-fit" onClick={showSaveFailed}>
+          Mostrar el aviso
+        </Button>
       </Pattern>
       <Pattern title="Casilla">
         <Field orientation="horizontal" className="w-fit">
