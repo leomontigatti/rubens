@@ -1,11 +1,22 @@
 import { createFormHook, createFormHookContexts, useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
-import { createContext, useContext } from "react";
+import { SearchIcon } from "lucide-react";
+import { createContext, useContext, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
+import { comboboxTextChange } from "#/components/combobox-text.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 
 import { Checkbox } from "#/components/ui/checkbox.tsx";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  useComboboxAnchor,
+} from "#/components/ui/combobox.tsx";
 import {
   Field,
   FieldDescription,
@@ -16,7 +27,9 @@ import {
   FieldSet,
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
+import { InputGroupAddon } from "#/components/ui/input-group.tsx";
 import { NativeSelect } from "#/components/ui/native-select.tsx";
+import { Spinner } from "#/components/ui/spinner.tsx";
 
 // The form kit: `useAppForm` holds a form's values, and each field below reads
 // and writes its own through `form.AppField`. Number inputs hold their text, as
@@ -27,8 +40,7 @@ const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
 /** What the last submit refused, which each field finds its own in. */
 export const FormProblemsContext = createContext<FieldProblem[]>([]);
 
-export const joinIds = (...ids: (string | undefined)[]) =>
-  ids.filter(Boolean).join(" ") || undefined;
+const joinIds = (...ids: (string | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
 
 /** A field's problem, and what its input needs to say so to a screen reader. */
 export function useFieldProblem(name: string) {
@@ -203,9 +215,142 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
   );
 }
 
+/** What a `ComboboxField` finds for the text in its box. */
+export interface ComboboxSearch<Item> {
+  /** The answer to the text in the box; none until there is one. */
+  items: Item[] | undefined;
+  /** Whether that answer is still on its way. */
+  waiting: boolean;
+  /** Why the search failed, shown under the box. */
+  problem: string | null;
+  /** A muted line under the list, such as that more records match. */
+  note?: string | null;
+}
+
+export interface ComboboxFieldProps<Item> {
+  label: string;
+  placeholder: string;
+  /** The clear button's accessible name. */
+  clearLabel: string;
+  /** The line the list shows when nothing matches. */
+  emptyText: string;
+  /** Searches the server for what is typed, as style-guide § Tables says. */
+  useSearch: (query: string) => ComboboxSearch<Item>;
+  itemLabel: (item: Item) => string;
+  itemKey: (item: Item) => string;
+}
+
+/**
+ * One record picked from a server search. The record picked stays in the box,
+ * typing searches, and the list opens only on the answer to the text in the box.
+ */
+function ComboboxField<Item>(props: ComboboxFieldProps<Item>) {
+  const field = useFieldContext<Item | null>();
+  const value = field.state.value;
+  const box = useComboboxText(value === null ? null : props.itemLabel(value), value !== null, () =>
+    field.handleChange(null),
+  );
+  const [open, setOpen] = useState(false);
+  const search = props.useSearch(box.query);
+  const { problem, errorId, searchErrorId, marked } = useComboboxProblem(field.name, search);
+  // The list takes the box's whole width, not the bare input's.
+  const anchor = useComboboxAnchor();
+
+  return (
+    <Field data-invalid={marked}>
+      <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+      <Combobox
+        items={search.items ?? []}
+        filter={null}
+        value={value}
+        onValueChange={(item) => field.handleChange(item)}
+        inputValue={box.text}
+        onInputValueChange={box.change}
+        open={open && search.items !== undefined}
+        onOpenChange={setOpen}
+        itemToStringLabel={props.itemLabel}
+        isItemEqualToValue={(item, other) => props.itemKey(item) === props.itemKey(other)}
+      >
+        <div ref={anchor}>
+          <ComboboxInput
+            id={field.name}
+            className="w-full"
+            placeholder={props.placeholder}
+            showTrigger={false}
+            showClear={value !== null}
+            clearLabel={props.clearLabel}
+            onBlur={field.handleBlur}
+            aria-invalid={marked}
+            aria-describedby={joinIds(errorId, searchErrorId)}
+          >
+            <SearchMark waiting={search.waiting} />
+          </ComboboxInput>
+        </div>
+        <ComboboxContent anchor={anchor}>
+          <ComboboxResults {...props} note={search.note} />
+        </ComboboxContent>
+      </Combobox>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+      {search.problem && <FieldError id={searchErrorId}>{search.problem}</FieldError>}
+    </Field>
+  );
+}
+
+/** The field's own problem and a failed search, which marks the field like one. */
+function useComboboxProblem(name: string, search: ComboboxSearch<unknown>) {
+  const { problem, errorId, invalid } = useFieldProblem(name);
+  const searchErrorId = search.problem ? `${name}-search-error` : undefined;
+  return { problem, errorId, searchErrorId, marked: invalid ?? (searchErrorId ? true : undefined) };
+}
+
+/** A spinner in the box while the answer is on its way. */
+function SearchMark(props: { waiting: boolean }) {
+  return (
+    <InputGroupAddon>
+      {props.waiting ? <Spinner aria-label="Buscando" /> : <SearchIcon aria-hidden="true" />}
+    </InputGroupAddon>
+  );
+}
+
+function ComboboxResults<Item>(props: ComboboxFieldProps<Item> & { note?: string | null }) {
+  return (
+    <>
+      <ComboboxEmpty>{props.emptyText}</ComboboxEmpty>
+      <ComboboxList>
+        {(item: Item) => (
+          <ComboboxItem key={props.itemKey(item)} value={item}>
+            {props.itemLabel(item)}
+          </ComboboxItem>
+        )}
+      </ComboboxList>
+      {props.note && (
+        <p className="text-muted-foreground border-t px-3 py-2 text-sm">{props.note}</p>
+      )}
+    </>
+  );
+}
+
+/** The box's text and what it searches for, as `comboboxTextChange` moves them. */
+function useComboboxText(pickedLabel: string | null, picked: boolean, dropPick: () => void) {
+  const [text, setText] = useState(pickedLabel ?? "");
+  const [query, setQuery] = useState("");
+  function change(next: string, { reason }: { reason: string }) {
+    const moved = comboboxTextChange(next, reason, picked);
+    if (!moved) {
+      return;
+    }
+    setText(moved.text);
+    setQuery(moved.query);
+    if (moved.dropPick) {
+      dropPick();
+    }
+  }
+  return { text, query, change };
+}
+
 export const { useAppForm } = createFormHook({
   fieldContext,
   formContext,
-  fieldComponents: { TextField, SelectField, CheckboxField, CheckboxGroupField },
+  fieldComponents: { TextField, SelectField, CheckboxField, CheckboxGroupField, ComboboxField },
   formComponents: {},
 });

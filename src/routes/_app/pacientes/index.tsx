@@ -96,7 +96,7 @@ function Registry({ listed }: { listed: PatientPage }) {
           pager={search.searching ? undefined : pager}
           empty={<NoPatients search={search} inactivos={inactivos} />}
         />
-        <MorePatientMatches found={search.found} />
+        <MorePatientMatches search={search} />
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   patientSearchKey,
+  patientSearchMatches,
+  patientSearchMore,
   patientSearchProblem,
   patientSearchQueries,
   patientSearchRequest,
@@ -110,5 +112,60 @@ describe("patientSearchProblem", () => {
     expect(patientSearchProblem({ searching: true, waiting: false, failed: true })).toBe(
       "No pudimos buscar. Probá de nuevo.",
     );
+  });
+});
+
+describe("patientSearchMatches", () => {
+  const answered = (patients: string[]) => ({
+    searching: true,
+    waiting: false,
+    found: { ok: true as const, patients },
+    failed: false,
+  });
+
+  it("is the patients the answer to the text in the box found, none included", () => {
+    expect(patientSearchMatches(answered(["Juan Pérez"]))).toEqual(["Juan Pérez"]);
+    expect(patientSearchMatches(answered([]))).toEqual([]);
+  });
+
+  it("is nothing while the answer is on its way, refused or failed", () => {
+    expect(patientSearchMatches({ searching: true, waiting: true, failed: false })).toBeUndefined();
+    expect(
+      patientSearchMatches({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBeUndefined();
+    expect(patientSearchMatches({ searching: true, waiting: false, failed: true })).toBeUndefined();
+  });
+});
+
+describe("patientSearchMore", () => {
+  const answered = (shown: number, more: boolean) => ({
+    searching: true,
+    waiting: false,
+    found: { ok: true as const, patients: Array.from({ length: shown }), more },
+    failed: false,
+  });
+
+  it("says how many are shown when more patients match", () => {
+    expect(patientSearchMore(answered(20, true))).toBe(
+      "Se muestran las 20 mejores coincidencias. Escribí más para acotar la búsqueda.",
+    );
+  });
+
+  it("is nothing when no more match, or with no answer to the text in the box", () => {
+    expect(patientSearchMore(answered(3, false))).toBeNull();
+    expect(patientSearchMore({ searching: true, waiting: true, failed: false })).toBeNull();
+    expect(
+      patientSearchMore({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBeNull();
   });
 });

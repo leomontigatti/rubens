@@ -231,7 +231,14 @@ function Patterns() {
         <PatternTable />
       </Pattern>
       <Pattern title="Búsqueda de pacientes con más coincidencias">
-        <MorePatientMatches found={{ patients: Array.from({ length: 20 }), more: true }} />
+        <MorePatientMatches
+          search={{
+            searching: true,
+            waiting: false,
+            found: { ok: true, patients: Array.from({ length: 20 }), more: true },
+            failed: false,
+          }}
+        />
       </Pattern>
       <Pattern title="Sin datos">
         <EmptyState
