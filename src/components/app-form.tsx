@@ -245,7 +245,7 @@ export interface ComboboxFieldProps<Item> {
 function ComboboxField<Item>(props: ComboboxFieldProps<Item>) {
   const field = useFieldContext<Item | null>();
   const value = field.state.value;
-  const box = useComboboxText(value && props.itemLabel(value), value !== null, () =>
+  const box = useComboboxText(value === null ? null : props.itemLabel(value), value !== null, () =>
     field.handleChange(null),
   );
   const [open, setOpen] = useState(false);
