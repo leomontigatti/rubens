@@ -36,9 +36,11 @@ export type { RoomOccupant } from "#/server/appointment-placement-steps.ts";
 //
 // 1. Lock the appointment row, when there is one, and read it after the lock.
 //    A new appointment has none: check its medical service and patient instead.
+//    The caller then share-locks the practitioner (`findBookablePractitioner`).
 // 2. Resolve the room and take its row lock when the room's space is at stake.
-//    Always in this order, appointment row then room row, so two changes never
-//    wait on each other. A free start takes no room lock: see `checkRoomSpace`.
+//    Always in this order, appointment row, practitioner row, room row, as
+//    schedule saves take practitioner then room, so two changes never wait on
+//    each other. A free start takes no room lock: see `checkRoomSpace`.
 // 3. Check what the placement needs: room space, its office, working time, then
 //    the patient's warnings.
 // 4. Write in a savepoint. The exclusion constraints stay the arbiter (ADR-0003):
