@@ -286,7 +286,7 @@ function ComboboxField<Item>(props: ComboboxFieldProps<Item>) {
             <SearchMark waiting={search.waiting} />
           </ComboboxInput>
         </div>
-        <ComboboxContent anchor={anchor}>
+        <ComboboxContent anchor={anchor} className="flex flex-col">
           <ComboboxResults {...props} note={search.note} />
         </ComboboxContent>
       </Combobox>
@@ -316,7 +316,7 @@ function ComboboxResults<Item>(props: ComboboxFieldProps<Item> & { note?: string
   return (
     <>
       <ComboboxEmpty>{props.emptyText}</ComboboxEmpty>
-      <ComboboxList>
+      <ComboboxList className="min-h-0">
         {(item: Item) => (
           <ComboboxItem key={props.itemKey(item)} value={item}>
             {props.itemLabel(item)}
@@ -324,7 +324,7 @@ function ComboboxResults<Item>(props: ComboboxFieldProps<Item> & { note?: string
         )}
       </ComboboxList>
       {props.note && (
-        <p className="text-muted-foreground border-t px-3 py-2 text-sm">{props.note}</p>
+        <p className="text-muted-foreground shrink-0 border-t px-3 py-2 text-sm">{props.note}</p>
       )}
     </>
   );
