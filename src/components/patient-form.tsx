@@ -55,7 +55,6 @@ export function usePatientSave<I extends object>(
       dispatch({ type: "settled" });
     }
     if (!result) {
-      dispatch({ type: "failed" });
       return;
     }
     if (!result.ok) {

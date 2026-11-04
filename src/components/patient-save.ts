@@ -1,4 +1,3 @@
-import { saveFailedMessage } from "#/components/save-failure.ts";
 import type { DuplicateCandidate, DuplicateRefusal, Patient } from "#/server/patients.ts";
 
 // The submit step of the patient registration and edit forms, as state and
@@ -41,8 +40,6 @@ export type SaveEvent<I> =
   | { type: "sent"; input: I }
   /** The server answered, or the call threw. */
   | { type: "settled" }
-  /** The call threw instead of answering. */
-  | { type: "failed" }
   | { type: "refused"; result: Exclude<SaveResult, { ok: true }> }
   | { type: "dismissed" };
 
@@ -68,8 +65,6 @@ export function saveReducer<I>(state: SaveState<I>, event: SaveEvent<I>): SaveSt
       return { ...state, ...noRefusal, pending: true, input: event.input };
     case "settled":
       return { ...state, pending: false };
-    case "failed":
-      return { ...state, ...noRefusal, pending: false, error: saveFailedMessage };
     case "refused":
       return { ...state, ...refusalState(event.result) };
     case "dismissed":

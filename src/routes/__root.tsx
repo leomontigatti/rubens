@@ -2,6 +2,8 @@ import type { QueryClient } from "@tanstack/react-query";
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { Toaster } from "#/components/ui/toast.tsx";
+
 import appCss from "../styles.css?url";
 
 interface RouterContext {
@@ -27,7 +29,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <Toaster>{children}</Toaster>
         <Scripts />
       </body>
     </html>
