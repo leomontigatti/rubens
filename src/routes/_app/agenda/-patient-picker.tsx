@@ -3,7 +3,11 @@ import type { ComponentType } from "react";
 
 import type { ComboboxFieldProps, ComboboxSearch } from "#/components/app-form.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
-import { patientSearchMatches, patientSearchProblem } from "#/components/patient-search.ts";
+import {
+  patientSearchMatches,
+  patientSearchMore,
+  patientSearchProblem,
+} from "#/components/patient-search.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { usePatientSearch } from "#/components/use-patient-search.ts";
 import type { PickedPatient } from "#/lib/booking-draft.ts";
@@ -22,6 +26,7 @@ function usePatientMatches(query: string): ComboboxSearch<PickedPatient> {
     items: patientSearchMatches(search)?.map(picked),
     waiting: search.waiting,
     problem: patientSearchProblem(search),
+    note: patientSearchMore(search),
   };
 }
 

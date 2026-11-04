@@ -56,6 +56,21 @@ export function patientSearchMatches<Match>(
   return search.found?.ok ? search.found.patients : undefined;
 }
 
+/**
+ * The line under the results when the search stopped at its best matches while
+ * more patients match: nothing for any other answer, or none yet.
+ */
+export function patientSearchMore(
+  search: PatientSearchState<
+    { ok: true; patients: unknown[]; more: boolean } | { ok: false; reason: PatientRefusal }
+  >,
+) {
+  if (!search.found?.ok || !search.found.more) {
+    return null;
+  }
+  return `Se muestran las ${search.found.patients.length} mejores coincidencias. Escribí más para acotar la búsqueda.`;
+}
+
 /** What to say instead of the results: a refusal, a failure, or nothing. */
 export function patientSearchProblem(
   search: PatientSearchState<{ ok: true } | { ok: false; reason: PatientRefusal }>,

@@ -223,6 +223,8 @@ export interface ComboboxSearch<Item> {
   waiting: boolean;
   /** Why the search failed, shown under the box. */
   problem: string | null;
+  /** A muted line under the list, such as that more records match. */
+  note?: string | null;
 }
 
 export interface ComboboxFieldProps<Item> {
@@ -284,8 +286,8 @@ function ComboboxField<Item>(props: ComboboxFieldProps<Item>) {
             <SearchMark waiting={search.waiting} />
           </ComboboxInput>
         </div>
-        <ComboboxContent anchor={anchor}>
-          <ComboboxResults {...props} />
+        <ComboboxContent anchor={anchor} className="flex flex-col">
+          <ComboboxResults {...props} note={search.note} />
         </ComboboxContent>
       </Combobox>
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
@@ -310,17 +312,20 @@ function SearchMark(props: { waiting: boolean }) {
   );
 }
 
-function ComboboxResults<Item>(props: ComboboxFieldProps<Item>) {
+function ComboboxResults<Item>(props: ComboboxFieldProps<Item> & { note?: string | null }) {
   return (
     <>
       <ComboboxEmpty>{props.emptyText}</ComboboxEmpty>
-      <ComboboxList>
+      <ComboboxList className="min-h-0">
         {(item: Item) => (
           <ComboboxItem key={props.itemKey(item)} value={item}>
             {props.itemLabel(item)}
           </ComboboxItem>
         )}
       </ComboboxList>
+      {props.note && (
+        <p className="text-muted-foreground shrink-0 border-t px-3 py-2 text-sm">{props.note}</p>
+      )}
     </>
   );
 }

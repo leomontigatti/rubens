@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   patientSearchKey,
   patientSearchMatches,
+  patientSearchMore,
   patientSearchProblem,
   patientSearchQueries,
   patientSearchRequest,
@@ -138,5 +139,33 @@ describe("patientSearchMatches", () => {
       }),
     ).toBeUndefined();
     expect(patientSearchMatches({ searching: true, waiting: false, failed: true })).toBeUndefined();
+  });
+});
+
+describe("patientSearchMore", () => {
+  const answered = (shown: number, more: boolean) => ({
+    searching: true,
+    waiting: false,
+    found: { ok: true as const, patients: Array.from({ length: shown }), more },
+    failed: false,
+  });
+
+  it("says how many are shown when more patients match", () => {
+    expect(patientSearchMore(answered(20, true))).toBe(
+      "Se muestran las 20 mejores coincidencias. Escribí más para acotar la búsqueda.",
+    );
+  });
+
+  it("is nothing when no more match, or with no answer to the text in the box", () => {
+    expect(patientSearchMore(answered(3, false))).toBeNull();
+    expect(patientSearchMore({ searching: true, waiting: true, failed: false })).toBeNull();
+    expect(
+      patientSearchMore({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBeNull();
   });
 });
