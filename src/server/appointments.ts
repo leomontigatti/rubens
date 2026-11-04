@@ -57,12 +57,24 @@ export function booksForSome(actor: Actor): boolean {
   return actsForEveryone(actor) || actor.roles.includes("practitioner");
 }
 
-/** The practitioner, when the actor may book for them and they are active. */
+/**
+ * The practitioner, when the actor may book for them and they are active.
+ * Share-locks the practitioner row for the rest of the transaction: a schedule
+ * save takes it `for no key update` (`findPractitioner`), so a placement and a
+ * change to that practitioner's schedules run one after the other, and the
+ * placement never writes from schedules a committed change removed. Two
+ * placements still run side by side; the exclusion constraints settle them.
+ */
 export async function findBookablePractitioner(
   tx: Transaction,
   actor: Actor,
   practitionerId: string,
 ) {
+  await tx
+    .select({ id: practitioner.id })
+    .from(practitioner)
+    .where(eq(practitioner.id, practitionerId))
+    .for("share");
   const found = await findPractitioner(tx, actor, practitionerId, false);
   if (!found) {
     return notFound;
