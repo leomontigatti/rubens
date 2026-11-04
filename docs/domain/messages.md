@@ -32,12 +32,13 @@ Messages that come due meanwhile wait. Once the number is linked again, the
 waiting messages go out, spread out like any others, except those no longer
 true:
 
-- anything about an appointment that has since been cancelled or moved, which
-  gets the message for its current state instead, if any;
-- a reminder whose appointment has started, or that a later reminder for the same
-  appointment overtook, of which only the latest goes.
+- anything about an appointment that has since started, been cancelled or been
+  moved, which gets the message for its current state instead, if any;
+- a reminder that a later reminder for the same appointment overtook, of which
+  only the latest goes.
 
-Care instructions and follow-ups still go, however late.
+Care instructions and follow-ups are about an appointment that already took place,
+so they still go, however late.
 
 Messages patients sent while it was down reach the phone, not Rubens, so the
 assistant does not answer them late: a person does, from the phone.
@@ -100,7 +101,8 @@ Every event that staff act on is a notification in the app, read or unread:
 confirmations, cancellations, reschedules, requests to approve, handoffs, contact
 requests, and replies that look like opt-outs. Reception sees all of them, a
 clinical handoff only as existing ([assistant.md](./assistant.md#handoff)); a
-practitioner sees those about their own appointments. The app holds the full
+practitioner sees those about their own appointments and the handoffs sent to
+them. The app holds the full
 record, so a failed external delivery loses nothing.
 
 A practitioner can link Telegram from their profile, through the bot's start link.

@@ -37,7 +37,8 @@ organization. Both are ranges of time, with a whole-day shortcut for the usual
 case, so "Friday from 14:00" is a closure too. Admins enter closures; time off is
 entered by an admin or by the practitioner it belongs to.
 
-When time off, a closure, or a schedule change leaves booked appointments outside
+When time off, a closure, or a schedule change leaves requested, booked or
+confirmed appointments outside
 working time, those appointments go on reception's "to reschedule" list. Nothing
 is cancelled on its own. Each affected patient is told, with their reschedule
 link, unless whoever enters the time off or the closure chooses not to

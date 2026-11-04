@@ -123,6 +123,9 @@ candidates, not by its price.
   organization's. An organization is told so before it links its number.
 - A WhatsApp change can stop every organization at once until an engine is fixed
   or switched. WAHA's releases are watched like a dependency's.
+- Whoever holds the organization's phone reads every conversation, clinical
+  messages included: Rubens keeps clinical words from reception in the app and on
+  Telegram, but cannot reach the phone's WhatsApp.
 - WAHA holds each number's session keys, which are as sensitive as the phone
   itself: its storage is a secret, backed up and restored like the database.
 - Patients' messages reach the model's provider, abroad. Health data is sensitive
