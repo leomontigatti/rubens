@@ -1,6 +1,6 @@
 import { tz } from "@date-fns/tz";
 import { useQuery } from "@tanstack/react-query";
-import { useRouteContext } from "@tanstack/react-router";
+import { useRouteContext, useRouter } from "@tanstack/react-router";
 import type { NavigateOptions } from "@tanstack/react-router";
 import { useStore } from "@tanstack/react-form";
 import { format } from "date-fns";
@@ -10,6 +10,7 @@ import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
@@ -199,7 +200,7 @@ function requestOf(values: BookingValues, office: OverbookingOffice | null) {
 
 type BookingRequest = Exclude<ReturnType<typeof requestOf>, FieldProblem[]>;
 
-function send(request: BookingRequest, confirmWarnings: boolean) {
+async function send(request: BookingRequest, confirmWarnings: boolean) {
   return request.overbooking
     ? addOverbooking({ data: { ...request.data, confirmWarnings } })
     : addAppointment({ data: { ...request.data, confirmWarnings } });
@@ -219,6 +220,7 @@ export interface BookingPageProps {
 
 function useBookingForm(props: BookingPageProps) {
   const page = useFormPage(props.back);
+  const router = useRouter();
   const [answer, setAnswer] = useState<Answer>(noAnswer);
   const [pending, setPending] = useState(false);
 
@@ -231,11 +233,12 @@ function useBookingForm(props: BookingPageProps) {
       return;
     }
     setPending(true);
-    let result: Awaited<ReturnType<typeof send>>;
-    try {
-      result = await send(request, confirmWarnings);
-    } finally {
-      setPending(false);
+    const result = await serverAnswer("booking", shownPath(router), () =>
+      send(request, confirmWarnings),
+    );
+    setPending(false);
+    if (!result) {
+      return;
     }
     if (result.ok) {
       page.leave();

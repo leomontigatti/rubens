@@ -1,8 +1,9 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/ingresar")({
 });
 
 function SignIn() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -36,10 +38,15 @@ function SignIn() {
     }
     setPending(true);
     setError(null);
-    const { error: signInError } = await authClient.signIn.email(read.credentials);
+    const answer = await serverAnswer("sign-in", shownPath(router), () =>
+      authClient.signIn.email(read.credentials),
+    );
     setPending(false);
-    if (signInError) {
-      setError(signInErrorMessage(signInError.status));
+    if (!answer) {
+      return;
+    }
+    if (answer.error) {
+      setError(signInErrorMessage(answer.error.status));
       return;
     }
     startNewSession("/");
