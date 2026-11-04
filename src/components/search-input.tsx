@@ -12,20 +12,15 @@ import { Spinner } from "#/components/ui/spinner.tsx";
 /**
  * A search box: the magnifier, the input and a clear button once there is text.
  * While the search runs a spinner takes the magnifier's place, so the box keeps
- * its size and the signal sits where the reader just acted. A form field passes
- * its `id`, for its visible label, and what marks it invalid; the box is then
- * named by that label instead of `label`.
+ * its size and the signal sits where the reader just acted.
  */
 export function SearchInput(props: {
   value: string;
   onChange: (value: string) => void;
-  label?: string;
+  label: string;
   placeholder: string;
   loading?: boolean;
   className?: string;
-  id?: string;
-  "aria-invalid"?: boolean;
-  "aria-describedby"?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   // The clear button leaves with the text, so focus returns to the box.
@@ -40,10 +35,7 @@ export function SearchInput(props: {
       </InputGroupAddon>
       <InputGroupInput
         ref={input}
-        id={props.id}
         aria-label={props.label}
-        aria-invalid={props["aria-invalid"]}
-        aria-describedby={props["aria-describedby"]}
         placeholder={props.placeholder}
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}

@@ -162,6 +162,10 @@ carried over from en-escena.
   the first, what is wrong and an example for the second
   (`Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.`).
 - **A refusal keeps everything the user typed**, the fields that passed included.
+- **One record picked from a server search is the form kit's `ComboboxField`**
+  (`src/components/app-form.tsx`), as booking's patient picker: it searches as [Tables](#tables)
+  says, its list opens only on the answer to the text in the box, and the record picked stays in
+  the box.
 - **Several options are picked in place**, as a group of checkboxes (a schedule's days, a
   member's roles), never in a popover that covers what follows.
 - **A `Checkbox` for a boolean submitted with the form**; a switch, once there is one, for a
