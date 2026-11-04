@@ -30,9 +30,10 @@ links it again from the same place
   that requires approval books a request instead
   ([appointments.md](./appointments.md#requests)).
 - **Cancelling and rescheduling** their own appointments, under the reschedule
-  link's rules: the medical service's cutoff, and one move per appointment
-  ([messages.md](./messages.md#the-reschedule-link)). Past the cutoff, or after the
-  one move, it hands off.
+  link's rules ([messages.md](./messages.md#the-reschedule-link)): cancelling is
+  open until the appointment starts; moving, until the medical service's cutoff
+  and once per appointment. A move past the cutoff, or after the one move, it
+  hands off.
 - **Replies** to the messages the organization sends: a reminder's confirmation,
   a follow-up's answer. Patients write in their own words, by text or voice note;
   there are no buttons. A voice note is transcribed and read like text; one that
@@ -43,7 +44,7 @@ every patient whose messages go to it, the patient's own or a guardian's
 ([patients.md](./patients.md#guardians)), so it can stand for several patients;
 the assistant asks which one before acting. An unknown number can ask and book:
 at booking, the patient is registered as incomplete, with the name they give and
-the number. The assistant never tells a number anything about a patient who is
+the number, and their WhatsApp consent recorded as given to the assistant. The assistant never tells a number anything about a patient who is
 not theirs, and never anything clinical.
 
 ## For practitioners
@@ -54,8 +55,8 @@ permissions as in the app:
 - **Their agenda and their availability**, such as tomorrow's appointments or the
   free times on Thursday. Patients appear by name and time, nothing clinical.
 - **Their time off.** Once it is confirmed, the affected appointments go on the
-  "to reschedule" list, and the practitioner can have the assistant tell each
-  affected patient ([scheduling.md](./scheduling.md#time-off-and-closures)).
+  "to reschedule" list, and each affected patient is told unless the practitioner
+  chooses not to ([scheduling.md](./scheduling.md#time-off-and-closures)).
 - **Their medical services**: reading them, and changing the duration, the price,
   the accepted insurers and the text for patients. Anything else is done in the app.
 - **Requests** for medical services that require approval: approve, reject, or
@@ -87,10 +88,11 @@ No organization can edit or override these:
 - It says it is a bot when asked.
 - It reads nothing clinical: its tools return no clinical record, note or
   attachment, so it cannot pass one on.
-- Every reply is checked before it goes out. One that reads as clinical advice or
-  diagnosis, or says anything about a patient other than the number's own, is held
-  unsent, and the conversation is handed off with the held reply attached, for the
-  person to send, fix or drop.
+- Every reply is checked before it goes out. One that says anything clinical
+  (advice, a diagnosis, a symptom, a treatment), or anything about a patient other
+  than the number's own, is held
+  unsent, and the conversation is handed off. The held reply is shown only in the
+  app, for the person to send, fix or drop; Telegram gets the handoff without it.
 - Clinical details a patient sends (symptoms, a study, a photo) are not answered:
   they are handed off to the practitioner.
 
@@ -105,7 +107,11 @@ The assistant hands a conversation to a person when:
 - a voice note stays unintelligible.
 
 The handoff goes to the practitioner of the appointment it concerns, and
-otherwise to the organization's handoff contacts, members an admin picks. The
+otherwise to the organization's handoff contacts, members an admin picks. A
+clinical handoff (a clinical question, a follow-up's answer, clinical details, a
+held reply) goes only to a practitioner: the appointment's, else the handoff
+contacts who are practitioners. Anyone else, reception included, sees that it
+exists, never its words. The
 handoff arrives on Telegram with the patient's own words
 ([ADR-0007](../adr/0007-patients-words-on-telegram.md)) and as a notification in
 the app. The person replies in Telegram, or in the app, and the reply reaches the
@@ -124,7 +130,8 @@ assistant tells the patient and the handoff stays as an unread notification.
 While a person holds the conversation, the assistant stays silent in it. It takes
 the conversation back when the person returns it, or after a time the admin sets.
 Someone who writes to the patient from the organization's phone holds the
-conversation the same way, as if it had been handed to them.
+conversation the same way, as if it had been handed to them. Rubens tells such
+a message from its own by the messages it sent itself.
 
 ## Pace
 

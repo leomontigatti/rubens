@@ -32,11 +32,12 @@ Messages that come due meanwhile wait. Once the number is linked again, the
 waiting messages go out, spread out like any others, except those no longer
 true:
 
-- anything about an appointment that has since started, been cancelled or been
-  moved, which gets the message for its current state instead, if any;
-- a reminder overtaken by a later one for the same appointment, of which only the
-  latest goes;
-- a care instruction or follow-up more than a day late.
+- anything about an appointment that has since been cancelled or moved, which
+  gets the message for its current state instead, if any;
+- a reminder whose appointment has started, or that a later reminder for the same
+  appointment overtook, of which only the latest goes.
+
+Care instructions and follow-ups still go, however late.
 
 Messages patients sent while it was down reach the phone, not Rubens, so the
 assistant does not answer them late: a person does, from the phone.
@@ -46,7 +47,9 @@ Each medical service sets:
 - **The booking confirmation**, sent when the appointment is booked, or not at all.
 - **Its reminders**: each one a time before the appointment (such as 48 h and
   2 h), and whether it asks the patient to confirm. A reminder whose send time has
-  already passed when the appointment is booked is skipped, not sent late.
+  already passed when the appointment is booked is skipped, not sent late. A
+  request gets no reminders until it is approved; the same rule then applies from
+  the approval.
 - **Its care instructions**: a text sent when the appointment is marked attended,
   or none.
 - **Its follow-up**: a time after the appointment at which the patient is asked
@@ -67,8 +70,8 @@ reply. The assistant gives no advice, and writes nothing into the clinical recor
 the practitioner decides what goes there.
 
 The organization also writes when it changes an appointment itself: when staff
-move or cancel it, and when whoever enters a time off or a closure chooses to
-tell the patients whose appointments it sent to the "to reschedule" list. The message says what happened, and
+move or cancel it, and when a time off or a closure sends their appointments to
+the "to reschedule" list, unless whoever entered it chose not to tell them. The message says what happened, and
 offers the reschedule link where the appointment still needs a time.
 
 ## The reschedule link
@@ -95,7 +98,8 @@ appointment starts.
 
 Every event that staff act on is a notification in the app, read or unread:
 confirmations, cancellations, reschedules, requests to approve, handoffs, contact
-requests, and replies that look like opt-outs. Reception sees all of them; a
+requests, and replies that look like opt-outs. Reception sees all of them, a
+clinical handoff only as existing ([assistant.md](./assistant.md#handoff)); a
 practitioner sees those about their own appointments. The app holds the full
 record, so a failed external delivery loses nothing.
 

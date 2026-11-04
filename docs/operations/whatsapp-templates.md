@@ -48,8 +48,8 @@ Sent when staff cancel an appointment, by the business.
 
 ## `turno_a_reprogramar`
 
-Sent when time off or a closure leaves the appointment outside working time, if
-whoever entered it chose to tell the patients.
+Sent when time off or a closure leaves the appointment outside working time,
+unless whoever entered it chose not to tell the patients.
 
 > Hola {paciente}, {profesional} no va a poder atenderte el {fecha} a las {hora}. Podés elegir otro horario desde este enlace: {enlace}, o respondé este mensaje y te ayudamos.
 

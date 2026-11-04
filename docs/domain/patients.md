@@ -79,6 +79,7 @@ WhatsApp. The consent records when and by whom the patient was registered.
 Opting out is the exception, not part of the flow, and messages offer no way to
 unsubscribe. A patient who asks to stop, by any channel, is turned off by
 reception, and that change is audited. A reply that looks like such a request
-holds every message the organization starts to that patient at once, since a
-patient who keeps getting them may block or report the number, and reaches
-reception as a notification to confirm or undo.
+holds every message the organization starts to that number at once, for every
+patient whose messages go to it, since someone who keeps getting them may block or
+report the organization's number. It reaches reception as a notification to
+confirm or undo, per patient.

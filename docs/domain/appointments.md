@@ -7,16 +7,16 @@ the booking can change, and the patient messages for its appointments
 ([messages.md](./messages.md)): the booking confirmation, the reminders, and how
 late the patient may reschedule.
 
-Admins, and each practitioner for their own, manage medical services: a name, a
-default duration, the message settings, a price, the insurers it accepts, a text
-for patients (how to prepare, what to bring) and whether a patient's booking
-needs the practitioner's approval. A medical service in use is deactivated, never
-deleted.
+Admins, and each practitioner for their own, manage medical services. A medical
+service in use is deactivated, never deleted.
 
-The price is the private one, with an optional amount per insurer, the patient's
-part. The accepted insurers are the practitioner's, which a medical service can
-narrow. Both exist so the assistant can answer patients
-([assistant.md](./assistant.md)); Rubens bills nothing.
+What a medical service tells patients is for the assistant to answer with
+([assistant.md](./assistant.md)); Rubens bills nothing. Its price is the private
+one, with the patient's part per insurer where it differs. It accepts the
+practitioner's insurers unless it narrows them. Its text for patients says how to
+prepare and what to bring. A medical service can also make a patient's booking
+wait for the practitioner's approval, which is off by default
+([Requests](#requests)).
 
 Appointments are booked one at a time. A series, such as monthly orthodontic
 check-ups, is booked one appointment after the other.
@@ -60,13 +60,16 @@ the patient's name.
 A patient books by WhatsApp, through the assistant, from the same availability
 staff see. When the medical service needs the practitioner's approval, the
 booking is a request: it holds its time like any appointment, so nobody else
-takes it while the practitioner decides. The practitioner, an admin or reception
-approves it, rejects it, or proposes another time. Approval books it, and the
-booking confirmation goes out. Rejection cancels it, by the business, and the
+takes it while the practitioner decides. It counts as active for every overlap
+rule, the database's included. Only the practitioner approves it, rejects it, or proposes another time. Approval books it, and the
+booking confirmation goes out. A time proposed by staff that the patient accepts
+moves the request and books it, without using up the patient's one move. Rejection cancels it, by the business, and the
 assistant offers the patient other times. The practitioner is reminded of a
 request still waiting, on Telegram and in the app, partway through the time the
-admin sets and again before it ends. A request nobody answers in that time is
-cancelled the same way, and the patient is told.
+admin sets and again before it ends. A request nobody answers in that time, or
+by a set time before the appointment would start, whichever comes first, is
+cancelled the same way, and the patient is told. So a request never reaches its
+start time.
 
 Staff bookings never need approval.
 
@@ -105,13 +108,13 @@ practitioner's schedules or inside their time off or a closure. An appointment
 leaves it when it is moved or cancelled. Overbookings are left out, being outside
 working time on purpose. Reception sees the list with a count in the menu.
 
-Deactivating a practitioner or a patient sends every future booked or confirmed
-appointment of theirs to the list, overbookings included, and the admin is told first
+Deactivating a practitioner or a patient sends every future requested, booked or
+confirmed appointment of theirs to the list, overbookings included, and the admin is told first
 how many that adds. Rescheduling keeps the practitioner and the patient, so such
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 
-Deactivating a room or an office sends every future booked or confirmed appointment
+Deactivating a room or an office sends every future requested, booked or confirmed appointment
 in it to the list, overbookings included: the calendar no longer offers the room,
 even when another room's schedule still covers the time. Its schedules also cover
 nothing from then on, so an appointment in another room of the office that only they

@@ -45,8 +45,8 @@ The precautions follow the reasons WhatsApp's servers give for restricting a
 number: the same text to many people, messages to people who have not saved the
 number, and blocks or reports.
 
-- Rubens messages only patients who wrote to the number or booked an appointment.
-  It never messages a list.
+- Rubens starts messages only to patients who booked an appointment, and
+  otherwise only replies. It never messages a list.
 - The booking confirmation asks the patient to save the number.
 - No two messages are the same text: the assistant writes each one
   ([messages.md](../domain/messages.md#to-patients)).

@@ -187,8 +187,8 @@ The bot that answers `patient`s on the `organization`'s WhatsApp and
 _Avoid_: chatbot, agent, AI
 
 **`whatsappConnection`** — ui: "Conexión de WhatsApp"
-The `organization`'s own WhatsApp number linked to Rubens by a QR code, through
-which the `assistant` writes; connected, or not.
+The `organization`'s own WhatsApp number as Rubens uses it, through which the
+`assistant` and the `organization`'s messages reach `patient`s.
 _Avoid_: WhatsApp account, instance, session, channel
 
 **`proposal`** — ui: "Propuesta"
