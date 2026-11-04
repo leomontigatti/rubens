@@ -54,6 +54,15 @@ describe("saveReducer", () => {
     expect(state.error).toBe("No encontramos ese paciente.");
   });
 
+  it("says the save failed when the call threw, and is no longer pending", () => {
+    const state = run({ type: "sent", input: { firstName: "Ana" } }, { type: "failed" });
+    expect(state).toMatchObject({
+      pending: false,
+      error: "No pudimos guardar. Probá de nuevo.",
+      input: { firstName: "Ana" },
+    });
+  });
+
   it("dismissing the warning clears it and keeps the input", () => {
     const state = run(
       { type: "sent", input: { firstName: "Ana" } },
