@@ -1,5 +1,6 @@
 import { tz } from "@date-fns/tz";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { useStore } from "@tanstack/react-form";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -8,6 +9,7 @@ import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { rescheduleQueryOf, rescheduleRequestOf } from "#/lib/booking-draft.ts";
 import type { BookingWarning, RescheduleValues } from "#/lib/booking-draft.ts";
 import { moveAppointment } from "#/server/appointments.functions.ts";
@@ -94,6 +96,7 @@ function initialValues({ appointment, office }: LoadedAppointment): RescheduleVa
 export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
   const { appointment } = loaded;
   const page = useFormPage(appointmentBack);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [answer, setAnswer] = useState<Answer>(noAnswer);
   const [pending, setPending] = useState(false);
@@ -107,11 +110,12 @@ export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
       return;
     }
     setPending(true);
-    let result: Awaited<ReturnType<typeof moveAppointment>>;
-    try {
-      result = await moveAppointment({ data: { ...request.data, confirmWarnings } });
-    } finally {
-      setPending(false);
+    const result = await serverAnswer("reschedule", shownPath(router), () =>
+      moveAppointment({ data: { ...request.data, confirmWarnings } }),
+    );
+    setPending(false);
+    if (!result) {
+      return;
     }
     if (result.ok) {
       page.leave();

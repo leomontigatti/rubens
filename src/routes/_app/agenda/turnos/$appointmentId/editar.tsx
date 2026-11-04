@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   appointmentUpdateSchema,
@@ -73,6 +74,7 @@ function EditAppointment() {
 function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
   const { appointment, office } = loaded;
   const page = useFormPage(appointmentBack);
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<FieldProblem | null>(null);
 
@@ -90,11 +92,12 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
         return;
       }
       setPending(true);
-      let result: SaveResult;
-      try {
-        result = await saveAppointment({ data: input.data });
-      } finally {
-        setPending(false);
+      const result = await serverAnswer("appointment-edit", shownPath(router), () =>
+        saveAppointment({ data: input.data }),
+      );
+      setPending(false);
+      if (!result) {
+        return;
       }
       if (result.ok) {
         page.leave();

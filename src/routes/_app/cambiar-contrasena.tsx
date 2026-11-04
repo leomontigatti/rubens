@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Card,
@@ -56,8 +57,13 @@ function ChangePassword() {
     }
     setPending(true);
     setError(null);
-    const result = await changePassword({ data: input.data });
+    const result = await serverAnswer("password-change", shownPath(router), () =>
+      changePassword({ data: input.data }),
+    );
     setPending(false);
+    if (!result) {
+      return;
+    }
     if (!result.ok) {
       setError(messages[result.reason]);
       return;

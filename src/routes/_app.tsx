@@ -1,8 +1,9 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 
 import { passwordChangePath } from "#/components/app-nav.ts";
 import { AppSidebar } from "#/components/app-sidebar.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { authClient } from "#/lib/auth-client.ts";
@@ -93,12 +94,14 @@ function useSessionGuard(userId: string) {
 function AppShell() {
   const { viewer } = Route.useRouteContext();
   const { toReschedule, sidebarOpen } = Route.useLoaderData();
+  const router = useRouter();
 
   useSessionGuard(viewer.userId);
 
   async function signOut() {
-    await authClient.signOut();
-    startNewSession("/ingresar");
+    if (await serverAnswer("sign-out", shownPath(router), () => authClient.signOut())) {
+      startNewSession("/ingresar");
+    }
   }
 
   return (
