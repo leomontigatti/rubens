@@ -63,18 +63,20 @@ booking is a request: it holds its time like any appointment, so nobody else
 takes it while the practitioner decides. It counts as active for every overlap
 rule, the database's included. Only the practitioner approves it, rejects it, or proposes another time. Approval books it, and the
 booking confirmation goes out. A time the practitioner proposes that the patient
-accepts moves the request and books it, without using up the patient's one move. Rejection cancels it, by the business, and the
+accepts moves the request and books it, without using up the patient's one move;
+so does the practitioner moving it themselves. Rejection cancels it, by the business, and the
 assistant offers the patient other times. The practitioner is reminded of a
 request still waiting, on Telegram and in the app, partway through the time the
 admin sets and again before it ends. A request nobody answers in that time, or
 by the lead time the admin also sets before the appointment would start,
 whichever comes first, is cancelled the same way, and the patient is told. So a
-request never reaches its start time, and the assistant never offers a time for
-one inside that lead time.
+request never reaches its start time, and no way of moving or booking a request
+(the assistant, the reschedule link, the staff picker) offers a time inside that
+lead time.
 
-A request that time off or a closure sends to the "to reschedule" list cannot be
-approved there. Moving it, by the patient or by staff, keeps it a request for the
-practitioner to decide.
+A request on the "to reschedule" list, whatever sent it there, cannot be approved
+while it is on it. Moving it, by the patient or by other staff, keeps it a request
+for the practitioner to decide, and its answer time starts again.
 
 Staff bookings never need approval.
 

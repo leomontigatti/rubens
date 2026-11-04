@@ -107,11 +107,13 @@ The assistant hands a conversation to a person when:
 - a voice note stays unintelligible.
 
 The handoff goes to the practitioner of the appointment it concerns, and
-otherwise to the organization's handoff contacts, members an admin picks, at
-least one of them a practitioner. A
-clinical handoff (a clinical question, a follow-up's answer, clinical details, a
-held reply) goes only to a practitioner: the appointment's, else the handoff
-contacts who are practitioners. Anyone else, reception included, sees that it
+otherwise to the organization's handoff contacts, members an admin picks. At
+least one of them is a practitioner who keeps clinical records: the last such
+contact can neither be removed nor deactivated, as the last admin
+([access.md](./access.md)). A clinical handoff (a clinical question, a
+follow-up's answer, clinical details, a held reply) goes only to a practitioner
+who keeps clinical records: the appointment's, else those among the handoff
+contacts. Anyone else, reception included, sees that it
 exists, never its words. The
 handoff arrives on Telegram with the patient's own words
 ([ADR-0007](../adr/0007-patients-words-on-telegram.md)) and as a notification in
@@ -120,13 +122,14 @@ patient on WhatsApp under their name.
 
 The app's view is the fallback for whoever has no Telegram linked or cannot reach
 it: the open handoffs and requests, each with its conversation and a reply box.
-
-A message the assistant judged clinical, the patient's or a held reply, is left
-out of every conversation shown to someone who is not a practitioner, in the app
-and on Telegram, later handoffs included. The organization's phone still shows
-the whole conversation, as WhatsApp does; whoever holds it reads everything.
 It has no assigning, no labels and no notifications of its own beyond the
 existing ones.
+
+A message the assistant judged clinical, the patient's or a held reply, is left
+out of every conversation shown to someone who is not a practitioner who keeps
+clinical records, in the app and on Telegram, later handoffs included. The
+organization's phone still shows the whole conversation, as WhatsApp does;
+whoever holds it reads everything.
 
 A handoff nobody answers is not lost: its recipient is reminded after a time the
 admin sets, and again before the conversation goes back to the assistant, and the

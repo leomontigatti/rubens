@@ -82,7 +82,7 @@ reception, and that change is audited. A reply that looks like such a request
 holds every message the organization starts to that number at once, for every
 patient whose messages go to it, since someone who keeps getting them may block or
 report the organization's number. It reaches reception as a notification, where
-each of those patients is turned off or kept. The hold lasts until every one of
-them is decided; then the kept patients' held messages go out, less those no
+each of those patients is turned off or kept, and reception is reminded of it
+daily. The hold lasts until every one of them is decided; then the kept patients' held messages go out, less those no
 longer true ([messages.md](./messages.md#while-the-whatsapp-connection-is-down)),
 and the turned-off patients' are dropped.
