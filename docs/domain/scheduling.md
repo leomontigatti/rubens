@@ -37,9 +37,13 @@ organization. Both are ranges of time, with a whole-day shortcut for the usual
 case, so "Friday from 14:00" is a closure too. Admins enter closures; time off is
 entered by an admin or by the practitioner it belongs to.
 
-When time off, a closure, or a schedule change leaves booked appointments outside
+When time off, a closure, or a schedule change leaves requested, booked or
+confirmed appointments outside
 working time, those appointments go on reception's "to reschedule" list. Nothing
-is cancelled on its own: someone has to talk to each patient.
+is cancelled on its own. Each affected patient is told, with their reschedule
+link, unless whoever enters the time off or the closure chooses not to
+([messages.md](./messages.md#to-patients)); an appointment nobody moves stays on
+the list for reception.
 
 ## Availability
 
@@ -53,5 +57,5 @@ otherwise, whatever the medical service's duration. The grid keeps start times
 tidy and stable as appointments come and go; it does not limit an appointment's
 length, and an overbooking may start off the grid.
 
-Staff can book any date ahead. Only the patient's reschedule page shows a limited
-window.
+Staff can book any date ahead. Patients see a limited window, on the reschedule
+page and through the assistant.

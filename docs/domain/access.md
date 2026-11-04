@@ -9,7 +9,9 @@ and practitioner.
 - **An admin changes roles, and deactivates a member** who left: deactivation
   ends their open sessions and refuses their sign-in, deletes nothing, and sends
   a practitioner's future appointments to the "to reschedule" list
-  ([appointments.md](./appointments.md#rescheduling)). The last active admin can neither lose the role nor be deactivated.
+  ([appointments.md](./appointments.md#rescheduling)). The last active admin can neither lose the role nor be deactivated, nor can
+  the last handoff contact who keeps clinical records
+  ([assistant.md](./assistant.md#handoff)).
 
 | Who          | Schedules      | Appointments | Patients | Clinical records |
 | ------------ | -------------- | ------------ | -------- | ---------------- |

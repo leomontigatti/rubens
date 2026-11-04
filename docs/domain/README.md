@@ -9,6 +9,8 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 - [Appointments](./appointments.md): medical services, statuses, rescheduling, overbooking.
 - [Patients](./patients.md): the registry, identity, guardians, consent.
 - [Messages](./messages.md): reminders, the reschedule link, staff notifications.
+- [Assistant](./assistant.md): what it does for patients and practitioners, proposals,
+  handoff, communication rules.
 - [Clinical records](./clinical-records.md): notes and their versions, alerts, attachments, copies.
 
 ## Scope
@@ -17,14 +19,14 @@ Rubens serves one business today, a dental practice with several offices. The
 organization, its offices and its first admin are created by a script; there is
 no public sign-up. The data model stays multi-organization.
 
-Only staff book. Patients act on an appointment they already have, through its
-reschedule link, and nothing else.
+Staff book in the app. Patients book, cancel and reschedule by WhatsApp, through
+the assistant, and act on an appointment they already have through its reschedule
+link. Prices are information for patients; Rubens bills nothing.
 
 Not in the first version, in rough order of arrival:
 
 - The odontogram, the first structured clinical feature after launch.
 - Treatment plans and quotes.
-- Patient self-booking, built on the reschedule-link page.
 - A waitlist that offers freed times to other patients.
 - Recurring appointments.
 - Importing the national holiday calendar.

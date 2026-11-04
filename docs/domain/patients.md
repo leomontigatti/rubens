@@ -71,13 +71,18 @@ guardian without requiring one: a teenager may book for themselves.
 
 ## WhatsApp consent
 
-WhatsApp consent is on from registration. Meta requires that the patient gave the
-number and agreed to WhatsApp contact, and that agreement can be collected in any
-form: the registration form, or reception telling the patient that reminders come
-by WhatsApp. The consent records when and by whom the patient was registered.
+WhatsApp consent is on from registration. The patient gave the number and agreed
+to WhatsApp contact, and that agreement can be collected in any form: the
+registration form, or reception telling the patient that reminders come by
+WhatsApp. The consent records when and by whom the patient was registered.
 
-Opting out is the exception, not part of the flow. The message templates offer no
-way to unsubscribe (Meta asks for one only on marketing templates, and reminders
-are utility templates). A patient who asks to stop, by any channel, is turned off
-by reception, and that change is audited. A free-text reply that looks like such a
-request reaches reception as a notification; nothing turns consent off on its own.
+Opting out is the exception, not part of the flow, and messages offer no way to
+unsubscribe. A patient who asks to stop, by any channel, is turned off by
+reception, and that change is audited. A reply that looks like such a request
+holds every message the organization starts to that number at once, for every
+patient whose messages go to it, since someone who keeps getting them may block or
+report the organization's number. It reaches reception as a notification, where
+each of those patients is turned off or kept, and reception is reminded of it
+daily. The hold lasts until every one of them is decided; then the kept patients' held messages go out, less those no
+longer true ([messages.md](./messages.md#while-the-whatsapp-connection-is-down)),
+and the turned-off patients' are dropped.

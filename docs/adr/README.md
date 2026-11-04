@@ -14,6 +14,8 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 - Scheduling: `0003-scheduling-and-clinical-records.md`
 - Clinical records: `0005-versioned-clinical-notes.md`, with the access and audit
   rules in `0003-scheduling-and-clinical-records.md`
+- WhatsApp, the assistant and Telegram: `0006-patient-assistant-on-whatsapp.md`,
+  `0007-patients-words-on-telegram.md`
 
 ## Decisions
 
@@ -30,3 +32,9 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 - [ADR-0005: Clinical notes are versioned, files live on the server's disk](./0005-versioned-clinical-notes.md) -
   notes edited with every version kept instead of signed and amended; no app-level
   encryption at launch; attachments on a Coolify volume, streamed by the app.
+- [ADR-0006: Patients talk to an assistant on the organization's own WhatsApp number](./0006-patient-assistant-on-whatsapp.md) -
+  the organization's number linked through a self-hosted WAHA, Meta's Cloud API
+  deferred, the ban risk accepted; the model interprets and Rubens decides through
+  proposals; TanStack AI in a pg-boss worker.
+- [ADR-0007: A handoff carries the patient's own words to Telegram](./0007-patients-words-on-telegram.md) -
+  people answer handed-off patients from Telegram instead of an inbox in Rubens.
