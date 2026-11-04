@@ -603,4 +603,19 @@ describe("the calendar week of a room", () => {
 
     expect(week.practitioners).toEqual([]);
   });
+
+  it("lists that practitioner with cancelled and no-show shown, only to who books for everyone", async () => {
+    const booked = await overbook({ roomId: world.otherRoom.id, start: at("15:00") });
+    await db.update(appointment).set({ status: "noShow" }).where(eq(appointment.id, booked.id));
+    const query = { roomId: world.otherRoom.id, includeCancelledAndNoShow: true };
+
+    for (const actor of [world.receptionist, world.admin]) {
+      const week = await weekOf(actor, { ...query, practitionerId: world.juan.id });
+      expect(week.practitioners.map((one) => one.id)).toEqual([world.juan.id]);
+      expect(week.filter.practitionerId).toBe(world.juan.id);
+      expect(week.days[0]!.cards).toEqual([expect.objectContaining({ id: booked.id })]);
+    }
+    const lucias = await weekOf(world.lucia.actor, query);
+    expect(lucias.practitioners).toEqual([]);
+  });
 });
