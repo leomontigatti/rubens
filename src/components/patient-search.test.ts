@@ -2,7 +2,11 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   patientSearchKey,
+  patientSearchMatches,
+  patientSearchMore,
+  patientSearchProblem,
   patientSearchQueries,
+  patientSearchRequest,
   patientSearchState,
 } from "#/components/patient-search.ts";
 
@@ -26,16 +30,30 @@ describe("patientSearchKey", () => {
   });
 });
 
+describe("patientSearchRequest", () => {
+  it("asks for the trimmed text", () => {
+    expect(patientSearchRequest("  juan p ", true)).toEqual({
+      query: "juan p",
+      includeInactive: true,
+    });
+  });
+});
+
 describe("patientSearchState", () => {
   const answered = { data: "results", isError: false };
 
   it("is no search with an empty box, whatever an earlier search answered", () => {
-    expect(patientSearchState("  ", "juan", answered)).toEqual({ searching: false, failed: false });
+    expect(patientSearchState("  ", "juan", answered)).toEqual({
+      searching: false,
+      waiting: false,
+      failed: false,
+    });
   });
 
   it("holds no answer while the text differs from what was asked", () => {
     expect(patientSearchState("juana", "juan", answered)).toEqual({
       searching: true,
+      waiting: true,
       failed: false,
     });
   });
@@ -43,6 +61,7 @@ describe("patientSearchState", () => {
   it("holds the answer to the text in the box", () => {
     expect(patientSearchState("juan", "juan", answered)).toEqual({
       searching: true,
+      waiting: false,
       found: "results",
       failed: false,
     });
@@ -55,7 +74,98 @@ describe("patientSearchState", () => {
   it("holds no answer once the search failed, even one fetched earlier", () => {
     expect(patientSearchState("juan", "juan", { data: "results", isError: true })).toEqual({
       searching: true,
+      waiting: false,
       failed: true,
     });
+  });
+
+  it("waits while the text in the box has not been answered yet", () => {
+    expect(patientSearchState("juan", "juan", { isError: false }).waiting).toBe(true);
+  });
+});
+
+describe("patientSearchProblem", () => {
+  it("is nothing while there is no answer or the answer is a list", () => {
+    expect(patientSearchProblem({ searching: true, waiting: true, failed: false })).toBeNull();
+    expect(
+      patientSearchProblem({
+        searching: true,
+        waiting: false,
+        found: { ok: true },
+        failed: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("says why the search was refused", () => {
+    expect(
+      patientSearchProblem({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBe("Tu sesión terminó. Ingresá de nuevo.");
+  });
+
+  it("says the search failed", () => {
+    expect(patientSearchProblem({ searching: true, waiting: false, failed: true })).toBe(
+      "No pudimos buscar. Probá de nuevo.",
+    );
+  });
+});
+
+describe("patientSearchMatches", () => {
+  const answered = (patients: string[]) => ({
+    searching: true,
+    waiting: false,
+    found: { ok: true as const, patients },
+    failed: false,
+  });
+
+  it("is the patients the answer to the text in the box found, none included", () => {
+    expect(patientSearchMatches(answered(["Juan Pérez"]))).toEqual(["Juan Pérez"]);
+    expect(patientSearchMatches(answered([]))).toEqual([]);
+  });
+
+  it("is nothing while the answer is on its way, refused or failed", () => {
+    expect(patientSearchMatches({ searching: true, waiting: true, failed: false })).toBeUndefined();
+    expect(
+      patientSearchMatches({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBeUndefined();
+    expect(patientSearchMatches({ searching: true, waiting: false, failed: true })).toBeUndefined();
+  });
+});
+
+describe("patientSearchMore", () => {
+  const answered = (shown: number, more: boolean) => ({
+    searching: true,
+    waiting: false,
+    found: { ok: true as const, patients: Array.from({ length: shown }), more },
+    failed: false,
+  });
+
+  it("says how many are shown when more patients match", () => {
+    expect(patientSearchMore(answered(20, true))).toBe(
+      "Se muestran las 20 mejores coincidencias. Escribí más para acotar la búsqueda.",
+    );
+  });
+
+  it("is nothing when no more match, or with no answer to the text in the box", () => {
+    expect(patientSearchMore(answered(3, false))).toBeNull();
+    expect(patientSearchMore({ searching: true, waiting: true, failed: false })).toBeNull();
+    expect(
+      patientSearchMore({
+        searching: true,
+        waiting: false,
+        found: { ok: false, reason: "unauthenticated" },
+        failed: false,
+      }),
+    ).toBeNull();
   });
 });

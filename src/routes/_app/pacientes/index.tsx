@@ -1,5 +1,4 @@
 import { UsersIcon } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
@@ -12,13 +11,14 @@ import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
-import { patientSearchKey, patientSearchState } from "#/components/patient-search.ts";
-import type { PatientSearchState } from "#/components/patient-search.ts";
-import { useDebounced } from "#/components/use-debounced.ts";
+import { MorePatientMatches } from "#/components/patient-search-more.tsx";
+import { patientSearchProblem } from "#/components/patient-search.ts";
+import { usePatientSearch } from "#/components/use-patient-search.ts";
+import type { PatientSearch } from "#/components/use-patient-search.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { documentLabel, patientName, patientPageSize } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
-import { findPatients, getPatients } from "#/server/patients.functions.ts";
+import { getPatients } from "#/server/patients.functions.ts";
 import type { ListedPatient, PatientPage } from "#/server/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/")({
@@ -44,26 +44,6 @@ function Patients() {
 
 const inactiveHint = (shown?: boolean) => (shown ? "" : ", o mirá los inactivos");
 
-const searchDelay = 300;
-
-type PatientSearch = PatientSearchState<Awaited<ReturnType<typeof findPatients>>>;
-
-/**
- * The patients matching what is typed, asked for once typing pauses. Each query
- * is its own request, and only the answer to the text in the box is shown.
- */
-function usePatientSearch(typed: string, inactivos?: boolean): PatientSearch {
-  const { viewer } = Route.useRouteContext();
-  const asked = useDebounced(typed, searchDelay);
-  const search = { query: asked.trim(), includeInactive: inactivos === true };
-  const answer = useQuery({
-    queryKey: patientSearchKey(viewer, search),
-    queryFn: () => findPatients({ data: search }),
-    enabled: search.query !== "",
-  });
-  return patientSearchState(typed, asked, answer);
-}
-
 /** The registry's page with no search; with one, only what it found. */
 function shownPatients(listed: PatientPage, { searching, found }: PatientSearch) {
   if (!searching) {
@@ -72,18 +52,11 @@ function shownPatients(listed: PatientPage, { searching, found }: PatientSearch)
   return found?.ok ? found.patients : [];
 }
 
-function searchProblem({ found, failed }: PatientSearch) {
-  if (found && !found.ok) {
-    return patientRefusalMessages[found.reason];
-  }
-  return failed ? "No pudimos buscar. Probá de nuevo." : null;
-}
-
 function Registry({ listed }: { listed: PatientPage }) {
   const { inactivos } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [query, setQuery] = useState("");
-  const search = usePatientSearch(query, inactivos);
+  const search = usePatientSearch(query, inactivos === true);
   const table = useServerDataTable({
     rows: shownPatients(listed, search),
     columns,
@@ -105,30 +78,33 @@ function Registry({ listed }: { listed: PatientPage }) {
       <CreateButton can link={<Link to="/pacientes/nuevo" />}>
         Nuevo paciente
       </CreateButton>
-      <DataTable
-        table={table}
-        search={{
-          value: query,
-          onChange: setQuery,
-          label: "Buscar paciente",
-          placeholder: "Buscar por nombre, documento o teléfono",
-          loading: search.searching && !search.found && !search.failed,
-        }}
-        filters={{
-          groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
-          onPick: (_id, value) => changeStatus(value),
-          onRemove: () => changeStatus(null),
-        }}
-        pager={search.searching ? undefined : pager}
-        empty={<NoPatients search={search} inactivos={inactivos} />}
-      />
+      <div className="flex flex-col gap-3">
+        <DataTable
+          table={table}
+          search={{
+            value: query,
+            onChange: setQuery,
+            label: "Buscar paciente",
+            placeholder: "Buscar por nombre, documento o teléfono",
+            loading: search.waiting,
+          }}
+          filters={{
+            groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
+            onPick: (_id, value) => changeStatus(value),
+            onRemove: () => changeStatus(null),
+          }}
+          pager={search.searching ? undefined : pager}
+          empty={<NoPatients search={search} inactivos={inactivos} />}
+        />
+        <MorePatientMatches search={search} />
+      </div>
     </div>
   );
 }
 
 function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {
   const { search, inactivos } = props;
-  const problem = searchProblem(search);
+  const problem = patientSearchProblem(search);
   if (problem) {
     return <ErrorAlert message={problem} />;
   }

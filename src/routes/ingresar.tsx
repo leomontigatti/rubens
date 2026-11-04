@@ -52,7 +52,7 @@ function SignIn() {
           <CardTitle>Ingresar a Rubens</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+          <form method="post" className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             <ErrorAlert message={error} />
             <Field>
               <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
