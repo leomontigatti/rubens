@@ -99,7 +99,11 @@ function AppShell() {
   useSessionGuard(viewer.userId);
 
   async function signOut() {
-    if (await serverAnswer("sign-out", shownPath(router), () => authClient.signOut())) {
+    // `throw` makes a refused sign-out (an error status) throw too, so it stays on the page.
+    const signedOut = await serverAnswer("sign-out", shownPath(router), () =>
+      authClient.signOut({ fetchOptions: { throw: true } }),
+    );
+    if (signedOut !== null) {
       startNewSession("/ingresar");
     }
   }
