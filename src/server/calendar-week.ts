@@ -161,10 +161,19 @@ function practitionersOf(schedules: readonly RoomSchedule[]) {
 /**
  * The practitioners with a schedule or an appointment in the room that week,
  * such as an overbooking outside the schedules or a moved appointment, by name.
+ * A cancelled or no-show appointment counts only when the calendar shows them
+ * and the actor books for everyone: it holds no time, and another practitioner
+ * never sees it.
  */
 async function listPractitioners(
   tx: Transaction,
-  options: { roomId: string; week: TimeRange; scheduled: readonly RoomSchedule[] },
+  actor: Actor,
+  options: {
+    roomId: string;
+    week: TimeRange;
+    scheduled: readonly RoomSchedule[];
+    includeCancelledAndNoShow: boolean;
+  },
 ): Promise<CalendarPractitioner[]> {
   const booked = await tx
     .selectDistinct({
@@ -178,9 +187,7 @@ async function listPractitioners(
       and(
         eq(appointment.roomId, options.roomId),
         meets(appointment.during, options.week),
-        // A cancelled or no-show appointment holds no time, and another
-        // practitioner never sees it.
-        inArray(appointment.status, activeAppointmentStatuses),
+        shownOnCalendar(options.includeCancelledAndNoShow && actsForEveryone(actor)),
       ),
     );
   const scheduled = options.scheduled.map((row) => ({
@@ -397,10 +404,11 @@ async function buildWeek(
   );
   const schedules = await selectRoomSchedules(tx, actor, found.id, dates);
   const present = practitionersOf(schedules);
-  const practitioners = await listPractitioners(tx, {
+  const practitioners = await listPractitioners(tx, actor, {
     roomId: found.id,
     week: window,
     scheduled: present,
+    includeCancelledAndNoShow: query.includeCancelledAndNoShow,
   });
   const medicalServices = await listServices(
     tx,
