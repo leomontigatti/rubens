@@ -113,7 +113,8 @@ zone, with the previous and next week and a date to jump to. It is filtered in
 this order: the room, required, from the active rooms grouped by office; then a
 practitioner, optional; then a medical service, optional, from the chosen practitioner's active ones or all of them, which
 implies its practitioner. The practitioners to filter by are those with a
-schedule or an appointment in the room that week; a filter the room's week
+schedule or an active appointment in the room that week, and, for reception and
+admins with cancelled and no-show appointments shown, one of those too; a filter the room's week
 cannot take (a deactivated medical service, a practitioner with nothing there)
 is ignored, never refused. Its columns are the days; there are no columns per
 practitioner, and no day or month view.
