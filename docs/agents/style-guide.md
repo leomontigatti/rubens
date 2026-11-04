@@ -137,7 +137,11 @@ carried over from en-escena.
 
 - **A form's values live in `useAppForm`** (`src/components/app-form.tsx`, on TanStack Form): each
   field is a `form.AppField` with one of its field components, and a form needing a new kind adds
-  one there. `pnpm lint` rejects an uncontrolled input (`ui/no-uncontrolled-input`).
+  one there. `pnpm lint` rejects an uncontrolled input (`ui/no-uncontrolled-input`). The pages
+  that are only their form (`/ingresar`, `/cambiar-contrasena`, `/disponibilidad`) are the
+  exception: they read the form's `FormData` on submit and show one problem in an `ErrorAlert`,
+  with no per-field errors or unsaved changes for the form kit to hold. Their inputs stay
+  uncontrolled, so what the browser autofills or a user types before hydration is what submits.
 - **A field is `Field` with a `FieldLabel`, never a hand-made wrapper** (`pnpm lint` enforces it:
   `ui/no-bare-label`). The label sits above the input. A placeholder shows an example, never the
   label.
@@ -151,6 +155,9 @@ carried over from en-escena.
   A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a
   `FieldGroup data-slot="checkbox-group"`.
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
+- **Every `<form>` takes `method="post"`.** Submitted before the page hydrates, the browser sends
+  the form on its own, and a GET puts every field, a password included, in the URL, the history and
+  any access log. `pnpm lint` enforces it (`ui/require-post-method`).
 - **Every `<form>` takes `noValidate`.** The browser's own `required` and `type="email"` popups
   speak the browser's language and style, and run before the form's own check. `required` stays
   on the input for what it tells a screen reader. `pnpm lint` enforces it

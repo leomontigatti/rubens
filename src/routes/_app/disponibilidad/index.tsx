@@ -129,7 +129,7 @@ function QueryForm(props: {
   return (
     <Card>
       <CardContent>
-        <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
+        <form method="post" onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
           {error && (
             <div className="sm:col-span-2">
               <ErrorAlert message={error} />

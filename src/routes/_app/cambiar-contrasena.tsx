@@ -77,7 +77,7 @@ function ChangePassword() {
         )}
       </CardHeader>
       <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+        <form method="post" className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           <ErrorAlert message={error} />
           <Field>
             <FieldLabel htmlFor="currentPassword">Contraseña actual</FieldLabel>

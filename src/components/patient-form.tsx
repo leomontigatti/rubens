@@ -298,7 +298,7 @@ export function PatientRegistrationForm(props: {
   }
 
   return (
-    <form ref={element} className="flex flex-col gap-4" onSubmit={submit} noValidate>
+    <form ref={element} method="post" className="flex flex-col gap-4" onSubmit={submit} noValidate>
       {save.error && (
         <div ref={alert} tabIndex={-1} className="outline-none">
           <ErrorAlert message={save.error} />

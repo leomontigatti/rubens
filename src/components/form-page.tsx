@@ -237,7 +237,7 @@ export function FormPage(props: {
         <div key={page.version} ref={content} className="flex flex-col gap-4">
           <RefusalAlert focusRef={alert} problems={problems} />
           {props.lead && <FieldSet disabled={pending}>{props.lead}</FieldSet>}
-          <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
+          <form method="post" noValidate className="flex flex-col gap-4" onSubmit={submit}>
             <FieldSet disabled={pending}>{props.children}</FieldSet>
             <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
           </form>
