@@ -8,8 +8,15 @@ the booking can change, and the patient messages for its appointments
 late the patient may reschedule.
 
 Admins, and each practitioner for their own, manage medical services: a name, a
-default duration and the message settings. A medical service in use is
-deactivated, never deleted.
+default duration, the message settings, a price, the insurers it accepts, a text
+for patients (how to prepare, what to bring) and whether a patient's booking
+needs the practitioner's approval. A medical service in use is deactivated, never
+deleted.
+
+The price is the private one, with an optional amount per insurer, the patient's
+part. The accepted insurers are the practitioner's, which a medical service can
+narrow. Both exist so the assistant can answer patients
+([assistant.md](./assistant.md)); Rubens bills nothing.
 
 Appointments are booked one at a time. A series, such as monthly orthodontic
 check-ups, is booked one appointment after the other.
@@ -48,14 +55,31 @@ it. Clinical information goes in the
 clinical record, and the form says so; without a note field, such notes end up in
 the patient's name.
 
+## Requests
+
+A patient books by WhatsApp, through the assistant, from the same availability
+staff see. When the medical service needs the practitioner's approval, the
+booking is a request: it holds its time like any appointment, so nobody else
+takes it while the practitioner decides. The practitioner, an admin or reception
+approves it, rejects it, or proposes another time. Approval books it, and the
+booking confirmation goes out. Rejection cancels it, by the business, and the
+assistant offers the patient other times. The practitioner is reminded of a
+request still waiting, on Telegram and in the app, partway through the time the
+admin sets and again before it ends. A request nobody answers in that time is
+cancelled the same way, and the patient is told.
+
+Staff bookings never need approval.
+
 ## Statuses
 
 ```
-booked ──► confirmed ──► checkedIn ──► attended
-   │           │
-   └───────────┴──► noShow | cancelled
+requested ──► booked ──► confirmed ──► checkedIn ──► attended
+    │            │           │
+    │            └───────────┴──► noShow | cancelled
+    └──► cancelled
 ```
 
+- **Requested**: a patient's booking waiting for approval. It is never a no-show.
 - **Confirmed**: the patient confirmed, from a reminder or by phone to reception.
 - **Checked in**: reception marked the patient as arrived.
 - **Attended**: marked by the practitioner or reception.
@@ -75,8 +99,8 @@ log keeps the previous values; it is not a cancellation plus a new appointment.
 Staff reschedule through the free-times picker; there is no drag and drop in the
 first version.
 
-The "to reschedule" list is computed, never stored: every future booked or
-confirmed appointment that now falls outside working time, outside the
+The "to reschedule" list is computed, never stored: every future requested, booked
+or confirmed appointment that now falls outside working time, outside the
 practitioner's schedules or inside their time off or a closure. An appointment
 leaves it when it is moved or cancelled. Overbookings are left out, being outside
 working time on purpose. Reception sees the list with a count in the menu.

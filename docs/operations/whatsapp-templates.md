@@ -1,46 +1,74 @@
-# WhatsApp templates
+# WhatsApp fixed texts
 
-The message templates submitted to Meta for approval, in the business's WhatsApp
-Business account. All are in the `utility` category, language `es_AR`. The code
-refers to a template by its name, so a name never changes once approved; new
-wording under the same purpose is a new template. The rules for when each is
-sent are in [docs/domain/messages.md](../domain/messages.md).
+The fixed text of each message the organization starts. The assistant words these
+messages itself, from the same facts; a fixed text goes out when its wording lacks
+a fact or the model is unavailable
+([messages.md](../domain/messages.md#to-patients)). The rules for when each is
+sent are in the same file.
 
-Status: drafts, not yet submitted. The business owner may adjust the wording
-before submitting.
+Nobody approves these texts: they are Rubens' own, sent through the organization's
+number ([ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md)). Communication
+rules do not apply to them, so they are written plainly. None has buttons: the
+patient answers in their own words, and the assistant reads the answer.
+
+The code refers to a text by its name. Placeholders are in braces.
+
+Status: drafts. The business owner may adjust the wording.
 
 ## `confirmacion_turno`
 
-Sent when an appointment is booked, if its type asks for it.
+Sent when an appointment is booked, or a request approved, if its medical service
+asks for it. It asks the patient to save the number.
 
-> Hola {{1}}, tu turno con {{2}} quedó reservado para el {{3}} a las {{4}} en {{5}} ({{6}}). Si necesitás cambiarlo, comunicate con nosotros.
-
-`{{1}}` patient's first name, `{{2}}` practitioner, `{{3}}` date, `{{4}}` time,
-`{{5}}` office, `{{6}}` address.
+> Hola {paciente}, tu turno con {profesional} quedó reservado para el {fecha} a las {hora} en {sede} ({direccion}). Agendá este número para recibir los recordatorios. Si necesitás cambiarlo, escribinos por acá.
 
 ## `recordatorio_turno`
 
-A reminder that asks for confirmation. Three quick-reply buttons.
+A reminder that asks for confirmation.
 
-> Hola {{1}}, te recordamos tu turno con {{2}} el {{3}} a las {{4}} en {{5}}. ¿Nos confirmás tu asistencia?
->
-> [Confirmo] [Cancelar turno] [Reprogramar]
+> Hola {paciente}, te recordamos tu turno con {profesional} el {fecha} a las {hora} en {sede}. ¿Nos confirmás tu asistencia? Si necesitás cancelarlo o cambiarlo, respondé este mensaje.
 
 ## `recordatorio_turno_sin_confirmacion`
 
 A reminder that asks nothing, such as one two hours before.
 
-> Hola {{1}}, te esperamos hoy a las {{2}} con {{3}} en {{4}} ({{5}}).
+> Hola {paciente}, te esperamos hoy a las {hora} con {profesional} en {sede} ({direccion}).
 
-## `reprogramar_turno`
+## `turno_movido`
 
-The reschedule link, sent when the patient taps "Reprogramar". It is a template
-rather than a free-form reply so it can also be sent outside the 24-hour window
-that opens when the patient writes.
+Sent when staff move an appointment.
 
-> Podés elegir un nuevo horario para tu turno con {{1}} desde el siguiente enlace. Es personal y vence al comienzo del turno.
->
-> [Elegir nuevo horario] → `https://<domain>/r/{{1}}`
+> Hola {paciente}, tuvimos que mover tu turno con {profesional}: ahora es el {fecha} a las {hora} en {sede}. Si no te queda bien, respondé este mensaje y lo vemos.
 
-The button's base URL is fixed at approval, so the production domain must be
-chosen before this one is submitted.
+## `turno_cancelado`
+
+Sent when staff cancel an appointment, by the business.
+
+> Hola {paciente}, tuvimos que cancelar tu turno con {profesional} del {fecha} a las {hora}. Disculpá las molestias. Si querés otro turno, respondé este mensaje.
+
+## `turno_a_reprogramar`
+
+Sent when time off or a closure leaves the appointment outside working time, if
+whoever entered it chose to tell the patients.
+
+> Hola {paciente}, {profesional} no va a poder atenderte el {fecha} a las {hora}. Podés elegir otro horario desde este enlace: {enlace}, o respondé este mensaje y te ayudamos.
+
+## `solicitud_no_confirmada`
+
+Sent when a request is rejected or expires.
+
+> Hola {paciente}, no pudimos confirmar el turno que pediste con {profesional} para el {fecha}. Respondé este mensaje y te ayudamos a buscar otro horario.
+
+## `indicaciones`
+
+A medical service's care instructions, sent when the appointment is marked
+attended. `{indicaciones}` is the medical service's text, sent whole; the
+assistant does not reword it.
+
+> Hola {paciente}, te dejamos las indicaciones de {profesional} para después de tu turno: {indicaciones}
+
+## `seguimiento`
+
+A medical service's follow-up.
+
+> Hola {paciente}, ¿cómo te sentís después de tu turno con {profesional}? Contanos por acá.

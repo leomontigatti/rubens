@@ -77,8 +77,8 @@ _Avoid_: free time, open slots, vacancies
 
 **`medicalService`** — ui: "Prestación"
 The kind of visit or practice a `practitioner` offers, such as a first consultation
-or a check-up. It sets the default duration of its `appointment`s and, later,
-their patient messages.
+or a check-up. It sets the default duration, the price and the patient messages of
+its `appointment`s.
 _Avoid_: service, visit type, event type, appointment type
 
 **`appointment`** — ui: "Turno"
@@ -92,7 +92,7 @@ outside their `schedule`s. Only staff book one, and patients never see one.
 _Avoid_: double booking, extra appointment
 
 **`appointmentStatus`** — ui: "Estado"
-Where an `appointment` stands: `booked` ("Reservado"), `confirmed` ("Confirmado"),
+Where an `appointment` stands: `requested` ("Solicitado"), `booked` ("Reservado"), `confirmed` ("Confirmado"),
 `checkedIn` ("En sala"), `attended` ("Atendido"), `noShow` ("Ausente") or
 `cancelled` ("Cancelado").
 _Avoid_: pending, done, missed, arrived
@@ -157,7 +157,7 @@ The message a `patient` gets when an `appointment` is booked.
 _Avoid_: receipt, booking notification
 
 **`rescheduleLink`** — ui: "Reprogramar turno"
-A personal link, sent from a `reminder`, where a `patient` can move or cancel one
+A personal link, sent in a message or by the `assistant`, where a `patient` can move or cancel one
 `appointment` or ask to be contacted.
 _Avoid_: magic link, booking page, portal
 
@@ -169,6 +169,52 @@ _Avoid_: callback, call me
 An event shown to staff in the app, such as a cancellation. Telegram and WhatsApp
 copies of it are extra deliveries of the same notification.
 _Avoid_: alert, message, inbox item
+
+**`careInstructions`** — ui: "Indicaciones"
+The text a `medicalService` sends a `patient` once their `appointment` is attended.
+_Avoid_: aftercare, post-op message
+
+**`followUp`** — ui: "Seguimiento"
+A message asking a `patient` how they feel, some time after an `appointment`, as its
+`medicalService` sets.
+_Avoid_: check-in, survey
+
+## Assistant
+
+**`assistant`** — ui: "Asistente"
+The bot that answers `patient`s on the `organization`'s WhatsApp and
+`practitioner`s on Telegram, acting only through accepted `proposal`s.
+_Avoid_: chatbot, agent, AI
+
+**`whatsappConnection`** — ui: "Conexión de WhatsApp"
+The `organization`'s own WhatsApp number linked to Rubens by a QR code, through
+which the `assistant` writes; connected, or not.
+_Avoid_: WhatsApp account, instance, session, channel
+
+**`proposal`** — ui: "Propuesta"
+A change the `assistant` states in full and a person accepts before it is made,
+such as a new time for an `appointment`.
+_Avoid_: suggestion, draft, pending action
+
+**`handoff`** — ui: "Derivación"
+A conversation the `assistant` passes to a person, and stays silent in until it
+gets it back.
+_Avoid_: escalation, transfer, takeover
+
+**`handoffContact`** — ui: "Contacto de derivación"
+A member an admin picks to receive the `handoff`s that concern no particular
+`practitioner`.
+_Avoid_: fallback agent, on-call
+
+**`communicationRule`** — ui: "Regla de comunicación"
+An instruction on how the `assistant` writes, set by an admin for the
+`organization` or by a `practitioner` for their own conversations.
+_Avoid_: prompt, instruction, style guide, training
+
+**`replyExample`** — ui: "Ejemplo de respuesta"
+A reply of the `assistant` that staff corrected or marked as good, which it
+imitates.
+_Avoid_: training data, sample, few-shot
 
 ## Clinical records
 
