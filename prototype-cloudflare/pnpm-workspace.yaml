@@ -1,0 +1,7 @@
+# Its own pnpm root: the prototype is not part of the rubens workspace.
+packages: []
+allowBuilds:
+  esbuild: true
+  workerd: true
+  sharp: false
+minimumReleaseAge: 4320

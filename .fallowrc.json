@@ -3,6 +3,8 @@
   // `shadcn` is a CLI run by hand to add components (docs/agents/shadcn.md);
   // nothing imports it.
   // `@shadcn/lint` is an Oxlint JS plugin `vite.config.ts` loads by name.
+  // The Cloudflare prototype is its own throwaway package, outside the app's rules.
+  "ignorePatterns": ["prototype-cloudflare/**"],
   "ignoreDependencies": ["shadcn", "@shadcn/lint"],
   // The repo's own Oxlint JS plugin, loaded by path from `vite.config.ts`.
   "entry": ["scripts/oxlint-ui-plugin.mjs"],

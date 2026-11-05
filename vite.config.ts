@@ -33,7 +33,14 @@ export default defineConfig({
   plugins: process.env.VITEST ? [] : [nitro(), tailwindcss(), tanstackStart(), viteReact()],
 
   lint: {
-    ignorePatterns: [".output/**", ".nitro/**", ".tanstack/**", ...generated],
+    // The Cloudflare prototype is its own throwaway package, outside the app's rules.
+    ignorePatterns: [
+      ".output/**",
+      ".nitro/**",
+      ".tanstack/**",
+      "prototype-cloudflare/**",
+      ...generated,
+    ],
     plugins: ["react", "import", "typescript"],
     // The style guide's mechanical rules: `@shadcn/lint`, and `ui` for what it
     // does not cover. It reads the components and the theme from components.json.

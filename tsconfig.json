@@ -1,6 +1,13 @@
 {
   "include": ["**/*.ts", "**/*.tsx", "**/*.mjs"],
-  "exclude": ["node_modules", ".output", ".nitro", ".tanstack", ".claude/worktrees"],
+  "exclude": [
+    "node_modules",
+    ".output",
+    ".nitro",
+    ".tanstack",
+    ".claude/worktrees",
+    "prototype-cloudflare"
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
