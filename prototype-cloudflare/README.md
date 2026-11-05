@@ -91,9 +91,23 @@ runs one event at a time, so there is no check-then-insert race.
      10 ms of CPU per request, measured by Cloudflare on its own hardware; only a deployed run
      settles it (the dashboard's CPU time per invocation, or `wrangler tail`).
 
-## Deploying (not done)
+## Deployed run (2026-11-05)
 
-Nothing was deployed and no account or token was created. It would take:
+Deployed once to a free-plan account (`rubens-prototype.<subdomain>.workers.dev`), measured with `wrangler tail`, then the Worker and its D1 database were deleted. CPU time per invocation, as Cloudflare measured it:
+
+| Request | n | CPU median | CPU max | Outcome |
+| --- | --- | --- | --- | --- |
+| `POST /api/sign-in` (scrypt verify) | 20 | 90 ms | 144 ms | 19 ok, 1 `exceededCpu` (503) |
+| `GET /agenda`, Worker | 21 | 12 ms | 24 ms | all ok |
+| `GET /agenda`, the organization's object | 21 | 2 ms | 8 ms | all ok |
+
+The free plan's 10 ms is not a hard cut per request, but sign-in fails at random under it: rubens needs Workers Paid, or a sign-in with no password hash. The agenda's wall time in the Worker was about 535 ms (one object call and two D1 session queries, each a round trip from the South American edge to the US East); a round trip from Argentina was about 0.67 s. A session cookie cache or Smart Placement would cut the D1 trips.
+
+Two fixes the deployed run needed: the seed answers a request with the `SEED_KEY` secret in `x-seed-key` outside dev, and the agenda server function reads the cookie from `getRequest().headers` (deployed, `getRequestHeaders()` carried no cookie, so every agenda load redirected to sign-in).
+
+## Deploying
+
+It takes:
 
 ```sh
 pnpm dlx wrangler login                      # or CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID

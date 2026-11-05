@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { env as workerEnv } from "cloudflare:workers";
+
+import type { Env } from "../../../lib/env";
 
 import { getAuth } from "../../../lib/auth";
 import { organizationObject } from "../../../lib/organization";
@@ -161,8 +164,12 @@ function clinicData(users: { id: string; name: string; role: string }[]): SeedDa
 export const Route = createFileRoute("/api/dev/seed")({
   server: {
     handlers: {
-      POST: async () => {
-        if (!import.meta.env.DEV) return new Response(null, { status: 404 });
+      POST: async ({ request }) => {
+        // Deployed, the seed answers only a request carrying the SEED_KEY secret (the CPU test).
+        const seedKey = (workerEnv as unknown as Env).SEED_KEY;
+        const allowed =
+          import.meta.env.DEV || (!!seedKey && request.headers.get("x-seed-key") === seedKey);
+        if (!allowed) return new Response(null, { status: 404 });
         const { organizationId, users } = await ensureStaff();
         const data = clinicData(users);
         const result = await organizationObject(organizationId).seed(data);
