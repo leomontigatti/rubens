@@ -1,8 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+  useLoaderData,
+} from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { SignInProvider } from "#/components/sign-in-provider.tsx";
 import { Toaster } from "#/components/ui/toast.tsx";
+import { getSignInConfig } from "#/server/sign-in.functions.ts";
 
 import appCss from "../styles.css?url";
 
@@ -19,6 +26,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
+  // Which sign-in the Worker serves does not change while a page is open.
+  loader: () => getSignInConfig(),
+  shouldReload: false,
   shellComponent: RootDocument,
 });
 
@@ -29,7 +39,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Toaster>{children}</Toaster>
+        <SignInProvider config={useLoaderData({ from: "__root__" })}>
+          <Toaster>{children}</Toaster>
+        </SignInProvider>
         <Scripts />
       </body>
     </html>

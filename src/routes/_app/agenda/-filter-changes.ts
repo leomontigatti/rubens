@@ -1,4 +1,4 @@
-import type { RoomChoice } from "#/server/calendar-week.ts";
+import type { RoomChoice } from "#/organization/calendar-week.ts";
 
 // What each calendar filter does to the URL: a new room drops the other filters,
 // its practitioners being others; a medical service implies its practitioner.

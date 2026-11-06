@@ -20,7 +20,7 @@ import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/pat
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { addPatient } from "#/server/patients.functions.ts";
-import type { Patient } from "#/server/patients.ts";
+import type { Patient } from "#/organization/patients.ts";
 
 // The patient's registration fields, shared by quick registration (embedded
 // by the patient list, and later by booking) and the patient page's edit.

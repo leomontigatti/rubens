@@ -10,7 +10,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
-import type { ToRescheduleEntry, ToRescheduleReason } from "#/server/to-reschedule.ts";
+import type { ToRescheduleEntry, ToRescheduleReason } from "#/organization/to-reschedule.ts";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
 // that time off, a closure or a schedule change left outside working time, of

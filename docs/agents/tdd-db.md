@@ -1,22 +1,31 @@
-# TDD for code that reaches the database
+# TDD for code that reaches the organization's data
 
-Rubens' facts for the shared `tdd` skill, when a change touches code that queries or writes the
-database. The loop, and what not to test, are the skill's.
+Rubens' facts for the shared `tdd` skill, when a change touches code that reads or writes an
+organization's data: the organization object's methods and the area modules in
+`src/organization/`. The loop, and what not to test, are the skill's.
 
-- **The seam is the function the app calls**: the service function, server function or loader,
-  run against a real database. Assert on what it returns and on the rows it leaves; never on the
-  SQL it builds or on intermediate state.
-- **The database is PGlite, in process**: a `*.db.test.ts` file beside the code, or a
-  cross-cutting test under `tests/db/`, run with `pnpm test:db <path>`. A file
-  calls `sharedTestDatabase()` and, in `beforeEach`, `reset()`: an instance with every migration
-  applied and every app table empty ([tests/db/README.md](../../tests/db/README.md)).
-- **Test as the app role.** A test of a row-level security policy, or of anything tenant-scoped,
-  runs as `rubens_app` through the harness's `asAppRole`. As the owner it proves nothing: the
-  owner bypasses RLS (ADR-0002).
-- **What PGlite cannot show** (LISTEN/NOTIFY, advisory locks across sessions, pooler behaviour)
-  needs a check on the local `rubens-postgres` container instead.
-- **Fixtures**: one module's rows in `<name>.test-support.ts` beside it, rows shared across
-  modules in `src/test-support/`
-  ([coding-standards.md](./coding-standards.md#test-support-files)). Extend before adding.
-- **A schema change** is `src/db/schema/` plus `pnpm db:generate`, and the generated SQL is
-  read before it is committed. An applied migration is never edited.
+- **The seam is the object's method**, called through its stub the way a server function calls
+  it: `organization.<method>(caller, input)`. Assert on what it returns (the result or the
+  refusal) and on what a later method call reads back; reach into storage with `inStorage()` only
+  for what no method shows (an audit entry, a row a method never returns). Never assert on the
+  SQL an area function builds.
+- **The storage is real**: a `*.workers.test.ts` file beside the code, run in the Workers runtime
+  with `pnpm test:workers <path>`. Each object gets SQLite storage of its own, with every
+  migration applied when it starts, so a test that calls `setUpTestOrganization()` or
+  `freshOrganization()` shares no data with any other.
+- **Authorization is part of the behaviour.** The object checks the caller against its own member
+  table on every call, so a method's tests cover the roles it refuses (`forbidden`), an unknown
+  or deactivated caller (`unauthenticated`), and a member who must still change their password,
+  through members added with `addMember()` / `addStaff()`.
+- **Races inside the object are not tested with concurrency**: an object runs one event at a
+  time and an area function writes in one synchronous transaction, so a check and its write
+  cannot interleave. A browser-only race (a save and a navigation) belongs to the browser suite
+  ([tests/e2e/README.md](../../tests/e2e/README.md)).
+- **Clerk is faked**: `fakeAccounts` (with `vi.mock` of `#/organization/accounts.ts`) stands in
+  for Clerk's Backend API; a test asserts on the users and metadata it holds.
+- **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
+  `adminCaller`, `addMember`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
+  `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`). Extend it before adding another support file
+  ([coding-standards.md](./coding-standards.md#test-support-files)).
+- **A schema change** is `src/organization/schema.ts` plus `pnpm organization:generate`, and the
+  generated SQL is read before it is committed. A migration on `main` is never edited.

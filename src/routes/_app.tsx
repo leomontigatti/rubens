@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import { passwordChangePath } from "#/components/app-nav.ts";
 import { AppSidebar } from "#/components/app-sidebar.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
+import { useSignOut } from "#/components/sign-in-provider.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
-import { authClient } from "#/lib/auth-client.ts";
 import {
   isSignedInAs,
   reloadForNewSession,
@@ -23,7 +23,11 @@ export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
     const result = await getViewer();
     if (!result.ok) {
-      throw redirect({ to: "/ingresar" });
+      // Signing in lands back on the page asked for.
+      throw redirect({
+        to: "/ingresar",
+        search: { volver: location.href === "/" ? undefined : location.href },
+      });
     }
     if (result.viewer.mustChangePassword && location.pathname !== passwordChangePath) {
       throw redirect({ to: passwordChangePath });
@@ -95,14 +99,15 @@ function AppShell() {
   const { viewer } = Route.useRouteContext();
   const { toReschedule, sidebarOpen } = Route.useLoaderData();
   const router = useRouter();
+  const endSession = useSignOut();
 
   useSessionGuard(viewer.userId);
 
   async function signOut() {
-    // `throw` makes a refused sign-out (an error status) throw too, so it stays on the page.
-    const signedOut = await serverAnswer("sign-out", shownPath(router), () =>
-      authClient.signOut({ fetchOptions: { throw: true } }),
-    );
+    const signedOut = await serverAnswer("sign-out", shownPath(router), async () => {
+      await endSession();
+      return { ok: true as const };
+    });
     if (signedOut !== null) {
       startNewSession("/ingresar");
     }

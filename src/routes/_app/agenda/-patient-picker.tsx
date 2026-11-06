@@ -12,7 +12,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { usePatientSearch } from "#/components/use-patient-search.ts";
 import type { PickedPatient } from "#/lib/booking-draft.ts";
 import { patientName } from "#/lib/patients.ts";
-import type { Patient } from "#/server/patients.ts";
+import type { Patient } from "#/organization/patients.ts";
 
 const picked = (patient: Patient): PickedPatient => ({
   id: patient.id,

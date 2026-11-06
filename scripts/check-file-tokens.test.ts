@@ -22,11 +22,11 @@ describe("file-token ceiling", () => {
       findOversizedFiles(
         [
           "src/server/patients.test.ts",
-          "src/server/patients.db.test.ts",
+          "src/organization/patients.workers.test.ts",
           "src/routeTree.gen.ts",
           "src/env.d.ts",
           "scripts/check-comment-language.ts",
-          "src/db/migrations/meta/0011_snapshot.json",
+          "src/organization/migrations/meta/0000_snapshot.json",
         ].map((filePath) => ({ byteLength: overCeiling, filePath })),
       ),
     ).toEqual([]);

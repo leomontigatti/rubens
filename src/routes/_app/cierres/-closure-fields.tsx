@@ -1,5 +1,5 @@
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
-import type { OfficeOption } from "#/server/closures.ts";
+import type { OfficeOption } from "#/organization/closures.ts";
 
 /** The copy for every refusal the closure server functions return. */
 export const refusalMessages = {

@@ -12,7 +12,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { insurerKindLabels } from "#/lib/coverages.ts";
 import { getInsurers } from "#/server/insurers.functions.ts";
-import type { Insurer } from "#/server/insurers.ts";
+import type { Insurer } from "#/organization/insurers.ts";
 
 import { refusalMessages } from "#/routes/_app/obras-sociales/-insurer-form.tsx";
 

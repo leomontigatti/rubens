@@ -2,27 +2,30 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type { TimeOffDelete, TimeOffInput, TimeOffUpdate } from "#/lib/time-ranges.ts";
 
-import { createTimeOff, deleteTimeOff, listTimeOff, updateTimeOff } from "#/server/time-off.ts";
-import { withActor } from "#/server/with-actor.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and decide whose time off the actor may
-// change, so each validator here only names the type. Requiring an admin or a
-// practitioner refuses a receptionist before a transaction opens.
-const anyRole = { roles: "any" } as const;
-const editors = { roles: ["admin", "practitioner"] } as const;
+// The object validates the input, requires an admin or a practitioner for a
+// change and decides whose time off the caller may change, so each validator
+// here only names the type.
 
 export const getTimeOff = createServerFn({ method: "GET" }).handler(() =>
-  withActor(anyRole, async (actor) => ({ ok: true as const, ...(await listTimeOff(actor)) })),
+  withOrganization((organization, caller) => organization.listTimeOff(caller)),
 );
 
 export const addTimeOff = createServerFn({ method: "POST" })
   .validator((data: TimeOffInput) => data)
-  .handler(({ data }) => withActor(editors, (actor) => createTimeOff(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createTimeOff(caller, data)),
+  );
 
 export const editTimeOff = createServerFn({ method: "POST" })
   .validator((data: TimeOffUpdate) => data)
-  .handler(({ data }) => withActor(editors, (actor) => updateTimeOff(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateTimeOff(caller, data)),
+  );
 
 export const removeTimeOff = createServerFn({ method: "POST" })
   .validator((data: TimeOffDelete) => data)
-  .handler(({ data }) => withActor(editors, (actor) => deleteTimeOff(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.deleteTimeOff(caller, data)),
+  );

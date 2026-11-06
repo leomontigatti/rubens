@@ -1,1 +1,0 @@
-ALTER TABLE "rubens"."practitioner" ALTER COLUMN "grid_minutes" SET DEFAULT 30;

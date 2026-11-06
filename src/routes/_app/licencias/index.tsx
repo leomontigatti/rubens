@@ -9,7 +9,7 @@ import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { rangeEntryLabel } from "#/lib/time-ranges.ts";
 import { getTimeOff } from "#/server/time-off.functions.ts";
-import type { TimeOff } from "#/server/time-off.ts";
+import type { TimeOff } from "#/organization/time-off.ts";
 
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
 

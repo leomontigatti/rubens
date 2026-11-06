@@ -33,12 +33,11 @@ Status of an entry:
 ### worktree-folder-names-unique
 
 - **Relies on:** the folders T3 creates under `~/.t3/worktrees/rubens/` have distinct names, and
-  keep their name when the thread's branch is renamed. A worktree's database and dev port are
-  derived from its folder name (`worktreeDatabaseName` in `scripts/worktree-db.ts`), not from the
-  branch.
-- **Used by:** `scripts/worktree-db.ts`; `docs/agents/housekeeping.md`
-- **Breaks if:** T3 reuses a folder name for a second live worktree, which would share one
-  database between two threads, or renames a folder in place, which would orphan its database.
+  keep their name when the thread's branch is renamed. A worktree's dev port is derived from its
+  folder name (`choosePort` in `scripts/worktree-port.ts`), not from the branch.
+- **Used by:** `scripts/worktree-port.ts`
+- **Breaks if:** T3 reuses a folder name for a second live worktree; the port then starts from
+  the same hash, and only the claimed-port check keeps the two apart.
 
 ### agent-memory-limit
 
@@ -46,9 +45,9 @@ Status of an entry:
   `MemoryHigh` at RAM minus 6 GB, at least half of RAM, and `MemoryMax` at RAM minus 4 GB, at
   least three quarters of RAM. Agent threads on the machine share that one limit, and past
   `MemoryMax` the kernel kills an agent (`agentSliceMemoryLimits` in `apps/server/src/process/agentScope.ts`; pingdotgg/t3code#27176).
-- **Used by:** `docs/agents/validation.md` § Why not `pnpm test`; `tests/db/README.md`
+- **Used by:** `docs/agents/validation.md` § Why not `pnpm test`
 - **Breaks if:** T3 gives each thread its own limit or drops the shared one; then a whole
-  `pnpm test:db` no longer competes with other threads, and the cap on it can be revisited.
+  `pnpm test:workers` no longer competes with other threads.
 
 ## Watching
 

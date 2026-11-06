@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as ApiSetupRouteImport } from './routes/api/setup'
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
@@ -39,7 +40,6 @@ import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
@@ -79,6 +79,11 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   id: '/cambiar-contrasena',
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiSetupRoute = ApiSetupRouteImport.update({
+  id: '/api/setup',
+  path: '/api/setup',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAReprogramarIndexRoute = AppAReprogramarIndexRouteImport.update({
   id: '/a-reprogramar/',
@@ -213,11 +218,6 @@ const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
   path: '/sedes/nueva',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppAgendaSobreturnosNuevoRoute =
   AppAgendaSobreturnosNuevoRouteImport.update({
     id: '/agenda/sobreturnos/nuevo',
@@ -341,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/api/setup': typeof ApiSetupRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
   '/dev/patrones': typeof AppDevPatronesRoute
@@ -356,7 +357,6 @@ export interface FileRoutesByFullPath {
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
@@ -392,6 +392,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/api/setup': typeof ApiSetupRoute
   '/': typeof AppIndexRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
@@ -408,7 +409,6 @@ export interface FileRoutesByTo {
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
@@ -446,6 +446,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/api/setup': typeof ApiSetupRoute
   '/_app/': typeof AppIndexRoute
   '/_app/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/_app/cierres/nuevo': typeof AppCierresNuevoRoute
@@ -462,7 +463,6 @@ export interface FileRoutesById {
   '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/_app/sedes/nueva': typeof AppSedesNuevaRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
@@ -501,6 +501,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/api/setup'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
     | '/dev/patrones'
@@ -516,7 +517,6 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
     | '/sedes/nueva'
-    | '/api/auth/$'
     | '/a-reprogramar/'
     | '/agenda/'
     | '/cierres/'
@@ -552,6 +552,7 @@ export interface FileRouteTypes {
   to:
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/api/setup'
     | '/'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
@@ -568,7 +569,6 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
     | '/sedes/nueva'
-    | '/api/auth/$'
     | '/a-reprogramar'
     | '/agenda'
     | '/cierres'
@@ -605,6 +605,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/ingresar'
     | '/_app/cambiar-contrasena'
+    | '/api/setup'
     | '/_app/'
     | '/_app/cierres/$closureId'
     | '/_app/cierres/nuevo'
@@ -621,7 +622,6 @@ export interface FileRouteTypes {
     | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
     | '/_app/sedes/nueva'
-    | '/api/auth/$'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
     | '/_app/cierres/'
@@ -658,7 +658,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IngresarRoute: typeof IngresarRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiSetupRoute: typeof ApiSetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -690,6 +690,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/cambiar-contrasena'
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/setup': {
+      id: '/api/setup'
+      path: '/api/setup'
+      fullPath: '/api/setup'
+      preLoaderRoute: typeof ApiSetupRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/a-reprogramar/': {
       id: '/_app/a-reprogramar/'
@@ -872,13 +879,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/sedes/nueva'
       preLoaderRoute: typeof AppSedesNuevaRouteImport
       parentRoute: typeof AppRoute
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_app/agenda/sobreturnos/nuevo': {
       id: '/_app/agenda/sobreturnos/nuevo'
@@ -1143,7 +1143,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IngresarRoute: IngresarRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiSetupRoute: ApiSetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

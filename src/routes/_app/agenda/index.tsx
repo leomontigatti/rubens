@@ -1,5 +1,5 @@
 import { CalendarDaysIcon } from "lucide-react";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ClientOnly, Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -13,11 +13,11 @@ import { visibleWeekHours } from "#/lib/calendar-layout.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatLocalDate, shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import { getCalendarWeekView } from "#/server/appointments.functions.ts";
-import type { CalendarAppointment, CalendarWeek } from "#/server/calendar-week.ts";
+import type { CalendarAppointment, CalendarWeek } from "#/organization/calendar-week.ts";
 
 import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
 import type { PickedAppointment } from "#/routes/_app/agenda/-appointment.tsx";
-import { DayColumn, TimeAxis } from "#/routes/_app/agenda/-calendar.tsx";
+import { DayColumn, TimeAxis, WeekGridFrame } from "#/routes/_app/agenda/-calendar.tsx";
 import type { PickedCell } from "#/routes/_app/agenda/-calendar.tsx";
 import type { CalendarSearch } from "#/routes/_app/agenda/-filter-changes.ts";
 import { CalendarFilters } from "#/routes/_app/agenda/-filters.tsx";
@@ -238,20 +238,25 @@ function WeekGrid(props: {
     week.days.map((day) => ({ date: day.date, ranges: [...day.schedules, ...day.cards] })),
     timeZone,
   );
+  // The grid renders only in the browser: drawn on the server, its cells and
+  // cards cost the page more CPU than a Worker on the free plan gets (#139).
+  // The server sends the week's data and an empty frame of the grid's height.
   return (
-    <div className="flex overflow-x-auto rounded-xl border">
-      <TimeAxis view={views[0]!} timeZone={timeZone} />
-      {week.days.map((day, index) => (
-        <DayColumn
-          key={day.date}
-          title={`${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date).slice(0, 5)}`}
-          day={day}
-          view={views[index]!}
-          timeZone={timeZone}
-          onPick={props.onPick}
-          onOpen={props.onOpen}
-        />
-      ))}
-    </div>
+    <ClientOnly fallback={<WeekGridFrame view={views[0]!} />}>
+      <div className="flex overflow-x-auto rounded-xl border">
+        <TimeAxis view={views[0]!} timeZone={timeZone} />
+        {week.days.map((day, index) => (
+          <DayColumn
+            key={day.date}
+            title={`${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date).slice(0, 5)}`}
+            day={day}
+            view={views[index]!}
+            timeZone={timeZone}
+            onPick={props.onPick}
+            onOpen={props.onOpen}
+          />
+        ))}
+      </div>
+    </ClientOnly>
   );
 }

@@ -2,36 +2,37 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type { CoverageId, CoverageInput, CoverageUpdate } from "#/lib/coverages.ts";
 
-import {
-  addCoverage,
-  listCoverages,
-  makeCoveragePrimary,
-  removeCoverage,
-  updateCoverage,
-} from "#/server/coverages.ts";
-import { withActor } from "#/server/with-actor.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and check the actor's roles themselves, so
-// each validator here only names the type. Naming the roles here as well
-// refuses a call before it opens a transaction.
-const editors = { roles: ["admin", "receptionist", "practitioner"] } as const;
+// The object validates the input and requires the roles for each call, so
+// each validator here only names the type.
 
 export const getCoverages = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
-  .handler(({ data }) => withActor(editors, (actor) => listCoverages(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.listCoverages(caller, data)),
+  );
 
 export const addPatientCoverage = createServerFn({ method: "POST" })
   .validator((data: CoverageInput) => data)
-  .handler(({ data }) => withActor(editors, (actor) => addCoverage(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.addCoverage(caller, data)),
+  );
 
 export const editCoverage = createServerFn({ method: "POST" })
   .validator((data: CoverageUpdate) => data)
-  .handler(({ data }) => withActor(editors, (actor) => updateCoverage(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateCoverage(caller, data)),
+  );
 
 export const changePrimaryCoverage = createServerFn({ method: "POST" })
   .validator((data: CoverageId) => data)
-  .handler(({ data }) => withActor(editors, (actor) => makeCoveragePrimary(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.makeCoveragePrimary(caller, data)),
+  );
 
 export const deleteCoverage = createServerFn({ method: "POST" })
   .validator((data: CoverageId) => data)
-  .handler(({ data }) => withActor(editors, (actor) => removeCoverage(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.removeCoverage(caller, data)),
+  );

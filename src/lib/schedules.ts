@@ -96,7 +96,7 @@ function nextWeekday(date: string, weekday: number): string {
   return shiftDate(date, (weekday - weekdayOf(date) + 7) % 7);
 }
 
-/** `HH:MM` or `HH:MM:SS`, as Postgres returns a `time`, cut to `HH:MM`. */
+/** `HH:MM` or `HH:MM:SS`, cut to `HH:MM`. */
 export function shortTime(time: string): string {
   return time.slice(0, 5);
 }

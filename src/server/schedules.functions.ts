@@ -7,45 +7,42 @@ import type {
   ScheduleInput,
 } from "#/lib/schedules.ts";
 
-import {
-  changeSchedule,
-  createSchedule,
-  deleteSchedule,
-  endSchedule,
-  getPractitionerSchedules,
-  listSchedulePractitioners,
-} from "#/server/schedules.ts";
-import { withActor } from "#/server/with-actor.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and decide whose schedules the actor may
-// change, so each validator here only names the type. Requiring an admin or a
-// practitioner refuses a receptionist before a transaction opens.
-const anyRole = { roles: "any" } as const;
-const editors = { roles: ["admin", "practitioner"] } as const;
+// The object validates the input, requires an admin or a practitioner for a
+// change and decides whose schedules the caller may change, so each validator
+// here only names the type.
 
 export const getSchedulePractitioners = createServerFn({ method: "GET" }).handler(() =>
-  withActor(anyRole, async (actor) => ({
-    ok: true as const,
-    practitioners: await listSchedulePractitioners(actor),
-  })),
+  withOrganization((organization, caller) => organization.listSchedulePractitioners(caller)),
 );
 
 export const getSchedules = createServerFn({ method: "GET" })
   .validator((data: { practitionerId: string }) => data)
-  .handler(({ data }) => withActor(anyRole, (actor) => getPractitionerSchedules(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.getPractitionerSchedules(caller, data)),
+  );
 
 export const addSchedule = createServerFn({ method: "POST" })
   .validator((data: ScheduleInput) => data)
-  .handler(({ data }) => withActor(editors, (actor) => createSchedule(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createSchedule(caller, data)),
+  );
 
 export const editSchedule = createServerFn({ method: "POST" })
   .validator((data: ScheduleChange) => data)
-  .handler(({ data }) => withActor(editors, (actor) => changeSchedule(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.changeSchedule(caller, data)),
+  );
 
 export const finishSchedule = createServerFn({ method: "POST" })
   .validator((data: ScheduleEnd) => data)
-  .handler(({ data }) => withActor(editors, (actor) => endSchedule(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.endSchedule(caller, data)),
+  );
 
 export const removeSchedule = createServerFn({ method: "POST" })
   .validator((data: ScheduleDelete) => data)
-  .handler(({ data }) => withActor(editors, (actor) => deleteSchedule(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.deleteSchedule(caller, data)),
+  );

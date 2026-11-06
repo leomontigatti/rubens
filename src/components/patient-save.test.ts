@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
 import type { SaveEvent, SaveState } from "#/components/patient-save.ts";
-import type { Patient } from "#/server/patients.ts";
+import type { Patient } from "#/organization/patients.ts";
 
 type Input = { firstName: string };
 

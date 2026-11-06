@@ -45,7 +45,7 @@ and follow it. This repo keeps only its own facts, in the contract files the sha
 - **Documentation** (the docs layout, when a doc changes): [workflows.md](docs/agents/workflows.md#documentation).
 - **UI verification**: [verification.md](docs/agents/verification.md).
 - **Review** (tiers, always-ask areas, hotspots, one-way doors): [review.md](docs/agents/review.md).
-- **Database tests**: [tests/db/README.md](tests/db/README.md); test-first notes in
+- **Organization object tests** (`*.workers.test.ts`): test-first notes in
   [tdd-db.md](docs/agents/tdd-db.md) and [tdd-frontend.md](docs/agents/tdd-frontend.md).
 - **Style** (frontend/UI): [style-guide.md](docs/agents/style-guide.md).
 - **shadcn/ui** (before adding or re-syncing a component): [shadcn.md](docs/agents/shadcn.md).
@@ -58,7 +58,7 @@ and follow it. This repo keeps only its own facts, in the contract files the sha
 - **Housekeeping** (per-worktree databases): [housekeeping.md](docs/agents/housekeeping.md).
 - **Agent configuration** (skills, hooks, subagent wiring):
   [agent-configuration.md](docs/agents/agent-configuration.md).
-- **Local database, auth and dev server**: [local-development.md](docs/operations/local-development.md).
+- **Local dev server, sign-in and the object's schema**: [local-development.md](docs/operations/local-development.md).
 - **Production infrastructure**: [infrastructure.md](docs/operations/infrastructure.md).
 - **T3 Code dependencies** (what this project assumes about T3 beyond the shared
   workflow; read by the `t3-update-review` skill): [t3-dependencies.md](docs/agents/t3-dependencies.md).

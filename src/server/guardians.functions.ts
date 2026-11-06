@@ -7,36 +7,37 @@ import type {
   MessageContactChange,
 } from "#/lib/guardians.ts";
 
-import {
-  addGuardian,
-  listGuardians,
-  removeGuardian,
-  setMessageContact,
-  updateGuardian,
-} from "#/server/guardians.ts";
-import { withActor } from "#/server/with-actor.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and check the actor's roles themselves, so
-// each validator here only names the type. Naming the roles here as well
-// refuses a call before it opens a transaction.
-const editors = { roles: ["admin", "receptionist", "practitioner"] } as const;
+// The object validates the input and requires the roles for each call, so
+// each validator here only names the type.
 
 export const getGuardians = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
-  .handler(({ data }) => withActor(editors, (actor) => listGuardians(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.listGuardians(caller, data)),
+  );
 
 export const addPatientGuardian = createServerFn({ method: "POST" })
   .validator((data: GuardianInput) => data)
-  .handler(({ data }) => withActor(editors, (actor) => addGuardian(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.addGuardian(caller, data)),
+  );
 
 export const editGuardian = createServerFn({ method: "POST" })
   .validator((data: GuardianUpdate) => data)
-  .handler(({ data }) => withActor(editors, (actor) => updateGuardian(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateGuardian(caller, data)),
+  );
 
 export const deleteGuardian = createServerFn({ method: "POST" })
   .validator((data: GuardianId) => data)
-  .handler(({ data }) => withActor(editors, (actor) => removeGuardian(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.removeGuardian(caller, data)),
+  );
 
 export const changeMessageContact = createServerFn({ method: "POST" })
   .validator((data: MessageContactChange) => data)
-  .handler(({ data }) => withActor(editors, (actor) => setMessageContact(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setMessageContact(caller, data)),
+  );

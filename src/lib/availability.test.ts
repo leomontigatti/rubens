@@ -10,6 +10,7 @@ import {
   freeTimesQueryOf,
   occurrencesDuring,
   outsideWorkingTime,
+  outsideWorkingTimeWithin,
 } from "#/lib/availability.ts";
 import type { AvailabilityInput, AvailabilitySchedule } from "#/lib/availability.ts";
 
@@ -402,7 +403,17 @@ describe("a schedule's occurrences during a span", () => {
   });
 });
 
-describe("whether a span is inside working time", () => {
+/** A month around the spans below, for the many-spans form. */
+const month = { start: new Date("2099-01-01T00:00:00Z"), end: new Date("2099-02-01T00:00:00Z") };
+
+describe.each([
+  ["one span", outsideWorkingTime],
+  [
+    "many spans",
+    (...[span, officeId, workingTime]: Parameters<typeof outsideWorkingTime>) =>
+      outsideWorkingTimeWithin(workingTime, month)(span, officeId),
+  ],
+])("whether a span is inside working time, %s at a time", (_form, outsideWorkingTime) => {
   const span = (start: string, end: string, date = "2099-01-05") => ({
     start: new Date(`${date}T${start}:00Z`),
     end: new Date(`${date}T${end}:00Z`),

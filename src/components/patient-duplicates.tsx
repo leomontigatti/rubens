@@ -14,7 +14,7 @@ import {
 import { patientName } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
-import type { DuplicateCandidate, DuplicateMatch, Patient } from "#/server/patients.ts";
+import type { DuplicateCandidate, DuplicateMatch, Patient } from "#/organization/patients.ts";
 
 // The duplicate check as the registration and edit forms show it: a document
 // another patient has is an error naming them; a likely duplicate opens a

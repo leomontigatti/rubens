@@ -9,7 +9,7 @@ import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { rangeEntryLabel } from "#/lib/time-ranges.ts";
 import { getClosures } from "#/server/closures.functions.ts";
-import type { Closure } from "#/server/closures.ts";
+import type { Closure } from "#/organization/closures.ts";
 
 import { closurePlace, refusalMessages } from "#/routes/_app/cierres/-closure-fields.tsx";
 

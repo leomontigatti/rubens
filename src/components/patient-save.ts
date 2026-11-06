@@ -1,4 +1,4 @@
-import type { DuplicateCandidate, DuplicateRefusal, Patient } from "#/server/patients.ts";
+import type { DuplicateCandidate, DuplicateRefusal, Patient } from "#/organization/patients.ts";
 
 // The submit step of the patient registration and edit forms, as state and
 // transitions: `usePatientSave` in patient-form.tsx dispatches them.
