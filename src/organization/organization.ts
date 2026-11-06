@@ -1,9 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 
 import type {
+  AppointmentIdInput,
+  AppointmentUpdate,
   BookingInput,
   CalendarWeekQuery,
+  CancellationInput,
   OverbookingInput,
+  RescheduleInput,
+  StatusChangeInput,
   WarningConfirmation,
 } from "#/lib/appointments.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
@@ -30,6 +35,7 @@ import type {
   ActiveChange,
   OfficeInput,
   OfficeUpdate,
+  PlaceReference,
   RoomInput,
   RoomUpdate,
 } from "#/lib/offices.ts";
@@ -41,6 +47,7 @@ import type {
 } from "#/lib/schedules.ts";
 import type {
   MemberActiveChange,
+  MemberReference,
   MemberUpdate,
   StaffInput,
   StartingPasswordChange,
@@ -49,6 +56,7 @@ import type {
   DuplicateConfirmation,
   PatientActiveChange,
   PatientInput,
+  PatientReference,
   PatientUpdate,
   WhatsappConsentChange,
 } from "#/lib/patients.ts";
@@ -66,6 +74,14 @@ import type { AgendaWeekInput } from "#/dev/agenda-week.ts";
 
 import { accountsFor } from "#/organization/accounts.ts";
 import type { Accounts } from "#/organization/accounts.ts";
+import {
+  cancelAppointment,
+  changeAppointmentStatus,
+  getAppointment,
+  rescheduleAppointment,
+  undoAppointmentStatus,
+  updateAppointment,
+} from "#/organization/appointment-changes.ts";
 import {
   bookAppointment,
   bookOverbooking,
@@ -164,6 +180,14 @@ import {
   listTimeOff,
   updateTimeOff,
 } from "#/organization/time-off.ts";
+import {
+  countMemberUpcoming,
+  countOfficeUpcoming,
+  countPatientUpcoming,
+  countRoomUpcoming,
+  countToReschedule,
+  listToReschedule,
+} from "#/organization/to-reschedule.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -561,6 +585,72 @@ export class Organization extends DurableObject {
   getPatientAppointments(caller: Caller, input: { patientId: string }) {
     return this.#as(caller, bookers, (acting) =>
       listPatientAppointments(this.#database, acting, input),
+    );
+  }
+
+  // Appointment changes and the to-reschedule list
+
+  getAppointment(caller: Caller, input: AppointmentIdInput) {
+    return this.#as(caller, bookers, (acting) => getAppointment(this.#database, acting, input));
+  }
+
+  updateAppointment(caller: Caller, input: AppointmentUpdate) {
+    return this.#as(caller, bookers, (acting) => updateAppointment(this.#database, acting, input));
+  }
+
+  rescheduleAppointment(caller: Caller, input: RescheduleInput & WarningConfirmation) {
+    return this.#as(caller, bookers, (acting) =>
+      rescheduleAppointment(this.#database, acting, input),
+    );
+  }
+
+  changeAppointmentStatus(caller: Caller, input: StatusChangeInput) {
+    return this.#as(caller, bookers, (acting) =>
+      changeAppointmentStatus(this.#database, acting, input),
+    );
+  }
+
+  cancelAppointment(caller: Caller, input: CancellationInput) {
+    return this.#as(caller, bookers, (acting) => cancelAppointment(this.#database, acting, input));
+  }
+
+  undoAppointmentStatus(caller: Caller, input: AppointmentIdInput) {
+    return this.#as(caller, bookers, (acting) =>
+      undoAppointmentStatus(this.#database, acting, input),
+    );
+  }
+
+  listToReschedule(caller: Caller) {
+    return this.#as(caller, bookers, (acting) => listToReschedule(this.#database, acting));
+  }
+
+  countToReschedule(caller: Caller) {
+    return this.#as(caller, bookers, (acting) => countToReschedule(this.#database, acting));
+  }
+
+  // Only admins deactivate, so only they ask what a deactivation would send to the list.
+
+  countPatientUpcoming(caller: Caller, input: PatientReference) {
+    return this.#as(caller, ["admin"], (acting) =>
+      countPatientUpcoming(this.#database, acting, input),
+    );
+  }
+
+  countMemberUpcoming(caller: Caller, input: MemberReference) {
+    return this.#as(caller, ["admin"], (acting) =>
+      countMemberUpcoming(this.#database, acting, input),
+    );
+  }
+
+  countRoomUpcoming(caller: Caller, input: PlaceReference) {
+    return this.#as(caller, ["admin"], (acting) =>
+      countRoomUpcoming(this.#database, acting, input),
+    );
+  }
+
+  countOfficeUpcoming(caller: Caller, input: PlaceReference) {
+    return this.#as(caller, ["admin"], (acting) =>
+      countOfficeUpcoming(this.#database, acting, input),
     );
   }
 }

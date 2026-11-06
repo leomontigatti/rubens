@@ -1,6 +1,6 @@
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { coveringSchedule, occurrencesDuring } from "#/lib/availability.ts";
@@ -33,7 +33,7 @@ export interface RoomOccupant {
   end: Date;
 }
 
-type RoomRefusal =
+export type RoomRefusal =
   | { ok: false; reason: "notFound" | "roomInactive" | "officeInactive" }
   | { ok: false; reason: "roomFull"; occupants: RoomOccupant[] };
 
@@ -117,7 +117,7 @@ function findPresences(writer: Writer, roomId: string, span: TimeRange, timeZone
  * Whether the room has space for the practitioner during `span`: no other
  * practitioner's active appointment there meets it, and its capacity holds them.
  */
-function checkRoomSpace(
+export function checkRoomSpace(
   writer: Writer,
   roomId: string,
   practitionerId: string,
@@ -168,12 +168,16 @@ function localDay(instant: Date, timeZone: string): TimeRange {
   return toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
 }
 
-/** The patient's active appointments on the local day of `span`, as warnings. */
+/**
+ * The patient's active appointments on the local day of `span`, as warnings,
+ * but for `excludeId`, the one being rescheduled.
+ */
 function findPatientWarnings(
   writer: Writer,
   patientId: string,
   span: TimeRange,
   timeZone: string,
+  excludeId: string | undefined,
 ): PatientWarning[] {
   const rows = writer
     .select({
@@ -191,6 +195,7 @@ function findPatientWarnings(
         eq(appointment.patientId, patientId),
         inArray(appointment.status, [...activeAppointmentStatuses]),
         meets(appointment, localDay(span.start, timeZone)),
+        excludeId === undefined ? undefined : ne(appointment.id, excludeId),
       ),
     )
     .orderBy(asc(appointment.startsAt))
@@ -206,15 +211,20 @@ function findPatientWarnings(
   });
 }
 
-/** The room of the practitioner's free start at the start of `span`. */
+/**
+ * The room of the practitioner's free start at the start of `span`.
+ * `excludeAppointmentId` is the one being moved, whose own time counts as free.
+ */
 function placeFreeStart(
   writer: Writer,
   bookable: { id: string; gridMinutes: number },
   span: TimeRange,
+  excludeAppointmentId: string | undefined,
 ): Placed | { ok: false; reason: "notFree" } {
   const { free, schedules } = findFreeTimes(writer, bookable, {
     window: { start: span.start, end: new Date(+span.start + 1) },
     durationMinutes: (+span.end - +span.start) / 60_000,
+    excludeAppointmentId,
   });
   const slot = free.find((candidate) => +candidate.start === +span.start);
   if (!slot) {
@@ -257,8 +267,10 @@ function placeOverbooking(
 }
 
 /**
- * Where a new appointment at the placement's time goes, and the patient's
- * warnings about it unless `confirmWarnings`.
+ * Where an appointment at the placement's time goes, and the patient's
+ * warnings about it unless `confirmWarnings`. `excludeAppointmentId` is the
+ * appointment being moved, which does not compete with its own time or warn
+ * about itself; a new one has none.
  */
 export function placeAtTime<Kind extends NewPlacement["kind"]>(
   writer: Writer,
@@ -266,6 +278,7 @@ export function placeAtTime<Kind extends NewPlacement["kind"]>(
   patientId: string,
   placement: Extract<NewPlacement, { kind: Kind }>,
   confirmWarnings: boolean,
+  excludeAppointmentId?: string,
 ): Placed | PlacementRefusal<Kind>;
 export function placeAtTime(
   writer: Writer,
@@ -273,18 +286,19 @@ export function placeAtTime(
   patientId: string,
   placement: NewPlacement,
   confirmWarnings: boolean,
+  excludeAppointmentId?: string,
 ): Placed | PlacementRefusal<NewPlacement["kind"]> {
   const { span } = placement;
   const where =
     placement.kind === "freeStart"
-      ? placeFreeStart(writer, bookable, span)
+      ? placeFreeStart(writer, bookable, span, excludeAppointmentId)
       : placeOverbooking(writer, bookable, span, placement.pickedRoomId);
   if (!where.ok) {
     return where;
   }
   const warnings = confirmWarnings
     ? []
-    : findPatientWarnings(writer, patientId, span, where.timeZone);
+    : findPatientWarnings(writer, patientId, span, where.timeZone, excludeAppointmentId);
   if (warnings.length > 0) {
     return { ok: false, reason: "patientWarning", warnings };
   }

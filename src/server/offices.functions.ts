@@ -41,13 +41,11 @@ export const editOffice = createServerFn({ method: "POST" })
     withOrganization((organization, caller) => organization.updateOffice(caller, data)),
   );
 
-// Until appointments port (#137, #138), deactivating an office or a room sends
-// nothing to the to-reschedule list, so the count is 0.
-const nothingUpcoming = { ok: true as const, count: 0 };
-
 export const getOfficeUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: PlaceReference) => data)
-  .handler(() => nothingUpcoming);
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.countOfficeUpcoming(caller, data)),
+  );
 
 export const changeOfficeActive = createServerFn({ method: "POST" })
   .validator((data: ActiveChange) => data)
@@ -69,7 +67,9 @@ export const editRoom = createServerFn({ method: "POST" })
 
 export const getRoomUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: PlaceReference) => data)
-  .handler(() => nothingUpcoming);
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.countRoomUpcoming(caller, data)),
+  );
 
 export const changeRoomActive = createServerFn({ method: "POST" })
   .validator((data: ActiveChange) => data)
