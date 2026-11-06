@@ -141,13 +141,15 @@ The assistant judges every message a patient sends, also while a person holds th
 conversation. A message judged clinical, the patient's or a held reply, is left out
 of every conversation shown to someone who is not a practitioner who keeps
 clinical records, in the app and on Telegram. A message not judged yet, because
-the model is unavailable, is left out the same way until it is.
+the model is unavailable, is left out the same way until it is; in its place, the
+conversation shows that a message is waiting to be read.
 
 Anyone allowed to read a conversation can take it over at any time, not only on a
 handoff. While a person holds a conversation, the assistant stays silent in it. It
 takes the conversation back when the person returns it, or after a time the admin
-sets; a hand-back that would fall after the window closes comes forward to before
-it, so the assistant's message on taking it back goes out inside the window.
+sets. Its message on taking the conversation back goes out only inside the window;
+outside it, the assistant takes the conversation back without a word, and a
+handoff nobody answered stays an unread notification.
 
 ## Handoff
 
@@ -158,7 +160,7 @@ The assistant hands a conversation to a person when:
 - the question is clinical, or a follow-up's answer is not plainly good;
 - it has misunderstood the patient twice in a row;
 - a voice note stays unintelligible;
-- the model could not read a message before the window closes.
+- the model could not read a message well before the window closes.
 
 The handoff goes to the practitioner of the appointment it concerns, and
 otherwise to the organization's handoff contacts, members an admin picks. At
@@ -177,8 +179,10 @@ A handoff counts back from the window's close. Its recipient is told at once,
 reminded about 6 hours before the close, and about 2 hours before it the reminder
 also goes to every other member who may answer it (for a clinical handoff, only
 practitioners who keep clinical records). An admin can move these times, but none
-can fall after the close. The patient's `your answer is on its way` message and the
-assistant's message when it takes the conversation back go out inside the window.
+can fall after the close. The patient's `your answer is on its way` message goes out
+only inside the window. A handoff made after the close, for a reply that could not
+go out in time, has no countdown and tells the patient nothing: its recipient is
+told at once, and their reply goes through the reopen template.
 
 A reply a person writes after the window closed is stored, and the patient gets
 the reopen template (`Tenemos una respuesta para vos, respondé este mensaje para

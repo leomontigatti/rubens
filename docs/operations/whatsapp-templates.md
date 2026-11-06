@@ -75,7 +75,8 @@ marketing: it names the appointment so it stays about it.
 
 ## Appointments the organization changed
 
-Each invites a reply, and the assistant offers times in the conversation.
+Each invites a reply, and the assistant offers times in the conversation, except
+as `turno_cancelado` says.
 
 ### `turno_movido`
 

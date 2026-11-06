@@ -50,7 +50,9 @@ move or cancel it, and when a time off or a closure sends their appointments to
 the "to reschedule" list, unless whoever entered it chose not to tell them. The
 message says what happened and, where the appointment still needs a time, invites
 a reply, such as `Tuvimos que mover tu turno del jueves con la Dra. X. Respondé
-este mensaje y buscamos otro horario.` The assistant then offers times.
+este mensaje y buscamos otro horario.` The assistant then offers times, except for
+a cancelled appointment: until booking arrives, in the second release, a reply
+asking for another time is handed off.
 
 ## When Meta limits the number
 
