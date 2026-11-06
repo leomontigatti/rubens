@@ -7,7 +7,7 @@ import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { memberUpdateSchema } from "#/lib/staff.ts";
 import { editMember, getMember } from "#/server/staff.functions.ts";
-import type { PractitionerSettings, StaffMember } from "#/server/staff.ts";
+import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
 import {
   ColorSwatch,

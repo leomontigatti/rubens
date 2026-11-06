@@ -9,67 +9,70 @@ import type {
   RoomUpdate,
 } from "#/lib/offices.ts";
 
-import {
-  createOffice,
-  createRoom,
-  getOffice,
-  listOffices,
-  setOfficeActive,
-  setRoomActive,
-  updateOffice,
-  updateRoom,
-} from "#/server/offices.ts";
-import { countOfficeUpcoming, countRoomUpcoming } from "#/server/to-reschedule.ts";
-import type { ListOptions } from "#/server/offices.ts";
-import { withActor } from "#/server/with-actor.ts";
+import type { ListOptions } from "#/organization/offices.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and refuse non-admins themselves, so each
-// validator here only names the type. Requiring the admin role as well refuses
-// a change before it opens a transaction.
-const anyRole = { roles: "any" } as const;
-const adminOnly = { roles: ["admin"] } as const;
+// The object validates the input and requires the admin role for a change, so
+// each validator here only names the type.
 
 export const getOffices = createServerFn({ method: "GET" })
   .validator((data: ListOptions) => data)
   .handler(({ data }) =>
-    withActor(anyRole, async (actor) => ({
-      ok: true as const,
-      offices: await listOffices(actor, { includeInactive: data.includeInactive }),
-    })),
+    withOrganization((organization, caller) =>
+      organization.listOffices(caller, { includeInactive: data.includeInactive }),
+    ),
   );
 
 export const getOfficeWithRooms = createServerFn({ method: "GET" })
   .validator((data: { officeId: string } & ListOptions) => data)
-  .handler(({ data }) => withActor(anyRole, (actor) => getOffice(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.getOffice(caller, data)),
+  );
 
 export const addOffice = createServerFn({ method: "POST" })
   .validator((data: OfficeInput) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => createOffice(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createOffice(caller, data)),
+  );
 
 export const editOffice = createServerFn({ method: "POST" })
   .validator((data: OfficeUpdate) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => updateOffice(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateOffice(caller, data)),
+  );
 
 export const getOfficeUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: PlaceReference) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => countOfficeUpcoming(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.countOfficeUpcoming(caller, data)),
+  );
 
 export const changeOfficeActive = createServerFn({ method: "POST" })
   .validator((data: ActiveChange) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => setOfficeActive(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setOfficeActive(caller, data)),
+  );
 
 export const addRoom = createServerFn({ method: "POST" })
   .validator((data: RoomInput) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => createRoom(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createRoom(caller, data)),
+  );
 
 export const editRoom = createServerFn({ method: "POST" })
   .validator((data: RoomUpdate) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => updateRoom(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateRoom(caller, data)),
+  );
 
 export const getRoomUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: PlaceReference) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => countRoomUpcoming(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.countRoomUpcoming(caller, data)),
+  );
 
 export const changeRoomActive = createServerFn({ method: "POST" })
   .validator((data: ActiveChange) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => setRoomActive(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setRoomActive(caller, data)),
+  );

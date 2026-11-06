@@ -17,7 +17,7 @@ import {
   getOfficeUpcomingCount,
   getOfficeWithRooms,
 } from "#/server/offices.functions.ts";
-import type { Office, Room } from "#/server/offices.ts";
+import type { Office, Room } from "#/organization/offices.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
 

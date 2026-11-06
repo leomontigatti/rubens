@@ -4,7 +4,7 @@ import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { scheduleEndSchema, validityLabel } from "#/lib/schedules.ts";
 import { finishSchedule, getSchedules } from "#/server/schedules.functions.ts";
-import type { Schedule } from "#/server/schedules.ts";
+import type { Schedule } from "#/organization/schedules.ts";
 
 import { EditableSchedule } from "#/routes/_app/horarios/-schedule-form.tsx";
 import { useAction } from "#/routes/_app/horarios/-shared.tsx";

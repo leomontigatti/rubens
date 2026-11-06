@@ -11,7 +11,7 @@ import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { formatLocalDate, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
-import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/server/calendar-week.ts";
+import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/organization/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 
@@ -73,6 +73,20 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The grid's border at its height, empty: what stands in for it until the browser draws it. */
+export function WeekGridFrame(props: { view: TimeRange }) {
+  const { view } = props;
+  return (
+    <div className="rounded-xl border">
+      <div className="h-10 border-b" />
+      <div
+        className="h-(--height)"
+        style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
+      />
     </div>
   );
 }

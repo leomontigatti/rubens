@@ -5,7 +5,7 @@ import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { getMember, resetStartingPassword } from "#/server/staff.functions.ts";
-import type { StaffMember } from "#/server/staff.ts";
+import type { StaffMember } from "#/organization/staff.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
 

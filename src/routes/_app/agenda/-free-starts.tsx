@@ -10,7 +10,7 @@ import { freeStartsByDay } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import type { PickedStart } from "#/lib/booking-draft.ts";
 import { getFreeTimes } from "#/server/availability.functions.ts";
-import type { AvailableStart } from "#/server/availability.ts";
+import type { AvailableStart } from "#/organization/availability.ts";
 
 // A practitioner's free starts to pick one from, by day: booking's and
 // rescheduling's picker, and the fresh ones after a time was taken.

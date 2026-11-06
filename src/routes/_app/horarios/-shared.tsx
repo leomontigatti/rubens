@@ -1,6 +1,6 @@
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { appointmentCollisionLabel, collisionLabel } from "#/lib/schedules.ts";
-import type { AppointmentCollision, Collision } from "#/server/schedules.ts";
+import type { AppointmentCollision, Collision } from "#/organization/schedules.ts";
 
 // The refusal copy the schedule screens share, collisions included.
 

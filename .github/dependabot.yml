@@ -27,13 +27,6 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: [version-update:semver-major]
-      # A better-auth minor can carry a schema migration, so it stays a hand-written
-      # issue; patches flow.
-      - dependency-name: better-auth
-        update-types: [version-update:semver-minor]
-      # Nitro is a beta and pinned to an exact version on purpose (ADR-0001). A bump
-      # is a deliberate change, made by hand after reading its release notes.
-      - dependency-name: nitro
       # A vite-plus bump has to move the `vite` and `vitest` overrides in
       # pnpm-workspace.yaml with it, which Dependabot does not do. Bumped alone, the
       # two Vite copies fail the type check (TS2321 in vite.config.ts) and block the

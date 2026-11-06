@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import type { getAppointmentRecord } from "#/server/appointments.functions.ts";
-import type { AppointmentRecord } from "#/server/appointment-edit.ts";
+import type { AppointmentRecord } from "#/organization/appointment-changes.ts";
 
 // What an appointment's pages share: `Editar turno`, `Reprogramar turno` and
 // `Cancelar turno`, each opened from its dialog on the calendar or from

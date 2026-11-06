@@ -9,7 +9,7 @@ import { practitionerColorLabels } from "#/lib/practitioner-colors.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { rolesLabel } from "#/lib/staff.ts";
 import { changeMemberActive, getMember, getMemberUpcomingCount } from "#/server/staff.functions.ts";
-import type { PractitionerSettings, StaffMember } from "#/server/staff.ts";
+import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
 import { ColorSwatch, RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
 

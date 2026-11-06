@@ -4,9 +4,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 import { e2e } from "./tests/e2e/environment.ts";
 
-// The browser suite (tests/e2e/README.md). `pnpm test:e2e` builds, rebuilds the
-// e2e database (`tests/e2e/prepare.ts`), then runs this: the production build
-// served as shipped, Chromium only. The `setup` project signs each role in once;
+// The browser suite (tests/e2e/README.md). `pnpm test:e2e` builds, clears the
+// suite's object storage (`tests/e2e/prepare.ts`), then runs this: the
+// production Worker served by `wrangler dev` with the dev sign-in, Chromium only. The `setup` project signs each role in once;
 // every spec starts signed in from the state it saved.
 
 const ci = Boolean(process.env.CI);
@@ -38,16 +38,18 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "node .output/server/index.mjs",
-    url: e2e.origin,
+    // `--env-file` reads an empty file, so a Clerk key in a local `.env` cannot
+    // switch the suite off the dev sign-in.
+    command: [
+      "pnpm exec wrangler dev",
+      `--port ${e2e.port}`,
+      "--var DEV_SIGN_IN:true",
+      `--persist-to ${e2e.stateDirectory}`,
+      "--env-file /dev/null",
+      "--show-interactive-dev-session=false",
+    ].join(" "),
+    url: `${e2e.origin}/ingresar`,
     reuseExistingServer: false,
     stdout: "pipe",
-    env: {
-      PORT: String(e2e.port),
-      DATABASE_URL: e2e.databaseUrl,
-      DATABASE_DIRECT_URL: e2e.directDatabaseUrl,
-      BETTER_AUTH_URL: e2e.origin,
-      BETTER_AUTH_SECRET: e2e.authSecret,
-    },
   },
 });

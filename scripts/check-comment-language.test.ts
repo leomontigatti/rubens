@@ -540,13 +540,11 @@ describe("comment-language guardrail, SQL", () => {
   function sqlKindsIn(contents: string): string[] {
     return findSpanishProseInSql({
       contents,
-      filePath: "src/db/migrations/0099_example.sql",
+      filePath: "src/organization/migrations/0099_example.sql",
       glossaryNouns,
     }).map((violation) => violation.kind);
   }
 
-  // A migration is immutable once applied, so this is the one place a Spanish
-  // comment can never be fixed after merge.
   test("catches a Spanish `--` comment, on its own line or trailing a statement", () => {
     expect(sqlKindsIn("-- Una fila por sede.\n")).toEqual(["comment"]);
     expect(sqlKindsIn("ALTER TABLE room ENABLE ROW LEVEL SECURITY; -- para la sede\n")).toEqual([
@@ -569,7 +567,7 @@ describe("comment-language guardrail, files without a scannable extension", () =
   // The scan-root tests list tracked files by extension, so a file with none, or
   // with one no scanner reads, is invisible to them. This walks a repo laid out
   // like this one and checks the default collection reaches each such file.
-  test("the default scan reads the git hooks, the Dockerfile, the env example and SQL", async () => {
+  test("the default scan reads the git hooks, the env example and SQL", async () => {
     const root = mkdtempSync(path.join(tmpdir(), "comment-language-"));
     const write = (relativePath: string, contents: string) => {
       mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
@@ -588,7 +586,7 @@ describe("comment-language guardrail, files without a scannable extension", () =
     write("GLOSSARY.md", "");
     write(`${gitHookDirectories[0]}/pre-commit`, "# Corre la suite antes del commit.\n");
     for (const fileName of hashCommentRootFiles) write(fileName, "# Se copia la app.\n");
-    write("src/db/migrations/0001_example.sql", "-- Una fila por cada tenant.\n");
+    write("src/organization/migrations/0001_example.sql", "-- Una fila por cada tenant.\n");
 
     try {
       const reported = (await checkCommentLanguage(root)).map((violation) => violation.filePath);
@@ -597,8 +595,7 @@ describe("comment-language guardrail, files without a scannable extension", () =
         [
           ".env.example",
           ".vite-hooks/pre-commit",
-          "Dockerfile",
-          "src/db/migrations/0001_example.sql",
+          "src/organization/migrations/0001_example.sql",
         ].sort(),
       );
     } finally {

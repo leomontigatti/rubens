@@ -15,8 +15,9 @@ systems, queues or databases when a real instance is not practical. Do not mock
 our own internal collaborators. If code is hard to test without mocking an
 internal module, redesign the interface.
 
-Prefer a real database for DB behaviour: `*.db.test.ts` runs on PGlite, in
-process, through the same functions the app calls.
+Prefer real storage for data behaviour: `*.workers.test.ts` runs the organization
+object's methods in the Workers runtime, on the object's own SQLite, through the
+same calls the server functions make.
 
 Every test names the bug it catches: the wrong implementation that would make it
 fail. Tests that cannot name one are not written. The anti-patterns (tautological,
@@ -112,38 +113,39 @@ expected condition in the code or a one-line reason.
 
 ## Rubens rules
 
-These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
+These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organization.md),
+[ADR-0009](../adr/0009-staff-sign-in-through-clerk.md) and
 [ADR-0003](../adr/0003-scheduling-and-clinical-records.md). The ADRs say why.
 
-- **Tenant queries go through `withTenant()`** (`src/db/tenant.ts`) and nothing
-  else. It sets the tenant with `set_config(..., true)`, transaction-local. Never
-  a session-level `SET`, a `LISTEN`, a session advisory lock or a long-lived named
-  prepared statement: a pooler hands the connection to another organization next.
-  Lint enforces the entry point: importing the `db` client (`#/db/client.ts`, by
-  alias, relative path or dynamic `import()`) fails outside `src/db/`,
-  `src/lib/auth.ts` (Better Auth's tables are not tenant-owned) and `tests/db/`.
-  Because of that exemption, `src/db/` holds only the client, `withTenant`, the
-  schema and the migrations: a feature's queries live with the feature.
-- **Row-level security is the boundary.** The UI and the server functions are not.
-  A test of an RLS policy runs as `rubens_app`, which owns nothing and has no
-  `BYPASSRLS`; as the owner it proves nothing.
-- **Instants are `timestamptz`.** Local times are derived from the office's IANA
-  time zone, never stored as a bare `timestamp`.
+- **The organization's object is the tenant boundary.** A server function reaches
+  data only through `withOrganization()` (`src/server/with-organization.ts`), which
+  takes the organization and the caller from the verified session
+  (`src/server/caller.ts`), never from the request body, and calls that
+  organization's object (`src/organization/organization.ts`) and only it.
+- **The object authorizes every call** from its own member table (`authorize()` in
+  `src/organization/members.ts`), not from the token's roles: each method states its
+  requirement, so a removed member or a changed role takes effect on the next call.
+  The UI and the server functions are not the boundary.
+- **A method is one line**: `this.#as(caller, requirement, (acting) => …)` into an
+  area module in `src/organization/`. The area function is synchronous and makes its
+  writes, its checks and its audit entry (`recordAudit()`) in one
+  `database.transaction`, with no `await` inside: an object runs one event at a time,
+  so a check and the write it guards cannot be raced (double booking, ADR-0003).
+- **Instants are integers**, Unix milliseconds in UTC; a span is `[start, end)`.
+  Local times are derived from the office's IANA time zone, never stored bare.
 - **Clinical note versions are append-only** (ADR-0005). Editing a note adds a
-  version. No `UPDATE` or `DELETE` on a note version or the audit log, and no
-  `DELETE` of any clinical data, except an admin deleting voided content: a voided
-  file's content is removed and its note kept, and a voided note's versions have
-  their text cleared, the only change allowed on a version.
-- **No patient data in logs, errors, or job payload logs.** Names, phone numbers,
-  appointment times and clinical text stay out of `console`, error messages and
-  pg-boss payload logs. Ids are enough to find a record.
-- **Migrations are raw SQL where Drizzle stops**, and an applied migration is never
-  edited.
-- **Tables and enums live in the `rubens` schema, unprefixed** (ADR-0004): declare
-  them with `rubens.table()` and `rubens.enum()` from `src/db/schema/schema.ts`,
-  never `pgTable()` or `pgEnum()` (lint rejects both). Raw SQL qualifies every name (`rubens.user`)
-  instead of relying on `search_path`, and code that matches a constraint by name
-  (a unique violation, say) is covered by a test, because typecheck cannot see it.
+  version. No update or delete of a note version or the audit log, and no delete of
+  any clinical data, except an admin deleting voided content: a voided file's content
+  is removed and its note kept, and a voided note's versions have their text cleared,
+  the only change allowed on a version. The object's methods are the only writers,
+  so they are where these rules are checked and tested.
+- **No patient data in logs or errors.** Names, phone numbers, appointment times and
+  clinical text stay out of `console` and error messages. Ids are enough to find a
+  record.
+- **The object's schema is `src/organization/schema.ts`**, and its migrations are
+  generated from it (`pnpm organization:generate`) into `src/organization/migrations/`,
+  which every object applies on start. A migration on `main` has run in deployed
+  objects: it is never edited, and a schema change adds a new one.
 
 ## Stack notes
 
@@ -152,6 +154,5 @@ These come from [ADR-0002](../adr/0002-tenancy-and-database-connections.md) and
 - Route files in `src/routes/` are the TanStack Router file routes; the generated
   `src/routeTree.gen.ts` is committed, not edited.
 - Validate input with Zod 4, one schema for the form and the server function.
-- Tenant-owned tables are read and written only inside `withTenant()`. The `db`
-  client it wraps is not called directly for them.
-- pg-boss connects through `DATABASE_DIRECT_URL` (ADR-0002); see `src/server/jobs.ts`.
+- The organization's data is read and written only by the object's methods, never by
+  a server function or a route.

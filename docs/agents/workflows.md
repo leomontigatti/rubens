@@ -44,10 +44,9 @@ PR is ready to merge. Stop only if the seams are unclear.
 
 Beyond `THREADS.md`: the `t3.json` setup script links `.env` from the main checkout
 and installs dependencies before the agent starts, and does nothing in the main
-checkout. A worktree's own database and dev port come on its first `pnpm dev` or
-`pnpm db:migrate` ([local-development.md](../operations/local-development.md#one-database-per-worktree));
-the `housekeeping` skill sweeps the databases of removed worktrees
-([housekeeping.md](./housekeeping.md)).
+checkout. A worktree's own dev port comes on its first `pnpm dev`
+([local-development.md](../operations/local-development.md#one-port-per-worktree)); its state stays
+inside its folder ([housekeeping.md](./housekeeping.md)).
 
 ## Documentation
 
