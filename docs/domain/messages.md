@@ -3,45 +3,20 @@
 ## To patients
 
 Messages go by WhatsApp to patients with WhatsApp consent; a patient without it
-gets none. There is no email to patients for now. WhatsApp goes through the organization's own
-number ([ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md)).
+gets none. There is no email to patients for now. WhatsApp goes through the
+organization's number on Meta's Cloud API
+([ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md)).
 
-The assistant words each WhatsApp message the organization starts, under the
-communication rules, so no two read the same. Rubens gives it the facts (the
-date, the time, the practitioner, the office, a link) and checks that each one
-appears exactly; when one does not, or the model is unavailable, the message's
-fixed text goes instead ([whatsapp-templates.md](../operations/whatsapp-templates.md)).
-Messages carry no buttons: the patient answers
-in their own words, and the assistant reads the answer
-([assistant.md](./assistant.md)).
+Every message the organization starts is a template Meta approved for the
+organization, in its own voice: the set is in
+[whatsapp-templates.md](../operations/whatsapp-templates.md). Rubens fills in its
+facts (the date, the time, the practitioner, the office). Templates carry no
+buttons: the patient answers in their own words, and the assistant reads the
+answer ([assistant.md](./assistant.md)). The patient's answer opens the
+conversation window ([assistant.md](./assistant.md#the-conversation-window)).
 
-Messages the organization starts go only to patients who booked with it, are
-spread out rather than sent at once, and stop for a patient who asks to stop. The
-booking confirmation asks the patient to save the number.
-
-## While the WhatsApp connection is down
-
-The organization's WhatsApp connection is down when the linked device was logged
-out from the phone, WhatsApp restricted the number, or the phone stayed offline
-too long. Nothing goes by another channel instead: the admins are warned at once,
-in the app and on Telegram, with how many messages are waiting and a prompt to
-link the number again ([assistant.md](./assistant.md#the-number)). The warning
-stays until it is linked.
-
-Messages that come due meanwhile wait. Once the number is linked again, the
-waiting messages go out, spread out like any others, except those no longer
-true:
-
-- anything about an appointment that has since started, been cancelled or been
-  moved, which gets the message for its current state instead, if any;
-- a reminder that a later reminder for the same appointment overtook, of which
-  only the latest goes.
-
-Care instructions and follow-ups are about an appointment that already took place,
-so they still go, however late.
-
-Messages patients sent while it was down reach the phone, not Rubens, so the
-assistant does not answer them late: a person does, from the phone.
+Messages the organization starts go only to patients who booked with it, and stop
+for a patient who asks to stop.
 
 Each medical service sets:
 
@@ -56,14 +31,14 @@ Each medical service sets:
 - **Its follow-up**: a time after the appointment at which the patient is asked
   how they feel, or none.
 - **The reschedule cutoff**: how long before the appointment the patient can still
-  reschedule it themselves.
+  move it through the assistant ([assistant.md](./assistant.md#cancelling-and-moving)).
 
 An answer to a reminder that asks for confirmation can:
 
 - **confirm**, which sets the appointment to confirmed;
 - **cancel**, which cancels it, by the patient, and frees the time;
-- **ask to reschedule**, which the assistant handles under the reschedule link's
-  rules, offering times or the link.
+- **ask to reschedule**, which the assistant handles in the conversation, offering
+  times ([assistant.md](./assistant.md#cancelling-and-moving)).
 
 An answer to a follow-up is only sorted: plainly good gets a thank-you; anything
 else is handed off to the practitioner; an emergency gets the fixed emergency
@@ -72,34 +47,33 @@ the practitioner decides what goes there.
 
 The organization also writes when it changes an appointment itself: when staff
 move or cancel it, and when a time off or a closure sends their appointments to
-the "to reschedule" list, unless whoever entered it chose not to tell them. The message says what happened, and
-offers the reschedule link where the appointment still needs a time.
+the "to reschedule" list, unless whoever entered it chose not to tell them. The
+message says what happened and, where the appointment still needs a time, invites
+a reply, such as `Tuvimos que mover tu turno del jueves con la Dra. X. Respondé
+este mensaje y buscamos otro horario.` The assistant then offers times.
 
-## The reschedule link
+## When Meta limits the number
 
-A personal, signed link for one appointment, valid until the appointment starts.
-Its page shows the free times of the same practitioner and medical service, at
-any office where the practitioner works, over the next few weeks. On it the
-patient can:
+Meta can restrict or rate-limit the organization's number, reject a template, or
+move an approved one to another category. The admins are warned at once, in the
+app and on Telegram, with what is affected and how many messages are waiting.
+Nothing goes by another channel instead: the messages wait, and go out once the
+number or the template is usable again, less those no longer true:
 
-- **pick a new time**, which moves the appointment and frees the old time;
-- **cancel** the appointment, when no time suits them;
-- **ask to be contacted** (`Necesito que se comuniquen conmigo`), which gives
-  reception a contact request.
+- anything about an appointment that has since started, been cancelled or been
+  moved, which gets the message for its current state instead, if any;
+- a reminder that a later reminder for the same appointment overtook, of which
+  only the latest goes.
 
-Moving is allowed until the medical service's cutoff, and once per appointment,
-whether through the link or the assistant. A move the organization caused, by
-moving the appointment itself or by putting it on the "to reschedule" list, does
-not use up that one move. Later changes go through a person. The cutoff leaves
-time to fill a freed slot; the once-only rule stops a patient from pushing an
-appointment back forever. Cancelling and asking for contact stay open until the
-appointment starts.
+Care instructions and follow-ups are about an appointment that already took place,
+so they still go, however late.
 
 ## To staff
 
 Every event that staff act on is a notification in the app, read or unread:
-confirmations, cancellations, reschedules, requests to approve, handoffs, contact
-requests, and replies that look like opt-outs. Reception sees all of them, a
+confirmations, cancellations, reschedules, requests to approve, handoffs, replies
+not delivered because the patient never answered, warnings about the WhatsApp
+number, and replies that look like opt-outs. Reception sees all of them, a
 clinical handoff only as existing ([assistant.md](./assistant.md#handoff)); a
 practitioner sees those about their own appointments and the handoffs sent to
 them. The app holds the full

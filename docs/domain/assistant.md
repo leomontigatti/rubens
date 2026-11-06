@@ -1,22 +1,35 @@
 # Assistant
 
-The assistant answers patients on the organization's own WhatsApp number, and
+The assistant answers patients on the organization's WhatsApp number, and
 practitioners on Telegram. It writes the way the organization writes, under its
 communication rules. It never claims to be a person; asked whether it is a bot,
-it says yes. It does not introduce itself as one unprompted. Why the channel and
-the model are what they are: [ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md).
+it says yes. It does not introduce itself as one unprompted. Why the channel is
+what it is: [ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md);
+why the model works through proposals: [ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md).
 
 ## The number
 
-An admin links the organization's WhatsApp number from its settings, by scanning
-a QR code with the phone, after being told that this is not Meta's official
-channel and that WhatsApp can restrict or ban a number for it. The number stays
-in the phone's WhatsApp app. The settings show whether it is connected; when it
-is down, the admins are warned at once, in the app and on Telegram, and an admin
-links it again from the same place
-([messages.md](./messages.md#while-the-whatsapp-connection-is-down)).
+Each organization gets a new WhatsApp number, used only through Rubens, on Meta's
+official Cloud API. There is no phone and no WhatsApp app on it: every reply a
+person writes goes through Rubens, from the inbox or from Telegram.
+
+An admin connects it from the WhatsApp settings, through Meta's signup. The
+organization owns its WhatsApp Business account and the number, adds its own
+payment method, and Meta bills it for its messages. The settings show the
+connection, the number's messaging limit and each template's approval
+([messages.md](./messages.md#when-meta-limits-the-number)).
 
 ## For patients
+
+In the first release:
+
+- **Replies** to the messages the organization sends: confirming an appointment,
+  answering a follow-up. The model reads every reply, a plain `sí` included.
+- **Cancelling and moving** an appointment the patient already has
+  ([below](#cancelling-and-moving)).
+- **Simple questions about an existing appointment**: when, where, with whom.
+
+In the second release:
 
 - **Information.** Medical services, their duration and price, the insurers each
   practitioner accepts, the offices and their addresses, which practitioner works
@@ -26,26 +39,38 @@ links it again from the same place
 - **Booking.** A patient can book any active medical service of any practitioner,
   at a time from availability. The assistant asks for a preferred day and time
   before offering any, and offers the few nearest to it. Overbookings are never
-  offered. A medical service
-  that requires approval books a request instead
-  ([appointments.md](./appointments.md#requests)).
-- **Cancelling and rescheduling** their own appointments, under the reschedule
-  link's rules ([messages.md](./messages.md#the-reschedule-link)): cancelling is
-  open until the appointment starts; moving, until the medical service's cutoff
-  and once per appointment. A move past the cutoff, or after the one move, it
-  hands off.
-- **Replies** to the messages the organization sends: a reminder's confirmation,
-  a follow-up's answer. Patients write in their own words, by text or voice note;
-  there are no buttons. A voice note is transcribed and read like text; one that
-  cannot be understood gets a request to write it, then a handoff.
+  offered. A medical service that requires approval books a request instead
+  ([appointments.md](./appointments.md#requests)). An unknown number can book: the
+  patient is registered as incomplete, with the name they give and the number, and
+  their WhatsApp consent recorded as given to the assistant.
+
+Patients write in their own words; there are no buttons. A voice note is
+transcribed and read like text; one that cannot be understood gets a request to
+write it, then a handoff. Voice notes are in the first release only if
+transcription passes the evaluation set on Argentine Spanish. The assistant
+replies in text only, never with a voice note.
 
 The patient is identified by the WhatsApp number. A number is the contact of
 every patient whose messages go to it, the patient's own or a guardian's
 ([patients.md](./patients.md#guardians)), so it can stand for several patients;
-the assistant asks which one before acting. An unknown number can ask and book:
-at booking, the patient is registered as incomplete, with the name they give and
-the number, and their WhatsApp consent recorded as given to the assistant. The assistant never tells a number anything about a patient who is
-not theirs, and never anything clinical.
+the assistant asks which one before acting. The assistant never tells a number
+anything about a patient who is not theirs, and never anything clinical.
+
+## Cancelling and moving
+
+Rescheduling happens only in the conversation. The assistant offers the free
+times of the same practitioner and medical service, at any office where the
+practitioner works, over the next few weeks, and moves the appointment on the
+patient's yes, freeing the old time.
+
+- **Moving** is allowed until the medical service's cutoff, and once per
+  appointment. A move the organization caused, by moving the appointment itself
+  or by putting it on the "to reschedule" list, does not use up that one move. The
+  cutoff leaves time to fill a freed slot; the once-only rule stops a patient from
+  pushing an appointment back forever.
+- **Cancelling** is open until the appointment starts.
+- A move past the cutoff, after the one move, or a patient who asks to be
+  contacted, is handed off.
 
 ## For practitioners
 
@@ -96,15 +121,40 @@ No organization can edit or override these:
 - Clinical details a patient sends (symptoms, a study, a photo) are not answered:
   they are handed off to the practitioner.
 
+## The conversation window
+
+The patient's message opens the customer service window, for 24 hours, and each
+later message from the patient restarts it. A template the organization sends does
+not open it. Inside the window the assistant and staff write freely; outside it,
+Rubens can send only an approved template ([messages.md](./messages.md#to-patients)).
+
+When the model is unavailable, an incoming message is kept and retried while the
+window is open. If it still cannot be read, it is handed to a person well before
+the window closes. No code reads it in the model's place.
+
+## Inbox
+
+Every conversation is in the app's inbox. Reception and admins read all of them; a
+practitioner reads those about their own appointments. A message the assistant
+judged clinical, the patient's or a held reply, is left out of every conversation
+shown to someone who is not a practitioner who keeps clinical records, in the app
+and on Telegram.
+
+Anyone allowed to read a conversation can take it over at any time, not only on a
+handoff. While a person holds a conversation, the assistant stays silent in it. It
+takes the conversation back when the person returns it, or after a time the admin
+sets.
+
 ## Handoff
 
 The assistant hands a conversation to a person when:
 
-- the patient asks for one;
+- the patient asks for one, or to be contacted;
 - a rule refuses what the patient wants (past the cutoff, the one move used);
 - the question is clinical, or a follow-up's answer is not plainly good;
 - it has misunderstood the patient twice in a row;
-- a voice note stays unintelligible.
+- a voice note stays unintelligible;
+- the model could not read a message before the window closes.
 
 The handoff goes to the practitioner of the appointment it concerns, and
 otherwise to the organization's handoff contacts, members an admin picks. At
@@ -113,34 +163,23 @@ contact can neither be removed nor deactivated, as the last admin
 ([access.md](./access.md)). A clinical handoff (a clinical question, a
 follow-up's answer, clinical details, a held reply) goes only to a practitioner
 who keeps clinical records: the appointment's, else those among the handoff
-contacts. Anyone else, reception included, sees that it
-exists, never its words. The
-handoff arrives on Telegram with the patient's own words
-([ADR-0007](../adr/0007-patients-words-on-telegram.md)) and as a notification in
-the app. The person replies in Telegram, or in the app, and the reply reaches the
-patient on WhatsApp under their name.
+contacts. Anyone else, reception included, sees that it exists, never its words.
+The handoff arrives on Telegram with the patient's own words
+([ADR-0007](../adr/0007-patients-words-on-telegram.md)) and in the inbox. The
+person replies in Telegram or in the app, and the reply reaches the patient on
+WhatsApp under their name.
 
-The app's view is the fallback for whoever has no Telegram linked or cannot reach
-it: the open handoffs and requests, each with its conversation and a reply box.
-It has no assigning, no labels and no notifications of its own beyond the
-existing ones.
+A handoff counts back from the window's close. Its recipient is told at once,
+reminded about 6 hours before the close, and about 2 hours before it the reminder
+also goes to every other member who may answer it (for a clinical handoff, only
+practitioners who keep clinical records). An admin can move these times, but none
+can fall after the close. The patient's `your answer is on its way` message and the
+assistant's message when it takes the conversation back go out inside the window.
 
-A message the assistant judged clinical, the patient's or a held reply, is left
-out of every conversation shown to someone who is not a practitioner who keeps
-clinical records, in the app and on Telegram, later handoffs included. The
-organization's phone still shows the whole conversation, as WhatsApp does;
-whoever holds it reads everything.
-
-A handoff nobody answers is not lost: its recipient is reminded after a time the
-admin sets, and again before the conversation goes back to the assistant, and the
-patient is told the answer is on its way. When it does go back unanswered, the
-assistant tells the patient and the handoff stays as an unread notification.
-
-While a person holds the conversation, the assistant stays silent in it. It takes
-the conversation back when the person returns it, or after a time the admin sets.
-Someone who writes to the patient from the organization's phone holds the
-conversation the same way, as if it had been handed to them. Rubens tells such
-a message from its own by the messages it sent itself.
+A reply a person writes after the window closed is stored, and the patient gets
+the reopen template (`Tenemos una respuesta para vos, respondé este mensaje para
+verla`). The reply goes out when the patient answers. If they never do, the person
+is told it was not delivered. The reply itself never goes into a template.
 
 ## Pace
 
@@ -149,9 +188,10 @@ last message, so three short messages in a row get one reply. It shows typing
 while the reply is written out, for about as long as a person would take.
 
 A longer reply goes out as a few short messages, the way people write on
-WhatsApp, each after its own typing; never more than three. A proposal is never
-split: it stays whole in one message, so what the patient accepts is what they
-read. An organization's communication rule can ask for one message instead.
+WhatsApp, each after its own typing; never more than three. Each one is billed by
+Meta, so splitting a reply multiplies its cost ([costs](#costs)). A proposal is
+never split: it stays whole in one message, so what the patient accepts is what
+they read. An organization's communication rule can ask for one message instead.
 
 ## Communication rules
 
@@ -171,16 +211,40 @@ Staff can correct a reply the assistant sent, or mark one as good; it becomes a
 reply example, which the assistant imitates. Examples belong to the organization
 or to a practitioner, like rules.
 
-Before saving a change, its author can try a patient's message against the new
-rules and see the reply. The number of rules and their length are limited. Every
-change is audited, and each reply records the version of the rules it was written
-under.
+The number of rules and their length are limited. Every change is audited, and
+each reply records the version of the rules it was written under.
 
-The rules also reach the messages the organization starts, which the assistant
-words ([messages.md](./messages.md#to-patients)), but not their fixed texts.
+Rules do not reach the templates: those are fixed once Meta approves them, so the
+organization's voice is written into each template when it is submitted
+([whatsapp-templates.md](../operations/whatsapp-templates.md)).
+
+## Trying it
+
+The WhatsApp settings have a place to try the assistant before patients meet it.
+
+- **Template preview** (first release): each template as WhatsApp bubbles, filled
+  with a sample appointment, with its approval status at Meta and the reason for a
+  rejection, checks against Meta's rules before it is submitted, and its approved
+  versions side by side.
+- **Sandbox** (first release): staff play the patient against the real assistant,
+  with its real tools and the real agenda, starting from a scenario. It shows the
+  tool calls, the proposals, whether the clinical check would hold a reply, the
+  window's countdown and the number of messages. A sandbox never writes (its changes
+  are discarded), never reaches WhatsApp, is rate-limited, and counts in the
+  organization's use. A rule's author tries a change here before saving it.
+- **Saved scenarios** (second release): sandbox conversations run again on every
+  change to the rules or the model, with the differences shown. They are also the
+  set the model is chosen by.
 
 ## Costs
 
-Each organization pays for what its assistant uses: voice transcription and the
-model's replies. WhatsApp messages cost nothing per message. Rubens records that
-use per organization.
+Each organization pays for what its assistant uses. Meta bills the organization
+directly for its WhatsApp messages. In Argentina each delivered utility template
+costs US$0.026, and so does each message sent inside a window once the number's
+1,000 free ones of the month are used. Rubens records the rest per organization:
+voice transcription and the model's replies, sandbox use included.
+
+As an example, 1,000 reminders and 300 conversations of about six assistant
+messages come to about 2,800 messages, about US$73 a month before the free ones;
+one message per reply instead of up to three brings it to about US$38
+([whatsapp-assistant.md](../research/whatsapp-assistant.md#cost-example)).

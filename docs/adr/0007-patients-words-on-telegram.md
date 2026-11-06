@@ -1,10 +1,17 @@
 # ADR-0007: A handoff carries the patient's own words to Telegram
 
-**Status**: accepted
+**Status**: accepted; amended by
+[ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md)
 
 Date: 2026-11-04. Narrows the minimum-data rule for Telegram in
 [messages.md](../domain/messages.md#to-staff), which sent only a patient's name and
 times.
+
+Amended 2026-11-06 (ADR-0010): with no phone on the organization's number, the app's
+view is a full inbox, not a fallback: every conversation, readable by role, and any
+allowed member can take one over at any time. Handoffs still carry the patient's words
+to Telegram, and practitioners still reply from there. The last two paragraphs below
+describe the view as it was decided on 2026-11-04.
 
 When the assistant hands a conversation off, the practitioner or handoff contact
 answers from Telegram, and Rubens relays the reply to the patient's WhatsApp. For

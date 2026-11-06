@@ -8,9 +8,9 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 - [Scheduling](./scheduling.md): offices, rooms, schedules, time off, closures.
 - [Appointments](./appointments.md): medical services, statuses, rescheduling, overbooking.
 - [Patients](./patients.md): the registry, identity, guardians, consent.
-- [Messages](./messages.md): reminders, the reschedule link, staff notifications.
+- [Messages](./messages.md): templates, reminders, staff notifications.
 - [Assistant](./assistant.md): what it does for patients and practitioners, proposals,
-  handoff, communication rules.
+  the inbox, handoff, communication rules, trying it.
 - [Clinical records](./clinical-records.md): notes and their versions, alerts, attachments, copies.
 
 ## Scope
@@ -20,8 +20,7 @@ organization, its offices and its first admin are created by a script; there is
 no public sign-up. The data model stays multi-organization.
 
 Staff book in the app. Patients book, cancel and reschedule by WhatsApp, through
-the assistant, and act on an appointment they already have through its reschedule
-link. Prices are information for patients; Rubens bills nothing.
+the assistant. Prices are information for patients; Rubens bills nothing.
 
 Not in the first version, in rough order of arrival:
 

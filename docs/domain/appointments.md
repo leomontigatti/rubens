@@ -71,7 +71,7 @@ admin sets and again before it ends. A request nobody answers in that time, or
 by the lead time the admin also sets before the appointment would start,
 whichever comes first, is cancelled the same way, and the patient is told. So a
 request never reaches its start time, and no way of moving or booking a request
-(the assistant, the reschedule link, the staff picker) offers a time inside that
+(the assistant, the staff picker) offers a time inside that
 lead time.
 
 A request on the "to reschedule" list, whatever sent it there, cannot be approved
