@@ -10,6 +10,13 @@ Amended 2026-11-02 (#91): `rrule` is dropped. It came with the bootstrap and not
 ever imported it: schedules are weekdays with times and validity dates, expanded with
 `date-fns` ([ADR-0003](./0003-scheduling-and-clinical-records.md)).
 
+Amended 2026-11-06 (#125): when the port lands, the app runs on Cloudflare Workers, with
+each organization's data in a SQLite Durable Object
+([ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md)), and staff sign in
+through Clerk ([ADR-0009](./0009-staff-sign-in-through-clerk.md)). Nitro, Postgres,
+pg-boss and Better Auth go, and with them the reasons below for Drizzle's RLS support,
+for pg-boss and for Better Auth over Clerk. Until then, the table describes the code.
+
 Amended 2026-11-02: TanStack Virtual is dropped. Nothing imported it, and no list needs it: the
 patient registry is paged and the calendar is a fixed grid. A list that grows past paging adds it back.
 
