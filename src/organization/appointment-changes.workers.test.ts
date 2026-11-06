@@ -359,7 +359,7 @@ describe("rescheduling", () => {
     const id = await w.bookJuan();
     await w.bookJuan(at("13:00"), w.pedro.id);
 
-    expect(await w.reschedule({ appointmentId: id, start: at("13:00") })).toEqual({
+    expect(await w.reschedule({ appointmentId: id, start: at("13:00") })).toMatchObject({
       ok: false,
       reason: "notFree",
     });

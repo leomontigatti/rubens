@@ -11,7 +11,7 @@ import {
 import { nextWeek, people, storageStateOf } from "./world.test-support.ts";
 
 // The booking path as reception walks it: book from the calendar, have a second
-// booking of the same start refused, and move an appointment a time off left
+// booking of the same start refused and book it at a time its day has left, and move an appointment a time off left
 // outside working time. Each test keeps to its own weekday of next week.
 
 test.use({ storageState: storageStateOf("receptionist") });
@@ -53,7 +53,7 @@ test("books a new patient from the agenda and shows them on the calendar", async
   await expect(freeCell(page, date, "09:00")).toHaveCount(0);
 });
 
-test("refuses a second booking of the practitioner's same start, saving nothing", async ({
+test("refuses a second booking of the practitioner's same start, and offers the day's free times left", async ({
   page,
   browser,
 }) => {
@@ -83,9 +83,16 @@ test("refuses a second booking of the practitioner's same start, saving nothing"
   await expect(start).toHaveAccessibleDescription(/\S/);
   await expect(page).toHaveURL(/\/agenda\/turnos\/nuevo/);
 
-  await page.goto(`/agenda?fecha=${date}`);
+  // The form, opened from a cell, lists the free times that day has left.
+  await expect(page.getByText("Horarios libres que quedan ese día:")).toBeVisible();
+  await expect(start.getByRole("button", { name: "09:00" })).toHaveCount(0);
+  await start.getByRole("button", { name: "09:30" }).click();
+  await page.getByRole("button", { name: "Dar turno" }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/agenda\\?fecha=${date}`));
   await expect(appointmentCard(page, "09:00", first)).toBeVisible();
   await expect(appointmentCard(page, "09:00", second)).toHaveCount(0);
+  await expect(appointmentCard(page, "09:30", second)).toBeVisible();
   await other.context().close();
 });
 

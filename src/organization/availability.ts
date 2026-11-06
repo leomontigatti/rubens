@@ -248,6 +248,22 @@ export function findFreeTimes(
   return { free, schedules };
 }
 
+/**
+ * The practitioner's free starts on the local day of `instant`, for the
+ * duration, as the screens receive them: what a refused start offers instead.
+ */
+export function freeStartsOfDay(
+  writer: Writer,
+  owner: { id: string; gridMinutes: number },
+  instant: Date,
+  options: { durationMinutes: number; excludeAppointmentId?: string },
+): AvailableStart[] {
+  const date = localDate(instant, defaultTimeZone);
+  const window = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, defaultTimeZone);
+  const { free, schedules } = findFreeTimes(writer, owner, { window, ...options });
+  return toAvailableStarts(free, schedules);
+}
+
 /** Free starts as the screens receive them, with their office's and room's names. */
 function toAvailableStarts(
   free: readonly FreeStart[],

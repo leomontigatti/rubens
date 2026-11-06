@@ -8,7 +8,14 @@ import { findCrowding } from "#/lib/room-space.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-import { asRange, findBlocking, findFreeTimes, meets } from "#/organization/availability.ts";
+import {
+  asRange,
+  findBlocking,
+  findFreeTimes,
+  freeStartsOfDay,
+  meets,
+} from "#/organization/availability.ts";
+import type { AvailableStart } from "#/organization/availability.ts";
 import type { Writer } from "#/organization/database.ts";
 import { appointment, office, practitioner, room, schedule } from "#/organization/schema.ts";
 
@@ -55,9 +62,12 @@ export type NewPlacement =
 
 type Placed = { ok: true; roomId: string; timeZone: string };
 
+/** A start that is not free, with the free starts its day has left for that duration. */
+type NotFree = { ok: false; reason: "notFree"; freeStarts: AvailableStart[] };
+
 /** Why a placement of that kind was refused, so a screen's copy map covers each. */
 export type PlacementRefusal<Kind extends NewPlacement["kind"]> = Kind extends "freeStart"
-  ? WarningRefusal | { ok: false; reason: "notFree" }
+  ? WarningRefusal | NotFree
   : WarningRefusal | RoomRefusal | { ok: false; reason: "roomRequired" | "timeOff" | "closed" };
 
 const intersects = (a: TimeRange, b: TimeRange) => a.start < b.end && b.start < a.end;
@@ -220,15 +230,20 @@ function placeFreeStart(
   bookable: { id: string; gridMinutes: number },
   span: TimeRange,
   excludeAppointmentId: string | undefined,
-): Placed | { ok: false; reason: "notFree" } {
+): Placed | NotFree {
+  const durationMinutes = (+span.end - +span.start) / 60_000;
   const { free, schedules } = findFreeTimes(writer, bookable, {
     window: { start: span.start, end: new Date(+span.start + 1) },
-    durationMinutes: (+span.end - +span.start) / 60_000,
+    durationMinutes,
     excludeAppointmentId,
   });
   const slot = free.find((candidate) => +candidate.start === +span.start);
   if (!slot) {
-    return { ok: false, reason: "notFree" };
+    const freeStarts = freeStartsOfDay(writer, bookable, span.start, {
+      durationMinutes,
+      excludeAppointmentId,
+    });
+    return { ok: false, reason: "notFree", freeStarts };
   }
   const { timeZone } = schedules.find((row) => row.roomId === slot.roomId)!;
   return { ok: true, roomId: slot.roomId, timeZone };

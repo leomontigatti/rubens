@@ -109,6 +109,25 @@ async function world() {
 }
 
 describe("booking an appointment", () => {
+  it("answers a taken start with the free starts its day has left, for that duration", async () => {
+    const w = await world();
+    await w.book(w.bookingOf());
+
+    const refused = await w.tryBook(w.bookingOf({ patientId: w.pedro.id, durationMinutes: 60 }));
+
+    expect(refused).toMatchObject({ ok: false, reason: "notFree" });
+    const offered = !refused.ok && "freeStarts" in refused ? refused.freeStarts : [];
+    expect(offered.map((free) => free.start.toISOString())).toEqual(
+      await w.freeStartsOf(w.juan.practitionerId, 60),
+    );
+    expect(offered[0]).toEqual({
+      start: at("12:30"),
+      officeName: "Sede Centro",
+      roomName: "Consultorio 1",
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+  });
+
   it("books a free time in the room of the schedule it falls in, with the reception note", async () => {
     const w = await world();
 
@@ -136,17 +155,19 @@ describe("booking an appointment", () => {
     await w.addTimeOff({ kind: "hours", start: "2099-01-05T10:00", end: "2099-01-05T11:00" });
 
     for (const start of [at("12:10"), at("14:30"), at("13:00"), at("13:45")]) {
-      expect(await w.tryBook(w.bookingOf({ start }))).toEqual({ ok: false, reason: "notFree" });
+      expect(await w.tryBook(w.bookingOf({ start }))).toMatchObject({
+        ok: false,
+        reason: "notFree",
+      });
     }
   });
 
   it("refuses a duration that runs past the schedule's end", async () => {
     const w = await world();
 
-    expect(await w.tryBook(w.bookingOf({ start: at("13:30"), durationMinutes: 60 }))).toEqual({
-      ok: false,
-      reason: "notFree",
-    });
+    expect(await w.tryBook(w.bookingOf({ start: at("13:30"), durationMinutes: 60 }))).toMatchObject(
+      { ok: false, reason: "notFree" },
+    );
     expect(await w.tryBook(w.bookingOf({ start: at("13:30") }))).toMatchObject({ ok: true });
   });
 
@@ -158,7 +179,7 @@ describe("booking an appointment", () => {
     expect(free).not.toContain("2099-01-05T12:00:00.000Z");
     expect(free).toContain("2099-01-05T12:30:00.000Z");
     for (const start of [at("12:00"), at("12:15")]) {
-      expect(await w.tryBook(w.bookingOf({ patientId: w.pedro.id, start }))).toEqual({
+      expect(await w.tryBook(w.bookingOf({ patientId: w.pedro.id, start }))).toMatchObject({
         ok: false,
         reason: "notFree",
       });
@@ -373,7 +394,7 @@ describe("a room two practitioners share", () => {
           start: at("14:00"),
         }),
       ),
-    ).toEqual({ ok: false, reason: "notFree" });
+    ).toMatchObject({ ok: false, reason: "notFree" });
     expect(await w.appointmentCount()).toBe(1);
   });
 });
