@@ -55,13 +55,14 @@ A reminder that asks for confirmation.
 
 A reminder that asks nothing, such as one two hours before.
 
-> Hola {{paciente}}, te esperamos hoy a las {{hora}} con {{profesional}} en {{sede}} ({{direccion}}). [firma]
+> Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}} con {{profesional}} en {{sede}} ({{direccion}}). [firma]
 
 ## `indicaciones`
 
 A medical service's care instructions, sent when the appointment is marked
 attended. The medical service's text goes whole, and must fit the
-body's limit.
+body's limit. Whether Meta accepts line breaks in a value is to be tested before
+it is built; care instructions are often a list.
 
 > Hola {{paciente}}, te dejamos las indicaciones de {{profesional}} para después de tu turno: {{indicaciones}}. Cualquier duda, respondé este mensaje. [firma]
 
@@ -84,7 +85,8 @@ Sent when staff move an appointment.
 
 ### `turno_cancelado`
 
-Sent when staff cancel an appointment, by the business.
+Sent when staff cancel an appointment, by the business. Until booking arrives in
+the second release, a reply asking for another time is handed off.
 
 > Hola {{paciente}}, tuvimos que cancelar tu turno con {{profesional}} del {{fecha}} a las {{hora}}. Disculpá las molestias. Respondé este mensaje y buscamos otro horario. [firma]
 

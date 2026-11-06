@@ -40,8 +40,8 @@ entered by an admin or by the practitioner it belongs to.
 When time off, a closure, or a schedule change leaves requested, booked or
 confirmed appointments outside
 working time, those appointments go on reception's "to reschedule" list. Nothing
-is cancelled on its own. Each affected patient is told, with their reschedule
-link, unless whoever enters the time off or the closure chooses not to
+is cancelled on its own. Each affected patient is told, by a message inviting a
+reply, unless whoever enters the time off or the closure chooses not to
 ([messages.md](./messages.md#to-patients)); an appointment nobody moves stays on
 the list for reception.
 
@@ -57,5 +57,5 @@ otherwise, whatever the medical service's duration. The grid keeps start times
 tidy and stable as appointments come and go; it does not limit an appointment's
 length, and an overbooking may start off the grid.
 
-Staff can book any date ahead. Patients see a limited window, on the reschedule
-page and through the assistant.
+Staff can book any date ahead. Patients see a limited window, through the
+assistant.

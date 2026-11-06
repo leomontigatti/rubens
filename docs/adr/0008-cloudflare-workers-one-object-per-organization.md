@@ -7,6 +7,9 @@ follows [ADR-0002](./0002-tenancy-and-database-connections.md) and
 Date: 2026-11-06. Decided in #125, from the prototype on the `prototype/cloudflare-workers`
 branch, whose README has the measurements.
 
+Amended 2026-11-06: where the WhatsApp gateway runs, left open here, is settled by
+[ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md); see Consequences.
+
 Rubens moves from one VPS (Node, Postgres, Coolify) to Cloudflare Workers on the free
 plan. An organization's data (offices, rooms, practitioners, schedules, patients,
 appointments, clinical records, the audit log) lives in one Durable Object of its own,

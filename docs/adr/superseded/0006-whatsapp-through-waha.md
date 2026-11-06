@@ -47,7 +47,7 @@ number, and blocks or reports.
   otherwise only replies. It never messages a list.
 - The booking confirmation asks the patient to save the number.
 - No two messages are the same text: the assistant writes each one
-  ([messages.md](../domain/messages.md#to-patients)).
+  ([messages.md](../../domain/messages.md#to-patients)).
 - A patient who asks to stop gets nothing more that Rubens starts.
 - Messages Rubens starts are spread out, never sent in a burst.
 - A reply waits until the patient stops writing, then shows typing for about as

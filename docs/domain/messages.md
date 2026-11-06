@@ -66,7 +66,10 @@ number or the template is usable again, less those no longer true:
   only the latest goes.
 
 Care instructions and follow-ups are about an appointment that already took place,
-so they still go, however late.
+so they still go, however late. A reply whose conversation window closed meanwhile
+cannot go as it is: a person's waits behind the reopen template
+([assistant.md](./assistant.md#handoff)); the assistant's is dropped and the
+conversation handed off.
 
 ## To staff
 

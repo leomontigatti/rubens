@@ -52,9 +52,11 @@ free plan. This replaces the pg-boss worker of ADR-0006.
 ## A full inbox in the app
 
 With no phone, the app is where people read and answer patients. Every conversation is
-readable by reception and admins, with the messages judged clinical hidden from anyone
-who is not a practitioner who keeps clinical records; a practitioner sees the
-conversations about their own appointments. Anyone allowed can take a conversation over
+readable by reception and admins, with the messages judged clinical, and those not
+judged yet, hidden from anyone who is not a practitioner who keeps clinical records; a
+practitioner sees the conversations about their own appointments and those handed to
+them. The assistant judges every patient message, also while a person holds the
+conversation. Anyone allowed can take a conversation over
 at any time, not only on a handoff. Practitioners keep replying from Telegram
 (ADR-0007); the inbox is no longer only its fallback.
 

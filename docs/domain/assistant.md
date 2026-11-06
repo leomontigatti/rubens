@@ -130,20 +130,24 @@ Rubens can send only an approved template ([messages.md](./messages.md#to-patien
 
 When the model is unavailable, an incoming message is kept and retried while the
 window is open. If it still cannot be read, it is handed to a person well before
-the window closes. No code reads it in the model's place.
+the window closes, as a clinical handoff, since nobody knows yet what it says. No
+code reads it in the model's place.
 
 ## Inbox
 
 Every conversation is in the app's inbox. Reception and admins read all of them; a
-practitioner reads those about their own appointments. A message the assistant
-judged clinical, the patient's or a held reply, is left out of every conversation
-shown to someone who is not a practitioner who keeps clinical records, in the app
-and on Telegram.
+practitioner reads those about their own appointments and those handed to them.
+The assistant judges every message a patient sends, also while a person holds the
+conversation. A message judged clinical, the patient's or a held reply, is left out
+of every conversation shown to someone who is not a practitioner who keeps
+clinical records, in the app and on Telegram. A message not judged yet, because
+the model is unavailable, is left out the same way until it is.
 
 Anyone allowed to read a conversation can take it over at any time, not only on a
 handoff. While a person holds a conversation, the assistant stays silent in it. It
 takes the conversation back when the person returns it, or after a time the admin
-sets.
+sets; a hand-back that would fall after the window closes comes forward to before
+it, so the assistant's message on taking it back goes out inside the window.
 
 ## Handoff
 
@@ -229,22 +233,19 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 - **Sandbox** (first release): staff play the patient against the real assistant,
   with its real tools and the real agenda, starting from a scenario. It shows the
   tool calls, the proposals, whether the clinical check would hold a reply, the
-  window's countdown and the number of messages. A sandbox never writes (its changes
-  are discarded), never reaches WhatsApp, is rate-limited, and counts in the
+  window's countdown and the number of messages. It runs the organization's real
+  object methods with their writes discarded, so it never writes, never reaches
+  WhatsApp, is rate-limited, and counts in the
   organization's use. A rule's author tries a change here before saving it.
 - **Saved scenarios** (second release): sandbox conversations run again on every
-  change to the rules or the model, with the differences shown. They are also the
-  set the model is chosen by.
+  change to the rules or the model, with the differences shown, as a Cloudflare
+  Workflow since a run exceeds one request's CPU limit. They are also the set the
+  model is chosen by.
 
 ## Costs
 
 Each organization pays for what its assistant uses. Meta bills the organization
-directly for its WhatsApp messages. In Argentina each delivered utility template
-costs US$0.026, and so does each message sent inside a window once the number's
-1,000 free ones of the month are used. Rubens records the rest per organization:
-voice transcription and the model's replies, sandbox use included.
-
-As an example, 1,000 reminders and 300 conversations of about six assistant
-messages come to about 2,800 messages, about US$73 a month before the free ones;
-one message per reply instead of up to three brings it to about US$38
-([whatsapp-assistant.md](../research/whatsapp-assistant.md#cost-example)).
+directly for its WhatsApp messages: each template, and each message inside a window
+past the number's free ones of the month. Rubens records the rest per organization:
+voice transcription and the model's replies, sandbox use included. Rates and an
+example month: [whatsapp-assistant.md](../research/whatsapp-assistant.md#cost-example).

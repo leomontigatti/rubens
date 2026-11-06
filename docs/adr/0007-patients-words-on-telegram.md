@@ -10,8 +10,8 @@ times.
 Amended 2026-11-06 (ADR-0010): with no phone on the organization's number, the app's
 view is a full inbox, not a fallback: every conversation, readable by role, and any
 allowed member can take one over at any time. Handoffs still carry the patient's words
-to Telegram, and practitioners still reply from there. The last two paragraphs below
-describe the view as it was decided on 2026-11-04.
+to Telegram, and practitioners still reply from there. The fallback view this ADR
+decided on 2026-11-04 is [kept apart](./superseded/0007-fallback-view.md).
 
 When the assistant hands a conversation off, the practitioner or handoff contact
 answers from Telegram, and Rubens relays the reply to the patient's WhatsApp. For
@@ -28,11 +28,3 @@ person they are handed to. Cancellation and reschedule copies, and requests to
 approve, keep the minimum. Rubens says nothing clinical on Telegram of its own; what
 reaches it is what the patient wrote. Telegram's place in the privacy notice is
 for counsel to confirm before go-live.
-
-Rubens keeps a minimal view of its own as the fallback: the open handoffs and
-requests, the conversation and a reply box, for a member without Telegram, a
-Telegram outage, and checking what was said. It is not the full inbox weighed
-above: no assigning, no labels, no push notifications beyond the existing ones.
-
-If the exposure proves unacceptable, the reversal is that view as the only place
-to answer, with Telegram back to a notification and a link.
