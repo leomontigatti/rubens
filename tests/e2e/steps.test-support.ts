@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { formatLocalDate } from "#/lib/schedules.ts";
 
-import { medicalServiceName } from "./world.ts";
+import { medicalServiceName } from "./world.test-support.ts";
 
 // Browser steps more than one spec takes. Locators go by role and accessible
 // name; a date or a time in a name is the data the spec chose, never copy.

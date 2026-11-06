@@ -14,8 +14,8 @@ pnpm test:e2e tests/e2e/booking.spec.ts        # one spec: what a session runs f
 
 Each run builds the app (`pnpm build`), rebuilds the suite's own database
 (`prepare.ts`), and starts the build on its own port (`playwright.config.ts`). The
-database sits beside the one `.env` and `.env.local` name, with `-e2e` added
-(`rubens-e2e`, or `rubens-wt-<worktree>-e2e`), and the port is `PORT` plus 10000, so
+database sits beside the one `.env` and `.env.local` name, with `_e2e` added
+(`rubens_e2e`, or `rubens-wt-<worktree>_e2e`), and the port is `PORT` plus 10000, so
 a run never touches the dev data or a dev server. Postgres must be up
 (`docker compose up -d --wait --no-recreate postgres`). The first run on a machine
 needs the browser: `pnpm exec playwright install --only-shell chromium`.
@@ -26,7 +26,7 @@ artifact.
 
 ## What knows the backend
 
-The specs know the app only through the browser and `world.ts`, so they prove the app
+The specs know the app only through the browser and `world.test-support.ts`, the seeded data, so they prove the app
 the same before and after a change of backend (ADR-0008, ADR-0009). Two files know it,
 and a port swaps those alone:
 
@@ -36,20 +36,6 @@ and a port swaps those alone:
   saves its browser state under `.auth/`, which every spec starts from.
 
 No spec queries the database or calls the auth server.
-
-## Files
-
-- `world.ts`: the seeded organization (an admin, a receptionist, a practitioner who
-  works every day, an office, a room, a medical service, a few patients), made-up
-  data only, and `nextWeek`, the dates the booking specs use.
-- `steps.ts`: steps more than one spec takes, such as holding the server's calls.
-- `smoke.spec.ts`: each role reaches the agenda; a receptionist sees no admin
-  controls; a patient is registered and found.
-- `booking.spec.ts`: book from the agenda, a second booking of the same start refused,
-  and an appointment a time off displaced moved from `/a-reprogramar`. Each test keeps
-  to its own weekday of next week, so they run side by side.
-- `form-page-races.spec.ts`, `patient-search-race.spec.ts`: one spec per browser race
-  already fixed (#106, #109, #112). Each fails with its fix reverted.
 
 ## Writing a spec
 

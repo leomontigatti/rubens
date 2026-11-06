@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page, Request } from "@playwright/test";
 
-import { holdServerFunctions } from "./steps.ts";
-import { officeName, seededPatients, storageStateOf } from "./world.ts";
+import { holdServerFunctions } from "./steps.test-support.ts";
+import { fullName, officeName, seededPatients, storageStateOf } from "./world.test-support.ts";
 
 // A save that ends while the user is already somewhere else moves nobody
 // (`useFormPage` in src/components/form-page.tsx). Both races need the save to
@@ -11,15 +11,15 @@ import { officeName, seededPatients, storageStateOf } from "./world.ts";
 
 test.use({ storageState: storageStateOf("admin") });
 
-const held = 2_000;
+// Reads are held longer than the save, so the page the user chose is still
+// loading when the save ends: the window both races open in.
+const held = 3_000;
+const saveHeld = 1_500;
 const [first, second] = seededPatients;
 
-const nameOf = (patient: (typeof seededPatients)[number]) =>
-  `${patient.firstName} ${patient.lastName}`;
-
 async function openEdit(page: Page, patient: (typeof seededPatients)[number]) {
-  await page.getByRole("link", { name: nameOf(patient) }).click();
-  await expect(page.getByRole("heading", { level: 1, name: nameOf(patient) })).toBeVisible();
+  await page.getByRole("link", { name: fullName(patient) }).click();
+  await expect(page.getByRole("heading", { level: 1, name: fullName(patient) })).toBeVisible();
   await page.getByRole("button", { name: "Editar" }).click();
   await expect(page.getByLabel("Dirección")).toBeEditable();
 }
@@ -29,19 +29,15 @@ function sidebarLink(page: Page, name: string) {
 }
 
 /**
- * Answers the question a dirty form may ask before it is left while its save
- * runs: when it asks, it does at once, so a short wait tells. Left unanswered,
- * the navigation would never start and the spec would test nothing.
+ * Answers the question the form asks before it is left: it is dirty while its
+ * save runs. Answered before the save ends, or the spec fails here: past it,
+ * the navigation would start too late to test anything.
  */
-async function discardIfAsked(page: Page) {
-  const question = page.getByRole("alertdialog");
-  const asked = await question
-    .waitFor({ timeout: 400 })
-    .then(() => true)
-    .catch(() => false);
-  if (asked) {
-    await question.getByRole("button", { name: "Descartar cambios" }).click();
-  }
+async function discardChanges(page: Page) {
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Descartar cambios" })
+    .click({ timeout: saveHeld });
 }
 
 const isSave = (request: Request) =>
@@ -56,7 +52,7 @@ const isSave = (request: Request) =>
  */
 async function startHeldSave(page: Page, address: string) {
   await page.getByLabel("Dirección").fill(`${address} ${Date.now()}`);
-  await holdServerFunctions(page, held, held / 2);
+  await holdServerFunctions(page, held, saveHeld);
   const sent = page.waitForRequest(isSave);
   const saved = page.waitForResponse((response) => isSave(response.request()));
   const clicked = page.getByRole("button", { name: "Guardar" }).click();
@@ -95,7 +91,7 @@ test("#106: a sidebar link clicked during a save opens its page, and stays", asy
   const save = await startHeldSave(page, "Calle Sidebar 106");
   const shown = addressesFrom(page);
   await sidebarLink(page, "Agenda").click();
-  await discardIfAsked(page);
+  await discardChanges(page);
   await save.ended;
   await settle(page);
 
@@ -123,7 +119,7 @@ test("#109: a history jump to another record's edit page during a save stays the
   const save = await startHeldSave(page, "Calle Historia 109");
   const shown = addressesFrom(page);
   await page.evaluate(() => history.go(-3));
-  await discardIfAsked(page);
+  await discardChanges(page);
   await save.ended;
   await settle(page);
 

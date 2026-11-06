@@ -7,8 +7,8 @@ import {
   freeCell,
   openBooking,
   selectMedicalService,
-} from "./steps.ts";
-import { nextWeek, people, storageStateOf } from "./world.ts";
+} from "./steps.test-support.ts";
+import { nextWeek, people, storageStateOf } from "./world.test-support.ts";
 
 // The booking path as reception walks it: book from the calendar, have a second
 // booking of the same start refused, and move an appointment a time off left

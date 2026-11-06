@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { people, roles, seededPatients, storageStateOf } from "./world.ts";
+import { fullName, people, roles, seededPatients, storageStateOf } from "./world.test-support.ts";
 
 // The app serves, each role is signed in and reaches the agenda, and what only
 // an admin may do stays out of a receptionist's reach.
@@ -22,7 +22,7 @@ for (const role of roles) {
 }
 
 const [patient] = seededPatients;
-const patientName = `${patient.firstName} ${patient.lastName}`;
+const patientName = fullName(patient);
 
 test.describe("as the admin", () => {
   test.use({ storageState: storageStateOf("admin") });

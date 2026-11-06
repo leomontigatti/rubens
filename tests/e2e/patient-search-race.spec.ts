@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { holdServerFunctions, openBooking } from "./steps.ts";
-import { nextWeek, seededPatients, storageStateOf } from "./world.ts";
+import { holdServerFunctions, openBooking } from "./steps.test-support.ts";
+import { fullName, nextWeek, seededPatients, storageStateOf } from "./world.test-support.ts";
 
 // #112: before the fix, the booking's patient picker kept showing the answer to
 // earlier text while the answer to the text in the box was on its way, so a
@@ -10,10 +10,8 @@ import { nextWeek, seededPatients, storageStateOf } from "./world.ts";
 test.use({ storageState: storageStateOf("receptionist") });
 
 const held = 1_500;
-const nameOf = (patient: (typeof seededPatients)[number]) =>
-  `${patient.firstName} ${patient.lastName}`;
-const olga = nameOf(seededPatients[2]);
-const osvaldo = nameOf(seededPatients[3]);
+const olga = fullName(seededPatients[2]);
+const osvaldo = fullName(seededPatients[3]);
 
 test("#112: the picker lists only the answer to the text in the box", async ({ page }) => {
   await openBooking(page, nextWeek(5), "15:00");

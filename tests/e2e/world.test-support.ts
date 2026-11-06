@@ -43,6 +43,10 @@ export const seededPatients = [
   { firstName: "Osvaldo", lastName: "Bustos", phone: "0351 15 400-0004" },
 ] as const;
 
+/** A patient's name as the app shows it, with no chosen name. */
+export const fullName = (patient: { firstName: string; lastName: string }) =>
+  `${patient.firstName} ${patient.lastName}`;
+
 /**
  * The practitioner works every day from 08:00 to 20:00, from today on, so any
  * day after today has free starts. Each booking spec keeps to its own weekday

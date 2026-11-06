@@ -36,11 +36,13 @@ export function worktreeDatabaseName(worktreePath: string): string {
 }
 
 /**
- * The database the browser suite rebuilds on every run (`tests/e2e/prepare.ts`),
- * beside the one it is named after, so a run never touches the dev data.
+ * The database the browser suite drops and rebuilds on every run
+ * (`tests/e2e/prepare.ts`), beside the one it is named after. The `_` is one
+ * no worktree slug holds, so the name is never another worktree's dev
+ * database, nor, once truncated, its own.
  */
 export function e2eDatabaseName(database: string): string {
-  return `${database.slice(0, 63 - "-e2e".length)}-e2e`;
+  return `${database.slice(0, 63 - "_e2e".length)}_e2e`;
 }
 
 export function databaseUrlFor(baseUrl: string, database: string): string {

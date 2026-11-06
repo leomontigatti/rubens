@@ -1,6 +1,6 @@
 import { expect, test as setup } from "@playwright/test";
 
-import { people, roles, storageStateOf } from "./world.ts";
+import { people, roles, storageStateOf } from "./world.test-support.ts";
 
 // Signs each role in once, through the sign-in page, and saves the browser's
 // state for the specs. The one place the suite signs in: a change of auth

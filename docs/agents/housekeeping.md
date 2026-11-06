@@ -9,11 +9,11 @@ container, on its first `pnpm dev` or `pnpm db:migrate`. The slug is the worktre
 lowercased, every run of other characters turned into `-` (`worktreeDatabaseName` in
 `scripts/worktree-db.ts`), so a database belongs to the worktree whose folder gives that slug,
 wherever the folder lives. The main checkout's `rubens` database is never one of them. A
-worktree that ran `pnpm test:e2e` also has `rubens-wt-<slug>-e2e` (`e2eDatabaseName`), which
+worktree that ran `pnpm test:e2e` also has `rubens-wt-<slug>_e2e` (`e2eDatabaseName`), which
 belongs to the same worktree and goes with it.
 
 - **List**: `pnpm db:worktree prune` prints every `rubens-wt-` database whose worktree is gone,
-  its `-e2e` database included, and T3's removed worktrees too. It changes nothing.
+  its `_e2e` database included, and T3's removed worktrees too. It changes nothing.
 - **Remove**, one by name, for each database the accepted report listed:
   `docker exec rubens-postgres dropdb --force -U postgres <database>`.
   Never `pnpm db:worktree prune --apply`: it drops whatever is orphaned when it runs, including

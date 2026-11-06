@@ -27,10 +27,10 @@ import {
   roomName,
   seededPatients,
   workingHours,
-} from "./world.ts";
+} from "./world.test-support.ts";
 
 // The browser suite's database, rebuilt on every `pnpm test:e2e`: dropped,
-// migrated as the app ships, and seeded with `world.ts`. The only file of the
+// migrated as the app ships, and seeded with `world.test-support.ts`. The only file of the
 // suite that knows the backend: a port to another one swaps this file and the
 // sign-in in `auth.setup.ts`, and no spec.
 //
