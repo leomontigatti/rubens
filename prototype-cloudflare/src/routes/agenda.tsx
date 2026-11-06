@@ -40,7 +40,7 @@ function Agenda() {
       <p>
         <a href={`/agenda?week=${addDays(week, -7)}&office=${office.id}`}>← anterior</a>{" "}
         <a href={`/agenda?week=${addDays(week, 7)}&office=${office.id}`}>siguiente →</a> · usuario{" "}
-        {data.caller.userId}
+        {data.caller.userId} ({data.caller.roles.join(", ")})
       </p>
       {result && <p role="status">Resultado: {result}</p>}
       <table>
@@ -147,7 +147,7 @@ function Agenda() {
 
       <p data-stats>
         Esta página: {stats.rowsRead} filas leídas en SQLite, 1 llamada al Durable Object,{" "}
-        {stats.d1Queries} consultas D1 del objeto, {stats.objectMs.toFixed(2)} ms en el objeto;{" "}
+        {stats.objectMs.toFixed(2)} ms en el objeto;{" "}
         {appointments.length} turnos.
       </p>
     </main>

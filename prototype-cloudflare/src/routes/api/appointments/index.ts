@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { answer, readBody, unauthenticated } from "../../../lib/http";
-import { callerFrom, organizationObject } from "../../../lib/organization";
+import { callerFrom } from "../../../lib/identity";
+import { organizationObject } from "../../../lib/organization";
 import { record } from "../../../lib/request-stats";
 import { instant } from "../../../lib/week";
 
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/api/appointments/")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const caller = await callerFrom(request.headers);
+        const caller = await callerFrom(request);
         if (!caller) return unauthenticated();
         const body = await readBody(request);
         const startsAt =

@@ -1,22 +1,12 @@
+import { clerkClient } from "@clerk/tanstack-react-start/server";
 import { createFileRoute } from "@tanstack/react-router";
-import { env as workerEnv } from "cloudflare:workers";
 
-import type { Env } from "../../../lib/env";
-
-import { getAuth } from "../../../lib/auth";
+import { authMode, env } from "../../../lib/identity";
 import { organizationObject } from "../../../lib/organization";
+import { devOrganizationId, devPassword, staff, staffEmail } from "../../../lib/staff";
 import { addDays, instant } from "../../../lib/week";
 import type { SeedData } from "../../../org/organization-data";
 
-export const devPassword = "rubens-dev-password";
-
-const staff = [
-  { email: "admin@rubens.example", name: "Ana Admin", role: "admin" },
-  { email: "p1@rubens.example", name: "Pablo Pérez", role: "practitioner" },
-  { email: "p2@rubens.example", name: "Paula Gómez", role: "practitioner" },
-  { email: "p3@rubens.example", name: "Pedro Díaz", role: "practitioner" },
-  { email: "p4@rubens.example", name: "Patricia Ruiz", role: "practitioner" },
-];
 const colors = ["#e11d48", "#2563eb", "#16a34a", "#d97706"];
 const firstNames = [
   "Lucía",
@@ -31,56 +21,67 @@ const firstNames = [
   "Santiago",
 ];
 const lastNames = ["Fernández", "López"];
+const organizationName = "Consultorios Belgrano";
 
-async function ensureStaff() {
-  const auth = await getAuth();
-  const context = await auth.$context;
-  const users: { id: string; email: string; name: string; role: string }[] = [];
+type SeededUser = { id: string; email: string; name: string; role: string };
+
+/**
+ * With Clerk: the five staff users (email and password), one organization, and each
+ * membership's rubens roles in its public metadata, all through Clerk's Backend API.
+ * Idempotent: finds what exists by email and organization name.
+ */
+async function ensureClerkStaff(): Promise<{ organizationId: string; users: SeededUser[] }> {
+  const clerk = clerkClient({
+    secretKey: env.CLERK_SECRET_KEY,
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+  });
+  const users: SeededUser[] = [];
   for (const person of staff) {
-    let user = await context.internalAdapter
-      .findUserByEmail(person.email)
-      .then((found) => found?.user);
-    if (!user) {
-      user = await context.internalAdapter.createUser({
-        name: person.name,
-        email: person.email,
-        emailVerified: true,
-      });
-      await context.internalAdapter.linkAccount({
-        userId: user.id,
-        providerId: "credential",
-        accountId: user.id,
-        password: await context.password.hash(devPassword),
-      });
-    }
-    users.push({ ...person, id: user.id });
+    const email = staffEmail(person.email);
+    const [firstName, ...rest] = person.name.split(" ");
+    let user = (await clerk.users.getUserList({ emailAddress: [email] })).data[0];
+    user ??= await clerk.users.createUser({
+      emailAddress: [email],
+      // This instance's sign-in options require a username.
+      username: `rubens_${person.email}`,
+      password: devPassword,
+      skipPasswordChecks: true,
+      firstName,
+      lastName: rest.join(" "),
+    });
+    users.push({ id: user.id, email, name: person.name, role: person.roles.join(",") });
   }
   const admin = users[0]!;
-  let organizationId = (
-    await context.adapter.findOne<{ id: string }>({
-      model: "organization",
-      where: [{ field: "slug", value: "consultorios-belgrano" }],
-    })
-  )?.id;
-  if (!organizationId) {
-    const created = await auth.api.createOrganization({
-      body: { name: "Consultorios Belgrano", slug: "consultorios-belgrano", userId: admin.id },
-    });
-    organizationId = created!.id;
-  }
-  for (const user of users.slice(1)) {
-    const existing = await context.adapter.findOne({
-      model: "member",
-      where: [
-        { field: "userId", value: user.id },
-        { field: "organizationId", value: organizationId },
-      ],
-    });
-    if (!existing) {
-      await auth.api.addMember({ body: { userId: user.id, role: "practitioner", organizationId } });
+  const memberships = await clerk.users.getOrganizationMembershipList({ userId: admin.id });
+  let organizationId = memberships.data.find((m) => m.organization.name === organizationName)
+    ?.organization.id;
+  organizationId ??= (await clerk.organizations.createOrganization({
+    name: organizationName,
+    createdBy: admin.id,
+  })).id;
+  const existing = await clerk.organizations.getOrganizationMembershipList({ organizationId });
+  for (const [i, user] of users.entries()) {
+    if (!existing.data.some((m) => m.publicUserData?.userId === user.id)) {
+      await clerk.organizations.createOrganizationMembership({
+        organizationId,
+        userId: user.id,
+        role: i === 0 ? "org:admin" : "org:member",
+      });
     }
+    await clerk.organizations.updateOrganizationMembershipMetadata({
+      organizationId,
+      userId: user.id,
+      publicMetadata: { roles: staff[i]!.roles },
+    });
   }
   return { organizationId, users };
+}
+
+function devStaff(): { organizationId: string; users: SeededUser[] } {
+  return {
+    organizationId: devOrganizationId,
+    users: staff.map((p) => ({ id: p.devId, email: p.devId, name: p.name, role: p.roles.join(",") })),
+  };
 }
 
 /** One office, two rooms, four practitioners in two shifts per room, 20 patients, Oct–Dec 2026. */
@@ -95,7 +96,7 @@ function clinicData(users: { id: string; name: string; role: string }[]): SeedDa
     { id: "room-2", officeId: office.id, name: "Consultorio 2", capacity: 2 },
   ];
   const practitioners = users
-    .filter((u) => u.role === "practitioner")
+    .filter((u) => u.role.split(",").includes("practitioner"))
     .map((u, i) => ({
       id: `practitioner-${i + 1}`,
       userId: u.id,
@@ -166,16 +167,18 @@ export const Route = createFileRoute("/api/dev/seed")({
     handlers: {
       POST: async ({ request }) => {
         // Deployed, the seed answers only a request carrying the SEED_KEY secret (the CPU test).
-        const seedKey = (workerEnv as unknown as Env).SEED_KEY;
+        const seedKey = env.SEED_KEY;
         const allowed =
           import.meta.env.DEV || (!!seedKey && request.headers.get("x-seed-key") === seedKey);
         if (!allowed) return new Response(null, { status: 404 });
-        const { organizationId, users } = await ensureStaff();
+        const { organizationId, users } =
+          authMode() === "clerk" ? await ensureClerkStaff() : devStaff();
         const data = clinicData(users);
         const result = await organizationObject(organizationId).seed(data);
         return Response.json({
           organizationId,
-          users: users.map(({ email, role }) => ({ email, role, password: devPassword })),
+          mode: authMode(),
+          users: users.map(({ email, role }) => ({ email, role })),
           rooms: data.rooms.length,
           practitioners: data.practitioners.length,
           patients: data.patients.length,

@@ -7,7 +7,7 @@ export { OrganizationData } from "./org/organization-data";
 /**
  * Start's handler, wrapped to report per request: wall time in the Worker (the body
  * is buffered so a streamed render is counted whole), Durable Object calls, SQLite
- * rows read and written, and D1 queries the object ran.
+ * rows read and written.
  */
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
@@ -16,8 +16,6 @@ export default {
       rowsRead: 0,
       rowsWritten: 0,
       objectMs: 0,
-      d1Queries: 0,
-      workerD1Queries: 0,
     };
     const startedAt = performance.now();
     return requestStats.run(stats, async () => {
@@ -29,8 +27,7 @@ export default {
         "Server-Timing",
         [
           `worker;dur=${total.toFixed(2)}`,
-          `object;dur=${stats.objectMs.toFixed(2)};desc="calls=${stats.objectCalls} rowsRead=${stats.rowsRead} rowsWritten=${stats.rowsWritten} d1=${stats.d1Queries}"`,
-          `d1;desc="worker queries=${stats.workerD1Queries}"`,
+          `object;dur=${stats.objectMs.toFixed(2)};desc="calls=${stats.objectCalls} rowsRead=${stats.rowsRead} rowsWritten=${stats.rowsWritten}"`,
         ].join(", "),
       );
       return new Response(body, {

@@ -1,14 +1,4 @@
-import type { Caller } from "./access";
-import { env, getAuth } from "./auth";
-
-/** The session's user and organization, or null when signed out. */
-export async function callerFrom(headers: Headers): Promise<Caller | null> {
-  const auth = await getAuth();
-  const result = await auth.api.getSession({ headers });
-  const organizationId = result?.session.activeOrganizationId;
-  if (!result || !organizationId) return null;
-  return { userId: result.user.id, organizationId };
-}
+import { env } from "./identity";
 
 /**
  * The organization's Durable Object. `locationHint: "sam"` asks for South America;

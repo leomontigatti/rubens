@@ -6,16 +6,6 @@
   // A custom entry so the Durable Object class can be exported next to Start's handler.
   "main": "src/server.ts",
   "observability": { "enabled": true },
-  // Better Auth's users, sessions, organizations and members: one store for every organization.
-  // Locally Miniflare keeps it under .wrangler/state; the id is only needed to deploy
-  // (`wrangler d1 create rubens-auth` prints it).
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "rubens-auth",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-    },
-  ],
   // One SQLite-backed object per organization, holding its clinic data.
   "durable_objects": {
     "bindings": [{ "name": "ORGANIZATION", "class_name": "OrganizationData" }],

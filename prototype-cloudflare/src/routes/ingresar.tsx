@@ -1,26 +1,36 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { SignIn } from "@clerk/tanstack-react-start";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 
-// Plain HTML: the form posts to /api/sign-in, which sets the session cookie and redirects.
-export const Route = createFileRoute("/ingresar")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    error: search.error === "1" ? true : undefined,
-  }),
-  component: SignIn,
-});
+import { staff } from "../lib/staff";
 
-function SignIn() {
-  const { error } = Route.useSearch();
+const root = getRouteApi("__root__");
+
+export const Route = createFileRoute("/ingresar")({ component: SignInPage });
+
+function SignInPage() {
+  const mode = root.useLoaderData();
+  if (mode === "clerk") {
+    return (
+      <main>
+        <h1>Ingresar</h1>
+        <SignIn routing="hash" forceRedirectUrl="/agenda" />
+      </main>
+    );
+  }
+  // Dev mode, no Clerk key: pick one of the seeded staff (plain HTML form, no password).
   return (
     <main>
-      <h1>Ingresar</h1>
-      {error && <p role="alert">Email o contraseña incorrectos.</p>}
-      <form method="post" action="/api/sign-in">
+      <h1>Ingresar (dev, sin Clerk)</h1>
+      <form method="post" action="/api/dev/sign-in">
         <label>
-          Email <input name="email" type="email" required defaultValue="admin@rubens.example" />
-        </label>
-        <label>
-          Contraseña{" "}
-          <input name="password" type="password" required defaultValue="rubens-dev-password" />
+          Usuario{" "}
+          <select name="userId">
+            {staff.map((p) => (
+              <option key={p.devId} value={p.devId}>
+                {p.name} ({p.roles.join(", ")})
+              </option>
+            ))}
+          </select>
         </label>
         <button type="submit">Ingresar</button>
       </form>

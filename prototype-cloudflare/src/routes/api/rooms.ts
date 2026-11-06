@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { answer, readBody, unauthenticated } from "../../lib/http";
-import { callerFrom, organizationObject } from "../../lib/organization";
+import { callerFrom } from "../../lib/identity";
+import { organizationObject } from "../../lib/organization";
 
 export const Route = createFileRoute("/api/rooms")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const caller = await callerFrom(request.headers);
+        const caller = await callerFrom(request);
         if (!caller) return unauthenticated();
         const body = await readBody(request);
         const result = await organizationObject(caller.organizationId).createRoom(caller, {

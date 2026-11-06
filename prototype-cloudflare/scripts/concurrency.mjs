@@ -9,15 +9,19 @@ const day = { practitioner: "2027-01-04", room: "2027-01-05", "room-overbooking"
   mode
 ];
 
-const signIn = await fetch(`${base}/api/sign-in`, {
-  method: "POST",
-  body: new URLSearchParams({ email: "admin@rubens.example", password: "rubens-dev-password" }),
-  redirect: "manual",
-});
-const cookie = signIn.headers
-  .getSetCookie()
-  .map((c) => c.split(";")[0])
-  .join("; ");
+// With Clerk, pass an admin's session token (CLERK_TOKEN, from `await Clerk.session.getToken()`
+// in a signed-in browser); in dev mode, sign in as the seeded admin.
+let auth;
+if (process.env.CLERK_TOKEN) {
+  auth = { authorization: `Bearer ${process.env.CLERK_TOKEN}` };
+} else {
+  const signIn = await fetch(`${base}/api/dev/sign-in`, {
+    method: "POST",
+    body: new URLSearchParams({ userId: "user_dev_admin" }),
+    redirect: "manual",
+  });
+  auth = { cookie: signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ") };
+}
 
 // Every span is 60 minutes and starts within 49 minutes of 10:00, so each pair overlaps.
 const startOf = (k) => Date.parse(`${day}T10:00:00-03:00`) + k * 60_000;
@@ -32,7 +36,7 @@ const requests = Array.from({ length: n }, (_, k) => {
         };
   return fetch(`${base}/api/appointments`, {
     method: "POST",
-    headers: { cookie, "content-type": "application/json" },
+    headers: { ...auth, "content-type": "application/json" },
     body: JSON.stringify({
       ...body,
       patientId: `patient-${String((k % 20) + 1).padStart(2, "0")}`,

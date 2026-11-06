@@ -14,13 +14,16 @@ pnpm dev          # http://localhost:5173, no .env, no Cloudflare account
 pnpm seed         # in a second terminal, while dev runs
 ```
 
-Sign in at `/ingresar` as `admin@rubens.example` or `p1@rubens.example` … `p4@rubens.example`,
-password `rubens-dev-password`. The agenda is `/agenda?week=2026-11-02`.
+With no Clerk key (a fresh clone), `/ingresar` is a dev sign-in: pick one of the seeded staff,
+no password. With `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in `.dev.vars` (gitignored), it
+is Clerk's `<SignIn/>`, and `pnpm seed` creates the staff in Clerk: `admin+clerk_test@example.com`,
+`p1+clerk_test@example.com` … `p4+clerk_test@example.com`, password `rubens-dev-password`; a
+new-device check takes the code 424242. The agenda is `/agenda?week=2026-11-02`.
 
 Other scripts, against the running dev server:
 
 - `node scripts/concurrency.mjs practitioner|room|room-overbooking [n]`: n concurrent bookings, counted.
-- `GET /api/dev/bench?n=10`: Better Auth password hash and verify timed inside workerd.
+- `CLERK_TOKEN=<session JWT> node scripts/concurrency.mjs …`: the same, as a Clerk user.
 - Every response carries `Server-Timing`: Worker wall time, Durable Object calls, SQLite rows
   read and written, and D1 queries.
 
@@ -31,17 +34,21 @@ Other scripts, against the running dev server:
 | Piece       | Where                                              | What                                                                                                                                                        |
 | ----------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Worker      | `src/server.ts`                                    | TanStack Start's handler, wrapped for `Server-Timing`; exports the Durable Object class                                                                     |
-| Auth        | `src/lib/auth.ts`                                  | Better Auth, email and password, organization plugin; users, sessions, organizations and members in **D1** (`DB`)                                           |
+| Auth        | `src/start.ts`, `src/lib/identity.ts`              | **Clerk** (`clerkMiddleware`, `<SignIn/>`): users, sessions, organizations and memberships live in Clerk; rubens' roles in the membership's public metadata, carried in the session token's `roles` claim. No key: a dev sign-in |
 | Clinic data | `src/org/organization-data.ts`                     | `OrganizationData`, one **SQLite-backed Durable Object per organization** (`idFromName(organizationId)`, `locationHint: "sam"`), Drizzle over `ctx.storage` |
 | Booking     | `OrganizationData.book`                            | both rules of migration 0013 checked and the row inserted in one `transactionSync`                                                                          |
 | Reminder    | `OrganizationData.alarm`                           | a `reminder` row per appointment; the object's one alarm is set to the earliest due                                                                         |
 | Screens     | `src/routes/ingresar.tsx`, `src/routes/agenda.tsx` | plain HTML forms posting to `/api/sign-in`, `/api/appointments`, `/api/rooms`                                                                               |
 | Seed        | `src/routes/api/dev/seed.ts`, `scripts/seed.mjs`   | 1 organization, 1 admin, 4 practitioners, 2 rooms, 20 patients, 1,597 appointments (Oct–Dec 2026, 13 overbookings)                                          |
 
-Every call into an organization's object passes the session's `{ userId, organizationId }`.
-The object refuses a caller whose organization is not its own (`ctx.id.name`), who has no
-`member` row in D1, or whose roles do not allow the action (`createRoom` is admin only). The
-membership is cached in the object for 30 s, so a removed member keeps access for up to 30 s.
+Every call into an organization's object passes the session's `{ userId, organizationId, roles }`,
+taken from the session token `clerkMiddleware` verified. The object refuses a caller whose
+organization is not its own (`ctx.id.name`), who has no roles, or whose roles do not allow the
+action (`createRoom` is admin only). A removed member keeps access until the session token
+expires (60 s by default).
+
+> Sections below up to "Deployed run (2026-11-05)" record the first version, on Better Auth and
+> D1; "Clerk (2026-11-06)" records this one.
 
 ### The booking rules (migration 0013)
 
@@ -105,25 +112,60 @@ The free plan's 10 ms is not a hard cut per request, but sign-in fails at random
 
 Two fixes the deployed run needed: the seed answers a request with the `SEED_KEY` secret in `x-seed-key` outside dev, and the agenda server function reads the cookie from `getRequest().headers` (deployed, `getRequestHeaders()` carried no cookie, so every agenda load redirected to sign-in).
 
+## Clerk (2026-11-06)
+
+Better Auth's password check cost ~90 ms of CPU deployed, so auth moved to Clerk and D1 went
+away. Checks, through Clerk's `<SignIn/>` in headless Chrome (Playwright) and its session token:
+
+1. **Roles**: admin and `p1` sign in (token `roles: ["admin"]` / `["practitioner"]`, 121
+   appointments for the week of 2026-11-02); `POST /api/rooms` admin 201, practitioner 403; no
+   token: API 401, `/agenda` 307 → `/ingresar`. Deployed: the same 403 and 307.
+2. **Concurrency** (50 requests, admin's token, local): one practitioner 1 saved / 49 refused;
+   one room 1 saved / 37 room / 12 practitioner; all overbookings 13 saved / 37 room.
+3. **Deployed CPU** (free plan, `wrangler tail`, all outcomes `ok`):
+
+   | Request | n | Worker CPU | Object CPU |
+   | --- | --- | --- | --- |
+   | `GET /api/appointments/counts` (Clerk check + 1 object call, no render) | 11 | median 4 ms, max 5 | 2 ms |
+   | `GET /agenda`, browser (cookie) | 16 | median 35.5 ms, max 57 | median 5 ms, max 19 |
+   | `GET /agenda`, `Authorization: Bearer` | 10 | median 20.5 ms, max 68 | 3 ms |
+
+   Clerk's check costs a few ms: the agenda's cost is rendering the week (12 ms median in the
+   Better Auth run; higher here, not yet explained). Load time from Argentina: 461 ms median in
+   the browser, 368 ms with curl (one object round trip to the US East; no D1).
+4. **Dev with no secrets**: with no `.dev.vars`, `pnpm dev` and `pnpm seed` run with the dev
+   sign-in, and checks 1 and 2 give the same counts.
+
+What did not port cleanly:
+
+- `src/start.ts` is bundled for the browser too, so it cannot import `cloudflare:workers`; it
+  reads `process.env.CLERK_SECRET_KEY`, which `nodejs_compat` fills from the Worker's secrets.
+- With `src/start.ts`, Start drops its default CSRF middleware; it is added back there.
+- Clerk's keyless mode is not in `@clerk/tanstack-react-start` 1.7.9, hence the dev sign-in.
+- Clerk rejects `.example` addresses; the seed uses `+clerk_test@example.com`.
+- **Clerk's free plan caps an organization at 5 members** (Pro lifts it). The test clinic is
+  exactly 5. Since a rubens member belongs to one organization, the organization and roles could
+  live in the user's public metadata instead of Clerk Organizations, with no member cap.
+
 ## Deploying
 
 It takes:
 
 ```sh
 pnpm dlx wrangler login                      # or CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID
-pnpm dlx wrangler d1 create rubens-auth      # paste the database_id into wrangler.jsonc
-pnpm dlx wrangler secret put BETTER_AUTH_SECRET
 pnpm deploy                                  # vite build && wrangler deploy
+pnpm dlx wrangler secret put CLERK_SECRET_KEY
+pnpm dlx wrangler secret put CLERK_PUBLISHABLE_KEY
 ```
 
-- Bindings: `DB` (D1 `rubens-auth`), `ORGANIZATION` (Durable Object `OrganizationData`, migration
-  `v1` with `new_sqlite_classes`), secret `BETTER_AUTH_SECRET`, optionally var `BETTER_AUTH_URL`.
+- Bindings: `ORGANIZATION` (Durable Object `OrganizationData`, migration `v1` with
+  `new_sqlite_classes`); secrets `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, optionally `SEED_KEY`.
+- Clerk: Organizations on; Sessions → Customize session token:
+  `{ "roles": "{{org_membership.public_metadata.roles}}" }`.
 - An API token for CI: the "Edit Cloudflare Workers" template (Workers Scripts: Edit, Account Settings: Read, User Details: Read, Memberships: Read) plus Account › D1: Edit; Durable Objects deploy with Workers Scripts.
   Settings: Read, User › Memberships: Read (Workers Durable Objects come with Workers Scripts).
 - The paid plan (Workers Paid, USD 5/month) lifts CPU to 30 s by default; the free plan's
   10 ms is what the password hash fails locally.
-- Better Auth's tables are created on first use by its migrator (`getMigrations`); a real port
-  would generate SQL with `@better-auth/cli generate` and apply it with `wrangler d1 migrations apply`.
 
 ## Docs used
 
@@ -138,3 +180,7 @@ pnpm deploy                                  # vite build && wrangler deploy
 - Drizzle on Durable Objects SQLite: https://orm.drizzle.team/docs/connect-cloudflare-do
 - Better Auth, Cloudflare D1 / database options: https://www.better-auth.com/docs/concepts/database
 - Better Auth organization plugin: https://www.better-auth.com/docs/plugins/organization
+- Clerk TanStack React Start quickstart: https://clerk.com/docs/tanstack-react-start/getting-started/quickstart
+- Clerk `clerkMiddleware()` for TanStack Start: https://clerk.com/docs/reference/tanstack-react-start/clerk-middleware
+- Clerk session token customization: https://clerk.com/docs/backend-requests/resources/session-tokens
+- Clerk organization membership limits: https://clerk.com/docs/organizations/overview

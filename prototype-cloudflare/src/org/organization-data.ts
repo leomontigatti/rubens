@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { and, asc, eq, gt, gte, inArray, lt, lte, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 
-import { type Caller, type Role, parseRoles } from "../lib/access";
+import type { Caller, Role } from "../lib/access";
 import type { Env } from "../lib/env";
 import * as schema from "./schema";
 
@@ -18,10 +18,8 @@ export interface Stats {
   /** SQLite rows read and written by this call, from the cursors Drizzle ran. */
   rowsRead: number;
   rowsWritten: number;
-  /** Wall time spent inside the object, ms (locally ≈ CPU, the object does no I/O but D1). */
+  /** Wall time spent inside the object, ms (locally ≈ CPU, the object does no I/O). */
   objectMs: number;
-  /** D1 queries the membership check ran (0 when cached). */
-  d1Queries: number;
 }
 
 export interface BookingInput {
@@ -43,18 +41,14 @@ export interface SeedData {
   appointments: (typeof appointment.$inferInsert)[];
 }
 
-const membershipTtlMs = 30_000;
-
 /**
  * One organization's clinic data (ui: offices, rooms, practitioners, patients,
  * appointments), in the object's own SQLite. Every method takes the caller the
- * Worker resolved from the session and checks it against Better Auth's `member`
- * table in D1 before touching data.
+ * Worker resolved from the verified Clerk session token (or the dev sign-in) and
+ * checks its organization and roles before touching data.
  */
 export class OrganizationData extends DurableObject<Env> {
   private cursors: SqlStorageCursor<Record<string, SqlStorageValue>>[] = [];
-  private d1Queries = 0;
-  private memberships = new Map<string, { roles: Role[]; until: number }>();
   private db;
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -80,37 +74,19 @@ export class OrganizationData extends DurableObject<Env> {
 
   // ---------------------------------------------------------------- access
 
-  private async authorize(caller: Caller, allowed: readonly Role[]): Promise<Refusal | Role[]> {
+  private authorize(caller: Caller, allowed: readonly Role[]): Refusal | Role[] {
     if (this.ctx.id.name !== undefined && caller.organizationId !== this.ctx.id.name) {
       return { ok: false, reason: "notMember" };
     }
-    const cached = this.memberships.get(caller.userId);
-    let roles: Role[] | undefined;
-    if (cached && cached.until > Date.now()) {
-      roles = cached.roles;
-    } else {
-      this.d1Queries++;
-      const row = await this.env.DB.prepare(
-        'select role from member where "userId" = ? and "organizationId" = ?',
-      )
-        .bind(caller.userId, caller.organizationId)
-        .first<{ role: string }>();
-      if (!row) {
-        this.memberships.delete(caller.userId);
-        return { ok: false, reason: "notMember" };
-      }
-      roles = parseRoles(row.role);
-      this.memberships.set(caller.userId, { roles, until: Date.now() + membershipTtlMs });
-    }
-    if (!roles.some((role) => allowed.includes(role))) {
+    if (caller.roles.length === 0) return { ok: false, reason: "notMember" };
+    if (!caller.roles.some((role) => allowed.includes(role))) {
       return { ok: false, reason: "forbidden" };
     }
-    return roles;
+    return caller.roles;
   }
 
   private begin() {
     this.cursors = [];
-    this.d1Queries = 0;
     return performance.now();
   }
 
@@ -126,7 +102,6 @@ export class OrganizationData extends DurableObject<Env> {
       rowsRead,
       rowsWritten,
       objectMs: performance.now() - startedAt,
-      d1Queries: this.d1Queries,
     };
   }
 
@@ -134,7 +109,7 @@ export class OrganizationData extends DurableObject<Env> {
 
   async agenda(caller: Caller, input: { officeId?: string; from: number; to: number }) {
     const startedAt = this.begin();
-    const access = await this.authorize(caller, ["admin", "receptionist", "practitioner"]);
+    const access = this.authorize(caller, ["admin", "receptionist", "practitioner"]);
     if (!Array.isArray(access)) return { ...access, stats: this.stats(startedAt) };
     const offices = this.db.select().from(office).all();
     const current = offices.find((o) => o.id === input.officeId) ?? offices[0];
@@ -183,14 +158,14 @@ export class OrganizationData extends DurableObject<Env> {
 
   async getAppointment(caller: Caller, id: string) {
     const startedAt = this.begin();
-    const access = await this.authorize(caller, ["admin", "receptionist", "practitioner"]);
+    const access = this.authorize(caller, ["admin", "receptionist", "practitioner"]);
     if (!Array.isArray(access)) return { ...access, stats: this.stats(startedAt) };
     const row = this.db.select().from(appointment).where(eq(appointment.id, id)).get();
     return { ok: true as const, appointment: row, stats: this.stats(startedAt) };
   }
 
   async countAppointments(caller: Caller) {
-    const access = await this.authorize(caller, ["admin", "receptionist", "practitioner"]);
+    const access = this.authorize(caller, ["admin", "receptionist", "practitioner"]);
     if (!Array.isArray(access)) return access;
     const rows = this.ctx.storage.sql
       .exec<{ status: string; n: number }>(
@@ -210,7 +185,7 @@ export class OrganizationData extends DurableObject<Env> {
    */
   async book(caller: Caller, input: BookingInput) {
     const startedAt = this.begin();
-    const access = await this.authorize(caller, ["admin", "receptionist", "practitioner"]);
+    const access = this.authorize(caller, ["admin", "receptionist", "practitioner"]);
     if (!Array.isArray(access)) return { ...access, stats: this.stats(startedAt) };
     const { startsAt, endsAt } = input;
     if (!(startsAt < endsAt) || endsAt - startsAt > maxDurationMs) {
@@ -298,7 +273,7 @@ export class OrganizationData extends DurableObject<Env> {
   /** Admin only: the action the check uses to show a practitioner refused. */
   async createRoom(caller: Caller, input: { officeId: string; name: string; capacity: number }) {
     const startedAt = this.begin();
-    const access = await this.authorize(caller, ["admin"]);
+    const access = this.authorize(caller, ["admin"]);
     if (!Array.isArray(access)) return { ...access, stats: this.stats(startedAt) };
     const id = crypto.randomUUID();
     this.db
@@ -370,7 +345,6 @@ export class OrganizationData extends DurableObject<Env> {
       }
     });
     await this.ctx.storage.deleteAlarm();
-    this.memberships.clear();
     return { ok: true as const, stats: this.stats(startedAt) };
   }
 }
