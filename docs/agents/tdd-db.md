@@ -24,8 +24,8 @@ organization's data: the organization object's methods and the area modules in
 - **Clerk is faked**: `fakeAccounts` (with `vi.mock` of `#/organization/accounts.ts`) stands in
   for Clerk's Backend API; a test asserts on the users and metadata it holds.
 - **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
-  `adminCaller`, `addMember`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld`,
-  `inStorage`, `auditEntriesFor`). Extend it before adding another support file
+  `adminCaller`, `addMember`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
+  `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`). Extend it before adding another support file
   ([coding-standards.md](./coding-standards.md#test-support-files)).
 - **A schema change** is `src/organization/schema.ts` plus `pnpm organization:generate`, and the
   generated SQL is read before it is committed. A migration on `main` is never edited.
