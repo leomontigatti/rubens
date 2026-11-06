@@ -1,7 +1,35 @@
 import { DurableObject } from "cloudflare:workers";
 
+import type { InsurerActiveChange, InsurerInput, InsurerUpdate } from "#/lib/coverages.ts";
+import type {
+  MedicalServiceActiveChange,
+  MedicalServiceInput,
+  MedicalServiceUpdate,
+} from "#/lib/medical-services.ts";
+import type {
+  ActiveChange,
+  OfficeInput,
+  OfficeUpdate,
+  RoomInput,
+  RoomUpdate,
+} from "#/lib/offices.ts";
+
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
+import {
+  createInsurer,
+  listInsurers,
+  setInsurerActive,
+  updateInsurer,
+} from "#/organization/insurers.ts";
+import type { InsurerListOptions } from "#/organization/insurers.ts";
+import {
+  createMedicalService,
+  listMedicalServices,
+  setMedicalServiceActive,
+  updateMedicalService,
+} from "#/organization/medical-services.ts";
+import type { MedicalServiceListOptions } from "#/organization/medical-services.ts";
 import {
   authorize,
   insertMember,
@@ -10,6 +38,18 @@ import {
   viewerOf,
 } from "#/organization/members.ts";
 import type { Caller, MemberInput, Refusal, Requirement, Acting } from "#/organization/members.ts";
+import {
+  createOffice,
+  createRoom,
+  getOffice,
+  listOffices,
+  setOfficeActive,
+  setRoomActive,
+  updateOffice,
+  updateRoom,
+} from "#/organization/offices.ts";
+import type { ListOptions } from "#/organization/offices.ts";
+import { listSchedulePractitioners } from "#/organization/practitioners.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -24,6 +64,10 @@ import type { Caller, MemberInput, Refusal, Requirement, Acting } from "#/organi
  * requirement and calls it. The object runs one event at a time, and a
  * module's checks and writes are synchronous, so a check holds until its write.
  */
+// A practitioner changes their own medical services; which ones are theirs is
+// the area's to decide (`src/organization/medical-services.ts`).
+const medicalServiceEditors = ["admin", "practitioner"] as const;
+
 export class Organization extends DurableObject {
   readonly #database: Database;
 
@@ -67,5 +111,85 @@ export class Organization extends DurableObject {
     return this.#as(caller, ["admin"], (acting) =>
       this.#database.transaction((tx) => insertMember(tx, acting.userId, input)),
     );
+  }
+
+  // Offices and rooms
+
+  listOffices(caller: Caller, input: ListOptions) {
+    return this.#as(caller, "any", () => listOffices(this.#database, input));
+  }
+
+  getOffice(caller: Caller, input: { officeId: string } & ListOptions) {
+    return this.#as(caller, "any", () => getOffice(this.#database, input));
+  }
+
+  createOffice(caller: Caller, input: OfficeInput) {
+    return this.#as(caller, ["admin"], (acting) => createOffice(this.#database, acting, input));
+  }
+
+  updateOffice(caller: Caller, input: OfficeUpdate) {
+    return this.#as(caller, ["admin"], (acting) => updateOffice(this.#database, acting, input));
+  }
+
+  setOfficeActive(caller: Caller, input: ActiveChange) {
+    return this.#as(caller, ["admin"], (acting) => setOfficeActive(this.#database, acting, input));
+  }
+
+  createRoom(caller: Caller, input: RoomInput) {
+    return this.#as(caller, ["admin"], (acting) => createRoom(this.#database, acting, input));
+  }
+
+  updateRoom(caller: Caller, input: RoomUpdate) {
+    return this.#as(caller, ["admin"], (acting) => updateRoom(this.#database, acting, input));
+  }
+
+  setRoomActive(caller: Caller, input: ActiveChange) {
+    return this.#as(caller, ["admin"], (acting) => setRoomActive(this.#database, acting, input));
+  }
+
+  // Medical services
+
+  listSchedulePractitioners(caller: Caller) {
+    return this.#as(caller, "any", () => listSchedulePractitioners(this.#database));
+  }
+
+  listMedicalServices(caller: Caller, input: MedicalServiceListOptions) {
+    return this.#as(caller, "any", (acting) => listMedicalServices(this.#database, acting, input));
+  }
+
+  createMedicalService(caller: Caller, input: MedicalServiceInput) {
+    return this.#as(caller, medicalServiceEditors, (acting) =>
+      createMedicalService(this.#database, acting, input),
+    );
+  }
+
+  updateMedicalService(caller: Caller, input: MedicalServiceUpdate) {
+    return this.#as(caller, medicalServiceEditors, (acting) =>
+      updateMedicalService(this.#database, acting, input),
+    );
+  }
+
+  setMedicalServiceActive(caller: Caller, input: MedicalServiceActiveChange) {
+    return this.#as(caller, medicalServiceEditors, (acting) =>
+      setMedicalServiceActive(this.#database, acting, input),
+    );
+  }
+
+  // Insurers
+
+  listInsurers(caller: Caller, input: InsurerListOptions) {
+    return this.#as(caller, "any", () => listInsurers(this.#database, input));
+  }
+
+  createInsurer(caller: Caller, input: InsurerInput) {
+    return this.#as(caller, ["admin"], (acting) => createInsurer(this.#database, acting, input));
+  }
+
+  updateInsurer(caller: Caller, input: InsurerUpdate) {
+    return this.#as(caller, ["admin"], (acting) => updateInsurer(this.#database, acting, input));
+  }
+
+  setInsurerActive(caller: Caller, input: InsurerActiveChange) {
+    return this.#as(caller, ["admin"], (acting) => setInsurerActive(this.#database, acting, input));
   }
 }

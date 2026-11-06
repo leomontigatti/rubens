@@ -1,4 +1,11 @@
-import { devOrganizationName, devPeople, devRoles } from "#/dev/world.ts";
+import {
+  devMedicalService,
+  devOffice,
+  devOrganizationName,
+  devPeople,
+  devRoles,
+  devRoom,
+} from "#/dev/world.ts";
 import type { DevRole } from "#/dev/world.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate, today, weekdayOf } from "#/lib/schedules.ts";
@@ -17,9 +24,9 @@ export const organizationName = devOrganizationName;
 /** Each role's person, signed in once by `auth.setup.ts`. */
 export const people = devPeople;
 
-export const officeName = "Sede E2E";
-export const roomName = "Consultorio E2E";
-export const medicalServiceName = "Consulta E2E";
+export const officeName = devOffice.name;
+export const roomName = devRoom.name;
+export const medicalServiceName = devMedicalService.name;
 
 /** Where `auth.setup.ts` saves a role's signed-in browser state. */
 export const storageStateOf = (role: E2eRole) => `tests/e2e/.auth/${role}.json`;

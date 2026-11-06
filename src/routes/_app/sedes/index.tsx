@@ -10,7 +10,7 @@ import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { getOffices } from "#/server/offices.functions.ts";
-import type { Office } from "#/server/offices.ts";
+import type { Office } from "#/organization/offices.ts";
 
 import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 

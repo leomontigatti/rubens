@@ -1,6 +1,12 @@
 import type { Organization } from "#/organization/organization.ts";
 
-import { devOrganizationName, devPeople } from "#/dev/world.ts";
+import {
+  devMedicalService,
+  devOffice,
+  devOrganizationName,
+  devPeople,
+  devRoom,
+} from "#/dev/world.ts";
 
 /**
  * Fills a new dev organization's object with `src/dev/world.ts`, through the
@@ -24,9 +30,39 @@ export async function seedDevOrganization(
   }
   const admin = { userId: devPeople.admin.userId };
   for (const role of ["receptionist", "practitioner"] as const) {
-    const added = await organization.addMember(admin, { ...devPeople[role], roles: [role] });
-    if (!added.ok) {
-      throw new Error(`dev seed: addMember ${role} refused (${added.reason})`);
-    }
+    accepted(
+      `addMember ${role}`,
+      await organization.addMember(admin, { ...devPeople[role], roles: [role] }),
+    );
   }
+  const office = accepted("createOffice", await organization.createOffice(admin, devOffice));
+  accepted(
+    "createRoom",
+    await organization.createRoom(admin, { ...devRoom, officeId: office.office.id }),
+  );
+  const [practitioner] = accepted(
+    "listSchedulePractitioners",
+    await organization.listSchedulePractitioners(admin),
+  ).practitioners;
+  if (!practitioner) {
+    throw new Error("dev seed: no practitioner to give a medical service");
+  }
+  accepted(
+    "createMedicalService",
+    await organization.createMedicalService(admin, {
+      ...devMedicalService,
+      practitionerId: practitioner.id,
+    }),
+  );
+}
+
+/** `result` when the object accepted the step; a refusal stops the seed. */
+function accepted<T extends { ok: true } | { ok: false; reason: string }>(
+  step: string,
+  result: T,
+): Extract<T, { ok: true }> {
+  if (!result.ok) {
+    throw new Error(`dev seed: ${step} refused (${result.reason})`);
+  }
+  return result as Extract<T, { ok: true }>;
 }

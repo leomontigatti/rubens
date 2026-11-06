@@ -2,30 +2,34 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type { InsurerActiveChange, InsurerInput, InsurerUpdate } from "#/lib/coverages.ts";
 
-import { createInsurer, listInsurers, setInsurerActive, updateInsurer } from "#/server/insurers.ts";
-import type { InsurerListOptions } from "#/server/insurers.ts";
-import { withActor } from "#/server/with-actor.ts";
+import type { InsurerListOptions } from "#/organization/insurers.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and check the actor's roles themselves, so
-// each validator here only names the type. Naming the roles here as well
-// refuses a call before it opens a transaction.
-const editors = { roles: ["admin", "receptionist", "practitioner"] } as const;
-const adminOnly = { roles: ["admin"] } as const;
+// The object validates the input and requires the admin role for a change, so
+// each validator here only names the type.
 
 export const getInsurers = createServerFn({ method: "GET" })
   .validator((data: InsurerListOptions) => data)
   .handler(({ data }) =>
-    withActor(editors, (actor) => listInsurers(actor, { includeInactive: data.includeInactive })),
+    withOrganization((organization, caller) =>
+      organization.listInsurers(caller, { includeInactive: data.includeInactive }),
+    ),
   );
 
 export const addInsurer = createServerFn({ method: "POST" })
   .validator((data: InsurerInput) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => createInsurer(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createInsurer(caller, data)),
+  );
 
 export const editInsurer = createServerFn({ method: "POST" })
   .validator((data: InsurerUpdate) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => updateInsurer(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateInsurer(caller, data)),
+  );
 
 export const changeInsurerActive = createServerFn({ method: "POST" })
   .validator((data: InsurerActiveChange) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => setInsurerActive(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setInsurerActive(caller, data)),
+  );
