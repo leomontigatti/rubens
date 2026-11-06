@@ -12,7 +12,7 @@ import {
   adminCaller,
   auditEntriesFor,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 import { appointment, medicalService, member } from "#/organization/schema.ts";
@@ -26,7 +26,7 @@ const zone = "America/Argentina/Buenos_Aires";
 type Caller = typeof adminCaller;
 
 async function world() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const centro = await addOffice(organization, "Sede Centro");
   const room = await addRoom(organization, centro.id, "Consultorio 1");
   const juan = await addStaff(organization, "Juan Gómez");

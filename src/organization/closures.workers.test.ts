@@ -8,7 +8,7 @@ import {
   adminCaller,
   auditEntriesFor,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import { closure } from "#/organization/schema.ts";
 
@@ -29,7 +29,7 @@ const madridHoliday = {
 };
 
 async function world() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const madrid = await addOffice(organization, "Sede Madrid", "Europe/Madrid");
 
   async function createdId(officeId: string | null, entry: RangeEntry) {

@@ -73,14 +73,14 @@ export const excludedYamlFiles = ["pnpm-lock.yaml"];
 
 // Root files that are not YAML but comment the same way, with `#` at line start
 // or after whitespace, and are read by a contributor.
-export const hashCommentRootFiles = ["Dockerfile", ".env.example"];
+export const hashCommentRootFiles = [".env.example"];
 
 // Git hooks carry no extension, so every file in these directories is shell.
 export const gitHookDirectories = [".vite-hooks"];
 
-// SQL `--` comments. A migration matters most: once applied it is immutable
-// (`pnpm check:migrations`), so a Spanish comment merged there stays forever.
-export const scannedSqlDirectories = ["docker", "src/db/migrations"];
+// SQL `--` comments: the organization object's migrations, which a hand edit
+// can annotate before they ship.
+export const scannedSqlDirectories = ["src/organization/migrations"];
 const sqlFilePattern = /\.sql$/;
 
 // Spanish function words with no English homograph. Deliberately absent:

@@ -31,7 +31,7 @@ export function freshOrganization(): { organizationId: string; organization: Org
 export const adminCaller = { userId: "user-admin" };
 
 /** A fresh organization, set up with `adminCaller` as its first admin. */
-export async function setUpOrganization() {
+export async function setUpTestOrganization() {
   const fresh = freshOrganization();
   const setUp = await fresh.organization.setUp({
     organizationId: fresh.organizationId,
@@ -119,7 +119,7 @@ export async function addRoom(
  * 09:00 to 11:00 in "Consultorio 1" from 2099-01-05, a Monday.
  */
 export async function setUpBookingWorld() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const office = await addOffice(organization, "Sede Centro");
   const room = await addRoom(organization, office.id, "Consultorio 1");
   const otherRoom = await addRoom(organization, office.id, "Consultorio 2");

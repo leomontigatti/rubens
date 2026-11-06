@@ -7,7 +7,7 @@ import {
   adminCaller,
   auditEntriesFor,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import { timeOff } from "#/organization/schema.ts";
 
@@ -19,7 +19,7 @@ const vacation: RangeEntry = { kind: "days", firstDate: "2099-01-05", lastDate: 
 const afternoon: RangeEntry = { kind: "hours", start: "2099-01-12T14:00", end: "2099-01-12T18:00" };
 
 async function world() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const juan = await addStaff(organization, "Juan Gómez");
 
   const create = (caller: Caller, entry: RangeEntry, practitionerId = juan.practitionerId) =>

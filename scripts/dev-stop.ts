@@ -4,7 +4,7 @@ import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
-import { git } from "./worktree-db.ts";
+import { git } from "./worktree-port.ts";
 
 // Stops this worktree's dev server: whatever listens on its `PORT` and runs
 // from inside it. The target is chosen by port and working directory, never by

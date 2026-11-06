@@ -7,7 +7,7 @@ import {
   addMember,
   adminCaller,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 import { coverage } from "#/organization/schema.ts";
@@ -16,7 +16,7 @@ const missing = "00000000-0000-4000-8000-000000000000";
 
 /** A registered patient, two insurers, and a receptionist and a practitioner. */
 async function patientWithInsurers() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const receptionist = await addMember(organization, ["receptionist"]);
   const practitioner = await addMember(organization, ["practitioner"]);
   const registered = await organization.registerPatient(receptionist, {

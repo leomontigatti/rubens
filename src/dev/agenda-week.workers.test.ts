@@ -4,14 +4,14 @@ import {
   addMember,
   addStaff,
   adminCaller,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 
 // The busy week the agenda's CPU budget is measured on (#139). 2099-01-05 is
 // a Monday.
 
 async function busyWeek() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const seeded = await organization.seedAgendaWeek(adminCaller, { date: "2099-01-07" });
   const offices = await organization.listOffices(adminCaller, { includeInactive: false });
   if (!offices.ok) {
@@ -72,7 +72,7 @@ describe("the agenda's busy week", () => {
   });
 
   it("stands an existing practitioner in for practitioner 1", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const juan = await addStaff(organization, "Juan Gómez");
 
     await organization.seedAgendaWeek(adminCaller, {
@@ -86,7 +86,7 @@ describe("the agenda's busy week", () => {
   });
 
   it("refuses anyone but an admin", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const receptionist = await addMember(organization, ["receptionist"]);
 
     expect(await organization.seedAgendaWeek(receptionist, { date: "2099-01-05" })).toEqual({

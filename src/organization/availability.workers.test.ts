@@ -10,7 +10,7 @@ import {
   addStaff,
   adminCaller,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import { practitioner as practitionerTable } from "#/organization/schema.ts";
 
@@ -20,7 +20,7 @@ import { practitioner as practitionerTable } from "#/organization/schema.ts";
 type Caller = typeof adminCaller;
 
 async function world() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const centro = await addOffice(organization, "Sede Centro");
   const norte = await addOffice(organization, "Sede Norte");
   const room = await addRoom(organization, centro.id, "Consultorio 1");

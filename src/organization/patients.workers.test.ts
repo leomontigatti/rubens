@@ -7,7 +7,7 @@ import {
   addMember,
   adminCaller,
   auditEntriesFor,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 
@@ -25,7 +25,7 @@ const complete = {
 
 /** A fresh organization with a receptionist and a practitioner. */
 async function registry() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const receptionist = await addMember(organization, ["receptionist"]);
   const practitioner = await addMember(organization, ["practitioner"]);
   return { organization, receptionist, practitioner };

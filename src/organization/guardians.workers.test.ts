@@ -6,7 +6,7 @@ import {
   addMember,
   adminCaller,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import { guardian } from "#/organization/schema.ts";
 
@@ -20,7 +20,7 @@ afterEach(() => {
 
 /** A registered patient, with a receptionist and a practitioner. */
 async function patientWithGuardians() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const receptionist = await addMember(organization, ["receptionist"]);
   const practitioner = await addMember(organization, ["practitioner"]);
   const registered = await organization.registerPatient(receptionist, patientFields);

@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "insurer_name_unique" ON "rubens"."insurer" USING btree ("organization_id",lower("name"));

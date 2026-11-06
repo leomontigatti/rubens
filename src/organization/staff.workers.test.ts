@@ -7,7 +7,7 @@ import {
   fakeAccounts,
   freshOrganization,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 import { auditLog } from "#/organization/schema.ts";
@@ -26,7 +26,7 @@ let organizationId: string;
 
 beforeEach(async () => {
   fakeAccounts.reset();
-  ({ organization, organizationId } = await setUpOrganization());
+  ({ organization, organizationId } = await setUpTestOrganization());
 });
 
 async function newMember(roles: Role[], email = `${roles.join("-")}@example.com`) {

@@ -1,157 +1,132 @@
 # Production infrastructure
 
-What production needs, and what is decided. Nothing is provisioned yet: items marked
-**TBD** have no value and must not be guessed at. Items marked **OPEN** are decisions
-that must be taken before patient data goes in.
-
-## Status
-
-Not deployed. Before the first deploy, these are still TBD:
-
-- VPS provider, plan and server location (see the OPEN item on location below).
-- Domain and Cloudflare zone, and the DNS record for the app.
-- Coolify instance: where it runs, and the project and environment names.
-- Backup provider, encryption tool and key custody, schedule and retention.
-- Alerting channel and who receives it.
+What production needs, how to deploy it, and what is still open. Items marked **TBD**
+have no value and must not be guessed at.
 
 ## Shape
 
-The same model as En Escena (its `docs/operations/infrastructure.md`, in the sibling repository): a VPS running Coolify, behind Cloudflare, with the app built
-from the `Dockerfile` and run as a container, and Postgres 17 run by Coolify as a
-managed database in the same network. Deploys are manual: a person triggers the build
-from Coolify, and it builds whatever `main` points to at that moment.
+One Cloudflare Worker, `rubens` (`wrangler.jsonc`), on the free plan
+([ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organization.md)). It serves
+the app and holds one SQLite-backed Durable Object per organization (`ORGANIZATION`,
+class `Organization`), which keeps all of that organization's data and applies its own
+migrations when it starts. Staff sign in through Clerk
+([ADR-0009](../adr/0009-staff-sign-in-through-clerk.md)); the Worker only verifies
+Clerk's session token. There is no server, database or container to run.
 
-The hosts underneath (access, firewalls, Tailscale, a new device's first login) are
-described in the private [`leomontigatti/infra`](https://github.com/leomontigatti/infra)
-repository, checked out at `~/.t3/projects/infra`, not here: read its `README.md` and
-`AGENTS.md` before touching a server, and add the host's page there when one is
-provisioned. Commands that reach a host name its user (`ssh root@<host>`), so they work
-from any admin device on the tailnet with no `~/.ssh/config` entry.
+Deploys are manual: a person runs them from a checkout of `main`. Pushing to `main`
+deploys nothing.
 
-The app container is one process: `node .output/server/index.mjs` on port 3000, with
-migrations applied first by the entrypoint (below).
+## Status
 
-## Before the first deploy
+Not deployed for a real organization. Still TBD:
 
-In this order:
+- The Cloudflare account that owns production, the domain and the DNS record for the app.
+- Backups of the objects' storage beyond Cloudflare's own (below).
+- Alerting channel and who receives it.
 
-1. **Create the app role with LOGIN.** `rubens_app` is the role RLS applies to, and
-   the app connects as it. Migration `0001_app_role.sql` creates it as NOLOGIN only
-   if it is missing, so create it yourself first:
+Counsel confirmed on 2026-11-05 that the data may be stored in the United States, where
+Cloudflare creates the objects today (ADR-0008). The AAIP registration and patient
+consent are still to be done before real patient data goes in.
 
-   ```sql
-   CREATE ROLE rubens_app LOGIN PASSWORD '<generated, stored in Coolify only>'
-     NOSUPERUSER NOBYPASSRLS;
-   ```
+## The Clerk application
 
-   If a migration already created it NOLOGIN, the same attributes go on an `ALTER ROLE
-   rubens_app LOGIN PASSWORD '...' NOSUPERUSER NOBYPASSRLS;`. Verify it with
-   `SELECT rolname, rolcanlogin, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'rubens_app';`
-   Expect `rolcanlogin = t`, `rolsuper = f`, `rolbypassrls = f`.
-   Grants and default privileges are in the migrations; the role needs nothing else.
+One Clerk application per environment, created in Clerk's dashboard:
 
-2. **Set the environment in Coolify** (below), with a fresh `BETTER_AUTH_SECRET` per
-   environment.
-3. **Configure backups, and restore one** to a scratch database (below). Do not admit
-   patient data before this has happened once.
-4. **Decide the location** (OPEN, below).
+- **Sign-in**: email and password. No public sign-up: members are created by Rubens
+  (the setup script, then the staff screens).
+- **Session token claims** (Configure → Sessions → Customize session token):
 
-## Database roles and URLs
+  ```json
+  {
+    "org": "{{user.public_metadata.organizationId}}",
+    "roles": "{{user.public_metadata.roles}}"
+  }
+  ```
 
-Two URLs, one database. The rule and its reasons are
-[ADR-0002](../adr/0002-tenancy-and-database-connections.md); the summary:
+  Without `org` every signed-in user is refused. Rubens writes both fields of the public
+  metadata when it creates a member.
 
-| Variable              | Role                                                 | Used by                                                                                         |
-| --------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | `rubens_app`                                         | request handlers. RLS applies. A pooler would front this one.                                   |
-| `DATABASE_DIRECT_URL` | owner (`postgres` or the owner role Coolify creates) | migrations (`scripts/migrate.mjs`) and pg-boss. Always direct. RLS does not apply to the owner. |
+- **Keys**: the publishable key (`pk_…`) and the secret key (`sk_…`), from API keys.
 
-Today both point at the same server, with no pooler. Connection pool size is 10 in
-`src/db/client.ts`, which one app instance can carry.
+## Worker secrets
 
-Coolify holds both values. Neither goes in the repository (`.gitignore` ignores `.env`;
-`.gitleaks.toml` catches a password in a URL in a committed file).
+Set with `pnpm exec wrangler secret put <NAME>`, which prompts for the value and
+deploys a new version with it. Never in `wrangler.jsonc`, the repository or a `.env`
+that is committed.
 
-## Migrations run at container start
+| Secret                  | What it does                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `CLERK_SECRET_KEY`      | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`). |
+| `CLERK_PUBLISHABLE_KEY` | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                          |
+| `SETUP_SECRET`          | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.     |
+| `SEED_SECRET`           | Only on a copy deployed to measure the agenda's CPU: lets `pnpm seed:agenda-week` book its busy weeks. Never on production.         |
 
-`scripts/docker-entrypoint.sh` runs `scripts/migrate.mjs` before the command. The script:
-
-- connects with `DATABASE_DIRECT_URL` (falls back to `DATABASE_URL`), retrying only
-  while the database is unreachable;
-- takes an advisory lock, so two overlapping starts cannot apply the same migration twice;
-- checks the journal against `drizzle.__drizzle_migrations` and refuses to continue if
-  an applied migration's file changed;
-- applies the pending migrations, with a 5-second lock timeout on DDL.
-
-A failed migration exits non-zero, so the container does not start. The entrypoint is an
-`ENTRYPOINT`, not a chained `CMD`, so a start command set in Coolify does not skip it.
-
-Coolify keeping the previous container serving while the new one migrates is the
-intended behaviour, and it is what makes a destructive migration dangerous. That is
-why `check:migrations` flags drops and renames. Confirm it on the first real deploy
-(TBD).
-
-## Healthcheck
-
-There is no health route yet. The image's `HEALTHCHECK` probes `/`, which answers 200
-without a session. That proves the server is up, not that the database is reachable.
-Add a route that checks the database when one exists, and point Coolify's healthcheck
-at it (TBD: Coolify healthcheck path and timings).
-
-## Backups
-
-**Requirement, not yet set up**: encrypted off-site backups of the Postgres database and of
-the attachments volume (ADR-0005: clinical files live on the VPS's disk), and
-a restore that has been run, not just configured. A backup nobody has restored is a
-hope, not a backup.
-
-- Encryption: at rest on the backup target and with a key held outside the VPS (TBD: tool and key custody).
-- Off-site: a location other than the VPS (TBD: provider, R2 the candidate, and whether it is in the same
-  jurisdiction as the data; see OPEN below).
-- Schedule and retention: TBD. Clinical records are kept at least ten years (ADR-0003),
-  so retention is a legal question, not only an operational one.
-- Restore drill: restore the latest backup into a scratch database, check that the
-  migration journal and a known row are there, then drop it. Record
-  the date. TBD: cadence.
-
-## Connection pooling
-
-None today. One app instance with a pool of 10 is enough, and nothing in the code
-depends on a pooler being absent. Add PgBouncer in transaction mode when one of these is
-true: more than one app instance, or connections from the app approach the Postgres
-limit. Adding it is a configuration change only if the rules in ADR-0002 hold: tenant
-set per transaction, two URLs, no session state in request code.
-
-## Location (OPEN)
-
-Health data is sensitive data under Ley 25.326 (ADR-0003). Where the server and the
-backups sit is part of that: **the hosting country is a decision to make with local
-counsel before go-live**, together with the AAIP registration and patient consent. Until
-it is made, do not put real patient data on any server. Record the decision here, with
-the date and the reason.
-
-## Logs, errors and alerts
-
-No patient data in logs, error messages, alerts or job payloads sent outside our own
-Postgres (ADR-0001 explains why the job queue stays in Postgres). That covers names,
-phone numbers, appointment times, notes and anything else identifying. Concretely:
-
-- do not log request or response bodies on the server path;
-- thrown error messages name the failure, never the record;
-- Coolify log retention and access are TBD; treat application logs as containing no patient data by construction, not by filtering.
-
-## Secrets
-
-Environment variables live in Coolify, one set per environment. Never in the
-repository, never in an image layer. Rotating `BETTER_AUTH_SECRET` signs everyone out;
-rotating a database password means updating both the role and the URL in Coolify.
+`DEV_SIGN_IN` is never set on a deployed Worker: it would let anyone sign in as any
+member.
 
 ## Deploy
 
-1. Push to `main` is not a deploy. Coolify builds only when a person triggers it.
-2. Coolify builds the `Dockerfile` (build pack: Dockerfile).
-3. The container runs the entrypoint (migrations), then the server on port 3000.
-4. Check the new container's logs for `[migrate] migrations up to date.` and the healthcheck.
+From a clean checkout of the commit to deploy, with `pnpm install` done:
 
-Rollback: redeploy the previous image. Migrations are not reversed automatically, so
-a rollback is only safe if the migration was additive (see `check:migrations`).
+1. **Sign in to Cloudflare**: `pnpm exec wrangler login`, as the account that owns the
+   Worker.
+2. **Build and deploy**: `pnpm build`, then `pnpm exec wrangler deploy`. The build writes
+   the deploy config wrangler picks up. The first deploy creates the Worker, the
+   `ORGANIZATION` binding and the object class (the `v1` migration in `wrangler.jsonc`),
+   and prints the Worker's URL.
+3. **Set the secrets** (above): `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` on the
+   first deploy, and `SETUP_SECRET` when an organization is to be created.
+4. **Create the organization** and its first admin:
+
+   ```sh
+   SETUP_SECRET=<the value set above> pnpm setup:organization --url https://<worker url> \
+     --organization "<name>" --name "<admin name>" --email <admin email> \
+     --password <starting password>
+   ```
+
+   The admin is created in Clerk and in the organization's member table, and must
+   replace the starting password at first sign-in. A second run for the same
+   organization changes nothing and says so. Then
+   `pnpm exec wrangler secret delete SETUP_SECRET`.
+
+5. **Check it**: sign in at `https://<worker url>/ingresar` as the admin.
+
+A later deploy is steps 2 and 5. A schema change ships with its migration, which each
+object applies on its next start; a migration on `main` is never edited.
+
+Rollback: `pnpm exec wrangler rollback` returns to the previous version. An object
+that already ran a newer migration keeps its schema, so a rollback is only safe when
+the migration was additive.
+
+To remove a deployed copy (a test or measurement deploy):
+`pnpm exec wrangler delete`. Check in Cloudflare's dashboard that the Worker and its
+Durable Object namespace are gone, and delete that copy's Clerk application if it had its own.
+
+## CPU
+
+The free plan allows 10 ms of CPU per request (ADR-0008). Watch a deploy's CPU in the
+Worker's metrics on Cloudflare's dashboard (`observability` is on in `wrangler.jsonc`).
+The agenda's busy week is the case to measure: deploy a copy with `SEED_SECRET`, run
+`pnpm seed:agenda-week` against it ([scripts.md](./scripts.md)), load the agenda week,
+then delete the copy.
+
+## Backups
+
+Cloudflare keeps a SQLite-backed object's storage with point-in-time recovery for the
+last 30 days. Whether that is enough, or the objects also export to storage of our own,
+and the restore drill, are **TBD**. Clinical records are kept at least ten years
+(ADR-0003), so retention is a legal question, not only an operational one. A backup
+nobody has restored is a hope, not a backup.
+
+## Logs, errors and alerts
+
+No patient data in logs, error messages or alerts. That covers names, phone numbers,
+appointment times, notes and anything else identifying. Concretely:
+
+- do not log request or response bodies on the server path;
+- thrown error messages name the failure, never the record;
+- Workers logs (`observability` in `wrangler.jsonc`) are kept by Cloudflare: treat them
+  as containing no patient data by construction, not by filtering.
+
+Staff identities (names, emails, passwords) live in Clerk; patients have no accounts,
+so no patient data is in Clerk.

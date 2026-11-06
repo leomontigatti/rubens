@@ -1,7 +1,6 @@
 // What an audit log entry keeps of a change (ADR-0003): the fields that
-// changed, before and after, or the fields an entity was created with. Shared
-// by the organization object's audit writer and the Postgres services the port
-// (#131) has not moved yet.
+// changed, before and after, or the fields an entity was created with, as the
+// organization object's audit writer records them.
 
 /** A field's value as the log keeps it: a `Date` becomes its ISO string. */
 export type AuditValue = string | number | boolean | null;

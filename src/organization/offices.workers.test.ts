@@ -6,7 +6,7 @@ import {
   addMember,
   adminCaller,
   auditEntriesFor,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 
@@ -39,7 +39,7 @@ async function officeNames(organization: OrganizationStub, includeInactive: bool
 
 describe("offices", () => {
   it("creates an office, in Buenos Aires unless told otherwise", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     const created = await newOffice(organization);
     const elsewhere = await newOffice(organization, {
@@ -61,7 +61,7 @@ describe("offices", () => {
   });
 
   it("refuses a time zone that is not an IANA zone", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     for (const timeZone of ["Buenos Aires", "-03:00"]) {
       expect(await organization.createOffice(adminCaller, { ...centro, timeZone })).toEqual({
@@ -72,7 +72,7 @@ describe("offices", () => {
   });
 
   it("edits an office", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await newOffice(organization);
 
     const result = await organization.updateOffice(adminCaller, {
@@ -89,7 +89,7 @@ describe("offices", () => {
   });
 
   it("keeps the time zone when an edit leaves it out", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await newOffice(organization, { ...centro, timeZone: "UTC" });
 
     const result = await organization.updateOffice(adminCaller, {
@@ -102,7 +102,7 @@ describe("offices", () => {
   });
 
   it("drops a deactivated office from the default list, shows it on request, and reactivates it", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await newOffice(organization);
 
     await organization.setOfficeActive(adminCaller, { id: created.id, active: false });
@@ -118,7 +118,7 @@ describe("offices", () => {
   });
 
   it("answers notFound for an office that does not exist", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     expect(await organization.updateOffice(adminCaller, { ...centro, officeId: missing })).toEqual({
       ok: false,
@@ -135,7 +135,7 @@ describe("offices", () => {
 
 describe("rooms", () => {
   it("creates a room in an office with a capacity of 1 unless told otherwise", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await newOffice(organization);
     await newRoom(organization, created.id);
     await organization.createRoom(adminCaller, {
@@ -160,7 +160,7 @@ describe("rooms", () => {
   });
 
   it("answers notFound for a room in an office that does not exist", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     expect(
       await organization.createRoom(adminCaller, { officeId: missing, name: "Consultorio" }),
@@ -175,7 +175,7 @@ describe("rooms", () => {
   });
 
   it("refuses a new room in a deactivated office, and adds none", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await newOffice(organization);
     await organization.setOfficeActive(adminCaller, { id: created.id, active: false });
 
@@ -191,7 +191,7 @@ describe("rooms", () => {
   });
 
   it("edits a room", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const room = await newRoom(organization, (await newOffice(organization)).id);
 
     const result = await organization.updateRoom(adminCaller, {
@@ -204,7 +204,7 @@ describe("rooms", () => {
   });
 
   it("keeps the capacity when an edit leaves it out", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const room = await newRoom(organization, (await newOffice(organization)).id);
     await organization.updateRoom(adminCaller, { roomId: room.id, name: "A", capacity: 3 });
 
@@ -217,7 +217,7 @@ describe("rooms", () => {
   });
 
   it("drops a deactivated room from the office's default list, shows it on request, and reactivates it", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const office = await newOffice(organization);
     const room = await newRoom(organization, office.id);
     const detail = (includeInactive: boolean) =>
@@ -239,7 +239,7 @@ describe("rooms", () => {
 
 describe("roles", () => {
   it("lets receptionists and practitioners see offices and rooms", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const office = await newOffice(organization);
     await newRoom(organization, office.id);
 
@@ -256,7 +256,7 @@ describe("roles", () => {
   });
 
   it("refuses every change to anyone without the admin role, and changes nothing", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const office = await newOffice(organization);
     const room = await newRoom(organization, office.id);
     const nonAdmin = await addMember(organization, ["receptionist", "practitioner"]);
@@ -285,7 +285,7 @@ describe("roles", () => {
 
 describe("auditing offices and rooms", () => {
   it("records an office's creation, each edit that changes it, and its deactivation", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const office = await newOffice(organization);
     await organization.updateOffice(adminCaller, { ...centro, officeId: office.id });
     await organization.updateOffice(adminCaller, {
@@ -318,7 +318,7 @@ describe("auditing offices and rooms", () => {
   });
 
   it("records a room's creation, its edit and its deactivation", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const office = await newOffice(organization);
     const room = await newRoom(organization, office.id);
     await organization.updateRoom(adminCaller, {

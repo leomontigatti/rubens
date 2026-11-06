@@ -7,13 +7,13 @@ import {
   adminCaller,
   freshOrganization,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import { auditLog, member } from "#/organization/schema.ts";
 
 describe("the organization object's members", () => {
   it("applies its migration on first start and serves the viewer from its tables", async () => {
-    const { organizationId, organization } = await setUpOrganization();
+    const { organizationId, organization } = await setUpTestOrganization();
 
     const result = await organization.viewer(adminCaller);
 
@@ -32,7 +32,7 @@ describe("the organization object's members", () => {
   });
 
   it("sets an organization up once", async () => {
-    const { organizationId, organization } = await setUpOrganization();
+    const { organizationId, organization } = await setUpTestOrganization();
 
     const again = await organization.setUp({
       organizationId,
@@ -48,7 +48,7 @@ describe("the organization object's members", () => {
   });
 
   it("refuses a user who is not one of its members", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     expect(await organization.viewer({ userId: "stranger" })).toEqual({
       ok: false,
@@ -57,7 +57,7 @@ describe("the organization object's members", () => {
   });
 
   it("refuses a member it marks inactive, on their next call", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const receptionist = await addMember(organization, ["receptionist"]);
     expect((await organization.viewer(receptionist)).ok).toBe(true);
 
@@ -76,7 +76,7 @@ describe("the organization object's members", () => {
   });
 
   it("refuses a call that needs a role the member lacks, from its own table", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const receptionist = await addMember(organization, ["receptionist"]);
 
     const result = await organization.addMember(receptionist, {
@@ -90,7 +90,7 @@ describe("the organization object's members", () => {
   });
 
   it("takes a role change on the next call", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const promoted = await addMember(organization, ["receptionist"]);
 
     await inStorage(organization, (database) =>
@@ -120,7 +120,7 @@ describe("the organization object's members", () => {
   });
 
   it("refuses a second member with the same email, whatever its case", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     const result = await organization.addMember(adminCaller, {
       userId: "other-user",
@@ -135,7 +135,7 @@ describe("the organization object's members", () => {
 
 describe("the audit log", () => {
   it("records who added a member, in the same change", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const added = await addMember(organization, ["practitioner"]);
 
     const entries = await inStorage(organization, (database) =>
@@ -148,7 +148,7 @@ describe("the audit log", () => {
   });
 
   it("rolls an entry back with the change it was written with", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     const entries = await inStorage(organization, (database) => {
       const countBefore = database.select().from(auditLog).all().length;

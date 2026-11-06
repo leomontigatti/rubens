@@ -12,9 +12,9 @@ protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
   `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
-  `db:generate` drift check, `pnpm check:migrations`,
-  `pnpm check:dependency-audit`, `pnpm test:unit`, `pnpm test:db`, `pnpm test:workers` and `pnpm build`. No database service: `test:db`
-  runs on PGlite.
+  `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm test:unit`, `pnpm test:workers`
+  and `pnpm build`. No database service: `test:workers` runs the organization object in
+  Miniflare.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
   over `.github/dependabot.yml`.
 - `pr-title` (`pr-title.yml`): the `check:pr-title` script over the PR title, under
@@ -45,7 +45,7 @@ current `main`.
 1. **Fetch `origin/main`** with full history, once, for every step below that
    compares against it. Never `--depth=1`: fallow needs the merge base.
 2. **Classify the diff.** A diff made only of `*.md` files and `docs/` is
-   docs-only: steps 9 to 14 skip on it, except `test:unit`, which reads
+   docs-only: steps 9 to 12 skip on it, except `test:unit`, which reads
    `GLOSSARY.md` and the tracked Markdown. The job still reports, so the required
    context passes. An empty diff counts as code, and a rename counts its old path.
    The skip is per step, not a `paths:` filter on the workflow, because a required
@@ -66,21 +66,14 @@ current `main`.
    tree ([coding-standards.md](../agents/coding-standards.md#code-language)).
 8. **`pnpm check:file-tokens`**: no source file under `src/` above the
    estimated-token ceiling.
-9. **Drift check**: `pnpm db:generate` is offline and must write nothing new under
-   `src/db/migrations`. If it does, the schema changed without its migration. The fix
-   is to commit the migration that `db:generate` writes, never to edit a `.sql` file
-   already on `main`.
-10. **`pnpm check:migrations`** against `origin/main`. Three rules:
-    order (a new migration must be newer than every migration on `main`), immutability
-    (no applied `.sql` file may change), and safety (squawk over the new `.sql` files).
-    Why each one exists: `scripts/migrations/journal.mjs`.
-11. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
-    branch introduces, compared with `origin/main`.
-12. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+9. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+   branch introduces, compared with `origin/main`.
+10. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
     branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
     run) fails the job too.
-13. **`pnpm test:unit`**, **`pnpm test:db`** and **`pnpm test:workers`**.
-14. **`pnpm build`**: the production build the Dockerfile runs.
+11. **`pnpm test:unit`** and **`pnpm test:workers`**.
+12. **`pnpm build`**: the production build a deploy ships
+    ([infrastructure.md](./infrastructure.md#deploy)).
 
 ## What `e2e` does, in order
 
@@ -107,8 +100,8 @@ non-zero when one failed. After a force-push, check the run id it reports agains
 Every external tool is pinned to an exact version, and every action to a commit SHA
 with its tag in a comment. Dependabot opens weekly PRs for minor and patch updates
 of npm packages and action pins (`.github/dependabot.yml`), and majors stay a
-hand-written issue. Every `vite-plus` and `nitro` update, and every `better-auth`
-minor, is bumped by hand too; the reason for each is a comment in that file. A `vite-plus` bump moves the
+hand-written issue. Every `vite-plus` update is bumped by hand too; the reason is a
+comment in that file. A `vite-plus` bump moves the
 `vite` and `vitest` overrides in `pnpm-workspace.yaml` in the same commit.
 
 | Pin                                        | Where                                        | Source of the value                                 |
@@ -120,9 +113,8 @@ minor, is bumped by hand too; the reason for each is a comment in that file. A `
 | `ACTIONLINT_VERSION` + `ACTIONLINT_SHA256` | `ci.yml`, `actions-gate` job                 | `actionlint_<version>_checksums.txt` on the release |
 | `zizmor==<version>`                        | `ci.yml`, `actions-gate` job (`pipx run`)    | the PyPI release                                    |
 | `actions/upload-artifact`                  | `ci.yml`, `e2e` job (SHA + `# v7.0.2`)       | the release tag's commit, `gh api`                  |
-| `postgres:<tag>@sha256:<digest>`           | `ci.yml`, `e2e` job service                  | `docker buildx imagetools inspect postgres:<tag>`   |
 | `@playwright/test`                         | `package.json` (exact version)               | npm; the Chromium it installs follows it            |
-| Node                                       | `.nvmrc`, `engines.node` and `Dockerfile`    | all three must match; see below                     |
+| Node                                       | `.nvmrc` and `engines.node`                  | both must match; see below                          |
 | pnpm                                       | `packageManager` in `package.json`           | the pnpm release                                    |
 
 ### How to bump
@@ -135,10 +127,8 @@ minor, is bumped by hand too; the reason for each is a comment in that file. A `
    checksum from the release's `*_checksums.txt`. A checksum that does not match fails
    the job before anything is scanned.
 3. zizmor: change `zizmor==<version>` in `ci.yml`.
-   The `e2e` service image: change the tag and the digest **together**; keep the tag
-   the one `docker-compose.yml` runs.
-4. Node: change `.nvmrc`, `engines.node` in `package.json`, and the `FROM` line in
-   `Dockerfile`. The three must name the same version.
+4. Node: change `.nvmrc` and `engines.node` in `package.json`. Both must name the same
+   version.
 5. Push, and read the `actions-gate` result: its online audits (`impostor-commit`,
    `ref-version-mismatch`, `known-vulnerable-actions`) are the only check that a
    rewritten pin points at the tag its comment names.
@@ -146,7 +136,7 @@ minor, is bumped by hand too; the reason for each is a comment in that file. A `
 ## Running the gates locally
 
 Everything in `checks` is a `pnpm` script, so a session can run it before pushing.
-The migration checks and the audit compare against `origin/main`; fetch it first
+fallow and the audit compare against `origin/main`; fetch it first
 (`git fetch origin main`). `actionlint` and `zizmor` are optional locally.
 
 ### Installing gitleaks locally

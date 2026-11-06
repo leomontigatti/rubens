@@ -1,8 +1,8 @@
 # ADR-0002: Tenancy, row-level security and database connections
 
-**Status**: accepted; superseded by
-[ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md) when the port to
-Workers lands. Until then it governs the code.
+**Status**: superseded by
+[ADR-0008](../0008-cloudflare-workers-one-object-per-organization.md) on 2026-11-06,
+when the port to Workers landed (#131) and Postgres left. Kept for its rationale.
 
 Date: 2026-10-12
 

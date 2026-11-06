@@ -8,12 +8,12 @@ import {
   adminCaller,
   auditEntriesFor,
   inStorage,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import { member } from "#/organization/schema.ts";
 
 async function world() {
-  const { organization } = await setUpOrganization();
+  const { organization } = await setUpTestOrganization();
   const juan = await addStaff(organization, "Juan Gómez");
   const ana = await addStaff(organization, "Ana Ruiz");
   const rita = await addStaff(organization, "Rita Paz", ["receptionist"]);

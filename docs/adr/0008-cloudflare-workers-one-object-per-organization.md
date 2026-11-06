@@ -1,8 +1,8 @@
 # ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization
 
-**Status**: accepted; the port is not built yet. Until it lands, the running code
-follows [ADR-0002](./0002-tenancy-and-database-connections.md) and
-[ADR-0004](./0004-dedicated-postgres-schema.md), which this ADR supersedes then.
+**Status**: accepted; the port landed in #131. It supersedes
+[ADR-0002](./superseded/0002-tenancy-and-database-connections.md) and
+[ADR-0004](./superseded/0004-dedicated-postgres-schema.md).
 
 Date: 2026-11-06. Decided in #125, from the prototype on the `prototype/cloudflare-workers`
 branch, whose README has the measurements.

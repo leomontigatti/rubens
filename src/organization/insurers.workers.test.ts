@@ -6,7 +6,7 @@ import {
   addMember,
   adminCaller,
   auditEntriesFor,
-  setUpOrganization,
+  setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 
@@ -35,7 +35,7 @@ async function list(
 
 describe("keeping the insurer list", () => {
   it("lets an admin create, rename and list insurers, by name", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await create(organization);
     await create(organization, { name: "Apross", kind: "obraSocial" });
 
@@ -54,7 +54,7 @@ describe("keeping the insurer list", () => {
   });
 
   it("refuses a name another insurer has, whatever its case", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await create(organization);
     const other = await create(organization, { name: "Apross", kind: "obraSocial" });
 
@@ -83,7 +83,7 @@ describe("keeping the insurer list", () => {
   });
 
   it("refuses insurer changes to anyone but an admin, and lets them read the list", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await create(organization);
 
     for (const roles of [["receptionist"], ["practitioner"]] as const) {
@@ -110,7 +110,7 @@ describe("keeping the insurer list", () => {
   });
 
   it("answers notFound for an insurer that is not there", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
 
     expect(
       await organization.updateInsurer(adminCaller, {
@@ -128,7 +128,7 @@ describe("keeping the insurer list", () => {
   });
 
   it("leaves a deactivated insurer out of the list until asked for, and reactivates it", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await create(organization);
     const receptionist = await addMember(organization, ["receptionist"]);
 
@@ -149,7 +149,7 @@ describe("keeping the insurer list", () => {
   });
 
   it("writes each change to the audit log, about no patient", async () => {
-    const { organization } = await setUpOrganization();
+    const { organization } = await setUpTestOrganization();
     const created = await create(organization);
     await organization.updateInsurer(adminCaller, {
       insurerId: created.id,
