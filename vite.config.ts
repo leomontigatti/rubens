@@ -1,14 +1,31 @@
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { nitro } from "nitro/vite";
 import { defineConfig, loadEnv } from "vite-plus";
+import type { Plugin } from "vite-plus";
 
 // A worktree's `.env.local` (`pnpm db:worktree`) holds its own PORT. Strict, so
 // a port another server holds fails loudly instead of drifting to the next one.
 const port = Number(loadEnv("development", process.cwd(), "").PORT) || 3000;
 
-const generated = ["src/routeTree.gen.ts", "src/db/migrations/**"];
+const generated = [
+  "src/routeTree.gen.ts",
+  "src/db/migrations/**",
+  "src/organization/migrations/**",
+];
+
+// The organization object's migrations are `.sql` files its generated index
+// imports (`src/organization/migrations/migrations.js`): each loads as its text.
+const sqlAsText: Plugin = {
+  name: "rubens:sql-as-text",
+  transform(code, id) {
+    return id.endsWith(".sql")
+      ? { code: `export default ${JSON.stringify(code)};`, map: null }
+      : null;
+  },
+};
 
 // ADR-0004: tables and enums live in the `rubens` schema, so the helpers that
 // declare them in `public` are banned everywhere.
@@ -28,12 +45,21 @@ const rawDbClient = {
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   server: { port, strictPort: true },
-  // No app plugins under Vitest: Nitro and Start only serve and build, and in a
-  // test run they warn on every file and keep the process from exiting.
-  plugins: process.env.VITEST ? [] : [nitro(), tailwindcss(), tanstackStart(), viteReact()],
+  // No app plugins under Vitest: the Worker and Start only serve and build, and
+  // in a test run they warn on every file and keep the process from exiting.
+  // The Worker runs in workerd (Miniflare in dev), its `ssr` environment.
+  plugins: process.env.VITEST
+    ? []
+    : [
+        sqlAsText,
+        cloudflare({ viteEnvironment: { name: "ssr" } }),
+        tailwindcss(),
+        tanstackStart(),
+        viteReact(),
+      ],
 
   lint: {
-    ignorePatterns: [".output/**", ".nitro/**", ".tanstack/**", ...generated],
+    ignorePatterns: ["dist/**", ".wrangler/**", ".tanstack/**", ...generated],
     plugins: ["react", "import", "typescript"],
     // The style guide's mechanical rules: `@shadcn/lint`, and `ui` for what it
     // does not cover. It reads the components and the theme from components.json.
@@ -156,7 +182,7 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts", "tests/lint/**/*.test.ts"],
-          exclude: ["**/*.db.test.ts", "node_modules/**"],
+          exclude: ["**/*.db.test.ts", "**/*.workers.test.ts", "node_modules/**"],
           environment: "node",
         },
       },
@@ -185,6 +211,23 @@ export default defineConfig({
           // `afterEach`, or the next file in the worker inherits it.
           isolate: false,
           globalSetup: ["tests/db/global-setup.ts"],
+        },
+      },
+      {
+        // The organization object's tests, in the Workers runtime: each test
+        // file gets real SQLite storage of its own (#131).
+        extends: true,
+        plugins: [
+          sqlAsText,
+          cloudflareTest({
+            main: "./src/organization/test-worker.ts",
+            wrangler: { configPath: "./wrangler.jsonc" },
+          }),
+        ],
+        test: {
+          name: "workers",
+          include: ["src/**/*.workers.test.ts"],
+          sequence: { groupOrder: 2 },
         },
       },
     ],

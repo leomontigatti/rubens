@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAccessControl } from "better-auth/plugins/access";
 import { organization } from "better-auth/plugins/organization";
+import { defaultStatements } from "better-auth/plugins/organization/access";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
@@ -9,7 +11,24 @@ import { db } from "#/db/client.ts";
 import * as schema from "#/db/schema/index.ts";
 import type { AnyDatabase } from "#/db/tenant.ts";
 
-import { ac, roles } from "#/lib/access.ts";
+/**
+ * The organization roles, as Better Auth's access control. A member holds any
+ * combination of them, stored comma-separated in `member.role`. The plugin's
+ * default `owner` and `member` roles are not used: the first admin is the
+ * owner (GLOSSARY.md).
+ *
+ * No role is granted the plugin's `member`, `invitation`, `team` or `ac`
+ * permissions, but `creatorRole: "admin"` lets an admin pass every plugin
+ * permission check. Staff are managed by our own services; the plugin's
+ * endpoints are refused over HTTP (`handleAuthRequest` below).
+ */
+const ac = createAccessControl(defaultStatements);
+
+const roles = {
+  admin: ac.newRole({ organization: ["update"] }),
+  receptionist: ac.newRole({}),
+  practitioner: ac.newRole({}),
+};
 
 /**
  * Better Auth on one database: the app's (`auth` below), the owner connection

@@ -4,8 +4,9 @@ node_modules
 .env
 .env.local
 *.local
-.output
-.nitro
+dist
+.wrangler
+.dev.vars*
 .tanstack
 .vite-hooks/_
 coverage

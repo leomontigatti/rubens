@@ -1,28 +1,7 @@
-import { createAccessControl } from "better-auth/plugins/access";
-import { defaultStatements } from "better-auth/plugins/organization/access";
+/** The roles a member holds, in any combination (GLOSSARY.md). */
+export const roleNames = ["admin", "receptionist", "practitioner"] as const;
 
-/**
- * The organization roles, as Better Auth's access control. A member holds any
- * combination of them, stored comma-separated in `member.role`. The plugin's
- * default `owner` and `member` roles are not used: the first admin is the
- * owner (GLOSSARY.md).
- *
- * No role is granted the plugin's `member`, `invitation`, `team` or `ac`
- * permissions, but `creatorRole: "admin"` lets an admin pass every plugin
- * permission check. Staff are managed by our own services; the plugin's
- * endpoints are refused over HTTP (`handleAuthRequest` in `src/lib/auth.ts`).
- */
-export const ac = createAccessControl(defaultStatements);
-
-export const roles = {
-  admin: ac.newRole({ organization: ["update"] }),
-  receptionist: ac.newRole({}),
-  practitioner: ac.newRole({}),
-};
-
-export type Role = keyof typeof roles;
-
-const roleNames = Object.keys(roles) as Role[];
+export type Role = (typeof roleNames)[number];
 
 /** The roles in a `member.role` value; unknown names are dropped. */
 export function parseRoles(value: string): Role[] {

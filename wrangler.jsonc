@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rubens",
+  "compatibility_date": "2026-10-20",
+  "compatibility_flags": ["nodejs_compat"],
+  // A custom entry, so the Durable Object class is exported beside Start's handler.
+  "main": "src/server.ts",
+  "observability": { "enabled": true },
+  // One SQLite-backed object per organization, holding all its data (ADR-0008).
+  "durable_objects": {
+    "bindings": [{ "name": "ORGANIZATION", "class_name": "Organization" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Organization"] }],
+  // Secrets, never here: CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY
+  // (`wrangler secret put`). With neither, only the dev server or a build run
+  // with DEV_SIGN_IN=true serves; a deployed Worker refuses (src/server/caller.ts).
+}

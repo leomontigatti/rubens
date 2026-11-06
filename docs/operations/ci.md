@@ -13,7 +13,7 @@ protection, so changing the list is a human step in the repo settings.
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
   `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
   `db:generate` drift check, `pnpm check:migrations`,
-  `pnpm check:dependency-audit`, `pnpm test:unit`, `pnpm test:db` and `pnpm build`. No database service: `test:db`
+  `pnpm check:dependency-audit`, `pnpm test:unit`, `pnpm test:db`, `pnpm test:workers` and `pnpm build`. No database service: `test:db`
   runs on PGlite.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
   over `.github/dependabot.yml`.
@@ -79,7 +79,7 @@ current `main`.
 12. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
     branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
     run) fails the job too.
-13. **`pnpm test:unit`** and **`pnpm test:db`**.
+13. **`pnpm test:unit`**, **`pnpm test:db`** and **`pnpm test:workers`**.
 14. **`pnpm build`**: the production build the Dockerfile runs.
 
 ## What `e2e` does, in order
@@ -87,15 +87,11 @@ current `main`.
 1. **Fetch `origin/main` and classify the diff**, as `checks` does: on a docs-only
    diff every later step skips and the job still reports.
 2. **`vp install --frozen-lockfile`** after `setup-vp`.
-3. **Create the app role** on the job's Postgres service (`postgres:17-alpine`, the
-   local container's image) from `docker/postgres/init.sql`. The app connects as
-   `rubens_app`, as in `.env.example`, so row-level security applies.
-4. **Generate `BETTER_AUTH_SECRET`** for this run only.
-5. **Install Chromium**: the headless shell of the pinned `@playwright/test`, with its
-   system libraries.
-6. **`pnpm test:e2e`**: the production build, the suite's database rebuilt and seeded,
+3. **Install Chromium**: the headless shell of the pinned `@playwright/test`.
+4. **`pnpm test:e2e`**: the production build, the suite's object storage cleared, the
+   Worker served by `wrangler dev` with the dev sign-in (no keys, no database service),
    then the specs, two workers, no retries.
-7. **On failure, upload `test-results/e2e/`** as the `e2e-traces` artifact: each failed
+5. **On failure, upload `test-results/e2e/`** as the `e2e-traces` artifact: each failed
    spec's trace and screenshots, made-up data only.
 
 How the suite is built and what a spec may assume: [tests/e2e/README.md](../../tests/e2e/README.md).

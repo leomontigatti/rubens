@@ -64,15 +64,23 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
 - `test:unit`: `vp test --run --project unit`, the `*.test.ts(x)` files. No database.
 - `test:db`: `vp test --run --project db`, the `*.db.test.ts` files on PGlite, an
   in-process Postgres. No database service needed.
-- `test:e2e` ⚠️ `pnpm build`, then `tests/e2e/prepare.ts`, which drops and rebuilds the
-  suite's own database (`rubens_e2e`, or `rubens-wt-<worktree>_e2e`) on the Postgres the
-  `.env` names, then `playwright test`: the browser suite against the production build on
-  `PORT` plus 10000. Arguments go to Playwright, so `pnpm test:e2e tests/e2e/<spec>` runs
-  one spec. It never touches the dev database. CI runs it in the `e2e` job
-  ([tests/e2e/README.md](../../tests/e2e/README.md)).
+- `test:workers`: `vp test --run --project workers`, the `*.workers.test.ts` files in the
+  Workers runtime (Cloudflare's Vitest plugin): the organization object's methods on real
+  SQLite storage, and the request-to-caller step. No service or account needed.
+- `test:e2e` ⚠️ `pnpm build`, then `tests/e2e/prepare.ts`, which deletes the suite's own
+  object storage (`.wrangler/e2e-state`), then `playwright test`: the browser suite against
+  the production Worker, served by `wrangler dev` with the dev sign-in on `PORT` plus 10000.
+  The build seeds the dev organization on its first sign-in page. Arguments go to
+  Playwright, so `pnpm test:e2e tests/e2e/<spec>` runs one spec. It never touches the dev
+  data. CI runs it in the `e2e` job ([tests/e2e/README.md](../../tests/e2e/README.md)).
 
 ## Database
 
+- `organization:generate` runs `drizzle-kit generate` with `drizzle.organization.config.ts`:
+  diffs `src/organization/schema.ts`, the organization object's SQLite schema, against its
+  snapshot and writes the migration and `migrations.js` index under
+  `src/organization/migrations`, which the object applies on start. Offline. Until the port
+  (#131) merges, its one migration is regenerated in place: delete the folder, then run it.
 - `db:generate` ⚠️ runs `drizzle-kit generate`: diffs `src/db/schema` against the
   snapshots and writes a new migration under `src/db/migrations`. Offline; connects to
   nothing. Commit what it writes, and never edit a migration that is already on `main`.

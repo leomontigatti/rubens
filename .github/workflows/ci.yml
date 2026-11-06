@@ -4,7 +4,7 @@
 # renaming a job does not update it):
 #   - checks      : secrets scan, format/lint/typecheck, label, comment-language and
 #                   file-size checks, migration checks, dependency audit, unit and
-#                   PGlite database tests, and the production build. On a diff of
+#                   PGlite database tests, the Workers tests, and the production build. On a diff of
 #                   only Markdown and docs/, the steps from the drift check on skip,
 #                   except test:unit.
 #                   No Postgres service: `test:db` runs on PGlite (see vite.config.ts).
@@ -12,7 +12,7 @@
 #                   zizmor over .github/dependabot.yml.
 # One job that is not required yet:
 #   - e2e         : the Playwright suite (`pnpm test:e2e`) against the production
-#                   build and a Postgres service; required after about two weeks
+#                   Worker, served locally; required after about two weeks
 #                   without a flaky run (docs/operations/ci.md).
 # `pr-title`, from `pr-title.yml`, is the third required context. The full list and
 # how to change it: docs/operations/ci.md.
@@ -161,39 +161,21 @@ jobs:
       # PGlite, in-process: no database service in CI.
       - if: steps.diff.outputs.docs_only != 'true'
         run: pnpm test:db
+      # The organization object's tests, in the Workers runtime (Miniflare, local).
+      - if: steps.diff.outputs.docs_only != 'true'
+        run: pnpm test:workers
       - if: steps.diff.outputs.docs_only != 'true'
         run: pnpm build
 
   # The browser suite (tests/e2e/README.md): `pnpm test:e2e` builds the app,
-  # rebuilds the e2e database on the Postgres service below and drives the
-  # production build in Chromium. The app connects as `rubens_app`, as in
-  # `.env.example`, so row-level security applies as in production.
+  # clears the suite's object storage and drives the production Worker, served
+  # locally by `wrangler dev` with the dev sign-in, in Chromium. No keys, no
+  # account, no database service.
   # Not required yet: it becomes a required context after about two weeks
   # without a flaky run (docs/operations/ci.md).
   e2e:
     name: e2e
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        # The local container's image (docker-compose.yml), pinned by digest
-        # like every other external tool here: bump the tag and the digest
-        # together, from `docker buildx imagetools inspect postgres:<tag>`.
-        image: postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rubens
-        ports:
-          - 5434:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d rubens"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      # The suite derives its own database (`rubens_e2e`) and port from these.
-      DATABASE_URL: postgres://rubens_app:rubens_app@localhost:5434/rubens
-      DATABASE_DIRECT_URL: postgres://postgres:postgres@localhost:5434/rubens
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -219,14 +201,6 @@ jobs:
           run-install: false
       - if: steps.diff.outputs.docs_only != 'true'
         run: vp install --frozen-lockfile
-      # The app role, as the local container's init script creates it.
-      - name: create the app role
-        if: steps.diff.outputs.docs_only != 'true'
-        run: psql "$DATABASE_DIRECT_URL" -v ON_ERROR_STOP=1 -f docker/postgres/init.sql
-      # A secret for this run only: sessions signed with it die with the job.
-      - name: generate the auth secret
-        if: steps.diff.outputs.docs_only != 'true'
-        run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       # The headless Chromium of the pinned @playwright/test. No `--with-deps`:
       # the runner already has Chromium's libraries, and on 2026-11-06 the flag
       # only added nine font packages (FreeFont, CJK, Thai, Cyrillic and X font

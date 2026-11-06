@@ -6,7 +6,6 @@ import { AppSidebar } from "#/components/app-sidebar.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
-import { authClient } from "#/lib/auth-client.ts";
 import {
   isSignedInAs,
   reloadForNewSession,
@@ -15,7 +14,7 @@ import {
 } from "#/lib/session-change.ts";
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
-import { getToRescheduleCount } from "#/server/appointments.functions.ts";
+import { signOutOfDev } from "#/server/sign-in.functions.ts";
 
 // Every signed-in screen sits under this layout. A member who must still
 // replace the starting password is held on the change-password screen.
@@ -34,10 +33,9 @@ export const Route = createFileRoute("/_app")({
   // the menu's count of appointments to reschedule stays current. A preload is
   // not a navigation, so hovering a link does not count them.
   shouldReload: ({ preload }) => !preload,
-  loader: async () => {
-    const counted = await getToRescheduleCount();
-    return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };
-  },
+  // The menu's count of appointments to reschedule returns with the object's
+  // to-reschedule list (#138).
+  loader: () => ({ toReschedule: null, sidebarOpen: sidebarStartsOpen() }),
   // A signed-in page holds the viewer's data, patients' included: the browser
   // keeps no copy, so Back after a sign-out cannot show it to the next person.
   headers: () => ({ "Cache-Control": "no-store" }),
@@ -99,10 +97,8 @@ function AppShell() {
   useSessionGuard(viewer.userId);
 
   async function signOut() {
-    // `throw` makes a refused sign-out (an error status) throw too, so it stays on the page.
-    const signedOut = await serverAnswer("sign-out", shownPath(router), () =>
-      authClient.signOut({ fetchOptions: { throw: true } }),
-    );
+    // Clerk's sign-out lands with #134.
+    const signedOut = await serverAnswer("sign-out", shownPath(router), () => signOutOfDev());
     if (signedOut !== null) {
       startNewSession("/ingresar");
     }
