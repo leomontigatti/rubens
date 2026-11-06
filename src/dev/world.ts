@@ -29,3 +29,8 @@ export const devPeople: Record<DevRole, { userId: string; name: string; email: s
     email: "juan@prueba.example.com",
   },
 };
+
+/** The one office, its room, and the practitioner's medical service. */
+export const devOffice = { name: "Sede E2E", address: "Av. Colón 100" };
+export const devRoom = { name: "Consultorio E2E" };
+export const devMedicalService = { name: "Consulta E2E", durationMinutes: 30 };

@@ -25,13 +25,13 @@ type Data<T> = T extends Disposable ? Omit<T, typeof Symbol.dispose> : T;
  * with them. The object authorizes the caller itself; a request with no
  * session is refused here. A refusal is a result, never a throw.
  */
-export async function withOrganization<R>(
-  work: (organization: DurableObjectStub<Organization>, caller: Caller) => R,
-): Promise<Data<Awaited<R>> | { ok: false; reason: "unauthenticated" }> {
+export async function withOrganization<T>(
+  work: (organization: DurableObjectStub<Organization>, caller: Caller) => T,
+): Promise<Data<Awaited<T>> | { ok: false; reason: "unauthenticated" }> {
   const mode = currentAuthMode();
   const resolved = await resolveCaller(getRequest(), workerEnv, mode, clerkSession(workerEnv));
   if (!resolved.ok) {
     return resolved;
   }
-  return (await work(resolved.organization, resolved.caller)) as Data<Awaited<R>>;
+  return (await work(resolved.organization, resolved.caller)) as Data<Awaited<T>>;
 }

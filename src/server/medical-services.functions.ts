@@ -6,41 +6,36 @@ import type {
   MedicalServiceUpdate,
 } from "#/lib/medical-services.ts";
 
-import {
-  createMedicalService,
-  listMedicalServices,
-  setMedicalServiceActive,
-  updateMedicalService,
-} from "#/server/medical-services.ts";
-import type { MedicalServiceListOptions } from "#/server/medical-services.ts";
-import { listSchedulePractitioners } from "#/server/schedules.ts";
-import { withActor } from "#/server/with-actor.ts";
+import type { MedicalServiceListOptions } from "#/organization/medical-services.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and decide whose medical services the
-// actor may change, so each validator here only names the type. Requiring an admin or a
-// practitioner refuses a receptionist before a transaction opens.
-const anyRole = { roles: "any" } as const;
-const editors = { roles: ["admin", "practitioner"] } as const;
+// The object validates the input and decides whose medical services the
+// caller may change, so each validator here only names the type.
 
 export const getMedicalServicePractitioners = createServerFn({ method: "GET" }).handler(() =>
-  withActor(anyRole, async (actor) => ({
-    ok: true as const,
-    practitioners: await listSchedulePractitioners(actor),
-  })),
+  withOrganization((organization, caller) => organization.listSchedulePractitioners(caller)),
 );
 
 export const getMedicalServices = createServerFn({ method: "GET" })
   .validator((data: MedicalServiceListOptions) => data)
-  .handler(({ data }) => withActor(anyRole, (actor) => listMedicalServices(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.listMedicalServices(caller, data)),
+  );
 
 export const addMedicalService = createServerFn({ method: "POST" })
   .validator((data: MedicalServiceInput) => data)
-  .handler(({ data }) => withActor(editors, (actor) => createMedicalService(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createMedicalService(caller, data)),
+  );
 
 export const editMedicalService = createServerFn({ method: "POST" })
   .validator((data: MedicalServiceUpdate) => data)
-  .handler(({ data }) => withActor(editors, (actor) => updateMedicalService(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateMedicalService(caller, data)),
+  );
 
 export const changeMedicalServiceActive = createServerFn({ method: "POST" })
   .validator((data: MedicalServiceActiveChange) => data)
-  .handler(({ data }) => withActor(editors, (actor) => setMedicalServiceActive(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setMedicalServiceActive(caller, data)),
+  );

@@ -9,7 +9,7 @@ import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
-import type { MedicalService } from "#/server/medical-services.ts";
+import type { MedicalService } from "#/organization/medical-services.ts";
 
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
 
