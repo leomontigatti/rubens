@@ -7,12 +7,20 @@
 
 const placeholderOrigin = "https://rubens.invalid";
 
-// oxlint-disable-next-line no-control-regex -- matching control characters is the point
-const controlOrWhitespace = /[\x00-\x20\x7f]/;
+/** Whether `value` holds a character from U+0000 to U+0020 (control and space) or U+007F. */
+function hasControlOrSpace(value: string): boolean {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x20 || code === 0x7f) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /** `value` as a path of this app (pathname, search and hash), or undefined when it is not one. */
 export function returnPath(value: string): string | undefined {
-  if (!value.startsWith("/") || controlOrWhitespace.test(value)) {
+  if (!value.startsWith("/") || hasControlOrSpace(value)) {
     return undefined;
   }
   let url: URL;
