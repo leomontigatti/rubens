@@ -148,8 +148,8 @@ Anyone allowed to read a conversation can take it over at any time, not only on 
 handoff. While a person holds a conversation, the assistant stays silent in it. It
 takes the conversation back when the person returns it, or after a time the admin
 sets. Its message on taking the conversation back goes out only inside the window;
-outside it, the assistant takes the conversation back without a word, and a
-handoff nobody answered stays an unread notification.
+outside it, the assistant takes the conversation back without a word. A handoff
+nobody answered stays open either way ([below](#handoff)).
 
 ## Handoff
 
@@ -183,6 +183,11 @@ can fall after the close. The patient's `your answer is on its way` message goes
 only inside the window. A handoff made after the close, for a reply that could not
 go out in time, has no countdown and tells the patient nothing: its recipient is
 told at once, and their reply goes through the reopen template.
+
+A handoff is open until a person's reply reaches the patient, or a person closes it
+without a reply when nothing is left to answer. Whether its notification was read
+does not matter, and going back to the assistant does not close it. The inbox lists
+open handoffs.
 
 A reply a person writes after the window closed is stored, and the patient gets
 the reopen template (`Tenemos una respuesta para vos, respondé este mensaje para

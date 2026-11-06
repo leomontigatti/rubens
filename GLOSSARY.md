@@ -214,7 +214,7 @@ _Avoid_: suggestion, draft, pending action
 
 **`handoff`** — ui: "Derivación"
 A conversation the `assistant` passes to a person, and stays silent in until it
-gets it back.
+gets it back. It is open until a person's reply reaches the patient or a person closes it.
 _Avoid_: escalation, transfer, takeover
 
 **`handoffContact`** — ui: "Contacto de derivación"
