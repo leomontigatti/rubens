@@ -10,6 +10,7 @@ reproduce CI.
 pnpm check                      # formatting check, lint and type check (`vp check`)
 pnpm test:unit <path>...        # the unit test files your change touches
 pnpm test:db <path>...          # the DB test files your change touches, when it touches the database
+pnpm test:e2e tests/e2e/<spec>  # the browser spec of a flow your change touches, when one covers it
 ```
 
 Run this once, after your edits. Do not run `pnpm test` in a session: it runs the
@@ -37,6 +38,7 @@ pnpm test:unit <path>           # or `pnpm test:db <path>`: the one test file of
 | `pnpm lint`                         | Oxlint, type-aware (`oxlint-tsgolint`): React hooks, import cycles, floating and misused promises, two ADR rules: no `pgTable`/`pgEnum` (ADR-0004) and no raw `db` client outside `src/db/` (ADR-0002), and the style guide's mechanical rules (`@shadcn/lint` and the `ui` plugin, [style-guide.md](./style-guide.md)). Its rules are in `vite.config.ts`; the custom ones are tested in `tests/lint/`. |
 | `pnpm typecheck`                    | The TypeScript check on its own.                                                                                                                                                                                                                                                                                                                                                                         |
 | `pnpm test:unit`                    | Vitest, the `unit` project: `src/**/*.test.{ts,tsx}`, `scripts/**/*.test.ts` and `tests/lint/`.                                                                                                                                                                                                                                                                                                          |
+| `pnpm test:e2e`                     | Playwright, the browser suite in `tests/e2e/`: the production build on its own database, driven in Chromium. A session runs the spec of the flow it touched; the `e2e` CI job runs them all ([tests/e2e/README.md](../../tests/e2e/README.md)).                                                                                                                                                          |
 | `pnpm test:db`                      | Vitest, the `db` project: `*.db.test.ts` on in-process PGlite, and `tests/db/`. Its harness is described in [tests/db/README.md](../../tests/db/README.md).                                                                                                                                                                                                                                              |
 | `pnpm check:migrations`             | Migration immutability, order and safety. An applied migration is never edited, and new ones follow the last one.                                                                                                                                                                                                                                                                                        |
 | `pnpm check:dependency-audit`       | High and critical advisories that the branch introduces, against `main`.                                                                                                                                                                                                                                                                                                                                 |
@@ -70,7 +72,9 @@ committed.
 
 Anything the dev server renders is checked in a browser, following
 [verification.md](./verification.md). A browser check is not a validation command,
-and CI does not run it.
+and CI does not run it: it proves one change once and leaves no test behind. What
+CI does run in a browser is the suite in `tests/e2e/` (`pnpm test:e2e`), which
+covers the smoke pass, the booking flows and the races already fixed.
 
 ## Why not `pnpm test`
 

@@ -35,6 +35,14 @@ export function worktreeDatabaseName(worktreePath: string): string {
   return `${PREFIX}${slug}`.slice(0, 63);
 }
 
+/**
+ * The database the browser suite rebuilds on every run (`tests/e2e/prepare.ts`),
+ * beside the one it is named after, so a run never touches the dev data.
+ */
+export function e2eDatabaseName(database: string): string {
+  return `${database.slice(0, 63 - "-e2e".length)}-e2e`;
+}
+
 export function databaseUrlFor(baseUrl: string, database: string): string {
   const url = new URL(baseUrl);
   url.pathname = `/${database}`;
@@ -86,7 +94,9 @@ export function parseEnvPort(content: string): number | undefined {
 }
 
 export function planPrune(input: { databases: string[]; worktreePaths: string[] }): string[] {
-  const live = new Set(input.worktreePaths.map(worktreeDatabaseName));
+  const live = new Set(
+    input.worktreePaths.map(worktreeDatabaseName).flatMap((name) => [name, e2eDatabaseName(name)]),
+  );
 
   return input.databases.filter((name) => name.startsWith(PREFIX) && !live.has(name));
 }

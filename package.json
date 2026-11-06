@@ -24,6 +24,7 @@
     "test": "pnpm test:unit && pnpm test:db",
     "test:unit": "vp test --run --project unit",
     "test:db": "vp test --run --project db",
+    "test:e2e": "pnpm build && node --import tsx tests/e2e/prepare.ts && playwright test",
     "check:migrations": "node scripts/check-migration-immutability.mjs && node scripts/check-migration-order.mjs && node scripts/check-migration-safety.mjs",
     "check:dependency-audit": "node scripts/check-dependency-audit.mjs",
     "check:pr-title": "node --import tsx scripts/check-pr-title.ts",
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
+    "@playwright/test": "1.64.1",
     "@shadcn/lint": "0.2.3",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-cli": "^1.167.46",

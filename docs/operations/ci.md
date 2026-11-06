@@ -28,6 +28,14 @@ protection, so changing the list is a human step in the repo settings.
   after the reviewed one. Dependabot's PRs pass without one; a draft is skipped
   until it is marked ready. Its own file for the same `edited` reason as `pr-title`.
 
+Not required yet:
+
+- `e2e` (`ci.yml`): `pnpm test:e2e`, the browser suite, on every PR in parallel with
+  `checks`. Make it a required context after about two weeks of PRs without a flaky
+  run, counted from the PR that added it; a failure that a rerun turns green restarts
+  the count. Until then a red `e2e` is read, not ignored: a real failure blocks the
+  merge like any other.
+
 Also required, in branch protection: direct pushes to `main` forbidden, and
 "require branches to be up to date" on, so each required context runs against the
 current `main`.
@@ -74,6 +82,24 @@ current `main`.
 13. **`pnpm test:unit`** and **`pnpm test:db`**.
 14. **`pnpm build`**: the production build the Dockerfile runs.
 
+## What `e2e` does, in order
+
+1. **Fetch `origin/main` and classify the diff**, as `checks` does: on a docs-only
+   diff every later step skips and the job still reports.
+2. **`vp install --frozen-lockfile`** after `setup-vp`.
+3. **Create the app role** on the job's Postgres service (`postgres:17-alpine`, the
+   local container's image) from `docker/postgres/init.sql`. The app connects as
+   `rubens_app`, as in `.env.example`, so row-level security applies.
+4. **Generate `BETTER_AUTH_SECRET`** for this run only.
+5. **Install Chromium**: the headless shell of the pinned `@playwright/test`, with its
+   system libraries.
+6. **`pnpm test:e2e`**: the production build, the suite's database rebuilt and seeded,
+   then the specs, two workers, no retries.
+7. **On failure, upload `test-results/e2e/`** as the `e2e-traces` artifact: each failed
+   spec's trace and screenshots, made-up data only.
+
+How the suite is built and what a spec may assume: [tests/e2e/README.md](../../tests/e2e/README.md).
+
 ## Waiting on CI from a session
 
 `gh pr checks <n> --watch` blocks until every check on the PR is terminal and exits
@@ -97,6 +123,9 @@ minor, is bumped by hand too; the reason for each is a comment in that file. A `
 | `GITLEAKS_VERSION` + `GITLEAKS_SHA256`     | `ci.yml`, `checks` job                       | `gitleaks_<version>_checksums.txt` on the release   |
 | `ACTIONLINT_VERSION` + `ACTIONLINT_SHA256` | `ci.yml`, `actions-gate` job                 | `actionlint_<version>_checksums.txt` on the release |
 | `zizmor==<version>`                        | `ci.yml`, `actions-gate` job (`pipx run`)    | the PyPI release                                    |
+| `actions/upload-artifact`                  | `ci.yml`, `e2e` job (SHA + `# v7.0.2`)       | the release tag's commit, `gh api`                  |
+| `postgres:<tag>@sha256:<digest>`           | `ci.yml`, `e2e` job service                  | `docker buildx imagetools inspect postgres:<tag>`   |
+| `@playwright/test`                         | `package.json` (exact version)               | npm; the Chromium it installs follows it            |
 | Node                                       | `.nvmrc`, `engines.node` and `Dockerfile`    | all three must match; see below                     |
 | pnpm                                       | `packageManager` in `package.json`           | the pnpm release                                    |
 
@@ -110,6 +139,8 @@ minor, is bumped by hand too; the reason for each is a comment in that file. A `
    checksum from the release's `*_checksums.txt`. A checksum that does not match fails
    the job before anything is scanned.
 3. zizmor: change `zizmor==<version>` in `ci.yml`.
+   The `e2e` service image: change the tag and the digest **together**; keep the tag
+   the one `docker-compose.yml` runs.
 4. Node: change `.nvmrc`, `engines.node` in `package.json`, and the `FROM` line in
    `Dockerfile`. The three must name the same version.
 5. Push, and read the `actions-gate` result: its online audits (`impostor-commit`,

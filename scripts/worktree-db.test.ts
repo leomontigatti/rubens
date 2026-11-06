@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   choosePort,
   databaseUrlFor,
+  e2eDatabaseName,
   parseEnvPort,
   planPrune,
   renderEnvLocal,
@@ -80,5 +81,26 @@ describe("planPrune", () => {
         worktreePaths: ["/home/poto/projects/rubens", "/wt/live"],
       }),
     ).toEqual(["rubens-wt-gone"]);
+  });
+
+  it("drops a worktree's e2e database with its worktree, and keeps a live one's", () => {
+    expect(
+      planPrune({
+        databases: ["rubens-e2e", "rubens-wt-live-e2e", "rubens-wt-gone-e2e"],
+        worktreePaths: ["/home/poto/projects/rubens", "/wt/live"],
+      }),
+    ).toEqual(["rubens-wt-gone-e2e"]);
+  });
+});
+
+describe("e2eDatabaseName", () => {
+  it("names the e2e database after the database it stands beside", () => {
+    expect(e2eDatabaseName("rubens-wt-x")).toBe("rubens-wt-x-e2e");
+  });
+
+  it("stays inside Postgres's 63-byte identifier limit, still ending in -e2e", () => {
+    const name = e2eDatabaseName(worktreeDatabaseName(`/tmp/${"a".repeat(80)}`));
+    expect(name).toHaveLength(63);
+    expect(name.endsWith("-e2e")).toBe(true);
   });
 });
