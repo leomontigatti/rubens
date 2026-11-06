@@ -59,11 +59,11 @@ export const changeWhatsappConsent = createServerFn({ method: "POST" })
     withOrganization((organization, caller) => organization.setWhatsappConsent(caller, data)),
   );
 
-// Until appointments port (#137, #138), deactivating a patient sends nothing
-// to the to-reschedule list, so the count is 0.
 export const getPatientUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: PatientReference) => data)
-  .handler(() => ({ ok: true as const, count: 0 }));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.countPatientUpcoming(caller, data)),
+  );
 
 export const changePatientActive = createServerFn({ method: "POST" })
   .validator((data: PatientActiveChange) => data)

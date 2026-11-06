@@ -130,12 +130,17 @@ export function findBlocking(
 /** A schedule as the free times read it, with its office's and room's names. */
 export type FreeTimeSchedule = AvailabilitySchedule & { officeName: string; roomName: string };
 
-/** The active appointments that meet `range`, of the practitioner or, with `roomIds`, of others there. */
+/**
+ * The active appointments that meet `range`, of the practitioner or, with
+ * `roomIds`, of others there; the practitioner's but for `excludeAppointmentId`,
+ * the one being rescheduled.
+ */
 function findBusy(
   writer: Writer,
   practitionerId: string,
   range: TimeRange,
   roomIds: readonly string[],
+  excludeAppointmentId: string | undefined,
 ) {
   const holding = and(
     inArray(appointment.status, [...activeAppointmentStatuses]),
@@ -144,7 +149,13 @@ function findBusy(
   const busy = writer
     .select({ startsAt: appointment.startsAt, endsAt: appointment.endsAt })
     .from(appointment)
-    .where(and(eq(appointment.practitionerId, practitionerId), holding))
+    .where(
+      and(
+        eq(appointment.practitionerId, practitionerId),
+        holding,
+        excludeAppointmentId === undefined ? undefined : ne(appointment.id, excludeAppointmentId),
+      ),
+    )
     .all()
     .map(asRange);
   const roomBusy =
@@ -172,14 +183,20 @@ function findBusy(
 /**
  * The practitioner's free starts of `durationMinutes` inside `window`, and the
  * schedules they come from. With `officeId`, only that office's schedules
- * count.
+ * count. `excludeAppointmentId` is the appointment being rescheduled, whose own
+ * time counts as free.
  */
 export function findFreeTimes(
   writer: Writer,
   owner: { id: string; gridMinutes: number },
-  options: { window: TimeRange; durationMinutes: number; officeId?: string },
+  options: {
+    window: TimeRange;
+    durationMinutes: number;
+    officeId?: string;
+    excludeAppointmentId?: string;
+  },
 ): { free: FreeStart[]; schedules: FreeTimeSchedule[] } {
-  const { window, durationMinutes, officeId } = options;
+  const { window, durationMinutes, officeId, excludeAppointmentId } = options;
   // A start near the window's end runs past it by up to the duration.
   const reach = { start: window.start, end: new Date(+window.end + durationMinutes * 60_000) };
   // An office in another zone than the default one sees the window a day
@@ -217,7 +234,13 @@ export function findFreeTimes(
   const free = findFreeStarts({
     schedules,
     ...blocking,
-    ...findBusy(writer, owner.id, reach, [...new Set(schedules.map((row) => row.roomId))]),
+    ...findBusy(
+      writer,
+      owner.id,
+      reach,
+      [...new Set(schedules.map((row) => row.roomId))],
+      excludeAppointmentId,
+    ),
     gridMinutes: owner.gridMinutes,
     window,
     durationMinutes,
@@ -256,7 +279,7 @@ export function getAvailability(
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
-  const { practitionerId, firstDate, lastDate, durationMinutes } = parsed.data;
+  const { practitionerId, firstDate, lastDate, durationMinutes, appointmentId } = parsed.data;
   const found = findPractitioner(writer, acting, practitionerId);
   if (!found) {
     return { ok: false, reason: "notFound" };
@@ -265,7 +288,11 @@ export function getAvailability(
     return { ok: false, reason: "forbidden" };
   }
   const window = toTimeRange({ kind: "days", firstDate, lastDate }, defaultTimeZone);
-  const { free, schedules } = findFreeTimes(writer, found, { window, durationMinutes });
+  const { free, schedules } = findFreeTimes(writer, found, {
+    window,
+    durationMinutes,
+    excludeAppointmentId: appointmentId,
+  });
   return {
     ok: true,
     practitioner: { id: found.id, displayName: found.displayName },

@@ -57,7 +57,7 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 
 /** The practitioner, when `acting` may book for them and they are active. */
-function findBookablePractitioner(writer: Writer, acting: Acting, practitionerId: string) {
+export function findBookablePractitioner(writer: Writer, acting: Acting, practitionerId: string) {
   const found = findPractitioner(writer, acting, practitionerId);
   if (!found) {
     return notFound;

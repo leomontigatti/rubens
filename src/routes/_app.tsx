@@ -15,6 +15,7 @@ import {
 } from "#/lib/session-change.ts";
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
+import { getToRescheduleCount } from "#/server/appointments.functions.ts";
 
 // Every signed-in screen sits under this layout. A member who must still
 // replace the starting password is held on the change-password screen.
@@ -33,9 +34,10 @@ export const Route = createFileRoute("/_app")({
   // the menu's count of appointments to reschedule stays current. A preload is
   // not a navigation, so hovering a link does not count them.
   shouldReload: ({ preload }) => !preload,
-  // The menu's count of appointments to reschedule returns with the object's
-  // to-reschedule list (#138).
-  loader: () => ({ toReschedule: null, sidebarOpen: sidebarStartsOpen() }),
+  loader: async () => {
+    const counted = await getToRescheduleCount();
+    return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };
+  },
   // A signed-in page holds the viewer's data, patients' included: the browser
   // keeps no copy, so Back after a sign-out cannot show it to the next person.
   headers: () => ({ "Cache-Control": "no-store" }),

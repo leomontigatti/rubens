@@ -39,7 +39,6 @@ const refusalMessages = {
   roomInactive: "Ese consultorio está desactivado.",
   officeInactive: "La sede de ese consultorio está desactivada.",
   roomFull: "Ese consultorio no tiene lugar a esa hora.",
-  timeTaken: "Ese horario ya se ocupó. Elegí otro horario libre.",
 };
 
 type RefusalReason = keyof typeof refusalMessages;

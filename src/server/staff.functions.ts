@@ -35,14 +35,11 @@ export const editMember = createServerFn({ method: "POST" })
     withOrganization((organization, caller) => organization.updateMember(caller, data)),
   );
 
-/**
- * How many future appointments deactivating the member sends to the
- * to-reschedule list. That list returns with the object's (#138); until then
- * the answer is a refusal, and the deactivation asks nothing first.
- */
 export const getMemberUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: MemberReference) => data)
-  .handler(() => ({ ok: false as const, reason: "notAvailable" as const }));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.countMemberUpcoming(caller, data)),
+  );
 
 export const changeMemberActive = createServerFn({ method: "POST" })
   .validator((data: MemberActiveChange) => data)
