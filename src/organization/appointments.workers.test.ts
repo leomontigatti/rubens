@@ -139,6 +139,40 @@ describe("booking an appointment", () => {
     });
   });
 
+  it("offers the free starts of the refused start's day in its office's zone, not the default one", async () => {
+    const w = await world();
+    // Auckland is UTC+13 in January: its 14:00 to 18:00 on Tuesday the 6th
+    // runs from 22:00 on Monday the 5th to 02:00 on the 6th in Buenos Aires.
+    const auckland = await addOffice(w.organization, "Sede Auckland", "Pacific/Auckland");
+    const room = await addRoom(w.organization, auckland.id, "Consultorio A");
+    const pablo = await addStaff(w.organization, "Pablo Ruiz");
+    await w.addSchedule({
+      practitionerId: pablo.practitionerId,
+      roomId: room.id,
+      weekdays: [1, 2, 3, 4, 5, 6, 7],
+      startTime: "14:00",
+      endTime: "18:00",
+    });
+    const service = await w.addMedicalService(pablo.practitionerId);
+    const pabloBooking = (patientId: string) => ({
+      patientId,
+      practitionerId: pablo.practitionerId,
+      medicalServiceId: service.id,
+      start: at("01:00", "2099-01-06"),
+      durationMinutes: 30,
+    });
+    await w.book(pabloBooking(w.maria.id));
+
+    const refused = await w.tryBook(pabloBooking(w.pedro.id));
+
+    const offered = !refused.ok && "freeStarts" in refused ? refused.freeStarts : [];
+    expect(offered.map((free) => free.start.toISOString())).toEqual(
+      ["01:30", "02:00", "02:30", "03:00", "03:30", "04:00", "04:30"].map((time) =>
+        at(time, "2099-01-06").toISOString(),
+      ),
+    );
+  });
+
   it("books a free time in the room of the schedule it falls in, with the reception note", async () => {
     const w = await world();
 

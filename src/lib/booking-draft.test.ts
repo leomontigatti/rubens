@@ -4,9 +4,11 @@ import {
   bookingRequestOf,
   freeStartsQueryOf,
   initialBookingValues,
+  keepsOfferedStarts,
   overbookingRequestOf,
   rescheduleQueryOf,
   rescheduleRequestOf,
+  showsWeekOfStarts,
 } from "#/lib/booking-draft.ts";
 import type { BookingValues } from "#/lib/booking-draft.ts";
 
@@ -186,5 +188,38 @@ describe("what a reschedule form moves", () => {
         ),
       ),
     ).toEqual(["start", "durationMinutes"]);
+  });
+});
+
+describe("the free times offered after a start stopped being free", () => {
+  it("stay through a change of what they were not read for", () => {
+    expect(keepsOfferedStarts("receptionNote")).toBe(true);
+    expect(keepsOfferedStarts("patient")).toBe(true);
+    expect(keepsOfferedStarts("start")).toBe(true);
+  });
+
+  it("go once the practitioner, the medical service, the duration or the day changes", () => {
+    for (const field of ["practitionerId", "medicalServiceId", "durationMinutes", "freeFrom"]) {
+      expect(keepsOfferedStarts(field)).toBe(false);
+    }
+  });
+});
+
+describe("whether the booking form shows the week of free times", () => {
+  const offered = [{ ...nine, officeName: "Centro" }];
+
+  it("shows it on a new booking", () => {
+    expect(showsWeekOfStarts({ fixed: false, start: null, offeredStarts: null })).toBe(true);
+    expect(showsWeekOfStarts({ fixed: false, start: nine, offeredStarts: offered })).toBe(true);
+  });
+
+  it("hides it on a page opened from a cell while the start is set or free times are offered", () => {
+    expect(showsWeekOfStarts({ fixed: true, start: nine, offeredStarts: null })).toBe(false);
+    expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: offered })).toBe(false);
+  });
+
+  it("shows it on a page opened from a cell once its start was dropped and none are offered", () => {
+    expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: null })).toBe(true);
+    expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: [] })).toBe(true);
   });
 });

@@ -83,7 +83,10 @@ test("refuses a second booking of the practitioner's same start, and offers the 
   await expect(start).toHaveAccessibleDescription(/\S/);
   await expect(page).toHaveURL(/\/agenda\/turnos\/nuevo/);
 
-  // The form, opened from a cell, lists the free times that day has left.
+  // The form, opened from a cell, lists the free times that day has left, and
+  // keeps them through an edit of something they do not depend on.
+  await expect(page.getByText("Horarios libres que quedan ese día:")).toBeVisible();
+  await page.getByLabel("Nota de recepción (opcional)").fill("Llamó a las 8");
   await expect(page.getByText("Horarios libres que quedan ese día:")).toBeVisible();
   await expect(start.getByRole("button", { name: "09:00" })).toHaveCount(0);
   await start.getByRole("button", { name: "09:30" }).click();

@@ -186,3 +186,38 @@ export function rescheduleRequestOf(values: RescheduleValues, appointmentId: str
     durationMinutes: Number(values.durationMinutes),
   });
 }
+
+/**
+ * The fields the free times offered after a refusal were read for: the
+ * practitioner, the medical service, the duration and the day.
+ */
+const offeredStartsReadFor = new Set<keyof BookingValues>([
+  "practitionerId",
+  "medicalServiceId",
+  "durationMinutes",
+  "freeFrom",
+]);
+
+/**
+ * Whether the free times offered after the picked start stopped being free
+ * still hold once `changedField` changes: they do unless it is one they were read for.
+ */
+export function keepsOfferedStarts(changedField: string): boolean {
+  return !offeredStartsReadFor.has(changedField as keyof BookingValues);
+}
+
+/**
+ * Whether the booking form shows the week of free times to pick from: always
+ * on "Nuevo turno"; on a page opened from a cell, once its start was dropped
+ * and no free times are offered in its place, so a start can still be picked.
+ */
+export function showsWeekOfStarts(form: {
+  fixed: boolean;
+  start: PickedStart | null;
+  offeredStarts: readonly OfferedStart[] | null;
+}): boolean {
+  if (!form.fixed) {
+    return true;
+  }
+  return form.start === null && !form.offeredStarts?.length;
+}

@@ -174,6 +174,7 @@ import {
   setUpWithAccount,
   updateMember,
 } from "#/organization/staff.ts";
+import type { EmailsInFlight } from "#/organization/staff.ts";
 import {
   createTimeOff,
   deleteTimeOff,
@@ -219,6 +220,8 @@ export class Organization extends DurableObject {
   readonly #database: Database;
   /** The Clerk users staff sign in as (`src/organization/accounts.ts`). */
   readonly #accounts: Accounts;
+  /** The emails whose Clerk user a call is creating right now (`src/organization/staff.ts`). */
+  readonly #emailsInFlight: EmailsInFlight = new Set();
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
@@ -245,8 +248,8 @@ export class Organization extends DurableObject {
   }
 
   /** Sets the organization up with its first admin's Clerk user: the setup script's call. */
-  setUpWithAccount(input: Parameters<typeof setUpWithAccount>[2]) {
-    return setUpWithAccount(this.#database, this.#accounts, input);
+  setUpWithAccount(input: Parameters<typeof setUpWithAccount>[3]) {
+    return setUpWithAccount(this.#database, this.#accounts, this.#emailsInFlight, input);
   }
 
   activeMembers() {
@@ -368,7 +371,7 @@ export class Organization extends DurableObject {
 
   async createStaffMember(caller: Caller, input: StaffInput) {
     return this.#as(caller, ["admin"], (acting) =>
-      createStaffMember(this.#database, this.#accounts, acting, input),
+      createStaffMember(this.#database, this.#accounts, this.#emailsInFlight, acting, input),
     );
   }
 

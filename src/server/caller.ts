@@ -107,24 +107,45 @@ function isPageLoad(request: Request): boolean {
 }
 
 /**
- * The redirect a page load needs before it renders, when Clerk asks for one:
- * its handshake, which refreshes an expired session token and comes back to
- * the same page. Anything else, a script's request included, needs none.
+ * Serves a page load past Clerk first. When Clerk asks for its handshake,
+ * which refreshes an expired session token and comes back to the same page,
+ * the browser is sent there instead of the page rendering signed out. When
+ * Clerk refreshed the session cookies itself (a production instance does,
+ * with no redirect), the rendered page carries them, or the browser would keep
+ * the expired token and go through the handshake again. Anything else, a
+ * script's request included, is rendered without asking Clerk.
  */
-export async function pageLoadRedirect(
+export async function servePageLoad(
   request: Request,
   check: (request: Request) => Promise<{ headers: Headers }>,
-): Promise<Response | null> {
+  render: (request: Request) => Response | Promise<Response>,
+): Promise<Response> {
   if (!isPageLoad(request)) {
-    return null;
+    return render(request);
   }
   const { headers } = await check(request);
-  return headers.get("location") ? new Response(null, { status: 307, headers }) : null;
+  if (headers.get("location")) {
+    return new Response(null, { status: 307, headers });
+  }
+  const cookies = headers.getSetCookie();
+  const rendered = await render(request);
+  if (cookies.length === 0) {
+    return rendered;
+  }
+  const response = new Response(rendered.body, rendered);
+  for (const cookie of cookies) {
+    response.headers.append("set-cookie", cookie);
+  }
+  return response;
 }
 
-/** `pageLoadRedirect` with Clerk's answer for the request. */
-export function clerkPageLoadRedirect(request: Request, env: WorkerEnv) {
-  return pageLoadRedirect(request, (checked) => authenticate(env, checked));
+/** `servePageLoad` with Clerk's answer for the request. */
+export function serveClerkPageLoad(
+  request: Request,
+  env: WorkerEnv,
+  render: (request: Request) => Response | Promise<Response>,
+) {
+  return servePageLoad(request, (checked) => authenticate(env, checked), render);
 }
 
 function cookieOf(request: Request, name: string): string | undefined {

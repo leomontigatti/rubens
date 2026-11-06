@@ -251,6 +251,8 @@ export function findFreeTimes(
 /**
  * The practitioner's free starts on the local day of `instant`, for the
  * duration, as the screens receive them: what a refused start offers instead.
+ * The day is each office's own, read in its zone, so the free times are
+ * looked for a day either side of the default zone's and kept by their office's day.
  */
 export function freeStartsOfDay(
   writer: Writer,
@@ -259,9 +261,17 @@ export function freeStartsOfDay(
   options: { durationMinutes: number; excludeAppointmentId?: string },
 ): AvailableStart[] {
   const date = localDate(instant, defaultTimeZone);
-  const window = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, defaultTimeZone);
+  const window = toTimeRange(
+    { kind: "days", firstDate: shiftDate(date, -1), lastDate: shiftDate(date, 1) },
+    defaultTimeZone,
+  );
   const { free, schedules } = findFreeTimes(writer, owner, { window, ...options });
-  return toAvailableStarts(free, schedules);
+  const zones = new Map(schedules.map((row) => [row.roomId, row.timeZone]));
+  const sameDay = free.filter(({ start, roomId }) => {
+    const zone = zones.get(roomId)!;
+    return localDate(start, zone) === localDate(instant, zone);
+  });
+  return toAvailableStarts(sameDay, schedules);
 }
 
 /** Free starts as the screens receive them, with their office's and room's names. */

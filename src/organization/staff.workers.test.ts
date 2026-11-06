@@ -202,6 +202,51 @@ describe("creating a staff member", () => {
     ]);
   });
 
+  it("refuses a second create of an email still being created, and asks Clerk nothing for it", async () => {
+    const release = fakeAccounts.hold("createUser");
+    const first = organization.createStaffMember(adminCaller, {
+      name: "Otro",
+      email: "otro@example.com",
+      password: startingPassword,
+      roles: ["receptionist"],
+    });
+    await vi.waitUntil(() => fakeAccounts.calls.length > 0);
+
+    expect(
+      await organization.createStaffMember(adminCaller, {
+        name: "Otra",
+        email: "OTRO@example.com",
+        password: "another-password",
+        roles: ["admin"],
+      }),
+    ).toEqual({ ok: false, reason: "emailTaken" });
+    release();
+
+    expect(await first).toMatchObject({ ok: true, member: { name: "Otro" } });
+    expect(fakeAccounts.calls.map(([method]) => method)).toEqual(["createUser"]);
+  });
+
+  it("lets the email be created again once a create of it has failed", async () => {
+    fakeAccounts.failNext("createUser");
+    await expect(
+      organization.createStaffMember(adminCaller, {
+        name: "Otro",
+        email: "otro@example.com",
+        password: startingPassword,
+        roles: ["receptionist"],
+      }),
+    ).rejects.toThrow();
+
+    expect(
+      await organization.createStaffMember(adminCaller, {
+        name: "Otro",
+        email: "otro@example.com",
+        password: startingPassword,
+        roles: ["receptionist"],
+      }),
+    ).toMatchObject({ ok: true });
+  });
+
   it("does not adopt a Clerk user of another organization", async () => {
     fakeAccounts.addUser("otro@example.com", { organizationId: "other", roles: ["admin"] });
 

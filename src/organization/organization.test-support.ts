@@ -272,6 +272,7 @@ class FakeAccounts implements Accounts {
   readonly #passwords = new Map<string, string>();
   readonly #users = new Map<string, FakeUser>();
   readonly #holds = new Map<keyof Accounts, Promise<void>>();
+  readonly #failures = new Set<keyof Accounts>();
   #refusal: UserRefusal | undefined;
 
   /** Forgets the calls and the users: what each test starts from. */
@@ -279,7 +280,13 @@ class FakeAccounts implements Accounts {
     this.calls = [];
     this.#users.clear();
     this.#holds.clear();
+    this.#failures.clear();
     this.#refusal = undefined;
+  }
+
+  /** Makes the next `method` call throw, after it is recorded: Clerk unreachable. */
+  failNext(method: keyof Accounts) {
+    this.#failures.add(method);
   }
 
   /** Refuses the next user created, as Clerk would. */
@@ -323,6 +330,9 @@ class FakeAccounts implements Accounts {
     const held = this.#holds.get(method);
     this.#holds.delete(method);
     await held;
+    if (this.#failures.delete(method)) {
+      throw new Error(`Clerk is unreachable (${method})`);
+    }
     return value;
   }
 

@@ -134,11 +134,13 @@ export function getStaffMember(database: Database, input: { memberId: string }) 
 /**
  * Creates the member's Clerk user, with the organization, the roles and the
  * starting-password flag, then the member and, for a practitioner, the
- * practitioner row. A refusal creates neither.
+ * practitioner row. A refusal creates neither. A create of an email another
+ * call is still creating is refused (`emailsInFlight`).
  */
 export async function createStaffMember(
   database: Database,
   accounts: Accounts,
+  emailsInFlight: EmailsInFlight,
   acting: Acting,
   input: StaffInput,
 ) {
@@ -152,34 +154,60 @@ export async function createStaffMember(
   if (refusal) {
     return { ok: false as const, reason: refusal };
   }
-  if (database.select().from(member).where(eq(member.email, email)).get()) {
+  if (
+    emailsInFlight.has(email) ||
+    database.select().from(member).where(eq(member.email, email)).get()
+  ) {
     return { ok: false as const, reason: "emailTaken" as const };
   }
-  const metadata: AccountMetadata = { organizationId: organizationIdOf(database), roles };
-  const created = await createOrAdoptUser(database, accounts, {
-    ...person,
-    email,
-    password,
-    metadata,
-  });
-  if (!created.ok) {
-    return created;
-  }
-  const added = database.transaction((tx) =>
-    insertMember(tx, acting.userId, {
-      userId: created.userId,
+  return whileInFlight(emailsInFlight, email, async () => {
+    const metadata: AccountMetadata = { organizationId: organizationIdOf(database), roles };
+    const created = await createOrAdoptUser(database, accounts, {
       ...person,
       email,
-      roles,
-      mustChangePassword: true,
-    }),
-  );
-  if (!added.ok) {
-    // Another call took the email while Clerk answered.
-    await deleteUnclaimedUser(database, accounts, created.userId);
-    return { ok: false as const, reason: "emailTaken" as const };
+      password,
+      metadata,
+    });
+    if (!created.ok) {
+      return created;
+    }
+    const added = database.transaction((tx) =>
+      insertMember(tx, acting.userId, {
+        userId: created.userId,
+        ...person,
+        email,
+        roles,
+        mustChangePassword: true,
+      }),
+    );
+    if (!added.ok) {
+      // Another call took the email while Clerk answered.
+      await deleteUnclaimedUser(database, accounts, created.userId);
+      return { ok: false as const, reason: "emailTaken" as const };
+    }
+    return { ok: true as const, member: findStaffMember(database, created.userId)! };
+  });
+}
+
+/**
+ * The emails whose Clerk user a call is creating or adopting right now, kept
+ * on the object instance. The object takes other calls while Clerk answers,
+ * so without it a second create of the same email would find the first one's
+ * fresh user without a member, adopt it and overwrite its password.
+ */
+export type EmailsInFlight = Set<string>;
+
+async function whileInFlight<T>(
+  emailsInFlight: EmailsInFlight,
+  email: string,
+  work: () => Promise<T>,
+) {
+  emailsInFlight.add(email);
+  try {
+    return await work();
+  } finally {
+    emailsInFlight.delete(email);
   }
-  return { ok: true as const, member: findStaffMember(database, created.userId)! };
 }
 
 function isMember(database: Writer, userId: string): boolean {
@@ -457,6 +485,7 @@ export async function changeOwnPassword(
 export async function setUpWithAccount(
   database: Database,
   accounts: Accounts,
+  emailsInFlight: EmailsInFlight,
   input: {
     organizationId: string;
     name: string;
@@ -472,23 +501,28 @@ export async function setUpWithAccount(
   if (refusal) {
     return { ok: false as const, reason: refusal };
   }
-  const created = await createOrAdoptUser(database, accounts, {
-    name: person.name.trim(),
-    email,
-    password,
-    metadata: { organizationId: input.organizationId, roles: ["admin"] },
-  });
-  if (!created.ok) {
-    return created;
+  if (emailsInFlight.has(email)) {
+    return { ok: false as const, reason: "emailTaken" as const };
   }
-  const setUp = setUpOrganization(database, {
-    organizationId: input.organizationId,
-    name: input.name,
-    admin: { userId: created.userId, ...person, email, mustChangePassword: true },
+  return whileInFlight(emailsInFlight, email, async () => {
+    const created = await createOrAdoptUser(database, accounts, {
+      name: person.name.trim(),
+      email,
+      password,
+      metadata: { organizationId: input.organizationId, roles: ["admin"] },
+    });
+    if (!created.ok) {
+      return created;
+    }
+    const setUp = setUpOrganization(database, {
+      organizationId: input.organizationId,
+      name: input.name,
+      admin: { userId: created.userId, ...person, email, mustChangePassword: true },
+    });
+    if (!setUp.ok) {
+      await deleteUnclaimedUser(database, accounts, created.userId);
+      return setUp;
+    }
+    return { ok: true as const, userId: created.userId };
   });
-  if (!setUp.ok) {
-    await deleteUnclaimedUser(database, accounts, created.userId);
-    return setUp;
-  }
-  return { ok: true as const, userId: created.userId };
 }

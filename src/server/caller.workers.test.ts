@@ -5,7 +5,7 @@ import {
   authMode,
   devOrganizationId,
   devUserCookie,
-  pageLoadRedirect,
+  servePageLoad,
   resolveCaller,
 } from "#/server/caller.ts";
 import type { VerifySession, WorkerEnv } from "#/server/caller.ts";
@@ -148,44 +148,77 @@ describe("a page load whose session token Clerk must refresh", () => {
   });
   const asksForHandshake = () => Promise.resolve({ headers: handshake });
   const asksForNothing = () => Promise.resolve({ headers: new Headers() });
-
-  it("is sent through Clerk's handshake before it renders, with Clerk's headers", async () => {
-    const redirect = await pageLoadRedirect(
-      request({ "sec-fetch-dest": "document" }),
-      asksForHandshake,
+  const render = () =>
+    Promise.resolve(
+      new Response("<html>agenda</html>", { headers: { "content-type": "text/html" } }),
     );
 
-    expect(redirect?.status).toBe(307);
-    expect(redirect?.headers.get("location")).toBe(handshake.get("location"));
-    expect(redirect?.headers.get("set-cookie")).toBe(handshake.get("set-cookie"));
+  it("is sent through Clerk's handshake before it renders, with Clerk's headers", async () => {
+    const response = await servePageLoad(
+      request({ "sec-fetch-dest": "document" }),
+      asksForHandshake,
+      render,
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(handshake.get("location"));
+    expect(response.headers.get("set-cookie")).toBe(handshake.get("set-cookie"));
   });
 
   it("counts a request asking for HTML as a page load when the browser names no destination", async () => {
-    const redirect = await pageLoadRedirect(
+    const response = await servePageLoad(
       request({ accept: "text/html,application/xhtml+xml" }),
       asksForHandshake,
+      render,
     );
 
-    expect(redirect?.status).toBe(307);
+    expect(response.status).toBe(307);
   });
 
   it("renders a page load with a valid token as it is", async () => {
-    expect(
-      await pageLoadRedirect(request({ "sec-fetch-dest": "document" }), asksForNothing),
-    ).toBeNull();
+    const response = await servePageLoad(
+      request({ "sec-fetch-dest": "document" }),
+      asksForNothing,
+      render,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("<html>agenda</html>");
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("renders the page with the session cookies Clerk refreshed without a redirect", async () => {
+    // A production instance answers the handshake with the new cookies and no Location.
+    const refreshed = new Headers();
+    refreshed.append("set-cookie", "__session=fresh; Path=/; Secure");
+    refreshed.append("set-cookie", "__client_uat=1; Path=/; Secure");
+
+    const response = await servePageLoad(
+      request({ "sec-fetch-dest": "document" }),
+      () => Promise.resolve({ headers: refreshed }),
+      render,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("<html>agenda</html>");
+    expect(response.headers.getSetCookie()).toEqual([
+      "__session=fresh; Path=/; Secure",
+      "__client_uat=1; Path=/; Secure",
+    ]);
   });
 
   it("leaves a script's request to the server functions, without asking Clerk", async () => {
     let asked = false;
-    const redirect = await pageLoadRedirect(
+    const response = await servePageLoad(
       request({ "sec-fetch-dest": "empty", accept: "application/json" }),
       () => {
         asked = true;
         return asksForHandshake();
       },
+      render,
     );
 
-    expect(redirect).toBeNull();
+    expect(response.status).toBe(200);
     expect(asked).toBe(false);
   });
 });

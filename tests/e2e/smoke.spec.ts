@@ -83,4 +83,16 @@ test.describe("signed out", () => {
 
     await expect(page).toHaveURL(/\/pacientes\?inactivos=true$/);
   });
+
+  test("signs in on this app's start when the page asked for is another site", async ({
+    page,
+    baseURL,
+  }) => {
+    // The URL parser drops the tab: `/\t/evil.example` would be https://evil.example/.
+    await page.goto("/ingresar?volver=%2F%09%2Fevil.example");
+    await page.getByLabel("Miembro").selectOption(people.receptionist.userId);
+    await page.getByRole("button", { name: "Ingresar" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`^${baseURL}/agenda`));
+  });
 });

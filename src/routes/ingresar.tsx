@@ -10,6 +10,8 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { returnPath } from "#/lib/return-path.ts";
+import { signInArrival } from "#/lib/sign-in-arrival.ts";
 import { rolesLabel } from "#/lib/staff.ts";
 import { startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
@@ -17,23 +19,25 @@ import { getSignIn, signInAsDevMember } from "#/server/sign-in.functions.ts";
 
 /**
  * `volver` is the page asked for before signing in, which signing in lands on:
- * a path of this app only, so a link cannot send the member elsewhere.
+ * a path of this app only (`returnPath`), so a link cannot send the member elsewhere.
  */
 const searchSchema = z.object({
-  volver: z
-    .string()
-    .regex(/^\/(?![/\\])/)
-    .optional()
-    .catch(undefined),
+  volver: z.string().transform(returnPath).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/ingresar")({
   head: () => ({ meta: [{ title: "Ingresar · Rubens" }] }),
   validateSearch: searchSchema,
+  // The page renders only once the server answered that no member is signed
+  // in: Clerk's sign-in then tells someone signed in to Clerk they have no
+  // access. A failed check is an error to retry, never "no access".
   beforeLoad: async ({ search }) => {
-    const result = await getViewer();
-    if (result.ok) {
+    const arrival = signInArrival(await getViewer());
+    if (arrival === "signedIn") {
       throw redirect({ href: search.volver ?? "/" });
+    }
+    if (arrival === "failed") {
+      throw new Error("The server could not say who is signed in");
     }
   },
   loader: () => getSignIn(),

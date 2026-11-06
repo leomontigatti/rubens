@@ -21,8 +21,10 @@ import {
   bookingRequestOf,
   freeStartsQueryOf,
   initialBookingValues,
+  keepsOfferedStarts,
   overbookingFieldNames,
   overbookingRequestOf,
+  showsWeekOfStarts,
 } from "#/lib/booking-draft.ts";
 import type {
   BookingStart,
@@ -253,16 +255,16 @@ function useBookingForm(props: BookingPageProps) {
       props.practitioners.map((practitioner) => practitioner.id),
       props.defaultDate,
     ),
-    // A warning confirmed after a change would book what it never warned about,
-    // and the times left were for what was asked then; picking one of them keeps
-    // the list, the only picker on a page opened from a cell. A refusal stays
+    // A warning confirmed after a change would book what it never warned about.
+    // The times left stay until what they were read for changes: on a page
+    // opened from a cell they are the only picker until then. A refusal stays
     // until the next submit.
     listeners: {
       onChange: ({ fieldApi }) =>
         setAnswer((last) => ({
           ...noAnswer,
           refusal: last.refusal,
-          freshStarts: fieldApi.name === "start" ? last.freshStarts : null,
+          freshStarts: keepsOfferedStarts(fieldApi.name) ? last.freshStarts : null,
         })),
     },
     onSubmit: ({ value }) => book(value, false),
@@ -448,16 +450,18 @@ function StartField(props: {
 }) {
   const { form, fixed } = props;
   const query = useStore(form.store, (state) => freeStartsQueryOf(state.values));
+  const showsWeek = (start: PickedStart | null) =>
+    showsWeekOfStarts({ fixed, start, offeredStarts: props.freshStarts });
   return (
     <form.Field name="start">
       {(field) => (
         <StartGroup>
-          {!fixed && (
+          {showsWeek(field.state.value) && (
             <form.AppField name="freeFrom">
               {(from) => <from.TextField label="Horarios libres desde" type="date" inline />}
             </form.AppField>
           )}
-          {!fixed && query && (
+          {showsWeek(field.state.value) && query && (
             <FreeStartsOfWeek
               query={query}
               picked={field.state.value}
