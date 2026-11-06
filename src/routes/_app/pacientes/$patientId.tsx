@@ -29,7 +29,7 @@ import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-sta
 import { getPatientAppointments } from "#/server/appointments.functions.ts";
 import { getCoverages } from "#/server/coverages.functions.ts";
 import { getGuardians } from "#/server/guardians.functions.ts";
-import type { Guardian } from "#/server/guardians.ts";
+import type { Guardian } from "#/organization/guardians.ts";
 import {
   changePatientActive,
   changeWhatsappConsent,
@@ -38,7 +38,8 @@ import {
   getPatientUpcomingCount,
 } from "#/server/patients.functions.ts";
 import type { PatientAppointment } from "#/server/patient-appointments.ts";
-import type { HistoryEntry, Patient } from "#/server/patients.ts";
+import type { HistoryEntry } from "#/organization/patient-history.ts";
+import type { Patient } from "#/organization/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
   loader: async ({ params, context }) => {

@@ -7,6 +7,7 @@ import {
   devMedicalService,
   devOffice,
   devOrganizationName,
+  devPatients,
   devPeople,
   devRoom,
   workingHours,
@@ -58,6 +59,12 @@ export async function seedDevOrganization(
       practitionerId: practitioner.id,
     }),
   );
+  for (const patient of devPatients) {
+    accepted(
+      `registerPatient ${patient.lastName}`,
+      await organization.registerPatient(admin, patient),
+    );
+  }
   accepted(
     "createSchedule",
     await organization.createSchedule(admin, {

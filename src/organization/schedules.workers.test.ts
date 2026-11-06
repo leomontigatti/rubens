@@ -15,7 +15,7 @@ import {
   setUpOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { appointment, medicalService, member, patient } from "#/organization/schema.ts";
+import { appointment, medicalService, member } from "#/organization/schema.ts";
 
 // Dates far in the future or the past keep "today" out of the way unless a
 // test is about it; 2099-01-05 and 2020-01-06 are Mondays. The offices are in
@@ -258,24 +258,24 @@ describe("room capacity", () => {
 
 describe("a schedule saved in a room an appointment holds", () => {
   /** Stores an appointment for `practitionerId` in `roomId` on 2099-01-05, 12:00 to 12:30 local. */
-  function storeAppointment(
+  async function storeAppointment(
     organization: OrganizationStub,
     practitionerId: string,
     roomId: string,
     status: AppointmentStatus = "booked",
   ) {
+    const registered = await organization.registerPatient(adminCaller, {
+      firstName: "María",
+      lastName: "López",
+      phone: "0351 15 400-0001",
+      // Each appointment gets a patient of its own, all with the same name.
+      confirmDuplicates: true,
+    });
+    if (!registered.ok) {
+      throw new Error(`registerPatient refused: ${registered.reason}`);
+    }
+    const patientId = registered.patient.id;
     return inStorage(organization, (database) => {
-      const { id: patientId } = database
-        .insert(patient)
-        .values({
-          firstName: "María",
-          lastName: "López",
-          phone: "+5493514000001",
-          whatsappConsentAt: Date.now(),
-          whatsappConsentBy: adminCaller.userId,
-        })
-        .returning({ id: patient.id })
-        .get();
       const { id: medicalServiceId } = database
         .insert(medicalService)
         .values({ practitionerId, name: "Consulta", durationMinutes: 30 })

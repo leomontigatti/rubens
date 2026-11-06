@@ -195,6 +195,9 @@ export const patient = sqliteTable(
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     chosenName: text("chosen_name"),
+    // The names the search box matches, normalized, written with them by the
+    // object (`src/organization/patient-search.ts`): SQLite has no `unaccent`.
+    searchName: text("search_name").notNull(),
     documentType: text("document_type", { enum: documentTypes }),
     documentNumber: text("document_number"),
     // A local date. No birth date is what makes a patient incomplete.

@@ -1,7 +1,20 @@
 import { DurableObject } from "cloudflare:workers";
 
 import type { AvailabilityQuery } from "#/lib/availability.ts";
-import type { InsurerActiveChange, InsurerInput, InsurerUpdate } from "#/lib/coverages.ts";
+import type {
+  CoverageId,
+  CoverageInput,
+  CoverageUpdate,
+  InsurerActiveChange,
+  InsurerInput,
+  InsurerUpdate,
+} from "#/lib/coverages.ts";
+import type {
+  GuardianId,
+  GuardianInput,
+  GuardianUpdate,
+  MessageContactChange,
+} from "#/lib/guardians.ts";
 import type {
   MedicalServiceActiveChange,
   MedicalServiceInput,
@@ -27,6 +40,13 @@ import type {
   StartingPasswordChange,
 } from "#/lib/staff.ts";
 import type {
+  DuplicateConfirmation,
+  PatientActiveChange,
+  PatientInput,
+  PatientUpdate,
+  WhatsappConsentChange,
+} from "#/lib/patients.ts";
+import type {
   ClosureDelete,
   ClosureInput,
   ClosureUpdate,
@@ -44,8 +64,22 @@ import {
   listClosures,
   updateClosure,
 } from "#/organization/closures.ts";
+import {
+  addCoverage,
+  listCoverages,
+  makeCoveragePrimary,
+  removeCoverage,
+  updateCoverage,
+} from "#/organization/coverages.ts";
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
+import {
+  addGuardian,
+  listGuardians,
+  removeGuardian,
+  setMessageContact,
+  updateGuardian,
+} from "#/organization/guardians.ts";
 import {
   createInsurer,
   listInsurers,
@@ -79,6 +113,18 @@ import {
   updateRoom,
 } from "#/organization/offices.ts";
 import type { ListOptions } from "#/organization/offices.ts";
+import { getPatientHistory } from "#/organization/patient-history.ts";
+import { searchPatients } from "#/organization/patient-search.ts";
+import type { SearchOptions } from "#/organization/patient-search.ts";
+import {
+  getPatient,
+  listPatients,
+  registerPatient,
+  setPatientActive,
+  setWhatsappConsent,
+  updatePatient,
+} from "#/organization/patients.ts";
+import type { PatientListOptions } from "#/organization/patients.ts";
 import { listSchedulePractitioners } from "#/organization/practitioners.ts";
 import {
   changeSchedule,
@@ -122,6 +168,9 @@ import {
 const medicalServiceEditors = ["admin", "practitioner"] as const;
 // The same for schedules and time off; a receptionist only reads them.
 const workingTimeEditors = medicalServiceEditors;
+
+// Every staff role registers and edits patients, their coverages and guardians.
+const patientEditors = ["admin", "receptionist", "practitioner"] as const;
 
 export class Organization extends DurableObject {
   readonly #database: Database;
@@ -293,6 +342,98 @@ export class Organization extends DurableObject {
   async changePassword(caller: Caller, input: { currentPassword: string; newPassword: string }) {
     return this.#as(caller, "signedIn", (acting) =>
       changeOwnPassword(this.#database, this.#accounts, acting, input),
+    );
+  }
+
+  // Patients
+
+  listPatients(caller: Caller, input: PatientListOptions) {
+    return this.#as(caller, patientEditors, () => listPatients(this.#database, input));
+  }
+
+  searchPatients(caller: Caller, input: SearchOptions) {
+    return this.#as(caller, patientEditors, () => searchPatients(this.#database, input));
+  }
+
+  getPatient(caller: Caller, input: { patientId: string }) {
+    return this.#as(caller, patientEditors, () => getPatient(this.#database, input));
+  }
+
+  getPatientHistory(caller: Caller, input: { patientId: string }) {
+    return this.#as(caller, ["admin"], () => getPatientHistory(this.#database, input));
+  }
+
+  registerPatient(caller: Caller, input: PatientInput & DuplicateConfirmation) {
+    return this.#as(caller, patientEditors, (acting) =>
+      registerPatient(this.#database, acting, input),
+    );
+  }
+
+  updatePatient(caller: Caller, input: PatientUpdate & DuplicateConfirmation) {
+    return this.#as(caller, patientEditors, (acting) =>
+      updatePatient(this.#database, acting, input),
+    );
+  }
+
+  setWhatsappConsent(caller: Caller, input: WhatsappConsentChange) {
+    return this.#as(caller, patientEditors, (acting) =>
+      setWhatsappConsent(this.#database, acting, input),
+    );
+  }
+
+  setPatientActive(caller: Caller, input: PatientActiveChange) {
+    return this.#as(caller, ["admin"], (acting) => setPatientActive(this.#database, acting, input));
+  }
+
+  listCoverages(caller: Caller, input: { patientId: string }) {
+    return this.#as(caller, patientEditors, () => listCoverages(this.#database, input));
+  }
+
+  addCoverage(caller: Caller, input: CoverageInput) {
+    return this.#as(caller, patientEditors, (acting) => addCoverage(this.#database, acting, input));
+  }
+
+  updateCoverage(caller: Caller, input: CoverageUpdate) {
+    return this.#as(caller, patientEditors, (acting) =>
+      updateCoverage(this.#database, acting, input),
+    );
+  }
+
+  makeCoveragePrimary(caller: Caller, input: CoverageId) {
+    return this.#as(caller, patientEditors, (acting) =>
+      makeCoveragePrimary(this.#database, acting, input),
+    );
+  }
+
+  removeCoverage(caller: Caller, input: CoverageId) {
+    return this.#as(caller, patientEditors, (acting) =>
+      removeCoverage(this.#database, acting, input),
+    );
+  }
+
+  listGuardians(caller: Caller, input: { patientId: string }) {
+    return this.#as(caller, patientEditors, () => listGuardians(this.#database, input));
+  }
+
+  addGuardian(caller: Caller, input: GuardianInput) {
+    return this.#as(caller, patientEditors, (acting) => addGuardian(this.#database, acting, input));
+  }
+
+  updateGuardian(caller: Caller, input: GuardianUpdate) {
+    return this.#as(caller, patientEditors, (acting) =>
+      updateGuardian(this.#database, acting, input),
+    );
+  }
+
+  removeGuardian(caller: Caller, input: GuardianId) {
+    return this.#as(caller, patientEditors, (acting) =>
+      removeGuardian(this.#database, acting, input),
+    );
+  }
+
+  setMessageContact(caller: Caller, input: MessageContactChange) {
+    return this.#as(caller, patientEditors, (acting) =>
+      setMessageContact(this.#database, acting, input),
     );
   }
 

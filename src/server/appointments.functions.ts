@@ -22,8 +22,8 @@ import {
 } from "#/server/appointment-statuses.ts";
 import { bookAppointment } from "#/server/appointments.ts";
 import { getCalendarWeek } from "#/server/calendar-week.ts";
-import { listPatientAppointments } from "#/server/patient-appointments.ts";
-import { countToReschedule, listToReschedule } from "#/server/to-reschedule.ts";
+import type { PatientAppointment } from "#/server/patient-appointments.ts";
+import { listToReschedule } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
 
 // The services validate their input and decide for whom the actor may book, so
@@ -69,12 +69,14 @@ export const moveAppointment = createServerFn({ method: "POST" })
 
 export const getPatientAppointments = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => listPatientAppointments(actor, data)));
+  // Until appointments port (#137), a patient's page lists none, so it loads
+  // with no Postgres behind it.
+  .handler(() => ({
+    ok: true as const,
+    upcoming: [] as PatientAppointment[],
+    past: [] as PatientAppointment[],
+  }));
 
 export const getToReschedule = createServerFn({ method: "GET" }).handler(() =>
   withActor(bookers, (actor) => listToReschedule(actor)),
-);
-
-export const getToRescheduleCount = createServerFn({ method: "GET" }).handler(() =>
-  withActor(bookers, (actor) => countToReschedule(actor)),
 );

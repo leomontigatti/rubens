@@ -36,6 +36,17 @@ export const devRoom = { name: "Consultorio E2E" };
 export const devMedicalService = { name: "Consulta E2E", durationMinutes: 30 };
 
 /**
+ * Patients already registered: two for the form-page races, which need two
+ * records of the same edit page, and the ones the search race types for.
+ */
+export const devPatients = [
+  { firstName: "Marta", lastName: "Quiroga", phone: "0351 15 400-0001" },
+  { firstName: "Nicolás", lastName: "Ferreyra", phone: "0351 15 400-0002" },
+  { firstName: "Olga", lastName: "Benítez", phone: "0351 15 400-0003" },
+  { firstName: "Osvaldo", lastName: "Bustos", phone: "0351 15 400-0004" },
+] as const;
+
+/**
  * The practitioner works every day from 08:00 to 20:00 in the room, from the
  * day the seed runs on, so any later day has free starts.
  */
