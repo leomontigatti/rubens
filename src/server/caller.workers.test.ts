@@ -6,6 +6,7 @@ import {
   devOrganizationId,
   devUserCookie,
   servePageLoad,
+  signedOutSession,
   resolveCaller,
 } from "#/server/caller.ts";
 import type { VerifySession, WorkerEnv } from "#/server/caller.ts";
@@ -220,5 +221,21 @@ describe("a page load whose session token Clerk must refresh", () => {
 
     expect(response.status).toBe(200);
     expect(asked).toBe(false);
+  });
+});
+
+describe("a request Clerk answers as signed out", () => {
+  it("has no session when Clerk found no valid token", () => {
+    expect(signedOutSession("session-token-and-uat-missing")).toBeNull();
+    expect(signedOutSession("token-expired")).toBeNull();
+    expect(signedOutSession("token-invalid-signature")).toBeNull();
+  });
+
+  // Clerk reports its own failures as signed out too: a member must then see
+  // an error to retry, not "no access" with a sign-out.
+  it("fails when Clerk could not check the token", () => {
+    expect(() => signedOutSession("jwk-remote-failed-to-load")).toThrow(/could not verify/);
+    expect(() => signedOutSession("jwk-failed-to-resolve")).toThrow(/could not verify/);
+    expect(() => signedOutSession("unexpected-error")).toThrow(/could not verify/);
   });
 });

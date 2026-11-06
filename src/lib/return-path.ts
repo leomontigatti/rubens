@@ -32,5 +32,11 @@ export function returnPath(value: string): string | undefined {
   if (url.origin !== placeholderOrigin) {
     return undefined;
   }
-  return `${url.pathname}${url.search}${url.hash}`;
+  // Normalizing can make another site of a path: `/a/..//evil.example`
+  // becomes `//evil.example`. What is returned is checked too.
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  if (path.startsWith("//") || new URL(path, placeholderOrigin).origin !== placeholderOrigin) {
+    return undefined;
+  }
+  return path;
 }

@@ -83,12 +83,37 @@ function authenticate(env: WorkerEnv, request: Request): Promise<ClerkRequestSta
   return state;
 }
 
+/**
+ * Clerk's signed-out reasons that mean it could not check the token at all
+ * (its signing keys did not load, or it failed unexpectedly), not that the
+ * request has no valid session.
+ */
+const verificationFailures = new Set<string>([
+  "jwk-remote-failed-to-load",
+  "jwk-failed-to-resolve",
+  "jwk-remote-invalid",
+  "jwk-remote-missing",
+  "unexpected-error",
+]);
+
+/**
+ * A signed-out answer from Clerk: no session, or a throw when Clerk could not
+ * verify the token, so the member sees an error to retry rather than being
+ * told they have no access.
+ */
+export function signedOutSession(reason: string | null): null {
+  if (reason && verificationFailures.has(reason)) {
+    throw new Error(`[clerk] could not verify the session token: ${reason}`);
+  }
+  return null;
+}
+
 /** Verifies the Clerk session token of a request (its `__session` cookie or `Authorization` header). */
 export function clerkSession(env: WorkerEnv): VerifySession {
   return async (request) => {
     const state = await authenticate(env, request);
     if (!state.isAuthenticated) {
-      return null;
+      return signedOutSession(state.reason);
     }
     const auth = state.toAuth();
     return { userId: auth.userId, organizationClaim: auth.sessionClaims.org };
