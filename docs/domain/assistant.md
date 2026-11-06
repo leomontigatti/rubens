@@ -157,6 +157,8 @@ The assistant hands a conversation to a person when:
 
 - the patient asks for one, or to be contacted;
 - a rule refuses what the patient wants (past the cutoff, the one move used);
+- the patient wants a new time for an appointment the organization cancelled,
+  until booking arrives in the second release;
 - the question is clinical, or a follow-up's answer is not plainly good;
 - it has misunderstood the patient twice in a row;
 - a voice note stays unintelligible;
