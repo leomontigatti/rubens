@@ -61,6 +61,9 @@ import type {
   TimeOffUpdate,
 } from "#/lib/time-ranges.ts";
 
+import { seedAgendaWeek } from "#/dev/agenda-week.ts";
+import type { AgendaWeekInput } from "#/dev/agenda-week.ts";
+
 import { accountsFor } from "#/organization/accounts.ts";
 import type { Accounts } from "#/organization/accounts.ts";
 import {
@@ -224,6 +227,14 @@ export class Organization extends DurableObject {
 
   activeMembers() {
     return listActiveMembers(this.#database);
+  }
+
+  /**
+   * Books a busy week to measure the agenda on (#139, `src/dev/agenda-week.ts`);
+   * the Worker serves it only in dev or with SEED_SECRET (`src/server/agenda-week-seed.ts`).
+   */
+  seedAgendaWeek(caller: Caller, input: AgendaWeekInput) {
+    return this.#as(caller, ["admin"], (acting) => seedAgendaWeek(this.#database, acting, input));
   }
 
   // Members

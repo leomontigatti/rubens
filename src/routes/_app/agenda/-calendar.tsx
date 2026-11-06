@@ -77,6 +77,20 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
   );
 }
 
+/** The grid's border at its height, empty: what stands in for it until the browser draws it. */
+export function WeekGridFrame(props: { view: TimeRange }) {
+  const { view } = props;
+  return (
+    <div className="rounded-xl border">
+      <div className="h-10 border-b" />
+      <div
+        className="h-(--height)"
+        style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
+      />
+    </div>
+  );
+}
+
 /** A free cell clicked: its start and the practitioners free from it. */
 export interface PickedCell {
   start: Date;

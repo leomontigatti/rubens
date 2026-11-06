@@ -100,6 +100,15 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
   organization name changes nothing and says so. The admin must replace the starting
   password at first sign-in. Dev needs none of it: the dev sign-in seeds its own
   organization.
+- `seed:agenda-week` ⚠️ runs `scripts/seed-agenda-week.ts`: books the busy weeks the
+  agenda's CPU budget is measured on (#139, `src/dev/agenda-week.ts`), with `--url <worker
+  url>`, from next week on for `--weeks` (13 by default, about 1,600 appointments) in a
+  `Sede Belgrano` office it adds with two rooms and four practitioners. Against a Worker in
+  dev mode it acts as the dev admin, and the practitioners sign in through the dev sign-in.
+  Against one with Clerk it needs `SESSION_TOKEN` (an admin's session token) and
+  `SEED_SECRET` (the Worker's secret of that name; with none the Worker does not serve it),
+  and `--practitioner <user id>` makes an existing practitioner the first of the four, so a
+  real account sees the week as a practitioner.
 - `db:worktree` ⚠️ runs `scripts/worktree-db.ts`. With no argument, sets up this worktree's
   database and `.env.local` (its own database name and port). With `ensure`, the same
   setup, skipped when it is already done. With `prune`, lists the `rubens-wt-` databases

@@ -37,6 +37,7 @@
     "db:studio": "node --env-file-if-exists=.env --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs studio",
     "db:worktree": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/worktree-db.ts",
     "labels:sync": "node --import tsx scripts/sync-labels.ts",
+    "seed:agenda-week": "node --import tsx scripts/seed-agenda-week.ts",
     "setup:organization": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/setup-organization.ts",
     "prepare": "vp config --no-agent || true",
     "organization:generate": "node node_modules/drizzle-kit/bin.cjs generate --config drizzle.organization.config.ts --name organization",
