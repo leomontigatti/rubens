@@ -7,6 +7,7 @@ import {
   adminCaller,
   fakeAccounts,
   freshOrganization,
+  inObject,
   inStorage,
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
@@ -228,14 +229,16 @@ describe("creating a staff member", () => {
 
   it("lets the email be created again once a create of it has failed", async () => {
     fakeAccounts.failNext("createUser");
-    await expect(
-      organization.createStaffMember(adminCaller, {
-        name: "Otro",
-        email: "otro@example.com",
-        password: startingPassword,
-        roles: ["receptionist"],
-      }),
-    ).rejects.toThrow();
+    await inObject(organization, (instance) =>
+      expect(
+        instance.createStaffMember(adminCaller, {
+          name: "Otro",
+          email: "otro@example.com",
+          password: startingPassword,
+          roles: ["receptionist"],
+        }),
+      ).rejects.toThrow("Clerk is unreachable"),
+    );
 
     expect(
       await organization.createStaffMember(adminCaller, {

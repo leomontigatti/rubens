@@ -227,6 +227,19 @@ export async function setUpBookingWorld() {
   };
 }
 
+/**
+ * Calls the object's methods on its instance, not through the stub: for a
+ * method expected to throw. A throw across RPC is logged inside the object as
+ * an uncaught exception, which the Workers test runner fails the run on.
+ */
+export function inObject<T>(
+  organization: OrganizationStub,
+  work: (instance: Organization) => Promise<T>,
+) {
+  // The stub's overload types the instance as RPC's branded type; it is the object itself.
+  return runInDurableObject(organization, (instance) => work(instance as unknown as Organization));
+}
+
 /** Runs `work` on the object's storage directly: for what no method reads or writes yet. */
 export function inStorage<T>(organization: OrganizationStub, work: (database: Database) => T) {
   return runInDurableObject(organization, (_instance, state) => work(openDatabase(state.storage)));
