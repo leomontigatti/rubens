@@ -64,6 +64,12 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
 - `test:unit`: `vp test --run --project unit`, the `*.test.ts(x)` files. No database.
 - `test:db`: `vp test --run --project db`, the `*.db.test.ts` files on PGlite, an
   in-process Postgres. No database service needed.
+- `test:e2e` ⚠️ `pnpm build`, then `tests/e2e/prepare.ts`, which drops and rebuilds the
+  suite's own database (`rubens_e2e`, or `rubens-wt-<worktree>_e2e`) on the Postgres the
+  `.env` names, then `playwright test`: the browser suite against the production build on
+  `PORT` plus 10000. Arguments go to Playwright, so `pnpm test:e2e tests/e2e/<spec>` runs
+  one spec. It never touches the dev database. CI runs it in the `e2e` job
+  ([tests/e2e/README.md](../../tests/e2e/README.md)).
 
 ## Database
 

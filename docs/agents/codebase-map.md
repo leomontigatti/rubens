@@ -36,6 +36,7 @@ src/
 └── styles.css         Tailwind 4 and the theme tokens
 scripts/               repo scripts and their unit tests (worktree DB, migrations, checks, the `ui` lint plugin)
 tests/db/              DB test harness and cross-cutting DB tests (see tests/db/README.md)
+tests/e2e/             the Playwright browser suite, its seed and sign-in (see tests/e2e/README.md)
 tests/lint/            the custom lint rules' tests, run through `vp lint`
 docker/                local Postgres init (`docker-compose.yml` at the root)
 docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the model
@@ -63,5 +64,7 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
 - `*.test.ts(x)` beside the code: unit tests (`pnpm test:unit`).
 - `*.db.test.ts` beside the code, and `tests/db/**`: database tests on PGlite
   (`pnpm test:db`). An RLS test runs as the app role.
+- `tests/e2e/*.spec.ts`: browser specs against the production build (`pnpm test:e2e`),
+  one file per flow or race ([tests/e2e/README.md](../../tests/e2e/README.md)).
 - Fixtures shared by one module's tests sit in `<name>.test-support.ts`; fixtures
   shared across modules sit in `src/test-support/` ([coding-standards.md](./coding-standards.md#test-support-files)).

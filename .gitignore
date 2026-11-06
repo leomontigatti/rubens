@@ -20,3 +20,8 @@ tmp/
 # lint probes tests/lint/adr-rules.test.ts writes and removes; a killed run can
 # leave them behind, and they break the rules on purpose
 tests/lint/.probes-*/
+
+# the browser suite's saved sign-ins, traces and report (tests/e2e/README.md)
+tests/e2e/.auth/
+test-results/
+playwright-report/

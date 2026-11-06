@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   choosePort,
   databaseUrlFor,
+  e2eDatabaseName,
   parseEnvPort,
   planPrune,
   renderEnvLocal,
@@ -80,5 +81,34 @@ describe("planPrune", () => {
         worktreePaths: ["/home/poto/projects/rubens", "/wt/live"],
       }),
     ).toEqual(["rubens-wt-gone"]);
+  });
+
+  it("drops a worktree's e2e database with its worktree, and keeps a live one's", () => {
+    expect(
+      planPrune({
+        databases: ["rubens_e2e", "rubens-wt-live_e2e", "rubens-wt-gone_e2e"],
+        worktreePaths: ["/home/poto/projects/rubens", "/wt/live"],
+      }),
+    ).toEqual(["rubens-wt-gone_e2e"]);
+  });
+});
+
+describe("e2eDatabaseName", () => {
+  it("names the e2e database after the database it stands beside", () => {
+    expect(e2eDatabaseName("rubens-wt-x")).toBe("rubens-wt-x_e2e");
+  });
+
+  it("never names another worktree's database, nor its own", () => {
+    // Worktrees `foo` and `foo-e2e`: the suite of `foo` must not take the other's dev database.
+    const other = worktreeDatabaseName("/wt/foo-e2e");
+    expect(e2eDatabaseName(worktreeDatabaseName("/wt/foo"))).not.toBe(other);
+    const long = worktreeDatabaseName(`/tmp/${"a".repeat(49)}-e2e`);
+    expect(e2eDatabaseName(long)).not.toBe(long);
+  });
+
+  it("stays inside Postgres's 63-byte identifier limit, still ending in _e2e", () => {
+    const name = e2eDatabaseName(worktreeDatabaseName(`/tmp/${"a".repeat(80)}`));
+    expect(name).toHaveLength(63);
+    expect(name.endsWith("_e2e")).toBe(true);
   });
 });
