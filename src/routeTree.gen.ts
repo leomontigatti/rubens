@@ -40,7 +40,6 @@ import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
-import { Route as ApiSeedAgendaWeekRouteImport } from './routes/api/seed/agenda-week'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
@@ -219,11 +218,6 @@ const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
   path: '/sedes/nueva',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiSeedAgendaWeekRoute = ApiSeedAgendaWeekRouteImport.update({
-  id: '/api/seed/agenda-week',
-  path: '/api/seed/agenda-week',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppAgendaSobreturnosNuevoRoute =
   AppAgendaSobreturnosNuevoRouteImport.update({
     id: '/agenda/sobreturnos/nuevo',
@@ -363,7 +357,6 @@ export interface FileRoutesByFullPath {
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
-  '/api/seed/agenda-week': typeof ApiSeedAgendaWeekRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
@@ -416,7 +409,6 @@ export interface FileRoutesByTo {
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
-  '/api/seed/agenda-week': typeof ApiSeedAgendaWeekRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
@@ -471,7 +463,6 @@ export interface FileRoutesById {
   '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/_app/sedes/nueva': typeof AppSedesNuevaRoute
-  '/api/seed/agenda-week': typeof ApiSeedAgendaWeekRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
@@ -526,7 +517,6 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
     | '/sedes/nueva'
-    | '/api/seed/agenda-week'
     | '/a-reprogramar/'
     | '/agenda/'
     | '/cierres/'
@@ -579,7 +569,6 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
     | '/sedes/nueva'
-    | '/api/seed/agenda-week'
     | '/a-reprogramar'
     | '/agenda'
     | '/cierres'
@@ -633,7 +622,6 @@ export interface FileRouteTypes {
     | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
     | '/_app/sedes/nueva'
-    | '/api/seed/agenda-week'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
     | '/_app/cierres/'
@@ -671,7 +659,6 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IngresarRoute: typeof IngresarRoute
   ApiSetupRoute: typeof ApiSetupRoute
-  ApiSeedAgendaWeekRoute: typeof ApiSeedAgendaWeekRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -892,13 +879,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/sedes/nueva'
       preLoaderRoute: typeof AppSedesNuevaRouteImport
       parentRoute: typeof AppRoute
-    }
-    '/api/seed/agenda-week': {
-      id: '/api/seed/agenda-week'
-      path: '/api/seed/agenda-week'
-      fullPath: '/api/seed/agenda-week'
-      preLoaderRoute: typeof ApiSeedAgendaWeekRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_app/agenda/sobreturnos/nuevo': {
       id: '/_app/agenda/sobreturnos/nuevo'
@@ -1164,7 +1144,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IngresarRoute: IngresarRoute,
   ApiSetupRoute: ApiSetupRoute,
-  ApiSeedAgendaWeekRoute: ApiSeedAgendaWeekRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

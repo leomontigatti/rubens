@@ -16,8 +16,6 @@
   // with DEV_SIGN_IN=true serves; a deployed Worker refuses (src/server/caller.ts).
   // SETUP_SECRET, also a secret, lets `pnpm setup:organization` create an
   // organization; without it the setup endpoint answers 404.
-  // SEED_SECRET, a secret only on a copy deployed to measure the agenda's CPU,
-  // lets `pnpm seed:agenda-week` book its busy weeks; without it, 404.
   // In Clerk's dashboard, the session token's claims must carry the user's
   // public metadata as `"org": "{{user.public_metadata.organizationId}}"` and
   // `"roles": "{{user.public_metadata.roles}}"` (ADR-0009).

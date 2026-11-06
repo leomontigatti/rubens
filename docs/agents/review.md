@@ -25,7 +25,7 @@ full patient data: (^|/)(clinical|patients?|pacientes?|historias?|evolucion(es)?
 full tenancy: ^src/server/(caller|with-organization)\.ts$
 full tenancy: ^src/organization/(organization|members|database|schema)\.ts$
 full auth: ^src/organization/accounts\.ts$
-full auth: ^src/server/(sign-in\.functions|organization-setup|agenda-week-seed)\.ts$
+full auth: ^src/server/(sign-in\.functions|organization-setup)\.ts$
 full auth: ^src/routes/api/
 full migration: ^src/organization/migrations/
 full migration: ^drizzle\.organization\.config\.ts$

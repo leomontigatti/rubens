@@ -59,7 +59,6 @@ that is committed.
 | `CLERK_SECRET_KEY`      | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`). |
 | `CLERK_PUBLISHABLE_KEY` | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                          |
 | `SETUP_SECRET`          | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.     |
-| `SEED_SECRET`           | Only on a copy deployed to measure the agenda's CPU: lets `pnpm seed:agenda-week` book its busy weeks. Never on production.         |
 
 `DEV_SIGN_IN` is never set on a deployed Worker: it would let anyone sign in as any
 member.
@@ -106,9 +105,10 @@ Durable Object namespace are gone, and delete that copy's Clerk application if i
 
 The free plan allows 10 ms of CPU per request (ADR-0008). Watch a deploy's CPU in the
 Worker's metrics on Cloudflare's dashboard (`observability` is on in `wrangler.jsonc`).
-The agenda's busy week is the case to measure: deploy a copy with `SEED_SECRET`, run
-`pnpm seed:agenda-week` against it ([scripts.md](./scripts.md)), load the agenda week,
-then delete the copy.
+Measured deployed on 2026-11-06, a signed-in page takes about 20–30 ms of CPU (the agenda
+week a median 20–21 ms, a plain page 29 ms), and a server-function call about 2 ms: over
+the free plan's limit. How to fit it, or whether to move to Workers Paid, is #143, which
+also says how to measure it again.
 
 ## Backups
 

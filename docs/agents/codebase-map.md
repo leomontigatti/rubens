@@ -9,8 +9,7 @@ when a directory is added, moved or given a new job.
 ```
 src/
 ├── routes/            TanStack Router file routes; `__root.tsx` is the document shell
-│   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET) and
-│                      `seed/` (the dev or SEED_SECRET seeds)
+│   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET)
 ├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),
 │   │                  `form-page.tsx` (a create or an edit on its own page),
 │   │                  `admin-form.tsx` (the admin screens' submit step and controls), `confirm-dialog.tsx` (the question before a destructive
@@ -26,8 +25,7 @@ src/
 ├── organization/      the organization's Durable Object (ADR-0008): `organization.ts` (the class, one
 │   │                  RPC method per operation), one module per area (`members.ts`, `audit.ts`, …),
 │   │                  `schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
-├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it),
-│                      `agenda-week.ts` (the busy week the agenda's CPU is measured on)
+├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
 ├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules
 ├── server/            server-only modules that are not routes: `*.functions.ts` (server functions),

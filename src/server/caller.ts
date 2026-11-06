@@ -21,8 +21,6 @@ export interface WorkerEnv {
   DEV_SIGN_IN?: string;
   /** The bearer token the setup script sends; with none, setup is not served (`organization-setup.ts`). */
   SETUP_SECRET?: string;
-  /** The secret the agenda week seed asks for outside dev; with none, it is not served (`agenda-week-seed.ts`). */
-  SEED_SECRET?: string;
 }
 
 /** `clerk` with a Clerk secret; `dev`, the sign-in that picks a seeded member, otherwise. */

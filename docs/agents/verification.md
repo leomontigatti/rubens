@@ -20,8 +20,6 @@ validation command, and CI does not run it.
 Data comes from the dev seed (`src/dev/seed.ts`), which fills the dev organization on the
 sign-in page's first load, never from a copy of production. It lives in the worktree's
 `.wrangler/state/`. Create the other rows the screen needs through the app, with made-up names.
-The agenda's busy week (`pnpm seed:agenda-week`, [scripts.md](../operations/scripts.md)) is
-there for a screen that needs a full week.
 
 ## Doctor
 
