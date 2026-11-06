@@ -9,7 +9,7 @@ import type { AccountMetadata, Accounts, CreateUserResult } from "#/organization
 import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
-import { appointment, auditLog } from "#/organization/schema.ts";
+import { auditLog } from "#/organization/schema.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 
 // Fixtures for the organization object's tests (`*.workers.test.ts`): a fresh
@@ -29,6 +29,22 @@ export function freshOrganization(): { organizationId: string; organization: Org
 }
 
 export const adminCaller = { userId: "user-admin" };
+
+/**
+ * The instant at UTC `time` on `date`, a Monday by default: the booking
+ * world's office is in Buenos Aires (UTC-3), so "12:00" is 09:00 there.
+ */
+export function at(time: string, date = "2099-01-05") {
+  return new Date(`${date}T${time}:00Z`);
+}
+
+/** The result of a call that must succeed; throws with the refusal otherwise. */
+export function expectOk<T extends { ok: boolean }>(result: T): Extract<T, { ok: true }> {
+  if (!result.ok) {
+    throw new Error(`refused: ${JSON.stringify(result)}`);
+  }
+  return result as Extract<T, { ok: true }>;
+}
 
 /** A fresh organization, set up with `adminCaller` as its first admin. */
 export async function setUpTestOrganization() {
@@ -185,11 +201,13 @@ export async function setUpBookingWorld() {
     return result.appointment;
   }
 
-  /** The appointment's stored row. */
-  function rowOf(appointmentId: string) {
-    return inStorage(organization, (database) =>
-      database.select().from(appointment).where(eq(appointment.id, appointmentId)).get(),
-    );
+  /** The appointment as the object shows it to `caller`, the first admin unless given; throws on a refusal. */
+  async function appointmentOf(appointmentId: string, caller = adminCaller) {
+    const result = await organization.getAppointment(caller, { appointmentId });
+    if (!result.ok) {
+      throw new Error(`getAppointment refused: ${result.reason}`);
+    }
+    return result.appointment;
   }
 
   return {
@@ -205,7 +223,7 @@ export async function setUpBookingWorld() {
     addPatient,
     book,
     overbook,
-    rowOf,
+    appointmentOf,
   };
 }
 

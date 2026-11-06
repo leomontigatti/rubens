@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   addRoom,
   adminCaller,
+  at,
+  expectOk,
   fakeAccounts,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
@@ -19,10 +21,6 @@ vi.mock(import("#/organization/accounts.ts"), async (original) => ({
 
 type Caller = typeof adminCaller;
 
-function at(time: string, date = "2099-01-05") {
-  return new Date(`${date}T${time}:00Z`);
-}
-
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(at("11:00"));
@@ -31,13 +29,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
-
-function expectOk<T extends { ok: boolean }>(result: T): Extract<T, { ok: true }> {
-  if (!result.ok) {
-    throw new Error(`refused: ${JSON.stringify(result)}`);
-  }
-  return result as Extract<T, { ok: true }>;
-}
 
 async function world() {
   const booking = await setUpBookingWorld();
@@ -273,7 +264,7 @@ describe("the to-reschedule list", () => {
     const w = await world();
     const id = await w.book(at("12:00"));
     await w.addTimeOff("2099-01-05T09:00", "2099-01-05T10:00");
-    expect(await w.rowOf(id)).toMatchObject({ status: "booked" });
+    expect(await w.appointmentOf(id)).toMatchObject({ status: "booked" });
 
     expectOk(
       await w.organization.cancelAppointment(w.receptionist, {

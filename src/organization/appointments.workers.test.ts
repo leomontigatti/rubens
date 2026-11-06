@@ -9,7 +9,9 @@ import {
   addRoom,
   addStaff,
   adminCaller,
+  at,
   auditEntriesFor,
+  expectOk,
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
@@ -20,10 +22,6 @@ import { appointment, member, office as officeTable } from "#/organization/schem
 // "Lucía" from 09:00 to 11:00 in "Consultorio 2".
 
 type Caller = typeof adminCaller;
-
-function at(time: string, date = "2099-01-05") {
-  return new Date(`${date}T${time}:00Z`);
-}
 
 async function world() {
   const booking = await setUpBookingWorld();
@@ -89,6 +87,18 @@ async function world() {
     }
   }
 
+  /** Who booked it: kept in storage, shown by no method. */
+  const createdByOf = (appointmentId: string) =>
+    inStorage(
+      booking.organization,
+      (database) =>
+        database
+          .select({ createdBy: appointment.createdBy })
+          .from(appointment)
+          .where(eq(appointment.id, appointmentId))
+          .get()?.createdBy,
+    );
+
   const appointmentCount = () =>
     inStorage(booking.organization, (database) => database.select().from(appointment).all().length);
 
@@ -105,6 +115,7 @@ async function world() {
     freeStartsOf,
     addTimeOff,
     appointmentCount,
+    createdByOf,
   };
 }
 
@@ -136,18 +147,18 @@ describe("booking an appointment", () => {
       receptionNote: "  Trae radiografías ",
     });
 
-    expect(await w.rowOf(created.id)).toMatchObject({
+    expect(await w.appointmentOf(created.id)).toMatchObject({
       patientId: w.maria.id,
       practitionerId: w.juan.practitionerId,
-      medicalServiceId: w.juanService.id,
+      medicalServiceName: "Consulta",
       roomId: w.room.id,
-      startsAt: +at("12:00"),
-      endsAt: +at("12:45"),
+      start: at("12:00"),
+      end: at("12:45"),
       status: "booked",
       overbooking: false,
       receptionNote: "Trae radiografías",
-      createdBy: w.receptionist.userId,
     });
+    expect(await w.createdByOf(created.id)).toBe(w.receptionist.userId);
   });
 
   it("refuses a start off the grid, outside the schedules or in time off", async () => {
@@ -190,12 +201,12 @@ describe("booking an appointment", () => {
   it("frees the time again once the appointment no longer holds it", async () => {
     const w = await world();
     const { id } = await w.book(w.bookingOf());
-    await inStorage(w.organization, (database) =>
-      database
-        .update(appointment)
-        .set({ status: "cancelled", cancelledBy: "patient" })
-        .where(eq(appointment.id, id))
-        .run(),
+    expectOk(
+      await w.organization.cancelAppointment(w.receptionist, {
+        appointmentId: id,
+        cancelledBy: "patient",
+        reason: "",
+      }),
     );
 
     expect(await w.freeStartsOf()).toContain("2099-01-05T12:00:00.000Z");
@@ -406,16 +417,16 @@ describe("an overbooking on top of another appointment", () => {
 
     const created = await w.overbook(w.overbookingOf());
 
-    expect(await w.rowOf(created.id)).toMatchObject({
+    expect(await w.appointmentOf(created.id)).toMatchObject({
       patientId: w.pedro.id,
       practitionerId: w.juan.practitionerId,
       roomId: w.room.id,
-      startsAt: +at("12:10"),
-      endsAt: +at("12:40"),
+      start: at("12:10"),
+      end: at("12:40"),
       status: "booked",
       overbooking: true,
-      createdBy: w.receptionist.userId,
     });
+    expect(await w.createdByOf(created.id)).toBe(w.receptionist.userId);
   });
 
   it("is a busy range, never offered as a free time", async () => {
@@ -482,7 +493,10 @@ describe("an overbooking outside the practitioner's schedules", () => {
 
     const created = await w.overbook(w.overbookingOf({ start: at("15:00"), roomId: w.third.id }));
 
-    expect(await w.rowOf(created.id)).toMatchObject({ roomId: w.third.id, overbooking: true });
+    expect(await w.appointmentOf(created.id)).toMatchObject({
+      roomId: w.third.id,
+      overbooking: true,
+    });
   });
 
   it("is refused in a room another practitioner's schedule fills, naming them", async () => {

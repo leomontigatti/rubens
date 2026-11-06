@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vite-plus/test";
 
-import { recordAudit } from "#/organization/audit.ts";
 import {
   addMember,
   adminCaller,
+  auditEntriesFor,
   freshOrganization,
   inStorage,
   setUpTestOrganization,
@@ -147,27 +147,32 @@ describe("the audit log", () => {
     ]);
   });
 
-  it("rolls an entry back with the change it was written with", async () => {
+  it("keeps no entry of a change that is refused", async () => {
     const { organization } = await setUpTestOrganization();
+    await organization.updateMember(adminCaller, {
+      memberId: adminCaller.userId,
+      roles: ["admin", "practitioner"],
+    });
+    const before = await auditEntriesFor(organization, adminCaller.userId);
 
-    const entries = await inStorage(organization, (database) => {
-      const countBefore = database.select().from(auditLog).all().length;
-      expect(() =>
-        database.transaction((tx) => {
-          recordAudit(tx, adminCaller.userId, {
-            action: "update",
-            entityType: "member",
-            entityId: adminCaller.userId,
-            patientId: null,
-            before: { name: "Ana Admin" },
-            after: { name: "Ana" },
-          });
-          throw new Error("the change failed");
-        }),
-      ).toThrow("the change failed");
-      return { countBefore, countAfter: database.select().from(auditLog).all().length };
+    // New roles and new settings would each write an entry; losing the last admin refuses both.
+    const refused = await organization.updateMember(adminCaller, {
+      memberId: adminCaller.userId,
+      roles: ["practitioner"],
+      practitioner: {
+        displayName: "Dra. Ana",
+        specialty: "",
+        keepsClinicalRecords: true,
+        gridMinutes: 20,
+        color: "color2",
+      },
     });
 
-    expect(entries.countAfter).toBe(entries.countBefore);
+    expect(refused).toEqual({ ok: false, reason: "lastAdmin" });
+    expect(await auditEntriesFor(organization, adminCaller.userId)).toEqual(before);
+    const settingsEntries = await inStorage(organization, (database) =>
+      database.select().from(auditLog).where(eq(auditLog.entityType, "practitioner")).all(),
+    );
+    expect(settingsEntries).toEqual([]);
   });
 });

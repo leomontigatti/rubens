@@ -1,26 +1,24 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
-import type { AppointmentStatus, BookingInput, CalendarWeekQuery } from "#/lib/appointments.ts";
+import type { BookingInput, CalendarWeekQuery } from "#/lib/appointments.ts";
 
 import {
   addRoom,
   addStaff,
   adminCaller,
+  at,
+  expectOk,
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { appointment, medicalService, practitioner, timeOff } from "#/organization/schema.ts";
+import { medicalService, practitioner, timeOff } from "#/organization/schema.ts";
 
 // The office is in Buenos Aires (UTC-3), so 09:00 there is 12:00Z. 2099-01-05
 // is a Monday. Juan and "Lucía" both work Mondays 09:00 to 11:00 in
 // "Consultorio doble", a room for two.
 
 type Caller = typeof adminCaller;
-
-function at(time: string, date = "2099-01-05") {
-  return new Date(`${date}T${time}:00Z`);
-}
 
 async function world() {
   const booking = await setUpBookingWorld();
@@ -80,19 +78,33 @@ async function world() {
     );
   }
 
-  /** Sets the appointment's status in storage: status changes port with #138. */
-  function setStatus(appointmentId: string, status: AppointmentStatus) {
-    return inStorage(organization, (database) =>
-      database
-        .update(appointment)
-        .set({
-          status,
-          cancelledBy: status === "cancelled" ? "patient" : null,
-          previousStatus: "booked",
-        })
-        .where(eq(appointment.id, appointmentId))
-        .run(),
-    );
+  /**
+   * Gives the appointment `status` through the object, as reception: a
+   * no-show is marked with the clock just past its start.
+   */
+  async function setStatus(appointmentId: string, status: "confirmed" | "cancelled" | "noShow") {
+    if (status === "cancelled") {
+      expectOk(
+        await organization.cancelAppointment(booking.receptionist, {
+          appointmentId,
+          cancelledBy: "patient",
+          reason: "",
+        }),
+      );
+      return;
+    }
+    if (status === "noShow") {
+      const { start } = await booking.appointmentOf(appointmentId);
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(+start + 60_000));
+    }
+    try {
+      expectOk(
+        await organization.changeAppointmentStatus(booking.receptionist, { appointmentId, status }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   }
 
   return {

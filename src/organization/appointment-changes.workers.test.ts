@@ -12,6 +12,7 @@ import {
   addOffice,
   addRoom,
   adminCaller,
+  at,
   auditEntriesFor,
   fakeAccounts,
   inStorage,
@@ -29,10 +30,6 @@ vi.mock(import("#/organization/accounts.ts"), async (original) => ({
 // clock is set to that morning, before the bookings.
 
 type Caller = typeof adminCaller;
-
-function at(time: string, date = "2099-01-05") {
-  return new Date(`${date}T${time}:00Z`);
-}
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -191,7 +188,7 @@ describe("saving the reception note", () => {
 
     expect(await w.edit(id, "  Llega tarde  ")).toEqual({ ok: true });
 
-    expect((await w.rowOf(id))!.receptionNote).toBe("Llega tarde");
+    expect((await w.appointmentOf(id)).receptionNote).toBe("Llega tarde");
     expect(await w.changesOf(id)).toEqual([
       expect.objectContaining({
         action: "update",
@@ -209,7 +206,7 @@ describe("saving the reception note", () => {
 
     expect(await w.edit(id, "   ")).toEqual({ ok: true });
 
-    expect((await w.rowOf(id))!.receptionNote).toBeNull();
+    expect((await w.appointmentOf(id)).receptionNote).toBeNull();
   });
 
   it("is left to whoever may book for the practitioner", async () => {
@@ -218,7 +215,7 @@ describe("saving the reception note", () => {
 
     expect(await w.edit(id, "Otra", w.lucia.caller)).toEqual({ ok: false, reason: "forbidden" });
     expect(await w.edit(id, "Propia", w.juan.caller)).toEqual({ ok: true });
-    expect((await w.rowOf(id))!.receptionNote).toBe("Propia");
+    expect((await w.appointmentOf(id)).receptionNote).toBe("Propia");
   });
 });
 
@@ -229,7 +226,7 @@ describe("moving an appointment to another room", () => {
 
     expect(await w.edit(id, "Llega tarde", w.receptionist, w.otherRoom.id)).toEqual({ ok: true });
 
-    expect(await w.rowOf(id)).toMatchObject({
+    expect(await w.appointmentOf(id)).toMatchObject({
       roomId: w.otherRoom.id,
       receptionNote: "Llega tarde",
     });
@@ -247,7 +244,7 @@ describe("moving an appointment to another room", () => {
 
     expect(await w.edit(id, "Llega tarde")).toEqual({ ok: true });
 
-    expect(await w.rowOf(id)).toMatchObject({
+    expect(await w.appointmentOf(id)).toMatchObject({
       roomId: w.otherRoom.id,
       receptionNote: "Llega tarde",
     });
@@ -263,7 +260,11 @@ describe("moving an appointment to another room", () => {
       reason: "roomFull",
       occupants: [{ practitionerName: "Lucía Díaz", kind: "schedule" }],
     });
-    expect(await w.rowOf(id)).toMatchObject({ roomId: w.room.id, receptionNote: "Trae estudios" });
+    expect(await w.appointmentOf(id)).toMatchObject({
+      roomId: w.room.id,
+      receptionNote: "Trae estudios",
+    });
+    expect(await w.changesOf(id)).toEqual([]);
   });
 
   it("is refused to a room of another office", async () => {
@@ -281,11 +282,11 @@ describe("moving an appointment to another room", () => {
   it("changes nothing and audits nothing when it is already in that room", async () => {
     const w = await world();
     const id = await w.bookJuan();
-    const before = await w.rowOf(id);
+    const before = await w.appointmentOf(id);
 
     expect(await w.edit(id, "", w.receptionist, w.room.id)).toEqual({ ok: true });
 
-    expect(await w.rowOf(id)).toEqual(before);
+    expect(await w.appointmentOf(id)).toEqual(before);
     expect(await w.changesOf(id)).toEqual([]);
   });
 
@@ -298,7 +299,7 @@ describe("moving an appointment to another room", () => {
       ok: false,
       reason: "notFound",
     });
-    expect(await w.rowOf(id)).toMatchObject({ roomId: w.room.id });
+    expect(await w.appointmentOf(id)).toMatchObject({ roomId: w.room.id });
   });
 });
 
@@ -335,7 +336,7 @@ describe("rescheduling", () => {
 
     expect(await w.reschedule({ appointmentId: id, start: at("12:15") })).toEqual({ ok: true });
 
-    expect(await w.rowOf(id)).toMatchObject({ startsAt: +at("12:15"), endsAt: +at("12:45") });
+    expect(await w.appointmentOf(id)).toMatchObject({ start: at("12:15"), end: at("12:45") });
     expect((await w.changesOf(id)).at(-1)).toMatchObject({
       action: "update",
       patientId: w.maria.id,
@@ -350,7 +351,7 @@ describe("rescheduling", () => {
 
     expect(await w.reschedule({ appointmentId: id, start: at("17:00") })).toEqual({ ok: true });
 
-    expect((await w.rowOf(id))!.roomId).toBe(w.northRoom.id);
+    expect((await w.appointmentOf(id)).roomId).toBe(w.northRoom.id);
     expect((await w.changesOf(id)).at(-1)!.before).toMatchObject({ roomId: w.room.id });
   });
 
@@ -363,7 +364,7 @@ describe("rescheduling", () => {
       ok: false,
       reason: "notFree",
     });
-    expect((await w.rowOf(id))!.startsAt).toBe(+at("12:00"));
+    expect((await w.appointmentOf(id)).start).toEqual(at("12:00"));
   });
 
   it("warns about the patient's other appointments that day, not about itself", async () => {
@@ -404,7 +405,7 @@ describe("rescheduling", () => {
     expect(
       await w.reschedule({ appointmentId: id, start: at("13:00"), overbooking: true }),
     ).toEqual({ ok: true });
-    expect(await w.rowOf(id)).toMatchObject({ overbooking: true, roomId: w.room.id });
+    expect(await w.appointmentOf(id)).toMatchObject({ overbooking: true, roomId: w.room.id });
   });
 
   it("as an overbooking outside the schedules, needs a room with space", async () => {
@@ -523,10 +524,9 @@ describe("status changes", () => {
     vi.setSystemTime(at("12:40"));
     expect(await w.change(id, "attended", w.juan.caller)).toEqual({ ok: true });
 
-    expect(await w.rowOf(id)).toMatchObject({
+    expect(await w.appointmentOf(id)).toMatchObject({
       status: "attended",
-      previousStatus: "checkedIn",
-      statusChangedAt: +at("12:40"),
+      undoStatus: "checkedIn",
     });
     expect(
       (await w.changesOf(id)).map(({ before, after, patientId }) => ({ before, after, patientId })),
@@ -543,7 +543,7 @@ describe("status changes", () => {
     await w.change(id, "attended");
 
     expect(await w.change(id, "confirmed")).toEqual({ ok: false, reason: "notAllowed" });
-    expect((await w.rowOf(id))!.status).toBe("attended");
+    expect((await w.appointmentOf(id)).status).toBe("attended");
   });
 
   it("marks a no-show only after the start", async () => {
@@ -594,7 +594,7 @@ describe("cancelling", () => {
 
     expect(await w.cancel(id, w.juan.caller)).toEqual({ ok: true });
 
-    expect(await w.rowOf(id)).toMatchObject({
+    expect(await w.appointmentOf(id)).toMatchObject({
       status: "cancelled",
       cancelledBy: "patient",
       cancellationReason: "Viaja",
@@ -625,7 +625,7 @@ describe("undo", () => {
     await w.change(id, "confirmed");
 
     expect(await w.undo(id)).toEqual({ ok: true });
-    expect(await w.rowOf(id)).toMatchObject({ status: "booked", previousStatus: null });
+    expect(await w.appointmentOf(id)).toMatchObject({ status: "booked", undoStatus: null });
     expect((await w.changesOf(id)).at(-1)).toMatchObject({
       before: { status: "confirmed" },
       after: { status: "booked" },
@@ -649,7 +649,7 @@ describe("undo", () => {
     await w.cancel(id);
 
     expect(await w.undo(id)).toEqual({ ok: true });
-    expect(await w.rowOf(id)).toMatchObject({
+    expect(await w.appointmentOf(id)).toMatchObject({
       status: "booked",
       cancelledBy: null,
       cancellationReason: null,
@@ -663,7 +663,7 @@ describe("undo", () => {
     await w.bookJuan(at("12:00"), w.pedro.id);
 
     expect(await w.undo(id)).toEqual({ ok: false, reason: "timeTaken" });
-    expect((await w.rowOf(id))!.status).toBe("cancelled");
+    expect((await w.appointmentOf(id)).status).toBe("cancelled");
   });
 
   it("brings an overbooking back over the practitioner's own appointment", async () => {
@@ -709,7 +709,7 @@ describe("undo", () => {
         },
       ],
     });
-    expect((await w.rowOf(juans.id))!.status).toBe("cancelled");
+    expect((await w.appointmentOf(juans.id)).status).toBe("cancelled");
   });
 
   it("checks no room space for a change that holds time all along", async () => {
