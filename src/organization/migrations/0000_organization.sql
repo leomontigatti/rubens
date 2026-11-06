@@ -143,6 +143,7 @@ CREATE TABLE `patient` (
 	`first_name` text NOT NULL,
 	`last_name` text NOT NULL,
 	`chosen_name` text,
+	`search_name` text NOT NULL,
 	`document_type` text,
 	`document_number` text,
 	`birth_date` text,

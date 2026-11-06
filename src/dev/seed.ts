@@ -4,6 +4,7 @@ import {
   devMedicalService,
   devOffice,
   devOrganizationName,
+  devPatients,
   devPeople,
   devRoom,
 } from "#/dev/world.ts";
@@ -54,6 +55,12 @@ export async function seedDevOrganization(
       practitionerId: practitioner.id,
     }),
   );
+  for (const patient of devPatients) {
+    accepted(
+      `registerPatient ${patient.lastName}`,
+      await organization.registerPatient(admin, patient),
+    );
+  }
 }
 
 /** `result` when the object accepted the step; a refusal stops the seed. */

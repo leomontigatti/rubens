@@ -20,8 +20,8 @@ import { documentLabel } from "#/lib/patients.ts";
 import type { DocumentType } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { changeMessageContact, deleteGuardian } from "#/server/guardians.functions.ts";
-import type { Guardian } from "#/server/guardians.ts";
-import type { Patient } from "#/server/patients.ts";
+import type { Guardian } from "#/organization/guardians.ts";
+import type { Patient } from "#/organization/patients.ts";
 
 // The guardians section of the patient page: the list, the add and edit form,
 // who messages go to, and the prompt to add a guardian for a minor, which

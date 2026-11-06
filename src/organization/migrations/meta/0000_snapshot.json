@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "9cb61c31-80f9-4373-808c-56ac371b33f5",
+  "id": "24ee577f-38dc-4eab-a237-056968fe9a0b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "appointment": {
@@ -971,6 +971,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false,
+          "autoincrement": false
+        },
+        "search_name": {
+          "name": "search_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false
         },
         "document_type": {

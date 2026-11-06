@@ -15,7 +15,7 @@ import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { patientName, patientUpdateSchema } from "#/lib/patients.ts";
 import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import { editPatient, getPatientDetails } from "#/server/patients.functions.ts";
-import type { Patient } from "#/server/patients.ts";
+import type { Patient } from "#/organization/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/editar")({
   loader: ({ params }) => getPatientDetails({ data: { patientId: params.patientId } }),

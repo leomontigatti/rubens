@@ -19,7 +19,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { documentLabel, patientName, patientPageSize } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { getPatients } from "#/server/patients.functions.ts";
-import type { ListedPatient, PatientPage } from "#/server/patients.ts";
+import type { ListedPatient, PatientPage } from "#/organization/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/")({
   head: () => ({ meta: [{ title: "Pacientes · Rubens" }] }),

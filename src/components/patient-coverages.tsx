@@ -15,7 +15,7 @@ import {
 } from "#/lib/coverages.ts";
 import type { CoverageInput } from "#/lib/coverages.ts";
 import { changePrimaryCoverage, deleteCoverage } from "#/server/coverages.functions.ts";
-import type { Coverage } from "#/server/coverages.ts";
+import type { Coverage } from "#/organization/coverages.ts";
 import type { Insurer } from "#/organization/insurers.ts";
 
 // The coverages section of the patient page: the list, "Particular" when it is
