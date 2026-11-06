@@ -227,11 +227,14 @@ jobs:
       - name: generate the auth secret
         if: steps.diff.outputs.docs_only != 'true'
         run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
-      # The headless Chromium of the pinned @playwright/test, with its system
-      # libraries.
+      # The headless Chromium of the pinned @playwright/test. No `--with-deps`:
+      # the runner already has Chromium's libraries, and on 2026-11-06 the flag
+      # only added CJK, Thai and Cyrillic fonts, 8m39s from a slow apt mirror.
+      # No spec compares screenshots, so the fonts change nothing. A missing
+      # library fails the first spec loudly; then add the package here.
       - name: install Chromium
         if: steps.diff.outputs.docs_only != 'true'
-        run: pnpm exec playwright install --with-deps --only-shell chromium
+        run: pnpm exec playwright install --only-shell chromium
       - name: test:e2e
         if: steps.diff.outputs.docs_only != 'true'
         run: pnpm test:e2e
