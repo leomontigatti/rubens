@@ -34,3 +34,9 @@ export const devPeople: Record<DevRole, { userId: string; name: string; email: s
 export const devOffice = { name: "Sede E2E", address: "Av. Colón 100" };
 export const devRoom = { name: "Consultorio E2E" };
 export const devMedicalService = { name: "Consulta E2E", durationMinutes: 30 };
+
+/**
+ * The practitioner works every day from 08:00 to 20:00 in the room, from the
+ * day the seed runs on, so any later day has free starts.
+ */
+export const workingHours = { startTime: "08:00", endTime: "20:00" } as const;

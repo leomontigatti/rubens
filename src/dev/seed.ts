@@ -1,3 +1,6 @@
+import { defaultTimeZone } from "#/lib/offices.ts";
+import { today } from "#/lib/schedules.ts";
+
 import type { Organization } from "#/organization/organization.ts";
 
 import {
@@ -6,6 +9,7 @@ import {
   devOrganizationName,
   devPeople,
   devRoom,
+  workingHours,
 } from "#/dev/world.ts";
 
 /**
@@ -36,7 +40,7 @@ export async function seedDevOrganization(
     );
   }
   const office = accepted("createOffice", await organization.createOffice(admin, devOffice));
-  accepted(
+  const { room } = accepted(
     "createRoom",
     await organization.createRoom(admin, { ...devRoom, officeId: office.office.id }),
   );
@@ -52,6 +56,17 @@ export async function seedDevOrganization(
     await organization.createMedicalService(admin, {
       ...devMedicalService,
       practitionerId: practitioner.id,
+    }),
+  );
+  accepted(
+    "createSchedule",
+    await organization.createSchedule(admin, {
+      ...workingHours,
+      practitionerId: practitioner.id,
+      roomId: room.id,
+      weekdays: [1, 2, 3, 4, 5, 6, 7],
+      firstDate: today(defaultTimeZone),
+      lastDate: null,
     }),
   );
 }

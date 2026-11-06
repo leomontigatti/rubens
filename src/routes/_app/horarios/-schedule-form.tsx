@@ -8,7 +8,7 @@ import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { scheduleState, today, weekdayLabels } from "#/lib/schedules.ts";
 import type { ScheduleChange, ScheduleInput } from "#/lib/schedules.ts";
 import type { getSchedules } from "#/server/schedules.functions.ts";
-import type { RoomOption, Schedule } from "#/server/schedules.ts";
+import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
 import type { ActionResult, RefusalReason } from "#/routes/_app/horarios/-shared.tsx";

@@ -12,7 +12,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent } from "#/components/ui/card.tsx";
 import { scheduleState, today, validityLabel, weekdaysLabel } from "#/lib/schedules.ts";
 import { getSchedules, removeSchedule } from "#/server/schedules.functions.ts";
-import type { RoomOption, Schedule } from "#/server/schedules.ts";
+import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
 

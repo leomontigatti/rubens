@@ -4,7 +4,7 @@ import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm, readRangeEntry } from "#/components/range-entry.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { timeOffInputSchema } from "#/lib/time-ranges.ts";
-import type { SchedulePractitioner } from "#/server/schedules.ts";
+import type { SchedulePractitioner } from "#/organization/practitioners.ts";
 import { addTimeOff, getTimeOff } from "#/server/time-off.functions.ts";
 
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";

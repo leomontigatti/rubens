@@ -5,6 +5,7 @@ import {
   devPeople,
   devRoles,
   devRoom,
+  workingHours as devWorkingHours,
 } from "#/dev/world.ts";
 import type { DevRole } from "#/dev/world.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
@@ -47,11 +48,11 @@ export const fullName = (patient: { firstName: string; lastName: string }) =>
   `${patient.firstName} ${patient.lastName}`;
 
 /**
- * The practitioner works every day from 08:00 to 20:00, from today on, so any
- * day after today has free starts. Each booking spec keeps to its own weekday
- * of next week, so specs running side by side never book over each other.
+ * The practitioner's hours every day from the seed's day on. Each booking spec
+ * keeps to its own weekday of next week, so specs running side by side never
+ * book over each other.
  */
-export const workingHours = { startTime: "08:00", endTime: "20:00" } as const;
+export const workingHours = devWorkingHours;
 
 /** A local date of next week, by ISO weekday (1 is Monday), in the office's zone. */
 export function nextWeek(weekday: number): string {

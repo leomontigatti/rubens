@@ -22,7 +22,7 @@ import {
 import type { AvailabilityView } from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { today } from "#/lib/schedules.ts";
-import type { AvailableStart } from "#/server/availability.ts";
+import type { AvailableStart } from "#/organization/availability.ts";
 import { getAvailabilityPractitioners, getFreeTimes } from "#/server/availability.functions.ts";
 
 // What is being viewed lives in the URL, so a view can be reloaded and shared.

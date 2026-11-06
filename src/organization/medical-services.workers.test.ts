@@ -1,40 +1,16 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { Role } from "#/lib/access.ts";
 import type { MedicalServiceInput } from "#/lib/medical-services.ts";
 
 import {
+  addStaff,
   adminCaller,
   auditEntriesFor,
   inStorage,
   setUpOrganization,
 } from "#/organization/organization.test-support.ts";
-import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 import { member } from "#/organization/schema.ts";
-
-/** Adds a member named `name` and returns them as a caller, with their practitioner id when they have one. */
-async function addStaff(
-  organization: OrganizationStub,
-  name: string,
-  roles: Role[] = ["practitioner"],
-) {
-  const userId = `user-${crypto.randomUUID()}`;
-  const added = await organization.addMember(adminCaller, {
-    userId,
-    name,
-    email: `${userId}@example.com`,
-    roles,
-  });
-  if (!added.ok) {
-    throw new Error(`addMember refused: ${added.reason}`);
-  }
-  const listed = await organization.listSchedulePractitioners(adminCaller);
-  const practitionerId = listed.ok
-    ? listed.practitioners.find((row) => row.displayName === name)?.id
-    : undefined;
-  return { caller: { userId }, practitionerId: practitionerId ?? "" };
-}
 
 async function world() {
   const { organization } = await setUpOrganization();

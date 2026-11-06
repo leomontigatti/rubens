@@ -57,6 +57,59 @@ export async function addMember(organization: OrganizationStub, roles: Role[]) {
   return { userId };
 }
 
+/**
+ * Adds a member named `name` with `roles`, as the first admin, and returns
+ * them as a caller, with their practitioner id when they hold the role.
+ */
+export async function addStaff(
+  organization: OrganizationStub,
+  name: string,
+  roles: Role[] = ["practitioner"],
+) {
+  const userId = `user-${crypto.randomUUID()}`;
+  const added = await organization.addMember(adminCaller, {
+    userId,
+    name,
+    email: `${userId}@example.com`,
+    roles,
+  });
+  if (!added.ok) {
+    throw new Error(`addMember refused: ${added.reason}`);
+  }
+  const listed = await organization.listSchedulePractitioners(adminCaller);
+  const practitionerId = listed.ok
+    ? listed.practitioners.find((row) => row.displayName === name)?.id
+    : undefined;
+  return { caller: { userId }, practitionerId: practitionerId ?? "" };
+}
+
+/** Adds an office, as the first admin, in `timeZone` or the default one. */
+export async function addOffice(organization: OrganizationStub, name: string, timeZone?: string) {
+  const created = await organization.createOffice(adminCaller, {
+    name,
+    address: "Av. Colón 100",
+    timeZone,
+  });
+  if (!created.ok) {
+    throw new Error(`createOffice refused: ${created.reason}`);
+  }
+  return created.office;
+}
+
+/** Adds a room to `officeId`, as the first admin. */
+export async function addRoom(
+  organization: OrganizationStub,
+  officeId: string,
+  name: string,
+  capacity = 1,
+) {
+  const created = await organization.createRoom(adminCaller, { officeId, name, capacity });
+  if (!created.ok) {
+    throw new Error(`createRoom refused: ${created.reason}`);
+  }
+  return created.room;
+}
+
 /** Runs `work` on the object's storage directly: for what no method reads or writes yet. */
 export function inStorage<T>(organization: OrganizationStub, work: (database: Database) => T) {
   return runInDurableObject(organization, (_instance, state) => work(openDatabase(state.storage)));

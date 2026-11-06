@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
+import type { AvailabilityQuery } from "#/lib/availability.ts";
 import type { InsurerActiveChange, InsurerInput, InsurerUpdate } from "#/lib/coverages.ts";
 import type {
   MedicalServiceActiveChange,
@@ -14,14 +15,35 @@ import type {
   RoomUpdate,
 } from "#/lib/offices.ts";
 import type {
+  ScheduleChange,
+  ScheduleDelete,
+  ScheduleEnd,
+  ScheduleInput,
+} from "#/lib/schedules.ts";
+import type {
   MemberActiveChange,
   MemberUpdate,
   StaffInput,
   StartingPasswordChange,
 } from "#/lib/staff.ts";
+import type {
+  ClosureDelete,
+  ClosureInput,
+  ClosureUpdate,
+  TimeOffDelete,
+  TimeOffInput,
+  TimeOffUpdate,
+} from "#/lib/time-ranges.ts";
 
 import { accountsFor } from "#/organization/accounts.ts";
 import type { Accounts } from "#/organization/accounts.ts";
+import { getAvailability, listAvailabilityPractitioners } from "#/organization/availability.ts";
+import {
+  createClosure,
+  deleteClosure,
+  listClosures,
+  updateClosure,
+} from "#/organization/closures.ts";
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import {
@@ -59,6 +81,13 @@ import {
 import type { ListOptions } from "#/organization/offices.ts";
 import { listSchedulePractitioners } from "#/organization/practitioners.ts";
 import {
+  changeSchedule,
+  createSchedule,
+  deleteSchedule,
+  endSchedule,
+  getPractitionerSchedules,
+} from "#/organization/schedules.ts";
+import {
   changeOwnPassword,
   createStaffMember,
   getStaffMember,
@@ -68,6 +97,12 @@ import {
   setUpWithAccount,
   updateMember,
 } from "#/organization/staff.ts";
+import {
+  createTimeOff,
+  deleteTimeOff,
+  listTimeOff,
+  updateTimeOff,
+} from "#/organization/time-off.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -85,6 +120,8 @@ import {
 // A practitioner changes their own medical services; which ones are theirs is
 // the area's to decide (`src/organization/medical-services.ts`).
 const medicalServiceEditors = ["admin", "practitioner"] as const;
+// The same for schedules and time off; a receptionist only reads them.
+const workingTimeEditors = medicalServiceEditors;
 
 export class Organization extends DurableObject {
   readonly #database: Database;
@@ -257,5 +294,85 @@ export class Organization extends DurableObject {
     return this.#as(caller, "signedIn", (acting) =>
       changeOwnPassword(this.#database, this.#accounts, acting, input),
     );
+  }
+
+  // Schedules, time off, closures and availability
+
+  getPractitionerSchedules(caller: Caller, input: { practitionerId: string }) {
+    return this.#as(caller, "any", (acting) =>
+      getPractitionerSchedules(this.#database, acting, input),
+    );
+  }
+
+  createSchedule(caller: Caller, input: ScheduleInput) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      createSchedule(this.#database, acting, input),
+    );
+  }
+
+  changeSchedule(caller: Caller, input: ScheduleChange) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      changeSchedule(this.#database, acting, input),
+    );
+  }
+
+  endSchedule(caller: Caller, input: ScheduleEnd) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      endSchedule(this.#database, acting, input),
+    );
+  }
+
+  deleteSchedule(caller: Caller, input: ScheduleDelete) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      deleteSchedule(this.#database, acting, input),
+    );
+  }
+
+  listTimeOff(caller: Caller) {
+    return this.#as(caller, "any", (acting) => listTimeOff(this.#database, acting));
+  }
+
+  createTimeOff(caller: Caller, input: TimeOffInput) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      createTimeOff(this.#database, acting, input),
+    );
+  }
+
+  updateTimeOff(caller: Caller, input: TimeOffUpdate) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      updateTimeOff(this.#database, acting, input),
+    );
+  }
+
+  deleteTimeOff(caller: Caller, input: TimeOffDelete) {
+    return this.#as(caller, workingTimeEditors, (acting) =>
+      deleteTimeOff(this.#database, acting, input),
+    );
+  }
+
+  listClosures(caller: Caller) {
+    return this.#as(caller, "any", (acting) => listClosures(this.#database, acting));
+  }
+
+  createClosure(caller: Caller, input: ClosureInput) {
+    return this.#as(caller, ["admin"], (acting) => createClosure(this.#database, acting, input));
+  }
+
+  updateClosure(caller: Caller, input: ClosureUpdate) {
+    return this.#as(caller, ["admin"], (acting) => updateClosure(this.#database, acting, input));
+  }
+
+  deleteClosure(caller: Caller, input: ClosureDelete) {
+    return this.#as(caller, ["admin"], (acting) => deleteClosure(this.#database, acting, input));
+  }
+
+  listAvailabilityPractitioners(caller: Caller) {
+    return this.#as(caller, "any", (acting) =>
+      listAvailabilityPractitioners(this.#database, acting),
+    );
+  }
+
+  getAvailability(caller: Caller, input: AvailabilityQuery) {
+    return this.#as(caller, "any", (acting) => getAvailability(this.#database, acting, input));
   }
 }
