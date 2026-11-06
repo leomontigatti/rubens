@@ -12,8 +12,12 @@ import type { Role } from "#/lib/access.ts";
 export interface AccountMetadata {
   organizationId: string;
   roles: readonly Role[];
-  /** The member must replace their starting password before anything else. */
-  mustChangePassword: boolean;
+}
+
+/** A Clerk user found by email, with the metadata it carries. */
+export interface FoundUser {
+  userId: string;
+  metadata: Partial<AccountMetadata>;
 }
 
 export type PasswordRefusal = "passwordTooShort" | "passwordTooLong" | "passwordRejected";
@@ -37,6 +41,9 @@ export interface Accounts {
   updateMetadata(userId: string, metadata: Partial<AccountMetadata>): Promise<void>;
   setPassword(userId: string, password: string): Promise<SetPasswordResult>;
   verifyPassword(userId: string, password: string): Promise<boolean>;
+  /** The user that holds `email`, if any. */
+  findUserByEmail(email: string): Promise<FoundUser | undefined>;
+  deleteUser(userId: string): Promise<void>;
   /** Bans the user, which also ends every session they have. */
   ban(userId: string): Promise<void>;
   unban(userId: string): Promise<void>;
@@ -119,6 +126,16 @@ function clerkAccounts(secretKey: string): Accounts {
         throw error;
       }
     },
+    async findUserByEmail(email) {
+      const { data } = await users.getUserList({ emailAddress: [email], limit: 1 });
+      const user = data[0];
+      return user
+        ? { userId: user.id, metadata: user.publicMetadata as Partial<AccountMetadata> }
+        : undefined;
+    },
+    async deleteUser(userId) {
+      await users.deleteUser(userId);
+    },
     async ban(userId) {
       await users.banUser(userId);
     },
@@ -138,6 +155,8 @@ const localAccounts: Accounts = {
   updateMetadata: () => Promise.resolve(),
   setPassword: () => Promise.resolve({ ok: true }),
   verifyPassword: () => Promise.resolve(true),
+  findUserByEmail: () => Promise.resolve(undefined),
+  deleteUser: () => Promise.resolve(),
   ban: () => Promise.resolve(),
   unban: () => Promise.resolve(),
 };

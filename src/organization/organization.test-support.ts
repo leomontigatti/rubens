@@ -5,7 +5,7 @@ import type { Role } from "#/lib/access.ts";
 import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 import type { ScheduleInput } from "#/lib/schedules.ts";
 
-import type { Accounts, CreateUserResult } from "#/organization/accounts.ts";
+import type { AccountMetadata, Accounts, CreateUserResult } from "#/organization/accounts.ts";
 import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
@@ -238,18 +238,29 @@ type Call = { [K in keyof Accounts]: [K, ...Parameters<Accounts[K]>] }[keyof Acc
 
 type UserRefusal = Extract<CreateUserResult, { ok: false }>["reason"];
 
+interface FakeUser {
+  userId: string;
+  email: string;
+  metadata: Partial<AccountMetadata>;
+}
+
 /**
- * A stand-in for Clerk's accounts. It records every call, and accepts a
- * password only when it is the user's current one.
+ * A stand-in for Clerk's accounts. It records every call, keeps one user per
+ * email, and accepts a password only when it is the user's current one.
  */
 class FakeAccounts implements Accounts {
   calls: Call[] = [];
   lastUserId: string | undefined;
   readonly #passwords = new Map<string, string>();
+  readonly #users = new Map<string, FakeUser>();
+  readonly #holds = new Map<keyof Accounts, Promise<void>>();
   #refusal: UserRefusal | undefined;
 
+  /** Forgets the calls and the users: what each test starts from. */
   reset() {
     this.calls = [];
+    this.#users.clear();
+    this.#holds.clear();
     this.#refusal = undefined;
   }
 
@@ -263,43 +274,101 @@ class FakeAccounts implements Accounts {
     this.#passwords.clear();
   }
 
+  /** A user Clerk already holds, as an earlier create that never became a member leaves it. */
+  addUser(email: string, metadata: Partial<AccountMetadata>) {
+    const userId = `user-${crypto.randomUUID()}`;
+    this.#users.set(userId, { userId, email, metadata });
+    return userId;
+  }
+
+  /** Whether Clerk still holds `userId`. */
+  hasUser(userId: string) {
+    return this.#users.has(userId);
+  }
+
+  /**
+   * Makes the next `method` call wait, after it is recorded and has taken
+   * effect, until the returned function is called: Clerk answering slowly.
+   */
+  hold(method: keyof Accounts) {
+    let release = () => {};
+    this.#holds.set(
+      method,
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    return () => release();
+  }
+
+  async #answer<T>(method: keyof Accounts, value: T): Promise<T> {
+    const held = this.#holds.get(method);
+    this.#holds.delete(method);
+    await held;
+    return value;
+  }
+
   createUser(user: Parameters<Accounts["createUser"]>[0]): Promise<CreateUserResult> {
     this.calls.push(["createUser", user]);
     const refusal = this.#refusal;
     this.#refusal = undefined;
     if (refusal) {
-      return Promise.resolve({ ok: false, reason: refusal });
+      return this.#answer("createUser", { ok: false, reason: refusal });
+    }
+    if ([...this.#users.values()].some((existing) => existing.email === user.email)) {
+      return this.#answer("createUser", { ok: false, reason: "emailTaken" });
     }
     const userId = `user-${crypto.randomUUID()}`;
     this.lastUserId = userId;
+    this.#users.set(userId, { userId, email: user.email, metadata: user.metadata });
     this.#passwords.set(userId, user.password);
-    return Promise.resolve({ ok: true, userId });
+    return this.#answer("createUser", { ok: true, userId });
   }
 
   updateMetadata(...call: Parameters<Accounts["updateMetadata"]>) {
     this.calls.push(["updateMetadata", ...call]);
-    return Promise.resolve();
+    const [userId, metadata] = call;
+    const user = this.#users.get(userId);
+    if (user) {
+      user.metadata = { ...user.metadata, ...metadata };
+    }
+    return this.#answer("updateMetadata", undefined);
   }
 
   setPassword(userId: string, password: string) {
     this.calls.push(["setPassword", userId, password]);
     this.#passwords.set(userId, password);
-    return Promise.resolve({ ok: true as const });
+    return this.#answer("setPassword", { ok: true as const });
   }
 
   verifyPassword(userId: string, password: string) {
     this.calls.push(["verifyPassword", userId, password]);
-    return Promise.resolve(this.#passwords.get(userId) === password);
+    return this.#answer("verifyPassword", this.#passwords.get(userId) === password);
+  }
+
+  findUserByEmail(email: string) {
+    this.calls.push(["findUserByEmail", email]);
+    const user = [...this.#users.values()].find((existing) => existing.email === email);
+    return this.#answer(
+      "findUserByEmail",
+      user && { userId: user.userId, metadata: { ...user.metadata } },
+    );
+  }
+
+  deleteUser(userId: string) {
+    this.calls.push(["deleteUser", userId]);
+    this.#users.delete(userId);
+    return this.#answer("deleteUser", undefined);
   }
 
   ban(userId: string) {
     this.calls.push(["ban", userId]);
-    return Promise.resolve();
+    return this.#answer("ban", undefined);
   }
 
   unban(userId: string) {
     this.calls.push(["unban", userId]);
-    return Promise.resolve();
+    return this.#answer("unban", undefined);
   }
 }
 

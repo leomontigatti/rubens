@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { Role } from "#/lib/access.ts";
@@ -60,7 +61,7 @@ const settings = {
 } as const;
 
 describe("creating a staff member", () => {
-  it("asks Clerk for the user, with the organization, the roles and the starting-password flag", async () => {
+  it("asks Clerk for the user, with the organization and the roles", async () => {
     const created = await newMember(["receptionist", "practitioner"]);
 
     expect(fakeAccounts.calls).toEqual([
@@ -70,11 +71,7 @@ describe("creating a staff member", () => {
           name: "Juan Gómez",
           email: "receptionist-practitioner@example.com",
           password: startingPassword,
-          metadata: {
-            organizationId,
-            roles: ["receptionist", "practitioner"],
-            mustChangePassword: true,
-          },
+          metadata: { organizationId, roles: ["receptionist", "practitioner"] },
         },
       ],
     ]);
@@ -112,7 +109,6 @@ describe("creating a staff member", () => {
     expect(fakeAccounts.calls.slice(1)).toEqual([
       ["verifyPassword", created.userId, startingPassword],
       ["setPassword", created.userId, "a-new-password"],
-      ["updateMetadata", created.userId, { mustChangePassword: false }],
     ]);
   });
 
@@ -160,6 +156,64 @@ describe("creating a staff member", () => {
     ).toEqual({ ok: false, reason: "emailTaken" });
     const staff = await organization.listStaff(adminCaller);
     expect(staff.ok && staff.staff).toHaveLength(1);
+  });
+
+  it("deletes the Clerk user when the email is taken while Clerk answers", async () => {
+    const release = fakeAccounts.hold("createUser");
+    const creating = organization.createStaffMember(adminCaller, {
+      name: "Otro",
+      email: "otro@example.com",
+      password: startingPassword,
+      roles: ["receptionist"],
+    });
+    await vi.waitUntil(() => fakeAccounts.calls.length > 0);
+    const orphan = fakeAccounts.lastUserId!;
+    await organization.addMember(adminCaller, {
+      userId: "user-other",
+      name: "Otro",
+      email: "otro@example.com",
+      roles: ["receptionist"],
+    });
+    release();
+
+    expect(await creating).toEqual({ ok: false, reason: "emailTaken" });
+    expect(fakeAccounts.calls.at(-1)).toEqual(["deleteUser", orphan]);
+    expect(fakeAccounts.hasUser(orphan)).toBe(false);
+  });
+
+  it("adopts the Clerk user an earlier create of this organization left without a member", async () => {
+    const orphan = fakeAccounts.addUser("otro@example.com", { organizationId, roles: ["admin"] });
+
+    const created = await organization.createStaffMember(adminCaller, {
+      name: "Otro",
+      email: "otro@example.com",
+      password: startingPassword,
+      roles: ["receptionist"],
+    });
+
+    expect(created).toMatchObject({
+      ok: true,
+      member: { userId: orphan, roles: ["receptionist"] },
+    });
+    expect(fakeAccounts.calls.slice(1)).toEqual([
+      ["findUserByEmail", "otro@example.com"],
+      ["setPassword", orphan, startingPassword],
+      ["updateMetadata", orphan, { organizationId, roles: ["receptionist"] }],
+    ]);
+  });
+
+  it("does not adopt a Clerk user of another organization", async () => {
+    fakeAccounts.addUser("otro@example.com", { organizationId: "other", roles: ["admin"] });
+
+    expect(
+      await organization.createStaffMember(adminCaller, {
+        name: "Otro",
+        email: "otro@example.com",
+        password: startingPassword,
+        roles: ["receptionist"],
+      }),
+    ).toEqual({ ok: false, reason: "emailTaken" });
+    expect(fakeAccounts.calls.map(([method]) => method)).toEqual(["createUser", "findUserByEmail"]);
   });
 });
 
@@ -280,6 +334,39 @@ describe("changing roles", () => {
     });
     expect(fakeAccounts.calls).toEqual([]);
   });
+
+  it("records the changed practitioner settings in the audit log", async () => {
+    const created = await newMember(["practitioner"]);
+
+    await organization.updateMember(adminCaller, {
+      memberId: created.memberId,
+      practitioner: { ...settings, specialty: "Pediatría" },
+    });
+
+    const entries = await inStorage(organization, (database) =>
+      database.select().from(auditLog).where(eq(auditLog.entityType, "practitioner")).all(),
+    );
+    expect(entries).toMatchObject([
+      {
+        action: "update",
+        userId: adminCaller.userId,
+        before: {
+          displayName: "Juan Gómez",
+          specialty: null,
+          keepsClinicalRecords: true,
+          gridMinutes: 30,
+          color: "color1",
+        },
+        after: {
+          displayName: "Dra. Gómez",
+          specialty: "Pediatría",
+          keepsClinicalRecords: false,
+          gridMinutes: 20,
+          color: "color2",
+        },
+      },
+    ]);
+  });
 });
 
 describe("the last admin", () => {
@@ -376,6 +463,24 @@ describe("deactivating a member", () => {
     );
     expect(entries.slice(-2).map((entry) => entry.action)).toEqual(["deactivate", "reactivate"]);
   });
+
+  it("leaves the Clerk user unbanned when another admin reactivates while Clerk bans", async () => {
+    const created = await newMember(["receptionist"]);
+    fakeAccounts.reset();
+    const release = fakeAccounts.hold("ban");
+
+    const deactivating = organization.setMemberActive(adminCaller, {
+      memberId: created.memberId,
+      active: false,
+    });
+    await vi.waitUntil(() => fakeAccounts.calls.length > 0);
+    await organization.setMemberActive(adminCaller, { memberId: created.memberId, active: true });
+    release();
+    await deactivating;
+
+    expect(fakeAccounts.calls.at(-1)).toEqual(["unban", created.userId]);
+    expect((await organization.viewer(created)).ok).toBe(true);
+  });
 });
 
 describe("passwords", () => {
@@ -390,10 +495,7 @@ describe("passwords", () => {
     });
 
     expect(result).toEqual({ ok: true });
-    expect(fakeAccounts.calls).toEqual([
-      ["setPassword", created.userId, "another-start"],
-      ["updateMetadata", created.userId, { mustChangePassword: true }],
-    ]);
+    expect(fakeAccounts.calls).toEqual([["setPassword", created.userId, "another-start"]]);
     expect(await organization.listStaff(created)).toEqual({
       ok: false,
       reason: "mustChangePassword",
@@ -526,11 +628,7 @@ describe("setting an organization up", () => {
           name: "Ana Gómez",
           email: "ana@example.com",
           password: startingPassword,
-          metadata: {
-            organizationId: "consultorios-belgrano",
-            roles: ["admin"],
-            mustChangePassword: true,
-          },
+          metadata: { organizationId: "consultorios-belgrano", roles: ["admin"] },
         },
       ],
     ]);

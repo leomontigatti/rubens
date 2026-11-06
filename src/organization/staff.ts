@@ -17,7 +17,12 @@ import type {
   StartingPasswordChange,
 } from "#/lib/staff.ts";
 
-import type { AccountMetadata, Accounts, PasswordRefusal } from "#/organization/accounts.ts";
+import type {
+  AccountMetadata,
+  Accounts,
+  NewUser,
+  PasswordRefusal,
+} from "#/organization/accounts.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import { ensurePractitioner, insertMember, setUpOrganization } from "#/organization/members.ts";
@@ -150,12 +155,13 @@ export async function createStaffMember(
   if (database.select().from(member).where(eq(member.email, email)).get()) {
     return { ok: false as const, reason: "emailTaken" as const };
   }
-  const metadata: AccountMetadata = {
-    organizationId: organizationIdOf(database),
-    roles,
-    mustChangePassword: true,
-  };
-  const created = await accounts.createUser({ ...person, email, password, metadata });
+  const metadata: AccountMetadata = { organizationId: organizationIdOf(database), roles };
+  const created = await createOrAdoptUser(database, accounts, {
+    ...person,
+    email,
+    password,
+    metadata,
+  });
   if (!created.ok) {
     return created;
   }
@@ -170,9 +176,50 @@ export async function createStaffMember(
   );
   if (!added.ok) {
     // Another call took the email while Clerk answered.
+    await deleteUnclaimedUser(database, accounts, created.userId);
     return { ok: false as const, reason: "emailTaken" as const };
   }
   return { ok: true as const, member: findStaffMember(database, created.userId)! };
+}
+
+function isMember(database: Writer, userId: string): boolean {
+  return Boolean(
+    database.select({ userId: member.userId }).from(member).where(eq(member.userId, userId)).get(),
+  );
+}
+
+/**
+ * Creates the user in Clerk. When Clerk already holds the email for a user
+ * this organization created but never made a member (an earlier create that
+ * stopped before its insert committed), that user is adopted instead, with
+ * the new password and roles, so a retry does not answer `emailTaken` forever.
+ */
+async function createOrAdoptUser(database: Database, accounts: Accounts, user: NewUser) {
+  const created = await accounts.createUser(user);
+  if (created.ok || created.reason !== "emailTaken") {
+    return created;
+  }
+  const found = await accounts.findUserByEmail(user.email);
+  if (
+    !found ||
+    found.metadata.organizationId !== user.metadata.organizationId ||
+    isMember(database, found.userId)
+  ) {
+    return created;
+  }
+  const set = await accounts.setPassword(found.userId, user.password);
+  if (!set.ok) {
+    return set;
+  }
+  await accounts.updateMetadata(found.userId, user.metadata);
+  return { ok: true as const, userId: found.userId };
+}
+
+/** Deletes a Clerk user no member row claims: what a refused insert leaves behind. */
+async function deleteUnclaimedUser(database: Database, accounts: Accounts, userId: string) {
+  if (!isMember(database, userId)) {
+    await accounts.deleteUser(userId);
+  }
 }
 
 /**
@@ -202,7 +249,7 @@ export async function updateMember(
       saveRoles(tx, acting, target!, roles);
     }
     if (settings) {
-      tx.update(practitioner).set(settings).where(eq(practitioner.memberId, memberId)).run();
+      saveSettings(tx, acting, memberId, settings);
     }
     return { ok: true as const };
   });
@@ -247,6 +294,32 @@ function saveRoles(tx: Writer, acting: Acting, target: StaffMember, roles: Role[
   }
 }
 
+function saveSettings(
+  tx: Writer,
+  acting: Acting,
+  memberId: string,
+  settings: PractitionerSettings,
+) {
+  const before = tx.select().from(practitioner).where(eq(practitioner.memberId, memberId)).get()!;
+  tx.update(practitioner).set(settings).where(eq(practitioner.memberId, memberId)).run();
+  const after = tx.select().from(practitioner).where(eq(practitioner.memberId, memberId)).get()!;
+  const changed = changedFields(settingsOf(before), settingsOf(after));
+  if (changed) {
+    recordAudit(tx, acting.userId, {
+      action: "update",
+      entityType: "practitioner",
+      entityId: before.id,
+      patientId: null,
+      ...changed,
+    });
+  }
+}
+
+function settingsOf(row: typeof practitioner.$inferSelect) {
+  const { displayName, specialty, keepsClinicalRecords, gridMinutes, color } = row;
+  return { displayName, specialty, keepsClinicalRecords, gridMinutes, color };
+}
+
 /**
  * Deactivates or reactivates a member. A deactivated member's next call is
  * refused by the object at once; the Clerk ban then ends their sessions, and
@@ -287,8 +360,34 @@ export async function setMemberActive(
   if (!saved.ok) {
     return saved;
   }
-  await (active ? accounts.unban(memberId) : accounts.ban(memberId));
+  await mirrorActive(database, accounts, memberId, active);
   return saved;
+}
+
+/**
+ * Bans or unbans the member's Clerk user to match `active`. Another admin's
+ * change can commit while Clerk answers, so the flag is read again after the
+ * call and mirrored once more when it moved.
+ */
+async function mirrorActive(
+  database: Database,
+  accounts: Accounts,
+  memberId: string,
+  active: boolean,
+) {
+  let mirrored = active;
+  for (let call = 0; call < 2; call++) {
+    await (mirrored ? accounts.unban(memberId) : accounts.ban(memberId));
+    const current = database
+      .select({ active: member.active })
+      .from(member)
+      .where(eq(member.userId, memberId))
+      .get()?.active;
+    if (current === undefined || current === mirrored) {
+      return;
+    }
+    mirrored = current;
+  }
 }
 
 /** Gives the member a new starting password, which they must replace again. */
@@ -314,7 +413,6 @@ export async function setStartingPassword(
     return set;
   }
   markPasswordChange(database, memberId, true);
-  await accounts.updateMetadata(memberId, { mustChangePassword: true });
   return { ok: true as const };
 }
 
@@ -348,7 +446,6 @@ export async function changeOwnPassword(
     return set;
   }
   markPasswordChange(database, acting.userId, false);
-  await accounts.updateMetadata(acting.userId, { mustChangePassword: false });
   return { ok: true as const };
 }
 
@@ -375,11 +472,11 @@ export async function setUpWithAccount(
   if (refusal) {
     return { ok: false as const, reason: refusal };
   }
-  const created = await accounts.createUser({
+  const created = await createOrAdoptUser(database, accounts, {
     name: person.name.trim(),
     email,
     password,
-    metadata: { organizationId: input.organizationId, roles: ["admin"], mustChangePassword: true },
+    metadata: { organizationId: input.organizationId, roles: ["admin"] },
   });
   if (!created.ok) {
     return created;
@@ -389,5 +486,9 @@ export async function setUpWithAccount(
     name: input.name,
     admin: { userId: created.userId, ...person, email, mustChangePassword: true },
   });
-  return setUp.ok ? { ok: true as const, userId: created.userId } : setUp;
+  if (!setUp.ok) {
+    await deleteUnclaimedUser(database, accounts, created.userId);
+    return setUp;
+  }
+  return { ok: true as const, userId: created.userId };
 }
