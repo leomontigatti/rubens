@@ -34,7 +34,7 @@ Other scripts, against the running dev server:
 | Piece       | Where                                              | What                                                                                                                                                        |
 | ----------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Worker      | `src/server.ts`                                    | TanStack Start's handler, wrapped for `Server-Timing`; exports the Durable Object class                                                                     |
-| Auth        | `src/start.ts`, `src/lib/identity.ts`              | **Clerk** (`clerkMiddleware`, `<SignIn/>`): users, sessions, organizations and memberships live in Clerk; rubens' roles in the membership's public metadata, carried in the session token's `roles` claim. No key: a dev sign-in |
+| Auth        | `src/start.ts`, `src/lib/identity.ts`              | **Clerk** (`clerkMiddleware`, `<SignIn/>`): users and sessions live in Clerk; each user's organization id and rubens roles in its public metadata, carried in the session token's `org` and `roles` claims. Clerk Organizations are off. No key: a dev sign-in |
 | Clinic data | `src/org/organization-data.ts`                     | `OrganizationData`, one **SQLite-backed Durable Object per organization** (`idFromName(organizationId)`, `locationHint: "sam"`), Drizzle over `ctx.storage` |
 | Booking     | `OrganizationData.book`                            | both rules of migration 0013 checked and the row inserted in one `transactionSync`                                                                          |
 | Reminder    | `OrganizationData.alarm`                           | a `reminder` row per appointment; the object's one alarm is set to the earliest due                                                                         |
@@ -143,9 +143,13 @@ What did not port cleanly:
 - With `src/start.ts`, Start drops its default CSRF middleware; it is added back there.
 - Clerk's keyless mode is not in `@clerk/tanstack-react-start` 1.7.9, hence the dev sign-in.
 - Clerk rejects `.example` addresses; the seed uses `+clerk_test@example.com`.
-- **Clerk's free plan caps an organization at 5 members** (Pro lifts it). The test clinic is
-  exactly 5. Since a rubens member belongs to one organization, the organization and roles could
-  live in the user's public metadata instead of Clerk Organizations, with no member cap.
+- **Clerk's free plan caps an organization at 5 members** (Pro lifts it). A rubens member
+  belongs to one organization, so Clerk Organizations were turned off: the organization id
+  (rubens' own) and the roles live in the user's public metadata. Rerun deployed with that
+  (2026-11-06): the same 121 appointments, 201/403, 307 signed out; `/api/appointments/counts`
+  median 5 ms Worker CPU (n=5), `/agenda` median 26 ms, max 49 (n=13), object median 1.5 ms;
+  browser load median 470 ms. Rubens now owns staff management (invite, remove, change roles)
+  through Clerk's Backend API; a removed member keeps access until the token expires (60 s).
 
 ## Deploying
 
@@ -160,8 +164,8 @@ pnpm dlx wrangler secret put CLERK_PUBLISHABLE_KEY
 
 - Bindings: `ORGANIZATION` (Durable Object `OrganizationData`, migration `v1` with
   `new_sqlite_classes`); secrets `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, optionally `SEED_KEY`.
-- Clerk: Organizations on; Sessions → Customize session token:
-  `{ "roles": "{{org_membership.public_metadata.roles}}" }`.
+- Clerk: Organizations off; Sessions → Customize session token:
+  `{ "org": "{{user.public_metadata.organizationId}}", "roles": "{{user.public_metadata.roles}}" }`.
 - An API token for CI: the "Edit Cloudflare Workers" template (Workers Scripts: Edit, Account Settings: Read, User Details: Read, Memberships: Read) plus Account › D1: Edit; Durable Objects deploy with Workers Scripts.
   Settings: Read, User › Memberships: Read (Workers Durable Objects come with Workers Scripts).
 - The paid plan (Workers Paid, USD 5/month) lifts CPU to 30 s by default; the free plan's

@@ -1,7 +1,9 @@
 // Ported from rubens' src/lib/access.ts: a member holds any combination of the roles.
-// With Clerk they live in the membership's public metadata (`{ "roles": [...] }`), which
-// the session token carries as the `roles` claim (Clerk dashboard → Sessions →
-// Customize session token: `{ "roles": "{{org_membership.public_metadata.roles}}" }`).
+// With Clerk, a member's organization and roles live in the user's public metadata
+// (`{ "organizationId": "...", "roles": [...] }`): a rubens member belongs to one
+// organization, so Clerk Organizations (5 members each on Clerk's free plan) are not used.
+// The session token carries them (Clerk dashboard → Sessions → Customize session token:
+// `{ "org": "{{user.public_metadata.organizationId}}", "roles": "{{user.public_metadata.roles}}" }`).
 export const roleNames = ["admin", "receptionist", "practitioner"] as const;
 
 export type Role = (typeof roleNames)[number];

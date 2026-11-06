@@ -31,10 +31,11 @@ export async function callerFrom(request: Request): Promise<Caller | null> {
     // clerkMiddleware (src/start.ts) verified the session token: networkless, against the
     // instance's JWKS, which it caches.
     const session = await auth();
-    if (!session.userId || !session.orgId) return null;
+    const organizationId = session.sessionClaims?.org;
+    if (!session.userId || typeof organizationId !== "string" || !organizationId) return null;
     return {
       userId: session.userId,
-      organizationId: session.orgId,
+      organizationId,
       roles: parseRoles(session.sessionClaims?.roles),
     };
   }

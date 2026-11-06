@@ -21,20 +21,22 @@ const firstNames = [
   "Santiago",
 ];
 const lastNames = ["Fernández", "López"];
-const organizationName = "Consultorios Belgrano";
+/** The seeded organization's id with Clerk: rubens issues it, Clerk only stores it on each user. */
+const clerkOrganizationId = "org_consultorios_belgrano";
 
 type SeededUser = { id: string; email: string; name: string; role: string };
 
 /**
- * With Clerk: the five staff users (email and password), one organization, and each
- * membership's rubens roles in its public metadata, all through Clerk's Backend API.
- * Idempotent: finds what exists by email and organization name.
+ * With Clerk: the five staff users (email and password), each with the organization and
+ * its rubens roles in the user's public metadata, through Clerk's Backend API. The
+ * organization id is rubens' own; Clerk Organizations are off. Idempotent: finds users by email.
  */
 async function ensureClerkStaff(): Promise<{ organizationId: string; users: SeededUser[] }> {
   const clerk = clerkClient({
     secretKey: env.CLERK_SECRET_KEY,
     publishableKey: env.CLERK_PUBLISHABLE_KEY,
   });
+  const organizationId = clerkOrganizationId;
   const users: SeededUser[] = [];
   for (const person of staff) {
     const email = staffEmail(person.email);
@@ -49,30 +51,10 @@ async function ensureClerkStaff(): Promise<{ organizationId: string; users: Seed
       firstName,
       lastName: rest.join(" "),
     });
-    users.push({ id: user.id, email, name: person.name, role: person.roles.join(",") });
-  }
-  const admin = users[0]!;
-  const memberships = await clerk.users.getOrganizationMembershipList({ userId: admin.id });
-  let organizationId = memberships.data.find((m) => m.organization.name === organizationName)
-    ?.organization.id;
-  organizationId ??= (await clerk.organizations.createOrganization({
-    name: organizationName,
-    createdBy: admin.id,
-  })).id;
-  const existing = await clerk.organizations.getOrganizationMembershipList({ organizationId });
-  for (const [i, user] of users.entries()) {
-    if (!existing.data.some((m) => m.publicUserData?.userId === user.id)) {
-      await clerk.organizations.createOrganizationMembership({
-        organizationId,
-        userId: user.id,
-        role: i === 0 ? "org:admin" : "org:member",
-      });
-    }
-    await clerk.organizations.updateOrganizationMembershipMetadata({
-      organizationId,
-      userId: user.id,
-      publicMetadata: { roles: staff[i]!.roles },
+    await clerk.users.updateUserMetadata(user.id, {
+      publicMetadata: { organizationId, roles: person.roles },
     });
+    users.push({ id: user.id, email, name: person.name, role: person.roles.join(",") });
   }
   return { organizationId, users };
 }
