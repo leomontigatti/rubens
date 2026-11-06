@@ -73,3 +73,14 @@ test.describe("as the receptionist", () => {
     ).toBeVisible();
   });
 });
+
+test.describe("signed out", () => {
+  test("signs in on the page asked for", async ({ page }) => {
+    await page.goto("/pacientes?inactivos=true");
+    await expect(page).toHaveURL(/\/ingresar\?volver=/);
+    await page.getByLabel("Miembro").selectOption(people.receptionist.userId);
+    await page.getByRole("button", { name: "Ingresar" }).click();
+
+    await expect(page).toHaveURL(/\/pacientes\?inactivos=true$/);
+  });
+});

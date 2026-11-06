@@ -1,7 +1,13 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vite-plus/test";
 
-import { authMode, devOrganizationId, devUserCookie, resolveCaller } from "#/server/caller.ts";
+import {
+  authMode,
+  devOrganizationId,
+  devUserCookie,
+  pageLoadRedirect,
+  resolveCaller,
+} from "#/server/caller.ts";
 import type { VerifySession, WorkerEnv } from "#/server/caller.ts";
 
 const bindings = env as unknown as WorkerEnv;
@@ -131,5 +137,55 @@ describe("the sign-in mode", () => {
 
   it("refuses to run a build with no Clerk secret and no DEV_SIGN_IN", () => {
     expect(() => authMode(base, false)).toThrow(/CLERK_SECRET_KEY/);
+  });
+});
+
+describe("a page load whose session token Clerk must refresh", () => {
+  const handshake = new Headers({
+    location:
+      "https://clerk.rubens.test/v1/client/handshake?redirect_url=https%3A%2F%2Frubens.test%2Fagenda",
+    "set-cookie": "__clerk_handshake_nonce=n; Path=/",
+  });
+  const asksForHandshake = () => Promise.resolve({ headers: handshake });
+  const asksForNothing = () => Promise.resolve({ headers: new Headers() });
+
+  it("is sent through Clerk's handshake before it renders, with Clerk's headers", async () => {
+    const redirect = await pageLoadRedirect(
+      request({ "sec-fetch-dest": "document" }),
+      asksForHandshake,
+    );
+
+    expect(redirect?.status).toBe(307);
+    expect(redirect?.headers.get("location")).toBe(handshake.get("location"));
+    expect(redirect?.headers.get("set-cookie")).toBe(handshake.get("set-cookie"));
+  });
+
+  it("counts a request asking for HTML as a page load when the browser names no destination", async () => {
+    const redirect = await pageLoadRedirect(
+      request({ accept: "text/html,application/xhtml+xml" }),
+      asksForHandshake,
+    );
+
+    expect(redirect?.status).toBe(307);
+  });
+
+  it("renders a page load with a valid token as it is", async () => {
+    expect(
+      await pageLoadRedirect(request({ "sec-fetch-dest": "document" }), asksForNothing),
+    ).toBeNull();
+  });
+
+  it("leaves a script's request to the server functions, without asking Clerk", async () => {
+    let asked = false;
+    const redirect = await pageLoadRedirect(
+      request({ "sec-fetch-dest": "empty", accept: "application/json" }),
+      () => {
+        asked = true;
+        return asksForHandshake();
+      },
+    );
+
+    expect(redirect).toBeNull();
+    expect(asked).toBe(false);
   });
 });

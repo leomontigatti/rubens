@@ -23,7 +23,11 @@ export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
     const result = await getViewer();
     if (!result.ok) {
-      throw redirect({ to: "/ingresar" });
+      // Signing in lands back on the page asked for.
+      throw redirect({
+        to: "/ingresar",
+        search: { volver: location.href === "/" ? undefined : location.href },
+      });
     }
     if (result.viewer.mustChangePassword && location.pathname !== passwordChangePath) {
       throw redirect({ to: passwordChangePath });

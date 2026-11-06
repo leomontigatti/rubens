@@ -1,4 +1,5 @@
 import { createClerkClient } from "@clerk/backend";
+import type { RequestState } from "@clerk/backend/internal";
 
 import type { Caller } from "#/organization/members.ts";
 import type { Organization } from "#/organization/organization.ts";
@@ -55,20 +56,75 @@ export type VerifySession = (
   request: Request,
 ) => Promise<{ userId: string; organizationClaim: unknown } | null>;
 
+/** What Clerk made of a request: who it is, and the headers of a redirect it asks for. */
+type ClerkRequestState = RequestState<"session_token">;
+
+/**
+ * Each request is authenticated once: the page-load check in `src/server.ts`
+ * and every server function a page's loaders call share the request object,
+ * so they share the answer.
+ */
+const authenticated = new WeakMap<Request, Promise<ClerkRequestState>>();
+
+function authenticate(env: WorkerEnv, request: Request): Promise<ClerkRequestState> {
+  let state = authenticated.get(request);
+  if (!state) {
+    const clerk = createClerkClient({
+      secretKey: env.CLERK_SECRET_KEY,
+      publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    });
+    // Only tokens issued for this app's own origin are accepted.
+    state = clerk.authenticateRequest(request, {
+      acceptsToken: "session_token",
+      authorizedParties: [new URL(request.url).origin],
+    });
+    authenticated.set(request, state);
+  }
+  return state;
+}
+
 /** Verifies the Clerk session token of a request (its `__session` cookie or `Authorization` header). */
 export function clerkSession(env: WorkerEnv): VerifySession {
-  const clerk = createClerkClient({
-    secretKey: env.CLERK_SECRET_KEY,
-    publishableKey: env.CLERK_PUBLISHABLE_KEY,
-  });
   return async (request) => {
-    const state = await clerk.authenticateRequest(request, { acceptsToken: "session_token" });
+    const state = await authenticate(env, request);
     if (!state.isAuthenticated) {
       return null;
     }
     const auth = state.toAuth();
     return { userId: auth.userId, organizationClaim: auth.sessionClaims.org };
   };
+}
+
+/** Whether `request` is the browser loading a page, not a script's fetch. */
+function isPageLoad(request: Request): boolean {
+  if (request.method !== "GET") {
+    return false;
+  }
+  const destination = request.headers.get("sec-fetch-dest");
+  return destination
+    ? destination === "document"
+    : (request.headers.get("accept") ?? "").includes("text/html");
+}
+
+/**
+ * The redirect a page load needs before it renders, when Clerk asks for one:
+ * its handshake, which refreshes an expired session token and comes back to
+ * the same page. Anything else, a script's request included, needs none.
+ */
+export async function pageLoadRedirect(
+  request: Request,
+  check: (request: Request) => Promise<{ headers: Headers }>,
+): Promise<Response | null> {
+  if (!isPageLoad(request)) {
+    return null;
+  }
+  const { headers } = await check(request);
+  return headers.get("location") ? new Response(null, { status: 307, headers }) : null;
+}
+
+/** `pageLoadRedirect` with Clerk's answer for the request. */
+export function clerkPageLoadRedirect(request: Request, env: WorkerEnv) {
+  return pageLoadRedirect(request, (checked) => authenticate(env, checked));
 }
 
 function cookieOf(request: Request, name: string): string | undefined {

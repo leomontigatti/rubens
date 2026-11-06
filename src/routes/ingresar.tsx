@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
+import * as z from "zod";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
@@ -14,12 +15,25 @@ import { startNewSession } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getSignIn, signInAsDevMember } from "#/server/sign-in.functions.ts";
 
+/**
+ * `volver` is the page asked for before signing in, which signing in lands on:
+ * a path of this app only, so a link cannot send the member elsewhere.
+ */
+const searchSchema = z.object({
+  volver: z
+    .string()
+    .regex(/^\/(?![/\\])/)
+    .optional()
+    .catch(undefined),
+});
+
 export const Route = createFileRoute("/ingresar")({
   head: () => ({ meta: [{ title: "Ingresar · Rubens" }] }),
-  beforeLoad: async () => {
+  validateSearch: searchSchema,
+  beforeLoad: async ({ search }) => {
     const result = await getViewer();
     if (result.ok) {
-      throw redirect({ to: "/" });
+      throw redirect({ href: search.volver ?? "/" });
     }
   },
   loader: () => getSignIn(),
@@ -28,6 +42,7 @@ export const Route = createFileRoute("/ingresar")({
 
 function SignIn() {
   const signIn = Route.useLoaderData();
+  const returnTo = Route.useSearch().volver ?? "/";
   return (
     <main className="flex min-h-svh items-center justify-center p-6">
       {signIn.mode === "dev" ? (
@@ -36,11 +51,11 @@ function SignIn() {
             <CardTitle>Ingresar a Rubens</CardTitle>
           </CardHeader>
           <CardContent>
-            <DevSignIn members={signIn.members} />
+            <DevSignIn members={signIn.members} returnTo={returnTo} />
           </CardContent>
         </Card>
       ) : (
-        <ClerkSignIn />
+        <ClerkSignIn returnTo={returnTo} />
       )}
     </main>
   );
@@ -52,6 +67,7 @@ function SignIn() {
  */
 function DevSignIn(props: {
   members: readonly { userId: string; name: string; roles: Parameters<typeof rolesLabel>[0] }[];
+  returnTo: string;
 }) {
   const router = useRouter();
   const [userId, setUserId] = useState(props.members[0]?.userId ?? "");
@@ -73,7 +89,7 @@ function DevSignIn(props: {
       setError("No pudimos iniciar sesión. Probá de nuevo.");
       return;
     }
-    startNewSession("/");
+    startNewSession(props.returnTo);
   }
 
   return (
