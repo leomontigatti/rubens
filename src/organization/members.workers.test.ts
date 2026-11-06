@@ -26,6 +26,7 @@ describe("the organization object's members", () => {
         name: "Ana Admin",
         email: "ana@example.com",
         roles: ["admin"],
+        mustChangePassword: false,
       },
     });
   });

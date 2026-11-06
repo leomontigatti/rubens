@@ -8,7 +8,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { rolesLabel } from "#/lib/staff.ts";
 import { getStaff } from "#/server/staff.functions.ts";
-import type { StaffMember } from "#/server/staff.ts";
+import type { StaffMember } from "#/organization/staff.ts";
 
 import { RefusalAlert } from "#/routes/_app/personal/-shared.tsx";
 

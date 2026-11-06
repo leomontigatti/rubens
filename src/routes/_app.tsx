@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { passwordChangePath } from "#/components/app-nav.ts";
 import { AppSidebar } from "#/components/app-sidebar.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
+import { useSignOut } from "#/components/sign-in-provider.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import {
@@ -14,7 +15,6 @@ import {
 } from "#/lib/session-change.ts";
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
-import { signOutOfDev } from "#/server/sign-in.functions.ts";
 
 // Every signed-in screen sits under this layout. A member who must still
 // replace the starting password is held on the change-password screen.
@@ -93,12 +93,15 @@ function AppShell() {
   const { viewer } = Route.useRouteContext();
   const { toReschedule, sidebarOpen } = Route.useLoaderData();
   const router = useRouter();
+  const endSession = useSignOut();
 
   useSessionGuard(viewer.userId);
 
   async function signOut() {
-    // Clerk's sign-out lands with #134.
-    const signedOut = await serverAnswer("sign-out", shownPath(router), () => signOutOfDev());
+    const signedOut = await serverAnswer("sign-out", shownPath(router), async () => {
+      await endSession();
+      return { ok: true as const };
+    });
     if (signedOut !== null) {
       startNewSession("/ingresar");
     }

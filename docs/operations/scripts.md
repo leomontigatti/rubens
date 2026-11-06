@@ -92,11 +92,14 @@ then `.env.local` (`node --env-file-if-exists`), so a worktree's own database wi
   which bypasses row-level security. It is a read-write web UI over the data. Use it
   against a local or worktree database only.
 - `setup:organization` ⚠️ runs `scripts/setup-organization.ts`: creates an organization
-  and its first admin, with `--organization "<name>" --name "<admin name>" --email <email>
-  --password <starting password>`. It writes through `DATABASE_DIRECT_URL`, the owner
-  connection. There is no public sign-up, so this is how a business comes to exist. A
-  second run for the same organization name changes nothing and says so. The admin must
-  replace the starting password at first sign-in.
+  and its first admin, with `--url <worker url> --organization "<name>" --name "<admin name>"
+  --email <email> --password <starting password>`, and `SETUP_SECRET` in the environment,
+  the Worker's secret of that name. It posts to the Worker's `/api/setup`, and the
+  organization's object creates the admin in Clerk and in its member table. There is no
+  public sign-up, so this is how a business comes to exist. A second run for the same
+  organization name changes nothing and says so. The admin must replace the starting
+  password at first sign-in. Dev needs none of it: the dev sign-in seeds its own
+  organization.
 - `db:worktree` ⚠️ runs `scripts/worktree-db.ts`. With no argument, sets up this worktree's
   database and `.env.local` (its own database name and port). With `ensure`, the same
   setup, skipped when it is already done. With `prune`, lists the `rubens-wt-` databases

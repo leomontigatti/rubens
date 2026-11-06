@@ -115,6 +115,7 @@ CREATE TABLE `member` (
 	`email` text NOT NULL,
 	`roles` text NOT NULL,
 	`active` integer DEFAULT true NOT NULL,
+	`must_change_password` integer DEFAULT false NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	CONSTRAINT "member_roles_check" CHECK(json_array_length("member"."roles") >= 1)

@@ -25,9 +25,9 @@ export function rolesLabel(roles: readonly Role[]): string {
 const memberId = z.string().min(1);
 
 /**
- * A new staff member's fields, shared by the form and the services. The
- * password's length is checked where the account is created
- * (`src/server/accounts.ts`), against Better Auth's limits.
+ * A new staff member's fields, shared by the form and the organization's
+ * object. The password's length is checked where the account is created
+ * (`src/organization/staff.ts`), and Clerk checks the rest.
  */
 export const staffInputSchema = z.object({
   name: z.string().trim().min(1).max(200),

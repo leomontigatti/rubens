@@ -55,6 +55,9 @@ export const member = sqliteTable(
     email: text("email").notNull(),
     roles: text("roles", { mode: "json" }).$type<Role[]>().notNull(),
     active: flag("active").notNull().default(true),
+    // Held on the change-password screen until they replace the starting
+    // password; mirrored to the Clerk user's public metadata.
+    mustChangePassword: flag("must_change_password").notNull().default(false),
     ...timestamps,
   },
   (table) => [

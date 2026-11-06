@@ -1,5 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 
+import type {
+  MemberActiveChange,
+  MemberUpdate,
+  StaffInput,
+  StartingPasswordChange,
+} from "#/lib/staff.ts";
+
+import { accountsFor } from "#/organization/accounts.ts";
+import type { Accounts } from "#/organization/accounts.ts";
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import {
@@ -10,6 +19,16 @@ import {
   viewerOf,
 } from "#/organization/members.ts";
 import type { Caller, MemberInput, Refusal, Requirement, Acting } from "#/organization/members.ts";
+import {
+  changeOwnPassword,
+  createStaffMember,
+  getStaffMember,
+  listStaff,
+  setMemberActive,
+  setStartingPassword,
+  setUpWithAccount,
+  updateMember,
+} from "#/organization/staff.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -26,10 +45,13 @@ import type { Caller, MemberInput, Refusal, Requirement, Acting } from "#/organi
  */
 export class Organization extends DurableObject {
   readonly #database: Database;
+  /** The Clerk users staff sign in as (`src/organization/accounts.ts`). */
+  readonly #accounts: Accounts;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
     this.#database = openDatabase(ctx.storage);
+    this.#accounts = accountsFor(env as { CLERK_SECRET_KEY?: string });
     void ctx.blockConcurrencyWhile(() => migrateDatabase(this.#database));
   }
 
@@ -50,6 +72,11 @@ export class Organization extends DurableObject {
     return setUpOrganization(this.#database, input);
   }
 
+  /** Sets the organization up with its first admin's Clerk user: the setup script's call. */
+  setUpWithAccount(input: Parameters<typeof setUpWithAccount>[2]) {
+    return setUpWithAccount(this.#database, this.#accounts, input);
+  }
+
   activeMembers() {
     return listActiveMembers(this.#database);
   }
@@ -57,7 +84,7 @@ export class Organization extends DurableObject {
   // Members
 
   viewer(caller: Caller) {
-    return this.#as(caller, "any", (acting) => ({
+    return this.#as(caller, "signedIn", (acting) => ({
       ok: true as const,
       viewer: viewerOf(this.#database, acting),
     }));
@@ -66,6 +93,46 @@ export class Organization extends DurableObject {
   addMember(caller: Caller, input: MemberInput) {
     return this.#as(caller, ["admin"], (acting) =>
       this.#database.transaction((tx) => insertMember(tx, acting.userId, input)),
+    );
+  }
+
+  // Staff
+
+  listStaff(caller: Caller) {
+    return this.#as(caller, ["admin"], () => listStaff(this.#database));
+  }
+
+  getStaffMember(caller: Caller, input: { memberId: string }) {
+    return this.#as(caller, ["admin"], () => getStaffMember(this.#database, input));
+  }
+
+  async createStaffMember(caller: Caller, input: StaffInput) {
+    return this.#as(caller, ["admin"], (acting) =>
+      createStaffMember(this.#database, this.#accounts, acting, input),
+    );
+  }
+
+  async updateMember(caller: Caller, input: MemberUpdate) {
+    return this.#as(caller, ["admin"], (acting) =>
+      updateMember(this.#database, this.#accounts, acting, input),
+    );
+  }
+
+  async setMemberActive(caller: Caller, input: MemberActiveChange) {
+    return this.#as(caller, ["admin"], (acting) =>
+      setMemberActive(this.#database, this.#accounts, acting, input),
+    );
+  }
+
+  async setStartingPassword(caller: Caller, input: StartingPasswordChange) {
+    return this.#as(caller, ["admin"], () =>
+      setStartingPassword(this.#database, this.#accounts, input),
+    );
+  }
+
+  async changePassword(caller: Caller, input: { currentPassword: string; newPassword: string }) {
+    return this.#as(caller, "signedIn", (acting) =>
+      changeOwnPassword(this.#database, this.#accounts, acting, input),
     );
   }
 }

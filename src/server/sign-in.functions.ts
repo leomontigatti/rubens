@@ -6,13 +6,25 @@ import { seedDevOrganization } from "#/dev/seed.ts";
 import { devOrganizationId, devUserCookie, organizationObject } from "#/server/caller.ts";
 import { currentAuthMode, workerEnv } from "#/server/with-organization.ts";
 
-// Signing in and out. With a Clerk secret, Clerk's own components sign in
-// (ADR-0009); without one, the dev sign-in picks a member of the dev
+// Signing in and out. With a Clerk secret, Clerk's own components sign in and
+// out (ADR-0009, `src/components/sign-in-provider.tsx`); without one, the dev sign-in picks a member of the dev
 // organization, seeded on its first use (`src/dev/seed.ts`).
 
 function devOrganization() {
   return organizationObject(workerEnv, devOrganizationId);
 }
+
+/** Which sign-in every page runs under (`SignInProvider`), with Clerk's publishable key. */
+export const getSignInConfig = createServerFn({ method: "GET" }).handler(() => {
+  if (currentAuthMode() === "dev") {
+    return { mode: "dev" as const };
+  }
+  const publishableKey = workerEnv.CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey) {
+    throw new Error("CLERK_PUBLISHABLE_KEY is required beside CLERK_SECRET_KEY");
+  }
+  return { mode: "clerk" as const, publishableKey };
+});
 
 /** The sign-in the page shows: Clerk's, or the dev one with the members it offers. */
 export const getSignIn = createServerFn({ method: "GET" }).handler(async () => {

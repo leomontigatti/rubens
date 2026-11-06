@@ -8,46 +8,50 @@ import type {
   StartingPasswordChange,
 } from "#/lib/staff.ts";
 
-import {
-  createStaffMember,
-  getStaffMember,
-  listStaff,
-  setMemberActive,
-  setStartingPassword,
-  updateMember,
-} from "#/server/staff.ts";
-import { countMemberUpcoming } from "#/server/to-reschedule.ts";
-import { withActor } from "#/server/with-actor.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and refuse non-admins themselves, so each
-// validator here only names the type. Requiring the admin role as well refuses
-// a call before it opens a transaction.
-const adminOnly = { roles: ["admin"] } as const;
+// The organization's object validates the input and refuses non-admins
+// itself, so each validator here only names the type.
 
 export const getStaff = createServerFn({ method: "GET" }).handler(() =>
-  withActor(adminOnly, (actor) => listStaff(actor)),
+  withOrganization((organization, caller) => organization.listStaff(caller)),
 );
 
 export const getMember = createServerFn({ method: "GET" })
   .validator((data: { memberId: string }) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => getStaffMember(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.getStaffMember(caller, data)),
+  );
 
 export const addStaffMember = createServerFn({ method: "POST" })
   .validator((data: StaffInput) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => createStaffMember(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.createStaffMember(caller, data)),
+  );
 
 export const editMember = createServerFn({ method: "POST" })
   .validator((data: MemberUpdate) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => updateMember(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.updateMember(caller, data)),
+  );
 
+/**
+ * How many future appointments deactivating the member sends to the
+ * to-reschedule list. That list returns with the object's (#138); until then
+ * the answer is a refusal, and the deactivation asks nothing first.
+ */
 export const getMemberUpcomingCount = createServerFn({ method: "GET" })
   .validator((data: MemberReference) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => countMemberUpcoming(actor, data)));
+  .handler(() => ({ ok: false as const, reason: "notAvailable" as const }));
 
 export const changeMemberActive = createServerFn({ method: "POST" })
   .validator((data: MemberActiveChange) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => setMemberActive(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setMemberActive(caller, data)),
+  );
 
 export const resetStartingPassword = createServerFn({ method: "POST" })
   .validator((data: StartingPasswordChange) => data)
-  .handler(({ data }) => withActor(adminOnly, (actor) => setStartingPassword(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.setStartingPassword(caller, data)),
+  );

@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
+import { ClerkSignIn } from "#/components/sign-in-provider.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
@@ -29,15 +30,18 @@ function SignIn() {
   const signIn = Route.useLoaderData();
   return (
     <main className="flex min-h-svh items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Ingresar a Rubens</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Clerk's sign-in lands with #134. */}
-          {signIn.mode === "dev" ? <DevSignIn members={signIn.members} /> : null}
-        </CardContent>
-      </Card>
+      {signIn.mode === "dev" ? (
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle>Ingresar a Rubens</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DevSignIn members={signIn.members} />
+          </CardContent>
+        </Card>
+      ) : (
+        <ClerkSignIn />
+      )}
     </main>
   );
 }

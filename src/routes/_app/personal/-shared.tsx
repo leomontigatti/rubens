@@ -18,6 +18,7 @@ const refusalMessages = {
   emailTaken: "Ya hay una cuenta con ese correo.",
   passwordTooShort: "La contraseña inicial debe tener entre 8 y 128 caracteres.",
   passwordTooLong: "La contraseña inicial debe tener entre 8 y 128 caracteres.",
+  passwordRejected: "Esa contraseña es demasiado común o débil. Elegí otra.",
 };
 
 export type RefusalReason = keyof typeof refusalMessages;
@@ -27,6 +28,7 @@ export function useAction() {
     emailTaken: "email",
     passwordTooShort: "password",
     passwordTooLong: "password",
+    passwordRejected: "password",
   });
 }
 

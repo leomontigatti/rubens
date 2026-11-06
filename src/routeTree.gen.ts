@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as ApiSetupRouteImport } from './routes/api/setup'
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
@@ -79,6 +80,11 @@ const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   id: '/cambiar-contrasena',
   path: '/cambiar-contrasena',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiSetupRoute = ApiSetupRouteImport.update({
+  id: '/api/setup',
+  path: '/api/setup',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAReprogramarIndexRoute = AppAReprogramarIndexRouteImport.update({
   id: '/a-reprogramar/',
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/api/setup': typeof ApiSetupRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
   '/dev/patrones': typeof AppDevPatronesRoute
@@ -392,6 +399,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/api/setup': typeof ApiSetupRoute
   '/': typeof AppIndexRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
@@ -446,6 +454,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/api/setup': typeof ApiSetupRoute
   '/_app/': typeof AppIndexRoute
   '/_app/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/_app/cierres/nuevo': typeof AppCierresNuevoRoute
@@ -501,6 +510,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/api/setup'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
     | '/dev/patrones'
@@ -552,6 +562,7 @@ export interface FileRouteTypes {
   to:
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/api/setup'
     | '/'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
@@ -605,6 +616,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/ingresar'
     | '/_app/cambiar-contrasena'
+    | '/api/setup'
     | '/_app/'
     | '/_app/cierres/$closureId'
     | '/_app/cierres/nuevo'
@@ -658,6 +670,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IngresarRoute: typeof IngresarRoute
+  ApiSetupRoute: typeof ApiSetupRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -690,6 +703,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/cambiar-contrasena'
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/setup': {
+      id: '/api/setup'
+      path: '/api/setup'
+      fullPath: '/api/setup'
+      preLoaderRoute: typeof ApiSetupRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/a-reprogramar/': {
       id: '/_app/a-reprogramar/'
@@ -1143,6 +1163,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IngresarRoute: IngresarRoute,
+  ApiSetupRoute: ApiSetupRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

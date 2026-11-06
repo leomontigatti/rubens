@@ -1,8 +1,9 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, count, eq, sql } from "drizzle-orm";
 
 import { roleNames } from "#/lib/access.ts";
 import type { Role } from "#/lib/access.ts";
 import { createdFields } from "#/lib/audit-fields.ts";
+import { practitionerColors } from "#/lib/practitioner-colors.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -25,17 +26,22 @@ export interface Acting {
   roles: readonly Role[];
 }
 
-/** What a call needs from its member: one of `roles`, or any role. */
-export type Requirement = "any" | readonly Role[];
+/**
+ * What a call needs from its member: one of `roles`, or any role. Both refuse a
+ * member who must still replace the starting password; `signedIn`, any active
+ * member, does not, for the calls the change-password screen makes.
+ */
+export type Requirement = "any" | "signedIn" | readonly Role[];
 
-export type Refusal = "unauthenticated" | "forbidden";
+export type Refusal = "unauthenticated" | "forbidden" | "mustChangePassword";
 
 export type Authorized = { ok: true; acting: Acting } | { ok: false; reason: Refusal };
 
 /**
  * Authorizes `caller` against the member table: a user who is not a member, or
- * is deactivated, counts as signed out; a member without one of the required
- * roles is forbidden.
+ * is deactivated, counts as signed out; a member who must replace the starting
+ * password is held to it; a member without one of the required roles is
+ * forbidden.
  */
 export function authorize(
   database: Database,
@@ -43,12 +49,22 @@ export function authorize(
   requirement: Requirement,
 ): Authorized {
   const row = database
-    .select({ roles: member.roles, active: member.active })
+    .select({
+      roles: member.roles,
+      active: member.active,
+      mustChangePassword: member.mustChangePassword,
+    })
     .from(member)
     .where(eq(member.userId, caller.userId))
     .get();
   if (!row || !row.active) {
     return { ok: false, reason: "unauthenticated" };
+  }
+  if (requirement === "signedIn") {
+    return { ok: true, acting: { userId: caller.userId, roles: row.roles } };
+  }
+  if (row.mustChangePassword) {
+    return { ok: false, reason: "mustChangePassword" };
   }
   if (requirement !== "any" && !row.roles.some((role) => requirement.includes(role))) {
     return { ok: false, reason: "forbidden" };
@@ -61,6 +77,8 @@ export interface MemberInput {
   name: string;
   email: string;
   roles: readonly Role[];
+  /** Whether they sign in with a starting password they must replace; false when left out. */
+  mustChangePassword?: boolean;
 }
 
 /** Who is signed in, and for which organization: what the app shell shows. */
@@ -71,6 +89,7 @@ export interface Viewer {
   name: string;
   email: string;
   roles: readonly Role[];
+  mustChangePassword: boolean;
 }
 
 export function viewerOf(database: Database, acting: Acting): Viewer {
@@ -78,6 +97,7 @@ export function viewerOf(database: Database, acting: Acting): Viewer {
     .select({
       name: member.name,
       email: member.email,
+      mustChangePassword: member.mustChangePassword,
       organizationId: organization.id,
       organizationName: organization.name,
     })
@@ -117,7 +137,11 @@ export function insertMember(
   if (taken) {
     return { ok: false, reason: "memberExists" };
   }
-  writer.insert(member).values({ userId: input.userId, name, email, roles }).run();
+  const mustChangePassword = input.mustChangePassword ?? false;
+  writer
+    .insert(member)
+    .values({ userId: input.userId, name, email, roles, mustChangePassword })
+    .run();
   recordAudit(writer, actingUserId, {
     action: "create",
     entityType: "member",
@@ -127,9 +151,26 @@ export function insertMember(
     after: createdFields({ name, email, roles: roles.join(",") }),
   });
   if (roles.includes("practitioner")) {
-    writer.insert(practitioner).values({ memberId: input.userId, displayName: name }).run();
+    ensurePractitioner(writer, input.userId, name);
   }
   return { ok: true };
+}
+
+/**
+ * Creates the member's practitioner row, unless one survives from before, in
+ * the palette's next colour: the organization's practitioners take them in turn.
+ */
+export function ensurePractitioner(writer: Writer, memberId: string, displayName: string): void {
+  const total = writer.select({ total: count() }).from(practitioner).get()?.total ?? 0;
+  writer
+    .insert(practitioner)
+    .values({
+      memberId,
+      displayName,
+      color: practitionerColors[total % practitionerColors.length],
+    })
+    .onConflictDoNothing({ target: practitioner.memberId })
+    .run();
 }
 
 /**
