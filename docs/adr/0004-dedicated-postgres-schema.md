@@ -1,6 +1,8 @@
 # ADR-0004: App tables live in a dedicated `rubens` schema, unprefixed
 
-**Status**: accepted
+**Status**: accepted; superseded by
+[ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md) when the port to
+Workers lands, which leaves Postgres. Until then it governs the code.
 
 Date: 2026-10-12
 

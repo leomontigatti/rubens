@@ -6,6 +6,11 @@ Date: 2026-11-04. The rules it serves are in [assistant.md](../domain/assistant.
 the research behind it, with sources, is in
 [whatsapp-assistant.md](../research/whatsapp-assistant.md).
 
+Amended 2026-11-06 (#125): after the port to Workers
+([ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md)), there is no VPS
+beside the app and no pg-boss. Where WAHA runs (it needs an always-on process) and what
+replaces the pg-boss worker are open, to be decided when the assistant is specced.
+
 Patients write to the number they already use, and a reception desk is what the
 business wants to need less of. So each organization's number gets an assistant
 that answers, books, cancels and reschedules, and hands off to a person when it

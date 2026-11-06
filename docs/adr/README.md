@@ -14,6 +14,9 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 - Scheduling: `0003-scheduling-and-clinical-records.md`
 - Clinical records: `0005-versioned-clinical-notes.md`, with the access and audit
   rules in `0003-scheduling-and-clinical-records.md`
+- Hosting on Cloudflare Workers, the organization's Durable Object, jobs, encryption:
+  `0008-cloudflare-workers-one-object-per-organization.md`
+- Staff sign-in: `0009-staff-sign-in-through-clerk.md`
 - WhatsApp, the assistant and Telegram: `0006-patient-assistant-on-whatsapp.md`,
   `0007-patients-words-on-telegram.md`
 
@@ -38,3 +41,10 @@ when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
   proposals; TanStack AI in a pg-boss worker.
 - [ADR-0007: A handoff carries the patient's own words to Telegram](./0007-patients-words-on-telegram.md) -
   people answer handed-off patients from Telegram instead of an inbox in Rubens.
+- [ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization](./0008-cloudflare-workers-one-object-per-organization.md) -
+  the free plan, each organization's data in its own SQLite object as the tenant
+  boundary, booking rules and jobs in the object, app-level encryption of clinical
+  data; supersedes ADR-0002 and ADR-0004 when the port lands.
+- [ADR-0009: Staff sign in through Clerk, without Clerk Organizations](./0009-staff-sign-in-through-clerk.md) -
+  Better Auth's password check exceeds the free plan's CPU; organization and roles on
+  the Clerk user, since Clerk's free plan caps an organization at 5 members.

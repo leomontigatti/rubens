@@ -6,6 +6,11 @@ Date: 2026-10-28. Supersedes the "Clinical records are append-only" section of
 [ADR-0003](./0003-scheduling-and-clinical-records.md), after the clinical record
 was agreed for the first version ([clinical-records.md](../domain/clinical-records.md)).
 
+Amended 2026-11-06 (#125): after the port to Workers, clinical text and files are
+encrypted by the app with a key per organization, and files live in R2, not on the VPS
+([ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md)). That reverses the
+two sections below on encryption and on the VPS's disk.
+
 ## A note is edited, and every version is kept
 
 ADR-0003 made a signed note unalterable, with drafts before signing and addenda for

@@ -19,6 +19,13 @@ Amended 2026-11-02 (#91): a schedule is a set of weekdays with times and validit
 dates, expanded in the office's zone, not an RRULE. The domain has no recurrence
 beyond weekly, and a series of appointments is booked one at a time.
 
+Amended 2026-11-06 (#125): after the port to Workers
+([ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md)), the rules below
+hold, but the organization's object enforces them, not Postgres: both overlap rules are
+checked and the appointment inserted in one synchronous transaction, and RLS and grants
+become checks in the object's code. The hosting country was confirmed with counsel on
+2026-11-05: the United States is accepted.
+
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,
 Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
 

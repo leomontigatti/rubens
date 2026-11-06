@@ -1,6 +1,8 @@
 # ADR-0002: Tenancy, row-level security and database connections
 
-**Status**: accepted
+**Status**: accepted; superseded by
+[ADR-0008](./0008-cloudflare-workers-one-object-per-organization.md) when the port to
+Workers lands. Until then it governs the code.
 
 Date: 2026-10-12
 
