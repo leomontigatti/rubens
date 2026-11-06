@@ -23,7 +23,7 @@ import {
 import { bookAppointment } from "#/server/appointments.ts";
 import { getCalendarWeek } from "#/server/calendar-week.ts";
 import type { PatientAppointment } from "#/server/patient-appointments.ts";
-import { countToReschedule, listToReschedule } from "#/server/to-reschedule.ts";
+import { listToReschedule } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
 
 // The services validate their input and decide for whom the actor may book, so
@@ -79,8 +79,4 @@ export const getPatientAppointments = createServerFn({ method: "GET" })
 
 export const getToReschedule = createServerFn({ method: "GET" }).handler(() =>
   withActor(bookers, (actor) => listToReschedule(actor)),
-);
-
-export const getToRescheduleCount = createServerFn({ method: "GET" }).handler(() =>
-  withActor(bookers, (actor) => countToReschedule(actor)),
 );
