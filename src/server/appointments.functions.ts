@@ -14,34 +14,38 @@ import type {
 
 import { getAppointment, updateAppointment } from "#/server/appointment-edit.ts";
 import { rescheduleAppointment } from "#/server/appointment-reschedule.ts";
-import { bookOverbooking } from "#/server/appointment-rooms.ts";
 import {
   cancelAppointment,
   changeAppointmentStatus,
   undoAppointmentStatus,
 } from "#/server/appointment-statuses.ts";
-import { bookAppointment } from "#/server/appointments.ts";
-import { getCalendarWeek } from "#/server/calendar-week.ts";
-import type { PatientAppointment } from "#/server/patient-appointments.ts";
 import { listToReschedule } from "#/server/to-reschedule.ts";
 import { withActor } from "#/server/with-actor.ts";
+import { withOrganization } from "#/server/with-organization.ts";
 
-// The services validate their input and decide for whom the actor may book, so
-// each validator here only names the type. Naming the booking roles here as
-// well refuses everyone else before a transaction opens.
+// The object and the services validate their input and decide for whom the
+// caller may book, so each validator here only names the type. The object
+// names the booking roles itself; for the services not ported yet (#138),
+// naming them here refuses everyone else before a transaction opens.
 const bookers = { roles: ["admin", "receptionist", "practitioner"] } as const;
 
 export const getCalendarWeekView = createServerFn({ method: "GET" })
   .validator((data: CalendarWeekQuery) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => getCalendarWeek(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.getCalendarWeek(caller, data)),
+  );
 
 export const addAppointment = createServerFn({ method: "POST" })
   .validator((data: BookingInput & WarningConfirmation) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => bookAppointment(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.bookAppointment(caller, data)),
+  );
 
 export const addOverbooking = createServerFn({ method: "POST" })
   .validator((data: OverbookingInput & WarningConfirmation) => data)
-  .handler(({ data }) => withActor(bookers, (actor) => bookOverbooking(actor, data)));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.bookOverbooking(caller, data)),
+  );
 
 export const getAppointmentRecord = createServerFn({ method: "GET" })
   .validator((data: AppointmentIdInput) => data)
@@ -69,13 +73,9 @@ export const moveAppointment = createServerFn({ method: "POST" })
 
 export const getPatientAppointments = createServerFn({ method: "GET" })
   .validator((data: { patientId: string }) => data)
-  // Until appointments port (#137), a patient's page lists none, so it loads
-  // with no Postgres behind it.
-  .handler(() => ({
-    ok: true as const,
-    upcoming: [] as PatientAppointment[],
-    past: [] as PatientAppointment[],
-  }));
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.getPatientAppointments(caller, data)),
+  );
 
 export const getToReschedule = createServerFn({ method: "GET" }).handler(() =>
   withActor(bookers, (actor) => listToReschedule(actor)),

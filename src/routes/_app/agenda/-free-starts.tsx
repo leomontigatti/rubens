@@ -40,7 +40,7 @@ export function FreeStartsOfWeek(props: {
   return <FreeStartList starts={data.freeStarts} picked={props.picked} onPick={props.onPick} />;
 }
 
-export function FreeStartList(props: {
+function FreeStartList(props: {
   starts: AvailableStart[];
   picked: PickedStart | null;
   onPick: (start: PickedStart) => void;

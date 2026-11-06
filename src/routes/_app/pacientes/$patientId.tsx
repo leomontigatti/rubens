@@ -37,7 +37,7 @@ import {
   getPatientDetails,
   getPatientUpcomingCount,
 } from "#/server/patients.functions.ts";
-import type { PatientAppointment } from "#/server/patient-appointments.ts";
+import type { PatientAppointment } from "#/organization/appointments.ts";
 import type { HistoryEntry } from "#/organization/patient-history.ts";
 import type { Patient } from "#/organization/patients.ts";
 

@@ -11,7 +11,7 @@ import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { formatLocalDate, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
-import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/server/calendar-week.ts";
+import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/organization/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 

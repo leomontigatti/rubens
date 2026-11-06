@@ -13,7 +13,7 @@ import { visibleWeekHours } from "#/lib/calendar-layout.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatLocalDate, shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import { getCalendarWeekView } from "#/server/appointments.functions.ts";
-import type { CalendarAppointment, CalendarWeek } from "#/server/calendar-week.ts";
+import type { CalendarAppointment, CalendarWeek } from "#/organization/calendar-week.ts";
 
 import { AppointmentDialog } from "#/routes/_app/agenda/-appointment.tsx";
 import type { PickedAppointment } from "#/routes/_app/agenda/-appointment.tsx";

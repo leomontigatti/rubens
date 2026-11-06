@@ -4,7 +4,7 @@ import { BuildingIcon, StethoscopeIcon, UserRoundIcon } from "lucide-react";
 import { FilterBar } from "#/components/filter-bar.tsx";
 import type { FilterGroup } from "#/components/filter-groups.ts";
 import { Button } from "#/components/ui/button.tsx";
-import type { CalendarWeek, RoomChoice } from "#/server/calendar-week.ts";
+import type { CalendarWeek, RoomChoice } from "#/organization/calendar-week.ts";
 
 import { filterChange, roomOptions, serviceOptions } from "#/routes/_app/agenda/-filter-changes.ts";
 import type { CalendarFilterId, CalendarSearch } from "#/routes/_app/agenda/-filter-changes.ts";

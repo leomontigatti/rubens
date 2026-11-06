@@ -8,7 +8,7 @@ import {
   statusActionLabels,
 } from "#/lib/appointment-statuses.ts";
 import { setAppointmentStatus, undoStatusChange } from "#/server/appointments.functions.ts";
-import type { DayAppointment } from "#/server/appointments.ts";
+import type { DayAppointment } from "#/organization/appointments.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 

@@ -28,13 +28,12 @@ import type {
   BookingStart,
   BookingValues,
   BookingWarning,
-  OfferedStart,
   PickedStart,
 } from "#/lib/booking-draft.ts";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
-import type { RoomOccupant } from "#/server/appointment-placement.ts";
+import type { RoomOccupant } from "#/organization/appointment-placement.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
-import { FreeStartList, FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
+import { FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
 import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 
 // Booking a patient on a page of its own, from either entry: a free cell
@@ -122,31 +121,23 @@ type BookingRefusal =
   | Exclude<Awaited<ReturnType<typeof addAppointment>>, { ok: true }>
   | Exclude<Awaited<ReturnType<typeof addOverbooking>>, { ok: true }>;
 
-/** What the last attempt answered: warnings to confirm past, fresh free times, or a refusal. */
+/** What the last attempt answered: warnings to confirm past, or a refusal. */
 interface Answer {
   warnings: BookingWarning[] | null;
-  freshStarts: OfferedStart[] | null;
   refusal: FieldProblem | null;
 }
 
-const noAnswer: Answer = { warnings: null, freshStarts: null, refusal: null };
+const noAnswer: Answer = { warnings: null, refusal: null };
 
 /** What a refusal answers. */
 function answerOf(refusal: BookingRefusal, office: OverbookingOffice | null): Answer {
   if (refusal.reason === "patientWarning") {
     return { ...noAnswer, warnings: refusal.warnings };
   }
-  if (refusal.reason === "timeTaken") {
-    return {
-      ...noAnswer,
-      freshStarts: refusal.freeStarts,
-      refusal: { field: "start", message: "Ese horario ya se ocupó. Elegí otro horario libre." },
-    };
-  }
   return { ...noAnswer, refusal: refusalProblem(refusal, office) };
 }
 
-type PlainRefusal = Exclude<BookingRefusal, { reason: "patientWarning" | "timeTaken" }>;
+type PlainRefusal = Exclude<BookingRefusal, { reason: "patientWarning" }>;
 
 /** A refusal under its field; an overbooking's room is the field a full room is about. */
 function refusalProblem(refusal: PlainRefusal, office: OverbookingOffice | null): FieldProblem {
@@ -244,9 +235,6 @@ function useBookingForm(props: BookingPageProps) {
       page.leave();
       return;
     }
-    if (result.reason === "timeTaken") {
-      form.setFieldValue("start", null);
-    }
     setAnswer(answerOf(result, props.overbooking));
   }
 
@@ -256,17 +244,10 @@ function useBookingForm(props: BookingPageProps) {
       props.practitioners.map((practitioner) => practitioner.id),
       props.defaultDate,
     ),
-    // A warning confirmed after a change would book what it never warned about,
-    // and the times left were for what was asked then; picking one of them keeps
-    // the list, the only picker on a page opened from a cell. A refusal stays
-    // until the next submit.
+    // A warning confirmed after a change would book what it never warned
+    // about. A refusal stays until the next submit.
     listeners: {
-      onChange: ({ fieldApi }) =>
-        setAnswer((last) => ({
-          ...noAnswer,
-          refusal: last.refusal,
-          freshStarts: fieldApi.name === "start" ? last.freshStarts : null,
-        })),
+      onChange: () => setAnswer((last) => ({ ...noAnswer, refusal: last.refusal })),
     },
     onSubmit: ({ value }) => book(value, false),
   });
@@ -303,7 +284,7 @@ export function BookingPage(props: BookingPageProps) {
         <form.AppField name="patient">{(field) => <PatientPicker field={field} />}</form.AppField>
       }
     >
-      <WhoAndWhen form={form} props={props} ask={ask} freshStarts={answer.freshStarts} />
+      <WhoAndWhen form={form} props={props} ask={ask} />
       <form.AppField name="receptionNote">
         {(field) => (
           <field.TextField
@@ -325,12 +306,7 @@ export function BookingPage(props: BookingPageProps) {
 }
 
 /** The practitioner when there is a choice, the medical service and duration, and the start. */
-function WhoAndWhen(params: {
-  form: BookingForm;
-  props: BookingPageProps;
-  ask: boolean;
-  freshStarts: OfferedStart[] | null;
-}) {
+function WhoAndWhen(params: { form: BookingForm; props: BookingPageProps; ask: boolean }) {
   const { form, props } = params;
   const fixed = props.from !== null;
   return (
@@ -342,7 +318,7 @@ function WhoAndWhen(params: {
       {props.overbooking ? (
         <OverbookingFields form={form} rooms={props.overbooking.rooms} />
       ) : (
-        <StartField form={form} fixed={fixed} freshStarts={params.freshStarts} />
+        <StartField form={form} fixed={fixed} />
       )}
     </>
   );
@@ -443,12 +419,7 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
  * A booking's start: the one clicked, or picked from the practitioner's free
  * times for the duration, a week from a date.
  */
-function StartField(props: {
-  form: BookingForm;
-  fixed: boolean;
-  /** The free times left that day, after another booking took the one picked. */
-  freshStarts: OfferedStart[] | null;
-}) {
+function StartField(props: { form: BookingForm; fixed: boolean }) {
   const { form, fixed } = props;
   const query = useStore(form.store, (state) => freeStartsQueryOf(state.values));
   return (
@@ -467,11 +438,6 @@ function StartField(props: {
               onPick={field.handleChange}
             />
           )}
-          <FreshStarts
-            starts={props.freshStarts}
-            picked={field.state.value}
-            onPick={field.handleChange}
-          />
           <PickedSummary start={field.state.value} />
         </StartGroup>
       )}
@@ -521,26 +487,6 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
       <span className="font-medium">{localDateTime(start.start, start.timeZone)}</span>,{" "}
       {start.roomName}
     </p>
-  );
-}
-
-/** The free times left that day, once another booking took the one picked. */
-function FreshStarts(props: {
-  starts: OfferedStart[] | null;
-  picked: PickedStart | null;
-  onPick: (start: PickedStart) => void;
-}) {
-  if (!props.starts) {
-    return null;
-  }
-  if (props.starts.length === 0) {
-    return <p className="text-muted-foreground text-sm">No quedan horarios libres ese día.</p>;
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm">Horarios libres que quedan ese día:</p>
-      <FreeStartList starts={props.starts} picked={props.picked} onPick={props.onPick} />
-    </div>
   );
 }
 

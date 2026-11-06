@@ -1,10 +1,16 @@
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
-import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
 
 import { actsForEveryone } from "#/lib/access.ts";
+import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { availabilityQuerySchema, findFreeStarts } from "#/lib/availability.ts";
-import type { AvailabilityClosure, AvailabilityQuery, FreeStart } from "#/lib/availability.ts";
+import type {
+  AvailabilityClosure,
+  AvailabilityQuery,
+  AvailabilitySchedule,
+  FreeStart,
+} from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
@@ -15,6 +21,7 @@ import type { Acting } from "#/organization/members.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import type { SchedulePractitioner } from "#/organization/practitioners.ts";
 import {
+  appointment,
   closure,
   member,
   office,
@@ -28,8 +35,9 @@ import {
 // time off and closures, handed to the pure module in `#/lib/availability.ts`.
 // Reception and admins read anyone's; a practitioner reads their own. The
 // dates asked for are read in the organization's default zone. Schedules in a
-// deactivated room or office offer nothing. Booked appointments are not
-// subtracted yet: they port with booking (#137).
+// deactivated room or office offer nothing. The practitioner's active
+// appointments are busy, and so is a room another practitioner's active
+// appointment holds.
 
 export interface AvailableStart {
   start: Date;
@@ -70,7 +78,10 @@ export function listAvailabilityPractitioners(
 }
 
 /** Rows whose span `[startsAt, endsAt)` meets `range`. */
-function meets(table: typeof timeOff | typeof closure, range: TimeRange) {
+export function meets(
+  table: typeof timeOff | typeof closure | typeof appointment,
+  range: TimeRange,
+) {
   return and(lt(table.startsAt, +range.end), gt(table.endsAt, +range.start));
 }
 
@@ -78,7 +89,7 @@ function localDate(instant: Date, timeZone: string): string {
   return format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
 }
 
-const asRange = (row: { startsAt: number; endsAt: number }): TimeRange => ({
+export const asRange = (row: { startsAt: number; endsAt: number }): TimeRange => ({
   start: new Date(row.startsAt),
   end: new Date(row.endsAt),
 });
@@ -87,7 +98,7 @@ const asRange = (row: { startsAt: number; endsAt: number }): TimeRange => ({
  * The practitioner's time off that meets `range`, and the closures that meet
  * it of the organization and of the offices `officeIds`.
  */
-function findBlocking(
+export function findBlocking(
   writer: Writer,
   practitionerId: string,
   range: TimeRange,
@@ -116,16 +127,59 @@ function findBlocking(
   };
 }
 
+/** A schedule as the free times read it, with its office's and room's names. */
+export type FreeTimeSchedule = AvailabilitySchedule & { officeName: string; roomName: string };
+
+/** The active appointments that meet `range`, of the practitioner or, with `roomIds`, of others there. */
+function findBusy(
+  writer: Writer,
+  practitionerId: string,
+  range: TimeRange,
+  roomIds: readonly string[],
+) {
+  const holding = and(
+    inArray(appointment.status, [...activeAppointmentStatuses]),
+    meets(appointment, range),
+  );
+  const busy = writer
+    .select({ startsAt: appointment.startsAt, endsAt: appointment.endsAt })
+    .from(appointment)
+    .where(and(eq(appointment.practitionerId, practitionerId), holding))
+    .all()
+    .map(asRange);
+  const roomBusy =
+    roomIds.length === 0
+      ? []
+      : writer
+          .select({
+            roomId: appointment.roomId,
+            startsAt: appointment.startsAt,
+            endsAt: appointment.endsAt,
+          })
+          .from(appointment)
+          .where(
+            and(
+              inArray(appointment.roomId, [...roomIds]),
+              ne(appointment.practitionerId, practitionerId),
+              holding,
+            ),
+          )
+          .all()
+          .map((row) => ({ roomId: row.roomId, during: asRange(row) }));
+  return { busy, roomBusy };
+}
+
 /**
- * The practitioner's free starts of `durationMinutes` inside `window`, with
- * their office's and room's names.
+ * The practitioner's free starts of `durationMinutes` inside `window`, and the
+ * schedules they come from. With `officeId`, only that office's schedules
+ * count.
  */
-function findFreeTimes(
+export function findFreeTimes(
   writer: Writer,
   owner: { id: string; gridMinutes: number },
-  window: TimeRange,
-  durationMinutes: number,
-): AvailableStart[] {
+  options: { window: TimeRange; durationMinutes: number; officeId?: string },
+): { free: FreeStart[]; schedules: FreeTimeSchedule[] } {
+  const { window, durationMinutes, officeId } = options;
   // A start near the window's end runs past it by up to the duration.
   const reach = { start: window.start, end: new Date(+window.end + durationMinutes * 60_000) };
   // An office in another zone than the default one sees the window a day
@@ -151,6 +205,7 @@ function findFreeTimes(
     .where(
       and(
         eq(schedule.practitionerId, owner.id),
+        officeId === undefined ? undefined : eq(office.id, officeId),
         lte(schedule.firstDate, lastDate),
         or(isNull(schedule.lastDate), gte(schedule.lastDate, firstDate)),
       ),
@@ -159,15 +214,22 @@ function findFreeTimes(
   const blocking = findBlocking(writer, owner.id, reach, [
     ...new Set(schedules.map((row) => row.officeId)),
   ]);
-  const free: FreeStart[] = findFreeStarts({
+  const free = findFreeStarts({
     schedules,
     ...blocking,
-    busy: [],
-    roomBusy: [],
+    ...findBusy(writer, owner.id, reach, [...new Set(schedules.map((row) => row.roomId))]),
     gridMinutes: owner.gridMinutes,
     window,
     durationMinutes,
   });
+  return { free, schedules };
+}
+
+/** Free starts as the screens receive them, with their office's and room's names. */
+function toAvailableStarts(
+  free: readonly FreeStart[],
+  schedules: readonly FreeTimeSchedule[],
+): AvailableStart[] {
   const rooms = new Map(schedules.map((row) => [row.roomId, row]));
   return free.map(({ start, roomId }) => {
     const where = rooms.get(roomId)!;
@@ -203,10 +265,11 @@ export function getAvailability(
     return { ok: false, reason: "forbidden" };
   }
   const window = toTimeRange({ kind: "days", firstDate, lastDate }, defaultTimeZone);
+  const { free, schedules } = findFreeTimes(writer, found, { window, durationMinutes });
   return {
     ok: true,
     practitioner: { id: found.id, displayName: found.displayName },
     gridMinutes: found.gridMinutes,
-    freeStarts: findFreeTimes(writer, found, window, durationMinutes),
+    freeStarts: toAvailableStarts(free, schedules),
   };
 }

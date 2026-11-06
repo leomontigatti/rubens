@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog.tsx";
-import type { DayAppointment } from "#/server/appointments.ts";
+import type { DayAppointment } from "#/organization/appointments.ts";
 
 import { StatusSection } from "#/routes/_app/agenda/-appointment-status.tsx";
 

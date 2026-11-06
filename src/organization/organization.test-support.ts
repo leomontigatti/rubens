@@ -2,12 +2,14 @@ import { env, runInDurableObject } from "cloudflare:test";
 import { eq, sql } from "drizzle-orm";
 
 import type { Role } from "#/lib/access.ts";
+import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/appointments.ts";
+import type { ScheduleInput } from "#/lib/schedules.ts";
 
 import type { Accounts, CreateUserResult } from "#/organization/accounts.ts";
 import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
-import { auditLog } from "#/organization/schema.ts";
+import { appointment, auditLog } from "#/organization/schema.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 
 // Fixtures for the organization object's tests (`*.workers.test.ts`): a fresh
@@ -108,6 +110,103 @@ export async function addRoom(
     throw new Error(`createRoom refused: ${created.reason}`);
   }
   return created.room;
+}
+
+/**
+ * An organization ready for booking: "Sede Centro" in Buenos Aires (UTC-3)
+ * with "Consultorio 1" and "Consultorio 2", the practitioners "Juan Gómez" and
+ * "Lucía Díaz", and "Rita Paz" at reception. Schedules default to Mondays from
+ * 09:00 to 11:00 in "Consultorio 1" from 2099-01-05, a Monday.
+ */
+export async function setUpBookingWorld() {
+  const { organization } = await setUpOrganization();
+  const office = await addOffice(organization, "Sede Centro");
+  const room = await addRoom(organization, office.id, "Consultorio 1");
+  const otherRoom = await addRoom(organization, office.id, "Consultorio 2");
+  const juan = await addStaff(organization, "Juan Gómez");
+  const lucia = await addStaff(organization, "Lucía Díaz");
+  const receptionist = (await addStaff(organization, "Rita Paz", ["receptionist"])).caller;
+
+  async function addSchedule(input: Partial<ScheduleInput> & { practitionerId: string }) {
+    const result = await organization.createSchedule(adminCaller, {
+      roomId: room.id,
+      weekdays: [1],
+      startTime: "09:00",
+      endTime: "11:00",
+      firstDate: "2099-01-05",
+      lastDate: null,
+      ...input,
+    });
+    if (!result.ok) {
+      throw new Error(`createSchedule refused: ${result.reason}`);
+    }
+    return result.schedule;
+  }
+
+  async function addMedicalService(practitionerId: string, durationMinutes = 30) {
+    const result = await organization.createMedicalService(adminCaller, {
+      practitionerId,
+      name: "Consulta",
+      durationMinutes,
+    });
+    if (!result.ok) {
+      throw new Error(`createMedicalService refused: ${result.reason}`);
+    }
+    return result.medicalService;
+  }
+
+  async function addPatient(firstName: string, phone: string) {
+    const result = await organization.registerPatient(adminCaller, {
+      firstName,
+      lastName: "Paz",
+      phone,
+    });
+    if (!result.ok) {
+      throw new Error(`registerPatient refused: ${result.reason}`);
+    }
+    return result.patient;
+  }
+
+  /** Books `input`, as reception unless `caller` is given; throws on a refusal. */
+  async function book(input: BookingInput & WarningConfirmation, caller = receptionist) {
+    const result = await organization.bookAppointment(caller, input);
+    if (!result.ok) {
+      throw new Error(`bookAppointment refused: ${result.reason}`);
+    }
+    return result.appointment;
+  }
+
+  /** Books the overbooking `input`, as reception unless `caller` is given; throws on a refusal. */
+  async function overbook(input: OverbookingInput & WarningConfirmation, caller = receptionist) {
+    const result = await organization.bookOverbooking(caller, input);
+    if (!result.ok) {
+      throw new Error(`bookOverbooking refused: ${result.reason}`);
+    }
+    return result.appointment;
+  }
+
+  /** The appointment's stored row. */
+  function rowOf(appointmentId: string) {
+    return inStorage(organization, (database) =>
+      database.select().from(appointment).where(eq(appointment.id, appointmentId)).get(),
+    );
+  }
+
+  return {
+    organization,
+    office,
+    room,
+    otherRoom,
+    juan,
+    lucia,
+    receptionist,
+    addSchedule,
+    addMedicalService,
+    addPatient,
+    book,
+    overbook,
+    rowOf,
+  };
 }
 
 /** Runs `work` on the object's storage directly: for what no method reads or writes yet. */

@@ -1,5 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 
+import type {
+  BookingInput,
+  CalendarWeekQuery,
+  OverbookingInput,
+  WarningConfirmation,
+} from "#/lib/appointments.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import type {
   CoverageId,
@@ -57,7 +63,13 @@ import type {
 
 import { accountsFor } from "#/organization/accounts.ts";
 import type { Accounts } from "#/organization/accounts.ts";
+import {
+  bookAppointment,
+  bookOverbooking,
+  listPatientAppointments,
+} from "#/organization/appointments.ts";
 import { getAvailability, listAvailabilityPractitioners } from "#/organization/availability.ts";
+import { getCalendarWeek } from "#/organization/calendar-week.ts";
 import {
   createClosure,
   deleteClosure,
@@ -171,6 +183,10 @@ const workingTimeEditors = medicalServiceEditors;
 
 // Every staff role registers and edits patients, their coverages and guardians.
 const patientEditors = ["admin", "receptionist", "practitioner"] as const;
+
+// Every staff role books; for whom is the area's to decide
+// (`src/organization/appointments.ts`).
+const bookers = patientEditors;
 
 export class Organization extends DurableObject {
   readonly #database: Database;
@@ -515,5 +531,25 @@ export class Organization extends DurableObject {
 
   getAvailability(caller: Caller, input: AvailabilityQuery) {
     return this.#as(caller, "any", (acting) => getAvailability(this.#database, acting, input));
+  }
+
+  // Appointments and the agenda
+
+  getCalendarWeek(caller: Caller, input: CalendarWeekQuery) {
+    return this.#as(caller, bookers, (acting) => getCalendarWeek(this.#database, acting, input));
+  }
+
+  bookAppointment(caller: Caller, input: BookingInput & WarningConfirmation) {
+    return this.#as(caller, bookers, (acting) => bookAppointment(this.#database, acting, input));
+  }
+
+  bookOverbooking(caller: Caller, input: OverbookingInput & WarningConfirmation) {
+    return this.#as(caller, bookers, (acting) => bookOverbooking(this.#database, acting, input));
+  }
+
+  getPatientAppointments(caller: Caller, input: { patientId: string }) {
+    return this.#as(caller, bookers, (acting) =>
+      listPatientAppointments(this.#database, acting, input),
+    );
   }
 }

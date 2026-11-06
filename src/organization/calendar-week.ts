@@ -1,6 +1,28 @@
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
 import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import type * as z from "zod";
 
+import { actsForEveryone } from "#/lib/access.ts";
+import {
+  activeAppointmentStatuses,
+  calendarWeekQuerySchema,
+  mondayOf,
+} from "#/lib/appointments.ts";
+import type { CalendarWeekQuery } from "#/lib/appointments.ts";
+import { occurrencesDuring } from "#/lib/availability.ts";
+import { cellMinutes } from "#/lib/calendar-layout.ts";
+import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
+import { shiftDate } from "#/lib/schedules.ts";
+import { toTimeRange } from "#/lib/time-ranges.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
+
+import { selectDayAppointments, toDayAppointment } from "#/organization/appointments.ts";
+import type { DayAppointment } from "#/organization/appointments.ts";
+import { asRange, findBlocking, findFreeTimes, meets } from "#/organization/availability.ts";
+import { findCalendarOpening } from "#/organization/calendar-opening.ts";
+import type { Writer } from "#/organization/database.ts";
+import type { Acting } from "#/organization/members.ts";
 import {
   appointment,
   medicalService,
@@ -9,44 +31,14 @@ import {
   practitioner,
   room,
   schedule,
-} from "#/db/schema/index.ts";
-import { withTenant } from "#/db/tenant.ts";
-import type { AnyDatabase, Transaction } from "#/db/tenant.ts";
-import { actsForEveryone, parseRoles } from "#/lib/access.ts";
-import type { Actor } from "#/lib/access.ts";
-import {
-  activeAppointmentStatuses,
-  calendarWeekQuerySchema,
-  mondayOf,
-} from "#/lib/appointments.ts";
-import type { CalendarWeekQuery } from "#/lib/appointments.ts";
-import { occurrencesDuring } from "#/lib/availability.ts";
-import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
-import { shiftDate } from "#/lib/schedules.ts";
-import { toTimeRange } from "#/lib/time-ranges.ts";
-import type { TimeRange } from "#/lib/time-ranges.ts";
-
-import {
-  booksForSome,
-  findFreeCells,
-  selectDayAppointments,
-  shownOnCalendar,
-  toDayAppointment,
-} from "#/server/appointments.ts";
-import type { DayAppointment } from "#/server/appointments.ts";
-import { findCalendarOpening } from "#/server/calendar-opening.ts";
-import { findBlocking, meets } from "#/server/availability.ts";
+} from "#/organization/schema.ts";
 
 // The calendar (docs/domain/appointments.md § Calendar): one room's week,
 // Monday to Sunday in its office's zone, narrowed to a practitioner or a
-// medical service. Its free cells are those a matching practitioner the actor
+// medical service. Its free cells are those a matching practitioner `acting`
 // books for can be booked from. A practitioner who does not book for everyone
 // gets other practitioners' appointments as busy blocks, with only when and
-// whose, and only those that meet their own working hours in the room. `database` is for tests, which pass a transaction running as the app
-// role.
-//
-// `member` is Better Auth's table and has no row-level security (PRD #16), so
-// every query on it names the actor's organization itself.
+// whose, and only those that meet their own working hours in the room.
 
 /** An appointment drawn in full: the viewer's own, or any for reception and admins. */
 export type CalendarAppointment = DayAppointment & { kind: "appointment" };
@@ -62,7 +54,7 @@ export interface BusyBlock {
   practitionerName: string;
 }
 
-export type CalendarCard = CalendarAppointment | BusyBlock;
+type CalendarCard = CalendarAppointment | BusyBlock;
 
 export interface CalendarDay {
   date: string;
@@ -73,7 +65,7 @@ export interface CalendarDay {
   cards: CalendarCard[];
 }
 
-export interface CalendarPractitioner {
+interface CalendarPractitioner {
   id: string;
   displayName: string;
   color: PractitionerColor;
@@ -99,15 +91,30 @@ export interface RoomChoice {
   rooms: { id: string; name: string }[];
 }
 
+type Query = z.output<typeof calendarWeekQuerySchema>;
+
 const daysInWeek = 7;
 
-async function listRoomChoices(tx: Transaction): Promise<RoomChoice[]> {
-  const rows = await tx
+const activeStatuses: readonly string[] = activeAppointmentStatuses;
+
+/**
+ * The calendar leaves out cancelled and no-show appointments unless asked
+ * for: their time is free again.
+ */
+function shownOnCalendar(includeCancelledAndNoShow: boolean) {
+  return includeCancelledAndNoShow
+    ? undefined
+    : inArray(appointment.status, [...activeAppointmentStatuses]);
+}
+
+function listRoomChoices(writer: Writer): RoomChoice[] {
+  const rows = writer
     .select({ officeId: office.id, officeName: office.name, id: room.id, name: room.name })
     .from(room)
     .innerJoin(office, and(eq(office.id, room.officeId), eq(office.active, true)))
     .where(eq(room.active, true))
-    .orderBy(asc(office.name), asc(office.id), asc(room.name));
+    .orderBy(asc(office.name), asc(office.id), asc(room.name))
+    .all();
   const choices: RoomChoice[] = [];
   for (const { officeId, officeName, id, name } of rows) {
     if (choices.at(-1)?.officeId !== officeId) {
@@ -119,15 +126,15 @@ async function listRoomChoices(tx: Transaction): Promise<RoomChoice[]> {
 }
 
 /** The room's schedules that meet the dates, with their practitioner and member. */
-function selectRoomSchedules(tx: Transaction, actor: Actor, roomId: string, dates: string[]) {
-  return tx
+function selectRoomSchedules(writer: Writer, roomId: string, dates: string[]) {
+  return writer
     .select({
       practitionerId: practitioner.id,
       displayName: practitioner.displayName,
       color: practitioner.color,
       gridMinutes: practitioner.gridMinutes,
       userId: member.userId,
-      role: member.role,
+      roles: member.roles,
       memberActive: member.active,
       weekdays: schedule.weekdays,
       startTime: schedule.startTime,
@@ -137,10 +144,7 @@ function selectRoomSchedules(tx: Transaction, actor: Actor, roomId: string, date
     })
     .from(schedule)
     .innerJoin(practitioner, eq(practitioner.id, schedule.practitionerId))
-    .innerJoin(
-      member,
-      and(eq(member.id, practitioner.memberId), eq(member.organizationId, actor.organizationId)),
-    )
+    .innerJoin(member, eq(member.userId, practitioner.memberId))
     .where(
       and(
         eq(schedule.roomId, roomId),
@@ -148,10 +152,11 @@ function selectRoomSchedules(tx: Transaction, actor: Actor, roomId: string, date
         or(isNull(schedule.lastDate), gte(schedule.lastDate, dates[0]!)),
       ),
     )
-    .orderBy(asc(practitioner.displayName), asc(practitioner.id));
+    .orderBy(asc(practitioner.displayName), asc(practitioner.id))
+    .all();
 }
 
-type RoomSchedule = Awaited<ReturnType<typeof selectRoomSchedules>>[number];
+type RoomSchedule = ReturnType<typeof selectRoomSchedules>[number];
 
 /** Each practitioner of the schedules once, in their order. */
 function practitionersOf(schedules: readonly RoomSchedule[]) {
@@ -162,20 +167,20 @@ function practitionersOf(schedules: readonly RoomSchedule[]) {
  * The practitioners with a schedule or an appointment in the room that week,
  * such as an overbooking outside the schedules or a moved appointment, by name.
  * A cancelled or no-show appointment counts only when the calendar shows them
- * and the actor books for everyone: it holds no time, and another practitioner
+ * and `acting` books for everyone: it holds no time, and another practitioner
  * never sees it.
  */
-async function listPractitioners(
-  tx: Transaction,
-  actor: Actor,
+function listPractitioners(
+  writer: Writer,
+  acting: Acting,
   options: {
     roomId: string;
     week: TimeRange;
     scheduled: readonly RoomSchedule[];
     includeCancelledAndNoShow: boolean;
   },
-): Promise<CalendarPractitioner[]> {
-  const booked = await tx
+): CalendarPractitioner[] {
+  const booked = writer
     .selectDistinct({
       id: practitioner.id,
       displayName: practitioner.displayName,
@@ -186,10 +191,11 @@ async function listPractitioners(
     .where(
       and(
         eq(appointment.roomId, options.roomId),
-        meets(appointment.during, options.week),
-        shownOnCalendar(options.includeCancelledAndNoShow && actsForEveryone(actor)),
+        meets(appointment, options.week),
+        shownOnCalendar(options.includeCancelledAndNoShow && actsForEveryone(acting)),
       ),
-    );
+    )
+    .all();
   const scheduled = options.scheduled.map((row) => ({
     id: row.practitionerId,
     displayName: row.displayName,
@@ -222,24 +228,24 @@ function resolveFilter(
  * The practitioner of a medical service the URL names that is not among the
  * week's choices (deactivated since, say), so the filter keeps them.
  */
-async function ownerOfService(
-  tx: Transaction,
+function ownerOfService(
+  writer: Writer,
   medicalServiceId: string | undefined,
   choices: CalendarWeek["medicalServices"],
-): Promise<string | undefined> {
+): string | undefined {
   if (medicalServiceId === undefined || choices.some((one) => one.id === medicalServiceId)) {
     return undefined;
   }
-  const [found] = await tx
+  return writer
     .select({ practitionerId: medicalService.practitionerId })
     .from(medicalService)
-    .where(eq(medicalService.id, medicalServiceId));
-  return found?.practitionerId;
+    .where(eq(medicalService.id, medicalServiceId))
+    .get()?.practitionerId;
 }
 
-/** The room and its office; any room the actor's organization holds. */
-async function findRoom(tx: Transaction, roomId: string) {
-  const [found] = await tx
+/** The room and its office. */
+function findRoom(writer: Writer, roomId: string) {
+  return writer
     .select({
       id: room.id,
       name: room.name,
@@ -249,21 +255,18 @@ async function findRoom(tx: Transaction, roomId: string) {
     })
     .from(room)
     .innerJoin(office, eq(office.id, room.officeId))
-    .where(eq(room.id, roomId));
-  return found;
+    .where(eq(room.id, roomId))
+    .get();
 }
 
-type FoundRoom = NonNullable<Awaited<ReturnType<typeof findRoom>>>;
+type FoundRoom = NonNullable<ReturnType<typeof findRoom>>;
 
 /** The practitioners' active medical services, by name. */
-async function listServices(
-  tx: Transaction,
-  practitionerIds: string[],
-): Promise<CalendarWeek["medicalServices"]> {
+function listServices(writer: Writer, practitionerIds: string[]): CalendarWeek["medicalServices"] {
   if (practitionerIds.length === 0) {
     return [];
   }
-  return tx
+  return writer
     .select({
       id: medicalService.id,
       name: medicalService.name,
@@ -274,56 +277,59 @@ async function listServices(
     .where(
       and(inArray(medicalService.practitionerId, practitionerIds), eq(medicalService.active, true)),
     )
-    .orderBy(asc(medicalService.name), asc(medicalService.id));
+    .orderBy(asc(medicalService.name), asc(medicalService.id))
+    .all();
 }
 
-/** Whether the actor may book for the practitioner of the schedule now. */
-function booksFor(actor: Actor, row: RoomSchedule): boolean {
-  const holdsRole = row.memberActive && parseRoles(row.role).includes("practitioner");
-  return holdsRole && (actsForEveryone(actor) || row.userId === actor.userId);
-}
-
-/** The free cells in the room of each practitioner the actor books for, in time order. */
-async function findFreeStarts(
-  tx: Transaction,
-  actor: Actor,
-  practitioners: readonly RoomSchedule[],
-  options: { window: TimeRange; room: FoundRoom; durationMinutes?: number },
-): Promise<CalendarDay["freeStarts"]> {
-  const freeStarts: CalendarDay["freeStarts"] = [];
-  for (const row of practitioners.filter((one) => booksFor(actor, one))) {
-    const free = await findFreeCells(
-      tx,
-      { id: row.practitionerId, gridMinutes: row.gridMinutes },
-      {
-        window: options.window,
-        officeId: options.room.officeId,
-        roomId: options.room.id,
-        durationMinutes: options.durationMinutes,
-      },
-    );
-    freeStarts.push(
-      ...free.map((slot) => ({ start: slot.start, practitionerId: row.practitionerId })),
-    );
-  }
-  return freeStarts.sort((a, b) => +a.start - +b.start);
+/** Whether `acting` may book for the practitioner of the schedule now. */
+function booksFor(acting: Acting, row: RoomSchedule): boolean {
+  const holdsRole = row.memberActive && row.roles.includes("practitioner");
+  return holdsRole && (actsForEveryone(acting) || row.userId === acting.userId);
 }
 
 /**
- * The actor's own working hours in the room that week: their schedules'
- * occurrences there, less their time off and the office's and organization's
- * closures. None for an actor who is not one of the room's practitioners.
+ * The free cells in the room of each practitioner `acting` books for, in time
+ * order: starts on the cells' grid from local midnight that are also free
+ * starts on the practitioner's own grid, for a cell or for `durationMinutes`.
  */
-async function findOwnHours(
-  tx: Transaction,
-  actor: Actor,
+function findFreeCells(
+  writer: Writer,
+  acting: Acting,
+  practitioners: readonly RoomSchedule[],
+  options: { window: TimeRange; room: FoundRoom; durationMinutes?: number },
+): CalendarDay["freeStarts"] {
+  const { window, room: found, durationMinutes = cellMinutes } = options;
+  const onCellGrid = (start: Date) =>
+    Number(format(start, "m", { in: tz(found.timeZone) })) % cellMinutes === 0;
+  return practitioners
+    .filter((one) => booksFor(acting, one))
+    .flatMap((row) =>
+      findFreeTimes(
+        writer,
+        { id: row.practitionerId, gridMinutes: row.gridMinutes },
+        { window, officeId: found.officeId, durationMinutes },
+      )
+        .free.filter((slot) => slot.roomId === found.id && onCellGrid(slot.start))
+        .map((slot) => ({ start: slot.start, practitionerId: row.practitionerId })),
+    )
+    .sort((a, b) => +a.start - +b.start);
+}
+
+/**
+ * `acting`'s own working hours in the room that week: their schedules'
+ * occurrences there, less their time off and the office's and organization's
+ * closures. None for one who is not one of the room's practitioners.
+ */
+function findOwnHours(
+  writer: Writer,
+  acting: Acting,
   options: { schedules: readonly RoomSchedule[]; window: TimeRange; room: FoundRoom },
-): Promise<TimeRange[]> {
-  const own = options.schedules.filter((row) => row.userId === actor.userId);
+): TimeRange[] {
+  const own = options.schedules.filter((row) => row.userId === acting.userId);
   if (own.length === 0) {
     return [];
   }
-  const { timeOff, closures } = await findBlocking(tx, own[0]!.practitionerId, options.window, [
+  const { timeOff, closures } = findBlocking(writer, own[0]!.practitionerId, options.window, [
     options.room.officeId,
   ]);
   const blocked = [...timeOff, ...closures.map((one) => one.during)];
@@ -364,6 +370,72 @@ function subtract(range: TimeRange, cuts: readonly TimeRange[]): TimeRange[] {
   return left;
 }
 
+/** The parts of `range` inside `hours`, in time order. */
+function clipToHours(range: TimeRange, hours: readonly TimeRange[]): TimeRange[] {
+  return hours
+    .filter((one) => one.start < range.end && range.start < one.end)
+    .map((one) => ({
+      start: one.start > range.start ? one.start : range.start,
+      end: one.end < range.end ? one.end : range.end,
+    }))
+    .sort((a, b) => +a.start - +b.start);
+}
+
+/**
+ * The room's appointments that week, in time order: in full for whoever
+ * books for everyone and for their own practitioner, as busy blocks for any
+ * other practitioner: only active ones, cut to `ownHours`, their working hours
+ * in the room.
+ */
+function findCards(
+  writer: Writer,
+  acting: Acting,
+  options: {
+    roomId: string;
+    week: TimeRange;
+    ownHours: readonly TimeRange[];
+    practitionerId: string | null;
+    medicalServiceId: string | null;
+    includeCancelledAndNoShow: boolean;
+  },
+): CalendarCard[] {
+  const rows = selectDayAppointments(writer)
+    .where(
+      and(
+        eq(appointment.roomId, options.roomId),
+        options.practitionerId === null
+          ? undefined
+          : eq(appointment.practitionerId, options.practitionerId),
+        options.medicalServiceId === null
+          ? undefined
+          : eq(appointment.medicalServiceId, options.medicalServiceId),
+        shownOnCalendar(options.includeCancelledAndNoShow),
+        meets(appointment, options.week),
+      ),
+    )
+    .orderBy(asc(appointment.startsAt), asc(appointment.endsAt), asc(appointment.id))
+    .all();
+  const now = new Date();
+  return rows.flatMap((booked): CalendarCard[] => {
+    const own = booked.practitionerUserId === acting.userId;
+    if (actsForEveryone(acting) || own) {
+      return [
+        { kind: "appointment", ...toDayAppointment(booked, { roles: acting.roles, own }, now) },
+      ];
+    }
+    if (!activeStatuses.includes(booked.status)) {
+      return [];
+    }
+    return clipToHours(asRange(booked), options.ownHours).map((part, index): BusyBlock => ({
+      kind: "busy",
+      // Time off can split an appointment; the first part keeps its id.
+      id: index === 0 ? booked.id : `${booked.id}-${index}`,
+      ...part,
+      practitionerName: booked.practitionerName,
+    }));
+  });
+}
+
 /** The week's free starts, cards and schedules, split by local day. */
 function splitByDay(
   dates: readonly string[],
@@ -390,59 +462,55 @@ function splitByDay(
 }
 
 /** The week of `found` as the calendar shows it. */
-async function buildWeek(
-  tx: Transaction,
-  actor: Actor,
-  found: FoundRoom,
-  query: z.output<typeof calendarWeekQuerySchema>,
-): Promise<CalendarWeek> {
+function buildWeek(writer: Writer, acting: Acting, found: FoundRoom, query: Query): CalendarWeek {
   const monday = mondayOf(query.date);
   const dates = Array.from({ length: daysInWeek }, (_, offset) => shiftDate(monday, offset));
   const window = toTimeRange(
     { kind: "days", firstDate: dates[0]!, lastDate: dates.at(-1)! },
     found.timeZone,
   );
-  const schedules = await selectRoomSchedules(tx, actor, found.id, dates);
+  const schedules = selectRoomSchedules(writer, found.id, dates);
   const present = practitionersOf(schedules);
-  const practitioners = await listPractitioners(tx, actor, {
+  const practitioners = listPractitioners(writer, acting, {
     roomId: found.id,
     week: window,
     scheduled: present,
     includeCancelledAndNoShow: query.includeCancelledAndNoShow,
   });
-  const medicalServices = await listServices(
-    tx,
+  const medicalServices = listServices(
+    writer,
     practitioners.map((one) => one.id),
   );
   const filter = resolveFilter(
     {
       medicalServiceId: query.medicalServiceId,
       practitionerId:
-        query.practitionerId ?? (await ownerOfService(tx, query.medicalServiceId, medicalServices)),
+        query.practitionerId ?? ownerOfService(writer, query.medicalServiceId, medicalServices),
     },
     practitioners,
     medicalServices,
   );
   const viewed = (row: RoomSchedule) =>
     filter.practitionerId === null || row.practitionerId === filter.practitionerId;
-  const freeStarts = await findFreeStarts(tx, actor, present.filter(viewed), {
+  const freeStarts = findFreeCells(writer, acting, present.filter(viewed), {
     window,
     room: found,
     durationMinutes: filter.service?.durationMinutes,
   });
-  const cards = await findCards(tx, actor, {
+  const cards = findCards(writer, acting, {
     roomId: found.id,
     week: window,
-    ownHours: await findOwnHours(tx, actor, { schedules, window, room: found }),
+    ownHours: findOwnHours(writer, acting, { schedules, window, room: found }),
     practitionerId: filter.practitionerId,
     medicalServiceId: filter.medicalServiceId,
     includeCancelledAndNoShow: query.includeCancelledAndNoShow,
   });
-  const officeRooms = await tx
+  const officeRooms = writer
     .select({ id: room.id, name: room.name })
     .from(room)
     .where(and(eq(room.officeId, found.officeId), eq(room.active, true)))
-    .orderBy(asc(room.name));
+    .orderBy(asc(room.name))
+    .all();
   return {
     room: { id: found.id, name: found.name },
     office: {
@@ -462,18 +530,18 @@ async function buildWeek(
   };
 }
 
-/** The room and the practitioner to show: what the URL names, else where the actor opens. */
-async function resolveView(
-  tx: Transaction,
-  actor: Actor,
-  query: z.output<typeof calendarWeekQuerySchema>,
+/** The room and the practitioner to show: what the URL names, else where `acting` opens. */
+function resolveView(
+  writer: Writer,
+  acting: Acting,
+  query: Query,
   roomChoices: readonly RoomChoice[],
 ) {
   if (query.roomId !== undefined) {
     return { roomId: query.roomId, practitionerId: query.practitionerId };
   }
   const roomIds = roomChoices.flatMap((choice) => choice.rooms.map((one) => one.id));
-  const opening = await findCalendarOpening(tx, actor, query.date, roomIds);
+  const opening = findCalendarOpening(writer, acting, query.date, roomIds);
   const filtered = query.practitionerId !== undefined || query.medicalServiceId !== undefined;
   return {
     roomId: opening?.roomId ?? roomIds[0],
@@ -481,103 +549,31 @@ async function resolveView(
   };
 }
 
-export async function getCalendarWeek(
-  actor: Actor,
+/** The room choices and the week the query asks for; no week when there is no active room. */
+export function getCalendarWeek(
+  writer: Writer,
+  acting: Acting,
   input: CalendarWeekQuery,
-  database?: AnyDatabase,
-): Promise<
+):
   | { ok: true; roomChoices: RoomChoice[]; week: CalendarWeek | null }
-  | { ok: false; reason: "forbidden" | "invalidInput" | "notFound" }
-> {
-  if (!booksForSome(actor)) {
-    return { ok: false, reason: "forbidden" };
-  }
+  | { ok: false; reason: "invalidInput" | "notFound" } {
   const parsed = calendarWeekQuerySchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
   const query = parsed.data;
-  return withTenant(
-    actor,
-    async (tx) => {
-      const roomChoices = await listRoomChoices(tx);
-      const { roomId, practitionerId } = await resolveView(tx, actor, query, roomChoices);
-      if (roomId === undefined) {
-        return { ok: true as const, roomChoices, week: null };
-      }
-      const found = await findRoom(tx, roomId);
-      if (!found) {
-        return { ok: false as const, reason: "notFound" as const };
-      }
-      const week = await buildWeek(tx, actor, found, { ...query, practitionerId });
-      return { ok: true as const, roomChoices, week };
-    },
-    database,
-  );
-}
-
-/**
- * The room's appointments that week, in time order: in full for whoever
- * books for everyone and for their own practitioner, as busy blocks for any
- * other practitioner: only active ones, cut to `ownHours`, their working hours
- * in the room.
- */
-async function findCards(
-  tx: Transaction,
-  actor: Actor,
-  options: {
-    roomId: string;
-    week: TimeRange;
-    ownHours: readonly TimeRange[];
-    practitionerId: string | null;
-    medicalServiceId: string | null;
-    includeCancelledAndNoShow: boolean;
-  },
-): Promise<CalendarCard[]> {
-  const rows = await selectDayAppointments(tx, actor)
-    .where(
-      and(
-        eq(appointment.roomId, options.roomId),
-        options.practitionerId === null
-          ? undefined
-          : eq(appointment.practitionerId, options.practitionerId),
-        options.medicalServiceId === null
-          ? undefined
-          : eq(appointment.medicalServiceId, options.medicalServiceId),
-        shownOnCalendar(options.includeCancelledAndNoShow),
-        meets(appointment.during, options.week),
-      ),
-    )
-    .orderBy(asc(appointment.during), asc(appointment.id));
-  const active: readonly string[] = activeAppointmentStatuses;
-  const now = new Date();
-  return rows.flatMap((booked): CalendarCard[] => {
-    const own = booked.practitionerUserId === actor.userId;
-    if (actsForEveryone(actor) || own) {
-      return [
-        { kind: "appointment", ...toDayAppointment(booked, { roles: actor.roles, own }, now) },
-      ];
-    }
-    if (!active.includes(booked.status)) {
-      return [];
-    }
-    return clipToHours(booked.during, options.ownHours).map((part, index): BusyBlock => ({
-      kind: "busy",
-      // Time off can split an appointment; the first part keeps its id.
-      id: index === 0 ? booked.id : `${booked.id}-${index}`,
-      ...part,
-      practitionerName: booked.practitionerName,
-    }));
-  });
-}
-
-/** The parts of `range` inside `hours`, in time order. */
-function clipToHours(range: TimeRange, hours: readonly TimeRange[]): TimeRange[] {
-  return hours
-    .filter((one) => one.start < range.end && range.start < one.end)
-    .map((one) => ({
-      start: one.start > range.start ? one.start : range.start,
-      end: one.end < range.end ? one.end : range.end,
-    }))
-    .sort((a, b) => +a.start - +b.start);
+  const roomChoices = listRoomChoices(writer);
+  const { roomId, practitionerId } = resolveView(writer, acting, query, roomChoices);
+  if (roomId === undefined) {
+    return { ok: true, roomChoices, week: null };
+  }
+  const found = findRoom(writer, roomId);
+  if (!found) {
+    return { ok: false, reason: "notFound" };
+  }
+  return {
+    ok: true,
+    roomChoices,
+    week: buildWeek(writer, acting, found, { ...query, practitionerId }),
+  };
 }
