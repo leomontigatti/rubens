@@ -246,6 +246,7 @@ describe("the to-reschedule list", () => {
     await w.addTimeOff("2099-01-05T12:00", "2099-01-05T13:00");
 
     expect(await w.listed()).toEqual([]);
+    expect(await w.count()).toBe(0);
   });
 
   it("lists confirmed appointments too, and drops them once checked in or past", async () => {
@@ -327,6 +328,29 @@ describe("the to-reschedule list", () => {
       end: at("12:30"),
       status: "booked",
     });
+  });
+});
+
+describe("the menu's count of the to-reschedule list", () => {
+  it("counts what the list holds, for every reason, and for a practitioner their own", async () => {
+    const w = await world();
+    await w.book(at("12:00"));
+    await w.book(at("12:30"), w.pedro.id);
+    await w.overbook(at("15:00"));
+    await w.book(at("12:00"), w.pedro.id, "lucia");
+    await w.book(at("12:00", "2099-01-12"));
+    await w.addTimeOff("2099-01-05T09:30", "2099-01-05T10:00");
+    await w.addClosure(w.office.id, "2099-01-12");
+    await w.setPractitionerActive(false, "lucia");
+
+    expect((await w.listed()).map((entry) => entry.reason).sort()).toEqual([
+      "closure",
+      "practitionerInactive",
+      "timeOff",
+    ]);
+    expect(await w.count()).toBe(3);
+    expect(await w.listed(w.juan.caller)).toHaveLength(2);
+    expect(await w.count(w.juan.caller)).toBe(2);
   });
 });
 

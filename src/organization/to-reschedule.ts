@@ -2,7 +2,7 @@ import { and, asc, eq, gt, gte, inArray, isNull, or } from "drizzle-orm";
 
 import { actsForEveryone } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
-import { outsideWorkingTime } from "#/lib/availability.ts";
+import { outsideWorkingTime, outsideWorkingTimeWithin } from "#/lib/availability.ts";
 import type { OutsideWorkingTime, WorkingTime } from "#/lib/availability.ts";
 import { defaultTimeZone, placeReferenceSchema } from "#/lib/offices.ts";
 import type { PlaceReference } from "#/lib/offices.ts";
@@ -168,15 +168,79 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
     .where(meets(closure, reach))
     .all()
     .map((row) => ({ officeId: row.officeId, during: asRange(row) }));
-  return (practitionerId: string): WorkingTime => ({
-    schedules: schedules.filter((row) => row.practitionerId === practitionerId),
-    timeOff: timeOffRows.filter((row) => row.practitionerId === practitionerId).map(asRange),
-    closures,
-  });
+  const byPractitioner = new Map<string, PractitionerWorkingTime>();
+  return (practitionerId: string): PractitionerWorkingTime => {
+    let found = byPractitioner.get(practitionerId);
+    if (!found) {
+      const workingTime: WorkingTime = {
+        schedules: schedules.filter((row) => row.practitionerId === practitionerId),
+        timeOff: timeOffRows.filter((row) => row.practitionerId === practitionerId).map(asRange),
+        closures,
+      };
+      found = { workingTime, outside: outsideWorkingTimeWithin(workingTime, reach) };
+      byPractitioner.set(practitionerId, found);
+    }
+    return found;
+  };
 }
 
+/** A practitioner's working time, and the check of a span against it. */
+interface PractitionerWorkingTime {
+  workingTime: WorkingTime;
+  outside: (span: TimeRange, officeId: string) => OutsideWorkingTime | null;
+}
+
+/**
+ * The future booked or confirmed appointments of `practitionerIds`, with only
+ * what `reasonFor` reads: the menu's count. The practitioner and start bound
+ * the read by their index.
+ */
+function upcomingForCount(writer: Writer, practitionerIds: string[]) {
+  return writer
+    .select({
+      practitionerId: appointment.practitionerId,
+      startsAt: appointment.startsAt,
+      endsAt: appointment.endsAt,
+      overbooking: appointment.overbooking,
+      practitionerActive: member.active,
+      patientActive: patient.active,
+      officeId: office.id,
+      officeActive: office.active,
+      roomActive: room.active,
+    })
+    .from(appointment)
+    .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
+    .innerJoin(member, eq(member.userId, practitioner.memberId))
+    .innerJoin(patient, eq(patient.id, appointment.patientId))
+    .innerJoin(room, eq(room.id, appointment.roomId))
+    .innerJoin(office, eq(office.id, room.officeId))
+    .where(
+      and(
+        inArray(appointment.practitionerId, practitionerIds),
+        gt(appointment.startsAt, Date.now()),
+        inArray(appointment.status, ["booked", "confirmed"]),
+      ),
+    )
+    .all()
+    .map(({ startsAt, endsAt, ...row }) => ({ ...row, during: asRange({ startsAt, endsAt }) }));
+}
+
+type OutsideCheck = PractitionerWorkingTime["outside"];
+
+/** What decides whether an appointment is on the list. */
+type ListedBy = Pick<
+  Upcoming,
+  | "practitionerActive"
+  | "patientActive"
+  | "officeActive"
+  | "roomActive"
+  | "overbooking"
+  | "during"
+  | "officeId"
+>;
+
 /** Why the appointment is on the list; `null` when it is not. */
-function reasonFor(row: Upcoming, workingTime: WorkingTime): ToRescheduleReason | null {
+function reasonFor(row: ListedBy, outside: OutsideCheck): ToRescheduleReason | null {
   if (!row.practitionerActive) {
     return "practitionerInactive";
   }
@@ -189,7 +253,7 @@ function reasonFor(row: Upcoming, workingTime: WorkingTime): ToRescheduleReason 
   if (!row.roomActive) {
     return "roomInactive";
   }
-  return row.overbooking ? null : outsideWorkingTime(row.during, row.officeId, workingTime);
+  return row.overbooking ? null : outside(row.during, row.officeId);
 }
 
 /** The upcoming appointments `acting` may see, each with its practitioner's working time. */
@@ -207,12 +271,12 @@ function upcomingWithWorkingTime(writer: Writer, acting: Acting) {
     [...new Set(rows.map((row) => row.practitionerId))],
     reach,
   );
-  return rows.map((row) => ({ row, workingTime: workingTimeFor(row.practitionerId) }));
+  return rows.map((row) => ({ row, ...workingTimeFor(row.practitionerId) }));
 }
 
 function findToReschedule(writer: Writer, acting: Acting): ToRescheduleEntry[] {
-  return upcomingWithWorkingTime(writer, acting).flatMap(({ row, workingTime }) => {
-    const reason = reasonFor(row, workingTime);
+  return upcomingWithWorkingTime(writer, acting).flatMap(({ row, outside }) => {
+    const reason = reasonFor(row, outside);
     if (reason === null) {
       return [];
     }
@@ -244,9 +308,33 @@ export function listToReschedule(
   return { ok: true, appointments: findToReschedule(writer, acting) };
 }
 
-/** How many appointments `acting`'s list holds, for the menu. */
+/**
+ * How many appointments `acting`'s list holds, for the menu on every page:
+ * the list's rule (`reasonFor`), over rows that carry only what it reads.
+ */
 export function countToReschedule(writer: Writer, acting: Acting): { ok: true; count: number } {
-  return { ok: true, count: findToReschedule(writer, acting).length };
+  const practitionerIds = writer
+    .select({ id: practitioner.id })
+    .from(practitioner)
+    .where(actsForEveryone(acting) ? undefined : eq(practitioner.memberId, acting.userId))
+    .all()
+    .map((row) => row.id);
+  if (practitionerIds.length === 0) {
+    return { ok: true, count: 0 };
+  }
+  const rows = upcomingForCount(writer, practitionerIds);
+  if (rows.length === 0) {
+    return { ok: true, count: 0 };
+  }
+  const workingTimeFor = workingTimeOf(
+    writer,
+    [...new Set(rows.map((row) => row.practitionerId))],
+    { start: new Date(), end: new Date(Math.max(...rows.map((row) => +row.during.end))) },
+  );
+  const listed = rows.filter(
+    (row) => reasonFor(row, workingTimeFor(row.practitionerId).outside) !== null,
+  );
+  return { ok: true, count: listed.length };
 }
 
 /** How many appointments not on the list yet `sends` would send to it. */
@@ -256,7 +344,7 @@ function countSentToList(
   sends: (row: Upcoming, workingTime: WorkingTime) => boolean,
 ): number {
   return upcomingWithWorkingTime(writer, acting).filter(
-    ({ row, workingTime }) => reasonFor(row, workingTime) === null && sends(row, workingTime),
+    ({ row, workingTime, outside }) => reasonFor(row, outside) === null && sends(row, workingTime),
   ).length;
 }
 
@@ -293,8 +381,14 @@ export function countMemberUpcoming(
  * list: it sits there, or only that place's schedules cover it.
  */
 function placeSends(row: Upcoming, workingTime: WorkingTime, leaving: (where: Place) => boolean) {
-  const remaining = workingTime.schedules.filter((covering) => !leaving(covering));
-  return leaving(row) || reasonFor(row, { ...workingTime, schedules: remaining }) !== null;
+  const remaining = {
+    ...workingTime,
+    schedules: workingTime.schedules.filter((at) => !leaving(at)),
+  };
+  return (
+    leaving(row) ||
+    reasonFor(row, (span, officeId) => outsideWorkingTime(span, officeId, remaining)) !== null
+  );
 }
 
 /** The count for a place, as the question before deactivating it needs it. */

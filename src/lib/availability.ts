@@ -208,6 +208,19 @@ export interface WorkingTime {
 /** Why a span is outside working time. */
 export type OutsideWorkingTime = "timeOff" | "closure" | "outsideSchedules";
 
+/** Whether time off or a closure of the office or the organization meets `span`. */
+function blockedBy(span: TimeRange, officeId: string, workingTime: WorkingTime) {
+  if (workingTime.timeOff.some((range) => intersects(range, span))) {
+    return "timeOff";
+  }
+  const closed = workingTime.closures.some(
+    (closure) =>
+      (closure.officeId === null || closure.officeId === officeId) &&
+      intersects(closure.during, span),
+  );
+  return closed ? "closure" : null;
+}
+
 /**
  * Why `span`, in the office `officeId`, is outside working time; `null` when
  * it is inside: one occurrence of a schedule in that office holds it whole,
@@ -218,19 +231,41 @@ export function outsideWorkingTime(
   officeId: string,
   workingTime: WorkingTime,
 ): OutsideWorkingTime | null {
-  if (workingTime.timeOff.some((range) => intersects(range, span))) {
-    return "timeOff";
-  }
-  const closed = workingTime.closures.some(
-    (closure) =>
-      (closure.officeId === null || closure.officeId === officeId) &&
-      intersects(closure.during, span),
-  );
-  if (closed) {
-    return "closure";
+  const blocked = blockedBy(span, officeId, workingTime);
+  if (blocked) {
+    return blocked;
   }
   const inOffice = workingTime.schedules.filter((schedule) => schedule.officeId === officeId);
   return coveringSchedule(inOffice, span) ? null : "outsideSchedules";
+}
+
+/**
+ * `outsideWorkingTime` for many spans that all lie inside `reach`: each
+ * schedule's occurrences there are computed once, not again for every span.
+ */
+export function outsideWorkingTimeWithin(workingTime: WorkingTime, reach: TimeRange) {
+  const occurrences = workingTime.schedules.map((schedule) => ({
+    officeId: schedule.officeId,
+    during: datesIn(reach, schedule.timeZone)
+      .filter((date) => appliesOn(schedule, date))
+      .map((date) => ({
+        start: +instantOf(date, shortTime(schedule.startTime), schedule.timeZone),
+        end: +instantOf(date, shortTime(schedule.endTime), schedule.timeZone),
+      })),
+  }));
+  return (span: TimeRange, officeId: string): OutsideWorkingTime | null => {
+    const blocked = blockedBy(span, officeId, workingTime);
+    if (blocked) {
+      return blocked;
+    }
+    const [start, end] = [+span.start, +span.end];
+    const covered = occurrences.some(
+      (schedule) =>
+        schedule.officeId === officeId &&
+        schedule.during.some((occurrence) => occurrence.start <= start && end <= occurrence.end),
+    );
+    return covered ? null : "outsideSchedules";
+  };
 }
 
 /**
