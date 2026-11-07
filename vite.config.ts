@@ -153,7 +153,12 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts", "tests/lint/**/*.test.ts"],
+          include: [
+            "src/**/*.test.{ts,tsx}",
+            "scripts/**/*.test.ts",
+            "tests/lint/**/*.test.ts",
+            "tests/evals/**/*.test.ts",
+          ],
           exclude: ["**/*.workers.test.ts", "node_modules/**"],
           environment: "node",
         },

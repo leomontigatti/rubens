@@ -37,6 +37,7 @@ src/
 scripts/               repo scripts and their unit tests (worktree port, setup, seeds, checks, the `ui` lint plugin)
 tests/e2e/             the Playwright browser suite, its seed and sign-in (see tests/e2e/README.md)
 tests/lint/            the custom lint rules' tests, run through `vp lint`
+tests/evals/           model evaluations run on demand, never in CI: `assistant/` (#157)
 docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the model
 ```
 

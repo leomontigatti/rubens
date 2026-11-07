@@ -9,7 +9,11 @@
   "entry": ["scripts/oxlint-ui-plugin.mjs", "src/organization/test-worker.ts"],
   // A Durable Object's public methods are its RPC interface: the Worker calls
   // them through the binding's stub, which fallow cannot follow.
-  "usedClassMembers": [{ "extends": "DurableObject", "members": ["*"] }],
+  // promptfoo calls a provider's `id` and `callApi` (tests/evals/).
+  "usedClassMembers": [
+    { "extends": "DurableObject", "members": ["*"] },
+    { "implements": "ApiProvider", "members": ["id", "callApi"] }
+  ],
   // shadcn components are vendored whole (docs/agents/shadcn.md): a screen uses
   // some of a component's parts, and trimming the rest would fight every re-sync.
   "ignoreExports": [{ "file": "src/components/ui/**", "exports": ["*"] }],
