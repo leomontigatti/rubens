@@ -114,11 +114,16 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean; onlyIna
   if (problem) {
     return <ErrorAlert message={problem} />;
   }
-  const showInactive = !inactivos && (
-    <EmptyStateLink variant="outline" link={<Link to="/pacientes" search={{ inactivos: true }} />}>
-      Ver inactivos
-    </EmptyStateLink>
-  );
+  // Beside "Nuevo paciente" it is the second action, so outline; alone, the main one.
+  const showInactive = (variant: "default" | "outline") =>
+    !inactivos && (
+      <EmptyStateLink
+        variant={variant}
+        link={<Link to="/pacientes" search={{ inactivos: true }} />}
+      >
+        Ver inactivos
+      </EmptyStateLink>
+    );
   if (!search.searching) {
     return (
       <EmptyState
@@ -131,7 +136,7 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean; onlyIna
         }
       >
         <CreateButton link={<Link to="/pacientes/nuevo" />}>Nuevo paciente</CreateButton>
-        {props.onlyInactive && showInactive}
+        {props.onlyInactive && showInactive("outline")}
       </EmptyState>
     );
   }
@@ -144,7 +149,7 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean; onlyIna
       title="Ningún paciente coincide con la búsqueda"
       description="Probá con otro nombre, documento o teléfono."
     >
-      {showInactive}
+      {showInactive("default")}
     </EmptyState>
   );
 }

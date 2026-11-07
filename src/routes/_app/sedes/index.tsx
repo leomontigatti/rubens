@@ -97,29 +97,37 @@ function OfficeTable(props: { offices: Office[]; onlyInactive: boolean; isAdmin:
       noRecords={offices.length === 0}
       empty={
         offices.length === 0 ? (
-          <EmptyState
-            icon={BuildingIcon}
-            title={onlyInactive ? "Sin sedes activas" : "Sin sedes"}
-            description={
-              onlyInactive
-                ? `No hay sedes activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
-                : `Todavía no hay sedes.${isAdmin ? " Empezá creando la primera." : ""}`
-            }
-          >
-            {isAdmin && <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>}
-            {onlyInactive && (
-              <EmptyStateLink
-                variant="outline"
-                link={<Link to="/sedes" search={{ inactivas: true }} />}
-              >
-                Ver inactivas
-              </EmptyStateLink>
-            )}
-          </EmptyState>
+          <NoOffices onlyInactive={onlyInactive} isAdmin={isAdmin} />
         ) : (
           <NoMatches icon={BuildingIcon} />
         )
       }
     />
+  );
+}
+
+/** The office list with no records, or none active; only an admin creates one. */
+function NoOffices(props: { onlyInactive: boolean; isAdmin: boolean }) {
+  const { onlyInactive, isAdmin } = props;
+  return (
+    <EmptyState
+      icon={BuildingIcon}
+      title={onlyInactive ? "Sin sedes activas" : "Sin sedes"}
+      description={
+        onlyInactive
+          ? `No hay sedes activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
+          : `Todavía no hay sedes.${isAdmin ? " Empezá creando la primera." : ""}`
+      }
+    >
+      {isAdmin && <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>}
+      {onlyInactive && (
+        <EmptyStateLink
+          variant={isAdmin ? "outline" : "default"}
+          link={<Link to="/sedes" search={{ inactivas: true }} />}
+        >
+          Ver inactivas
+        </EmptyStateLink>
+      )}
+    </EmptyState>
   );
 }

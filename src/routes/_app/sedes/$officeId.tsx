@@ -177,46 +177,54 @@ function RoomTable(props: {
       noRecords={rooms.length === 0}
       empty={
         rooms.length === 0 ? (
-          <EmptyState
-            icon={BuildingIcon}
-            title={props.onlyInactive ? "Sin consultorios activos" : "Sin consultorios"}
-            description={
-              props.onlyInactive
-                ? `No hay consultorios activos. ${props.canAdd ? "Empezá creando uno, o mirá" : "Mirá"} los inactivos.`
-                : `Todavía no hay consultorios.${props.canAdd ? " Empezá creando el primero." : ""}`
-            }
-          >
-            {props.canAdd && (
-              <CreateButton
-                link={
-                  <Link
-                    to="/sedes/$officeId/consultorios/nuevo"
-                    params={{ officeId: props.officeId }}
-                  />
-                }
-              >
-                Nuevo consultorio
-              </CreateButton>
-            )}
-            {props.onlyInactive && (
-              <EmptyStateLink
-                variant="outline"
-                link={
-                  <Link
-                    to="/sedes/$officeId"
-                    params={{ officeId: props.officeId }}
-                    search={{ inactivos: true }}
-                  />
-                }
-              >
-                Ver inactivos
-              </EmptyStateLink>
-            )}
-          </EmptyState>
+          <NoRooms
+            officeId={props.officeId}
+            onlyInactive={props.onlyInactive}
+            canAdd={props.canAdd}
+          />
         ) : (
           <NoMatches icon={BuildingIcon} />
         )
       }
     />
+  );
+}
+
+/** The office's room list with no records, or none active. */
+function NoRooms(props: { officeId: string; onlyInactive: boolean; canAdd: boolean }) {
+  return (
+    <EmptyState
+      icon={BuildingIcon}
+      title={props.onlyInactive ? "Sin consultorios activos" : "Sin consultorios"}
+      description={
+        props.onlyInactive
+          ? `No hay consultorios activos. ${props.canAdd ? "Empezá creando uno, o mirá" : "Mirá"} los inactivos.`
+          : `Todavía no hay consultorios.${props.canAdd ? " Empezá creando el primero." : ""}`
+      }
+    >
+      {props.canAdd && (
+        <CreateButton
+          link={
+            <Link to="/sedes/$officeId/consultorios/nuevo" params={{ officeId: props.officeId }} />
+          }
+        >
+          Nuevo consultorio
+        </CreateButton>
+      )}
+      {props.onlyInactive && (
+        <EmptyStateLink
+          variant={props.canAdd ? "outline" : "default"}
+          link={
+            <Link
+              to="/sedes/$officeId"
+              params={{ officeId: props.officeId }}
+              search={{ inactivos: true }}
+            />
+          }
+        >
+          Ver inactivos
+        </EmptyStateLink>
+      )}
+    </EmptyState>
   );
 }

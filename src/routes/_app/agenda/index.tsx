@@ -1,4 +1,4 @@
-import { CalendarDaysIcon } from "lucide-react";
+import { CalendarDaysIcon, PlusIcon } from "lucide-react";
 import { ClientOnly, Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
@@ -137,12 +137,14 @@ function Calendar(props: {
               nativeButton={false}
               render={<Link to="/agenda/sobreturnos/nuevo" search={viewed} />}
             >
+              <PlusIcon data-icon="inline-start" aria-hidden />
               Sobreturno
             </Button>
             <Button
               nativeButton={false}
               render={<Link to="/agenda/turnos/nuevo" search={viewed} />}
             >
+              <PlusIcon data-icon="inline-start" aria-hidden />
               Nuevo turno
             </Button>
           </>

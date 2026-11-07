@@ -63,7 +63,7 @@ const columns: DataTableColumn<TimeOff>[] = [
  * An admin may record time off for every practitioner, so with none to pick
  * there is no practitioner yet.
  */
-function noLicensesYet(canCreate: boolean, isAdmin: boolean) {
+function noTimeOffYet(canCreate: boolean, isAdmin: boolean) {
   if (canCreate) {
     return "Todavía no hay licencias. Empezá creando la primera.";
   }
@@ -97,7 +97,7 @@ function TimeOffTable({ timeOff, canCreate }: { timeOff: TimeOff[]; canCreate: b
           <EmptyState
             icon={TreePalmIcon}
             title="Sin licencias"
-            description={noLicensesYet(canCreate, isAdmin)}
+            description={noTimeOffYet(canCreate, isAdmin)}
           >
             {canCreate && (
               <CreateButton link={<Link to="/licencias/nueva" />}>Nueva licencia</CreateButton>

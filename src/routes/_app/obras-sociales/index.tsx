@@ -108,37 +108,43 @@ function InsurerTable(props: { insurers: Insurer[]; onlyInactive: boolean; isAdm
       noRecords={insurers.length === 0}
       empty={
         insurers.length === 0 ? (
-          <EmptyState
-            icon={ShieldIcon}
-            title={
-              onlyInactive
-                ? "Sin obras sociales ni prepagas activas"
-                : "Sin obras sociales ni prepagas"
-            }
-            description={
-              onlyInactive
-                ? `No hay obras sociales ni prepagas activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
-                : `Todavía no hay obras sociales ni prepagas.${isAdmin ? " Empezá creando la primera." : ""}`
-            }
-          >
-            {isAdmin && (
-              <CreateButton link={<Link to="/obras-sociales/nueva" />}>
-                Nueva obra social o prepaga
-              </CreateButton>
-            )}
-            {onlyInactive && (
-              <EmptyStateLink
-                variant="outline"
-                link={<Link to="/obras-sociales" search={{ inactivas: true }} />}
-              >
-                Ver inactivas
-              </EmptyStateLink>
-            )}
-          </EmptyState>
+          <NoInsurers onlyInactive={onlyInactive} isAdmin={isAdmin} />
         ) : (
           <NoMatches icon={ShieldIcon} />
         )
       }
     />
+  );
+}
+
+/** The insurer list with no records, or none active; only an admin creates one. */
+function NoInsurers(props: { onlyInactive: boolean; isAdmin: boolean }) {
+  const { onlyInactive, isAdmin } = props;
+  return (
+    <EmptyState
+      icon={ShieldIcon}
+      title={
+        onlyInactive ? "Sin obras sociales ni prepagas activas" : "Sin obras sociales ni prepagas"
+      }
+      description={
+        onlyInactive
+          ? `No hay obras sociales ni prepagas activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
+          : `Todavía no hay obras sociales ni prepagas.${isAdmin ? " Empezá creando la primera." : ""}`
+      }
+    >
+      {isAdmin && (
+        <CreateButton link={<Link to="/obras-sociales/nueva" />}>
+          Nueva obra social o prepaga
+        </CreateButton>
+      )}
+      {onlyInactive && (
+        <EmptyStateLink
+          variant={isAdmin ? "outline" : "default"}
+          link={<Link to="/obras-sociales" search={{ inactivas: true }} />}
+        >
+          Ver inactivas
+        </EmptyStateLink>
+      )}
+    </EmptyState>
   );
 }
