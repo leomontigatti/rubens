@@ -38,12 +38,14 @@ by ADR-0008.
   people can answer handed-off patients from Telegram; amended by ADR-0010, which makes
   the app's view a full inbox.
 - [ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization](./0008-cloudflare-workers-one-object-per-organization.md) -
-  the free plan, each organization's data in its own SQLite object as the tenant
-  boundary, booking rules and jobs in the object, app-level encryption of clinical
-  data; supersedes ADR-0002 and ADR-0004.
+  each organization's data in its own SQLite object as the tenant boundary, booking
+  rules and jobs in the object, app-level encryption of clinical data; supersedes
+  ADR-0002 and ADR-0004. Amended to run on Workers Paid, since signed-in pages take
+  more than the free plan's 10 ms of CPU.
 - [ADR-0009: Staff sign in through Clerk, without Clerk Organizations](./0009-staff-sign-in-through-clerk.md) -
-  Better Auth's password check exceeds the free plan's CPU; organization and roles on
-  the Clerk user, since Clerk's free plan caps an organization at 5 members.
+  chosen because Better Auth's password check exceeded the free plan's CPU, and kept on
+  Workers Paid for the protections Clerk brings and to avoid a re-port; organization and
+  roles on the Clerk user, since Clerk's free plan caps an organization at 5 members.
 - [ADR-0010: Each organization gets a new number on Meta's WhatsApp Cloud API](./0010-whatsapp-cloud-api-number-per-organization.md) -
   owned and paid for by the practice, onboarded through Embedded Signup with Rubens as
   Tech Provider; approved templates without buttons and the 24-hour window; the webhook
