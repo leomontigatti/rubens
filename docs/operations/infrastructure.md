@@ -59,6 +59,13 @@ that is committed.
 | `CLERK_SECRET_KEY`      | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`). |
 | `CLERK_PUBLISHABLE_KEY` | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                          |
 | `SETUP_SECRET`          | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.     |
+| `META_APP_SECRET`       | Meta's app secret, which signs each call to the WhatsApp webhook (`/api/whatsapp`). Without it the webhook answers 404.             |
+| `WHATSAPP_VERIFY_TOKEN` | The verify token entered in Meta's app dashboard when the webhook is set up. Without it the verification answers 404.               |
+
+Two more names are configuration rather than secrets, set the same way so a deploy
+keeps them: `WHATSAPP_PHONE_NUMBER_ID`, Meta's test number, and
+`WHATSAPP_ORGANIZATION_ID`, the organization its messages are stored in. Embedded
+Signup (#159) replaces the pair with each organization's own connection.
 
 `DEV_SIGN_IN` is never set on a deployed Worker: it would let anyone sign in as any
 member.
