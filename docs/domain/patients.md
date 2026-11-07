@@ -84,5 +84,5 @@ patient whose messages go to it, since someone who keeps getting them may block 
 report the organization's number. It reaches reception as a notification, where
 each of those patients is turned off or kept, and reception is reminded of it
 daily. The hold lasts until every one of them is decided; then the kept patients' held messages go out, less those no
-longer true ([messages.md](./messages.md#while-the-whatsapp-connection-is-down)),
+longer true ([messages.md](./messages.md#when-meta-limits-the-number)),
 and the turned-off patients' are dropped.

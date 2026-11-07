@@ -156,14 +156,18 @@ _Avoid_: notification, alert
 The message a `patient` gets when an `appointment` is booked.
 _Avoid_: receipt, booking notification
 
-**`rescheduleLink`** — ui: "Reprogramar turno"
-A personal link, sent in a message or by the `assistant`, where a `patient` can move or cancel one
-`appointment` or ask to be contacted.
-_Avoid_: magic link, booking page, portal
+**`template`** — ui: "Plantilla"
+A message the `organization` starts, approved by Meta for its WhatsApp number and
+filled with an `appointment`'s facts, such as a `reminder`.
+_Avoid_: fixed text, canned message, HSM
 
-**`contactRequest`** — ui: "Necesito que se comuniquen conmigo"
-A patient's request, made from a `rescheduleLink`, that reception call them.
-_Avoid_: callback, call me
+**`rescheduleLink`** _(retired term)_ — no code identifier
+A personal page to move or cancel one `appointment`, dropped on 2026-11-06: a
+`patient` moves or cancels in the conversation with the `assistant`.
+
+**`contactRequest`** _(retired term)_ — no code identifier
+A patient's request to be called, made from the `rescheduleLink`; asking to be
+contacted is now a `handoff`.
 
 **`notification`** — ui: "Notificación"
 An event shown to staff in the app, such as a cancellation. Telegram and WhatsApp
@@ -187,9 +191,21 @@ The bot that answers `patient`s on the `organization`'s WhatsApp and
 _Avoid_: chatbot, agent, AI
 
 **`whatsappConnection`** — ui: "Conexión de WhatsApp"
-The `organization`'s own WhatsApp number as Rubens uses it, through which the
-`assistant` and the `organization`'s messages reach `patient`s.
+The `organization`'s WhatsApp number on Meta's Cloud API, owned by the
+`organization` and used only through Rubens, through which the `assistant` and the
+`organization`'s `template`s reach `patient`s.
 _Avoid_: WhatsApp account, instance, session, channel
+
+**`conversationWindow`** — ui: "Ventana de conversación"
+The 24 hours after a `patient`'s last message, inside which the `assistant` and staff
+write freely; outside it only a `template` can be sent. Meta calls it the customer
+service window.
+_Avoid_: session, 24-hour window
+
+**`inbox`** — ui: "Conversaciones"
+Every WhatsApp conversation of the `organization` in the app, where staff read them by
+role and take one over from the `assistant`.
+_Avoid_: chat, messages, handoff view
 
 **`proposal`** — ui: "Propuesta"
 A change the `assistant` states in full and a person accepts before it is made,
@@ -198,7 +214,7 @@ _Avoid_: suggestion, draft, pending action
 
 **`handoff`** — ui: "Derivación"
 A conversation the `assistant` passes to a person, and stays silent in until it
-gets it back.
+gets it back. It is open until a person's reply reaches the patient or a person closes it.
 _Avoid_: escalation, transfer, takeover
 
 **`handoffContact`** — ui: "Contacto de derivación"

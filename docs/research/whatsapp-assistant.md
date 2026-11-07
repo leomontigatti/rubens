@@ -1,43 +1,96 @@
 # WhatsApp assistant: channel, model and handoff options
 
-What exists for a patient assistant on WhatsApp, as of 2026-11-04. What Rubens
-decided: [ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md) and
+What exists for a patient assistant on WhatsApp, first gathered 2026-11-04; Meta's
+Cloud API section checked again on primary sources on 2026-11-06. What Rubens
+decided: [ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md),
+[ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md) and
 [ADR-0007](../adr/0007-patients-words-on-telegram.md). Prices change; check them
 again before setting what an organization pays.
 
 ## WhatsApp on Meta's Cloud API
 
-- **Pricing.** Per delivered message, by the recipient's market and the template's
-  category. The latest official-format rate card found (July 2025) gives Argentina
-  US$0.0618 marketing, US$0.0289 utility, US$0.0289 authentication, and service
-  messages free; utility templates within the 24-hour window are free.
-  ([rate card](https://www.salesforce.com/en-us/wp-content/uploads/sites/4/assets/pdf/misc/WhatsApp_Business-Messaging-WhatsApp-Rate_Card_Jul_1_2025.pdf),
-  [Meta pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing),
-  behind a login). A claim that service messages are charged from 2026-10-01, with
-  1,000 free per number, appears only in third-party summaries and is unverified.
-- **The 24-hour window.** Free-form messages for 24 hours after the patient's last
-  message; a template after that.
-- **Coexistence** keeps the WhatsApp Business app on a Cloud API number. Provider
-  docs give app version 2.24.17 or later and an established account; history sync is
-  partial and calling is unavailable. No Meta list confirms Argentina; eligibility is
-  known only by trying the signup with the number.
-  ([Gupshup](https://partner-docs.gupshup.io/docs/co-existence-closed-beta-phase),
-  [8x8](https://developer.8x8.com/connect/docs/whatsapp/whatsapp-business-app-coexistence/))
+The route Rubens took on 2026-11-06.
+
+- **Pricing**, per delivered message, by the recipient's market and the template's
+  category. Meta's rate card effective 2026-10-01 (the spreadsheets linked from
+  [Meta pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing))
+  gives Argentina:
+
+  | Category       | USD    | ARS     |
+  | -------------- | ------ | ------- |
+  | Marketing      | 0.0618 | 89.562  |
+  | Utility        | 0.026  | 37.6798 |
+  | Authentication | 0.026  | 37.6798 |
+  | Service        | 0.026  | 37.6798 |
+
+  Utility and authentication get volume tiers only above 100,000 a month (−5%).
+
+- **Service messages are charged since 2026-10-01**: free-form messages inside the
+  window cost the utility rate after 1,000 free per business phone number a month,
+  with no roll-over and no volume tiers. Utility templates inside the window are no
+  longer free. A free entry point window (from an ad or a call-to-action) lasts up
+  to 7 days ([pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing),
+  [non-template messages](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing/non-template-messages)).
+- **Superseded**: the July 2025 rate card (US$0.0289 utility and authentication,
+  service messages free, utility templates free inside the window) and the
+  then-unverified claim of 1,000 free service messages, which Meta's pages now
+  confirm.
+- **The customer service window**: 24 hours after the user's last message, inside
+  which free-form messages go; a template after that.
+- **Messaging limits**: a new business portfolio can start conversations with 250
+  unique recipients per rolling 24 hours outside a window, 2,000 after business
+  verification, then scales automatically
+  ([messaging limits](https://developers.facebook.com/documentation/business-messaging/whatsapp/messaging-limits)).
+- **Template categories**: utility must be non-promotional and specific to the
+  user's transaction. Meta can recategorize a template after approval, at once for
+  repeat offenders
+  ([guidelines](https://developers.facebook.com/docs/whatsapp/updates-to-pricing/new-template-guidelines/)).
+- **Tech Provider**: customers own their WhatsApp assets and add their own payment
+  method, and Meta bills them. The steps: a Meta app with the WhatsApp use case,
+  business verification, and App Review for advanced access to
+  `whatsapp_business_messaging` and `whatsapp_business_management`, each with its own
+  write-up and screen recording (a message sent from the app and received in
+  WhatsApp; a template created in the app). App Review averages about 24 hours;
+  business verification has no stated timeline. Until access verification, up to 10
+  new customers per rolling 7 days, then 200. Onboarding is Embedded Signup, whose
+  v2 and v3 were deprecated on 2026-10-15 for v4
+  ([overview](https://developers.facebook.com/documentation/business-messaging/whatsapp/solution-providers/overview),
+  [get started](https://developers.facebook.com/documentation/business-messaging/whatsapp/solution-providers/get-started-for-tech-providers),
+  [App Review](https://developers.facebook.com/documentation/business-messaging/whatsapp/solution-providers/app-review),
+  [Embedded Signup](https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/overview)).
+  So a thin slice of the channel must work against a test number before applying.
+- **Coexistence** (rejected): the WhatsApp Business app on a Cloud API number, for
+  Solution Partners and Tech Providers only, app version 2.24.17 or later, 6 months
+  of history synced, messages sent from the app echoed through `smb_message_echoes`,
+  a fixed 20 messages per second, groups not synced, broadcast lists read-only
+  ([onboarding Business app users](https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users/)).
 - **AI policy.** Meta restricted third-party general-purpose AI assistants from
   2026-01-15 and revised the policy in March 2026
   ([European Commission](https://europa.eu/newsroom/ecpc-failover/pdf/ip-26-805_en.pdf),
   [Meta business terms](https://www.whatsapp.com/legal/meta-terms-whatsapp-business)).
-  A business-specific assistant is not named as exempt.
-- **Onboarding many numbers.** Tech Provider status and Embedded Signup, with
-  business verification and display-name approval per organization. Business-solution
-  providers ([Twilio](https://www.twilio.com/en-us/whatsapp/pricing),
+  A business's own booking or support assistant is reported to be allowed, by a
+  secondary source only
+  ([TechCrunch](https://techcrunch.com/2025/10/18/whatssapp-changes-its-terms-to-bar-general-purpose-chatbots-from-its-platform));
+  Meta's text does not name it as exempt.
+- **Meta Business Agent** (rejected): Meta's own agent on a business's number, with
+  knowledge sources, connectors to external APIs and thread control, at US$2.00 per
+  million tokens, about US$0.04–0.05 per message, with no free tier
+  ([get started](https://developers.facebook.com/documentation/meta-business-agent/get-started)).
+- **Business-solution providers** ([Twilio](https://www.twilio.com/en-us/whatsapp/pricing),
   [360dialog](https://www.360dialog.com/pricing), [Gupshup](https://www.gupshup.io/pricing))
   add fees over Meta's in exchange for onboarding help.
-- **Unofficial clients**: see [Without Meta's API](#without-metas-api).
+
+### Cost example
+
+1,000 reminders and 300 conversations of about six assistant messages each: 1,000
+utility templates and 1,800 service messages, about 2,800 messages, about US$73 a
+month (about ARS 105,000) at US$0.026, before the 1,000 free service messages.
+Sending one message per reply instead of up to three brings it to about US$38.
+Splitting replies multiplies the WhatsApp cost.
 
 ## Without Meta's API
 
-The route Rubens took. Clients that link a number as a WhatsApp Web device, or
+The route ADR-0006 took, until ADR-0010 replaced it. Clients that link a number as a WhatsApp Web device, or
 drive WhatsApp Web in a browser:
 
 | Kind              | Options                                                                                                                                         | Notes                                                                                                                                                                                           |

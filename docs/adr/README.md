@@ -17,7 +17,8 @@ by ADR-0008.
 - Hosting on Cloudflare Workers, the organization's Durable Object, jobs, encryption:
   `0008-cloudflare-workers-one-object-per-organization.md`
 - Staff sign-in: `0009-staff-sign-in-through-clerk.md`
-- WhatsApp, the assistant and Telegram: `0006-patient-assistant-on-whatsapp.md`,
+- WhatsApp, the assistant and Telegram: `0010-whatsapp-cloud-api-number-per-organization.md`
+  (the channel), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
   `0007-patients-words-on-telegram.md`
 
 ## Decisions
@@ -30,12 +31,12 @@ by ADR-0008.
 - [ADR-0005: Clinical notes are versioned, files live on the server's disk](./0005-versioned-clinical-notes.md) -
   notes edited with every version kept instead of signed and amended; no app-level
   encryption at launch; attachments on a Coolify volume, streamed by the app.
-- [ADR-0006: Patients talk to an assistant on the organization's own WhatsApp number](./0006-patient-assistant-on-whatsapp.md) -
-  the organization's number linked through a self-hosted WAHA, Meta's Cloud API
-  deferred, the ban risk accepted; the model interprets and Rubens decides through
-  proposals; TanStack AI in a pg-boss worker.
+- [ADR-0006: Patients talk to an assistant on the organization's WhatsApp number](./0006-patient-assistant-on-whatsapp.md) -
+  the model interprets and Rubens decides through proposals; TanStack AI. Its channel
+  (WAHA on the organization's own number) and pg-boss worker are superseded by ADR-0010.
 - [ADR-0007: A handoff carries the patient's own words to Telegram](./0007-patients-words-on-telegram.md) -
-  people answer handed-off patients from Telegram instead of an inbox in Rubens.
+  people can answer handed-off patients from Telegram; amended by ADR-0010, which makes
+  the app's view a full inbox.
 - [ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization](./0008-cloudflare-workers-one-object-per-organization.md) -
   the free plan, each organization's data in its own SQLite object as the tenant
   boundary, booking rules and jobs in the object, app-level encryption of clinical
@@ -43,3 +44,8 @@ by ADR-0008.
 - [ADR-0009: Staff sign in through Clerk, without Clerk Organizations](./0009-staff-sign-in-through-clerk.md) -
   Better Auth's password check exceeds the free plan's CPU; organization and roles on
   the Clerk user, since Clerk's free plan caps an organization at 5 members.
+- [ADR-0010: Each organization gets a new number on Meta's WhatsApp Cloud API](./0010-whatsapp-cloud-api-number-per-organization.md) -
+  owned and paid for by the practice, onboarded through Embedded Signup with Rubens as
+  Tech Provider; approved templates without buttons and the 24-hour window; the webhook
+  stores into the organization's object, whose alarm runs the assistant; a full inbox in
+  the app.

@@ -7,6 +7,9 @@
 Date: 2026-11-06. Decided in #125, from the prototype on the `prototype/cloudflare-workers`
 branch, whose README has the measurements.
 
+Amended 2026-11-06: where the WhatsApp gateway runs, left open here, is settled by
+[ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md); see Consequences.
+
 Rubens moves from one VPS (Node, Postgres, Coolify) to Cloudflare Workers on the free
 plan. An organization's data (offices, rooms, practitioners, schedules, patients,
 appointments, clinical records, the audit log) lives in one Durable Object of its own,
@@ -77,7 +80,8 @@ app after the access check.
 - The 17 Postgres migrations, the schema module and the DB test suite are rewritten for
   SQLite in the object. Tests that proved a constraint or a policy become tests of the
   object's methods.
-- Where the WhatsApp gateway of [ADR-0006](./0006-patient-assistant-on-whatsapp.md)
-  runs is open: it needs an always-on process, which a Worker is not.
+- WhatsApp needs no gateway of its own: Meta's Cloud API calls the Worker's webhook, and
+  the organization's object runs the assistant from its alarm
+  ([ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md)).
 - Dev needs no keys and no account: Miniflare runs the Worker and the objects locally,
   and with no Clerk key the app uses a dev sign-in.
