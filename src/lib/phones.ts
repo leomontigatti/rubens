@@ -62,3 +62,9 @@ export function phoneSpellings(phone: string): string[] {
   const [, mobile, national] = argentine;
   return mobile ? [phone, `+54${national}`] : [phone, `+549${national}`];
 }
+
+/** An E.164 phone with all but its last four digits hidden, for a record that must not hold it. */
+export function maskPhone(phone: string): string {
+  const shown = phone.slice(-4);
+  return phone.slice(0, -4).replace(/\d/g, "•") + shown;
+}

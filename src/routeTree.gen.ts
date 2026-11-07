@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
+import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as ApiSetupRouteImport } from './routes/api/setup'
 import { Route as ApiWhatsappRouteImport } from './routes/api/whatsapp'
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
@@ -79,6 +80,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   id: '/cambiar-contrasena',
   path: '/cambiar-contrasena',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWhatsappRoute = AppWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiSetupRoute = ApiSetupRouteImport.update({
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/whatsapp': typeof AppWhatsappRoute
   '/api/setup': typeof ApiSetupRoute
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
@@ -399,6 +406,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/whatsapp': typeof AppWhatsappRoute
   '/api/setup': typeof ApiSetupRoute
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/': typeof AppIndexRoute
@@ -454,6 +462,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
+  '/_app/whatsapp': typeof AppWhatsappRoute
   '/api/setup': typeof ApiSetupRoute
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/_app/': typeof AppIndexRoute
@@ -510,6 +519,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/whatsapp'
     | '/api/setup'
     | '/api/whatsapp'
     | '/cierres/$closureId'
@@ -562,6 +572,7 @@ export interface FileRouteTypes {
   to:
     | '/ingresar'
     | '/cambiar-contrasena'
+    | '/whatsapp'
     | '/api/setup'
     | '/api/whatsapp'
     | '/'
@@ -616,6 +627,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/ingresar'
     | '/_app/cambiar-contrasena'
+    | '/_app/whatsapp'
     | '/api/setup'
     | '/api/whatsapp'
     | '/_app/'
@@ -702,6 +714,13 @@ declare module '@tanstack/react-router' {
       path: '/cambiar-contrasena'
       fullPath: '/cambiar-contrasena'
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp': {
+      id: '/_app/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof AppWhatsappRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/setup': {
@@ -1045,6 +1064,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
+  AppWhatsappRoute: typeof AppWhatsappRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCierresClosureIdRoute: typeof AppCierresClosureIdRoute
   AppCierresNuevoRoute: typeof AppCierresNuevoRoute
@@ -1096,6 +1116,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
+  AppWhatsappRoute: AppWhatsappRoute,
   AppIndexRoute: AppIndexRoute,
   AppCierresClosureIdRoute: AppCierresClosureIdRoute,
   AppCierresNuevoRoute: AppCierresNuevoRoute,

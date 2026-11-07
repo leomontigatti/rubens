@@ -54,16 +54,18 @@ Set with `pnpm exec wrangler secret put <NAME>`, which prompts for the value and
 deploys a new version with it. Never in `wrangler.jsonc`, the repository or a `.env`
 that is committed.
 
-| Secret                  | What it does                                                                                                                        |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `CLERK_SECRET_KEY`      | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`). |
-| `CLERK_PUBLISHABLE_KEY` | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                          |
-| `SETUP_SECRET`          | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.     |
-| `META_APP_SECRET`       | Meta's app secret, which signs each call to the WhatsApp webhook (`/api/whatsapp`). Without it the webhook answers 404.             |
-| `WHATSAPP_VERIFY_TOKEN` | The verify token entered in Meta's app dashboard when the webhook is set up. Without it the verification answers 404.               |
+| Secret                  | What it does                                                                                                                                                                                                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLERK_SECRET_KEY`      | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`).                                                                                                                  |
+| `CLERK_PUBLISHABLE_KEY` | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                                                                                                                                           |
+| `SETUP_SECRET`          | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.                                                                                                                      |
+| `META_APP_SECRET`       | Meta's app secret, which signs each call to the WhatsApp webhook (`/api/whatsapp`). Without it the webhook answers 404.                                                                                                                              |
+| `WHATSAPP_VERIFY_TOKEN` | The verify token entered in Meta's app dashboard when the webhook is set up. Without it the verification answers 404.                                                                                                                                |
+| `WHATSAPP_ACCESS_TOKEN` | The access token of `WHATSAPP_PHONE_NUMBER_ID`, which the WhatsApp settings page (`/whatsapp`) sends templates with. Without it the page shows sending disabled. Use a system user's token: the dashboard's temporary one expires after about a day. |
 
 Two more names are configuration rather than secrets, set the same way so a deploy
-keeps them: `WHATSAPP_PHONE_NUMBER_ID`, Meta's test number, and
+keeps them: `WHATSAPP_PHONE_NUMBER_ID`, Meta's test number (which the webhook
+expects and the WhatsApp settings page sends from), and
 `WHATSAPP_ORGANIZATION_ID`, the organization its messages are stored in. Embedded
 Signup (#159) replaces the pair with each organization's own connection.
 

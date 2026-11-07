@@ -23,9 +23,13 @@ organization's data: the organization object's methods and the area modules in
   ([tests/e2e/README.md](../../tests/e2e/README.md)).
 - **Clerk is faked**: `fakeAccounts` (with `vi.mock` of `#/organization/accounts.ts`) stands in
   for Clerk's Backend API; a test asserts on the users and metadata it holds.
+- **Meta is faked at its HTTP boundary**: `fakeMeta`, with `vi.mock` of
+  `#/organization/graph-api.ts` passing its `settings` and `fetch` to the real `whatsappCloudFor`,
+  so a test asserts on the requests Meta received and picks Meta's answer, and sets or unsets the
+  WhatsApp settings per test.
 - **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
   `adminCaller`, `addMember`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
-  `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`). Extend it before adding another support file
+  `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`, `fakeAccounts`, `fakeMeta`). Extend it before adding another support file
   ([coding-standards.md](./coding-standards.md#test-support-files)).
 - **A schema change** is `src/organization/schema.ts` plus `pnpm organization:generate`, and the
   generated SQL is read before it is committed. A migration on `main` is never edited.

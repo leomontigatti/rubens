@@ -22,6 +22,11 @@
   // WHATSAPP_PHONE_NUMBER_ID (Meta's test number) and WHATSAPP_ORGANIZATION_ID
   // (the organization its messages are stored in) are configuration, not
   // secret, but are set the same way so a deploy does not drop them.
+  // WHATSAPP_ACCESS_TOKEN, a secret, is that number's access token, which the
+  // WhatsApp settings page sends templates with (src/organization/graph-api.ts);
+  // without it or the phone number id, the page shows sending disabled and
+  // why. It is never logged and never reaches the browser; the dashboard's
+  // temporary token lasts about a day, so prefer a system user's token.
   // In Clerk's dashboard, the session token's claims must carry the user's
   // public metadata as `"org": "{{user.public_metadata.organizationId}}"` and
   // `"roles": "{{user.public_metadata.roles}}"` (ADR-0009).

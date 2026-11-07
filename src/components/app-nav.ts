@@ -6,6 +6,7 @@ import {
   CalendarSyncIcon,
   CalendarXIcon,
   ClockIcon,
+  MessageCircleIcon,
   ShieldIcon,
   StethoscopeIcon,
   TreePalmIcon,
@@ -56,6 +57,7 @@ const groups: { label: string; items: NavLink[] }[] = [
       { label: "Cierres", to: "/cierres", icon: CalendarXIcon },
       { label: "Obras sociales", to: "/obras-sociales", icon: ShieldIcon, adminOnly: true },
       { label: "Personal", to: "/personal", icon: UserCogIcon, adminOnly: true },
+      { label: "WhatsApp", to: "/whatsapp", icon: MessageCircleIcon, adminOnly: true },
     ],
   },
 ];

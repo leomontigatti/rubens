@@ -144,7 +144,7 @@ beside it.
   page of its own, such as an office (`Sedes`), has them in that page's header beside `Editar`.
   Its list's name cell links only for someone who may open the page, and is plain text otherwise.
 - **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
-  `/disponibilidad`, which asks and answers.
+  `/disponibilidad` and `/whatsapp`, which ask and answer.
 
 ## Forms
 
