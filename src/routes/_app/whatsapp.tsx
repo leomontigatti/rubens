@@ -32,7 +32,12 @@ const refusalMessages = {
     "Falta el identificador del número de WhatsApp en la configuración del servidor.",
 };
 
-const wrongPhone = "Ingresá el número con su código de área, por ejemplo +54 9 11 5555-0000.";
+// Meta's test numbers only reach the recipients listed in its dashboard, and it
+// lists an Argentine mobile without its `9`: a number typed with it is refused.
+const recipientHint =
+  "Escribilo como figura en los destinatarios de Meta, por ejemplo +54 351 555-1234.";
+
+const wrongPhone = "Ingresá el número con su código de área, por ejemplo +54 351 555-1234.";
 
 // Each field's copy when it is empty, and when what it holds is wrong.
 const fieldMessages: Record<keyof TemplateSend, { empty: string; wrong: string }> = {
@@ -136,9 +141,11 @@ function WhatsappSettings() {
       )}
       <FormProblemsContext.Provider value={problems}>
         <div ref={content} className="flex flex-col gap-6">
-          <div ref={answerRef} tabIndex={-1} className="outline-none">
-            <AnswerAlert answer={answer} />
-          </div>
+          {answer && (
+            <div ref={answerRef} tabIndex={-1} className="outline-none">
+              <AnswerAlert answer={answer} />
+            </div>
+          )}
           <form
             method="post"
             noValidate
@@ -150,7 +157,14 @@ function WhatsappSettings() {
           >
             <FieldGroup>
               <form.AppField name="to">
-                {(field) => <field.TextField label="Número del destinatario" type="tel" required />}
+                {(field) => (
+                  <field.TextField
+                    label="Número del destinatario"
+                    type="tel"
+                    required
+                    hint={recipientHint}
+                  />
+                )}
               </form.AppField>
               <form.AppField name="templateName">
                 {(field) => <field.TextField label="Plantilla" required />}
@@ -178,10 +192,7 @@ function WhatsappSettings() {
   );
 }
 
-function AnswerAlert({ answer }: { answer: Answer | null }) {
-  if (!answer) {
-    return null;
-  }
+function AnswerAlert({ answer }: { answer: Answer }) {
   if (answer.kind === "refused") {
     return <ErrorAlert message={answer.message} />;
   }
