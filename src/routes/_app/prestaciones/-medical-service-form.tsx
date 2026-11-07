@@ -25,6 +25,7 @@ export function MedicalServiceForm(props: {
   description?: string;
   initial: MedicalServiceFields;
   submitLabel: string;
+  creates?: boolean;
   /** On an edit: the record's status and actions. */
   record?: RecordHeader;
   onSubmit: (fields: MedicalServiceFields) => Promise<ActionResult>;

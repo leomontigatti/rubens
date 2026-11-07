@@ -9,7 +9,8 @@ when a directory is added, moved or given a new job.
 ```
 src/
 ├── routes/            TanStack Router file routes; `__root.tsx` is the document shell
-│   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET)
+│   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET),
+│                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature)
 ├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),
 │   │                  `form-page.tsx` (a create or an edit on its own page),
 │   │                  `admin-form.tsx` (the admin screens' submit step and controls), `confirm-dialog.tsx` (the question before a destructive

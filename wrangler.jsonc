@@ -16,6 +16,17 @@
   // with DEV_SIGN_IN=true serves; a deployed Worker refuses (src/server/caller.ts).
   // SETUP_SECRET, also a secret, lets `pnpm setup:organization` create an
   // organization; without it the setup endpoint answers 404.
+  // Meta's WhatsApp webhook (/api/whatsapp): META_APP_SECRET (the app secret
+  // that signs each call) and WHATSAPP_VERIFY_TOKEN (the token set in Meta's
+  // app dashboard), both secrets; without either, its half answers 404.
+  // WHATSAPP_PHONE_NUMBER_ID (Meta's test number) and WHATSAPP_ORGANIZATION_ID
+  // (the organization its messages are stored in) are configuration, not
+  // secret, but are set the same way so a deploy does not drop them.
+  // WHATSAPP_ACCESS_TOKEN, a secret, is that number's access token, which the
+  // WhatsApp settings page sends templates with (src/organization/graph-api.ts);
+  // without it or the phone number id, the page shows sending disabled and
+  // why. It is never logged and never reaches the browser; the dashboard's
+  // temporary token lasts about a day, so prefer a system user's token.
   // In Clerk's dashboard, the session token's claims must carry the user's
   // public metadata as `"org": "{{user.public_metadata.organizationId}}"` and
   // `"roles": "{{user.public_metadata.roles}}"` (ADR-0009).

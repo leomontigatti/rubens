@@ -21,6 +21,14 @@ export interface WorkerEnv {
   DEV_SIGN_IN?: string;
   /** The bearer token the setup script sends; with none, setup is not served (`organization-setup.ts`). */
   SETUP_SECRET?: string;
+  /** Meta's app secret, which signs each webhook call; with none, the webhook is not served (`whatsapp-webhook.ts`). */
+  META_APP_SECRET?: string;
+  /** The token Meta's webhook verification sends back, as set in Meta's app dashboard. */
+  WHATSAPP_VERIFY_TOKEN?: string;
+  /** Meta's test number's phone number id, until Embedded Signup (#159) connects each organization's own. */
+  WHATSAPP_PHONE_NUMBER_ID?: string;
+  /** The organization whose object the test number's messages are stored in. */
+  WHATSAPP_ORGANIZATION_ID?: string;
 }
 
 /** `clerk` with a Clerk secret; `dev`, the sign-in that picks a seeded member, otherwise. */

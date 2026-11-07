@@ -1,9 +1,13 @@
-import { useRouteContext } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
 import { UserCogIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Children } from "react";
+import type { ReactElement, ReactNode } from "react";
 
+import { Button } from "#/components/ui/button.tsx";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -11,17 +15,17 @@ import {
 } from "#/components/ui/empty.tsx";
 
 /**
- * A page or a list with nothing to show. `description` says what to do next, so
- * it stays hidden from someone who cannot: `canAct` false.
+ * A page or a list with nothing to show. `description` says what would be here,
+ * or what to try; `children` are the buttons that fix it, only those the viewer
+ * may use.
  */
 export function EmptyState(props: {
   icon: LucideIcon;
   title: string;
   description: string;
-  canAct?: boolean;
+  children?: ReactNode;
 }) {
   const Icon = props.icon;
-  const { canAct = true } = props;
   return (
     <Empty>
       <EmptyHeader>
@@ -29,21 +33,47 @@ export function EmptyState(props: {
           <Icon />
         </EmptyMedia>
         <EmptyTitle>{props.title}</EmptyTitle>
-        {canAct && <EmptyDescription>{props.description}</EmptyDescription>}
+        <EmptyDescription>{props.description}</EmptyDescription>
       </EmptyHeader>
+      {Children.toArray(props.children).length > 0 && (
+        <EmptyContent>
+          <div className="flex flex-wrap justify-center gap-2">{props.children}</div>
+        </EmptyContent>
+      )}
     </Empty>
+  );
+}
+
+/**
+ * A button of an `EmptyState` that goes somewhere; `link` is its `Link`. The
+ * first one is the main action, the rest are `outline`.
+ */
+export function EmptyStateLink(props: {
+  link: ReactElement;
+  variant?: "default" | "outline";
+  children: ReactNode;
+}) {
+  return (
+    <Button nativeButton={false} variant={props.variant} render={props.link}>
+      {props.children}
+    </Button>
   );
 }
 
 /** Screens about practitioners, before there are any: an admin adds them in Personal. */
 export function NoPractitioners() {
-  const { viewer } = useRouteContext({ from: "/_app" });
+  const isAdmin = useRouteContext({ from: "/_app" }).viewer.roles.includes("admin");
   return (
     <EmptyState
       icon={UserCogIcon}
-      title="No hay profesionales activos"
-      description="Agregalos o reactivalos en Personal."
-      canAct={viewer.roles.includes("admin")}
-    />
+      title="Sin profesionales activos"
+      description={
+        isAdmin
+          ? "Todavía no hay profesionales activos. Empezá agregando uno en Personal."
+          : "Todavía no hay profesionales activos."
+      }
+    >
+      {isAdmin && <EmptyStateLink link={<Link to="/personal" />}>Ir a Personal</EmptyStateLink>}
+    </EmptyState>
   );
 }

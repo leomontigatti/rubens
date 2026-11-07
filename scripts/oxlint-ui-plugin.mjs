@@ -9,6 +9,7 @@
 // - `no-raw-page-title`: an `<h1>` where `PageHeader` belongs.
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
 // - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
+// - `no-raw-empty`: the ui `Empty` where `EmptyState` belongs.
 // - `no-raw-form`: a `<form>` where `FormPage` belongs.
 // - `no-uncontrolled-input`: a default value where `useAppForm` holds the field.
 
@@ -301,6 +302,29 @@ const noRawTable = {
   },
 };
 
+const noRawEmpty = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A page or a list with nothing to show is an EmptyState.",
+    },
+    messages: {
+      empty:
+        "Use EmptyState from #/components/empty-state.tsx: it owns the icon, the description and the action buttons, so a hand-made empty state drifts from it (style guide, Empty states).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value.endsWith("/components/ui/empty.tsx")) {
+          context.report({ node, messageId: "empty" });
+        }
+      },
+    };
+  },
+};
+
 const noRawForm = {
   meta: {
     type: "problem",
@@ -352,6 +376,7 @@ export default {
     "alert-structure": alertStructure,
     "no-bare-label": noBareLabel,
     "no-raw-form": noRawForm,
+    "no-raw-empty": noRawEmpty,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "no-raw-table": noRawTable,

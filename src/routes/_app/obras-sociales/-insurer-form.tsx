@@ -32,6 +32,7 @@ export function InsurerForm(props: {
   description?: string;
   initial: InsurerInput;
   submitLabel: string;
+  creates?: boolean;
   /** On an edit: the record's status and actions. */
   record?: RecordHeader;
   onSubmit: (input: InsurerInput) => Promise<ActionResult>;

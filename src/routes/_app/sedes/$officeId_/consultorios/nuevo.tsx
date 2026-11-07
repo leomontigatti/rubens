@@ -34,6 +34,7 @@ function NewRoom() {
       description={result.office.name}
       initial={newRoom}
       submitLabel="Crear consultorio"
+      creates
       onSubmit={(fields) => addRoom({ data: { ...fields, officeId } })}
     />
   );

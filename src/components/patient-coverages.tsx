@@ -148,6 +148,7 @@ export function CoverageForm(props: {
   initial: CoverageFields;
   insurers: Insurer[];
   submitLabel: string;
+  creates?: boolean;
   onSubmit: (fields: CoverageFields) => Promise<ActionResult>;
 }) {
   const { patientId, initial } = props;
@@ -178,6 +179,7 @@ export function CoverageForm(props: {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
+      creates={props.creates}
       action={action}
     >
       <form.AppField name="insurerId">

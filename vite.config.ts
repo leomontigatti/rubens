@@ -67,6 +67,7 @@ export default defineConfig({
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
       "ui/no-bare-label": "error",
+      "ui/no-raw-empty": "error",
       "ui/no-raw-form": "error",
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
@@ -104,11 +105,19 @@ export default defineConfig({
           "src/routes/ingresar.tsx",
           "src/routes/_app/cambiar-contrasena.tsx",
           "src/routes/_app/disponibilidad/index.tsx",
+          "src/routes/_app/whatsapp.tsx",
           "**/*.test.tsx",
         ],
         rules: {
           "ui/no-raw-form": "off",
           "ui/no-uncontrolled-input": "off",
+        },
+      },
+      {
+        // The one place an empty state is drawn.
+        files: ["src/components/empty-state.tsx"],
+        rules: {
+          "ui/no-raw-empty": "off",
         },
       },
       {

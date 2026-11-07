@@ -3,7 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
@@ -41,17 +41,26 @@ function PractitionerSchedules() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PageHeader back={{ to: "/horarios", label: "Horarios" }} title={practitioner.displayName} />
-      <CreateButton
-        can={canEdit}
-        link={
-          <Link to="/horarios/$practitionerId/nuevo" params={{ practitionerId: practitioner.id }} />
+      <PageHeader
+        back={{ to: "/horarios", label: "Horarios" }}
+        title={practitioner.displayName}
+        description="Qué días y en qué consultorio atiende cada semana."
+        actions={
+          <CreateButton
+            can={canEdit}
+            link={
+              <Link
+                to="/horarios/$practitionerId/nuevo"
+                params={{ practitionerId: practitioner.id }}
+              />
+            }
+          >
+            Nuevo horario
+          </CreateButton>
         }
-      >
-        Nuevo horario
-      </CreateButton>
+      />
       {schedules.length === 0 ? (
-        <NoSchedules canEdit={canEdit} rooms={rooms} />
+        <NoSchedules practitionerId={practitioner.id} canEdit={canEdit} rooms={rooms} />
       ) : (
         <ul className="flex flex-col gap-3">
           {schedules.map((schedule) => (
@@ -64,18 +73,45 @@ function PractitionerSchedules() {
 }
 
 /** A schedule needs an active room, so with none that comes first. */
-function NoSchedules(props: { canEdit: boolean; rooms: RoomOption[] }) {
+function NoSchedules(props: { practitionerId: string; canEdit: boolean; rooms: RoomOption[] }) {
+  const isAdmin = Route.useRouteContext().viewer.roles.includes("admin");
+  if (!props.canEdit) {
+    return (
+      <EmptyState icon={ClockIcon} title="Sin horarios" description="Todavía no tiene horarios." />
+    );
+  }
+  if (props.rooms.length === 0) {
+    return (
+      <EmptyState
+        icon={ClockIcon}
+        title="Sin horarios"
+        description={
+          isAdmin
+            ? "Todavía no tiene horarios. Empezá agregando un consultorio activo en Sedes."
+            : "Todavía no tiene horarios, y antes hace falta un consultorio activo."
+        }
+      >
+        {isAdmin && <EmptyStateLink link={<Link to="/sedes" />}>Ir a Sedes</EmptyStateLink>}
+      </EmptyState>
+    );
+  }
   return (
     <EmptyState
       icon={ClockIcon}
-      title="Todavía no tiene horarios"
-      description={
-        props.rooms.length > 0
-          ? "Agregá el primero con Nuevo horario."
-          : "Primero hace falta un consultorio activo en Sedes."
-      }
-      canAct={props.canEdit}
-    />
+      title="Sin horarios"
+      description="Todavía no tiene horarios. Empezá creando el primero."
+    >
+      <CreateButton
+        link={
+          <Link
+            to="/horarios/$practitionerId/nuevo"
+            params={{ practitionerId: props.practitionerId }}
+          />
+        }
+      >
+        Nuevo horario
+      </CreateButton>
+    </EmptyState>
   );
 }
 

@@ -117,6 +117,19 @@ describe("offices", () => {
     ]);
   });
 
+  it("says when the default list is empty only because every office is inactive", async () => {
+    const { organization } = await setUpTestOrganization();
+    const list = (includeInactive: boolean) =>
+      organization.listOffices(adminCaller, { includeInactive });
+    const none = await list(false);
+    const created = await newOffice(organization);
+    await organization.setOfficeActive(adminCaller, { id: created.id, active: false });
+
+    expect(none).toEqual({ ok: true, offices: [], onlyInactive: false });
+    expect(await list(false)).toEqual({ ok: true, offices: [], onlyInactive: true });
+    expect(await list(true)).toMatchObject({ offices: [{ id: created.id }], onlyInactive: false });
+  });
+
   it("answers notFound for an office that does not exist", async () => {
     const { organization } = await setUpTestOrganization();
 
@@ -234,6 +247,20 @@ describe("rooms", () => {
       ok: true,
       rooms: [{ id: room.id, active: true }],
     });
+  });
+
+  it("says when the office's default room list is empty only because every room is inactive", async () => {
+    const { organization } = await setUpTestOrganization();
+    const office = await newOffice(organization);
+    const rooms = (includeInactive: boolean) =>
+      organization.getOffice(adminCaller, { officeId: office.id, includeInactive });
+    const none = await rooms(false);
+    const room = await newRoom(organization, office.id);
+    await organization.setRoomActive(adminCaller, { id: room.id, active: false });
+
+    expect(none).toMatchObject({ ok: true, rooms: [], onlyInactive: false });
+    expect(await rooms(false)).toMatchObject({ ok: true, rooms: [], onlyInactive: true });
+    expect(await rooms(true)).toMatchObject({ ok: true, onlyInactive: false });
   });
 });
 

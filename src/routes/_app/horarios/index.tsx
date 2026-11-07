@@ -25,7 +25,10 @@ function SchedulePractitioners() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Horarios" />
+      <PageHeader
+        title="Horarios"
+        description="Qué días y en qué consultorio atiende cada profesional."
+      />
       {result.practitioners.length === 0 ? (
         <NoPractitioners />
       ) : (

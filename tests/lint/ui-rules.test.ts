@@ -67,6 +67,22 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(found.map(text).join()).toContain("DataTable");
   });
 
+  const rawEmptyProbe = probe(
+    "raw-empty.tsx",
+    `import { Empty, EmptyTitle } from "#/components/ui/empty.tsx";\n\nexport const Nothing = () => (\n  <Empty>\n    <EmptyTitle>Nada</EmptyTitle>\n  </Empty>\n);\n`,
+  );
+
+  it("reject an empty state outside EmptyState, and say where it belongs", () => {
+    const found = lint(rawEmptyProbe).filter((d) => d.code.includes("no-raw-empty"));
+
+    expect(found).toHaveLength(1);
+    expect(found.map(text).join()).toContain("EmptyState");
+  });
+
+  it("allow the ui Empty in EmptyState, the one place an empty state is drawn", () => {
+    expect(codes(existing("src/components/empty-state.tsx"))).not.toContain("ui(no-raw-empty)");
+  });
+
   const rawFormProbe = probe("raw-form.tsx", `export const Inline = () => <form noValidate />;\n`);
 
   it("reject a form outside FormPage, and say where it belongs", () => {
