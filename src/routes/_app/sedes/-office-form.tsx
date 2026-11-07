@@ -18,6 +18,7 @@ export function OfficeForm(props: {
   description?: string;
   initial: OfficeInput;
   submitLabel: string;
+  creates?: boolean;
   onSubmit: (input: OfficeInput) => Promise<ActionResult>;
 }) {
   const { initial } = props;
@@ -49,6 +50,7 @@ export function OfficeForm(props: {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
+      creates={props.creates}
       action={action}
     >
       <form.AppField name="name">

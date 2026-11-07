@@ -24,6 +24,7 @@ export function RoomForm(props: {
   description?: string;
   initial: RoomFields;
   submitLabel: string;
+  creates?: boolean;
   /** On an edit: the record's status and actions. */
   record?: RecordHeader;
   onSubmit: (fields: RoomFields) => Promise<ActionResult>;

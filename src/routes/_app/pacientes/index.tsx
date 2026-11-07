@@ -5,7 +5,7 @@ import * as z from "zod";
 
 import { DataTable, RowLink, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
@@ -42,8 +42,6 @@ function Patients() {
   return <Registry listed={result} />;
 }
 
-const inactiveHint = (shown?: boolean) => (shown ? "" : ", o mirá los inactivos");
-
 /** The registry's page with no search; with one, only what it found. */
 function shownPatients(listed: PatientPage, { searching, found }: PatientSearch) {
   if (!searching) {
@@ -74,11 +72,16 @@ function Registry({ listed }: { listed: PatientPage }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Pacientes" />
-      <CreateButton can link={<Link to="/pacientes/nuevo" />}>
-        Nuevo paciente
-      </CreateButton>
-      <div className="flex flex-col gap-3">
+      <PageHeader
+        title="Pacientes"
+        description="Los pacientes de toda la organización, con sus datos y coberturas."
+        actions={
+          <CreateButton can link={<Link to="/pacientes/nuevo" />}>
+            Nuevo paciente
+          </CreateButton>
+        }
+      />
+      <div className="flex flex-col gap-3 has-data-[slot=empty]:flex-1">
         <DataTable
           table={table}
           search={{
@@ -94,7 +97,10 @@ function Registry({ listed }: { listed: PatientPage }) {
             onRemove: () => changeStatus(null),
           }}
           pager={search.searching ? undefined : pager}
-          empty={<NoPatients search={search} inactivos={inactivos} />}
+          noRecords={!search.searching && listed.total === 0}
+          empty={
+            <NoPatients search={search} inactivos={inactivos} onlyInactive={listed.onlyInactive} />
+          }
         />
         <MorePatientMatches search={search} />
       </div>
@@ -102,19 +108,36 @@ function Registry({ listed }: { listed: PatientPage }) {
   );
 }
 
-function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {
+function NoPatients(props: { search: PatientSearch; inactivos?: boolean; onlyInactive: boolean }) {
   const { search, inactivos } = props;
   const problem = patientSearchProblem(search);
   if (problem) {
     return <ErrorAlert message={problem} />;
   }
+  // Beside "Nuevo paciente" it is the second action, so outline; alone, the main one.
+  const showInactive = (variant: "default" | "outline") =>
+    !inactivos && (
+      <EmptyStateLink
+        variant={variant}
+        link={<Link to="/pacientes" search={{ inactivos: true }} />}
+      >
+        Ver inactivos
+      </EmptyStateLink>
+    );
   if (!search.searching) {
     return (
       <EmptyState
         icon={UsersIcon}
-        title="No hay pacientes para mostrar"
-        description={`Agregá uno con Nuevo paciente${inactiveHint(inactivos)}.`}
-      />
+        title={props.onlyInactive ? "Sin pacientes activos" : "Sin pacientes"}
+        description={
+          props.onlyInactive
+            ? "No hay pacientes activos. Empezá registrando uno, o mirá los inactivos."
+            : "Todavía no hay pacientes. Empezá registrando el primero."
+        }
+      >
+        <CreateButton link={<Link to="/pacientes/nuevo" />}>Nuevo paciente</CreateButton>
+        {props.onlyInactive && showInactive("outline")}
+      </EmptyState>
     );
   }
   if (!search.found) {
@@ -124,8 +147,10 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean }) {
     <EmptyState
       icon={UsersIcon}
       title="Ningún paciente coincide con la búsqueda"
-      description={`Probá con otro nombre, documento o teléfono${inactiveHint(inactivos)}.`}
-    />
+      description="Probá con otro nombre, documento o teléfono."
+    >
+      {showInactive("default")}
+    </EmptyState>
   );
 }
 

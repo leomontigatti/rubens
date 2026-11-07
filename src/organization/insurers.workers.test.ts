@@ -148,6 +148,20 @@ describe("keeping the insurer list", () => {
     ]);
   });
 
+  it("says when the default list is empty only because every insurer is inactive", async () => {
+    const { organization } = await setUpTestOrganization();
+    const receptionist = await addMember(organization, ["receptionist"]);
+    const listed = (includeInactive: boolean) =>
+      organization.listInsurers(receptionist, { includeInactive });
+    const none = await listed(false);
+    const created = await create(organization);
+    await organization.setInsurerActive(adminCaller, { id: created.id, active: false });
+
+    expect(none).toEqual({ ok: true, insurers: [], onlyInactive: false });
+    expect(await listed(false)).toEqual({ ok: true, insurers: [], onlyInactive: true });
+    expect(await listed(true)).toMatchObject({ ok: true, onlyInactive: false });
+  });
+
   it("writes each change to the audit log, about no patient", async () => {
     const { organization } = await setUpTestOrganization();
     const created = await create(organization);

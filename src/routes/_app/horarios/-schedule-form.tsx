@@ -86,6 +86,7 @@ export function ScheduleForm(props: {
   initial: Initial;
   dateLabel: string;
   submitLabel: string;
+  creates?: boolean;
   /** The server call, or the validation error that stopped it. */
   onSubmit: (fields: FormFields) => Promise<ActionResult> | z.ZodError;
 }) {
@@ -121,6 +122,7 @@ export function ScheduleForm(props: {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
+      creates={props.creates}
       action={action}
     >
       <form.AppField name="weekdays">

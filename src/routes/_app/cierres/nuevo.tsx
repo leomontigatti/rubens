@@ -31,6 +31,7 @@ function NewClosure() {
       title="Nuevo cierre"
       initial={null}
       submitLabel="Crear cierre"
+      creates
       owner={officeField(result.offices, null)}
       messages={refusalMessages}
       onSubmit={(values) => {

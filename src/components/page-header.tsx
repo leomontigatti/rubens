@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 
 /**
  * What every page opens with: its title, and around it the page above it, what
- * the record is at a glance, a line of detail and the page's actions.
+ * the record is at a glance, a line of detail and the page's actions. A
+ * `description` given as text is the page's subtitle.
  */
 export function PageHeader(props: {
   title: ReactNode;
@@ -28,7 +29,11 @@ export function PageHeader(props: {
           {props.title}
           {props.status}
         </h1>
-        {props.description}
+        {typeof props.description === "string" ? (
+          <p className="text-muted-foreground text-sm">{props.description}</p>
+        ) : (
+          props.description
+        )}
       </div>
       {props.actions && <div className="flex flex-wrap items-center gap-2">{props.actions}</div>}
     </div>

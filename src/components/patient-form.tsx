@@ -7,6 +7,7 @@ import type * as z from "zod";
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
 import { FormProblemsContext, useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
+import { FieldDescription, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, focusProblem, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
@@ -202,7 +203,14 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
         {(field) => <field.TextField {...phoneFieldProps} />}
       </form.AppField>
       {props.full && (
-        <>
+        <FieldSet>
+          <div className="flex flex-col gap-1">
+            <FieldLegend className="mb-0">Datos para completar</FieldLegend>
+            <FieldDescription>
+              Se pueden cargar ahora o en la primera visita. Mientras falte la fecha de nacimiento,
+              el paciente figura con datos incompletos.
+            </FieldDescription>
+          </div>
           <form.AppField name="chosenName">
             {(field) => (
               <field.TextField
@@ -232,7 +240,7 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
           <form.AppField name="address">
             {(field) => <field.TextField label="Dirección" />}
           </form.AppField>
-        </>
+        </FieldSet>
       )}
     </div>
   );
@@ -335,6 +343,7 @@ export function PatientRegistrationPage() {
       form={form}
       title="Nuevo paciente"
       submitLabel="Registrar paciente"
+      creates
       pending={save.pending}
       refusals={patientRefusals(save)}
       onClear={save.dismiss}

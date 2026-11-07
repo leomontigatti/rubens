@@ -121,7 +121,7 @@ function AppShell() {
           <header className="flex items-center border-b px-4 py-2">
             <SidebarTrigger />
           </header>
-          <div className="flex-1 p-6">
+          <div className="flex flex-1 flex-col p-6 *:has-data-[slot=empty]:flex-1">
             <Outlet />
           </div>
         </SidebarInset>

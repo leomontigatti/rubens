@@ -27,10 +27,15 @@ function Staff() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Personal" />
-      <CreateButton can link={<Link to="/personal/nueva" />}>
-        Nueva persona
-      </CreateButton>
+      <PageHeader
+        title="Personal"
+        description="Las personas de la organización, con sus roles y su acceso."
+        actions={
+          <CreateButton can link={<Link to="/personal/nueva" />}>
+            Nueva persona
+          </CreateButton>
+        }
+      />
       <StaffTable staff={result.staff} />
     </div>
   );

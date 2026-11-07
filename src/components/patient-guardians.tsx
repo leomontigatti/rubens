@@ -162,6 +162,7 @@ interface GuardianFormProps {
   description: string;
   initial: GuardianFields;
   submitLabel: string;
+  creates?: boolean;
   /** The schema the server function checks the input with, which the form checks first. */
   schema: z.ZodType;
   /** The ids the input carries beside the fields, for `schema`. */
@@ -207,6 +208,7 @@ export function GuardianForm(props: GuardianFormProps) {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
+      creates={props.creates}
       action={action}
     >
       <div className="grid gap-4 sm:grid-cols-2">
