@@ -6,6 +6,7 @@ import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/
 import type { ScheduleInput } from "#/lib/schedules.ts";
 
 import type { AccountMetadata, Accounts, CreateUserResult } from "#/organization/accounts.ts";
+import type { GraphApiSettings } from "#/organization/graph-api.ts";
 import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
@@ -420,3 +421,61 @@ class FakeAccounts implements Accounts {
  * the calls the object made.
  */
 export const fakeAccounts = new FakeAccounts();
+
+/** The access token the fake Meta expects: a test looks for it in what the object returns. */
+export const metaAccessToken = "test-access-token-never-shown";
+export const metaPhoneNumberId = "123456789012345";
+
+/** A request the object made to Meta's Graph API, as the fake received it. */
+interface MetaRequest {
+  method: string;
+  url: string;
+  authorization: string | null;
+  body: unknown;
+}
+
+/**
+ * Meta's Graph API at its HTTP boundary: the object's real Graph API client
+ * (`src/organization/graph-api.ts`) sends to `fetch` here, so a test reads the
+ * requests it made and chooses Meta's answer.
+ */
+class FakeMeta {
+  settings: GraphApiSettings = {};
+  requests: MetaRequest[] = [];
+  #answer = { status: 200, body: {} as unknown };
+
+  reset() {
+    this.settings = {
+      WHATSAPP_ACCESS_TOKEN: metaAccessToken,
+      WHATSAPP_PHONE_NUMBER_ID: metaPhoneNumberId,
+    };
+    this.requests = [];
+    this.answerWith(200, {
+      messaging_product: "whatsapp",
+      contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
+      messages: [{ id: "wamid.test-message" }],
+    });
+  }
+
+  /** Meta's next answers: `body` as JSON with `status`. */
+  answerWith(status: number, body: unknown) {
+    this.#answer = { status, body };
+  }
+
+  readonly fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const request = new Request(input, init);
+    this.requests.push({
+      method: request.method,
+      url: request.url,
+      authorization: request.headers.get("authorization"),
+      body: await request.json(),
+    });
+    return Response.json(this.#answer.body, { status: this.#answer.status });
+  };
+}
+
+/**
+ * The Graph API a test installs, with `vi.mock(import("#/organization/graph-api.ts"), …)`
+ * passing its `settings` and `fetch` to the real `whatsappCloudFor`.
+ */
+export const fakeMeta = new FakeMeta();

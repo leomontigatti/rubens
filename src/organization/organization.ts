@@ -12,6 +12,7 @@ import type {
   WarningConfirmation,
 } from "#/lib/appointments.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
+import type { TemplateSend } from "#/lib/whatsapp.ts";
 import type {
   CoverageId,
   CoverageInput,
@@ -141,6 +142,8 @@ import {
   updateRoom,
 } from "#/organization/offices.ts";
 import type { ListOptions } from "#/organization/offices.ts";
+import { whatsappCloudFor } from "#/organization/graph-api.ts";
+import type { GraphApiSettings, WhatsappCloud } from "#/organization/graph-api.ts";
 import { getPatientHistory } from "#/organization/patient-history.ts";
 import { searchPatients } from "#/organization/patient-search.ts";
 import type { SearchOptions } from "#/organization/patient-search.ts";
@@ -186,6 +189,7 @@ import {
   countToReschedule,
   listToReschedule,
 } from "#/organization/to-reschedule.ts";
+import { getWhatsappSettings, sendTemplate } from "#/organization/whatsapp.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -219,11 +223,14 @@ export class Organization extends DurableObject {
   readonly #accounts: Accounts;
   /** The emails whose Clerk user a call is creating right now (`src/organization/staff.ts`). */
   readonly #emailsInFlight: EmailsInFlight = new Set();
+  /** Meta's WhatsApp Cloud API (`src/organization/graph-api.ts`). */
+  readonly #whatsapp: WhatsappCloud;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
     this.#database = openDatabase(ctx.storage);
     this.#accounts = accountsFor(env as { CLERK_SECRET_KEY?: string });
+    this.#whatsapp = whatsappCloudFor(env as GraphApiSettings);
     void ctx.blockConcurrencyWhile(() => migrateDatabase(this.#database));
   }
 
@@ -643,6 +650,18 @@ export class Organization extends DurableObject {
   countOfficeUpcoming(caller: Caller, input: PlaceReference) {
     return this.#as(caller, ["admin"], (acting) =>
       countOfficeUpcoming(this.#database, acting, input),
+    );
+  }
+
+  // WhatsApp
+
+  whatsappSettings(caller: Caller) {
+    return this.#as(caller, ["admin"], () => getWhatsappSettings(this.#whatsapp));
+  }
+
+  async sendWhatsappTemplate(caller: Caller, input: TemplateSend) {
+    return this.#as(caller, ["admin"], (acting) =>
+      sendTemplate(this.#database, this.#whatsapp, acting, input),
     );
   }
 }
