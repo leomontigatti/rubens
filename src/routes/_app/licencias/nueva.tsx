@@ -29,6 +29,7 @@ function NewTimeOff() {
       title="Nueva licencia"
       initial={null}
       submitLabel="Crear licencia"
+      creates
       owner={practitionerField(result.practitioners)}
       messages={refusalMessages}
       onSubmit={(values) => {

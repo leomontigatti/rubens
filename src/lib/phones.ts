@@ -48,6 +48,21 @@ export function formatPhone(phone: string): string {
   return parsed.country === defaultRegion ? parsed.formatNational() : parsed.formatInternational();
 }
 
+/**
+ * The E.164 spellings of one number. An Argentine mobile is `+54 9 …` when
+ * typed with its `15` and `+54 …` without it (a landline shares the same
+ * national numbers, so the two never name different lines), while WhatsApp
+ * always sends a mobile with the `9`.
+ */
+export function phoneSpellings(phone: string): string[] {
+  const argentine = /^\+54(9?)(\d+)$/.exec(phone);
+  if (!argentine) {
+    return [phone];
+  }
+  const [, mobile, national] = argentine;
+  return mobile ? [phone, `+54${national}`] : [phone, `+549${national}`];
+}
+
 /** An E.164 phone with all but its last four digits hidden, for a record that must not hold it. */
 export function maskPhone(phone: string): string {
   const shown = phone.slice(-4);

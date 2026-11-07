@@ -412,6 +412,19 @@ describe("deactivating a patient", () => {
     ]);
   });
 
+  it("says when the default list is empty only because every patient is inactive", async () => {
+    const { organization, receptionist } = await registry();
+    const listed = (includeInactive: boolean) =>
+      organization.listPatients(receptionist, { includeInactive });
+    const none = await listed(false);
+    const patient = await register(organization, receptionist);
+    await organization.setPatientActive(adminCaller, { id: patient.id, active: false });
+
+    expect(none).toMatchObject({ ok: true, total: 0, onlyInactive: false });
+    expect(await listed(false)).toMatchObject({ ok: true, total: 0, onlyInactive: true });
+    expect(await listed(true)).toMatchObject({ ok: true, total: 1, onlyInactive: false });
+  });
+
   it("writes no entry when the patient is already in the state asked for", async () => {
     const { organization, receptionist } = await registry();
     const patient = await register(organization, receptionist);

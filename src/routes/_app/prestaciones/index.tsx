@@ -26,7 +26,10 @@ function MedicalServicePractitioners() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Prestaciones" />
+      <PageHeader
+        title="Prestaciones"
+        description="Los tipos de consulta que ofrece cada profesional."
+      />
       {result.practitioners.length === 0 ? (
         <NoPractitioners />
       ) : (

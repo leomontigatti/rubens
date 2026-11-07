@@ -74,7 +74,10 @@ function Availability() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PageHeader title="Disponibilidad" />
+      <PageHeader
+        title="Disponibilidad"
+        description="Los horarios libres para dar un turno, sin licencias, cierres ni turnos ya dados."
+      />
       {result.practitioners.length === 0 ? (
         <NoPractitioners />
       ) : (

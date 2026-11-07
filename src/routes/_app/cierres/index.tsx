@@ -28,10 +28,15 @@ function ClosureList() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Cierres" />
-      <CreateButton can={result.canEdit} link={<Link to="/cierres/nuevo" />}>
-        Nuevo cierre
-      </CreateButton>
+      <PageHeader
+        title="Cierres"
+        description="Los días en que una sede, o todas, no atiende: un feriado o un día sin atención."
+        actions={
+          <CreateButton can={result.canEdit} link={<Link to="/cierres/nuevo" />}>
+            Nuevo cierre
+          </CreateButton>
+        }
+      />
       <ClosureTable closures={result.closures} canEdit={result.canEdit} />
     </div>
   );
@@ -78,14 +83,18 @@ function ClosureTable({ closures, canEdit }: { closures: Closure[]; canEdit: boo
         label: "Buscar cierre",
         placeholder: "Buscar por sede",
       }}
+      noRecords={closures.length === 0}
       empty={
         closures.length === 0 ? (
           <EmptyState
             icon={CalendarXIcon}
-            title="Todavía no hay cierres"
-            description="Agregá el primero con Nuevo cierre."
-            canAct={canEdit}
-          />
+            title="Sin cierres"
+            description={`Todavía no hay cierres.${canEdit ? " Empezá creando el primero." : ""}`}
+          >
+            {canEdit && (
+              <CreateButton link={<Link to="/cierres/nuevo" />}>Nuevo cierre</CreateButton>
+            )}
+          </EmptyState>
         ) : (
           <NoMatches icon={CalendarXIcon} />
         )

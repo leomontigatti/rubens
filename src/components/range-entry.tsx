@@ -85,6 +85,7 @@ export function EntryForm<R extends string>(props: {
   initial: RangeEntry | null;
   owner?: { label: string; initial: string; required?: boolean; options: ReactNode };
   submitLabel: string;
+  creates?: boolean;
   messages: Record<R, string>;
   /** On an edit: the entry's delete, its only page being this one. */
   deletion?: Deletion<R>;
@@ -115,6 +116,7 @@ export function EntryForm<R extends string>(props: {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel}
+      creates={props.creates}
       record={record}
       action={action}
     >

@@ -61,6 +61,7 @@ import type {
   PatientUpdate,
   WhatsappConsentChange,
 } from "#/lib/patients.ts";
+import type { WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type {
   ClosureDelete,
   ClosureInput,
@@ -189,6 +190,7 @@ import {
   countToReschedule,
   listToReschedule,
 } from "#/organization/to-reschedule.ts";
+import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
 import { getWhatsappSettings, sendTemplate } from "#/organization/whatsapp.ts";
 
 /**
@@ -258,6 +260,11 @@ export class Organization extends DurableObject {
 
   activeMembers() {
     return listActiveMembers(this.#database);
+  }
+
+  /** Meta's webhook, after the Worker checked its signature (`src/server/whatsapp-webhook.ts`). */
+  storeWhatsappEvents(events: WhatsappEvents) {
+    return storeWhatsappEvents(this.#database, events);
   }
 
   // Members

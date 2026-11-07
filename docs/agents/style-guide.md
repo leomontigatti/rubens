@@ -59,7 +59,9 @@ beside it.
 - **Every link has a `lucide` icon**, the only thing left when the sidebar is collapsed.
 - **Every page opens with `PageHeader`**, never its own `<h1>` (`pnpm lint` enforces it): `title`,
   `back` on a detail page, `status` for its `Badge`, `description` for a line of detail, and
-  `actions` for the buttons that act on the whole page. A page that is one card holding one form,
+  `actions` for the buttons that act on the whole page. A page in the sidebar has a one-line
+  `description` saying what it is for; a detail or form page uses it for the record (an address,
+  an email, a name). A page that is one card holding one form,
   `/ingresar` and `/cambiar-contrasena`, is titled by its `CardTitle` instead.
 
 ## Filters
@@ -74,12 +76,23 @@ beside it.
 
 ## Empty states
 
-- **A page or a list with nothing to show is `EmptyState`** (`src/components/empty-state.tsx`),
-  with the icon the sidebar gives its concept. A list that can hide inactive records never says none
-  exist: it points at them while they are hidden.
-  Inside a form, a dialog, a menu or a section of a page, a sentence is enough.
-- **It says why and what to do next**, naming the button that does it. `canAct` hides it from
-  someone who cannot do it: without the permission, the title stands alone.
+- **A page or a list with nothing to show is `EmptyState`** (`src/components/empty-state.tsx`;
+  `pnpm lint` rejects the ui `Empty` anywhere else, `ui/no-raw-empty`), with the icon the sidebar
+  gives its concept, in a dashed outline centred in the space the page leaves. Inside a form, a
+  dialog, a menu or a section of a page, a sentence is enough.
+- **Its title is short, `Sin sedes`; its description says there are none yet, then how to start**:
+  `Todavía no hay sedes. Empezá creando la primera.` Without the permission to start, the first
+  sentence stands alone. What the page is for goes in the page's subtitle, not here.
+- **What to do next is a button in it**, as shadcn's `Empty` shows: `CreateButton` for a create,
+  `EmptyStateLink` for a way elsewhere, the main action first and the rest `outline`, even when the
+  page header has the same button. Pass only the buttons the viewer may use.
+- **A list with no records has no search, filters or footer** (`DataTable`'s `noRecords`): the
+  empty state's buttons are all there is to do. A search that finds nothing keeps them, and says
+  so with `NoMatches`.
+- **A list that hides inactive records says none exist only when that is true.** Its loader
+  answers `onlyInactive` when the default list is empty because every record is inactive; then
+  the empty state says `No hay sedes activas` and offers `Ver inactivas`. `/dev/patrones` shows
+  each case.
 
 ## Tables
 
@@ -102,19 +115,23 @@ beside it.
 
 - **A create or an edit is a page of its own**, `FormPage` (`src/components/form-page.tsx`), never
   in a list, a card, a dialog or a side panel, until a case proves otherwise. `pnpm lint` rejects any
-  other `<form>` (`ui/no-raw-form`). `CreateButton` opens a create's page.
+  other `<form>` (`ui/no-raw-form`). `CreateButton` opens a create's page, with a leading plus: in
+  the `PageHeader`'s `actions`, on the title's line, and again in the list's `EmptyState`.
 - **A form that holds a form of its own goes in `lead`**, above the form element: booking's patient
   picker, whose quick registration submits apart. Its problems still show under its field.
 - **The fields take the page's width, outside any card.** The actions close the form: `Volver` on
   the left, `Descartar cambios` and the submit button on the right. On a long form they stick to the
   bottom of the window.
 - **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
-- **`Descartar cambios` shows once something differs from what the form opened with.**
+- **On an edit, `Descartar cambios` shows once something differs from what the form opened with.**
+  A create has none (`FormPage`'s `creates`): with no saved values to go back to, it would only
+  empty the form, which `Volver` already does.
 - **While saving, the submit button is disabled and shows a spinner, and the other buttons are
   disabled with it.** The spinner is the visible reason a disabled button needs. With nothing
   changed, the submit button stays enabled: nothing would say why it is not.
 - **Leaving with unsaved changes asks**, by any way out: `Volver`, the sidebar, the browser's back,
-  a closed tab. `Descartar cambios` asks the same question, because it cannot be undone.
+  a closed tab, on a create as on an edit. `Descartar cambios` asks the same question, because it
+  cannot be undone.
 - **A successful save goes back**, unless what comes next is on the new record: a registered patient
   opens their page. A save the page must confirm stays: the starting password's `Listo`.
 - **A record has one form for its own fields**: its page shows values in `RecordSection`s
