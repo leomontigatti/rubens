@@ -1,11 +1,20 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  check,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 import type { Role } from "#/lib/access.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 import { insurerKinds } from "#/lib/coverages.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
+import { whatsappMessageDirections, whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 
 // The organization object's SQLite schema (ADR-0008). Everything in it belongs
 // to the one organization the object is, so no table carries an organization
@@ -13,8 +22,8 @@ import { practitionerColors } from "#/lib/practitioner-colors.ts";
 // milliseconds UTC; a span is `[startsAt, endsAt)`. Local times (`HH:MM`) and
 // local dates (`YYYY-MM-DD`) are text, read in an office's IANA zone.
 //
-// After editing this file, run `pnpm organization:generate`. Until the port
-// merges (#131) its one migration is regenerated in place, not added to.
+// After editing this file, run `pnpm organization:generate`, which adds a
+// migration; a migration on `main` has run in deployed objects and is never edited.
 
 const id = () =>
   text("id")
@@ -411,4 +420,67 @@ export const appointment = sqliteTable(
       sql`(${table.status} = 'cancelled') = (${table.cancelledBy} is not null)`,
     ),
   ],
+);
+
+/**
+ * The WhatsApp conversation with one number (ADR-0010): every message to and
+ * from it, whichever patients it stands for. The number is E.164, as
+ * `src/lib/phones.ts` writes a patient's or a guardian's phone.
+ */
+export const conversation = sqliteTable("conversation", {
+  id: id(),
+  phone: text("phone").notNull().unique(),
+  ...timestamps,
+});
+
+/**
+ * The patients a conversation's number is the message contact of
+ * (`docs/domain/assistant.md`), as of its latest incoming message: a
+ * guardian's number can stand for several, and an unknown number for none.
+ */
+export const conversationPatient = sqliteTable(
+  "conversation_patient",
+  {
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id),
+    patientId: text("patient_id")
+      .notNull()
+      .references(() => patient.id),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.patientId] }),
+    index("conversation_patient_patient_id_idx").on(table.patientId),
+  ],
+);
+
+/**
+ * One WhatsApp message in a conversation, unique by Meta's message id, so a
+ * webhook call Meta repeats stores nothing twice.
+ */
+export const whatsappMessage = sqliteTable(
+  "whatsapp_message",
+  {
+    id: id(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id),
+    /** Meta's id for the message (`wamid.…`). */
+    whatsappId: text("whatsapp_id").notNull().unique(),
+    direction: text("direction", { enum: whatsappMessageDirections }).notNull(),
+    /** Meta's message type: `text`, `image`, `audio`, … */
+    type: text("type").notNull(),
+    /** A text message's body; other types keep theirs in `payload`. */
+    text: text("text"),
+    /** The message as Meta sent it, JSON, for the types nothing reads yet. */
+    payload: text("payload").notNull(),
+    /** When Meta says it was sent. */
+    sentAt: instant("sent_at").notNull(),
+    // An outgoing message's latest status and when Meta says it happened;
+    // statuses can arrive out of order, so an older one does not replace it.
+    status: text("status", { enum: whatsappMessageStatuses }),
+    statusAt: instant("status_at"),
+    ...timestamps,
+  },
+  (table) => [index("whatsapp_message_conversation_idx").on(table.conversationId, table.sentAt)],
 );

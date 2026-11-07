@@ -1,9 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
-
 import * as z from "zod";
 
 import { organizationObject } from "#/server/caller.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
+import { sameSecret } from "#/server/same-secret.ts";
 
 // How an organization comes to exist: there is no public sign-up. The setup
 // script (`scripts/setup-organization.ts`) posts here with the Worker's
@@ -25,14 +24,6 @@ function slugify(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-/** Whether `given` is `expected`, compared in constant time. */
-async function sameSecret(given: string, expected: string): Promise<boolean> {
-  const digest = (value: string) =>
-    crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  const [a, b] = await Promise.all([digest(given), digest(expected)]);
-  return timingSafeEqual(new Uint8Array(a), new Uint8Array(b));
 }
 
 /**
