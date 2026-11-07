@@ -4,7 +4,7 @@ import * as z from "zod";
 
 import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -33,11 +33,16 @@ function Offices() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Sedes" />
-      <CreateButton can={isAdmin} link={<Link to="/sedes/nueva" />}>
-        Nueva sede
-      </CreateButton>
-      <OfficeTable offices={result.offices} isAdmin={isAdmin} />
+      <PageHeader
+        title="Sedes"
+        description="Los lugares de atención, cada uno con sus consultorios."
+        actions={
+          <CreateButton can={isAdmin} link={<Link to="/sedes/nueva" />}>
+            Nueva sede
+          </CreateButton>
+        }
+      />
+      <OfficeTable offices={result.offices} onlyInactive={result.onlyInactive} isAdmin={isAdmin} />
     </div>
   );
 }
@@ -61,7 +66,8 @@ const columns: DataTableColumn<Office>[] = [
   },
 ];
 
-function OfficeTable({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean }) {
+function OfficeTable(props: { offices: Office[]; onlyInactive: boolean; isAdmin: boolean }) {
+  const { offices, onlyInactive, isAdmin } = props;
   const { inactivas } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { table, pager, query, setQuery } = useClientDataTable({
@@ -88,18 +94,40 @@ function OfficeTable({ offices, isAdmin }: { offices: Office[]; isAdmin: boolean
         onPick: (_id, value) => changeStatus(value),
         onRemove: () => changeStatus(null),
       }}
+      noRecords={offices.length === 0}
       empty={
         offices.length === 0 ? (
-          <EmptyState
-            icon={BuildingIcon}
-            title="No hay sedes para mostrar"
-            description={`Agregá una con Nueva sede${inactivas ? "" : ", o mirá las inactivas"}.`}
-            canAct={isAdmin}
-          />
+          <NoOffices onlyInactive={onlyInactive} isAdmin={isAdmin} />
         ) : (
           <NoMatches icon={BuildingIcon} />
         )
       }
     />
+  );
+}
+
+/** The office list with no records, or none active; only an admin creates one. */
+function NoOffices(props: { onlyInactive: boolean; isAdmin: boolean }) {
+  const { onlyInactive, isAdmin } = props;
+  return (
+    <EmptyState
+      icon={BuildingIcon}
+      title={onlyInactive ? "Sin sedes activas" : "Sin sedes"}
+      description={
+        onlyInactive
+          ? `No hay sedes activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
+          : `Todavía no hay sedes.${isAdmin ? " Empezá creando la primera." : ""}`
+      }
+    >
+      {isAdmin && <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>}
+      {onlyInactive && (
+        <EmptyStateLink
+          variant={isAdmin ? "outline" : "default"}
+          link={<Link to="/sedes" search={{ inactivas: true }} />}
+        >
+          Ver inactivas
+        </EmptyStateLink>
+      )}
+    </EmptyState>
   );
 }

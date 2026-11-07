@@ -70,24 +70,32 @@ export interface ListOptions {
   includeInactive: boolean;
 }
 
+/**
+ * The offices, and `onlyInactive`: the default list shows none, yet some
+ * exist, all inactive.
+ */
 export function listOffices(
   database: Database,
   options: ListOptions,
-): { ok: true; offices: Office[] } {
+): { ok: true; offices: Office[]; onlyInactive: boolean } {
   const offices = database
     .select(officeColumns)
     .from(office)
     .where(options.includeInactive ? undefined : eq(office.active, true))
     .orderBy(asc(office.name))
     .all();
-  return { ok: true, offices };
+  const onlyInactive =
+    !options.includeInactive &&
+    offices.length === 0 &&
+    database.select({ id: office.id }).from(office).limit(1).get() !== undefined;
+  return { ok: true, offices, onlyInactive };
 }
 
-/** An office and its rooms. */
+/** An office and its rooms, with `onlyInactive` as `listOffices` says, for its rooms. */
 export function getOffice(
   database: Database,
   input: { officeId: string } & ListOptions,
-): Result<{ office: Office; rooms: Room[] }> {
+): Result<{ office: Office; rooms: Room[]; onlyInactive: boolean }> {
   const found = database
     .select(officeColumns)
     .from(office)
@@ -104,7 +112,16 @@ export function getOffice(
     )
     .orderBy(asc(room.name))
     .all();
-  return { ok: true, office: found, rooms };
+  const onlyInactive =
+    !input.includeInactive &&
+    rooms.length === 0 &&
+    database
+      .select({ id: room.id })
+      .from(room)
+      .where(eq(room.officeId, found.id))
+      .limit(1)
+      .get() !== undefined;
+  return { ok: true, office: found, rooms, onlyInactive };
 }
 
 export function createOffice(

@@ -54,6 +54,7 @@ function NewCoverage() {
       initial={{ insurerId: "", plan: null, memberNumber: "" }}
       insurers={insurers.insurers}
       submitLabel="Agregar"
+      creates
       onSubmit={(fields) => addPatientCoverage({ data: { ...fields, patientId } })}
     />
   );

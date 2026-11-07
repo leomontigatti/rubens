@@ -1,15 +1,15 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { Link, createFileRoute, notFound } from "@tanstack/react-router";
 import { BuildingIcon, CalendarXIcon, UserRoundIcon, UsersIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { activeRecord } from "#/components/admin-form.tsx";
-import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import { CreateButton, FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { MorePatientMatches } from "#/components/patient-search-more.tsx";
@@ -124,6 +124,7 @@ function PatternFormPage(props: { title: string; record?: RecordHeader }) {
       form={form}
       title={props.title}
       submitLabel={props.record ? "Guardar" : "Crear"}
+      creates={!props.record}
       record={props.record}
       pending={false}
       onClear={() => undefined}
@@ -243,10 +244,37 @@ function Patterns() {
       </Pattern>
       <Pattern title="Sin datos">
         <EmptyState
+          icon={BuildingIcon}
+          title="Sin sedes"
+          description="Todavía no hay sedes. Empezá creando la primera."
+        >
+          <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>
+        </EmptyState>
+      </Pattern>
+      <Pattern title="Sin datos activos">
+        <EmptyState
+          icon={BuildingIcon}
+          title="Sin sedes activas"
+          description="No hay sedes activas. Empezá creando una, o mirá las inactivas."
+        >
+          <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>
+          <EmptyStateLink
+            variant="outline"
+            link={<Link to="/sedes" search={{ inactivas: true }} />}
+          >
+            Ver inactivas
+          </EmptyStateLink>
+        </EmptyState>
+      </Pattern>
+      <Pattern title="Sin datos, sin permiso para agregar">
+        <EmptyState
           icon={CalendarXIcon}
-          title="Todavía no hay cierres"
-          description="Agregá el primero con Nuevo cierre."
+          title="Sin cierres"
+          description="Todavía no hay cierres."
         />
+      </Pattern>
+      <Pattern title="Búsqueda sin resultados">
+        <NoMatches icon={UsersIcon} />
       </Pattern>
       <Pattern title="Aviso de un guardado que falló">
         <Button variant="outline" className="w-fit" onClick={showSaveFailed}>

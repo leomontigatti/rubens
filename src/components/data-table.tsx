@@ -141,10 +141,19 @@ export function DataTable<Row extends RowData>(props: {
   pager?: Pager;
   /** What shows with no rows: `NoMatches`, or the list's own `EmptyState`. */
   empty: ReactNode;
+  /**
+   * The list has no records at all, or only the inactive ones it hides: with
+   * nothing to search, the search and filters give way to `empty`, whose
+   * buttons say what to do.
+   */
+  noRecords?: boolean;
 }) {
   const { table } = props;
+  if (props.noRecords) {
+    return props.empty;
+  }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 has-data-[slot=empty]:flex-1">
       <Toolbar search={props.search} filters={props.filters} />
       {table.getRowModel().rows.length === 0 ? props.empty : <Rows table={table} />}
       <Footer shown={table.getRowModel().rows.length} pager={props.pager} />

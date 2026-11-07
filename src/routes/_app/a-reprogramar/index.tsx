@@ -64,12 +64,15 @@ function ToRescheduleList() {
   }
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Turnos a reprogramar" />
+      <PageHeader
+        title="Turnos a reprogramar"
+        description="Los turnos que quedaron fuera de horario, por una licencia, un cierre o un cambio, para mover o cancelar."
+      />
       {result.appointments.length === 0 ? (
         <EmptyState
           icon={CalendarSyncIcon}
-          title="No hay turnos para reprogramar"
-          description="No hace falta hacer nada. Acá aparecen los turnos que hay que mover o cancelar."
+          title="Sin turnos para reprogramar"
+          description="Todavía no hay turnos para mover o cancelar. No hace falta hacer nada."
         />
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border">

@@ -40,6 +40,7 @@ function NewSchedule() {
       initial={emptyInitial}
       dateLabel="Desde"
       submitLabel="Crear horario"
+      creates
       onSubmit={(fields) => {
         const input = scheduleInputSchema.safeParse({
           practitionerId: practitioner.id,

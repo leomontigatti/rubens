@@ -4,7 +4,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { rangeEntryLabel } from "#/lib/time-ranges.ts";
@@ -29,10 +29,15 @@ function TimeOffList() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Licencias" />
-      <CreateButton can={canCreate} link={<Link to="/licencias/nueva" />}>
-        Nueva licencia
-      </CreateButton>
+      <PageHeader
+        title="Licencias"
+        description="Los días en que un profesional no atiende, por vacaciones o por enfermedad."
+        actions={
+          <CreateButton can={canCreate} link={<Link to="/licencias/nueva" />}>
+            Nueva licencia
+          </CreateButton>
+        }
+      />
       <TimeOffTable timeOff={result.timeOff} canCreate={canCreate} />
     </div>
   );
@@ -54,7 +59,21 @@ const columns: DataTableColumn<TimeOff>[] = [
   { id: "when", header: "Cuándo", cell: (item) => rangeEntryLabel(item.entry) },
 ];
 
+/**
+ * An admin may record time off for every practitioner, so with none to pick
+ * there is no practitioner yet.
+ */
+function noTimeOffYet(canCreate: boolean, isAdmin: boolean) {
+  if (canCreate) {
+    return "Todavía no hay licencias. Empezá creando la primera.";
+  }
+  return isAdmin
+    ? "Todavía no hay licencias. Empezá agregando un profesional en Personal."
+    : "Todavía no hay licencias.";
+}
+
 function TimeOffTable({ timeOff, canCreate }: { timeOff: TimeOff[]; canCreate: boolean }) {
+  const isAdmin = Route.useRouteContext().viewer.roles.includes("admin");
   const { table, pager, query, setQuery } = useClientDataTable({
     rows: timeOff,
     columns,
@@ -72,14 +91,21 @@ function TimeOffTable({ timeOff, canCreate }: { timeOff: TimeOff[]; canCreate: b
         label: "Buscar licencia",
         placeholder: "Buscar por profesional",
       }}
+      noRecords={timeOff.length === 0}
       empty={
         timeOff.length === 0 ? (
           <EmptyState
             icon={TreePalmIcon}
-            title="Todavía no hay licencias"
-            description="Agregá la primera con Nueva licencia."
-            canAct={canCreate}
-          />
+            title="Sin licencias"
+            description={noTimeOffYet(canCreate, isAdmin)}
+          >
+            {canCreate && (
+              <CreateButton link={<Link to="/licencias/nueva" />}>Nueva licencia</CreateButton>
+            )}
+            {!canCreate && isAdmin && (
+              <EmptyStateLink link={<Link to="/personal" />}>Ir a Personal</EmptyStateLink>
+            )}
+          </EmptyState>
         ) : (
           <NoMatches icon={TreePalmIcon} />
         )

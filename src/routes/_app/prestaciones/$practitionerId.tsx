@@ -43,18 +43,21 @@ function PractitionerMedicalServices() {
       <PageHeader
         back={{ to: "/prestaciones", label: "Prestaciones" }}
         title={practitioner.displayName}
-      />
-      <CreateButton
-        can={canEdit}
-        link={
-          <Link
-            to="/prestaciones/$practitionerId/nueva"
-            params={{ practitionerId: practitioner.id }}
-          />
+        description="Los tipos de consulta que ofrece, con su duración y su precio."
+        actions={
+          <CreateButton
+            can={canEdit}
+            link={
+              <Link
+                to="/prestaciones/$practitionerId/nueva"
+                params={{ practitionerId: practitioner.id }}
+              />
+            }
+          >
+            Nueva prestación
+          </CreateButton>
         }
-      >
-        Nueva prestación
-      </CreateButton>
+      />
       <MedicalServiceTable
         practitionerId={practitioner.id}
         medicalServices={medicalServices}
@@ -125,14 +128,22 @@ function MedicalServiceTable(props: {
         label: "Buscar prestación",
         placeholder: "Buscar por nombre",
       }}
+      noRecords={medicalServices.length === 0}
       empty={
         medicalServices.length === 0 ? (
           <EmptyState
             icon={StethoscopeIcon}
-            title="Todavía no tiene prestaciones"
-            description="Agregá la primera con Nueva prestación."
-            canAct={canEdit}
-          />
+            title="Sin prestaciones"
+            description={`Todavía no tiene prestaciones.${canEdit ? " Empezá creando la primera." : ""}`}
+          >
+            {canEdit && (
+              <CreateButton
+                link={<Link to="/prestaciones/$practitionerId/nueva" params={{ practitionerId }} />}
+              >
+                Nueva prestación
+              </CreateButton>
+            )}
+          </EmptyState>
         ) : (
           <NoMatches icon={StethoscopeIcon} />
         )
