@@ -6,7 +6,8 @@ number) and its pg-boss worker. ADR-0006's sections on the model interpreting an
 Rubens deciding, proposals and TanStack AI stay in force. Amends
 [ADR-0007](./0007-patients-words-on-telegram.md): the app's view becomes a full inbox.
 
-Date: 2026-11-06. Decided with the business owner. The rules it serves are in
+Date: 2026-11-06. Decided with the business owner. Amended 2026-11-07: the account is
+on Workers Paid now (ADR-0008), so Workflows run on that plan. The rules it serves are in
 [assistant.md](../domain/assistant.md) and [messages.md](../domain/messages.md); the
 facts behind it, with sources, are in
 [whatsapp-assistant.md](../research/whatsapp-assistant.md).
@@ -47,7 +48,7 @@ Meta's webhook reaches the Worker, which verifies the signature, stores each mes
 object's one alarm, set to the earliest due item, runs everything: reminders, the wait
 until the patient stops writing, the model call and the reply, and the warnings before a
 window closes. A turn that needs step-wise retries runs as a Cloudflare Workflow, on the
-free plan. This replaces the pg-boss worker of ADR-0006.
+free plan (Workers Paid since the 2026-11-07 amendment). This replaces the pg-boss worker of ADR-0006.
 
 ## A full inbox in the app
 
