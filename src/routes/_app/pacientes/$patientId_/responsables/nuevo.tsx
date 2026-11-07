@@ -27,6 +27,7 @@ function NewGuardian() {
       description={patientName(result.patient)}
       initial={{ name: "", relationship: "", phone: "" }}
       submitLabel="Agregar"
+      creates
       schema={guardianInputSchema}
       ids={{ patientId }}
       onSubmit={(fields) => addPatientGuardian({ data: { ...fields, patientId } })}

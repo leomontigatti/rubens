@@ -68,14 +68,19 @@ export interface InsurerListOptions {
 export function listInsurers(
   database: Database,
   options: InsurerListOptions,
-): { ok: true; insurers: Insurer[] } {
+): { ok: true; insurers: Insurer[]; onlyInactive: boolean } {
   const insurers = database
     .select(insurerColumns)
     .from(insurer)
     .where(options.includeInactive ? undefined : eq(insurer.active, true))
     .orderBy(asc(insurer.name))
     .all();
-  return { ok: true, insurers };
+  // The default list shows none, yet some exist, all inactive.
+  const onlyInactive =
+    !options.includeInactive &&
+    insurers.length === 0 &&
+    database.select({ id: insurer.id }).from(insurer).limit(1).get() !== undefined;
+  return { ok: true, insurers, onlyInactive };
 }
 
 export function createInsurer(

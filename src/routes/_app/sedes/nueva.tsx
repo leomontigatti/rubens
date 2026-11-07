@@ -23,6 +23,7 @@ function NewOffice() {
       title="Nueva sede"
       initial={newOffice}
       submitLabel="Crear sede"
+      creates
       onSubmit={(input) => addOffice({ data: input })}
     />
   );

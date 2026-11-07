@@ -234,6 +234,8 @@ export interface PatientPage {
   patients: ListedPatient[];
   total: number;
   page: number;
+  /** The default list shows none, yet some patients exist, all inactive. */
+  onlyInactive: boolean;
 }
 
 /** Patients with their primary insurer: at most one coverage is primary, so a patient is one row. */
@@ -262,7 +264,11 @@ export function listPatients(database: Database, options: PatientListOptions): R
     .limit(patientPageSize)
     .offset((page - 1) * patientPageSize)
     .all();
-  return { ok: true, patients: rows.map(toPatient), total, page };
+  const onlyInactive =
+    !parsed.data.includeInactive &&
+    total === 0 &&
+    database.select({ id: patient.id }).from(patient).limit(1).get() !== undefined;
+  return { ok: true, patients: rows.map(toPatient), total, page, onlyInactive };
 }
 
 export function getPatient(

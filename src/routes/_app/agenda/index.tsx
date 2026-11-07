@@ -3,7 +3,7 @@ import { ClientOnly, Link, createFileRoute, useNavigate } from "@tanstack/react-
 import { useState } from "react";
 import * as z from "zod";
 
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -86,20 +86,28 @@ const refusalMessages = {
 
 function Agenda() {
   const result = Route.useLoaderData();
-  const { viewer } = Route.useRouteContext();
+  const isAdmin = Route.useRouteContext().viewer.roles.includes("admin");
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
   }
   if (!result.week) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Agenda" />
+        <PageHeader
+          title="Agenda"
+          description="Los turnos de la semana, consultorio por consultorio."
+        />
         <EmptyState
           icon={CalendarDaysIcon}
-          title="No hay consultorios activos"
-          description="Agregalos en Sedes."
-          canAct={viewer.roles.includes("admin")}
-        />
+          title="Sin consultorios activos"
+          description={
+            isAdmin
+              ? "Todavía no hay consultorios activos. Empezá agregando uno en Sedes."
+              : "Todavía no hay consultorios activos."
+          }
+        >
+          {isAdmin && <EmptyStateLink link={<Link to="/sedes" />}>Ir a Sedes</EmptyStateLink>}
+        </EmptyState>
       </div>
     );
   }
@@ -121,6 +129,7 @@ function Calendar(props: {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Agenda"
+        description="Los turnos de la semana, consultorio por consultorio."
         actions={
           <>
             <Button

@@ -53,6 +53,7 @@ function StaffForm() {
       form={form}
       title="Nueva persona"
       submitLabel="Crear cuenta"
+      creates
       action={action}
     >
       <form.AppField name="name">

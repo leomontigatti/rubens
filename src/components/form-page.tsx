@@ -8,7 +8,7 @@ import {
 import type { NavigateOptions } from "@tanstack/react-router";
 import { useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
-import { CheckIcon, ChevronLeftIcon, Undo2Icon } from "lucide-react";
+import { CheckIcon, ChevronLeftIcon, PlusIcon, Undo2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 
@@ -155,17 +155,19 @@ export interface RecordHeader {
   error: string | null;
 }
 
-/** The button that opens a create's page, for whoever may create. `link` is its `Link`. */
-export function CreateButton(props: { can: boolean; link: ReactElement; children: ReactNode }) {
-  if (!props.can) {
+/**
+ * The button that opens a create's page, for whoever may create: in the page
+ * header's `actions`, and again in the list's `EmptyState`. `link` is its `Link`.
+ */
+export function CreateButton(props: { can?: boolean; link: ReactElement; children: ReactNode }) {
+  if (props.can === false) {
     return null;
   }
   return (
-    <div>
-      <Button nativeButton={false} render={props.link}>
-        {props.children}
-      </Button>
-    </div>
+    <Button nativeButton={false} render={props.link}>
+      <PlusIcon data-icon="inline-start" aria-hidden />
+      {props.children}
+    </Button>
   );
 }
 
@@ -178,8 +180,9 @@ type PageForm = Pick<AnyFormApi, "store" | "handleSubmit" | "reset">;
 
 /**
  * A create or an edit on a page of its own: the fields take the page's width,
- * and the actions close the form, sticking to the bottom of the window on a long one. `Descartar cambios` shows
- * once something differs from what the form opened with. While `pending`, the
+ * and the actions close the form, sticking to the bottom of the window on a long one. On an edit,
+ * `Descartar cambios` shows once something differs from what the form opened with; a create has none,
+ * since `Volver` already drops what it holds, and leaving still asks first. While `pending`, the
  * spinner is on the submit button, and the fields and other buttons wait: what
  * is typed then would be lost when the save goes back.
  */
@@ -189,6 +192,8 @@ export function FormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
+  /** The form makes a new record, so it has no saved values to go back to. */
+  creates?: boolean;
   pending: boolean;
   /** What the server refused: under the field it names, or above the form. */
   refusals?: FieldProblem[];
@@ -239,7 +244,12 @@ export function FormPage(props: {
           {props.lead && <FieldSet disabled={pending}>{props.lead}</FieldSet>}
           <form method="post" noValidate className="flex flex-col gap-4" onSubmit={submit}>
             <FieldSet disabled={pending}>{props.children}</FieldSet>
-            <FormPageActions page={page} pending={pending} submitLabel={props.submitLabel} />
+            <FormPageActions
+              page={page}
+              pending={pending}
+              submitLabel={props.submitLabel}
+              discardable={!props.creates}
+            />
           </form>
         </div>
       </FormProblemsContext.Provider>
@@ -314,7 +324,12 @@ function RefusalAlert({
 }
 
 /** `Volver` on the left; `Descartar cambios`, once it applies, and the submit button on the right. */
-function FormPageActions(props: { page: FormPageControl; pending: boolean; submitLabel: string }) {
+function FormPageActions(props: {
+  page: FormPageControl;
+  pending: boolean;
+  submitLabel: string;
+  discardable: boolean;
+}) {
   const { page, pending } = props;
   return (
     <div className="bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4">
@@ -323,7 +338,7 @@ function FormPageActions(props: { page: FormPageControl; pending: boolean; submi
         Volver
       </Button>
       <div className="flex items-center gap-3">
-        {page.dirty && (
+        {props.discardable && page.dirty && (
           <Button type="button" variant="outline" disabled={pending} onClick={page.askToDiscard}>
             <Undo2Icon data-icon="inline-start" aria-hidden />
             Descartar cambios
@@ -349,6 +364,7 @@ export function ActionFormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
+  creates?: boolean;
   record?: RecordHeader;
   action: {
     pending: boolean;

@@ -5,7 +5,7 @@ import * as z from "zod";
 import { ActiveToggle, ErrorAlert } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -45,14 +45,25 @@ function OfficeRooms() {
   return (
     <div className="flex flex-col gap-6">
       <OfficeHeading office={result.office} isAdmin={isAdmin} />
-      <h2 className="text-lg font-semibold">Consultorios</h2>
-      <CreateButton
-        can={isAdmin && result.office.active}
-        link={<Link to="/sedes/$officeId/consultorios/nuevo" params={{ officeId }} />}
-      >
-        Nuevo consultorio
-      </CreateButton>
-      <RoomTable rooms={result.rooms} isAdmin={isAdmin} canAdd={isAdmin && result.office.active} />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">Consultorios</h2>
+          <p className="text-muted-foreground text-sm">Las salas de esta sede donde se atiende.</p>
+        </div>
+        <CreateButton
+          can={isAdmin && result.office.active}
+          link={<Link to="/sedes/$officeId/consultorios/nuevo" params={{ officeId }} />}
+        >
+          Nuevo consultorio
+        </CreateButton>
+      </div>
+      <RoomTable
+        officeId={officeId}
+        rooms={result.rooms}
+        onlyInactive={result.onlyInactive}
+        isAdmin={isAdmin}
+        canAdd={isAdmin && result.office.active}
+      />
     </div>
   );
 }
@@ -129,7 +140,13 @@ const columns: DataTableColumn<ListedRoom>[] = [
   },
 ];
 
-function RoomTable(props: { rooms: Room[]; isAdmin: boolean; canAdd: boolean }) {
+function RoomTable(props: {
+  officeId: string;
+  rooms: Room[];
+  onlyInactive: boolean;
+  isAdmin: boolean;
+  canAdd: boolean;
+}) {
   const { rooms, isAdmin } = props;
   const { inactivos } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -157,14 +174,45 @@ function RoomTable(props: { rooms: Room[]; isAdmin: boolean; canAdd: boolean }) 
         onPick: (_id, value) => changeStatus(value),
         onRemove: () => changeStatus(null),
       }}
+      noRecords={rooms.length === 0}
       empty={
         rooms.length === 0 ? (
           <EmptyState
             icon={BuildingIcon}
-            title="No hay consultorios para mostrar"
-            description={`Agregá uno con Nuevo consultorio${inactivos ? "" : ", o mirá los inactivos"}.`}
-            canAct={props.canAdd}
-          />
+            title={props.onlyInactive ? "Sin consultorios activos" : "Sin consultorios"}
+            description={
+              props.onlyInactive
+                ? `No hay consultorios activos. ${props.canAdd ? "Empezá creando uno, o mirá" : "Mirá"} los inactivos.`
+                : `Todavía no hay consultorios.${props.canAdd ? " Empezá creando el primero." : ""}`
+            }
+          >
+            {props.canAdd && (
+              <CreateButton
+                link={
+                  <Link
+                    to="/sedes/$officeId/consultorios/nuevo"
+                    params={{ officeId: props.officeId }}
+                  />
+                }
+              >
+                Nuevo consultorio
+              </CreateButton>
+            )}
+            {props.onlyInactive && (
+              <EmptyStateLink
+                variant="outline"
+                link={
+                  <Link
+                    to="/sedes/$officeId"
+                    params={{ officeId: props.officeId }}
+                    search={{ inactivos: true }}
+                  />
+                }
+              >
+                Ver inactivos
+              </EmptyStateLink>
+            )}
+          </EmptyState>
         ) : (
           <NoMatches icon={BuildingIcon} />
         )

@@ -295,6 +295,7 @@ export function BookingPage(props: BookingPageProps) {
       title={props.overbooking ? "Sobreturno" : "Nuevo turno"}
       description={ask ? undefined : props.practitioners[0]!.displayName}
       submitLabel="Dar turno"
+      creates
       pending={pending}
       refusals={refusals}
       onClear={clearAnswer}

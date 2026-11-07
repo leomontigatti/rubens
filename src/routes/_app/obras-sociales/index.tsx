@@ -5,7 +5,7 @@ import * as z from "zod";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
-import { EmptyState } from "#/components/empty-state.tsx";
+import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -35,11 +35,20 @@ function Insurers() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Obras sociales y prepagas" />
-      <CreateButton can={isAdmin} link={<Link to="/obras-sociales/nueva" />}>
-        Nueva obra social o prepaga
-      </CreateButton>
-      <InsurerTable insurers={result.insurers} isAdmin={isAdmin} />
+      <PageHeader
+        title="Obras sociales y prepagas"
+        description="Las coberturas que se pueden cargar en cada paciente."
+        actions={
+          <CreateButton can={isAdmin} link={<Link to="/obras-sociales/nueva" />}>
+            Nueva obra social o prepaga
+          </CreateButton>
+        }
+      />
+      <InsurerTable
+        insurers={result.insurers}
+        onlyInactive={result.onlyInactive}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
@@ -68,7 +77,8 @@ const columns: DataTableColumn<ListedInsurer>[] = [
   },
 ];
 
-function InsurerTable({ insurers, isAdmin }: { insurers: Insurer[]; isAdmin: boolean }) {
+function InsurerTable(props: { insurers: Insurer[]; onlyInactive: boolean; isAdmin: boolean }) {
+  const { insurers, onlyInactive, isAdmin } = props;
   const { inactivas } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { table, pager, query, setQuery } = useClientDataTable({
@@ -95,14 +105,36 @@ function InsurerTable({ insurers, isAdmin }: { insurers: Insurer[]; isAdmin: boo
         onPick: (_id, value) => changeStatus(value),
         onRemove: () => changeStatus(null),
       }}
+      noRecords={insurers.length === 0}
       empty={
         insurers.length === 0 ? (
           <EmptyState
             icon={ShieldIcon}
-            title="No hay obras sociales ni prepagas para mostrar"
-            description={`Agregá una con Nueva obra social o prepaga${inactivas ? "" : ", o mirá las inactivas"}.`}
-            canAct={isAdmin}
-          />
+            title={
+              onlyInactive
+                ? "Sin obras sociales ni prepagas activas"
+                : "Sin obras sociales ni prepagas"
+            }
+            description={
+              onlyInactive
+                ? `No hay obras sociales ni prepagas activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
+                : `Todavía no hay obras sociales ni prepagas.${isAdmin ? " Empezá creando la primera." : ""}`
+            }
+          >
+            {isAdmin && (
+              <CreateButton link={<Link to="/obras-sociales/nueva" />}>
+                Nueva obra social o prepaga
+              </CreateButton>
+            )}
+            {onlyInactive && (
+              <EmptyStateLink
+                variant="outline"
+                link={<Link to="/obras-sociales" search={{ inactivas: true }} />}
+              >
+                Ver inactivas
+              </EmptyStateLink>
+            )}
+          </EmptyState>
         ) : (
           <NoMatches icon={ShieldIcon} />
         )
