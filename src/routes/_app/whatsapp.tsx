@@ -17,7 +17,7 @@ import type { TemplateSend } from "#/lib/whatsapp.ts";
 import { getWhatsappSettings, sendWhatsappTemplate } from "#/server/whatsapp.functions.ts";
 
 export const Route = createFileRoute("/_app/whatsapp")({
-  head: () => ({ meta: [{ title: "WhatsApp · Rubens" }] }),
+  head: () => ({ meta: [{ title: "WhatsApp · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: WhatsappSettings,
 });

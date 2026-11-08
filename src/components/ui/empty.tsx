@@ -1,5 +1,5 @@
 // Local edit: `border` added, so the dashed outline base-nova leaves to the caller
-// is always drawn; every empty state in Rubens has it (style guide, Empty states).
+// is always drawn; every empty state in underthing has it (style guide, Empty states).
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 

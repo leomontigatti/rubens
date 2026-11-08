@@ -1,6 +1,6 @@
 # Research sources
 
-What the shared `research` agent prefers for Rubens' stack.
+What the shared `research` agent prefers for underthing's stack.
 
 - **Pinned versions**: `package.json` for the ranges, `pnpm-lock.yaml` for what is installed.
   Read the version before the docs, since TanStack Start, Clerk, Wrangler and Drizzle move fast.

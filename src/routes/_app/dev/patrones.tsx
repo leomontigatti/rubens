@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_app/dev/patrones")({
       throw notFound();
     }
   },
-  head: () => ({ meta: [{ title: "Patrones · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Patrones · underthing" }] }),
   component: Patterns,
 });
 

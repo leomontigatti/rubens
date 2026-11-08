@@ -10,7 +10,7 @@ import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
 export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/nueva")({
   loader: ({ params }) =>
     getMedicalServices({ data: { practitionerId: params.practitionerId, includeInactive: false } }),
-  head: () => ({ meta: [{ title: "Nueva prestación · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Nueva prestación · underthing" }] }),
   component: NewMedicalService,
 });
 

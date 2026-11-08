@@ -9,7 +9,7 @@ organization's number on Meta's Cloud API
 
 Every message the organization starts is a template Meta approved for the
 organization, in its own voice: the set is in
-[whatsapp-templates.md](../operations/whatsapp-templates.md). Rubens fills in its
+[whatsapp-templates.md](../operations/whatsapp-templates.md). underthing fills in its
 facts (the date, the time, the practitioner, the office). Templates carry no
 buttons: the patient answers in their own words, and the assistant reads the
 answer ([assistant.md](./assistant.md)). The patient's answer opens the

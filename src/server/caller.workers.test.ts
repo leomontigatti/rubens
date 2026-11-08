@@ -25,7 +25,7 @@ function verifierFor(token: string, session: { userId: string; organizationClaim
 
 const noSession: VerifySession = () => Promise.resolve(null);
 
-function request(headers: Record<string, string> = {}, url = "https://rubens.test/agenda") {
+function request(headers: Record<string, string> = {}, url = "https://underthing.test/agenda") {
   return new Request(url, { headers });
 }
 
@@ -52,7 +52,7 @@ describe("the request-to-caller step, with Clerk", () => {
     const resolved = await resolveCaller(
       request(
         { authorization: "Bearer good-token", "x-organization": "org-b", cookie: "org=org-b" },
-        "https://rubens.test/agenda?organizationId=org-b",
+        "https://underthing.test/agenda?organizationId=org-b",
       ),
       bindings,
       "clerk",
@@ -144,7 +144,7 @@ describe("the sign-in mode", () => {
 describe("a page load whose session token Clerk must refresh", () => {
   const handshake = new Headers({
     location:
-      "https://clerk.rubens.test/v1/client/handshake?redirect_url=https%3A%2F%2Frubens.test%2Fagenda",
+      "https://clerk.underthing.test/v1/client/handshake?redirect_url=https%3A%2F%2Funderthing.test%2Fagenda",
     "set-cookie": "__clerk_handshake_nonce=n; Path=/",
   });
   const asksForHandshake = () => Promise.resolve({ headers: handshake });

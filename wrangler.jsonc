@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "rubens",
+  "name": "underthing",
   "compatibility_date": "2026-10-20",
   "compatibility_flags": ["nodejs_compat"],
   // A custom entry, so the Durable Object class is exported beside Start's handler.

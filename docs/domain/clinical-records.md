@@ -70,7 +70,7 @@ the content until they expire.
 
 The practice prints its own consent form and the patient, or a guardian, signs it
 on paper. The scan is attached to a note that says what it covers and who signed;
-Rubens keeps no structured consent fields and prints no forms. The paper original is
+underthing keeps no structured consent fields and prints no forms. The paper original is
 kept by the practice as the evidence of the signature; how long is a question for
 counsel.
 

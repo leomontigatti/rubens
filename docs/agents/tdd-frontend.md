@@ -1,6 +1,6 @@
 # TDD for frontend state
 
-Rubens' facts for the shared `tdd` skill, when a change touches a reducer, a state machine,
+underthing's facts for the shared `tdd` skill, when a change touches a reducer, a state machine,
 derived state or a multi-step UI flow.
 
 - **The seam is a pure module**: the state logic (transitions, derived values, helpers) in its

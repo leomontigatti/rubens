@@ -9,9 +9,9 @@ why the model works through proposals: [ADR-0006](../adr/0006-patient-assistant-
 
 ## The number
 
-Each organization gets a new WhatsApp number, used only through Rubens, on Meta's
+Each organization gets a new WhatsApp number, used only through underthing, on Meta's
 official Cloud API. There is no phone and no WhatsApp app on it: every reply a
-person writes goes through Rubens, from the inbox or from Telegram.
+person writes goes through underthing, from the inbox or from Telegram.
 
 An admin connects it from the WhatsApp settings, through Meta's signup. The
 organization owns its WhatsApp Business account and the number, adds its own
@@ -126,7 +126,7 @@ No organization can edit or override these:
 The patient's message opens the customer service window, for 24 hours, and each
 later message from the patient restarts it. A template the organization sends does
 not open it. Inside the window the assistant and staff write freely; outside it,
-Rubens can send only an approved template ([messages.md](./messages.md#to-patients)).
+underthing can send only an approved template ([messages.md](./messages.md#to-patients)).
 
 When the model is unavailable, an incoming message is kept and retried while the
 window is open. If it still cannot be read, it is handed to a person well before
@@ -257,6 +257,6 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 
 Each organization pays for what its assistant uses. Meta bills the organization
 directly for its WhatsApp messages: each template, and each message inside a window
-past the number's free ones of the month. Rubens records the rest per organization:
+past the number's free ones of the month. underthing records the rest per organization:
 voice transcription and the model's replies, sandbox use included. Rates and an
 example month: [whatsapp-assistant.md](../research/whatsapp-assistant.md#cost-example).

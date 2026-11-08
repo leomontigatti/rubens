@@ -15,12 +15,12 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 
 ## Scope
 
-Rubens serves one business today, a dental practice with several offices. The
+underthing serves one business today, a dental practice with several offices. The
 organization, its offices and its first admin are created by a script; there is
 no public sign-up. The data model stays multi-organization.
 
 Staff book in the app. Patients book, cancel and reschedule by WhatsApp, through
-the assistant. Prices are information for patients; Rubens bills nothing.
+the assistant. Prices are information for patients; underthing bills nothing.
 
 Not in the first version, in rough order of arrival:
 

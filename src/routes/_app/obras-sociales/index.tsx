@@ -17,7 +17,7 @@ import type { Insurer } from "#/organization/insurers.ts";
 import { refusalMessages } from "#/routes/_app/obras-sociales/-insurer-form.tsx";
 
 export const Route = createFileRoute("/_app/obras-sociales/")({
-  head: () => ({ meta: [{ title: "Obras sociales y prepagas · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Obras sociales y prepagas · underthing" }] }),
   validateSearch: z.object({ inactivas: z.boolean().optional().catch(undefined) }),
   loaderDeps: ({ search }) => ({ includeInactive: search.inactivas ?? false }),
   loader: ({ deps }) => getInsurers({ data: deps }),

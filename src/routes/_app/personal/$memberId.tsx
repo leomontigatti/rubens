@@ -16,7 +16,11 @@ import { ColorSwatch, RefusalAlert, useAction } from "#/routes/_app/personal/-sh
 export const Route = createFileRoute("/_app/personal/$memberId")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
   head: ({ loaderData }) => ({
-    meta: [{ title: loaderData?.ok ? `${loaderData.member.name} · Rubens` : "Personal · Rubens" }],
+    meta: [
+      {
+        title: loaderData?.ok ? `${loaderData.member.name} · underthing` : "Personal · underthing",
+      },
+    ],
   }),
   component: StaffMemberScreen,
 });

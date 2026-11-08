@@ -7,7 +7,7 @@ import { OfficeForm } from "#/routes/_app/sedes/-office-form.tsx";
 import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/nueva")({
-  head: () => ({ meta: [{ title: "Nueva sede · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Nueva sede · underthing" }] }),
   component: NewOffice,
 });
 

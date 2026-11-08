@@ -1,7 +1,7 @@
 # Review
 
-What the shared `implement` skill's step 5 and the `code-review` skill need to know about Rubens.
-Rubens holds health data (Ley 25.326, Ley 26.529), so the areas below are where a wrong change
+What the shared `implement` skill's step 5 and the `code-review` skill need to know about underthing.
+underthing holds health data (Ley 25.326, Ley 26.529), so the areas below are where a wrong change
 hurts a patient or another organization's data.
 
 ## Full review
@@ -63,7 +63,7 @@ still change their password); a clinical note edited without keeping its earlier
 numbers, appointment times, clinical text) that reaches a log, an error message, an alert or a
 Worker log line.
 
-**Who acts concurrently**, for weighing a race (the `implement` skill, step 2). Rubens is not
+**Who acts concurrently**, for weighing a race (the `implement` skill, step 2). underthing is not
 deployed, so these actors are expected, not measured. Inside one `organization`: `receptionist`s at
 a front desk booking, rescheduling and cancelling into the same rooms and hours; `practitioner`s and
 `admin`s editing the `schedule`s, `timeOff` and `closure`s those `appointment`s sit in; and, once
@@ -90,7 +90,7 @@ measure appointments created per minute per `office`.
 
 ## One-way doors
 
-Always one-way on Rubens, beside the shared list:
+Always one-way on underthing, beside the shared list:
 
 - A reminder or message sent to a patient.
 - Any change to how clinical notes are written, read or retained.

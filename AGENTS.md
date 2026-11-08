@@ -1,4 +1,4 @@
-# Rubens: guide for coding agents
+# underthing: guide for coding agents
 
 Routes to the repo's conventions; each rule lives in the file a route names. The
 first section applies to every task; a line in the second applies when its leading

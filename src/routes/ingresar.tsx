@@ -26,7 +26,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/ingresar")({
-  head: () => ({ meta: [{ title: "Ingresar · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Ingresar · underthing" }] }),
   validateSearch: searchSchema,
   // The page renders only once the server answered that no member is signed
   // in: Clerk's sign-in then tells someone signed in to Clerk they have no
@@ -52,7 +52,7 @@ function SignIn() {
       {signIn.mode === "dev" ? (
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardTitle>Ingresar a Rubens</CardTitle>
+            <CardTitle>Ingresar a underthing</CardTitle>
           </CardHeader>
           <CardContent>
             <DevSignIn members={signIn.members} returnTo={returnTo} />

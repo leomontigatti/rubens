@@ -19,7 +19,7 @@ import type { Patient } from "#/organization/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/editar")({
   loader: ({ params }) => getPatientDetails({ data: { patientId: params.patientId } }),
-  head: () => ({ meta: [{ title: "Editar paciente · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar paciente · underthing" }] }),
   component: EditPatient,
 });
 

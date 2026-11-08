@@ -13,7 +13,7 @@ import type { StaffMember } from "#/organization/staff.ts";
 import { RefusalAlert } from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/")({
-  head: () => ({ meta: [{ title: "Personal · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Personal · underthing" }] }),
   loader: () => getStaff(),
   component: Staff,
 });

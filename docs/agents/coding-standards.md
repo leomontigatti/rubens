@@ -1,7 +1,7 @@
 # Coding standards
 
 These bind every session and every reviewer, human or agent. The principles
-come first; the Rubens rules (tenancy, clinical records, patient data) are at
+come first; the underthing rules (tenancy, clinical records, patient data) are at
 the end and do not bend.
 
 ## Testing
@@ -111,7 +111,7 @@ either tests the condition it expects and rethrows the rest, or logs a tagged li
 before converting, with ids and never patient data. A bare `catch {}` needs the
 expected condition in the code or a one-line reason.
 
-## Rubens rules
+## underthing rules
 
 These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organization.md),
 [ADR-0009](../adr/0009-staff-sign-in-through-clerk.md) and

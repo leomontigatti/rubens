@@ -6,7 +6,7 @@
 # scanning with push protection, which owns provider tokens. What is here is what this
 # repo can leak that push protection does not cover.
 
-title = "Rubens"
+title = "underthing"
 
 # The upstream ruleset is the baseline; the rules below only add to it.
 [extend]

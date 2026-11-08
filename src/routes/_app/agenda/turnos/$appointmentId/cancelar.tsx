@@ -24,7 +24,7 @@ import { statusRefusalMessages } from "#/routes/_app/agenda/-appointment-status.
 // Cancelling an appointment: who cancels, and why if the user says.
 
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/cancelar")({
-  head: () => ({ meta: [{ title: "Cancelar turno · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Cancelar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
   component: CancelAppointment,
 });

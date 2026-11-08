@@ -11,7 +11,7 @@ import { useAction } from "#/routes/_app/horarios/-shared.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/$scheduleId/terminar")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
-  head: () => ({ meta: [{ title: "Terminar horario · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Terminar horario · underthing" }] }),
   component: EndSchedule,
 });
 

@@ -13,7 +13,7 @@ import {
 } from "#/routes/_app/cierres/-closure-fields.tsx";
 
 export const Route = createFileRoute("/_app/cierres/$closureId")({
-  head: () => ({ meta: [{ title: "Editar cierre · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar cierre · underthing" }] }),
   loader: () => getClosures(),
   component: EditClosure,
 });

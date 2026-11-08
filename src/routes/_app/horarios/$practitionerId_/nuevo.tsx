@@ -9,7 +9,7 @@ import { RefusalAlert } from "#/routes/_app/horarios/-shared.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/nuevo")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
-  head: () => ({ meta: [{ title: "Nuevo horario · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Nuevo horario · underthing" }] }),
   component: NewSchedule,
 });
 

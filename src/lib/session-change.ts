@@ -8,7 +8,7 @@
 // still loading misses the event; the signed-in layout catches it by asking the
 // server who is signed in once it mounts (`useSessionGuard` in `src/routes/_app.tsx`).
 
-const storageKey = "rubens-session-changed";
+const storageKey = "underthing-session-changed";
 
 let changing = false;
 

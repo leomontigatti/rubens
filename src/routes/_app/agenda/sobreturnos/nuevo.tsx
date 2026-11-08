@@ -7,7 +7,7 @@ import {
 } from "#/routes/_app/agenda/-booking-route.tsx";
 
 export const Route = createFileRoute("/_app/agenda/sobreturnos/nuevo")({
-  head: () => ({ meta: [{ title: "Sobreturno · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Sobreturno · underthing" }] }),
   validateSearch: bookingSearchSchema,
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => loadBooking(deps),

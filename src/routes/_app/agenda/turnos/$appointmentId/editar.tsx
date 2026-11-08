@@ -26,7 +26,7 @@ import { roomFullMessage } from "#/routes/_app/agenda/-booking.tsx";
 // office at the same time, while it holds its time, and its reception note.
 
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/editar")({
-  head: () => ({ meta: [{ title: "Editar turno · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
   component: EditAppointment,
 });
