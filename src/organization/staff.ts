@@ -2,7 +2,11 @@ import { and, asc, eq, ne } from "drizzle-orm";
 
 import type { Role } from "#/lib/access.ts";
 import { changedFields } from "#/lib/audit-fields.ts";
-import { passwordChangeSchema } from "#/lib/password-change.ts";
+import {
+  fitsMaxPasswordBytes,
+  minPasswordLength,
+  passwordChangeSchema,
+} from "#/lib/password-change.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import {
   memberActiveChangeSchema,
@@ -63,14 +67,11 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const lastAdmin = { ok: false, reason: "lastAdmin" } as const;
 
-const minPasswordLength = 8;
-const maxPasswordLength = 128;
-
 function passwordLengthRefusal(password: string): PasswordRefusal | undefined {
   if (password.length < minPasswordLength) {
     return "passwordTooShort";
   }
-  if (password.length > maxPasswordLength) {
+  if (!fitsMaxPasswordBytes(password)) {
     return "passwordTooLong";
   }
   return undefined;

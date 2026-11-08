@@ -5,7 +5,7 @@ have no value and must not be guessed at.
 
 ## Shape
 
-One Cloudflare Worker, `rubens` (`wrangler.jsonc`), on the free plan
+One Cloudflare Worker, `rubens` (`wrangler.jsonc`), on Workers Paid, US$5/month
 ([ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organization.md)). It serves
 the app and holds one SQLite-backed Durable Object per organization (`ORGANIZATION`,
 class `Organization`), which keeps all of that organization's data and applies its own
@@ -45,6 +45,14 @@ One Clerk application per environment, created in Clerk's dashboard:
 
   Without `org` every signed-in user is refused. Rubens writes both fields of the public
   metadata when it creates a member.
+
+- **Passwords** (the password settings in Clerk's dashboard):
+  - minimum length 8 (Clerk recommends 15; Clerk's maximum is 72 bytes, so a letter with an accent takes two and an emoji four);
+  - reject compromised passwords: on;
+  - enforce minimum password strength: off.
+
+  Rubens' own length check (`src/lib/password-change.ts`) uses the same 8 and 72: change
+  them together.
 
 - **Keys**: the publishable key (`pk_…`) and the secret key (`sk_…`), from API keys.
 
@@ -112,12 +120,15 @@ Durable Object namespace are gone, and delete that copy's Clerk application if i
 
 ## CPU
 
-The free plan allows 10 ms of CPU per request (ADR-0008). Watch a deploy's CPU in the
+Workers Paid allows 30 s of CPU per request by default, configurable up to 5 minutes,
+and includes 10 million requests and 30 million CPU ms a month; beyond that, US$0.30 per
+million requests and US$0.02 per million CPU ms (ADR-0008). Watch a deploy's CPU in the
 Worker's metrics on Cloudflare's dashboard (`observability` is on in `wrangler.jsonc`).
+
 Measured deployed on 2026-11-06, a signed-in page takes about 20–30 ms of CPU (the agenda
-week a median 20–21 ms, a plain page 29 ms), and a server-function call about 2 ms: over
-the free plan's limit. How to fit it, or whether to move to Workers Paid, is #143, which
-also says how to measure it again.
+week a median 20–21 ms, a plain page 29 ms, 91 ms at most), and a server-function call
+about 2 ms. That is over the free plan's 10 ms, which is why Rubens is on Paid. #143 has
+the measurements and how to take them again.
 
 ## Backups
 

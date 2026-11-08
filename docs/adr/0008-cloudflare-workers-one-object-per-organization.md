@@ -10,13 +10,18 @@ branch, whose README has the measurements.
 Amended 2026-11-06: where the WhatsApp gateway runs, left open here, is settled by
 [ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md); see Consequences.
 
+Amended 2026-11-07: Rubens moves to Workers Paid, this ADR's named fallback (#143). See
+[Workers Paid](#amended-2026-11-07-workers-paid) below; the sentences it makes false are
+marked.
+
 Rubens moves from one VPS (Node, Postgres, Coolify) to Cloudflare Workers on the free
-plan. An organization's data (offices, rooms, practitioners, schedules, patients,
-appointments, clinical records, the audit log) lives in one Durable Object of its own,
-with SQLite storage. Staff sign in through Clerk ([ADR-0009](./0009-staff-sign-in-through-clerk.md)).
-The point is to run no servers for the app, at no cost while the number of
-organizations is small. Counsel confirmed on 2026-11-05 that the data may be stored in
-the United States.
+plan (Workers Paid since the 2026-11-07 amendment). An organization's data (offices,
+rooms, practitioners, schedules, patients, appointments, clinical records, the audit
+log) lives in one Durable Object of its own, with SQLite storage. Staff sign in through
+Clerk ([ADR-0009](./0009-staff-sign-in-through-clerk.md)). The point is to run no
+servers for the app, at no cost while the number of organizations is small (US$5/month
+since the 2026-11-07 amendment). Counsel confirmed on 2026-11-05 that the data may be
+stored in the United States.
 
 ## The organization's object is the tenant boundary
 
@@ -68,13 +73,13 @@ app after the access check.
   today's shape, but the tenant boundary back in every query, and no South American
   location either.
 - **Workers Paid (US$5/month)** to lift the 10 ms CPU limit: kept as the fallback if the
-  agenda cannot be brought under it.
+  agenda cannot be brought under it. Chosen on 2026-11-07 (amendment below).
 
 ## Consequences
 
-- **The free plan's 10 ms CPU per request is a design constraint.** The agenda week page
-  took a median 26 ms deployed in the prototype; bringing it under is part of the port,
-  before a real organization uses it.
+- ~~**The free plan's 10 ms CPU per request is a design constraint.**~~ Amended
+  2026-11-07: no longer a constraint; on Workers Paid a request may use 30 s of CPU by
+  default. The agenda week page took a median 26 ms deployed in the prototype.
 - **Data lives in the US East**: objects hinted to South America are created there
   today. A page from Argentina took about 470 ms.
 - The 17 Postgres migrations, the schema module and the DB test suite are rewritten for
@@ -85,3 +90,28 @@ app after the access check.
   ([ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md)).
 - Dev needs no keys and no account: Miniflare runs the Worker and the objects locally,
   and with no Clerk key the app uses a dev sign-in.
+
+## Amended 2026-11-07: Workers Paid
+
+Rubens runs on Workers Paid (US$5/month), decided by the product owner in #143.
+Signed-in pages keep rendering on the server, with no code change.
+
+Why: deployed on 2026-11-06, a signed-in page took about 20–30 ms of CPU (median; 91 ms
+at most) and a server-function call about 2 ms. The cost is rendering the page on the
+server, not the agenda's data, so no change to the agenda could bring it under 10 ms.
+The measurements are in #143.
+
+Paid, per Cloudflare's pricing and limits pages: US$5/month at least; 10 million
+requests and 30 million CPU ms a month included, then US$0.30 per extra million
+requests and US$0.02 per extra million CPU ms; 30 s of CPU per request by default,
+configurable up to 5 minutes.
+
+Rejected: **render signed-in pages in the browser** (TanStack Start's selective SSR,
+`ssr: false` on the `_app` layout), to stay on the free plan.
+
+- Nobody measured whether it brings a request under 10 ms: the document shell and
+  Clerk's provider still render on the server.
+- Every full page load gets slower: a loading frame, and one or two more round trips
+  to US East.
+- Every later feature, such as the app-level encryption of notes and files and the
+  WhatsApp assistant in the object's alarms, would be designed against 10 ms.
