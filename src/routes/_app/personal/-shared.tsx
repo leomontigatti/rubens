@@ -16,8 +16,10 @@ const refusalMessages = {
   notFound: "No encontramos a esa persona.",
   lastAdmin: "Tiene que quedar al menos un administrador activo.",
   emailTaken: "Ya hay una cuenta con ese correo.",
-  passwordTooShort: "La contraseña inicial debe tener entre 8 y 72 caracteres.",
-  passwordTooLong: "La contraseña inicial debe tener entre 8 y 72 caracteres.",
+  passwordTooShort:
+    "La contraseña inicial debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+  passwordTooLong:
+    "La contraseña inicial debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
   passwordRejected: "Esa contraseña es demasiado común o débil. Elegí otra.",
 };
 

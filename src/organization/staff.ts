@@ -3,7 +3,7 @@ import { and, asc, eq, ne } from "drizzle-orm";
 import type { Role } from "#/lib/access.ts";
 import { changedFields } from "#/lib/audit-fields.ts";
 import {
-  maxPasswordLength,
+  fitsMaxPasswordBytes,
   minPasswordLength,
   passwordChangeSchema,
 } from "#/lib/password-change.ts";
@@ -71,7 +71,7 @@ function passwordLengthRefusal(password: string): PasswordRefusal | undefined {
   if (password.length < minPasswordLength) {
     return "passwordTooShort";
   }
-  if (password.length > maxPasswordLength) {
+  if (!fitsMaxPasswordBytes(password)) {
     return "passwordTooLong";
   }
   return undefined;

@@ -561,7 +561,7 @@ describe("passwords", () => {
     ).toEqual({ ok: false, reason: "passwordTooShort" });
   });
 
-  it("refuses a starting password longer than Clerk's 72 characters", async () => {
+  it("refuses a starting password longer than Clerk's 72 bytes", async () => {
     const created = await newMember(["receptionist"]);
 
     const results = [
@@ -569,13 +569,22 @@ describe("passwords", () => {
         memberId: created.memberId,
         password: "a".repeat(73),
       }),
+      // Clerk counts bytes: 37 "ñ" are 74 bytes in UTF-8.
+      await organization.setStartingPassword(adminCaller, {
+        memberId: created.memberId,
+        password: "ñ".repeat(37),
+      }),
       await organization.setStartingPassword(adminCaller, {
         memberId: created.memberId,
         password: "a".repeat(72),
       }),
     ];
 
-    expect(results).toEqual([{ ok: false, reason: "passwordTooLong" }, { ok: true }]);
+    expect(results).toEqual([
+      { ok: false, reason: "passwordTooLong" },
+      { ok: false, reason: "passwordTooLong" },
+      { ok: true },
+    ]);
   });
 
   it("refuses a wrong current password, or the same one, and keeps the hold", async () => {
