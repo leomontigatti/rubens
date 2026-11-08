@@ -69,6 +69,14 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   The build seeds the dev organization on its first sign-in page. Arguments go to
   Playwright, so `pnpm test:e2e tests/e2e/<spec>` runs one spec. It never touches the dev
   data. CI runs it in the `e2e` job ([tests/e2e/README.md](../../tests/e2e/README.md)).
+- `eval:assistant`: the patient assistant's evaluation (#157), each booking conversation in
+  `tests/evals/assistant/` on the named model candidates, under plain Node. Calls the
+  providers' APIs and costs money, so it runs on demand with their keys, never in CI
+  ([tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)).
+- `eval:voice`: the voice notes through each transcription option, then the transcript
+  through one candidate. On demand, like `eval:assistant`.
+- `eval:report`: re-scores saved `eval:assistant` runs with today's checks and folds them
+  into one table. Offline: no API calls.
 
 ## The organization's data
 

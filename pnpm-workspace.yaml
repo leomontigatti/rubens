@@ -2,6 +2,9 @@ allowBuilds:
   esbuild: true
   lightningcss: true
   workerd: true
+  # Transitive deps of the evaluation's Gemini adapter; neither needs its install script.
+  "@google/genai": false
+  protobufjs: false
 
 # A published version has to sit in the registry for three days before this repo
 # resolves it: most npm supply-chain compromises are caught and unpublished
