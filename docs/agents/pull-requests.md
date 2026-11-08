@@ -1,6 +1,6 @@
 # Pull requests
 
-What Rubens adds to the shared `pr` and `babysit-pr` skills, which hold the body template, the
+What underthing adds to the shared `pr` and `babysit-pr` skills, which hold the body template, the
 title rule, the one-way doors, stacking and the babysit loop.
 
 PRs are squash-merged, so the title becomes the commit subject. Title, subject and body are

@@ -15,7 +15,7 @@ const generated = ["src/routeTree.gen.ts", "src/organization/migrations/**"];
 // The organization object's migrations are `.sql` files its generated index
 // imports (`src/organization/migrations/migrations.js`): each loads as its text.
 const sqlAsText: Plugin = {
-  name: "rubens:sql-as-text",
+  name: "underthing:sql-as-text",
   transform(code, id) {
     return id.endsWith(".sql")
       ? { code: `export default ${JSON.stringify(code)};`, map: null }

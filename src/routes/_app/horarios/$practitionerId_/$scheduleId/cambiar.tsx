@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/$scheduleId/cambiar")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
-  head: () => ({ meta: [{ title: "Cambiar horario · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Cambiar horario · underthing" }] }),
   component: ChangeSchedule,
 });
 

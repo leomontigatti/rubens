@@ -9,7 +9,7 @@ import { editGuardian, getGuardians } from "#/server/guardians.functions.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/responsables/$guardianId")({
   loader: ({ params }) => getGuardians({ data: { patientId: params.patientId } }),
-  head: () => ({ meta: [{ title: "Editar responsable · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar responsable · underthing" }] }),
   component: EditGuardian,
 });
 

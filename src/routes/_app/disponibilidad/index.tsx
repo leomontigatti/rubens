@@ -35,7 +35,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_app/disponibilidad/")({
-  head: () => ({ meta: [{ title: "Disponibilidad · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Disponibilidad · underthing" }] }),
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {

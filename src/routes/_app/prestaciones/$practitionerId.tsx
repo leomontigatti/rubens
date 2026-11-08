@@ -22,8 +22,8 @@ export const Route = createFileRoute("/_app/prestaciones/$practitionerId")({
     meta: [
       {
         title: loaderData?.ok
-          ? `Prestaciones de ${loaderData.practitioner.displayName} · Rubens`
-          : "Prestaciones · Rubens",
+          ? `Prestaciones de ${loaderData.practitioner.displayName} · underthing`
+          : "Prestaciones · underthing",
       },
     ],
   }),

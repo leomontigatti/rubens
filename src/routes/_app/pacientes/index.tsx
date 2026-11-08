@@ -22,7 +22,7 @@ import { getPatients } from "#/server/patients.functions.ts";
 import type { ListedPatient, PatientPage } from "#/organization/patients.ts";
 
 export const Route = createFileRoute("/_app/pacientes/")({
-  head: () => ({ meta: [{ title: "Pacientes · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Pacientes · underthing" }] }),
   // The search text stays out of the address: a URL ends up in proxy logs and
   // the browser's history, and patient data must not.
   validateSearch: z.object({

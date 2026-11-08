@@ -12,7 +12,7 @@ import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
 const columns = practitionerColumns("/prestaciones/$practitionerId");
 
 export const Route = createFileRoute("/_app/prestaciones/")({
-  head: () => ({ meta: [{ title: "Prestaciones · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Prestaciones · underthing" }] }),
   loader: () => getMedicalServicePractitioners(),
   component: MedicalServicePractitioners,
 });

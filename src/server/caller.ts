@@ -55,7 +55,7 @@ export function authMode(env: WorkerEnv, devServer: boolean): AuthMode {
 export const devOrganizationId = "dev-organization";
 
 /** The dev sign-in's cookie: the signed-in member's user id. */
-export const devUserCookie = "rubens_dev_user";
+export const devUserCookie = "underthing_dev_user";
 
 /** A verified session's user and its `org` claim, as the token carries it; null when signed out. */
 export type VerifySession = (

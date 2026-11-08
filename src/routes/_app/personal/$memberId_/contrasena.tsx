@@ -11,7 +11,7 @@ import { RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId_/contrasena")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
-  head: () => ({ meta: [{ title: "Asignar contraseña inicial · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Asignar contraseña inicial · underthing" }] }),
   component: AssignPassword,
 });
 

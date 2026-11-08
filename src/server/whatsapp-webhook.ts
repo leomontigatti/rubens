@@ -72,7 +72,7 @@ function isKnownStatus(status: string): status is WhatsappStatusUpdate["status"]
 /**
  * The `messages` changes of a call for `phoneNumberId`, the one number this
  * Worker serves until Embedded Signup (#159), and how many changes were for
- * another number. A status Rubens does not store (such as `deleted`) is skipped.
+ * another number. A status underthing does not store (such as `deleted`) is skipped.
  */
 function eventsFor(
   payload: z.infer<typeof metaWebhook>,
@@ -135,7 +135,9 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
   const parsed = metaWebhook.safeParse(json);
   if (!parsed.success) {
     // The issues can quote the payload, so they are not logged.
-    console.warn("[whatsapp-webhook] a signed call in a shape Rubens does not read was dropped");
+    console.warn(
+      "[whatsapp-webhook] a signed call in a shape underthing does not read was dropped",
+    );
     return new Response(null, { status: 200 });
   }
   const organizationId = env.WHATSAPP_ORGANIZATION_ID;

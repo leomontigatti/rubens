@@ -14,7 +14,7 @@ vi.mock(import("#/organization/accounts.ts"), async (original) => ({
 const bindings = { ...(env as unknown as WorkerEnv), SETUP_SECRET: "the-setup-secret" };
 
 function setupRequest(organizationName: string, authorization = "Bearer the-setup-secret") {
-  return new Request("https://rubens.test/api/setup", {
+  return new Request("https://underthing.test/api/setup", {
     method: "POST",
     headers: { authorization, "content-type": "application/json" },
     body: JSON.stringify({

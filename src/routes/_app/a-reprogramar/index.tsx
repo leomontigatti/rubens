@@ -21,7 +21,7 @@ import type { ToRescheduleEntry, ToRescheduleReason } from "#/organization/to-re
 // one in a deactivated place is told why free times may be missing.
 
 export const Route = createFileRoute("/_app/a-reprogramar/")({
-  head: () => ({ meta: [{ title: "Turnos a reprogramar · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Turnos a reprogramar · underthing" }] }),
   loader: () => getToReschedule(),
   component: ToRescheduleList,
 });

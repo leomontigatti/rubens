@@ -7,7 +7,7 @@ import { addInsurer } from "#/server/insurers.functions.ts";
 import { InsurerForm, refusalMessages } from "#/routes/_app/obras-sociales/-insurer-form.tsx";
 
 export const Route = createFileRoute("/_app/obras-sociales/nueva")({
-  head: () => ({ meta: [{ title: "Nueva obra social o prepaga · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Nueva obra social o prepaga · underthing" }] }),
   component: NewInsurer,
 });
 

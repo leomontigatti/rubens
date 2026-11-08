@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app/pacientes/$patientId_/coberturas/$co
     ]);
     return { coverages, insurers };
   },
-  head: () => ({ meta: [{ title: "Editar cobertura · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar cobertura · underthing" }] }),
   component: EditCoverage,
 });
 

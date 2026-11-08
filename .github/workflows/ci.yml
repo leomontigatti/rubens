@@ -1,4 +1,4 @@
-# CI pipeline for Rubens. PR-only: every change reaches `main` through a pull
+# CI pipeline for underthing. PR-only: every change reaches `main` through a pull
 # request, and nothing pushes to `main` directly. Two gates, both meant to be
 # required on `main` (branch protection is a repo setting, not a file here, so
 # renaming a job does not update it):

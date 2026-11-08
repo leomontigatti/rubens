@@ -17,6 +17,7 @@ by ADR-0008.
 - Hosting on Cloudflare Workers, the organization's Durable Object, jobs, encryption:
   `0008-cloudflare-workers-one-object-per-organization.md`
 - Staff sign-in: `0009-staff-sign-in-through-clerk.md`
+- The product's name: `0011-product-named-underthing.md`
 - WhatsApp, the assistant and Telegram: `0010-whatsapp-cloud-api-number-per-organization.md`
   (the channel), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
   `0007-patients-words-on-telegram.md`
@@ -51,3 +52,6 @@ by ADR-0008.
   Tech Provider; approved templates without buttons and the 24-hour window; the webhook
   stores into the organization's object, whose alarm runs the assistant; a full inbox in
   the app.
+- [ADR-0011: The product is named underthing](./0011-product-named-underthing.md) -
+  renamed from Rubens, its first customer's brand, before the WhatsApp App Review; what
+  users and operators see changes, earlier ADRs keep saying Rubens.

@@ -10,7 +10,7 @@ import { getPatientDetails } from "#/server/patients.functions.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/responsables/nuevo")({
   loader: ({ params }) => getPatientDetails({ data: { patientId: params.patientId } }),
-  head: () => ({ meta: [{ title: "Agregar responsable · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Agregar responsable · underthing" }] }),
   component: NewGuardian,
 });
 

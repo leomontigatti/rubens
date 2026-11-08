@@ -15,7 +15,7 @@ import type { Office } from "#/organization/offices.ts";
 import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 
 export const Route = createFileRoute("/_app/sedes/")({
-  head: () => ({ meta: [{ title: "Sedes · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Sedes · underthing" }] }),
   validateSearch: z.object({ inactivas: z.boolean().optional().catch(undefined) }),
   loaderDeps: ({ search }) => ({ includeInactive: search.inactivas ?? false }),
   loader: ({ deps }) => getOffices({ data: deps }),

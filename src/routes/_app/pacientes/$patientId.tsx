@@ -57,8 +57,8 @@ export const Route = createFileRoute("/_app/pacientes/$patientId")({
     meta: [
       {
         title: loaderData?.details.ok
-          ? `${patientName(loaderData.details.patient)} · Rubens`
-          : "Pacientes · Rubens",
+          ? `${patientName(loaderData.details.patient)} · underthing`
+          : "Pacientes · underthing",
       },
     ],
   }),

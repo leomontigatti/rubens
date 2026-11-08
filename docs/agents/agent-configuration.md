@@ -22,7 +22,7 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
   `AGENTS.md` directly while no `CLAUDE.md` sits in the working directory or above it, so adding
   one would silently stop it reading these instructions. Claude-only notes go in
   `~/.claude/CLAUDE.md`.
-- **A skill only Rubens uses** goes in `.agents/skills/<name>/`, under a name no shared skill
+- **A skill only underthing uses** goes in `.agents/skills/<name>/`, under a name no shared skill
   has, with `.claude/skills` made a symlink to `.agents/skills` so Claude Code sees it. There is
   none today. A change to a shared skill is a PR to `leomontigatti/agent-workflow`.
 - **A hook change is a change to the script.** Adding or removing a project hook touches both

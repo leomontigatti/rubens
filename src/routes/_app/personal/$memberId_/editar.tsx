@@ -18,7 +18,7 @@ import {
 
 export const Route = createFileRoute("/_app/personal/$memberId_/editar")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
-  head: () => ({ meta: [{ title: "Editar persona · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar persona · underthing" }] }),
   component: EditMember,
 });
 

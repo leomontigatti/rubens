@@ -56,7 +56,7 @@ function metaPayload(toPhoneNumberId = phoneNumberId) {
 }
 
 function post(body: string, signature: string | null = sign(body)) {
-  return new Request("https://rubens.test/api/whatsapp", {
+  return new Request("https://underthing.test/api/whatsapp", {
     method: "POST",
     headers: signature ? { "x-hub-signature-256": signature } : {},
     body,
@@ -73,7 +73,7 @@ function handshake(token: string) {
     "hub.verify_token": token,
     "hub.challenge": "1158201444",
   });
-  return new Request(`https://rubens.test/api/whatsapp?${query}`);
+  return new Request(`https://underthing.test/api/whatsapp?${query}`);
 }
 
 function storedMessages(organization: OrganizationStub) {

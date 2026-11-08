@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/_app/obras-sociales/$insurerId")({
   loader: () => getInsurers({ data: { includeInactive: true } }),
-  head: () => ({ meta: [{ title: "Editar obra social o prepaga · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar obra social o prepaga · underthing" }] }),
   component: EditInsurer,
 });
 
