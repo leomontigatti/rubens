@@ -51,8 +51,8 @@ One Clerk application per environment, created in Clerk's dashboard:
   - reject compromised passwords: on;
   - enforce minimum password strength: off.
 
-  Rubens' own checks still accept up to 128 characters (`src/lib/password-change.ts`,
-  `src/organization/staff.ts`), above Clerk's 72: an open follow-up.
+  Rubens' own length check (`src/lib/password-change.ts`) uses the same 8 and 72: change
+  them together.
 
 - **Keys**: the publishable key (`pk_…`) and the secret key (`sk_…`), from API keys.
 

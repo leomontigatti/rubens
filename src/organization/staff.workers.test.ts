@@ -561,6 +561,23 @@ describe("passwords", () => {
     ).toEqual({ ok: false, reason: "passwordTooShort" });
   });
 
+  it("refuses a starting password longer than Clerk's 72 characters", async () => {
+    const created = await newMember(["receptionist"]);
+
+    const results = [
+      await organization.setStartingPassword(adminCaller, {
+        memberId: created.memberId,
+        password: "a".repeat(73),
+      }),
+      await organization.setStartingPassword(adminCaller, {
+        memberId: created.memberId,
+        password: "a".repeat(72),
+      }),
+    ];
+
+    expect(results).toEqual([{ ok: false, reason: "passwordTooLong" }, { ok: true }]);
+  });
+
   it("refuses a wrong current password, or the same one, and keeps the hold", async () => {
     const created = await newMember(["receptionist"]);
     fakeAccounts.rejectPasswords();
