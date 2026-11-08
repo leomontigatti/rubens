@@ -22,6 +22,23 @@ describe("timesIn", () => {
     expect(timesIn("el martes a las 10 y media o a las 9 y cuarto")).toEqual([630, 555]);
   });
 
+  it("reads minutes said after `y`", () => {
+    expect(timesIn("a las 10 y 30 o a las 9 y 15")).toEqual([630, 555]);
+  });
+
+  it("does not read the minutes before `hs` as another hour", () => {
+    expect(timesIn("a las 10:15 hs o a las 9 y 30 hs")).toEqual([615, 570]);
+  });
+
+  it("reads a time right after a colon, and minutes of one digit or with `hs` attached", () => {
+    expect(timesIn("Horarios:18 hs, a las 10 y 15hs o a las 9 y 5 hs")).toEqual([1080, 615, 545]);
+  });
+
+  it("reads `hs` attached to a full time, and a second time after `y`", () => {
+    expect(timesIn("10:15hs o 10.30hs")).toEqual([615, 630]);
+    expect(timesIn("a las 10 y 15:30")).toEqual([930, 600]);
+  });
+
   it("reads a time that ends a sentence", () => {
     expect(timesIn("Te queda a las 10 y media. Si no, a las 17.")).toEqual([630, 1020]);
   });

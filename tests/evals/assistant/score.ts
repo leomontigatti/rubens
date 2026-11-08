@@ -21,14 +21,14 @@ export const criteria: Array<[string, keyof Score]> = [
 ];
 
 // Clock times a reply states: `16:30`, `9.00`, `10 hs`, `a las 10`, `a las 10 y
-// media`. Returned as minutes since midnight, so `09:00` and `9 hs` compare equal.
-// An hour written in words (`a las diez`) is not read.
+// media`, `a las 10 y 30`. Returned as minutes since midnight, so `09:00` and
+// `9 hs` compare equal. An hour written in words (`a las diez`) is not read.
 export function timesIn(text: string): number[] {
   const found: number[] = [];
   const patterns = [
-    /\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/g,
-    /\b([01]?\d|2[0-3])\s*(?:hs|h|horas)\b/gi,
-    /\ba las ([01]?\d|2[0-3])(?![:.]?\d)(?: y (media|cuarto)\b)?/gi,
+    /\b([01]?\d|2[0-3])[:.]([0-5]\d)(?!\d)/g,
+    /(?<!\d[:.]\d*|\ba las \d{1,2} y )\b([01]?\d|2[0-3])\s*(?:hs|h|horas)\b/gi,
+    /\ba las ([01]?\d|2[0-3])(?![:.]?\d)(?: y (media\b|cuarto\b|[0-5]?\d(?!\d|[:.]\d)))?/gi,
   ];
   const minutesOf: Record<string, number> = { media: 30, cuarto: 15 };
   for (const pattern of patterns) {
