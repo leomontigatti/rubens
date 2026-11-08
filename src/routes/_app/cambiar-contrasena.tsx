@@ -24,15 +24,15 @@ export const Route = createFileRoute("/_app/cambiar-contrasena")({
 
 const messages = {
   invalid:
-    "La contraseña nueva debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+    "La contraseña nueva debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
   mismatch: "Las contraseñas nuevas no coinciden.",
   passwordTooShort:
-    "La contraseña nueva debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+    "La contraseña nueva debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
   passwordTooLong:
-    "La contraseña nueva debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+    "La contraseña nueva debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
   passwordRejected: "Esa contraseña es demasiado común o débil. Elegí otra.",
   invalidInput:
-    "La contraseña nueva debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+    "La contraseña nueva debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
   wrongPassword: "La contraseña actual no es correcta.",
   samePassword: "La contraseña nueva tiene que ser distinta de la actual.",
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",

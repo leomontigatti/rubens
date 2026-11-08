@@ -17,9 +17,9 @@ const refusalMessages = {
   lastAdmin: "Tiene que quedar al menos un administrador activo.",
   emailTaken: "Ya hay una cuenta con ese correo.",
   passwordTooShort:
-    "La contraseña inicial debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+    "La contraseña inicial debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
   passwordTooLong:
-    "La contraseña inicial debe tener entre 8 y 72 caracteres (las letras con tilde y los símbolos cuentan doble).",
+    "La contraseña inicial debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
   passwordRejected: "Esa contraseña es demasiado común o débil. Elegí otra.",
 };
 

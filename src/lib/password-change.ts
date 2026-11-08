@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 export const minPasswordLength = 8;
-/** Clerk refuses a longer password. It counts bytes, so "ñ" or "á" takes two. */
+/** Clerk refuses a longer password. It counts UTF-8 bytes: "ñ" takes two, an emoji four. */
 const maxPasswordBytes = 72;
 
 /** Whether a password fits Clerk's limit, counted in UTF-8 bytes. */

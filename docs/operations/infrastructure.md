@@ -47,7 +47,7 @@ One Clerk application per environment, created in Clerk's dashboard:
   metadata when it creates a member.
 
 - **Passwords** (the password settings in Clerk's dashboard):
-  - minimum length 8 (Clerk recommends 15; Clerk's maximum is 72 bytes, so a letter with an accent counts twice);
+  - minimum length 8 (Clerk recommends 15; Clerk's maximum is 72 bytes, so a letter with an accent takes two and an emoji four);
   - reject compromised passwords: on;
   - enforce minimum password strength: off.
 
