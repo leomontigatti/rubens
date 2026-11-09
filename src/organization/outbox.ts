@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, inArray, lte, min } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, lte, min } from "drizzle-orm";
 
-import { outboxTemplates, retryAt } from "#/lib/outbox.ts";
+import { outboxTemplates, reminderDueAt, reminderKinds, retryAt } from "#/lib/outbox.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
+import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { fillTemplate } from "#/lib/template-filling.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 import type { TemplateName } from "#/lib/whatsapp-templates.ts";
@@ -12,6 +13,7 @@ import {
   appointment,
   guardian,
   medicalService,
+  medicalServiceReminder,
   office,
   patient,
   practitioner,
@@ -25,9 +27,21 @@ import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts
 // once due. A queued message is read again when it goes: what it says comes
 // from the appointment as it is then, and one no longer true or no longer
 // allowed is dropped. Nothing here logs a patient's data or Meta's token.
+//
+// A message goes at least once: if the object stops between Meta accepting it
+// and the row being marked sent, the next alarm sends it again. A `sending`
+// state written before the call would not close that window, only move it:
+// the object restarting cannot tell whether Meta took a message left
+// `sending`, so it would have to send it again (the same duplicate) or drop
+// it (a reminder silently lost). The window is one Graph API round trip, open
+// only when the object is evicted mid-send, and its cost is one repeated
+// message the patient can see.
 
-/** Statuses an appointment can still be told it was booked in: it has not started or been cancelled. */
-const confirmableStatuses = ["booked", "confirmed"] as const;
+/**
+ * Statuses an appointment is still told about, its booking and its
+ * reminders: it has not started or been cancelled.
+ */
+const upcomingStatuses: readonly AppointmentStatus[] = ["booked", "confirmed"];
 
 /**
  * Queues the booking confirmation of the appointment `appointmentId`, in the
@@ -51,6 +65,73 @@ export function queueBookingConfirmation(tx: Writer, appointmentId: string) {
   tx.insert(outboxMessage)
     .values({ kind: "bookingConfirmation", appointmentId, dueAt: Date.now() })
     .run();
+}
+
+/**
+ * Drops the queued reminders of the appointment `appointmentId` and, while it
+ * is booked or confirmed and its patient accepts WhatsApp, queues its medical
+ * service's reminders for its time now: in the transaction that booked, moved
+ * or reinstated it. A reminder whose time has already passed is skipped, not
+ * sent late.
+ */
+export function queueReminders(tx: Writer, appointmentId: string) {
+  tx.update(outboxMessage)
+    .set({ state: "dropped", dropReason: "appointmentChanged" })
+    .where(
+      and(
+        eq(outboxMessage.appointmentId, appointmentId),
+        eq(outboxMessage.state, "queued"),
+        inArray(outboxMessage.kind, reminderKinds),
+      ),
+    )
+    .run();
+  const booked = tx
+    .select({
+      status: appointment.status,
+      startsAt: appointment.startsAt,
+      medicalServiceId: appointment.medicalServiceId,
+      whatsappConsent: patient.whatsappConsent,
+    })
+    .from(appointment)
+    .innerJoin(patient, eq(patient.id, appointment.patientId))
+    .where(eq(appointment.id, appointmentId))
+    .get();
+  if (!booked || !upcomingStatuses.includes(booked.status) || !booked.whatsappConsent) {
+    return;
+  }
+  const now = Date.now();
+  const rows = tx
+    .select({
+      hoursBefore: medicalServiceReminder.hoursBefore,
+      asksToConfirm: medicalServiceReminder.asksToConfirm,
+    })
+    .from(medicalServiceReminder)
+    .where(eq(medicalServiceReminder.medicalServiceId, booked.medicalServiceId))
+    .all()
+    .map(({ hoursBefore, asksToConfirm }) => ({
+      kind: asksToConfirm ? ("reminder" as const) : ("reminderWithoutConfirmation" as const),
+      appointmentId,
+      hoursBefore,
+      dueAt: reminderDueAt(booked.startsAt, hoursBefore),
+    }))
+    .filter((row) => row.dueAt >= now);
+  if (rows.length > 0) {
+    tx.insert(outboxMessage).values(rows).run();
+  }
+}
+
+/**
+ * Requeues the reminders of the appointment `placed` when a status change
+ * takes it out of the statuses that get them, or back into them.
+ */
+export function requeueRemindersOnStatus(
+  tx: Writer,
+  placed: { id: string; status: AppointmentStatus },
+  nextStatus: AppointmentStatus,
+) {
+  if (upcomingStatuses.includes(placed.status) !== upcomingStatuses.includes(nextStatus)) {
+    queueReminders(tx, placed.id);
+  }
 }
 
 /** The latest approved version of template `name`, the one that goes; `null` while none is approved. */
@@ -101,7 +182,10 @@ export function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): numbe
 function readQueued(database: Database, id: string) {
   return database
     .select({
+      id: outboxMessage.id,
       kind: outboxMessage.kind,
+      appointmentId: outboxMessage.appointmentId,
+      hoursBefore: outboxMessage.hoursBefore,
       attempts: outboxMessage.attempts,
       status: appointment.status,
       startsAt: appointment.startsAt,
@@ -128,15 +212,40 @@ function readQueued(database: Database, id: string) {
 
 type Queued = NonNullable<ReturnType<typeof readQueued>>;
 
+/**
+ * Whether a later reminder for the appointment of `queued`, one set fewer
+ * hours before it, is due too and goes instead: only while its kind can go
+ * (`sendable`), or neither would. One that already went dropped the earlier
+ * ones when it was sent (`dropEarlierReminders`).
+ */
+function overtaken(database: Database, queued: Queued, now: number, sendable: OutboxKind[]) {
+  if (queued.hoursBefore === null) {
+    return false;
+  }
+  const later = database
+    .select({ hoursBefore: outboxMessage.hoursBefore })
+    .from(outboxMessage)
+    .where(
+      and(
+        eq(outboxMessage.appointmentId, queued.appointmentId),
+        eq(outboxMessage.state, "queued"),
+        inArray(outboxMessage.kind, sendable),
+        lt(outboxMessage.hoursBefore, queued.hoursBefore),
+      ),
+    )
+    .all();
+  return later.some((one) => reminderDueAt(queued.startsAt, one.hoursBefore!) <= now);
+}
+
 /** Why `queued` may not go now, if anything. */
-function dropReason(queued: Queued, now: number) {
-  if (
-    !(confirmableStatuses as readonly string[]).includes(queued.status) ||
-    queued.startsAt <= now
-  ) {
+function dropReason(database: Database, queued: Queued, now: number, sendable: OutboxKind[]) {
+  if (!upcomingStatuses.includes(queued.status) || queued.startsAt <= now) {
     return "appointmentChanged" as const;
   }
-  return queued.whatsappConsent ? null : ("noConsent" as const);
+  if (!queued.whatsappConsent) {
+    return "noConsent" as const;
+  }
+  return overtaken(database, queued, now, sendable) ? ("overtaken" as const) : null;
 }
 
 /** Records a failed attempt: the message goes again later, or fails for good after its last. */
@@ -160,7 +269,8 @@ async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) 
   if (!queued) {
     return;
   }
-  const dropped = dropReason(queued, Date.now());
+  // Read again: a template can change at Meta while an earlier send waits.
+  const dropped = dropReason(database, queued, Date.now(), sendableKinds(database, cloud));
   if (dropped) {
     database
       .update(outboxMessage)
@@ -202,16 +312,38 @@ async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) 
     recordFailure(database, id, attempts, sent.metaError);
     return;
   }
-  recordSent(database, id, attempts, { ...message, text: filled.text, sent });
+  recordSent(database, queued, attempts, { ...message, text: filled.text, sent });
+}
+
+/**
+ * Drops the queued reminders `sent` overtook: those of its appointment set
+ * more hours before it, still waiting for a retry or their template.
+ */
+function dropEarlierReminders(tx: Writer, sent: Queued) {
+  if (sent.hoursBefore === null) {
+    return;
+  }
+  tx.update(outboxMessage)
+    .set({ state: "dropped", dropReason: "overtaken" })
+    .where(
+      and(
+        eq(outboxMessage.appointmentId, sent.appointmentId),
+        eq(outboxMessage.state, "queued"),
+        inArray(outboxMessage.kind, reminderKinds),
+        gt(outboxMessage.hoursBefore, sent.hoursBefore),
+      ),
+    )
+    .run();
 }
 
 /**
  * Stores what Meta accepted as an outgoing message, in the conversation of
- * the number Meta delivered it to, and marks the queued message sent.
+ * the number Meta delivered it to, and marks the queued message sent, with
+ * the reminders it overtook dropped.
  */
 function recordSent(
   database: Database,
-  id: string,
+  queued: Queued,
   attempts: number,
   message: TemplateMessage & { text: string; sent: { messageId: string; waId: string | null } },
 ) {
@@ -229,10 +361,21 @@ function recordSent(
         parameters: message.parameters,
       }),
     });
+    // A change to the appointment while Meta answered dropped it and queued
+    // its reminders afresh: it went all the same, and overtook none of those.
+    const stillQueued =
+      tx
+        .select({ state: outboxMessage.state })
+        .from(outboxMessage)
+        .where(eq(outboxMessage.id, queued.id))
+        .get()?.state === "queued";
     tx.update(outboxMessage)
       .set({ state: "sent", attempts, whatsappMessageId: stored.id })
-      .where(eq(outboxMessage.id, id))
+      .where(eq(outboxMessage.id, queued.id))
       .run();
+    if (stillQueued) {
+      dropEarlierReminders(tx, queued);
+    }
   });
 }
 
