@@ -32,7 +32,7 @@ import {
 } from "#/organization/appointments.ts";
 import type { DayAppointment } from "#/organization/appointments.ts";
 import { recordAudit } from "#/organization/audit.ts";
-import { queueChangeMessage } from "#/organization/change-messages.ts";
+import { dropChangeMessages, queueChangeMessage } from "#/organization/change-messages.ts";
 import { asRange, meets } from "#/organization/availability.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -253,12 +253,15 @@ const reschedulable: readonly AppointmentStatus[] = ["booked", "confirmed"];
  * (docs/domain/appointments.md § Rescheduling), under the checks of booking: a
  * free start of the practitioner's, which takes its schedule's room and may be
  * in another office, or an overbooking. The appointment's own time counts as
- * free. The audit entry keeps the previous values.
+ * free. The audit entry keeps the previous values. The patient is told of a
+ * move the organization made, not of one `byPatient`, which they asked for
+ * and which drops the change messages not sent yet.
  */
 export function rescheduleAppointment(
   database: Database,
   acting: Acting,
   input: RescheduleInput & WarningConfirmation,
+  { byPatient = false } = {},
 ): RescheduleResult {
   const parsed = rescheduleSchema.safeParse(input);
   if (!parsed.success) {
@@ -294,7 +297,12 @@ export function rescheduleAppointment(
     const values = { startsAt: +span.start, endsAt: +span.end, roomId: where.roomId, overbooking };
     tx.update(appointment).set(values).where(eq(appointment.id, placed.id)).run();
     queueReminders(tx, placed.id);
-    if (+span.start !== +placed.during.start || officeOf(tx, where.roomId) !== placed.officeId) {
+    if (byPatient) {
+      dropChangeMessages(tx, placed.id);
+    } else if (
+      +span.start !== +placed.during.start ||
+      officeOf(tx, where.roomId) !== placed.officeId
+    ) {
       queueChangeMessage(tx, placed.id, "appointmentMoved");
     }
     const changed = changedFields(

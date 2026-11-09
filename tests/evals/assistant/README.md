@@ -2,7 +2,7 @@
 
 The set of booking conversations that picks the patient assistant's model and its
 transcription option (#157, ADR-0006 § TanStack AI). Each case is one assistant turn
-after a conversation so far, run through the drafted prompt and tool schemas with
+after a conversation so far, run through the real prompt and tool schemas with
 TanStack AI, against a fake organization object that answers from made-up data. It
 calls the providers' real APIs, so it costs money and runs on demand, never in CI.
 
@@ -78,9 +78,8 @@ and must not do; `fake-object.ts` answers its tools from `world.ts`.
 
 `prompt.ts` and `tools.ts` run the assistant's real prompt and tool schemas
 (`src/lib/assistant.ts`, `hand_off` since #171, confirming and cancelling through
-proposals since #173), with drafts of what #174 adds: moving through a proposal,
-`find_free_times` and the `rule_refused` handoff reason. Each
-draft moves into `src/lib/assistant.ts` when its ticket lands. A second misunderstanding
+proposals since #173, moving through a proposal, `find_free_times` and the
+`rule_refused` handoff reason since #174). A second misunderstanding
 in a row is counted by underthing from `judge_messages`' `understood`, not handed off by
 the model, so its case checks the judgement.
 

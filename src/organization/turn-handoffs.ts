@@ -21,6 +21,8 @@ export interface TurnToSort {
   answered: ReturnType<typeof answeredMessage>;
   judgement: Judgement;
   handOff: HandOffCall | null;
+  /** The appointment a rule kept the patient from moving (past the cutoff, the one move used). */
+  ruleRefused: string | null;
   /** The patients whose messages go to the number as the turn settles: a contact may change while the model runs. */
   reachedNow: string[];
 }
@@ -28,6 +30,7 @@ export interface TurnToSort {
 const modelReasons = {
   patient_asked: "patientAsked",
   organization_cancelled: "organizationCancelled",
+  rule_refused: "ruleRefused",
   clinical: "clinical",
   emergency: "emergency",
 } as const satisfies Record<HandOffCall["reason"], HandoffWanted["reason"]>;
@@ -63,14 +66,18 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
 
 /**
  * What underthing hands off without the model asking: a clinical judgement,
- * a second misunderstanding, nothing booked. An opt-out from a number of
- * patients is answered, not handed off, unless it is clinical too.
+ * a move a rule refused, a second misunderstanding, nothing booked. An
+ * opt-out from a number of patients is answered, not handed off, unless it is
+ * clinical too.
  */
 function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   const { judgement } = turn;
   if (judgement.clinical || judgement.emergency) {
     const reason = judgement.emergency ? "emergency" : "clinical";
     return { reason, clinical: true, appointmentId: null };
+  }
+  if (turn.ruleRefused) {
+    return { reason: "ruleRefused", clinical: false, appointmentId: turn.ruleRefused };
   }
   if (judgement.optOut && turn.reachedNow.length > 0) {
     return null;

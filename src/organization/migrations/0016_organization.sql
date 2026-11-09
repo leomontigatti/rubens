@@ -1,0 +1,1 @@
+ALTER TABLE `proposal` ADD `starts_at` integer;
