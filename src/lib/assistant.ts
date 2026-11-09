@@ -24,18 +24,13 @@ export const assistantWaitMs = 8_000;
  */
 export const newMessagesMark = "[new messages]";
 
-// The mark however a patient might type it: any case, any spacing inside the
-// brackets, anywhere in a line.
-const typedMark = /\[\s*new\s+messages\s*\]/giu;
-
 /**
- * A patient's `text` with the mark escaped wherever they typed it, its
- * brackets turned to parentheses, so only underthing places the boundary of
- * what the turn judges. Escaping, not deleting: deleting the inner mark of
- * `[new [new messages]messages]` would leave a mark behind.
+ * A patient's `text` with every bracket turned to a parenthesis, so only
+ * underthing places the boundary of what the turn judges: no message, nor
+ * the messages of a burst joined, can then spell the mark in any form.
  */
 export function withoutMark(text: string): string {
-  return text.replace(typedMark, (typed) => `(${typed.slice(1, -1)})`);
+  return text.replaceAll("[", "(").replaceAll("]", ")");
 }
 
 /** The tools a turn can call, each run by the object with the permissions of the patient's number. */
