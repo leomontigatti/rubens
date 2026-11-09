@@ -80,6 +80,15 @@ describe("the fixed checks on an assistant reply", () => {
     });
   });
 
+  it("keeps a space after a closing quote, a closing WhatsApp mark or a percentage", () => {
+    expect(
+      checkReply(`"Sí"✅Mañana 'Sí'✅Mañana *Hola*✅Mundo _Hola_✅Mundo 50%✅descuento`),
+    ).toEqual({
+      ok: true,
+      text: `"Sí" Mañana 'Sí' Mañana *Hola* Mundo _Hola_ Mundo 50% descuento`,
+    });
+  });
+
   it("strips a run of keycaps whole", () => {
     expect(checkReply("1️⃣2️⃣")).toEqual({ ok: false, reason: "empty", text: "", length: 0 });
   });
