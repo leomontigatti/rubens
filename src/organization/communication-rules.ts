@@ -44,7 +44,8 @@ export function currentCommunicationRules(database: Writer): CommunicationRules 
 
 /**
  * Saves `input` as the rules, as `acting`, under the next version, and audits
- * what changed. A save that changes nothing keeps the version and writes no entry.
+ * what changed with the version it made. Every save makes a version, one that
+ * changes nothing included.
  */
 export function saveCommunicationRules(
   database: Database,
@@ -59,9 +60,6 @@ export function saveCommunicationRules(
     const { version, ...before } = currentCommunicationRules(tx);
     const after = { ...parsed.rules, version: version + 1 };
     const changed = changedFields(before, parsed.rules);
-    if (!changed) {
-      return { ok: true, version } as const;
-    }
     tx.insert(communicationRules)
       .values({ id: 1, ...after })
       .onConflictDoUpdate({ target: communicationRules.id, set: after })
@@ -71,8 +69,8 @@ export function saveCommunicationRules(
       entityType: "communicationRules",
       entityId: "communicationRules",
       patientId: null,
-      before: { ...changed.before, version },
-      after: { ...changed.after, version: after.version },
+      before: { ...changed?.before, version },
+      after: { ...changed?.after, version: after.version },
     });
     return { ok: true, version: after.version } as const;
   });

@@ -71,7 +71,7 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
   });
 
   const description = initial.version
-    ? `Versión ${initial.version}. Al guardar un cambio, se crea la versión ${initial.version + 1}.`
+    ? `Versión ${initial.version}. Al guardar, se crea la versión ${initial.version + 1}.`
     : "Todavía nadie las guardó: el asistente trata de vos y no firma.";
 
   return (

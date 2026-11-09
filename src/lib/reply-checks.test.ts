@@ -21,6 +21,40 @@ describe("the fixed checks on an assistant reply", () => {
     });
   });
 
+  it("strips keycap and subdivision flag emojis whole, keeping plain digits", () => {
+    expect(checkReply("Opciones: 1️⃣ martes, 2️⃣ jueves a las 10")).toEqual({
+      ok: true,
+      text: "Opciones: martes, jueves a las 10",
+    });
+    // The flag of England: a black flag followed by its invisible tag characters.
+    const england = String.fromCodePoint(
+      0x1f3f4,
+      0xe0067,
+      0xe0062,
+      0xe0065,
+      0xe006e,
+      0xe0067,
+      0xe007f,
+    );
+    expect(checkReply(`1️⃣ ${england}`)).toEqual({
+      ok: false,
+      reason: "empty",
+      text: "",
+      length: 0,
+    });
+  });
+
+  it("keeps the words on each side of an emoji apart", () => {
+    expect(checkReply("Listo👍Te esperamos")).toEqual({ ok: true, text: "Listo Te esperamos" });
+  });
+
+  it("keeps symbols that are not emojis: ® ™ © and arrows", () => {
+    const text = "Clínica Sonrisa® y Dentix™ ©2026: entrada ➡ piso 2.";
+
+    expect(checkReply(text)).toEqual({ ok: true, text });
+    expect(checkReply("Te esperamos ❤️")).toEqual({ ok: true, text: "Te esperamos" });
+  });
+
   it("keeps accented letters and plain punctuation", () => {
     const text = "Sí, el turno del miércoles con la Dra. Muñoz sigue en pie: 10:30 h.";
 

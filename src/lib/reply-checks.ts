@@ -8,11 +8,13 @@
 /** The longest reply the assistant sends, in characters, before it is split into messages. */
 export const maxReplyLength = 600;
 
-// An emoji: a pictograph or a flag's letters, with what joins and modifies it
-// (the zero-width joiner, variation selectors, skin tones, the keycap's
-// enclosing mark).
+// An emoji: a keycap (a digit, `#` or `*` with its enclosing mark), taken
+// whole so its digit goes too; a pictograph shown as one by default, or one a
+// variation selector asks to show as one (so `®`, `™` and arrows stay); and
+// the pieces emojis are built from (joiners, variation selectors, skin tones,
+// a flag's letters and its tags).
 const emoji =
-  /[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}\p{Join_Control}\p{Variation_Selector}\p{Me}]/gu;
+  /[0-9#*]\p{Variation_Selector}?\p{Me}|\p{Emoji_Presentation}|\p{Extended_Pictographic}\p{Variation_Selector}|[\p{Emoji_Modifier}\p{Regional_Indicator}\p{Join_Control}\p{Variation_Selector}\p{Me}\u{E0020}-\u{E007F}]/gu;
 
 const openingMarks = /[¿¡]/g;
 
@@ -22,18 +24,21 @@ export type ReplyCheck =
 
 /** `text` with the opening marks and the emojis taken out, and the spaces they leave tidied. */
 function corrected(text: string) {
-  return text
-    .replace(openingMarks, "")
-    .replace(emoji, "")
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/[ \t]{2,}/g, " ")
-        .replace(/ +([.,;:!?])/g, "$1")
-        .trim(),
-    )
-    .join("\n")
-    .trim();
+  return (
+    text
+      .replace(openingMarks, "")
+      // A space in each emoji's place keeps the words around it apart.
+      .replace(emoji, " ")
+      .split("\n")
+      .map((line) =>
+        line
+          .replace(/[ \t]{2,}/g, " ")
+          .replace(/ +([.,;:!?])/g, "$1")
+          .trim(),
+      )
+      .join("\n")
+      .trim()
+  );
 }
 
 /** Corrects `text` by the fixed checks, and says whether what is left can be sent. */

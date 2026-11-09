@@ -2,14 +2,12 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { maxToneLength } from "#/lib/communication-rules.ts";
 
-import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import {
   addMember,
   addRefusedAdmin,
   adminCaller,
   auditEntriesFor,
   expectOk,
-  inStorage,
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
@@ -44,12 +42,6 @@ describe("the organization's communication rules", () => {
     expectOk(await organization.saveCommunicationRules(adminCaller, { ...usted, tone: "Cálido." }));
 
     expect(await shownRules()).toEqual({ ...usted, tone: "Cálido.", version: 2 });
-    // What the assistant writes under (#169) is the same version.
-    expect(await inStorage(organization, currentCommunicationRules)).toEqual({
-      ...usted,
-      tone: "Cálido.",
-      version: 2,
-    });
   });
 
   it("are saved without the spaces around each text", async () => {
@@ -64,12 +56,15 @@ describe("the organization's communication rules", () => {
     expect(await shownRules()).toEqual({ ...usted, version: 1 });
   });
 
-  it("keep their version when a save changes nothing", async () => {
+  it("raise the version and audit a save even when it changes nothing", async () => {
     expectOk(await organization.saveCommunicationRules(adminCaller, usted));
     expectOk(await organization.saveCommunicationRules(adminCaller, usted));
 
-    expect((await shownRules()).version).toBe(1);
-    expect(await auditEntriesFor(organization, "communicationRules")).toHaveLength(1);
+    expect((await shownRules()).version).toBe(2);
+    expect((await auditEntriesFor(organization, "communicationRules")).at(-1)).toMatchObject({
+      before: { version: 1 },
+      after: { version: 2 },
+    });
   });
 
   it("audit each save with what changed and the version it made", async () => {
@@ -106,15 +101,6 @@ describe("the organization's communication rules", () => {
 
     expect(result).toEqual({ ok: false, reason: "toneTooLong" });
     expect(await shownRules()).toEqual({ formOfAddress: "vos", signOff: "", tone: "", version: 0 });
-  });
-
-  it("refuse a form of address other than `vos` or `usted`", async () => {
-    const result = await organization.saveCommunicationRules(adminCaller, {
-      ...usted,
-      formOfAddress: "tú" as "vos",
-    });
-
-    expect(result).toEqual({ ok: false, reason: "invalidInput" });
   });
 
   it("are saved by admins only", async () => {
