@@ -14,13 +14,19 @@ export const maxReplyLength = 600;
 // from (joiners, variation selectors, skin tones, a flag's letters and tags).
 const emojiPiece = String.raw`[0-9#*]\p{Variation_Selector}?\p{Me}|(?![©®™←-⇿➡⬅-⬇])\p{Extended_Pictographic}|[\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Regional_Indicator}\p{Join_Control}\p{Variation_Selector}\p{Me}\u{E0020}-\u{E007F}]`;
 
-const emoji = new RegExp(emojiPiece, "gu");
+const emojiRun = new RegExp(`(?:${emojiPiece})+`, "gu");
 
-/** Emojis between two words, which a space keeps apart once the emojis go. */
-const emojisBetweenWords = new RegExp(
-  String.raw`(?<=[\p{L}\p{N}])(?:${emojiPiece})+(?=[\p{L}\p{N}])`,
-  "gu",
-);
+/**
+ * What takes an emoji run's place: a space when it sat between text and a
+ * letter or digit, which it kept apart, and nothing otherwise. Each run is
+ * matched whole from the left, so a keycap's digit is never read as text.
+ */
+function inPlaceOf(run: string, at: number, text: string) {
+  const before = text[at - 1];
+  const startsText = /^[\p{L}\p{N}]/u.test(text.slice(at + run.length));
+  const between = before !== undefined && !/\s/.test(before) && startsText;
+  return between ? " " : "";
+}
 
 const openingMarks = /[¿¡]/g;
 
@@ -32,8 +38,7 @@ export type ReplyCheck =
 function corrected(text: string) {
   return text
     .replace(openingMarks, "")
-    .replace(emojisBetweenWords, " ")
-    .replace(emoji, "")
+    .replace(emojiRun, inPlaceOf)
     .split("\n")
     .map((line) =>
       line

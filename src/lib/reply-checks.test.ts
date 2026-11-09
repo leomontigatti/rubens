@@ -69,6 +69,18 @@ describe("the fixed checks on an assistant reply", () => {
     expect(checkReply("Marca\u00AE\uFE0E")).toEqual({ ok: true, text: "Marca®" });
   });
 
+  it("keeps a word apart from the punctuation before an emoji", () => {
+    expect(checkReply("Hecho.✅Mañana")).toEqual({ ok: true, text: "Hecho. Mañana" });
+  });
+
+  it("strips a run of keycaps whole", () => {
+    expect(checkReply("1️⃣2️⃣")).toEqual({ ok: false, reason: "empty", text: "", length: 0 });
+  });
+
+  it("keeps words apart after an accent written as a combining mark", () => {
+    expect(checkReply("Si\u0301👍venís")).toEqual({ ok: true, text: "Si\u0301 venís" });
+  });
+
   it("keeps accented letters and plain punctuation", () => {
     const text = "Sí, el turno del miércoles con la Dra. Muñoz sigue en pie: 10:30 h.";
 
