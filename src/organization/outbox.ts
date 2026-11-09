@@ -50,7 +50,7 @@ import { approvedVersion } from "#/organization/whatsapp-templates.ts";
  * Statuses an appointment is still told about, its booking and its
  * reminders: it has not started or been cancelled.
  */
-const upcomingStatuses: readonly AppointmentStatus[] = ["booked", "confirmed"];
+export const upcomingStatuses: readonly AppointmentStatus[] = ["booked", "confirmed"];
 
 /**
  * Queues the booking confirmation of the appointment `appointmentId`, in the

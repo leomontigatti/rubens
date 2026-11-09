@@ -42,6 +42,9 @@
   // WHATSAPP_SIGNUP_CONFIG_ID (configuration, set the same way) and
   // ORGANIZATION_ENCRYPTION_KEY, a secret: 32 random bytes in base64, from which
   // each organization's key is derived to seal its token (src/organization/encryption.ts).
+  // ANTHROPIC_API_KEY, a secret, is the patient assistant's model's key
+  // (src/organization/assistant-model.ts); without it, patients' messages are
+  // stored unjudged and the assistant does not answer.
   // In Clerk's dashboard, the session token's claims must carry the user's
   // public metadata as `"org": "{{user.public_metadata.organizationId}}"` and
   // `"roles": "{{user.public_metadata.roles}}"` (ADR-0009).

@@ -1,6 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { accountsFor } from "#/organization/accounts.ts";
+import { nextTurnAlarm, runDueTurns } from "#/organization/assistant.ts";
+import { assistantModelFor } from "#/organization/assistant-model.ts";
+import type { AssistantModel } from "#/organization/assistant-model.ts";
 import type { Accounts } from "#/organization/accounts.ts";
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
@@ -21,7 +24,12 @@ import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
 
 type RuntimeEnv = WorkerEnv &
   GraphApiSettings &
-  SignupSettings & { CLERK_SECRET_KEY?: string; ORGANIZATION_ENCRYPTION_KEY?: string };
+  SignupSettings & {
+    CLERK_SECRET_KEY?: string;
+    ORGANIZATION_ENCRYPTION_KEY?: string;
+    /** A secret: the assistant's model's API key (`src/organization/assistant-model.ts`). */
+    ANTHROPIC_API_KEY?: string;
+  };
 
 /**
  * What the organization's object runs on, under its RPC methods
@@ -42,12 +50,15 @@ export abstract class OrganizationRuntime extends DurableObject {
   protected readonly whatsapp: WhatsappCloud;
   /** The organization's number, connected through Embedded Signup (`src/organization/whatsapp-connection.ts`). */
   protected readonly number: WhatsappNumber;
+  /** The patient assistant's model (`src/organization/assistant-model.ts`). */
+  protected readonly assistant: AssistantModel;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
     const workerEnv = env as unknown as RuntimeEnv;
     this.database = openDatabase(ctx.storage);
     this.accounts = accountsFor(workerEnv);
+    this.assistant = assistantModelFor(workerEnv);
     const directory = workerEnv.WHATSAPP_DIRECTORY.get(
       workerEnv.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
     );
@@ -92,15 +103,20 @@ export abstract class OrganizationRuntime extends DurableObject {
     return this.thenArm(() => this.as(caller, requirement, work));
   }
 
-  /** Sends the outbox's due messages, then sets the alarm for the next one. */
+  /** Sends the outbox's due messages and runs the assistant's due turns, then sets the alarm for the next item. */
   override async alarm() {
     await sendDueMessages(this.database, this.whatsapp);
+    await runDueTurns(this.database, this.whatsapp, this.assistant);
     await this.#armAlarm();
   }
 
   /** Sets the alarm to the earliest due item, or clears it when nothing waits on time. */
   async #armAlarm() {
-    const next = nextOutboxAlarm(this.database, this.whatsapp);
+    const due = [
+      nextOutboxAlarm(this.database, this.whatsapp),
+      nextTurnAlarm(this.database, this.assistant),
+    ].filter((at) => at !== null);
+    const next = due.length > 0 ? Math.min(...due) : null;
     if (next === null) {
       await this.ctx.storage.deleteAlarm();
     } else {

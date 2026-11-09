@@ -54,7 +54,7 @@ async function patientWrites(text: string, from = martinaPhone) {
   return whatsappId;
 }
 
-/** Judges a stored message as the assistant will (#169): no method judges yet. */
+/** Judges a stored message as the assistant's turn does (`assistant.ts`), without running one. */
 function judge(whatsappId: string, judgement: MessageJudgement) {
   return inStorage(world.organization, (database) =>
     database

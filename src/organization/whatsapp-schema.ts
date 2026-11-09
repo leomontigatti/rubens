@@ -20,7 +20,7 @@ import { connectionStates, numberHoldReasons } from "#/lib/whatsapp.ts";
 import { templateCategories, templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
 import { appointment, patient } from "#/organization/schema.ts";
-import { id, instant, timestamps } from "#/organization/schema-columns.ts";
+import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
 
 // The organization object's WhatsApp tables (ADR-0010), beside the rest of its
 // schema in `schema.ts`, whose rules they follow.
@@ -33,6 +33,12 @@ import { id, instant, timestamps } from "#/organization/schema-columns.ts";
 export const conversation = sqliteTable("conversation", {
   id: id(),
   phone: text("phone").notNull().unique(),
+  /**
+   * When the assistant's wait ends and its turn runs (docs/domain/assistant.md
+   * § Pace): set by each incoming message, so a burst gets one turn; none
+   * while no message waits for it.
+   */
+  assistantDueAt: instant("assistant_due_at"),
   ...timestamps,
 });
 
@@ -85,6 +91,10 @@ export const whatsappMessage = sqliteTable(
     statusAt: instant("status_at"),
     /** An incoming message's judgement; none until the assistant judges it. */
     judgement: text("judgement", { enum: messageJudgements }),
+    /** Whether the assistant judged an incoming message an emergency; none until it judges it. */
+    emergency: flag("emergency"),
+    /** The communication rules' version an assistant reply was written under; none for other messages. */
+    rulesVersion: integer("rules_version"),
     ...timestamps,
   },
   (table) => [index("whatsapp_message_conversation_idx").on(table.conversationId, table.sentAt)],

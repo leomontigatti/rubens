@@ -462,3 +462,5 @@ export {
   metaBusinessToken,
   metaPhoneNumberId,
 } from "#/organization/graph-api.test-support.ts";
+
+export { scriptedModel } from "#/organization/assistant-model.test-support.ts";
