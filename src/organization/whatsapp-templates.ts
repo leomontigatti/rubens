@@ -17,7 +17,7 @@ import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError, WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Acting } from "#/organization/members.ts";
-import { whatsappTemplate } from "#/organization/schema.ts";
+import { whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 
 // The organization's WhatsApp templates (#154): an admin writes a body for a
 // template of the set and submits it to Meta as a new version, and Meta's

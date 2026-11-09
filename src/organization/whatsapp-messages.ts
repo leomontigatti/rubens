@@ -10,13 +10,12 @@ import type {
 import { phoneSpellings } from "#/lib/phones.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
+import { guardian, patient } from "#/organization/schema.ts";
 import {
   conversation,
   conversationPatient,
-  guardian,
-  patient,
   whatsappMessage,
-} from "#/organization/schema.ts";
+} from "#/organization/whatsapp-schema.ts";
 import { storeTemplateStatus } from "#/organization/whatsapp-templates.ts";
 
 // What Meta's webhook brings in (ADR-0010 § The webhook stores, the object's

@@ -50,7 +50,8 @@ does when none is written yet.
 
 ## The organization's schema
 
-The object's schema is `src/organization/schema.ts`. Its migrations are generated from
+The object's schema is `src/organization/schema.ts`, with its WhatsApp tables in
+`whatsapp-schema.ts`. Its migrations are generated from
 it and committed under `src/organization/migrations/`; every object applies the ones it
 has not run when it starts.
 

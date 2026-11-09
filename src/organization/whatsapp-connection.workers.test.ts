@@ -17,7 +17,8 @@ import {
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 import { organizationCipher } from "#/organization/encryption.ts";
 import { metaSignupFor } from "#/organization/graph-api.ts";
-import { auditLog, whatsappConnection } from "#/organization/schema.ts";
+import { auditLog } from "#/organization/schema.ts";
+import { whatsappConnection } from "#/organization/whatsapp-schema.ts";
 import { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 
 // Embedded Signup's completion, through the object, with Meta faked at its

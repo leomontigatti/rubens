@@ -11,7 +11,7 @@ import {
   whatsappDirectory,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { whatsappMessage, whatsappTemplate } from "#/organization/schema.ts";
+import { whatsappMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { handleWhatsappWebhook } from "#/server/whatsapp-webhook.ts";
 

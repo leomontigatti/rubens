@@ -18,6 +18,10 @@ const newMedicalService: MedicalServiceFields = {
   name: "",
   durationMinutes: 30,
   bookingConfirmation: true,
+  reminders: [],
+  careInstructions: null,
+  followUpHours: null,
+  rescheduleCutoffHours: 24,
 };
 
 function NewMedicalService() {
@@ -35,6 +39,7 @@ function NewMedicalService() {
       title="Nueva prestación"
       description={practitioner.displayName}
       initial={newMedicalService}
+      careInstructionsMaxLength={result.careInstructionsMaxLength}
       submitLabel="Crear"
       creates
       onSubmit={(fields) =>

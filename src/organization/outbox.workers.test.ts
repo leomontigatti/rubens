@@ -12,7 +12,7 @@ import {
   metaPhoneNumberId,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { conversation, outboxMessage, whatsappMessage } from "#/organization/schema.ts";
+import { conversation, outboxMessage, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
 // go to the fake Meta: each test reads the requests it received.
@@ -158,6 +158,10 @@ describe("queueing the booking confirmation", () => {
         name: "Consulta",
         durationMinutes: 30,
         bookingConfirmation: false,
+        reminders: [],
+        careInstructions: null,
+        followUpHours: null,
+        rescheduleCutoffHours: 24,
       }),
     );
 

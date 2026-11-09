@@ -28,7 +28,7 @@ src/
 │   │                  methods) over `organization-runtime.ts` (its storage, services, alarm and
 │   │                  `as()`, the authorization every method goes through), one module per area
 │   │                  (`members.ts`, `audit.ts`, …), `encryption.ts` (the organization's key),
-│   │                  `schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
+│   │                  `schema.ts` and `whatsapp-schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
 ├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
 ├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules
@@ -58,7 +58,7 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
 - **A server function**: in a `*.functions.ts` file, it only calls
   `withOrganization((organization, caller) => organization.<method>(caller, data))`
   (`src/server/with-organization.ts`). A refusal comes back as `{ ok: false, reason }`.
-- **A schema change**: edit `src/organization/schema.ts`, run `pnpm organization:generate`,
+- **A schema change**: edit `src/organization/schema.ts` (or `whatsapp-schema.ts` for a WhatsApp table), run `pnpm organization:generate`,
   and review the generated SQL. Migrations on `main` are never edited.
 - **A background job**: a row in the organization's object and its one alarm (ADR-0008):
   `src/organization/outbox.ts` queues messages to patients and sends them when due, and
