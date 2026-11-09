@@ -166,6 +166,10 @@ export const outboxMessage = sqliteTable(
     state: text("state", { enum: outboxStates }).notNull().default("queued"),
     /** When it goes next, while queued. */
     dueAt: instant("due_at").notNull(),
+    // A reminder's hours before the appointment, as its medical service set
+    // them when it was queued; null for other kinds. Not the reminder's id,
+    // which a save of the medical service replaces.
+    hoursBefore: integer("hours_before"),
     attempts: integer("attempts").notNull().default(0),
     dropReason: text("drop_reason", { enum: outboxDropReasons }),
     // Meta's error on the latest failed attempt.
