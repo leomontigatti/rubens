@@ -63,6 +63,12 @@ describe("the fixed checks on an assistant reply", () => {
     });
   });
 
+  it("strips a sequence built on a bare pictograph, and keeps a symbol asked to show as text", () => {
+    // A heart on fire with no variation selector after the heart.
+    expect(checkReply("Hola \u2764\u200D\u{1F525}")).toEqual({ ok: true, text: "Hola" });
+    expect(checkReply("Marca\u00AE\uFE0E")).toEqual({ ok: true, text: "Marca®" });
+  });
+
   it("keeps accented letters and plain punctuation", () => {
     const text = "Sí, el turno del miércoles con la Dra. Muñoz sigue en pie: 10:30 h.";
 
