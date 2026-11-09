@@ -5,7 +5,9 @@ import type {
   IncomingWhatsappMessage,
   WhatsappEvents,
   WhatsappStatusUpdate,
+  WhatsappTemplateStatusUpdate,
 } from "#/lib/whatsapp-messages.ts";
+import { templateStatusOf } from "#/lib/whatsapp-templates.ts";
 
 import { organizationObject } from "#/server/caller.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
@@ -47,9 +49,17 @@ const metaChange = z.object({
   }),
 });
 
+/** A `message_template_status_update` change's value. */
+const metaTemplateStatus = z.looseObject({
+  event: z.string(),
+  message_template_id: z.string().regex(/^\d+$/),
+  reason: z.string().nullish(),
+});
+
 const metaWebhook = z.object({
   object: z.literal("whatsapp_business_account"),
-  entry: z.array(z.object({ changes: z.array(metaChange) })),
+  // The entry's id is the WhatsApp Business account's.
+  entry: z.array(z.object({ id: z.string().optional(), changes: z.array(metaChange) })),
 });
 
 type MetaMessage = z.infer<typeof metaMessage>;
@@ -70,14 +80,39 @@ function isKnownStatus(status: string): status is WhatsappStatusUpdate["status"]
 }
 
 /**
+ * The template status changes of a call for `accountId`, the one WhatsApp
+ * Business account this Worker serves until Embedded Signup (#159). An event
+ * with no status underthing stores (such as `FLAGGED`) is skipped; a refresh
+ * from the settings reads the status it leads to.
+ */
+function templateStatusesFor(
+  payload: z.infer<typeof metaWebhook>,
+  accountId: string | undefined,
+): WhatsappTemplateStatusUpdate[] {
+  return payload.entry
+    .filter((entry) => accountId && entry.id === accountId)
+    .flatMap((entry) => entry.changes)
+    .filter((change) => change.field === "message_template_status_update")
+    .flatMap((change) => {
+      const value = metaTemplateStatus.safeParse(change.value);
+      const status = value.success ? templateStatusOf(value.data.event) : null;
+      if (!value.success || !status) {
+        return [];
+      }
+      const reason = value.data.reason && value.data.reason !== "NONE" ? value.data.reason : null;
+      return [{ metaId: value.data.message_template_id, status, reason }];
+    });
+}
+
+/**
  * The `messages` changes of a call for `phoneNumberId`, the one number this
  * Worker serves until Embedded Signup (#159), and how many changes were for
  * another number. A status underthing does not store (such as `deleted`) is skipped.
  */
-function eventsFor(
+function messageEventsFor(
   payload: z.infer<typeof metaWebhook>,
   phoneNumberId: string | undefined,
-): { events: WhatsappEvents; otherNumbers: number } {
+): { events: Omit<WhatsappEvents, "templateStatuses">; otherNumbers: number } {
   const changes = payload.entry
     .flatMap((entry) => entry.changes)
     .filter((change) => change.field === "messages");
@@ -94,6 +129,16 @@ function eventsFor(
     },
     otherNumbers: changes.length - ours.length,
   };
+}
+
+/**
+ * Reads a template's id as the digits Meta sent: Meta sends it as a JSON
+ * number, which can be past JavaScript's safe integers.
+ */
+function keepTemplateIdDigits(key: string, value: unknown, context?: { source?: string }) {
+  return key === "message_template_id" && typeof value === "number" && context?.source
+    ? context.source
+    : value;
 }
 
 /** Meta's `GET` when the webhook is set up: the challenge back, for the right verify token. */
@@ -128,7 +173,7 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
   }
   let json: unknown;
   try {
-    json = JSON.parse(new TextDecoder().decode(body));
+    json = JSON.parse(new TextDecoder().decode(body), keepTemplateIdDigits);
   } catch {
     json = undefined;
   }
@@ -143,13 +188,19 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
   const organizationId = env.WHATSAPP_ORGANIZATION_ID;
   // A number with no organization to store it in is served by no one.
   const servedNumber = organizationId ? env.WHATSAPP_PHONE_NUMBER_ID : undefined;
-  const { events, otherNumbers } = eventsFor(parsed.data, servedNumber);
+  const { events: messageEvents, otherNumbers } = messageEventsFor(parsed.data, servedNumber);
   if (otherNumbers > 0) {
     console.warn(
       `[whatsapp-webhook] dropped ${otherNumbers} change(s) for a phone number id no organization has`,
     );
   }
-  if (organizationId && events.messages.length + events.statuses.length > 0) {
+  const servedAccount = organizationId ? env.WHATSAPP_BUSINESS_ACCOUNT_ID : undefined;
+  const events = {
+    ...messageEvents,
+    templateStatuses: templateStatusesFor(parsed.data, servedAccount),
+  };
+  const count = events.messages.length + events.statuses.length + events.templateStatuses.length;
+  if (organizationId && count > 0) {
     await organizationObject(env, organizationId).storeWhatsappEvents(events);
   }
   return new Response(null, { status: 200 });

@@ -25,10 +25,12 @@ organization's data: the organization object's methods and the area modules in
   for Clerk's Backend API; a test asserts on the users and metadata it holds.
 - **Meta is faked at its HTTP boundary**: `fakeMeta`, with `vi.mock` of
   `#/organization/graph-api.ts` passing its `settings` and `fetch` to the real `whatsappCloudFor`,
-  so a test asserts on the requests Meta received and picks Meta's answer, and sets or unsets the
-  WhatsApp settings per test.
+  so a test asserts on the requests Meta received and picks Meta's answer (`answerWith`, or
+  `answerNextWith` for one request), holds a request (`holdNext`) to run another call meanwhile,
+  lists the account's templates from `templatesAtMeta`, and sets or unsets the WhatsApp settings
+  per test.
 - **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
-  `adminCaller`, `addMember`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
+  `adminCaller`, `addMember`, `addRefusedAdmin`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
   `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`, `fakeAccounts`, `fakeMeta`). Extend it before adding another support file
   ([coding-standards.md](./coding-standards.md#test-support-files)).
 - **A schema change** is `src/organization/schema.ts` plus `pnpm organization:generate`, and the

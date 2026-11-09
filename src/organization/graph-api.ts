@@ -11,9 +11,13 @@ export interface GraphApiSettings {
   WHATSAPP_ACCESS_TOKEN?: string;
   /** The Cloud API's id of the number messages are sent from. */
   WHATSAPP_PHONE_NUMBER_ID?: string;
+  /** The WhatsApp Business account the number belongs to, which owns the templates. */
+  WHATSAPP_BUSINESS_ACCOUNT_ID?: string;
 }
 
 export type MissingSetting = "missingAccessToken" | "missingPhoneNumberId";
+
+export type MissingTemplateSetting = "missingAccessToken" | "missingBusinessAccountId";
 
 export interface TemplateMessage {
   /** E.164. */
@@ -28,15 +32,45 @@ export interface MetaError {
   message: string;
 }
 
-export type SendResult =
-  | { ok: true; messageId: string }
-  | { ok: false; reason: "metaRefused"; metaError: MetaError };
+type MetaRefusal = { ok: false; reason: "metaRefused"; metaError: MetaError };
+
+export type SendResult = { ok: true; messageId: string } | MetaRefusal;
+
+/** A template body to submit for review, with Meta's example for each of its variables. */
+export interface TemplateDraft {
+  /** The name at Meta: lowercase letters, digits and underscores. */
+  name: string;
+  languageCode: string;
+  body: string;
+  examples: { param_name: string; example: string }[];
+}
+
+/** Meta's verdict on a template, in Meta's words: `PENDING`, `APPROVED`, `REJECTED`, … */
+export interface TemplateReview {
+  status: string;
+  /** Meta's reason for a rejection; `null` when there is none. */
+  rejectedReason: string | null;
+}
+
+export type TemplateCreateResult = { ok: true; templateId: string; status: string } | MetaRefusal;
+
+export type TemplateReadResult = ({ ok: true } & TemplateReview) | MetaRefusal;
+
+export type TemplateNamesResult = { ok: true; names: string[] } | MetaRefusal;
 
 export interface WhatsappCloud {
   /** The setting that keeps a send from being made, or `null` when none is missing. */
   missingSetting(): MissingSetting | null;
   /** Sends an approved template with no variables; requires every setting. */
   sendTemplate(message: TemplateMessage): Promise<SendResult>;
+  /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
+  missingTemplateSetting(): MissingTemplateSetting | null;
+  /** Submits a utility template, with named variables and no buttons, for Meta's review. */
+  createTemplate(draft: TemplateDraft): Promise<TemplateCreateResult>;
+  /** Meta's current verdict on the template `templateId`. */
+  readTemplate(templateId: string): Promise<TemplateReadResult>;
+  /** The names of every template on the account at Meta, in every language. */
+  templateNamesAtMeta(): Promise<TemplateNamesResult>;
 }
 
 interface GraphApiError {
@@ -45,6 +79,17 @@ interface GraphApiError {
 
 interface MessagesAnswer {
   messages?: { id?: unknown }[];
+}
+
+interface TemplateListAnswer {
+  data?: { name?: unknown }[];
+  paging?: { next?: unknown };
+}
+
+interface TemplateAnswer {
+  id?: unknown;
+  status?: unknown;
+  rejected_reason?: unknown;
 }
 
 export function whatsappCloudFor(
@@ -59,6 +104,26 @@ export function whatsappCloudFor(
       return "missingPhoneNumberId";
     }
     return null;
+  }
+
+  function missingTemplateSetting(): MissingTemplateSetting | null {
+    if (!settings.WHATSAPP_ACCESS_TOKEN) {
+      return "missingAccessToken";
+    }
+    if (!settings.WHATSAPP_BUSINESS_ACCOUNT_ID) {
+      return "missingBusinessAccountId";
+    }
+    return null;
+  }
+
+  /** The token and the account, for a call `missingTemplateSetting()` has cleared. */
+  function templateSettings() {
+    const token = settings.WHATSAPP_ACCESS_TOKEN;
+    const accountId = settings.WHATSAPP_BUSINESS_ACCOUNT_ID;
+    if (!token || !accountId) {
+      throw new Error("The WhatsApp settings are incomplete: check missingTemplateSetting() first");
+    }
+    return { token, accountId };
   }
 
   return {
@@ -83,20 +148,113 @@ export function whatsappCloudFor(
           }),
         },
       );
-      return sendResultOf(response);
+      const answer = await answerOf(response);
+      if (!answer.ok) {
+        return answer;
+      }
+      const messageId = (answer.body as MessagesAnswer).messages?.[0]?.id;
+      if (typeof messageId !== "string") {
+        throw new Error("The Graph API accepted a message without returning its id");
+      }
+      return { ok: true, messageId };
+    },
+    missingTemplateSetting,
+    async createTemplate({ name, languageCode, body, examples }) {
+      const { token, accountId } = templateSettings();
+      const response = await fetcher(
+        `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(accountId)}/message_templates`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({
+            name,
+            language: languageCode,
+            category: "UTILITY",
+            parameter_format: "NAMED",
+            components: [
+              {
+                type: "BODY",
+                text: body,
+                // Meta refuses an example for a body with no variables.
+                ...(examples.length > 0 && { example: { body_text_named_params: examples } }),
+              },
+            ],
+          }),
+        },
+      );
+      const answer = await answerOf(response);
+      if (!answer.ok) {
+        return answer;
+      }
+      const { id, status } = answer.body as TemplateAnswer;
+      if (typeof id !== "string" || typeof status !== "string") {
+        throw new Error("The Graph API accepted a template without returning its id and status");
+      }
+      return { ok: true, templateId: id, status };
+    },
+    async readTemplate(templateId) {
+      const { token } = templateSettings();
+      const fields = new URLSearchParams({ fields: "status,rejected_reason" });
+      const response = await fetcher(
+        `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(templateId)}?${fields}`,
+        { headers: { authorization: `Bearer ${token}` } },
+      );
+      const answer = await answerOf(response);
+      if (!answer.ok) {
+        return answer;
+      }
+      const { status, rejected_reason: reason } = answer.body as TemplateAnswer;
+      if (typeof status !== "string") {
+        throw new Error("The Graph API returned a template without its status");
+      }
+      const rejectedReason = typeof reason === "string" && reason !== "NONE" ? reason : null;
+      return { ok: true, status, rejectedReason };
+    },
+    async templateNamesAtMeta() {
+      const { token, accountId } = templateSettings();
+      // Every name, not a `name` filter: Meta does not document how that one matches.
+      const query = new URLSearchParams({ fields: "name", limit: "100" });
+      let page: string | undefined =
+        `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(accountId)}/message_templates?${query}`;
+      const names: string[] = [];
+      while (page) {
+        const response = await fetcher(page, { headers: { authorization: `Bearer ${token}` } });
+        const answer = await answerOf(response);
+        if (!answer.ok) {
+          return answer;
+        }
+        const { data, paging } = answer.body as TemplateListAnswer;
+        if (!Array.isArray(data)) {
+          throw new Error("The Graph API listed templates without their data");
+        }
+        for (const template of data) {
+          if (typeof template.name === "string") {
+            names.push(template.name);
+          }
+        }
+        page = nextPage(paging?.next);
+      }
+      return { ok: true, names };
     },
   };
 }
 
-/** Meta's answer to a send: its message id, or its error; a failure when it is neither. */
-async function sendResultOf(response: Response): Promise<SendResult> {
+/** Meta's link to a list's next page; the token goes only to the Graph API's own host. */
+function nextPage(next: unknown): string | undefined {
+  if (typeof next !== "string") {
+    return undefined;
+  }
+  if (new URL(next).origin !== "https://graph.facebook.com") {
+    throw new Error("The Graph API linked a next page on another host");
+  }
+  return next;
+}
+
+/** Meta's answer: its JSON body when it accepted, or its error; a failure when it is neither. */
+async function answerOf(response: Response): Promise<{ ok: true; body: unknown } | MetaRefusal> {
   const answer: unknown = await response.json().catch(() => null);
   if (response.ok) {
-    const messageId = (answer as MessagesAnswer | null)?.messages?.[0]?.id;
-    if (typeof messageId !== "string") {
-      throw new Error("The Graph API accepted a message without returning its id");
-    }
-    return { ok: true, messageId };
+    return { ok: true, body: answer ?? {} };
   }
   const error = (answer as GraphApiError | null)?.error;
   if (typeof error?.message !== "string") {

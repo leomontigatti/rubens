@@ -7,6 +7,7 @@ import { focusProblem } from "#/components/form-page.tsx";
 import { fieldProblems } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { PageHeader } from "#/components/page-header.tsx";
+import { RecordSection } from "#/components/record-section.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -16,7 +17,9 @@ import { defaultTemplate, templateSendSchema } from "#/lib/whatsapp.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
 import { getWhatsappSettings, sendWhatsappTemplate } from "#/server/whatsapp.functions.ts";
 
-export const Route = createFileRoute("/_app/whatsapp")({
+import { TemplateList } from "#/routes/_app/whatsapp/-templates.tsx";
+
+export const Route = createFileRoute("/_app/whatsapp/")({
   head: () => ({ meta: [{ title: "WhatsApp · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: WhatsappSettings,
@@ -128,66 +131,74 @@ function WhatsappSettings() {
   const disabledReason = settings.missing && refusalMessages[settings.missing];
 
   return (
-    <div className="flex max-w-xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="WhatsApp"
-        description="Enviá una plantilla aprobada por Meta, sin variables, a un número de prueba."
+        description="Las plantillas con las que el consultorio escribe a los pacientes, y un envío de prueba."
       />
-      {disabledReason && (
-        <Alert variant="warning">
-          <AlertTitle>No se pueden enviar mensajes</AlertTitle>
-          <AlertDescription>{disabledReason}</AlertDescription>
-        </Alert>
-      )}
-      <FormProblemsContext.Provider value={problems}>
-        <div ref={content} className="flex flex-col gap-6">
-          {answer && (
-            <div ref={answerRef} tabIndex={-1} className="outline-none">
-              <AnswerAlert answer={answer} />
-            </div>
+      <TemplateList settings={settings} />
+      <RecordSection title="Envío de prueba">
+        <div className="flex max-w-xl flex-col gap-6">
+          <p className="text-muted-foreground text-sm">
+            Enviá una plantilla aprobada por Meta, sin variables, a un número de prueba.
+          </p>
+          {disabledReason && (
+            <Alert variant="warning">
+              <AlertTitle>No se pueden enviar mensajes</AlertTitle>
+              <AlertDescription>{disabledReason}</AlertDescription>
+            </Alert>
           )}
-          <form
-            method="post"
-            noValidate
-            className="flex flex-col gap-6"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void form.handleSubmit();
-            }}
-          >
-            <FieldGroup>
-              <form.AppField name="to">
-                {(field) => (
-                  <field.TextField
-                    label="Número del destinatario"
-                    type="tel"
-                    required
-                    hint={recipientHint}
-                  />
-                )}
-              </form.AppField>
-              <form.AppField name="templateName">
-                {(field) => <field.TextField label="Plantilla" required />}
-              </form.AppField>
-              <form.AppField name="languageCode">
-                {(field) => <field.TextField label="Idioma" required narrow />}
-              </form.AppField>
-            </FieldGroup>
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(submitting) => (
-                <Button
-                  type="submit"
-                  className="w-fit"
-                  disabled={Boolean(disabledReason) || submitting}
-                >
-                  {submitting && <Spinner />}
-                  Enviar plantilla
-                </Button>
+          <FormProblemsContext.Provider value={problems}>
+            <div ref={content} className="flex flex-col gap-6">
+              {answer && (
+                <div ref={answerRef} tabIndex={-1} className="outline-none">
+                  <AnswerAlert answer={answer} />
+                </div>
               )}
-            </form.Subscribe>
-          </form>
+              <form
+                method="post"
+                noValidate
+                className="flex flex-col gap-6"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void form.handleSubmit();
+                }}
+              >
+                <FieldGroup>
+                  <form.AppField name="to">
+                    {(field) => (
+                      <field.TextField
+                        label="Número del destinatario"
+                        type="tel"
+                        required
+                        hint={recipientHint}
+                      />
+                    )}
+                  </form.AppField>
+                  <form.AppField name="templateName">
+                    {(field) => <field.TextField label="Plantilla" required />}
+                  </form.AppField>
+                  <form.AppField name="languageCode">
+                    {(field) => <field.TextField label="Idioma" required narrow />}
+                  </form.AppField>
+                </FieldGroup>
+                <form.Subscribe selector={(state) => state.isSubmitting}>
+                  {(submitting) => (
+                    <Button
+                      type="submit"
+                      className="w-fit"
+                      disabled={Boolean(disabledReason) || submitting}
+                    >
+                      {submitting && <Spinner />}
+                      Enviar plantilla
+                    </Button>
+                  )}
+                </form.Subscribe>
+              </form>
+            </div>
+          </FormProblemsContext.Provider>
         </div>
-      </FormProblemsContext.Provider>
+      </RecordSection>
     </div>
   );
 }

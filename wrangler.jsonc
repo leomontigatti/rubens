@@ -19,9 +19,12 @@
   // Meta's WhatsApp webhook (/api/whatsapp): META_APP_SECRET (the app secret
   // that signs each call) and WHATSAPP_VERIFY_TOKEN (the token set in Meta's
   // app dashboard), both secrets; without either, its half answers 404.
-  // WHATSAPP_PHONE_NUMBER_ID (Meta's test number) and WHATSAPP_ORGANIZATION_ID
-  // (the organization its messages are stored in) are configuration, not
-  // secret, but are set the same way so a deploy does not drop them.
+  // WHATSAPP_PHONE_NUMBER_ID (Meta's test number), WHATSAPP_BUSINESS_ACCOUNT_ID
+  // (the WhatsApp Business account it belongs to, which the settings page
+  // submits templates to and whose template status events the webhook stores)
+  // and WHATSAPP_ORGANIZATION_ID (the organization its messages and templates
+  // are stored in) are configuration, not secret, but are set the same way so a
+  // deploy does not drop them.
   // WHATSAPP_ACCESS_TOKEN, a secret, is that number's access token, which the
   // WhatsApp settings page sends templates with (src/organization/graph-api.ts);
   // without it or the phone number id, the page shows sending disabled and

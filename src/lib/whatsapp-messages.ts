@@ -1,3 +1,5 @@
+import type { TemplateStatus } from "#/lib/whatsapp-templates.ts";
+
 // WhatsApp messages as the organization's object stores them (ADR-0010), in
 // the shape the webhook hands them over: Meta's payload is read in
 // `src/server/whatsapp-webhook.ts`, never here.
@@ -33,8 +35,18 @@ export interface WhatsappStatusUpdate {
   at: number;
 }
 
+/** Meta's news about a template the organization submitted. */
+export interface WhatsappTemplateStatusUpdate {
+  /** Meta's id for the template. */
+  metaId: string;
+  status: TemplateStatus;
+  /** Meta's reason for a rejection, such as `INVALID_FORMAT`. */
+  reason: string | null;
+}
+
 /** What one webhook call carries for one organization. */
 export interface WhatsappEvents {
   messages: IncomingWhatsappMessage[];
   statuses: WhatsappStatusUpdate[];
+  templateStatuses: WhatsappTemplateStatusUpdate[];
 }

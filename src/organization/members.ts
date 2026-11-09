@@ -33,6 +33,19 @@ export interface Acting {
  */
 export type Requirement = "any" | "signedIn" | readonly Role[];
 
+// A practitioner changes their own medical services; which ones are theirs is
+// the area's to decide (`src/organization/medical-services.ts`).
+export const medicalServiceEditors = ["admin", "practitioner"] as const;
+// The same for schedules and time off; a receptionist only reads them.
+export const workingTimeEditors = medicalServiceEditors;
+
+// Every staff role registers and edits patients, their coverages and guardians.
+export const patientEditors = ["admin", "receptionist", "practitioner"] as const;
+
+// Every staff role books; for whom is the area's to decide
+// (`src/organization/appointments.ts`).
+export const bookers = patientEditors;
+
 export type Refusal = "unauthenticated" | "forbidden" | "mustChangePassword";
 
 export type Authorized = { ok: true; acting: Acting } | { ok: false; reason: Refusal };

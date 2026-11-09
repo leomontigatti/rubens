@@ -15,6 +15,7 @@ import { insurerKinds } from "#/lib/coverages.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
 import { whatsappMessageDirections, whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
+import { templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
 // The organization object's SQLite schema (ADR-0008). Everything in it belongs
 // to the one organization the object is, so no table carries an organization
@@ -483,4 +484,34 @@ export const whatsappMessage = sqliteTable(
     ...timestamps,
   },
   (table) => [index("whatsapp_message_conversation_idx").on(table.conversationId, table.sentAt)],
+);
+
+/**
+ * One version of a WhatsApp template the organization submitted to Meta
+ * (`docs/operations/whatsapp-templates.md`): underthing's name for it, and the
+ * body as submitted. Each version is its own template at Meta, named by its
+ * version, so a row is never resubmitted; only Meta's verdict on it changes.
+ */
+export const whatsappTemplate = sqliteTable(
+  "whatsapp_template",
+  {
+    id: id(),
+    name: text("name", { enum: templateNames }).notNull(),
+    version: integer("version").notNull(),
+    /** Meta's language code, such as `es_AR`. */
+    language: text("language").notNull(),
+    body: text("body").notNull(),
+    /** Meta's id for the template. */
+    metaId: text("meta_id").notNull().unique(),
+    status: text("status", { enum: templateStatuses }).notNull(),
+    /** Meta's reason for a rejection, such as `INVALID_FORMAT`. */
+    rejectionReason: text("rejection_reason"),
+    // Raised by every status write, so a refresh that read Meta before a
+    // webhook event does not write over it.
+    statusRevision: integer("status_revision").notNull().default(0),
+    /** The admin who submitted it. */
+    submittedBy: text("submitted_by").notNull(),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("whatsapp_template_name_version_idx").on(table.name, table.version)],
 );
