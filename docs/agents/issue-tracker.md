@@ -87,8 +87,10 @@ or the fix's cost overrides:
 
 The queue is `priority:next` plus `ready-for-agent`:
 `gh issue list --label priority:next --label ready-for-agent`. Skip an issue whose
-`gh issue view <n> --json blockedBy` still lists an open blocker: blocking is GitHub's native
-relation ([Ticket operations](#ticket-operations)), and no label tracks it.
+`gh issue view <n> --json blockedBy --jq '[.blockedBy.nodes[] | select(.state == "OPEN") | .number]'`
+still lists an open blocker: blocking is GitHub's native relation
+([Ticket operations](#ticket-operations)), and no label tracks it. `blockedBy` and `subIssues`
+are objects, `{nodes, totalCount}`, so a query reads `.nodes[]`.
 
 Sub-issues are not triaged on their own. `to-tickets` creates each slice with its PRD's priority
 and type ([Ticket operations](#ticket-operations)). That multiplies a PRD in any priority list,
@@ -133,7 +135,7 @@ The `to-spec` and `to-tickets` skills use this section.
 - **Tickets** are native sub-issues of the PRD, flat, created in the order they
   will be implemented: `gh issue create --parent <PRD> ...`, each with the PRD's
   priority and type plus `ready-for-agent` ([Labels](#labels)). Check first that the PRD has no sub-issues yet
-  (`gh issue view <PRD> --json subIssues`), and publish no slice before the user
+  (`gh issue view <PRD> --json subIssues --jq '.subIssues.totalCount'` is `0`), and publish no slice before the user
   approves the slicing.
 - **Blocking** is GitHub's native relation: `gh issue edit <ticket> --add-blocked-by <other>`.
   A "Blocked by #N" line in the body is for the reader; it does not block anything.
@@ -162,8 +164,9 @@ The `wayfinder` skill uses this section.
   sub-issues of it: `gh issue create --parent <map> --label wayfinder:<type> ...`.
 - **Blocking** is GitHub's native relation, as above.
 - **The frontier** is the open, unassigned, unblocked children. List the children
-  with `gh issue view <map> --json subIssues`, then keep those with no assignee and
-  no open blocker (`gh issue view <n> --json assignees,blockedBy`).
+  with `gh issue view <map> --json subIssues --jq '.subIssues.nodes[] | select(.state == "OPEN") | .number'`,
+  then keep those with no assignee and no open blocker
+  (`gh issue view <n> --json assignees,blockedBy --jq '{assignees: [.assignees[].login], blockers: [.blockedBy.nodes[] | select(.state == "OPEN") | .number]}'`).
 - **Claiming** is `gh issue edit <ticket> --add-assignee @me`, before any work.
 - **Exit shapes.** A map ends in one PRD with flat sub-issues when the slices touch
   the same files or are merged together, which is the default. Independent issues
