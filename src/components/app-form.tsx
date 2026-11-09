@@ -105,8 +105,14 @@ function TextField(
 }
 
 /** A long text, such as a message body, whose box grows with what it holds. */
-function TextareaField(props: { label: string; hint?: string; required?: boolean }) {
-  const { label, hint, required } = props;
+function TextareaField(props: {
+  label: string;
+  hint?: string;
+  required?: boolean;
+  /** What sits under the hint, such as the text as it will be sent. */
+  preview?: ReactNode;
+}) {
+  const { label, hint, required, preview } = props;
   const field = useFieldContext<string>();
   const { problem, errorId, invalid } = useFieldProblem(field.name);
   const hintId = hint ? `${field.name}-hint` : undefined;
@@ -124,6 +130,7 @@ function TextareaField(props: { label: string; hint?: string; required?: boolean
         aria-describedby={joinIds(hintId, errorId)}
       />
       <FieldHint id={hintId}>{hint}</FieldHint>
+      {preview}
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );

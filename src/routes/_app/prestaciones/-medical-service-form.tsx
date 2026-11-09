@@ -22,6 +22,7 @@ import {
   medicalServiceInputSchema,
 } from "#/lib/medical-services.ts";
 import type { MedicalServiceFields } from "#/lib/medical-services.ts";
+import { flattenCareInstructions } from "#/lib/template-filling.ts";
 
 import {
   careInstructionsTooLongMessage,
@@ -179,6 +180,7 @@ export function MedicalServiceForm(props: {
               <field.TextareaField
                 label="Indicaciones"
                 hint={`Se envían cuando el turno se marca como atendido. Hasta ${careInstructionsMaxLength} caracteres; cada salto de línea cuenta como dos. Vacío: no se envían.`}
+                preview={<SentAsOneLine text={field.state.value} />}
               />
             )}
           </form.AppField>
@@ -212,6 +214,22 @@ export function MedicalServiceForm(props: {
         </FieldGroup>
       </FieldSet>
     </ActionFormPage>
+  );
+}
+
+/**
+ * The care instructions as patients read them, when sending changes them:
+ * WhatsApp takes them on one line, each line break joined as `; ` (#162).
+ */
+function SentAsOneLine(props: { text: string }) {
+  const sent = flattenCareInstructions(props.text);
+  if (sent === props.text.trim()) {
+    return null;
+  }
+  return (
+    <FieldDescription>
+      Los pacientes las reciben en una línea: <span className="text-foreground">{sent}</span>
+    </FieldDescription>
   );
 }
 

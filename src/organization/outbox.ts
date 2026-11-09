@@ -1,9 +1,16 @@
 import { and, asc, desc, eq, gt, inArray, lt, lte, min } from "drizzle-orm";
 
-import { outboxTemplates, reminderDueAt, reminderKinds, retryAt } from "#/lib/outbox.ts";
+import {
+  aftercareKinds,
+  followUpDueAt,
+  outboxTemplates,
+  reminderDueAt,
+  reminderKinds,
+  retryAt,
+} from "#/lib/outbox.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
-import { fillTemplate } from "#/lib/template-filling.ts";
+import { fillTemplate, flattenCareInstructions } from "#/lib/template-filling.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
@@ -121,16 +128,68 @@ export function queueReminders(tx: Writer, appointmentId: string) {
 }
 
 /**
- * Requeues the reminders of the appointment `placed` when a status change
- * takes it out of the statuses that get them, or back into them.
+ * Queues the care instructions and the follow-up of the appointment
+ * `appointmentId`, in the transaction that marked it attended, each when its
+ * medical service has it and its patient accepts WhatsApp: the care
+ * instructions at once, the follow-up its hours after the appointment ends.
  */
-export function requeueRemindersOnStatus(
+function queueAftercare(tx: Writer, appointmentId: string) {
+  const attended = tx
+    .select({
+      endsAt: appointment.endsAt,
+      careInstructions: medicalService.careInstructions,
+      followUpHours: medicalService.followUpHours,
+      whatsappConsent: patient.whatsappConsent,
+    })
+    .from(appointment)
+    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
+    .innerJoin(patient, eq(patient.id, appointment.patientId))
+    .where(eq(appointment.id, appointmentId))
+    .get();
+  if (!attended?.whatsappConsent) {
+    return;
+  }
+  const rows: (typeof outboxMessage.$inferInsert)[] = [];
+  if (attended.careInstructions) {
+    rows.push({ kind: "careInstructions", appointmentId, dueAt: Date.now() });
+  }
+  if (attended.followUpHours !== null) {
+    const dueAt = followUpDueAt(attended.endsAt, attended.followUpHours);
+    rows.push({ kind: "followUp", appointmentId, dueAt });
+  }
+  if (rows.length > 0) {
+    tx.insert(outboxMessage).values(rows).run();
+  }
+}
+
+/**
+ * Requeues the messages of the appointment `placed` that a status change
+ * affects: its reminders when the change takes it out of the statuses that
+ * get them, or back into them; its care instructions and follow-up when it
+ * marks it attended, or undoes that.
+ */
+export function requeueOnStatus(
   tx: Writer,
   placed: { id: string; status: AppointmentStatus },
   nextStatus: AppointmentStatus,
 ) {
   if (upcomingStatuses.includes(placed.status) !== upcomingStatuses.includes(nextStatus)) {
     queueReminders(tx, placed.id);
+  }
+  if (nextStatus === "attended" && placed.status !== "attended") {
+    queueAftercare(tx, placed.id);
+  }
+  if (placed.status === "attended" && nextStatus !== "attended") {
+    tx.update(outboxMessage)
+      .set({ state: "dropped", dropReason: "appointmentChanged" })
+      .where(
+        and(
+          eq(outboxMessage.appointmentId, placed.id),
+          eq(outboxMessage.state, "queued"),
+          inArray(outboxMessage.kind, aftercareKinds),
+        ),
+      )
+      .run();
   }
 }
 
@@ -189,6 +248,7 @@ function readQueued(database: Database, id: string) {
       attempts: outboxMessage.attempts,
       status: appointment.status,
       startsAt: appointment.startsAt,
+      careInstructions: medicalService.careInstructions,
       whatsappConsent: patient.whatsappConsent,
       firstName: patient.firstName,
       chosenName: patient.chosenName,
@@ -201,6 +261,7 @@ function readQueued(database: Database, id: string) {
     })
     .from(outboxMessage)
     .innerJoin(appointment, eq(appointment.id, outboxMessage.appointmentId))
+    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .innerJoin(patient, eq(patient.id, appointment.patientId))
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
     .innerJoin(room, eq(room.id, appointment.roomId))
@@ -237,13 +298,32 @@ function overtaken(database: Database, queued: Queued, now: number, sendable: Ou
   return later.some((one) => reminderDueAt(queued.startsAt, one.hoursBefore!) <= now);
 }
 
+/**
+ * Whether the appointment of `queued` is still what its message is about at
+ * `now`: one that has not started or been cancelled, or for the care
+ * instructions and the follow-up, one still attended, however long ago
+ * (docs/domain/messages.md § When Meta limits the number).
+ */
+function stillAbout(queued: Queued, now: number) {
+  if ((aftercareKinds as readonly OutboxKind[]).includes(queued.kind)) {
+    return queued.status === "attended";
+  }
+  return upcomingStatuses.includes(queued.status) && queued.startsAt > now;
+}
+
 /** Why `queued` may not go now, if anything. */
 function dropReason(database: Database, queued: Queued, now: number, sendable: OutboxKind[]) {
-  if (!upcomingStatuses.includes(queued.status) || queued.startsAt <= now) {
+  if (!stillAbout(queued, now)) {
     return "appointmentChanged" as const;
   }
   if (!queued.whatsappConsent) {
     return "noConsent" as const;
+  }
+  if (
+    queued.kind === "careInstructions" &&
+    !flattenCareInstructions(queued.careInstructions ?? "")
+  ) {
+    return "noCareInstructions" as const;
   }
   return overtaken(database, queued, now, sendable) ? ("overtaken" as const) : null;
 }
@@ -291,7 +371,7 @@ async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) 
     timeZone: queued.timeZone,
     officeName: queued.officeName,
     officeAddress: queued.officeAddress,
-    careInstructions: null,
+    careInstructions: flattenCareInstructions(queued.careInstructions ?? ""),
   });
   const to = queued.guardianPhone ?? queued.patientPhone;
   const attempts = queued.attempts + 1;
