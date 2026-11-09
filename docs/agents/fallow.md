@@ -37,8 +37,10 @@ Severity choices, each explained in `.fallowrc.json`:
 - **A clone group warns; the codebase total fails above 3%.** `fallow audit`
   reports clone groups from three copies up and never fails on them. It ignores
   `duplicates.threshold`, so `pnpm check:dupes` (`fallow dupes --quiet`) runs beside
-  it, in the pre-commit hook and CI, and fails once duplicated lines pass 3% of the
-  codebase (1.2% on 2026-11-09). When either fires, find every copy with
+  it, in the agent `Stop` hook, the pre-commit hook and CI, and fails once duplicated
+  lines pass 3% of the codebase (1.2% on 2026-11-09). Its exit codes read the same:
+  1 is over the threshold, 2 is a config or argument error, and it needs no
+  `origin/main`. When either fires, find every copy with
   `pnpm exec fallow dupes --trace <file>:<line>` and extract the shared idiom;
   don't raise the threshold or suppress the group.
 
