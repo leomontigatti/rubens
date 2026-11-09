@@ -1,0 +1,1 @@
+ALTER TABLE `whatsapp_message` ADD `judgement` text;

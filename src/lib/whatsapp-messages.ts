@@ -1,3 +1,5 @@
+import * as z from "zod";
+
 import type { TemplateStatus } from "#/lib/whatsapp-templates.ts";
 
 // WhatsApp messages as the organization's object stores them (ADR-0010), in
@@ -10,6 +12,14 @@ export const whatsappMessageDirections = ["incoming", "outgoing"] as const;
 export const whatsappMessageStatuses = ["sent", "delivered", "read", "failed"] as const;
 
 export type WhatsappMessageStatus = (typeof whatsappMessageStatuses)[number];
+
+/**
+ * The assistant's judgement of a patient's message (docs/domain/assistant.md
+ * § Inbox); a message it has not judged yet has none.
+ */
+export const messageJudgements = ["clinical", "notClinical"] as const;
+
+export type MessageJudgement = (typeof messageJudgements)[number];
 
 /** A message a patient's number sent the organization's number. */
 export interface IncomingWhatsappMessage {
@@ -50,3 +60,17 @@ export interface WhatsappEvents {
   statuses: WhatsappStatusUpdate[];
   templateStatuses: WhatsappTemplateStatusUpdate[];
 }
+
+export const conversationReferenceSchema = z.object({ conversationId: z.uuid() });
+
+export type ConversationReference = z.input<typeof conversationReferenceSchema>;
+
+export const conversationPageSize = 25;
+
+/** A page of the inbox, and what the search box holds; the search text stays out of the URL. */
+export const conversationListSchema = z.object({
+  page: z.number().int().positive().default(1),
+  query: z.string().trim().max(200).default(""),
+});
+
+export type ConversationListOptions = z.input<typeof conversationListSchema>;

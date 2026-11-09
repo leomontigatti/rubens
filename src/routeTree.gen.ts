@@ -20,6 +20,8 @@ import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
 import { Route as AppCierresClosureIdRouteImport } from './routes/_app/cierres/$closureId'
 import { Route as AppCierresNuevoRouteImport } from './routes/_app/cierres/nuevo'
+import { Route as AppConversacionesIndexRouteImport } from './routes/_app/conversaciones/index'
+import { Route as AppConversacionesConversationIdRouteImport } from './routes/_app/conversaciones/$conversationId'
 import { Route as AppDevPatronesRouteImport } from './routes/_app/dev/patrones'
 import { Route as AppDisponibilidadIndexRouteImport } from './routes/_app/disponibilidad/index'
 import { Route as AppHorariosIndexRouteImport } from './routes/_app/horarios/index'
@@ -118,6 +120,17 @@ const AppCierresNuevoRoute = AppCierresNuevoRouteImport.update({
   path: '/cierres/nuevo',
   getParentRoute: () => AppRoute,
 } as any)
+const AppConversacionesIndexRoute = AppConversacionesIndexRouteImport.update({
+  id: '/conversaciones/',
+  path: '/conversaciones/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConversacionesConversationIdRoute =
+  AppConversacionesConversationIdRouteImport.update({
+    id: '/conversaciones/$conversationId',
+    path: '/conversaciones/$conversationId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppDevPatronesRoute = AppDevPatronesRouteImport.update({
   id: '/dev/patrones',
   path: '/dev/patrones',
@@ -364,6 +377,7 @@ export interface FileRoutesByFullPath {
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
+  '/conversaciones/$conversationId': typeof AppConversacionesConversationIdRoute
   '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/licencias/$timeOffId': typeof AppLicenciasTimeOffIdRoute
@@ -380,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
+  '/conversaciones/': typeof AppConversacionesIndexRoute
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
   '/licencias/': typeof AppLicenciasIndexRoute
@@ -419,6 +434,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
+  '/conversaciones/$conversationId': typeof AppConversacionesConversationIdRoute
   '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/licencias/$timeOffId': typeof AppLicenciasTimeOffIdRoute
@@ -435,6 +451,7 @@ export interface FileRoutesByTo {
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
+  '/conversaciones': typeof AppConversacionesIndexRoute
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
   '/licencias': typeof AppLicenciasIndexRoute
@@ -476,6 +493,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/_app/cierres/nuevo': typeof AppCierresNuevoRoute
+  '/_app/conversaciones/$conversationId': typeof AppConversacionesConversationIdRoute
   '/_app/dev/patrones': typeof AppDevPatronesRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
   '/_app/licencias/$timeOffId': typeof AppLicenciasTimeOffIdRoute
@@ -492,6 +510,7 @@ export interface FileRoutesById {
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
+  '/_app/conversaciones/': typeof AppConversacionesIndexRoute
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
   '/_app/licencias/': typeof AppLicenciasIndexRoute
@@ -533,6 +552,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
+    | '/conversaciones/$conversationId'
     | '/dev/patrones'
     | '/horarios/$practitionerId'
     | '/licencias/$timeOffId'
@@ -549,6 +569,7 @@ export interface FileRouteTypes {
     | '/a-reprogramar/'
     | '/agenda/'
     | '/cierres/'
+    | '/conversaciones/'
     | '/disponibilidad/'
     | '/horarios/'
     | '/licencias/'
@@ -588,6 +609,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
+    | '/conversaciones/$conversationId'
     | '/dev/patrones'
     | '/horarios/$practitionerId'
     | '/licencias/$timeOffId'
@@ -604,6 +626,7 @@ export interface FileRouteTypes {
     | '/a-reprogramar'
     | '/agenda'
     | '/cierres'
+    | '/conversaciones'
     | '/disponibilidad'
     | '/horarios'
     | '/licencias'
@@ -644,6 +667,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/cierres/$closureId'
     | '/_app/cierres/nuevo'
+    | '/_app/conversaciones/$conversationId'
     | '/_app/dev/patrones'
     | '/_app/horarios/$practitionerId'
     | '/_app/licencias/$timeOffId'
@@ -660,6 +684,7 @@ export interface FileRouteTypes {
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
     | '/_app/cierres/'
+    | '/_app/conversaciones/'
     | '/_app/disponibilidad/'
     | '/_app/horarios/'
     | '/_app/licencias/'
@@ -776,6 +801,20 @@ declare module '@tanstack/react-router' {
       path: '/cierres/nuevo'
       fullPath: '/cierres/nuevo'
       preLoaderRoute: typeof AppCierresNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/conversaciones/': {
+      id: '/_app/conversaciones/'
+      path: '/conversaciones'
+      fullPath: '/conversaciones/'
+      preLoaderRoute: typeof AppConversacionesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/conversaciones/$conversationId': {
+      id: '/_app/conversaciones/$conversationId'
+      path: '/conversaciones/$conversationId'
+      fullPath: '/conversaciones/$conversationId'
+      preLoaderRoute: typeof AppConversacionesConversationIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dev/patrones': {
@@ -1087,6 +1126,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppCierresClosureIdRoute: typeof AppCierresClosureIdRoute
   AppCierresNuevoRoute: typeof AppCierresNuevoRoute
+  AppConversacionesConversationIdRoute: typeof AppConversacionesConversationIdRoute
   AppDevPatronesRoute: typeof AppDevPatronesRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
   AppLicenciasTimeOffIdRoute: typeof AppLicenciasTimeOffIdRoute
@@ -1103,6 +1143,7 @@ interface AppRouteChildren {
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
+  AppConversacionesIndexRoute: typeof AppConversacionesIndexRoute
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
   AppLicenciasIndexRoute: typeof AppLicenciasIndexRoute
@@ -1140,6 +1181,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppCierresClosureIdRoute: AppCierresClosureIdRoute,
   AppCierresNuevoRoute: AppCierresNuevoRoute,
+  AppConversacionesConversationIdRoute: AppConversacionesConversationIdRoute,
   AppDevPatronesRoute: AppDevPatronesRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
   AppLicenciasTimeOffIdRoute: AppLicenciasTimeOffIdRoute,
@@ -1156,6 +1198,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
+  AppConversacionesIndexRoute: AppConversacionesIndexRoute,
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,
   AppLicenciasIndexRoute: AppLicenciasIndexRoute,
