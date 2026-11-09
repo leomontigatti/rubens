@@ -40,6 +40,11 @@ export const Route = createFileRoute("/_app/conversaciones/")({
 
 const searchDelay = 300;
 
+const searchRefusalMessages = {
+  ...refusalMessages,
+  invalidInput: "La búsqueda es demasiado larga. Escribí menos para buscar.",
+};
+
 const columns: DataTableColumn<ConversationSummary>[] = [
   {
     id: "name",
@@ -142,7 +147,7 @@ function ConversationTable(props: {
         noRecords={!search.searching && listed.total === 0}
         empty={
           search.refused ? (
-            <ErrorAlert message={refusalMessages[search.refused]} />
+            <ErrorAlert message={searchRefusalMessages[search.refused]} />
           ) : search.searching ? (
             search.found && <NoMatches icon={MessagesSquareIcon} />
           ) : (
