@@ -34,8 +34,13 @@ Severity choices, each explained in `.fallowrc.json`:
 - **Unused dependencies only warn.** ADR-0001's libraries arrive before the
   features that import them. A dependency still unused once its feature exists is a
   candidate for removal.
-- **Duplication only warns,** from three copies up. When it fires, the fix is
-  usually to extract the shared idiom, not to suppress the warning.
+- **A clone group warns; the codebase total fails above 3%.** `fallow audit`
+  reports clone groups from three copies up and never fails on them. It ignores
+  `duplicates.threshold`, so `pnpm check:dupes` (`fallow dupes --quiet`) runs beside
+  it, in the pre-commit hook and CI, and fails once duplicated lines pass 3% of the
+  codebase (1.2% on 2026-11-09). When either fires, find every copy with
+  `pnpm exec fallow dupes --trace <file>:<line>` and extract the shared idiom;
+  don't raise the threshold or suppress the group.
 
 ## Investigating
 

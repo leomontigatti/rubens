@@ -27,7 +27,12 @@
   },
   "duplicates": {
     // Pair-only clones are hidden; widespread copy-paste is what is worth a refactor.
-    "minOccurrences": 3
+    "minOccurrences": 3,
+    // `fallow dupes` (`pnpm check:dupes`) fails above this share of duplicated
+    // lines across the whole codebase; `fallow audit` ignores it. 1.2% on
+    // 2026-11-09: 3 leaves room for ordinary growth and stops copy-paste from
+    // accumulating one warning at a time.
+    "threshold": 3
   },
   "rules": {
     // ADR-0001 dependencies land before the features that import them (zod,

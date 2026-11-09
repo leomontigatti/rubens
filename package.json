@@ -33,6 +33,7 @@
     "check:comment-language": "node --import tsx scripts/check-comment-language.ts",
     "check:file-tokens": "node --import tsx scripts/check-file-tokens.ts",
     "check:fallow": "fallow audit --quiet --gate-marker agent --base origin/main",
+    "check:dupes": "fallow dupes --quiet",
     "labels:sync": "node --import tsx scripts/sync-labels.ts",
     "setup:organization": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/setup-organization.ts",
     "prepare": "vp config --no-agent || true",
