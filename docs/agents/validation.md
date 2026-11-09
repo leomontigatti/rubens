@@ -24,10 +24,13 @@ Run `pnpm typecheck` and `pnpm build` one after the other, never in parallel.
 
 `pnpm test:e2e` runs in CI instead of the session: the `e2e` job of
 `.github/workflows/ci.yml`, by the `implement` skill's `HEAVY.md`, while the rest
-of § Before committing runs here. On a diff of only Markdown and `docs/` the job
+of § Before committing runs here. When the branch's whole diff against `main`
+(`origin/main...HEAD`, not the last commit) is only Markdown and `docs/`, the job
 skips its steps and still concludes `success`: its `classify the diff` step
-prints "the browser suite skips". When the job did not run, the whole browser
-suite runs here, as `HEAVY.md`'s fallback says.
+prints "the browser suite skips". So a merge from `main` into a docs-only branch
+still skips, and a docs-only commit on a code branch still runs the suite. When
+the job did not run, the whole browser suite runs here, as `HEAVY.md`'s fallback
+says.
 
 ## As you go
 
