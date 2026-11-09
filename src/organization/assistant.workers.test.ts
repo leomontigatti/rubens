@@ -202,7 +202,7 @@ describe("the assistant's pace", () => {
     // The first turn judged "hola": it is the conversation so far now.
     expect(scriptedModel.turns[1]!.messages).toEqual([
       { role: "user", content: "hola" },
-      { role: "user", content: "cuándo es mi turno?" },
+      { role: "user", content: "[new messages]\ncuándo es mi turno?" },
     ]);
     expect(textsToMeta()).toEqual([
       { to: "5491155550000", text: "El lunes 5 de enero a las 09:00" },
@@ -647,24 +647,19 @@ describe("what keeps a reply from going", () => {
     expect(textsToMeta()).toEqual([]);
   });
 
-  it("sends nothing while Meta has the number rate-limited, and still replies under a restriction", async () => {
+  it("sends nothing while Meta holds the number", async () => {
     await bookPatient("Martina", martinaPhone);
     await inStorage(world.organization, (database) =>
       database
         .insert(whatsappNumberHold)
-        .values({ id: 1, reason: "rateLimited", until: Date.now() + 60 * 60_000 })
+        .values({ id: 1, reason: "restricted", until: Date.now() + 60 * 60_000 })
         .run(),
     );
     await patientWrites("hola");
-    await afterTheWait();
-    expect(textsToMeta()).toEqual([]);
 
-    await inStorage(world.organization, (database) =>
-      database.update(whatsappNumberHold).set({ reason: "restricted" }).run(),
-    );
-    await patientWrites("hola?");
     await afterTheWait();
-    expect(textsToMeta()).toHaveLength(1);
+
+    expect(textsToMeta()).toEqual([]);
   });
 
   it("holds the number when Meta refuses the reply for a limit", async () => {

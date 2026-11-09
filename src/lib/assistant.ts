@@ -16,6 +16,13 @@ export const assistantModelId = "claude-haiku-5-5";
 /** How long the assistant waits after a patient's message before its turn (§ Pace). */
 export const assistantWaitMs = 8_000;
 
+/**
+ * The line before the patient's new messages when the conversation so far
+ * ends on the patient too: the model's provider joins consecutive messages of
+ * one side, which would hide which ones the judgement is about.
+ */
+export const newMessagesMark = "[new messages]";
+
 /** The tools a turn can call, each run by the object with the permissions of the patient's number. */
 export const assistantToolSchemas = {
   list_patients: {
@@ -79,7 +86,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     ...(context.more?.capabilities ?? []),
   ];
   const rules = [
-    "Every turn, call judge_messages exactly once, about the patient's new messages: clinical (symptoms, a study, a treatment, how they feel, a photo) and emergency (a risk to life or health right now).",
+    `Every turn, call judge_messages exactly once, about the patient's new messages: clinical (symptoms, a study, a treatment, how they feel, a photo) and emergency (a risk to life or health right now). The new messages are the patient's last message; when it has a line "${newMessagesMark}", only what follows that line is new.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
     ...(context.more?.rules ?? []),

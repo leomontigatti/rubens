@@ -1,7 +1,12 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, max, min, or } from "drizzle-orm";
 
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { assistantSystemPrompt, assistantToolSchemas, withSignOff } from "#/lib/assistant.ts";
+import {
+  assistantSystemPrompt,
+  assistantToolSchemas,
+  newMessagesMark,
+  withSignOff,
+} from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
 import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
@@ -173,6 +178,7 @@ function patientsOf(database: Database, phone: string) {
     .select({ id: patient.id, firstName: patient.firstName, chosenName: patient.chosenName })
     .from(patient)
     .where(inArray(patient.id, ids))
+    .orderBy(asc(patient.id))
     .all()
     .map((one) => ({ id: one.id, firstName: one.chosenName ?? one.firstName }));
 }
@@ -239,7 +245,8 @@ type Read = ReturnType<typeof readConversation>;
  * The messages as the model reads them: the conversation so far, one message
  * per run of the same side, as WhatsApp shows a burst; then the messages the
  * turn judges together as the patient's last, so the judgement is about
- * exactly those and the turn always ends on the patient.
+ * exactly those and the turn always ends on the patient; after
+ * `newMessagesMark` when the conversation so far ends on the patient too.
  */
 function asTurnMessages(read: Read): TurnMessage[] {
   const contentOf = (message: Read["history"][number]) => message.text ?? `[${message.type}]`;
@@ -253,7 +260,11 @@ function asTurnMessages(read: Read): TurnMessage[] {
       messages.push({ role, content: contentOf(message) });
     }
   }
-  return [...messages, { role: "user", content: read.unjudged.map(contentOf).join("\n") }];
+  const judged = read.unjudged.map(contentOf);
+  if (messages.at(-1)?.role === "user") {
+    judged.unshift(newMessagesMark);
+  }
+  return [...messages, { role: "user", content: judged.join("\n") }];
 }
 
 /** The organization's name, and the zone its first office reads time in. */
@@ -319,9 +330,8 @@ async function judgeTurn(
 
 /**
  * Whether the reply may go now: no newer message waits for its own turn, the
- * appointments it read are as they were, the window is open, and the number
- * can send. A restriction stops only conversations the business starts, so
- * a reply still goes under one (`whatsapp-limits.ts`).
+ * contacts and the appointments it read are as they were, the window is
+ * open, and the number can send: no hold of Meta's (`whatsapp-limits.ts`).
  */
 function mayReply(
   database: Database,
@@ -344,13 +354,12 @@ function mayReply(
         now,
       ),
     ) === JSON.stringify(turn.appointments);
-  const hold = activeHold(database, now);
   return (
     !newerWaits &&
     unchanged &&
     isWindowOpen(turn.read.lastIncomingAt, now) &&
     !cloud.missingSetting() &&
-    (!hold || hold.reason === "restricted")
+    !activeHold(database, now)
   );
 }
 
