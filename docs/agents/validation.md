@@ -42,11 +42,12 @@ pnpm test:unit <path>           # or `pnpm test:workers <path>`: the one test fi
 | `pnpm test:workers`                 | Vitest, the `workers` project: `src/**/*.workers.test.ts` inside workerd, through Cloudflare's Vitest plugin, each object on its own SQLite storage.                                                                                                                                                |
 | `pnpm check:dependency-audit`       | High and critical advisories that the branch introduces, against `main`.                                                                                                                                                                                                                            |
 | `pnpm check:fallow`                 | Dead code, unused dependencies and duplication that the branch adds, against `origin/main`. Read it by exit code: [fallow.md](./fallow.md).                                                                                                                                                         |
+| `pnpm check:dupes`                  | Duplicated lines over the whole codebase, failing above 3% (`duplicates.threshold`): [fallow.md](./fallow.md).                                                                                                                                                                                      |
 | `pnpm check:labels`                 | Every label a workflow, script or doc under `docs/agents/` names in a `gh` `--label` flag, a workflow condition or a `priority:`/`wayfinder:` name is in `.github/labels.json`. The labels and what they mean: [issue-tracker.md](./issue-tracker.md#labels).                                       |
 | `pnpm check:comment-language`       | Engineering prose is English, over the whole tree: comments, test names, thrown `Error` messages, shell stderr, `#` and SQL `--` comments, and markdown. Spanish passes only marked as data ([coding-standards.md](./coding-standards.md#code-language)).                                           |
 | `pnpm check:file-tokens`            | No tracked source file under `src/` above 5,500 estimated tokens; tests and generated files exempt.                                                                                                                                                                                                 |
 | `pnpm check:pr-title "<title>"`     | A PR title is a conventional commit with an English subject. Run it before `gh pr create`; CI runs it again on every PR.                                                                                                                                                                            |
-| `.vite-hooks/pre-commit`            | On commit: gitleaks over the staged diff (it warns when the binary is missing; CI blocks), `vp staged` (format and lint fixes on staged files), `pnpm typecheck`, `pnpm check:fallow`, and the whole-tree checks `pnpm check:comment-language`, `pnpm check:labels` and `pnpm check:file-tokens`.   |
+| `.vite-hooks/pre-commit`            | On commit: gitleaks over the staged diff (warns when missing; CI blocks), `vp staged` (format and lint fixes on staged files), `pnpm typecheck`, `pnpm check:fallow`, `pnpm check:dupes` and the whole-tree checks `pnpm check:comment-language`, `pnpm check:labels` and `pnpm check:file-tokens`. |
 | CI                                  | Everything above on the whole branch, plus the jobs in [ci.md](../operations/ci.md).                                                                                                                                                                                                                |
 
 The script index is [scripts.md](../operations/scripts.md). Run only commands that
@@ -55,10 +56,15 @@ exist in `package.json` or in that index; check before running a guessed one.
 ## Hooks inside the session
 
 The project's agent hooks ([agent-configuration.md](./agent-configuration.md#session-hooks))
-run two of these checks for you:
+run three of these checks for you:
 
 - every file the agent writes is formatted;
-- the end of a turn is blocked while `pnpm check`'s lint or type check is red.
+- the end of a turn is blocked while `pnpm check`'s lint or type check is red, or
+  `pnpm check:fallow` fails, by exit code as [fallow.md](./fallow.md) reads it, so a
+  complexity finding lands on the turn that wrote it rather than at commit;
+- before those, the end of a turn is blocked with one line when `pnpm-lock.yaml` is
+  newer than the installed dependencies: run `pnpm install --frozen-lockfile`, not a
+  lint fix.
 
 The shared workflow's hooks, installed at user level, add one more: `pkill -f` is
 refused, in favour of `pnpm dev:stop` ([verification.md](./verification.md#cleanup)).

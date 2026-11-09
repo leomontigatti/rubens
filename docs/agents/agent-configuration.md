@@ -40,11 +40,13 @@ Hooks are configuration, so they run in a headless session too. The project's tw
 
 - **`PostToolUse` on `Write|Edit`**: `format-edited-file.sh` runs `vp fmt` on each file the
   tool just wrote, silently, for the extensions Oxfmt formats.
-- **`Stop`**: `stop-typecheck-lint.sh` runs `vp check --no-fmt` (lint and type check), and
-  **blocks** with exit 2 while it is red, putting the failing output in front of the agent. It
-  runs only when the working tree has a TypeScript or JavaScript file or a `package.json` or
-  `tsconfig` change, and it reads the uncommitted tree, so it also reports failures in files the
-  turn did not touch.
+- **`Stop`**: `stop-typecheck-lint.sh` runs `vp check --no-fmt` (lint and type check) and
+  `pnpm check:fallow`, and **blocks** with exit 2 while either is red, putting the failing output
+  in front of the agent. Before them it blocks with a single `pnpm install --frozen-lockfile` line
+  when `pnpm-lock.yaml` is newer than the installed dependencies, instead of the import errors a
+  stale `node_modules` would produce. It runs only when the working tree has a TypeScript or
+  JavaScript file or a `package.json` or `tsconfig` change, and it reads the uncommitted tree, so
+  it also reports failures in files the turn did not touch.
 
 `SKIP_STOP_CHECKS` set to any value is the local bypass. The `Stop` gate keeps blocking while
 the failure persists; Claude Code force-closes the turn after 8 consecutive blocks.
