@@ -6,7 +6,6 @@ const lastIncomingAt = Date.parse("2099-01-05T12:00:00Z");
 
 describe("the conversation window", () => {
   it("closes 24 hours after the patient's last message", () => {
-    expect(conversationWindowMs).toBe(24 * 60 * 60_000);
     expect(windowClosesAt(lastIncomingAt)).toBe(Date.parse("2099-01-06T12:00:00Z"));
   });
 

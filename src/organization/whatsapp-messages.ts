@@ -54,7 +54,7 @@ function conversationWith(tx: Writer, phone: string): string {
  * The patients whose messages go to `phone`: through the guardian who is
  * their message contact, or to their own phone when no guardian is.
  */
-function patientsReachedAt(tx: Writer, phone: string) {
+export function patientsReachedAt(tx: Writer, phone: string) {
   const spellings = phoneSpellings(phone);
   const contactGuardian = (withPhone: boolean) =>
     tx

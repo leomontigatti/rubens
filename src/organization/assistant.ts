@@ -1,10 +1,10 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, max, min } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, max, min, or } from "drizzle-orm";
 
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { assistantSystemPrompt, assistantToolSchemas, withSignOff } from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
-import { templateValues } from "#/lib/template-filling.ts";
+import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
 
 import type { AssistantModel, AssistantTool, TurnMessage } from "#/organization/assistant-model.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
@@ -20,12 +20,13 @@ import {
   practitioner,
   room,
 } from "#/organization/schema.ts";
+import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import {
-  conversation,
-  conversationPatient,
-  whatsappMessage,
-} from "#/organization/whatsapp-schema.ts";
-import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
+  patientsReachedAt,
+  storeOutgoing,
+  whileSending,
+} from "#/organization/whatsapp-messages.ts";
 
 // The patient assistant (docs/domain/assistant.md § For patients, ADR-0006):
 // the object's alarm runs a turn once a conversation's wait is over. The
@@ -87,16 +88,11 @@ type Upcoming = ReturnType<typeof upcomingAppointments>[number];
 
 /** The day and the time of `upcoming` as the templates write them, in its office's zone. */
 function whenOf(upcoming: Upcoming) {
-  const values = templateValues({
-    patient: { firstName: "", chosenName: null },
-    practitionerName: upcoming.practitioner,
-    start: new Date(upcoming.startsAt),
-    timeZone: upcoming.timeZone,
-    officeName: upcoming.office,
-    officeAddress: upcoming.address,
-    careInstructions: null,
-  });
-  return { date: values.fecha, time: values.hora };
+  const start = new Date(upcoming.startsAt);
+  return {
+    date: appointmentDay(start, upcoming.timeZone),
+    time: appointmentTime(start, upcoming.timeZone),
+  };
 }
 
 type Judgement = { clinical: boolean; emergency: boolean };
@@ -164,30 +160,61 @@ function turnTools(
   ];
 }
 
-/** The conversation as a turn reads it: its number, its patients, its recent messages. */
+/**
+ * The patients `phone` is the message contact of now, by name: read at the
+ * turn, not from the conversation's links, which date from its last message.
+ */
+function patientsOf(database: Database, phone: string) {
+  const ids = patientsReachedAt(database, phone).map((one) => one.id);
+  if (ids.length === 0) {
+    return [];
+  }
+  return database
+    .select({ id: patient.id, firstName: patient.firstName, chosenName: patient.chosenName })
+    .from(patient)
+    .where(inArray(patient.id, ids))
+    .all()
+    .map((one) => ({ id: one.id, firstName: one.chosenName ?? one.firstName }));
+}
+
+const messageColumns = {
+  id: whatsappMessage.id,
+  direction: whatsappMessage.direction,
+  type: whatsappMessage.type,
+  text: whatsappMessage.text,
+};
+
+/**
+ * The conversation as a turn reads it: its number, its patients, the
+ * messages it judges (every incoming one not judged yet), and the latest
+ * others as the conversation so far.
+ */
 function readConversation(database: Database, conversationId: string) {
   const { phone } = database
     .select({ phone: conversation.phone })
     .from(conversation)
     .where(eq(conversation.id, conversationId))
     .get()!;
-  const patients = database
-    .select({ id: patient.id, firstName: patient.firstName, chosenName: patient.chosenName })
-    .from(conversationPatient)
-    .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
-    .where(eq(conversationPatient.conversationId, conversationId))
-    .all()
-    .map((one) => ({ id: one.id, firstName: one.chosenName ?? one.firstName }));
-  const recent = database
-    .select({
-      id: whatsappMessage.id,
-      direction: whatsappMessage.direction,
-      type: whatsappMessage.type,
-      text: whatsappMessage.text,
-      judgement: whatsappMessage.judgement,
-    })
+  const inConversation = eq(whatsappMessage.conversationId, conversationId);
+  const notJudged = and(
+    eq(whatsappMessage.direction, "incoming"),
+    isNull(whatsappMessage.judgement),
+  );
+  const unjudged = database
+    .select(messageColumns)
     .from(whatsappMessage)
-    .where(eq(whatsappMessage.conversationId, conversationId))
+    .where(and(inConversation, notJudged))
+    .orderBy(asc(whatsappMessage.sentAt))
+    .all();
+  const history = database
+    .select(messageColumns)
+    .from(whatsappMessage)
+    .where(
+      and(
+        inConversation,
+        or(eq(whatsappMessage.direction, "outgoing"), isNotNull(whatsappMessage.judgement)),
+      ),
+    )
     .orderBy(desc(whatsappMessage.sentAt))
     .limit(historyLength)
     .all()
@@ -195,30 +222,38 @@ function readConversation(database: Database, conversationId: string) {
   const lastIncoming = database
     .select({ at: max(whatsappMessage.sentAt) })
     .from(whatsappMessage)
-    .where(
-      and(
-        eq(whatsappMessage.conversationId, conversationId),
-        eq(whatsappMessage.direction, "incoming"),
-      ),
-    )
+    .where(and(inConversation, eq(whatsappMessage.direction, "incoming")))
     .get();
-  return { phone, patients, recent, lastIncomingAt: lastIncoming?.at ?? null };
+  return {
+    phone,
+    patients: patientsOf(database, phone),
+    unjudged,
+    history,
+    lastIncomingAt: lastIncoming?.at ?? null,
+  };
 }
 
-/** The messages as the model reads them: one per run of the same side, as WhatsApp shows a burst. */
-function asTurnMessages(recent: ReturnType<typeof readConversation>["recent"]): TurnMessage[] {
+type Read = ReturnType<typeof readConversation>;
+
+/**
+ * The messages as the model reads them: the conversation so far, one message
+ * per run of the same side, as WhatsApp shows a burst; then the messages the
+ * turn judges together as the patient's last, so the judgement is about
+ * exactly those and the turn always ends on the patient.
+ */
+function asTurnMessages(read: Read): TurnMessage[] {
+  const contentOf = (message: Read["history"][number]) => message.text ?? `[${message.type}]`;
   const messages: TurnMessage[] = [];
-  for (const message of recent) {
+  for (const message of read.history) {
     const role = message.direction === "incoming" ? "user" : "assistant";
-    const content = message.text ?? `[${message.type}]`;
     const last = messages.at(-1);
     if (last?.role === role) {
-      last.content = `${last.content}\n${content}`;
+      last.content = `${last.content}\n${contentOf(message)}`;
     } else {
-      messages.push({ role, content });
+      messages.push({ role, content: contentOf(message) });
     }
   }
-  return messages;
+  return [...messages, { role: "user", content: read.unjudged.map(contentOf).join("\n") }];
 }
 
 /** The organization's name, and the zone its first office reads time in. */
@@ -232,8 +267,6 @@ function promptSetting(database: Database) {
   return { organizationName: name, timeZone: first?.timeZone ?? defaultTimeZone };
 }
 
-type Read = ReturnType<typeof readConversation>;
-
 /**
  * Runs the model on the conversation and stores its judgement on the
  * messages `unjudged`: its reply, or `null` when it judged nothing or could
@@ -242,7 +275,7 @@ type Read = ReturnType<typeof readConversation>;
 async function judgeTurn(
   database: Database,
   model: AssistantModel,
-  turn: { conversationId: string; read: Read; unjudged: string[]; appointments: Upcoming[] },
+  turn: { conversationId: string; read: Read; appointments: Upcoming[] },
 ) {
   const rules = currentCommunicationRules(database);
   const judged: { judgement: Judgement | null } = { judgement: null };
@@ -256,7 +289,7 @@ async function judgeTurn(
     .runTurn({
       conversationId: turn.conversationId,
       system,
-      messages: asTurnMessages(turn.read.recent),
+      messages: asTurnMessages(turn.read),
       tools: turnTools(turn.read.patients, turn.appointments, judged),
     })
     // The model is unavailable: the messages wait, unjudged, for #179's retry.
@@ -271,22 +304,54 @@ async function judgeTurn(
       judgement: judgement.clinical ? "clinical" : "notClinical",
       emergency: judgement.emergency,
     })
-    .where(and(inArray(whatsappMessage.id, turn.unjudged), isNull(whatsappMessage.judgement)))
+    .where(
+      and(
+        inArray(
+          whatsappMessage.id,
+          turn.read.unjudged.map((message) => message.id),
+        ),
+        isNull(whatsappMessage.judgement),
+      ),
+    )
     .run();
   return { reply: ran.reply, judgement, rules };
 }
 
 /**
- * Whether the reply may go now: no newer message waits for its own turn,
- * the window is open and the number can send.
+ * Whether the reply may go now: no newer message waits for its own turn, the
+ * appointments it read are as they were, the window is open, and the number
+ * can send. A restriction stops only conversations the business starts, so
+ * a reply still goes under one (`whatsapp-limits.ts`).
  */
-function mayReply(database: Database, cloud: WhatsappCloud, conversationId: string, read: Read) {
+function mayReply(
+  database: Database,
+  cloud: WhatsappCloud,
+  turn: { conversationId: string; read: Read; appointments: Upcoming[] },
+) {
+  const now = Date.now();
   const newerWaits = database
     .select({ id: conversation.id })
     .from(conversation)
-    .where(and(eq(conversation.id, conversationId), isNotNull(conversation.assistantDueAt)))
+    .where(and(eq(conversation.id, turn.conversationId), isNotNull(conversation.assistantDueAt)))
     .get();
-  return !newerWaits && isWindowOpen(read.lastIncomingAt, Date.now()) && !cloud.missingSetting();
+  const patients = patientsOf(database, turn.read.phone);
+  const unchanged =
+    JSON.stringify(patients) === JSON.stringify(turn.read.patients) &&
+    JSON.stringify(
+      upcomingAppointments(
+        database,
+        patients.map((one) => one.id),
+        now,
+      ),
+    ) === JSON.stringify(turn.appointments);
+  const hold = activeHold(database, now);
+  return (
+    !newerWaits &&
+    unchanged &&
+    isWindowOpen(turn.read.lastIncomingAt, now) &&
+    !cloud.missingSetting() &&
+    (!hold || hold.reason === "restricted")
+  );
 }
 
 /** Sends `text` to the conversation's number, and stores it with the rules' version it was written under. */
@@ -295,10 +360,17 @@ async function sendReply(
   cloud: WhatsappCloud,
   reply: { phone: string; text: string; rulesVersion: number },
 ) {
+  // A send that did not reach Meta drops the reply, as a refusal does: the
+  // patient's messages stay judged, and their next one gets a turn of its own.
   const sent = await whileSending(database, () =>
     cloud.sendText({ to: reply.phone, text: reply.text }),
   ).catch(() => null);
-  if (!sent?.ok) {
+  if (!sent) {
+    return;
+  }
+  if (!sent.ok) {
+    // A limit on the number holds the outbox too.
+    holdOnRefusal(database, sent.metaError);
     return;
   }
   database.transaction((tx) =>
@@ -323,29 +395,38 @@ async function runTurn(
   model: AssistantModel,
   conversationId: string,
 ) {
-  // Cleared before the model runs: a message that arrives meanwhile sets a new wait.
-  database
+  // Claimed only while still due, then cleared before the model runs: a
+  // message that arrived during an earlier turn of the batch restarted the
+  // wait, and one that arrives during this one sets a new wait.
+  const claimed = database
     .update(conversation)
     .set({ assistantDueAt: null })
-    .where(eq(conversation.id, conversationId))
-    .run();
+    .where(and(eq(conversation.id, conversationId), lte(conversation.assistantDueAt, Date.now())))
+    .returning({ id: conversation.id })
+    .get();
+  if (!claimed) {
+    return;
+  }
   const read = readConversation(database, conversationId);
-  const unjudged = read.recent
-    .filter((message) => message.direction === "incoming" && message.judgement === null)
-    .map((message) => message.id);
-  if (unjudged.length === 0) {
+  if (read.unjudged.length === 0) {
     return;
   }
   const patientIds = read.patients.map((one) => one.id);
   const appointments = upcomingAppointments(database, patientIds, Date.now());
-  const turn = await judgeTurn(database, model, { conversationId, read, unjudged, appointments });
+  const turn = await judgeTurn(database, model, { conversationId, read, appointments });
   // A clinical message, an unknown number or a patient with nothing booked is
   // a handoff's (#171, #176), not an answer.
   if (!turn || turn.judgement.clinical || turn.judgement.emergency || appointments.length === 0) {
     return;
   }
+  // A turn that ended on its tools has no words of its own to sign.
+  const words = checkReply(turn.reply);
   const checked = checkReply(withSignOff(turn.reply, turn.rules.signOff));
-  if (!checked.ok || !mayReply(database, cloud, conversationId, read)) {
+  if (
+    !words.ok ||
+    !checked.ok ||
+    !mayReply(database, cloud, { conversationId, read, appointments })
+  ) {
     return;
   }
   await sendReply(database, cloud, {

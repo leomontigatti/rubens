@@ -44,7 +44,7 @@ export const sampleAppointment: TemplateAppointment = {
 };
 
 /** The day as the templates write it, such as `jueves 12 de noviembre`. */
-function dayOf(start: Date, timeZone: string) {
+export function appointmentDay(start: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("es-AR", {
     weekday: "long",
     day: "numeric",
@@ -57,7 +57,7 @@ function dayOf(start: Date, timeZone: string) {
 }
 
 /** The time on a 24-hour clock, such as `09:05`. */
-function timeOf(start: Date, timeZone: string) {
+export function appointmentTime(start: Date, timeZone: string) {
   return new Intl.DateTimeFormat("es-AR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -72,8 +72,8 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
   return {
     paciente: patient.chosenName ?? patient.firstName,
     profesional: appointment.practitionerName,
-    fecha: dayOf(start, timeZone),
-    hora: timeOf(start, timeZone),
+    fecha: appointmentDay(start, timeZone),
+    hora: appointmentTime(start, timeZone),
     sede: appointment.officeName,
     direccion: appointment.officeAddress,
     indicaciones: appointment.careInstructions ?? "",

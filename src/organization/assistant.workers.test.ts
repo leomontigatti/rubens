@@ -1,5 +1,5 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
@@ -11,7 +11,7 @@ import {
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { whatsappMessage, whatsappNumberHold } from "#/organization/whatsapp-schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
 // go to the fake Meta, and the model only through its port, scripted per test.
@@ -75,15 +75,25 @@ function textsToMeta() {
     .map((body) => ({ to: body.to, text: body.text?.body }));
 }
 
-/** Every stored message, oldest first. */
-function storedMessages() {
+/** The patient's messages as an admin reads them in the inbox: each one's judgement, or why it is withheld. */
+async function judgementsShown() {
+  const listed = expectOk(await world.organization.listConversations(adminCaller, {}));
+  const read = expectOk(
+    await world.organization.readConversation(adminCaller, {
+      conversationId: listed.conversations[0]!.id,
+    }),
+  );
+  return read.messages
+    .filter((message) => message.direction === "incoming")
+    .map((message) => message.withheld ?? message.judgement);
+}
+
+/** What the inbox does not show of each stored message, oldest first: the emergency and the rules' version. */
+function storedFlags() {
   return inStorage(world.organization, (database) =>
     database
       .select({
-        whatsappId: whatsappMessage.whatsappId,
         direction: whatsappMessage.direction,
-        text: whatsappMessage.text,
-        judgement: whatsappMessage.judgement,
         emergency: whatsappMessage.emergency,
         rulesVersion: whatsappMessage.rulesVersion,
       })
@@ -91,6 +101,24 @@ function storedMessages() {
       .orderBy(sql`${whatsappMessage}.rowid`)
       .all(),
   );
+}
+
+/** Lets the test act while the model writes: the returned `release` ends the held turn. */
+function holdingTurn() {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { released, release };
+}
+
+/** Starts the alarm and waits until the model is writing; `alarm` is the alarm's run. */
+async function alarmUntilTurn() {
+  const alarm = runDurableObjectAlarm(world.organization);
+  while (scriptedModel.turns.length === 0) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  return { alarm };
 }
 
 function scheduledAlarm() {
@@ -152,20 +180,14 @@ describe("the assistant's pace", () => {
   it("answers a message that arrived during a turn in a turn of its own, not with the earlier reply", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
-    let release!: () => void;
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
       turn.call("judge_messages", notClinical);
       await released;
       return "Hola Martina";
     });
     wait(8_000);
-    const alarm = runDurableObjectAlarm(world.organization);
-    while (scriptedModel.turns.length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    const { alarm } = await alarmUntilTurn();
     await patientWrites("cuándo es mi turno?");
     release();
     await alarm;
@@ -177,10 +199,11 @@ describe("the assistant's pace", () => {
     });
     await afterTheWait();
     expect(scriptedModel.turns).toHaveLength(2);
-    expect(scriptedModel.turns[1]!.messages.at(-1)).toEqual({
-      role: "user",
-      content: "hola\ncuándo es mi turno?",
-    });
+    // The first turn judged "hola": it is the conversation so far now.
+    expect(scriptedModel.turns[1]!.messages).toEqual([
+      { role: "user", content: "hola" },
+      { role: "user", content: "cuándo es mi turno?" },
+    ]);
     expect(textsToMeta()).toEqual([
       { to: "5491155550000", text: "El lunes 5 de enero a las 09:00" },
     ]);
@@ -226,10 +249,9 @@ describe("answering when, where and with whom", () => {
         text: "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.",
       },
     ]);
-    expect((await storedMessages()).at(-1)).toMatchObject({
-      whatsappId: "wamid.test-message",
+    expect((await storedFlags()).at(-1)).toEqual({
       direction: "outgoing",
-      text: "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.",
+      emergency: null,
       rulesVersion: 0,
     });
   });
@@ -269,9 +291,6 @@ describe("answering when, where and with whom", () => {
         expect.objectContaining({ patientId: tomas.patientId, firstName: "Tomás" }),
       ]),
     });
-    expect(scriptedModel.turns[0]!.system).toContain(
-      "If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
-    );
     expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "Es para Martina o para Tomás?" }]);
   });
 
@@ -293,23 +312,76 @@ describe("answering when, where and with whom", () => {
     expect(listed!.patients.map((patient) => patient.patientId)).not.toContain(other.patientId);
     expect(read).toEqual({ ok: false, reason: "notFound" });
   });
+});
 
-  it("says it is a bot when asked, as its prompt tells it", async () => {
-    await bookPatient("Martina", martinaPhone);
-    await patientWrites("sos un bot?");
+describe("a number that stopped being a patient's contact", () => {
+  /** Martina, reached through her guardian Laura's number; returns her ids and Laura's guardian id. */
+  async function martinaThroughLaura() {
+    const martina = await bookPatient("Martina", "+5493515550001");
+    const added = expectOk(
+      await world.organization.addGuardian(adminCaller, {
+        patientId: martina.patientId,
+        name: "Laura Gómez",
+        relationship: "Madre",
+        phone: martinaPhone,
+      }),
+    );
+    expectOk(
+      await world.organization.setMessageContact(adminCaller, {
+        patientId: martina.patientId,
+        guardianId: added.guardian.id,
+      }),
+    );
+    return martina;
+  }
+
+  it("is told nothing about the patient once reception changed the contact during the wait", async () => {
+    const martina = await martinaThroughLaura();
+    await patientWrites("cuándo es el turno de Martina?");
+    expectOk(
+      await world.organization.setMessageContact(adminCaller, {
+        patientId: martina.patientId,
+        guardianId: null,
+      }),
+    );
+    let listed: unknown;
+    let read: unknown;
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
-      return "Sí, soy el asistente automático del consultorio.";
+      listed = turn.call("list_patients");
+      read = turn.call("get_appointment", { appointmentId: martina.appointmentId });
+      return "No tengo ese dato.";
     });
 
     await afterTheWait();
 
-    expect(scriptedModel.turns[0]!.system).toContain(
-      "If asked whether you are a bot or a person, say plainly that you are the practice's automated assistant.",
+    expect(listed).toEqual({ patients: [] });
+    expect(read).toEqual({ ok: false, reason: "notFound" });
+    expect(textsToMeta()).toEqual([]);
+  });
+
+  it("gets no reply once reception changed the contact while the model wrote", async () => {
+    const martina = await martinaThroughLaura();
+    await patientWrites("cuándo es el turno de Martina?");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("get_appointment", { appointmentId: martina.appointmentId });
+      await released;
+      return "El turno de Martina es el lunes 5 de enero a las 09:00.";
+    });
+    wait(8_000);
+    const { alarm } = await alarmUntilTurn();
+    expectOk(
+      await world.organization.setMessageContact(adminCaller, {
+        patientId: martina.patientId,
+        guardianId: null,
+      }),
     );
-    expect(textsToMeta()).toEqual([
-      { to: "5491155550000", text: "Sí, soy el asistente automático del consultorio." },
-    ]);
+    release();
+    await alarm;
+
+    expect(textsToMeta()).toEqual([]);
   });
 });
 
@@ -337,15 +409,15 @@ describe("the organization's voice", () => {
     expect(textsToMeta()).toEqual([
       { to: "5491155550000", text: "En qué lo puedo ayudar?\nConsultorios Prueba" },
     ]);
-    expect((await storedMessages()).at(-1)).toMatchObject({ rulesVersion: 1 });
+    expect((await storedFlags()).at(-1)).toMatchObject({ rulesVersion: 1 });
   });
 });
 
 describe("judging every patient message", () => {
   it("stores the turn's judgement on each new message, and hides a clinical one from reception", async () => {
     await bookPatient("Martina", martinaPhone);
-    const first = await patientWrites("hola");
-    const second = await patientWrites("me duele mucho la muela");
+    await patientWrites("hola");
+    await patientWrites("me duele mucho la muela");
     scriptedModel.script((turn) => {
       turn.call("judge_messages", { clinical: true, emergency: false });
       return "Le paso tu consulta a la profesional.";
@@ -353,10 +425,7 @@ describe("judging every patient message", () => {
 
     await afterTheWait();
 
-    expect(await storedMessages()).toEqual([
-      expect.objectContaining({ whatsappId: first, judgement: "clinical", emergency: false }),
-      expect.objectContaining({ whatsappId: second, judgement: "clinical", emergency: false }),
-    ]);
+    expect((await storedFlags()).map((message) => message.emergency)).toEqual([false, false]);
     const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
     const read = expectOk(
       await world.organization.readConversation(world.receptionist, {
@@ -370,7 +439,7 @@ describe("judging every patient message", () => {
 
   it("stores an emergency as one", async () => {
     await bookPatient("Martina", martinaPhone);
-    const message = await patientWrites("no puedo respirar");
+    await patientWrites("no puedo respirar");
     scriptedModel.script((turn) => {
       turn.call("judge_messages", { clinical: true, emergency: true });
       return "Llamá al 107.";
@@ -378,8 +447,9 @@ describe("judging every patient message", () => {
 
     await afterTheWait();
 
-    expect(await storedMessages()).toEqual([
-      expect.objectContaining({ whatsappId: message, judgement: "clinical", emergency: true }),
+    expect(await judgementsShown()).toEqual(["clinical"]);
+    expect(await storedFlags()).toEqual([
+      { direction: "incoming", emergency: true, rulesVersion: null },
     ]);
     expect(textsToMeta()).toEqual([]);
   });
@@ -396,11 +466,7 @@ describe("judging every patient message", () => {
 
     await afterTheWait();
 
-    expect(
-      (await storedMessages())
-        .filter((message) => message.direction === "incoming")
-        .map((message) => message.judgement),
-    ).toEqual(["notClinical", "clinical"]);
+    expect(await judgementsShown()).toEqual(["notClinical", "clinical"]);
   });
 
   it("leaves a message unjudged and unanswered when the model judged nothing", async () => {
@@ -410,11 +476,11 @@ describe("judging every patient message", () => {
 
     await afterTheWait();
 
-    expect(await storedMessages()).toEqual([expect.objectContaining({ judgement: null })]);
+    expect(await judgementsShown()).toEqual(["notJudged"]);
     expect(textsToMeta()).toEqual([]);
   });
 
-  it("leaves a message unjudged when the model fails, and runs the outbox all the same", async () => {
+  it("leaves a message unjudged when the model fails, and sets no alarm for it again", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
     scriptedModel.script(() => {
@@ -423,8 +489,31 @@ describe("judging every patient message", () => {
 
     await afterTheWait();
 
-    expect(await storedMessages()).toEqual([expect.objectContaining({ judgement: null })]);
+    expect(await judgementsShown()).toEqual(["notJudged"]);
     expect(await scheduledAlarm()).toBeNull();
+  });
+  it("judges a message an earlier turn left unjudged with the new ones, apart from the conversation so far", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    await afterTheWait();
+    await patientWrites("me duele la muela");
+    scriptedModel.script(() => {
+      throw new Error("The model is overloaded");
+    });
+    await afterTheWait();
+    await patientWrites("gracias");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { clinical: true, emergency: false });
+      return "Le paso tu consulta a la profesional.";
+    });
+
+    await afterTheWait();
+
+    expect(scriptedModel.turns[2]!.messages).toEqual([
+      { role: "user", content: "hola" },
+      { role: "assistant", content: "Hola, en qué te puedo ayudar?" },
+      { role: "user", content: "me duele la muela\ngracias" },
+    ]);
   });
 });
 
@@ -434,7 +523,7 @@ describe("who gets no reply from the assistant", () => {
 
     await afterTheWait();
 
-    expect(await storedMessages()).toEqual([expect.objectContaining({ judgement: "notClinical" })]);
+    expect(await judgementsShown()).toEqual(["notClinical"]);
     expect(textsToMeta()).toEqual([]);
   });
 
@@ -444,7 +533,7 @@ describe("who gets no reply from the assistant", () => {
 
     await afterTheWait();
 
-    expect(await storedMessages()).toEqual([expect.objectContaining({ judgement: "notClinical" })]);
+    expect(await judgementsShown()).toEqual(["notClinical"]);
     expect(textsToMeta()).toEqual([]);
   });
 
@@ -456,25 +545,138 @@ describe("who gets no reply from the assistant", () => {
     await afterTheWait();
 
     expect(scriptedModel.turns).toHaveLength(1);
-    expect(await storedMessages()).toEqual([expect.objectContaining({ judgement: "notClinical" })]);
+    expect(await judgementsShown()).toEqual(["notClinical"]);
     expect(textsToMeta()).toEqual([]);
   });
 });
 
 describe("the conversation's wait", () => {
-  it("is cleared once its turn has run", async () => {
+  it("runs a conversation's turn once", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
 
     await afterTheWait();
+    await afterTheWait();
 
-    const waits = await inStorage(world.organization, (database) =>
-      database
-        .select({ dueAt: conversation.assistantDueAt })
-        .from(conversation)
-        .where(eq(conversation.phone, martinaPhone))
-        .all(),
+    expect(scriptedModel.turns).toHaveLength(1);
+  });
+
+  it("keeps a wait a message restarted while another conversation's turn ran", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await bookPatient("Tomás", "+5493515550002", at("12:30"));
+    await patientWrites("hola");
+    wait(1_000);
+    await patientWrites("hola", "+5493515550002");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      await released;
+      return "Hola Martina";
+    });
+    wait(8_000);
+    const { alarm } = await alarmUntilTurn();
+    await patientWrites("cuándo es mi turno?", "+5493515550002");
+    release();
+    await alarm;
+
+    expect(scriptedModel.turns).toHaveLength(1);
+    fakeMeta.answerNextWith(200, { messages: [{ id: "wamid.second-reply" }] });
+    await afterTheWait();
+    expect(scriptedModel.turns).toHaveLength(2);
+    expect(scriptedModel.turns[1]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: "hola\ncuándo es mi turno?",
+    });
+  });
+
+  it("judges every message that waits, however many the patient sent", async () => {
+    await bookPatient("Martina", martinaPhone);
+    for (let message = 1; message <= 35; message += 1) {
+      await patientWrites(`mensaje ${message}`);
+    }
+
+    await afterTheWait();
+
+    expect(await judgementsShown()).toEqual(Array.from({ length: 35 }, () => "notClinical"));
+  });
+});
+
+describe("what keeps a reply from going", () => {
+  it("sends nothing when the model wrote no words, though the organization signs off", async () => {
+    expectOk(
+      await world.organization.saveCommunicationRules(adminCaller, {
+        formOfAddress: "vos",
+        signOff: "Consultorios Prueba",
+        tone: "",
+      }),
     );
-    expect(waits).toEqual([{ dueAt: null }]);
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "";
+    });
+
+    await afterTheWait();
+
+    expect(textsToMeta()).toEqual([]);
+  });
+
+  it("sends nothing when the appointment changed while the model wrote", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("cuándo es mi turno?");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("get_appointment", { appointmentId });
+      await released;
+      return "Tu turno es el lunes 5 de enero a las 09:00.";
+    });
+    wait(8_000);
+    const { alarm } = await alarmUntilTurn();
+    expectOk(
+      await world.organization.cancelAppointment(world.receptionist, {
+        appointmentId,
+        cancelledBy: "patient",
+        reason: "",
+      }),
+    );
+    release();
+    await alarm;
+
+    expect(textsToMeta()).toEqual([]);
+  });
+
+  it("sends nothing while Meta has the number rate-limited, and still replies under a restriction", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await inStorage(world.organization, (database) =>
+      database
+        .insert(whatsappNumberHold)
+        .values({ id: 1, reason: "rateLimited", until: Date.now() + 60 * 60_000 })
+        .run(),
+    );
+    await patientWrites("hola");
+    await afterTheWait();
+    expect(textsToMeta()).toEqual([]);
+
+    await inStorage(world.organization, (database) =>
+      database.update(whatsappNumberHold).set({ reason: "restricted" }).run(),
+    );
+    await patientWrites("hola?");
+    await afterTheWait();
+    expect(textsToMeta()).toHaveLength(1);
+  });
+
+  it("holds the number when Meta refuses the reply for a limit", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    fakeMeta.answerNextWith(400, { error: { message: "Spam rate limit hit", code: 131048 } });
+
+    await afterTheWait();
+
+    const hold = await inStorage(world.organization, (database) =>
+      database.select({ reason: whatsappNumberHold.reason }).from(whatsappNumberHold).get(),
+    );
+    expect(hold).toEqual({ reason: "rateLimited" });
   });
 });
