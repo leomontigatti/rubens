@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, lt } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, lt } from "drizzle-orm";
 
 import { outboxTemplates } from "#/lib/outbox.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
@@ -161,7 +161,20 @@ export function holdOnRefusal(database: Database, error: MetaError) {
   return true;
 }
 
-/** Ends any hold: the organization connected a number on another account, which Meta's limits on the earlier one do not reach. */
-export function endHold(tx: Writer) {
-  tx.delete(whatsappNumberHold).run();
+/**
+ * Ends `earlier`, the hold in place when the organization started connecting
+ * a number on another account, which Meta's limits on the earlier account do
+ * not reach. A hold Meta put on the new account meanwhile differs, and stays.
+ */
+export function endHold(tx: Writer, earlier: { reason: NumberHoldReason; until: number | null }) {
+  tx.delete(whatsappNumberHold)
+    .where(
+      and(
+        eq(whatsappNumberHold.reason, earlier.reason),
+        earlier.until === null
+          ? isNull(whatsappNumberHold.until)
+          : eq(whatsappNumberHold.until, earlier.until),
+      ),
+    )
+    .run();
 }

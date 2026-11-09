@@ -15,7 +15,7 @@ import type {
 import type { Acting } from "#/organization/members.ts";
 import { organization } from "#/organization/schema.ts";
 import { whatsappConnection } from "#/organization/whatsapp-schema.ts";
-import { endHold } from "#/organization/whatsapp-limits.ts";
+import { activeHold, endHold } from "#/organization/whatsapp-limits.ts";
 import type { ClaimResult, DirectoryEntry } from "#/server/whatsapp-directory.ts";
 
 // The organization's WhatsApp number, connected through Meta's Embedded
@@ -237,6 +237,8 @@ export class WhatsappNumber {
     if (!organizationId || !cipher || !this.launch()) {
       return { ok: false, reason: "signupNotConfigured" } as const;
     }
+    // Read before Meta's calls: a hold Meta puts on the new account meanwhile is not this one.
+    const heldBefore = activeHold(this.#database, Date.now());
     const { code, phoneNumberId, businessAccountId } = parsed.data;
     const entry = { phoneNumberId, businessAccountId, organizationId };
     const free = await this.#services.directory.check(entry);
@@ -256,7 +258,7 @@ export class WhatsappNumber {
       accessToken: await cipher.seal(found.token, "whatsappAccessToken"),
       pin: await cipher.seal(pin, "whatsappPin"),
     };
-    this.#store(acting, entry, found.number, sealed);
+    this.#store(acting, entry, found.number, sealed, heldBefore);
     this.#opened = { sealed: sealed.accessToken, token: found.token };
     return { ok: true } as const;
   }
@@ -330,6 +332,7 @@ export class WhatsappNumber {
     entry: DirectoryEntry,
     number: ConnectedNumber,
     sealed: { accessToken: string; pin: string },
+    heldBefore: ReturnType<typeof activeHold>,
   ) {
     const previous = this.#row();
     const values = {
@@ -347,8 +350,8 @@ export class WhatsappNumber {
         .values({ id: connectionId, ...values })
         .onConflictDoUpdate({ target: whatsappConnection.id, set: values })
         .run();
-      if (previous?.businessAccountId !== entry.businessAccountId) {
-        endHold(tx);
+      if (heldBefore && previous?.businessAccountId !== entry.businessAccountId) {
+        endHold(tx, heldBefore);
       }
       recordAudit(tx, acting.userId, {
         action: previous ? "update" : "create",

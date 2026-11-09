@@ -222,6 +222,20 @@ describe("a template Meta stops", () => {
     ]);
   });
 
+  it("counts no message waiting when the same refresh finds another version approved", async () => {
+    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    await submit("confirmacion_turno", "PENDING", "900000000000002");
+    await bookMartina();
+    fakeMeta.answerNextWith(200, { id: "900000000000001", status: "PAUSED" });
+    fakeMeta.answerNextWith(200, { id: "900000000000002", status: "APPROVED" });
+
+    expectOk(await world.organization.refreshWhatsappTemplates(adminCaller));
+
+    expect(await notificationsOf(adminCaller)).toEqual([
+      expect.objectContaining({ kind: "templatePaused", templateVersion: 1, waiting: 0 }),
+    ]);
+  });
+
   it("holds a template's messages once Meta moves it out of utility, until a utility version is approved", async () => {
     await submit("confirmacion_turno", "APPROVED", "900000000000001");
     await bookMartina();
@@ -443,6 +457,28 @@ describe("a hold on the number and what changes it", () => {
     fakeMeta.requests = [];
     await runDurableObjectAlarm(world.organization);
     expect(sentTemplates()).toEqual(["confirmacion_turno_v1"]);
+  });
+
+  it("keeps a hold Meta puts on the new account while its signup is still completing", async () => {
+    await numberTurns({ kind: "restricted", until: null });
+    await bookMartina();
+    const release = fakeMeta.holdSignupStep("subscribe");
+    const before = fakeMeta.requests.length;
+    const connecting = world.organization.connectWhatsapp(adminCaller, {
+      code: "signup-code",
+      phoneNumberId: fakeMeta.signupNumber.phoneNumberId,
+      businessAccountId: fakeMeta.signupNumber.businessAccountId,
+    });
+    await fakeMeta.received(before + 5);
+
+    await numberTurns({ kind: "disabled" });
+    release();
+    expectOk(await connecting);
+
+    expect(expectOk(await world.organization.whatsappSettings(adminCaller)).hold).toMatchObject({
+      reason: "disabled",
+      until: null,
+    });
   });
 
   it("is not shortened by a send Meta refuses meanwhile for a block", async () => {

@@ -304,6 +304,10 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
   );
   const failures: MetaError[] = [];
   database.transaction((tx) => {
+    const written: {
+      row: (typeof stored)[number];
+      update: { status: TemplateStatus; reason: string | null };
+    }[] = [];
     for (const { row, review } of reviews) {
       if (!review.ok) {
         failures.push(review.metaError);
@@ -315,7 +319,7 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
       }
       // A webhook event that changed the row while Meta was being read is newer.
       const update = { status, reason: review.rejectedReason };
-      const written = tx
+      const changed = tx
         .update(whatsappTemplate)
         .set(statusColumns(update))
         .where(
@@ -326,9 +330,13 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
         )
         .returning({ id: whatsappTemplate.id })
         .get();
-      if (written) {
-        warnOfStoppedTemplate(tx, row, update);
+      if (changed) {
+        written.push({ row, update });
       }
+    }
+    // Once every version is written: what waits depends on the others' verdicts.
+    for (const { row, update } of written) {
+      warnOfStoppedTemplate(tx, row, update);
     }
   });
   return { ok: true, failures } as const;
