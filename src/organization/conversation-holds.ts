@@ -15,7 +15,7 @@ import { checkReply } from "#/lib/reply-checks.ts";
 import { conversationReferenceSchema } from "#/lib/whatsapp-messages.ts";
 import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
 
-import { maySend, sendReply } from "#/organization/assistant.ts";
+import { maySend, sendReply } from "#/organization/turn-replies.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -243,7 +243,7 @@ function settleReply(
     });
     if (answered.length > 0) {
       tx.update(handoff)
-        .set({ state: "closed", closedAt: Date.now() })
+        .set({ state: "closed", closedAt: Date.now(), heldReply: null })
         .where(
           inArray(
             handoff.id,

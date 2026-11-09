@@ -217,6 +217,12 @@ A conversation the `assistant` passes to a person, and stays silent in until it
 gets it back. It is open until a person's reply reaches the patient or a person closes it.
 _Avoid_: escalation, transfer, takeover
 
+**`heldReply`** — ui: "Respuesta retenida"
+A reply of the `assistant` that the clinical check kept from the patient, because it
+says something clinical or about another `patient`. It waits on a clinical `handoff`,
+read only by its recipients, who send it, fix it or drop it.
+_Avoid_: draft, blocked message, pending reply
+
 **`handoffContact`** — ui: "Contacto de derivación"
 A member an admin picks to receive the `handoff`s that concern no particular
 `practitioner`.

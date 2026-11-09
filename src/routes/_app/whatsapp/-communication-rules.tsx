@@ -3,10 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import type { FormOfAddress } from "#/lib/communication-rules.ts";
+import { formatPhone } from "#/lib/phones.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
 // The assistant's communication rules in the WhatsApp settings: how it
-// addresses patients, its sign-off and its tone, edited on their own page.
+// addresses patients, its sign-off, its tone and the phone it gives in an
+// emergency, edited on their own page.
 
 type Settings = Extract<Awaited<ReturnType<typeof getWhatsappSettings>>, { ok: true }>;
 
@@ -30,9 +32,13 @@ export function CommunicationRulesSection({ settings }: { settings: Settings }) 
         <p className="text-muted-foreground text-sm">
           Cómo escribe el asistente a los pacientes. No cambian las plantillas, que Meta ya aprobó.
         </p>
-        <dl className="grid gap-4 sm:grid-cols-3">
+        <dl className="grid gap-4 sm:grid-cols-4">
           <Detail label="Trato" value={formOfAddressLabels[rules.formOfAddress]} />
           <Detail label="Firma" value={rules.signOff || null} />
+          <Detail
+            label="Teléfono para urgencias"
+            value={rules.phone ? formatPhone(rules.phone) : null}
+          />
           <Detail label="Versión" value={rules.version || null} />
         </dl>
         <dl>

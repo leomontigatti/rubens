@@ -414,6 +414,7 @@ describe("the organization's voice", () => {
         formOfAddress: "usted",
         signOff: "Consultorios Prueba",
         tone: "Cordial y breve.",
+        phone: "",
       }),
     );
     await bookPatient("Martina", martinaPhone);
@@ -477,7 +478,12 @@ describe("judging every patient message", () => {
       emergency: true,
       rulesVersion: null,
     });
-    expect(textsToMeta()).toEqual([{ to: "5491155550000", text: handedOffText }]);
+    expect(textsToMeta()).toEqual([
+      {
+        to: "5491155550000",
+        text: "Si es una urgencia, llamá ahora al 107 (emergencias). Ya le pasamos tu mensaje a una persona del equipo.",
+      },
+    ]);
   });
 
   it("judges an earlier message only once", async () => {
@@ -640,6 +646,7 @@ describe("what keeps a reply from going", () => {
         formOfAddress: "vos",
         signOff: "Consultorios Prueba",
         tone: "",
+        phone: "",
       }),
     );
     await bookPatient("Martina", martinaPhone);

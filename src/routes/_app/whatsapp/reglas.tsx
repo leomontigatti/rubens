@@ -11,6 +11,7 @@ import {
   parseCommunicationRules,
 } from "#/lib/communication-rules.ts";
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
+import { formatPhone } from "#/lib/phones.ts";
 import { getWhatsappSettings, saveCommunicationRules } from "#/server/whatsapp.functions.ts";
 
 import { formOfAddressLabels } from "#/routes/_app/whatsapp/-communication-rules.tsx";
@@ -31,11 +32,15 @@ const refusalMessages = {
   invalidInput: "Revisá los datos ingresados.",
   toneTooLong,
   signOffTooLong,
+  invalidPhone: "El teléfono no es válido. Si es del exterior, empezá con + y el código del país.",
+  missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.",
 };
 
 const refusalFields: Partial<Record<keyof typeof refusalMessages, string>> = {
   toneTooLong: "tone",
   signOffTooLong: "signOff",
+  invalidPhone: "phone",
+  missingAreaCode: "phone",
 };
 
 function EditCommunicationRules() {
@@ -56,6 +61,7 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
       formOfAddress: initial.formOfAddress as string,
       signOff: initial.signOff,
       tone: initial.tone,
+      phone: initial.phone && formatPhone(initial.phone),
     },
     onSubmit: async ({ value }) => {
       const parsed = parseCommunicationRules(value);
@@ -107,6 +113,15 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
           <field.TextareaField
             label="Tono"
             hint={`Cómo querés que suene, en pocas palabras. Hasta ${maxToneLength} caracteres. No cambia lo que el asistente puede hacer.`}
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="phone">
+        {(field) => (
+          <field.TextField
+            label="Teléfono para urgencias"
+            type="tel"
+            hint="El teléfono del consultorio que el asistente da, junto al 107, cuando un mensaje parece una urgencia. Sin teléfono, da solo el 107."
           />
         )}
       </form.AppField>

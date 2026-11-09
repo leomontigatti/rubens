@@ -14,7 +14,11 @@ import {
   takeOverConversation,
 } from "#/organization/conversation-holds.ts";
 import { listHandoffContacts, replaceHandoffContacts } from "#/organization/handoff-contacts.ts";
-import { closeHandoffWithoutReply, listOpenHandoffs } from "#/organization/handoff-inbox.ts";
+import {
+  closeHandoffWithoutReply,
+  dropHandoffHeldReply,
+  listOpenHandoffs,
+} from "#/organization/handoff-inbox.ts";
 import { patientEditors } from "#/organization/members.ts";
 import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
@@ -56,6 +60,13 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   closeHandoff(caller: Caller, input: HandoffReference) {
     return this.as(caller, patientEditors, (acting) =>
       closeHandoffWithoutReply(this.database, acting, input),
+    );
+  }
+
+  /** Drops the reply the clinical check held on a handoff the member is a recipient of. */
+  dropHeldReply(caller: Caller, input: HandoffReference) {
+    return this.as(caller, patientEditors, (acting) =>
+      dropHandoffHeldReply(this.database, acting, input),
     );
   }
 

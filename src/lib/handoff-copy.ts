@@ -14,4 +14,5 @@ export const handoffReasonLabels: Record<HandoffReason, string> = {
   misunderstoodTwice: "El asistente no lo entendió dos veces seguidas",
   unknownNumber: "Número que no es de ningún paciente",
   noUpcomingAppointment: "Sin turnos próximos",
+  heldReply: "Respuesta retenida",
 };
