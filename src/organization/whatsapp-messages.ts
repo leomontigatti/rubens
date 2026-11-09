@@ -292,7 +292,7 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
 }
 
 /** When the patient last wrote in `conversationId`, which opens its window. */
-export function lastIncomingAt(database: Database, conversationId: string) {
+export function lastIncomingAt(database: Writer, conversationId: string) {
   const last = database
     .select({ at: max(whatsappMessage.sentAt) })
     .from(whatsappMessage)

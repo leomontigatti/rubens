@@ -24,7 +24,7 @@ import {
 // or unread on its own: Meta's limits on the number and the templates, which
 // go to every admin (docs/domain/messages.md § When Meta limits the number)
 // and link to the WhatsApp settings, where they are fixed; and handoffs, which
-// go to their recipients and link to the conversation; and replies that look
+// go to their recipients and link to the conversation, as do their reminders; and replies that look
 // like opt-outs, which go to reception and the admins and link to the
 // patient, whose WhatsApp consent is turned off there.
 

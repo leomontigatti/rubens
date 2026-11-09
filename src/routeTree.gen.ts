@@ -47,6 +47,7 @@ import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
 import { Route as AppWhatsappIndexRouteImport } from './routes/_app/whatsapp/index'
 import { Route as AppWhatsappContactosRouteImport } from './routes/_app/whatsapp/contactos'
 import { Route as AppWhatsappDevolucionRouteImport } from './routes/_app/whatsapp/devolucion'
+import { Route as AppWhatsappRecordatoriosRouteImport } from './routes/_app/whatsapp/recordatorios'
 import { Route as AppWhatsappReglasRouteImport } from './routes/_app/whatsapp/reglas'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
@@ -263,6 +264,12 @@ const AppWhatsappDevolucionRoute = AppWhatsappDevolucionRouteImport.update({
   path: '/whatsapp/devolucion',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWhatsappRecordatoriosRoute =
+  AppWhatsappRecordatoriosRouteImport.update({
+    id: '/whatsapp/recordatorios',
+    path: '/whatsapp/recordatorios',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppWhatsappReglasRoute = AppWhatsappReglasRouteImport.update({
   id: '/whatsapp/reglas',
   path: '/whatsapp/reglas',
@@ -417,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/sedes/nueva': typeof AppSedesNuevaRoute
   '/whatsapp/contactos': typeof AppWhatsappContactosRoute
   '/whatsapp/devolucion': typeof AppWhatsappDevolucionRoute
+  '/whatsapp/recordatorios': typeof AppWhatsappRecordatoriosRoute
   '/whatsapp/reglas': typeof AppWhatsappReglasRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
@@ -478,6 +486,7 @@ export interface FileRoutesByTo {
   '/sedes/nueva': typeof AppSedesNuevaRoute
   '/whatsapp/contactos': typeof AppWhatsappContactosRoute
   '/whatsapp/devolucion': typeof AppWhatsappDevolucionRoute
+  '/whatsapp/recordatorios': typeof AppWhatsappRecordatoriosRoute
   '/whatsapp/reglas': typeof AppWhatsappReglasRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
@@ -541,6 +550,7 @@ export interface FileRoutesById {
   '/_app/sedes/nueva': typeof AppSedesNuevaRoute
   '/_app/whatsapp/contactos': typeof AppWhatsappContactosRoute
   '/_app/whatsapp/devolucion': typeof AppWhatsappDevolucionRoute
+  '/_app/whatsapp/recordatorios': typeof AppWhatsappRecordatoriosRoute
   '/_app/whatsapp/reglas': typeof AppWhatsappReglasRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
@@ -604,6 +614,7 @@ export interface FileRouteTypes {
     | '/sedes/nueva'
     | '/whatsapp/contactos'
     | '/whatsapp/devolucion'
+    | '/whatsapp/recordatorios'
     | '/whatsapp/reglas'
     | '/a-reprogramar/'
     | '/agenda/'
@@ -665,6 +676,7 @@ export interface FileRouteTypes {
     | '/sedes/nueva'
     | '/whatsapp/contactos'
     | '/whatsapp/devolucion'
+    | '/whatsapp/recordatorios'
     | '/whatsapp/reglas'
     | '/a-reprogramar'
     | '/agenda'
@@ -727,6 +739,7 @@ export interface FileRouteTypes {
     | '/_app/sedes/nueva'
     | '/_app/whatsapp/contactos'
     | '/_app/whatsapp/devolucion'
+    | '/_app/whatsapp/recordatorios'
     | '/_app/whatsapp/reglas'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
@@ -1040,6 +1053,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWhatsappDevolucionRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/whatsapp/recordatorios': {
+      id: '/_app/whatsapp/recordatorios'
+      path: '/whatsapp/recordatorios'
+      fullPath: '/whatsapp/recordatorios'
+      preLoaderRoute: typeof AppWhatsappRecordatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/whatsapp/reglas': {
       id: '/_app/whatsapp/reglas'
       path: '/whatsapp/reglas'
@@ -1218,6 +1238,7 @@ interface AppRouteChildren {
   AppSedesNuevaRoute: typeof AppSedesNuevaRoute
   AppWhatsappContactosRoute: typeof AppWhatsappContactosRoute
   AppWhatsappDevolucionRoute: typeof AppWhatsappDevolucionRoute
+  AppWhatsappRecordatoriosRoute: typeof AppWhatsappRecordatoriosRoute
   AppWhatsappReglasRoute: typeof AppWhatsappReglasRoute
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
@@ -1277,6 +1298,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSedesNuevaRoute: AppSedesNuevaRoute,
   AppWhatsappContactosRoute: AppWhatsappContactosRoute,
   AppWhatsappDevolucionRoute: AppWhatsappDevolucionRoute,
+  AppWhatsappRecordatoriosRoute: AppWhatsappRecordatoriosRoute,
   AppWhatsappReglasRoute: AppWhatsappReglasRoute,
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,

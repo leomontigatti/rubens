@@ -4,7 +4,8 @@ import * as z from "zod";
 // in the app to the members it concerns, each read or unread on its own. The
 // first kinds are Meta's limits on the organization's number and templates
 // (§ When Meta limits the number), which every admin gets; handoffs, which
-// their recipients get (docs/domain/assistant.md § Handoff); and replies that
+// their recipients get, and their reminders before the window closes
+// (docs/domain/assistant.md § Handoff); and replies that
 // look like opt-outs, which reception and the admins get, one per patient
 // whose WhatsApp consent a person may turn off.
 
@@ -18,6 +19,7 @@ export const notificationKinds = [
   "numberRateLimited",
   "messagingLimitLowered",
   "handoff",
+  "handoffReminder",
   "optOut",
 ] as const;
 

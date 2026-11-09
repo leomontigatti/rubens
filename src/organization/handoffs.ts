@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
 
+import { isWindowOpen } from "#/lib/conversation-window.ts";
 import type { HandoffReason } from "#/lib/handoffs.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
 
@@ -12,6 +13,7 @@ import {
   outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // Handoffs (docs/domain/assistant.md § Handoff): who a handoff goes to, and
 // opening one with its notifications in one transaction. The assistant
@@ -80,11 +82,16 @@ function recipientsOf(tx: Writer, wanted: HandoffWanted) {
   return own ? [own] : contactsFor(tx, wanted.clinical);
 }
 
-/** Opens a handoff of `conversationId`, and notifies each of its recipients at once. */
+/**
+ * Opens a handoff of `conversationId`, and notifies each of its recipients at
+ * once. One opened inside the window counts back from its close
+ * (`handoff-countdown.ts`); one opened after it has no countdown.
+ */
 export function openHandoff(tx: Writer, conversationId: string, wanted: HandoffWanted) {
+  const countsDown = isWindowOpen(lastIncomingAt(tx, conversationId), Date.now());
   const opened = tx
     .insert(handoff)
-    .values({ conversationId, ...wanted })
+    .values({ conversationId, ...wanted, countsDown })
     .returning({ id: handoff.id })
     .get();
   const recipients = recipientsOf(tx, wanted);

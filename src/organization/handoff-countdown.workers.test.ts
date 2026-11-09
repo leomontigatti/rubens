@@ -1,0 +1,243 @@
+import { runDurableObjectAlarm } from "cloudflare:test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+import {
+  adminCaller,
+  afterTheWait,
+  at,
+  expectOk,
+  fakeMeta,
+  patientWrites,
+  scriptedModel,
+  setUpBookingWorld,
+} from "#/organization/organization.test-support.ts";
+import type { Caller } from "#/organization/members.ts";
+
+// A handoff's countdown (docs/domain/assistant.md § Handoff): counted back
+// from the window's close, it reminds its recipients, then every other member
+// who may answer it, by the object's alarm. Meta is faked at its HTTP
+// boundary and the model scripted at its port; the clock is moved by hand.
+
+vi.mock(import("#/organization/graph-api.ts"), async (original) => {
+  const actual = await original();
+  return {
+    ...actual,
+    whatsappCloudFor: (connection) => actual.whatsappCloudFor(connection, fakeMeta.fetch),
+    metaSignupFor: () => actual.metaSignupFor(fakeMeta.signupSettings, fakeMeta.fetch),
+    configuredWhatsappSettings: () => fakeMeta.settings,
+  };
+});
+
+vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
+  ...(await original()),
+  assistantModelFor: () => scriptedModel,
+}));
+
+const hourMs = 60 * 60_000;
+const martinaPhone = "+5491155550000";
+
+let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
+
+/** Books Martina with `practitionerId` on the first Monday at `start`, UTC. */
+async function bookMartina(practitionerId: string, patientId: string, start: string) {
+  const medicalServiceId = (await world.addMedicalService(practitionerId)).id;
+  const booked = await world.book({
+    practitionerId,
+    patientId,
+    medicalServiceId,
+    start: at(start),
+    durationMinutes: 30,
+    // A second appointment the same day warns, and reception goes ahead.
+    confirmWarnings: true,
+  });
+  return booked.id;
+}
+
+/**
+ * `Martina`, booked with `Juan` and with `Lucía`, writes `hoursAgo` hours ago and
+ * the assistant hands the conversation to `Juan`, clinical or not. Answers
+ * with when the window closes.
+ */
+async function handedToJuan(options: { hoursAgo: number; clinical: boolean }) {
+  const martina = await world.addPatient("Martina", martinaPhone);
+  await world.addSchedule({ practitionerId: world.juan.practitionerId });
+  await world.addSchedule({
+    practitionerId: world.lucia.practitionerId,
+    roomId: world.otherRoom.id,
+  });
+  const appointmentId = await bookMartina(world.juan.practitionerId, martina.id, "12:00");
+  await bookMartina(world.lucia.practitionerId, martina.id, "13:00");
+  const sentAt = Date.now() - options.hoursAgo * hourMs;
+  await patientWrites(world.organization, "quiero hablar con alguien", martinaPhone, sentAt);
+  const { clinical } = options;
+  scriptedModel.script((one) => {
+    one.call("judge_messages", { clinical, emergency: false });
+    one.call("hand_off", {
+      reason: clinical ? "clinical" : "patient_asked",
+      clinical,
+      appointmentId,
+    });
+    return "";
+  });
+  await afterTheWait(world.organization);
+  return sentAt + 24 * hourMs;
+}
+
+/** The reminders of handoffs `caller` has, with the close each counts back from. */
+async function remindersOf(caller: Caller) {
+  const listed = expectOk(await world.organization.listNotifications(caller));
+  return listed.notifications
+    .filter((one) => one.kind === "handoffReminder")
+    .map((one) => one.until);
+}
+
+/** Moves the clock to `instant` and runs the object's alarm. */
+async function alarmAt(instant: number) {
+  vi.setSystemTime(instant);
+  await runDurableObjectAlarm(world.organization);
+}
+
+beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2098-12-01T12:00:00Z"));
+  fakeMeta.reset();
+  scriptedModel.reset();
+  world = await setUpBookingWorld();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("a handoff made 20 hours before the window closes", () => {
+  it("reminds its recipient 6 hours before the close, and the others 2 hours before", async () => {
+    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+
+    await alarmAt(closesAt - 6 * hourMs - 60_000);
+    expect(await remindersOf(world.juan.caller)).toEqual([]);
+
+    await alarmAt(closesAt - 6 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.receptionist)).toEqual([]);
+
+    await alarmAt(closesAt - 2 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt, closesAt]);
+    expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
+    expect(await remindersOf(adminCaller)).toEqual([closesAt]);
+    expect(await remindersOf(world.lucia.caller)).toEqual([closesAt]);
+
+    await alarmAt(closesAt + hourMs);
+    expect(await remindersOf(world.juan.caller)).toHaveLength(2);
+  });
+});
+
+describe("a handoff made 1 hour before the window closes", () => {
+  it("reminds the others at once, but not its recipient, who was just told", async () => {
+    const closesAt = await handedToJuan({ hoursAgo: 23, clinical: false });
+
+    await runDurableObjectAlarm(world.organization);
+
+    expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
+    expect(await remindersOf(world.juan.caller)).toEqual([]);
+    expect(await runDurableObjectAlarm(world.organization)).toBe(false);
+  });
+});
+
+describe("a patient's later message", () => {
+  it("restarts the window, and both reminders move with it", async () => {
+    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+    vi.setSystemTime(closesAt - 10 * hourMs);
+    await patientWrites(world.organization, "sigo esperando", martinaPhone);
+    const newClose = Date.now() + 24 * hourMs;
+
+    await alarmAt(closesAt - 2 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([]);
+    expect(await remindersOf(world.receptionist)).toEqual([]);
+
+    await alarmAt(newClose - 6 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([newClose]);
+
+    await alarmAt(newClose - 2 * hourMs);
+    expect(await remindersOf(world.receptionist)).toEqual([newClose]);
+  });
+});
+
+describe("a clinical handoff", () => {
+  it("reminds at 2 hours before the close only the practitioners who keep clinical records", async () => {
+    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: true });
+
+    await alarmAt(closesAt - 2 * hourMs);
+
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.lucia.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.receptionist)).toEqual([]);
+    expect(await remindersOf(adminCaller)).toEqual([]);
+  });
+});
+
+describe("a handoff made after the window closed", () => {
+  it("tells the patient nothing and has no reminders, though its recipient is told at once", async () => {
+    await handedToJuan({ hoursAgo: 25, clinical: false });
+
+    expect(fakeMeta.textsSent()).toEqual([]);
+    const listed = expectOk(await world.organization.listNotifications(world.juan.caller));
+    expect(listed.notifications.map((one) => one.kind)).toEqual(["handoff"]);
+
+    // The patient's next message opens a window the handoff does not count back from.
+    await patientWrites(world.organization, "hola?", martinaPhone);
+    const closesAt = Date.now() + 24 * hourMs;
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { clinical: false, emergency: false });
+      return "";
+    });
+    await afterTheWait(world.organization);
+    await alarmAt(closesAt - 2 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([]);
+    expect(await remindersOf(world.receptionist)).toEqual([]);
+  });
+});
+
+describe("the admin's reminder times", () => {
+  it("move both reminders", async () => {
+    expectOk(
+      await world.organization.saveHandoffReminders(adminCaller, {
+        recipientHours: 10,
+        othersHours: 4,
+      }),
+    );
+    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+
+    await alarmAt(closesAt - 10 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
+
+    await alarmAt(closesAt - 4 * hourMs);
+    expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
+    expect(
+      expectOk(await world.organization.whatsappSettings(adminCaller)).handoffReminders,
+    ).toEqual({ recipientHours: 10, othersHours: 4 });
+  });
+
+  it.each([0, -1, 24, 1.5])("refuses a reminder at %s hours before the close", async (hours) => {
+    expect(
+      await world.organization.saveHandoffReminders(adminCaller, {
+        recipientHours: hours,
+        othersHours: 2,
+      }),
+    ).toEqual({ ok: false, reason: "invalidInput" });
+    expect(
+      await world.organization.saveHandoffReminders(adminCaller, {
+        recipientHours: 6,
+        othersHours: hours,
+      }),
+    ).toEqual({ ok: false, reason: "invalidInput" });
+  });
+
+  it("are the admin's alone", async () => {
+    expect(
+      await world.organization.saveHandoffReminders(world.receptionist, {
+        recipientHours: 6,
+        othersHours: 2,
+      }),
+    ).toEqual({ ok: false, reason: "forbidden" });
+  });
+});

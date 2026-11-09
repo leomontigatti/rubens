@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { formsOfAddress } from "#/lib/communication-rules.ts";
-import { handoffReasons, handoffStates } from "#/lib/handoffs.ts";
+import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
 import {
@@ -267,6 +267,14 @@ export const inboxSettings = sqliteTable(
     id: integer("id").primaryKey(),
     /** How long a member holds a conversation they took over before it goes back to the assistant. */
     returnAfterHours: integer("return_after_hours").notNull(),
+    /** How many hours before the window closes a handoff's recipients are reminded of it. */
+    handoffReminderHours: integer("handoff_reminder_hours")
+      .notNull()
+      .default(defaultHandoffReminders.recipientHours),
+    /** How many hours before the window closes every other member who may answer a handoff is reminded too. */
+    handoffWideReminderHours: integer("handoff_wide_reminder_hours")
+      .notNull()
+      .default(defaultHandoffReminders.othersHours),
     ...timestamps,
   },
   (table) => [check("inbox_settings_one_row", sql`${table.id} = 1`)],
@@ -299,6 +307,15 @@ export const handoff = sqliteTable(
      * closed, and for other reasons.
      */
     heldReply: text("held_reply"),
+    /**
+     * Whether it counts back from the window's close with reminders: made
+     * inside the window. One made after the close tells the patient nothing.
+     */
+    countsDown: flag("counts_down").notNull().default(false),
+    /** The window's close its recipients were last reminded of; none before the first reminder. */
+    remindedFor: instant("reminded_for"),
+    /** The window's close every other member who may answer it was last reminded of. */
+    widelyRemindedFor: instant("widely_reminded_for"),
     ...timestamps,
   },
   (table) => [index("handoff_conversation_idx").on(table.conversationId, table.state)],

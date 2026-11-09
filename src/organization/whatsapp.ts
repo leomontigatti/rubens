@@ -4,6 +4,7 @@ import type { TemplateSend } from "#/lib/whatsapp.ts";
 
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import { returnAfterHours } from "#/organization/conversation-holds.ts";
+import { handoffReminders } from "#/organization/handoff-countdown.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import { listHandoffContacts } from "#/organization/handoff-contacts.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
@@ -25,7 +26,8 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
  * on it if any, and what Embedded Signup launches with (`null` while the Worker misses a setting), the setting
  * that keeps a send from being made, if any, and the templates with the
  * setting that keeps them from being submitted, the assistant's
- * communication rules, and the members who may be handoff contacts.
+ * communication rules, the members who may be handoff contacts, the return
+ * time and the handoff reminders.
  */
 export function getWhatsappSettings(
   database: Database,
@@ -44,6 +46,7 @@ export function getWhatsappSettings(
     communicationRules: currentCommunicationRules(database),
     handoffContacts: listHandoffContacts(database).members,
     returnAfterHours: returnAfterHours(database),
+    handoffReminders: handoffReminders(database),
   } as const;
 }
 
