@@ -91,26 +91,34 @@ fi
 vp="./node_modules/.bin/vp"
 [ -x "$vp" ] || exit 0
 
+# Each gate that fails appends its section; `blocked` decides, so a gate that
+# fails without printing still blocks.
+blocked=""
 output=""
+append() {
+  blocked=1
+  output="${output:+$output
+
+}$1"
+}
+
 if ! lint_output="$("$vp" check --no-fmt 2>&1)"; then
-  output="$lint_output"
+  append "$lint_output"
 fi
 
+# Only fallow's own codes block: any other status (pnpm unable to start, a
+# missing script) is the launcher failing, and stays fail-open.
 if command -v pnpm >/dev/null 2>&1; then
   fallow_output="$(pnpm --silent check:fallow 2>&1)"
   case $? in
-    0) ;;
-    2) output="${output:+$output
-
-}fallow could not run, so this branch was never checked; run \`git fetch origin\` and retry (docs/agents/fallow.md):
+    1) append "pnpm check:fallow found what this branch adds (docs/agents/fallow.md):
 $fallow_output" ;;
-    *) output="${output:+$output
-
-}$fallow_output" ;;
+    2) append "fallow could not run, so this branch was never checked; run \`git fetch origin\` and retry (docs/agents/fallow.md):
+$fallow_output" ;;
   esac
 fi
 
-if [ -z "$output" ]; then
+if [ -z "$blocked" ]; then
   exit 0
 fi
 
