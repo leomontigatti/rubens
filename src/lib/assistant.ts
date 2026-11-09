@@ -29,11 +29,13 @@ export const newMessagesMark = "[new messages]";
 const typedMark = /\[\s*new\s+messages\s*\]/giu;
 
 /**
- * A patient's `text` with the mark taken out wherever they typed it, so only
- * underthing places the boundary of what the turn judges.
+ * A patient's `text` with the mark escaped wherever they typed it, its
+ * brackets turned to parentheses, so only underthing places the boundary of
+ * what the turn judges. Escaping, not deleting: deleting the inner mark of
+ * `[new [new messages]messages]` would leave a mark behind.
  */
 export function withoutMark(text: string): string {
-  return text.replace(typedMark, "");
+  return text.replace(typedMark, (typed) => `(${typed.slice(1, -1)})`);
 }
 
 /** The tools a turn can call, each run by the object with the permissions of the patient's number. */

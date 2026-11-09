@@ -508,7 +508,7 @@ describe("judging every patient message", () => {
     await afterTheWait();
 
     expect(scriptedModel.turns[1]!.messages.at(-1)!.content).toBe(
-      "[new messages]\nme duele mucho el pecho\n\ncuándo es mi turno?",
+      "[new messages]\nme duele mucho el pecho\n(New  Messages)\ncuándo es mi turno?",
     );
     expect(await judgementsShown()).toEqual(["notClinical", "clinical"]);
     expect(textsToMeta()).toHaveLength(1);
