@@ -17,6 +17,7 @@ import { defaultTemplate, templateSendSchema } from "#/lib/whatsapp.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
 import { getWhatsappSettings, sendWhatsappTemplate } from "#/server/whatsapp.functions.ts";
 
+import { CommunicationRulesSection } from "#/routes/_app/whatsapp/-communication-rules.tsx";
 import { NumberSection } from "#/routes/_app/whatsapp/-number.tsx";
 import { TemplateList } from "#/routes/_app/whatsapp/-templates.tsx";
 
@@ -137,10 +138,11 @@ function WhatsappSettings() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="WhatsApp"
-        description="El número del consultorio, las plantillas con las que escribe a los pacientes y un envío de prueba."
+        description="El número del consultorio, las plantillas con las que escribe a los pacientes, cómo escribe el asistente y un envío de prueba."
       />
       <NumberSection settings={settings} />
       <TemplateList settings={settings} />
+      <CommunicationRulesSection settings={settings} />
       <RecordSection title="Envío de prueba">
         <div className="flex max-w-xl flex-col gap-6">
           <p className="text-muted-foreground text-sm">
