@@ -181,6 +181,8 @@ export default defineConfig({
           cloudflareTest({
             main: "./src/organization/test-worker.ts",
             wrangler: { configPath: "./wrangler.jsonc" },
+            // A made-up key, so the objects can seal what the app encrypts (ADR-0008).
+            miniflare: { bindings: { ORGANIZATION_ENCRYPTION_KEY: btoa("k".repeat(32)) } },
           }),
         ],
         test: {

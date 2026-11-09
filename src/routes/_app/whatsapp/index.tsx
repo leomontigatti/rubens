@@ -17,6 +17,7 @@ import { defaultTemplate, templateSendSchema } from "#/lib/whatsapp.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
 import { getWhatsappSettings, sendWhatsappTemplate } from "#/server/whatsapp.functions.ts";
 
+import { NumberSection } from "#/routes/_app/whatsapp/-number.tsx";
 import { TemplateList } from "#/routes/_app/whatsapp/-templates.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/")({
@@ -30,7 +31,9 @@ const refusalMessages = {
   forbidden: "Solo un administrador puede usar la configuración de WhatsApp.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá el número, la plantilla y el idioma.",
-  missingAccessToken: "Falta el token de acceso de WhatsApp en la configuración del servidor.",
+  connectionFailed: "La conexión del número de WhatsApp falló. Conectalo de nuevo.",
+  missingAccessToken:
+    "Falta el token de acceso de WhatsApp: conectá el número del consultorio, o revisá la configuración del servidor.",
   missingPhoneNumberId:
     "Falta el identificador del número de WhatsApp en la configuración del servidor.",
 };
@@ -134,8 +137,9 @@ function WhatsappSettings() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="WhatsApp"
-        description="Las plantillas con las que el consultorio escribe a los pacientes, y un envío de prueba."
+        description="El número del consultorio, las plantillas con las que escribe a los pacientes y un envío de prueba."
       />
+      <NumberSection settings={settings} />
       <TemplateList settings={settings} />
       <RecordSection title="Envío de prueba">
         <div className="flex max-w-xl flex-col gap-6">

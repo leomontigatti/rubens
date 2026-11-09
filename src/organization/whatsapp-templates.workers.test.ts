@@ -19,7 +19,9 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   const actual = await original();
   return {
     ...actual,
-    whatsappCloudFor: () => actual.whatsappCloudFor(fakeMeta.settings, fakeMeta.fetch),
+    whatsappCloudFor: (connection) => actual.whatsappCloudFor(connection, fakeMeta.fetch),
+    metaSignupFor: () => actual.metaSignupFor(fakeMeta.signupSettings, fakeMeta.fetch),
+    configuredWhatsappSettings: () => fakeMeta.settings,
   };
 });
 
@@ -277,7 +279,7 @@ describe("a template's status", () => {
   });
 
   it("moves to approved on Meta's status event for its id", async () => {
-    const stored = await organization.storeWhatsappEvents(statusEvent("555", "approved"));
+    const stored = expectOk(await organization.storeWhatsappEvents(statusEvent("555", "approved")));
 
     expect(stored.templateStatuses).toEqual([{ metaId: "555", updated: true }]);
     expect(await versionsOf("confirmacion_turno")).toMatchObject([
@@ -294,7 +296,7 @@ describe("a template's status", () => {
   });
 
   it("ignores an event for an id no template has", async () => {
-    const stored = await organization.storeWhatsappEvents(statusEvent("999", "approved"));
+    const stored = expectOk(await organization.storeWhatsappEvents(statusEvent("999", "approved")));
 
     expect(stored.templateStatuses).toEqual([{ metaId: "999", updated: false }]);
     expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "pending" }]);

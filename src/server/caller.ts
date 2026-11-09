@@ -3,6 +3,7 @@ import type { RequestState } from "@clerk/backend/internal";
 
 import type { Caller } from "#/organization/members.ts";
 import type { Organization } from "#/organization/organization.ts";
+import type { WhatsappDirectory } from "#/server/whatsapp-directory.ts";
 
 // The request-to-caller step (#131): the one place a request becomes a caller
 // and an organization's object. The organization comes from the verified
@@ -12,6 +13,8 @@ import type { Organization } from "#/organization/organization.ts";
 /** The Worker's bindings, vars and secrets (`wrangler.jsonc`). */
 export interface WorkerEnv {
   ORGANIZATION: DurableObjectNamespace<Organization>;
+  /** The one object mapping each connected WhatsApp number to its organization (ADR-0012). */
+  WHATSAPP_DIRECTORY: DurableObjectNamespace<WhatsappDirectory>;
   CLERK_SECRET_KEY?: string;
   CLERK_PUBLISHABLE_KEY?: string;
   /**

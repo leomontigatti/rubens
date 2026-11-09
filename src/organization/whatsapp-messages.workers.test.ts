@@ -284,11 +284,13 @@ describe("storing the webhook's WhatsApp events", () => {
       messages: [],
       statuses: [{ whatsappId, status: "read", at: sentAt + 2 * minute }],
     });
-    const late = await organization.storeWhatsappEvents({
-      templateStatuses: [],
-      messages: [],
-      statuses: [{ whatsappId, status: "delivered", at: sentAt + minute }],
-    });
+    const late = expectOk(
+      await organization.storeWhatsappEvents({
+        templateStatuses: [],
+        messages: [],
+        statuses: [{ whatsappId, status: "delivered", at: sentAt + minute }],
+      }),
+    );
 
     expect(late.statuses).toEqual([{ whatsappId, updated: false }]);
     expect(await storedMessages(organization)).toMatchObject([{ whatsappId, status: "read" }]);

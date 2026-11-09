@@ -4,6 +4,7 @@ import { authMode, serveClerkPageLoad } from "#/server/caller.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 
 export { Organization } from "#/organization/organization.ts";
+export { WhatsappDirectory } from "#/server/whatsapp-directory.ts";
 
 // The Worker: Start's handler, behind the check that refuses to serve a
 // deployed Worker with no Clerk secret (`authMode`). With Clerk, a page load

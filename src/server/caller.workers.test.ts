@@ -125,7 +125,10 @@ describe("the request-to-caller step, in dev", () => {
 });
 
 describe("the sign-in mode", () => {
-  const base = { ORGANIZATION: bindings.ORGANIZATION };
+  const base = {
+    ORGANIZATION: bindings.ORGANIZATION,
+    WHATSAPP_DIRECTORY: bindings.WHATSAPP_DIRECTORY,
+  };
 
   it("is Clerk's with a Clerk secret, even on the dev server", () => {
     expect(authMode({ ...base, CLERK_SECRET_KEY: "sk_test_x" }, true)).toBe("clerk");

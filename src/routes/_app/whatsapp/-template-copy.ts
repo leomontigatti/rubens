@@ -50,7 +50,9 @@ export const templateRefusalMessages = {
   forbidden: "Solo un administrador puede usar la configuración de WhatsApp.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá el texto de la plantilla.",
-  missingAccessToken: "Falta el token de acceso de WhatsApp en la configuración del servidor.",
+  connectionFailed: "La conexión del número de WhatsApp falló. Conectalo de nuevo.",
+  missingAccessToken:
+    "Falta el token de acceso de WhatsApp: conectá el número del consultorio, o revisá la configuración del servidor.",
   missingBusinessAccountId:
     "Falta el identificador de la cuenta de WhatsApp Business en la configuración del servidor.",
 };

@@ -19,7 +19,8 @@ by ADR-0008.
 - Staff sign-in: `0009-staff-sign-in-through-clerk.md`
 - The product's name: `0011-product-named-underthing.md`
 - WhatsApp, the assistant and Telegram: `0010-whatsapp-cloud-api-number-per-organization.md`
-  (the channel), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
+  (the channel), `0012-whatsapp-directory-durable-object.md` (finding a number's
+  organization), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
   `0007-patients-words-on-telegram.md`
 
 ## Decisions
@@ -55,3 +56,7 @@ by ADR-0008.
 - [ADR-0011: The product is named underthing](./0011-product-named-underthing.md) -
   renamed from Rubens, its first customer's brand, before the WhatsApp App Review; what
   users and operators see changes, earlier ADRs keep saying Rubens.
+- [ADR-0012: A directory Durable Object finds the organization of a WhatsApp number](./0012-whatsapp-directory-durable-object.md) -
+  the one object shared across organizations, mapping each connected number and account
+  to its organization for the webhook; ids only; chosen over KV (eventually consistent)
+  and D1 (a database for one table).
