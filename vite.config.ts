@@ -3,12 +3,14 @@ import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { defineConfig, loadEnv } from "vite-plus";
+import { defineConfig } from "vite-plus";
 import type { Plugin } from "vite-plus";
+
+import { devPort } from "./scripts/worktree-port.ts";
 
 // A worktree's `.env.local` (`scripts/worktree-port.ts`) holds its own PORT. Strict, so
 // a port another server holds fails loudly instead of drifting to the next one.
-const port = Number(loadEnv("development", process.cwd(), "").PORT) || 3000;
+const port = devPort(process.cwd());
 
 const generated = ["src/routeTree.gen.ts", "src/organization/migrations/**"];
 

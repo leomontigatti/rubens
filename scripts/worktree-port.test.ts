@@ -1,6 +1,10 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vite-plus/test";
 
-import { choosePort, parseEnvPort, renderEnvLocal } from "./worktree-port.ts";
+import { choosePort, devPort, parseEnvPort, renderEnvLocal } from "./worktree-port.ts";
 
 describe("choosePort", () => {
   it("is stable for the same worktree", () => {
@@ -25,5 +29,21 @@ describe("renderEnvLocal / parseEnvPort", () => {
 
   it("reads no port from a file without one", () => {
     expect(parseEnvPort('OTHER="x"\n')).toBeUndefined();
+  });
+});
+
+describe("devPort", () => {
+  it("serves on the port the worktree's .env.local writes, over the shared .env", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "worktree-port-"));
+    writeFileSync(path.join(root, ".env"), 'PORT="3000"\n');
+    writeFileSync(path.join(root, ".env.local"), renderEnvLocal(5321));
+
+    expect(devPort(root)).toBe(5321);
+  });
+
+  it("falls back to 3000 when no file sets a port", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "worktree-port-"));
+
+    expect(devPort(root)).toBe(3000);
   });
 });

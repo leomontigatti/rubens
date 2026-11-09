@@ -13,6 +13,7 @@
       "Bash(pnpm build)",
       "Bash(pnpm dev)",
       "Bash(pnpm dev:stop)",
+      "Bash(pnpm dev:url)",
       "Bash(playwright-cli:*)",
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",

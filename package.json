@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "node --import tsx scripts/worktree-port.ts && vp dev",
+    "dev:url": "node --import tsx scripts/worktree-port.ts --print",
     "dev:stop": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/dev-stop.ts",
     "build": "vp build",
     "check": "vp check",
