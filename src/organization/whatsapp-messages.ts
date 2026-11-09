@@ -128,11 +128,77 @@ function isNewer(
 }
 
 /**
+ * The sends each object is waiting on Meta's answer for, and the statuses
+ * that arrived meanwhile for a message not stored yet: Meta can report a
+ * message before the answer that names it reaches the object.
+ */
+const sendsByObject = new WeakMap<Database, { inFlight: number; early: WhatsappStatusUpdate[] }>();
+
+function sendsIn(database: Database) {
+  let sends = sendsByObject.get(database);
+  if (!sends) {
+    sends = { inFlight: 0, early: [] };
+    sendsByObject.set(database, sends);
+  }
+  return sends;
+}
+
+/**
+ * Runs `send`, a call to Meta whose message `storeOutgoing` stores after it;
+ * a status for that message that arrives during the call is kept for it.
+ */
+export async function whileSending<T>(database: Database, send: () => Promise<T>) {
+  const sends = sendsIn(database);
+  if (sends.inFlight === 0) {
+    // What no send stored since: statuses of messages sent outside the outbox.
+    sends.early = [];
+  }
+  sends.inFlight += 1;
+  try {
+    return await send();
+  } finally {
+    sends.inFlight -= 1;
+  }
+}
+
+/**
+ * Stores a message the organization's number sent, in the conversation of
+ * `phone`, with any status Meta reported for it before it was stored.
+ */
+export function storeOutgoing(
+  database: Database,
+  tx: Writer,
+  message: { phone: string; whatsappId: string; type: string; text: string; payload: string },
+) {
+  const stored = tx
+    .insert(whatsappMessage)
+    .values({
+      conversationId: conversationWith(tx, message.phone),
+      whatsappId: message.whatsappId,
+      direction: "outgoing",
+      type: message.type,
+      text: message.text,
+      payload: message.payload,
+      sentAt: Date.now(),
+    })
+    .returning({ id: whatsappMessage.id })
+    .get();
+  const sends = sendsIn(database);
+  const early = sends.early.filter((update) => update.whatsappId === message.whatsappId);
+  sends.early = sends.early.filter((update) => update.whatsappId !== message.whatsappId);
+  for (const update of early) {
+    storeStatus(database, tx, update);
+  }
+  return stored;
+}
+
+/**
  * Puts `update` on the outgoing message it names, unless that message already
  * has a later status: Meta does not promise to deliver statuses in order. An
- * id no outgoing message has is ignored.
+ * id no outgoing message has is kept while a send waits on Meta, for the
+ * message it may be, and ignored otherwise.
  */
-function storeStatus(tx: Writer, update: WhatsappStatusUpdate) {
+function storeStatus(database: Database, tx: Writer, update: WhatsappStatusUpdate) {
   const target = and(
     eq(whatsappMessage.whatsappId, update.whatsappId),
     eq(whatsappMessage.direction, "outgoing"),
@@ -142,7 +208,14 @@ function storeStatus(tx: Writer, update: WhatsappStatusUpdate) {
     .from(whatsappMessage)
     .where(target)
     .get();
-  if (!stored || !isNewer(update, stored)) {
+  if (!stored) {
+    const sends = sendsIn(database);
+    if (sends.inFlight > 0) {
+      sends.early.push(update);
+    }
+    return { whatsappId: update.whatsappId, updated: false };
+  }
+  if (!isNewer(update, stored)) {
     return { whatsappId: update.whatsappId, updated: false };
   }
   tx.update(whatsappMessage)
@@ -162,7 +235,7 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
   return database.transaction((tx) => ({
     ok: true as const,
     messages: events.messages.map((message) => storeIncoming(tx, message)),
-    statuses: events.statuses.map((update) => storeStatus(tx, update)),
+    statuses: events.statuses.map((update) => storeStatus(database, tx, update)),
     templateStatuses: events.templateStatuses.map((update) => storeTemplateStatus(tx, update)),
   }));
 }

@@ -29,6 +29,11 @@ organization's data: the organization object's methods and the area modules in
   `answerNextWith` for one request), holds a request (`holdNext`) to run another call meanwhile,
   lists the account's templates from `templatesAtMeta`, and sets or unsets the WhatsApp settings
   per test.
+- **The alarm** runs when a test calls `runDurableObjectAlarm(organization)`. The runtime also
+  fires a due alarm by itself, racing the test, so a test that sends from the outbox fakes the
+  object's clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`) to a time
+  before the real one, which keeps what it queues in the scheduler's future
+  (`src/organization/outbox.workers.test.ts`).
 - **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
   `adminCaller`, `addMember`, `addRefusedAdmin`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
   `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`, `fakeAccounts`, `fakeMeta`). Extend it before adding another support file

@@ -12,6 +12,7 @@ import {
 import type { Role } from "#/lib/access.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 import { insurerKinds } from "#/lib/coverages.ts";
+import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
 import { whatsappMessageDirections, whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
@@ -356,6 +357,9 @@ export const medicalService = sqliteTable(
       .references(() => practitioner.id),
     name: text("name").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
+    // Whether booking one of its appointments sends the patient the booking
+    // confirmation (`docs/domain/messages.md`).
+    bookingConfirmation: flag("booking_confirmation").notNull().default(true),
     // A medical service in use is deactivated, never deleted: it drops out of
     // booking and stays on its appointments.
     active: flag("active").notNull().default(true),
@@ -514,4 +518,36 @@ export const whatsappTemplate = sqliteTable(
     ...timestamps,
   },
   (table) => [uniqueIndex("whatsapp_template_name_version_idx").on(table.name, table.version)],
+);
+
+/**
+ * A message to a patient, queued in the transaction that changed its
+ * appointment and sent by the object's alarm once due (`src/lib/outbox.ts`).
+ * Who it goes to and what it says are read when it is sent, from the
+ * appointment as it is then.
+ */
+export const outboxMessage = sqliteTable(
+  "outbox_message",
+  {
+    id: id(),
+    kind: text("kind", { enum: outboxKinds }).notNull(),
+    appointmentId: text("appointment_id")
+      .notNull()
+      .references(() => appointment.id),
+    state: text("state", { enum: outboxStates }).notNull().default("queued"),
+    /** When it goes next, while queued. */
+    dueAt: instant("due_at").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    dropReason: text("drop_reason", { enum: outboxDropReasons }),
+    // Meta's error on the latest failed attempt.
+    errorCode: integer("error_code"),
+    errorMessage: text("error_message"),
+    /** The message as sent, in its conversation. */
+    whatsappMessageId: text("whatsapp_message_id").references(() => whatsappMessage.id),
+    ...timestamps,
+  },
+  (table) => [
+    index("outbox_message_due_idx").on(table.state, table.dueAt),
+    index("outbox_message_appointment_id_idx").on(table.appointmentId),
+  ],
 );

@@ -127,7 +127,8 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   requirement, so a removed member or a changed role takes effect on the next call.
   The UI and the server functions are not the boundary.
 - **A method is one line**: `this.#as(caller, requirement, (acting) => …)` into an
-  area module in `src/organization/`. The area function is synchronous and makes its
+  area module in `src/organization/`, or `this.#asThenArm(…)` for a call that can queue
+  a message or let a waiting one go, which sets the object's alarm after it. The area function is synchronous and makes its
   writes, its checks and its audit entry (`recordAudit()`) in one
   `database.transaction`, with no `await` inside: an object runs one event at a time,
   so a check and the write it guards cannot be raced (double booking, ADR-0003).

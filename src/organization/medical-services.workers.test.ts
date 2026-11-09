@@ -79,6 +79,28 @@ describe("managing medical services", () => {
     expect(medicalServices.map((service) => service.name)).toEqual(["Control", "Primera vez"]);
   });
 
+  it("sends the booking confirmation unless the medical service is set not to", async () => {
+    const { organization, firstVisit, created, servicesOf } = await world();
+    const first = await created();
+    await created(adminCaller, firstVisit({ name: "Control", bookingConfirmation: false }));
+
+    await organization.updateMedicalService(adminCaller, {
+      medicalServiceId: first.id,
+      name: "Primera consulta",
+      durationMinutes: 40,
+      bookingConfirmation: false,
+    });
+
+    const { medicalServices } = await servicesOf(adminCaller, false);
+    expect(
+      medicalServices.map(({ name, bookingConfirmation }) => [name, bookingConfirmation]),
+    ).toEqual([
+      ["Control", false],
+      ["Primera consulta", false],
+    ]);
+    expect(first.bookingConfirmation).toBe(true);
+  });
+
   it("lets a practitioner manage their own medical services and no one else's", async () => {
     const { organization, juan, ana, firstVisit, created, servicesOf } = await world();
     const own = await organization.createMedicalService(juan.caller, firstVisit());
@@ -195,18 +217,25 @@ describe("auditing medical services", () => {
       medicalServiceId: service.id,
       name: "Primera consulta",
       durationMinutes: 60,
+      bookingConfirmation: false,
     });
     await organization.setMedicalServiceActive(adminCaller, { id: service.id, active: false });
 
     const about = { entityType: "medicalService", patientId: null };
     expect(await auditEntriesFor(organization, service.id)).toEqual([
-      { ...about, action: "create", userId: juan.caller.userId, before: null, after: firstVisit() },
+      {
+        ...about,
+        action: "create",
+        userId: juan.caller.userId,
+        before: null,
+        after: { ...firstVisit(), bookingConfirmation: true },
+      },
       {
         ...about,
         action: "update",
         userId: adminCaller.userId,
-        before: { durationMinutes: 40 },
-        after: { durationMinutes: 60 },
+        before: { durationMinutes: 40, bookingConfirmation: true },
+        after: { durationMinutes: 60, bookingConfirmation: false },
       },
       {
         ...about,

@@ -1,5 +1,8 @@
 import * as z from "zod";
 
+import { sampleAppointment, templateValues, variablesIn } from "#/lib/template-filling.ts";
+import type { TemplateVariable } from "#/lib/template-filling.ts";
+
 // The templates underthing starts conversations with (`docs/operations/whatsapp-templates.md`),
 // each known by its name, and the rules a body is checked against before it
 // is submitted to Meta (#154). A template is submitted in Spanish (Argentina),
@@ -23,19 +26,6 @@ export function templateStatusOf(metaStatus: string): TemplateStatus | null {
 
 /** The longest body Meta accepts. */
 const maxTemplateBodyLength = 1024;
-
-/** Each variable underthing fills from an appointment, with its value in the sample appointment. */
-const templateVariables = {
-  paciente: "Lucía",
-  profesional: "la Dra. Sofía Méndez",
-  fecha: "jueves 12 de noviembre",
-  hora: "10:30",
-  sede: "Sede Centro",
-  direccion: "Av. Colón 1234, Córdoba",
-  indicaciones: "evitá el sol directo por 48 horas",
-} as const;
-
-type TemplateVariable = keyof typeof templateVariables;
 
 const appointmentVariables = [
   "paciente",
@@ -209,11 +199,6 @@ export function versionOf(name: TemplateName, metaName: string): number | null {
 
 /** Meta's example for each variable `body` uses, once each, in order, from the sample appointment. */
 export function templateExamples(body: string) {
-  const used = new Set<TemplateVariable>();
-  for (const [, variable] of body.matchAll(variablePattern)) {
-    if (variable! in templateVariables) {
-      used.add(variable as TemplateVariable);
-    }
-  }
-  return [...used].map((name) => ({ param_name: name, example: templateVariables[name] }));
+  const values = templateValues(sampleAppointment);
+  return variablesIn(body).map((name) => ({ param_name: name, example: values[name] }));
 }

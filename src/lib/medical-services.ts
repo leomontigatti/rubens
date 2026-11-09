@@ -5,6 +5,8 @@ import { durationMinutesSchema } from "#/lib/availability.ts";
 const medicalServiceFields = z.object({
   name: z.string().trim().min(1).max(200),
   durationMinutes: durationMinutesSchema,
+  /** Whether its appointments' patients get the booking confirmation. */
+  bookingConfirmation: z.boolean().default(true),
 });
 
 /** A new medical service, shared by the form and the services. */

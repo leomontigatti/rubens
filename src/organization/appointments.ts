@@ -19,6 +19,7 @@ import type { NewPlacement, PlacementRefusal } from "#/organization/appointment-
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { queueBookingConfirmation } from "#/organization/outbox.ts";
 import { findPatient, patientIdSchema } from "#/organization/patients.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import {
@@ -36,8 +37,8 @@ import {
 // schedule it falls in; an overbooking (ui: "Sobreturno") at any start, in a
 // room with space. Where each goes and why it may not is the placement
 // module's (`appointment-placement.ts`); the check and the insert run in one
-// synchronous transaction (ADR-0008). Every booking is written to the audit
-// log, about its patient.
+// synchronous transaction (ADR-0008), with the booking confirmation it queues
+// (`outbox.ts`). Every booking is written to the audit log, about its patient.
 
 type Refusal = "forbidden" | "invalidInput" | "notFound" | "practitionerInactive";
 
@@ -137,6 +138,7 @@ function placeNew<Kind extends NewPlacement["kind"]>(
       .values({ ...fields, startsAt: +span.start, endsAt: +span.end, createdBy: acting.userId })
       .returning({ id: appointment.id })
       .get();
+    queueBookingConfirmation(tx, created.id);
     recordAudit(tx, acting.userId, {
       action: "create",
       entityType: "appointment",
