@@ -111,3 +111,16 @@ export function fillTemplate(body: string, appointment: TemplateAppointment) {
     parameters: variablesIn(body).map((name) => ({ name, value: values[name] })),
   };
 }
+
+/**
+ * Care instructions as they go in `{{indicaciones}}` (decided in #162): Meta
+ * refuses a value with a line break, a tab or a run of spaces, so each line
+ * break is joined as `; ` and each run of other whitespace becomes one space.
+ */
+export function flattenCareInstructions(text: string) {
+  return text
+    .split(/[\n\r\v\f\u2028\u2029]/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("; ");
+}

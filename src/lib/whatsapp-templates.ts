@@ -186,6 +186,18 @@ export function checkTemplateBody(
   return problems.length > 0 ? { ok: false, problems } : { ok: true, body: trimmed };
 }
 
+/**
+ * The longest care instructions template `indicaciones` with `body` can carry:
+ * the body's limit, less the text it keeps outside its variables, shared
+ * among each place it repeats `{{indicaciones}}`.
+ */
+export function maxCareInstructionsLength(body: string) {
+  const trimmed = body.trim();
+  const room = maxTemplateBodyLength - trimmed.replace(variablePattern, "").length;
+  const uses = trimmed.split("{{indicaciones}}").length - 1;
+  return Math.floor(room / Math.max(uses, 1));
+}
+
 /** The name a version is submitted under at Meta, where each version is its own template. */
 export function metaTemplateName(name: TemplateName, version: number) {
   return `${name}_v${version}`;
