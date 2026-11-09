@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import type { PersonalReply } from "#/lib/conversation-holds.ts";
 import type { HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 import type { ConversationListOptions, ConversationReference } from "#/lib/whatsapp-messages.ts";
 
@@ -40,4 +41,24 @@ export const closeHandoff = createServerFn({ method: "POST" })
   .validator((data: HandoffReference) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.closeHandoff(caller, data)),
+  );
+
+// Taking a conversation over, replying under one's name and giving it back
+// (`src/organization/conversation-holds.ts`).
+export const takeOverConversation = createServerFn({ method: "POST" })
+  .validator((data: ConversationReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.takeOverConversation(caller, data)),
+  );
+
+export const replyToConversation = createServerFn({ method: "POST" })
+  .validator((data: PersonalReply) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.replyToConversation(caller, data)),
+  );
+
+export const returnConversation = createServerFn({ method: "POST" })
+  .validator((data: ConversationReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.returnConversation(caller, data)),
   );

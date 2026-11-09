@@ -35,6 +35,20 @@ export function messageText(message: InboxMessage) {
   return message.text ?? `Mensaje sin texto (${message.type})`;
 }
 
+/** Who wrote the message: the patient, a template, the member who replied, or the assistant. */
+export function messageSender(message: InboxMessage) {
+  if (message.direction === "incoming") {
+    return "Paciente";
+  }
+  if (message.withheld !== null) {
+    return "Profesional";
+  }
+  if (message.type === "template") {
+    return "Plantilla";
+  }
+  return message.sentBy ?? "Asistente";
+}
+
 /** Who the conversation is with: its patients, or its number when it stands for none. */
 export function conversationName(conversation: Pick<ConversationSummary, "phone" | "patients">) {
   return conversation.patients.length > 0

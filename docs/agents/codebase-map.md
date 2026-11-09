@@ -29,7 +29,8 @@ src/
 │   │                  `as()`, the authorization every method goes through), one module per area
 │   │                  (`members.ts`, `audit.ts`, …), `encryption.ts` (the organization's key),
 │   │                  `schema.ts` and `whatsapp-schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
-├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it)
+├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it);
+│                      `fake-meta.ts` (Meta answered inside the Worker, for the browser suite)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
 ├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules
 ├── server/            server-only modules that are not routes: `*.functions.ts` (server functions),

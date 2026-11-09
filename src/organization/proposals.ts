@@ -14,7 +14,7 @@ import { openHandoffsOf } from "#/organization/handoffs.ts";
 import type { Acting } from "#/organization/members.ts";
 import { freeTimesFor, movePatientAppointment, slotFor } from "#/organization/moves.ts";
 import type { Slot } from "#/organization/moves.ts";
-import { lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
+import { isHeld, lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
 
 // Proposals (docs/domain/assistant.md § Proposals, ADR-0006 § The model
@@ -242,8 +242,10 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
  * person holds the conversation.
  */
 export function proposalTools(database: Database, turn: ProposalTurn): AssistantTool[] {
+  // A person answers while a handoff is open or a member holds the conversation.
   const unlessHandedOff = (run: () => unknown) =>
-    openHandoffsOf(database, turn.conversationId).length > 0
+    openHandoffsOf(database, turn.conversationId).length > 0 ||
+    isHeld(database, turn.conversationId)
       ? { ok: false, reason: "handedOff" }
       : run();
   return [

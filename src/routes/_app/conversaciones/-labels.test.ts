@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { conversationName, messageText } from "#/routes/_app/conversaciones/-labels.ts";
+import {
+  conversationName,
+  messageSender,
+  messageText,
+} from "#/routes/_app/conversaciones/-labels.ts";
 
 describe("who a conversation is with", () => {
   it("names every patient the number stands for", () => {
@@ -27,9 +31,36 @@ describe("a message's text", () => {
       text: null,
       status: null,
       judgement: "notClinical",
+      sentBy: null,
       withheld: null,
     } as const;
 
     expect(messageText(photo)).toBe("Mensaje sin texto (image)");
+  });
+});
+
+describe("who wrote a message", () => {
+  const reply = {
+    id: "1",
+    direction: "outgoing",
+    sentAt: 0,
+    type: "text",
+    text: "Hola",
+    status: "sent",
+    judgement: null,
+    sentBy: null,
+    withheld: null,
+  } as const;
+
+  it("names the member who replied from the inbox, and the assistant otherwise", () => {
+    expect(messageSender({ ...reply, sentBy: "Rita Paz" })).toBe("Rita Paz");
+    expect(messageSender(reply)).toBe("Asistente");
+    expect(messageSender({ ...reply, type: "template" })).toBe("Plantilla");
+  });
+
+  it("names no one for a practitioner's reply withheld from the reader", () => {
+    expect(messageSender({ id: "1", direction: "outgoing", sentAt: 0, withheld: "clinical" })).toBe(
+      "Profesional",
+    );
   });
 });

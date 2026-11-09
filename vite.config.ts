@@ -99,8 +99,8 @@ export default defineConfig({
       },
       {
         // The one place a form is drawn; the pages that are only their form, with
-        // no list to return to; and the patient's quick registration, a form of its
-        // own inside booking.
+        // no list to return to; the patient's quick registration, a form of its
+        // own inside booking; and the reply to a patient, under the conversation it answers.
         files: [
           "src/components/form-page.tsx",
           "src/components/patient-form.tsx",
@@ -108,6 +108,7 @@ export default defineConfig({
           "src/routes/_app/cambiar-contrasena.tsx",
           "src/routes/_app/disponibilidad/index.tsx",
           "src/routes/_app/whatsapp/index.tsx",
+          "src/routes/_app/conversaciones/-hold.tsx",
           "**/*.test.tsx",
         ],
         rules: {

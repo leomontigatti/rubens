@@ -3,6 +3,7 @@ import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { actsForEveryone } from "#/lib/access.ts";
+import { isWindowOpen, windowClosesAt } from "#/lib/conversation-window.ts";
 import { patientName } from "#/lib/patients.ts";
 import { parsePhone } from "#/lib/phones.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
@@ -20,7 +21,7 @@ import type {
 
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { appointment, patient, practitioner } from "#/organization/schema.ts";
+import { appointment, member, patient, practitioner } from "#/organization/schema.ts";
 import {
   conversation,
   conversationPatient,
@@ -29,6 +30,7 @@ import {
   outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
 // only. Reception and admins read every conversation; a practitioner those
@@ -48,13 +50,18 @@ interface ShownMessage {
   /** An outgoing message's latest status at Meta. */
   status: WhatsappMessageStatus | null;
   judgement: MessageJudgement | null;
+  /** The member who wrote an outgoing reply from the inbox, by name; `null` for the assistant's and the templates. */
+  sentBy: string | null;
   withheld: null;
 }
 
-/** A patient's message the reader may not see, in its place. */
+/**
+ * A message the reader may not see, in its place: a patient's, or a
+ * practitioner's reply to a clinical handoff.
+ */
 interface WithheldMessage {
   id: string;
-  direction: "incoming";
+  direction: "incoming" | "outgoing";
   sentAt: number;
   /** Why: it waits to be judged, or it was judged clinical. */
   withheld: "notJudged" | "clinical";
@@ -138,15 +145,21 @@ export const messageColumns = {
   judgement: whatsappMessage.judgement,
 };
 
-type MessageRow = Pick<typeof whatsappMessage.$inferSelect, keyof typeof messageColumns>;
+type MessageRow = Pick<typeof whatsappMessage.$inferSelect, keyof typeof messageColumns> & {
+  senderName?: string | null;
+};
 
 /**
- * Why the reader may not see the message's words: a patient's message judged
- * clinical, or not judged yet, to anyone who does not read clinical content.
+ * Why the reader may not see the message's words, when they do not read
+ * clinical content: a patient's message judged clinical, or not judged yet,
+ * and an outgoing one judged clinical (a reply to a clinical handoff).
  */
 function withheldBecause(row: MessageRow, readsClinical: boolean) {
-  if (row.direction === "outgoing" || readsClinical || row.judgement === "notClinical") {
+  if (readsClinical || row.judgement === "notClinical") {
     return null;
+  }
+  if (row.direction === "outgoing") {
+    return row.judgement === "clinical" ? "clinical" : null;
   }
   return row.judgement === "clinical" ? "clinical" : "notJudged";
 }
@@ -154,10 +167,11 @@ function withheldBecause(row: MessageRow, readsClinical: boolean) {
 export function asRead(row: MessageRow, readsClinical: boolean): InboxMessage {
   const withheld = withheldBecause(row, readsClinical);
   if (withheld !== null) {
-    return { id: row.id, direction: "incoming", sentAt: row.sentAt, withheld };
+    return { id: row.id, direction: row.direction, sentAt: row.sentAt, withheld };
   }
   const { id, direction, sentAt, type, text, status, judgement } = row;
-  return { id, direction, sentAt, type, text, status, judgement, withheld: null };
+  const sentBy = row.senderName ?? null;
+  return { id, direction, sentAt, type, text, status, judgement, sentBy, withheld: null };
 }
 
 export function patientsOf(database: Database, conversationIds: string[]) {
@@ -290,6 +304,9 @@ export function readConversation(
       ok: true;
       conversation: Omit<ConversationSummary, "lastMessage">;
       messages: InboxMessage[];
+      /** Who took the conversation over, until when; `null` while the assistant holds it. */
+      hold: ConversationHold | null;
+      window: ConversationWindow;
     }
   | { ok: false; reason: "invalidInput" | "notFound" } {
   const parsed = conversationReferenceSchema.safeParse(input);
@@ -307,8 +324,9 @@ export function readConversation(
     return { ok: false, reason: "notFound" };
   }
   const messages = database
-    .select(messageColumns)
+    .select({ ...messageColumns, senderName: member.name })
     .from(whatsappMessage)
+    .leftJoin(member, eq(member.userId, whatsappMessage.sentBy))
     .where(eq(whatsappMessage.conversationId, conversationId))
     // Meta stamps in whole seconds; the row order keeps a batch as it came.
     .orderBy(asc(whatsappMessage.sentAt), asc(sql`${whatsappMessage}.rowid`))
@@ -317,5 +335,48 @@ export function readConversation(
     ok: true,
     conversation: { ...found, patients: patientsOf(database, [found.id]).get(found.id) ?? [] },
     messages: messages.map((row) => asRead(row, reader.readsClinical)),
+    hold: holdOf(database, acting, conversationId),
+    window: windowOf(lastIncomingAt(database, conversationId)),
   };
+}
+
+/** A conversation's window, read now: whether a free-form reply may go, and when it closes. */
+export interface ConversationWindow {
+  open: boolean;
+  /** `null` when the patient never wrote, so it never opened. */
+  closesAt: number | null;
+}
+
+function windowOf(lastIncomingAt: number | null): ConversationWindow {
+  return {
+    open: isWindowOpen(lastIncomingAt, Date.now()),
+    closesAt: windowClosesAt(lastIncomingAt),
+  };
+}
+
+export interface ConversationHold {
+  /** The member holding it, by name. */
+  holder: string;
+  /** When it goes back to the assistant on its own. */
+  heldUntil: number;
+  /** Whether the reader holds it. */
+  mine: boolean;
+}
+
+/** Who holds `conversationId` and until when, by name, as `acting` reads it; `null` while the assistant does. */
+function holdOf(
+  database: Database,
+  acting: Acting,
+  conversationId: string,
+): ConversationHold | null {
+  const row = database
+    .select({ heldBy: conversation.heldBy, heldUntil: conversation.heldUntil, name: member.name })
+    .from(conversation)
+    .innerJoin(member, eq(member.userId, conversation.heldBy))
+    .where(eq(conversation.id, conversationId))
+    .get();
+  if (!row?.heldBy || row.heldUntil === null) {
+    return null;
+  }
+  return { holder: row.name, heldUntil: row.heldUntil, mine: row.heldBy === acting.userId };
 }

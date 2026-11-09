@@ -44,6 +44,13 @@ export default defineConfig({
       "pnpm exec wrangler dev",
       `--port ${e2e.port}`,
       "--var DEV_SIGN_IN:true",
+      // Meta answered inside the Worker (`src/dev/fake-meta.ts`), on a made-up
+      // test number for the dev organization, so a reply from the inbox goes out.
+      "--var WHATSAPP_FAKE_META:true",
+      "--var WHATSAPP_ACCESS_TOKEN:e2e-fake-token",
+      "--var WHATSAPP_PHONE_NUMBER_ID:100000000000000",
+      // `devOrganizationId` in src/server/caller.ts.
+      "--var WHATSAPP_ORGANIZATION_ID:dev-organization",
       `--persist-to ${e2e.stateDirectory}`,
       "--env-file /dev/null",
       "--show-interactive-dev-session=false",
