@@ -9,6 +9,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import {
   messageJudgements,
@@ -204,4 +205,24 @@ export const outboxMessage = sqliteTable(
     index("outbox_message_due_idx").on(table.state, table.dueAt),
     index("outbox_message_appointment_id_idx").on(table.appointmentId),
   ],
+);
+
+/**
+ * The organization's communication rules for the assistant
+ * (`src/organization/communication-rules.ts`): one row at most, none until an
+ * admin first saves them. Each save raises `version`, which every assistant
+ * reply records.
+ */
+export const communicationRules = sqliteTable(
+  "communication_rules",
+  {
+    // Always 1: an organization has one set of rules.
+    id: integer("id").primaryKey(),
+    formOfAddress: text("form_of_address", { enum: formsOfAddress }).notNull(),
+    signOff: text("sign_off").notNull(),
+    tone: text("tone").notNull(),
+    version: integer("version").notNull(),
+    ...timestamps,
+  },
+  (table) => [check("communication_rules_one_row", sql`${table.id} = 1`)],
 );
