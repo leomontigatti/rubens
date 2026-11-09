@@ -1,12 +1,16 @@
 import { BellIcon } from "lucide-react";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { cn } from "cn";
+import { useState } from "react";
 
-import { ErrorAlert, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
+import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import { Spinner } from "#/components/ui/spinner.tsx";
+import { toast } from "#/components/ui/toast.tsx";
 import { getNotifications, markNotificationRead } from "#/server/notifications.functions.ts";
 
 import {
@@ -38,9 +42,33 @@ const refusalMessages = {
 type Loaded = Extract<Awaited<ReturnType<typeof getNotifications>>, { ok: true }>;
 type Notification = Loaded["notifications"][number];
 
+/** Marks one notification read, the one in progress shown on its row; a refusal is a toast, since no form holds it. */
+function useMarkRead() {
+  const router = useRouter();
+  const [marking, setMarking] = useState<string | null>(null);
+
+  async function markRead(notificationId: string) {
+    setMarking(notificationId);
+    try {
+      const result = await serverAnswer("mark-notification-read", shownPath(router), () =>
+        markNotificationRead({ data: { notificationId } }),
+      );
+      if (result?.ok) {
+        await router.invalidate();
+      } else if (result) {
+        toast.add({ title: refusalMessages[result.reason], type: "destructive" });
+      }
+    } finally {
+      setMarking(null);
+    }
+  }
+
+  return { marking, markRead };
+}
+
 function NotificationList() {
   const result = Route.useLoaderData();
-  const action = useFormAction(refusalMessages);
+  const { marking, markRead } = useMarkRead();
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
@@ -51,7 +79,6 @@ function NotificationList() {
         title="Notificaciones"
         description="Los avisos para vos, como los de Meta sobre el número de WhatsApp y sus plantillas."
       />
-      {action.error && <ErrorAlert message={action.error} />}
       {result.notifications.length === 0 ? (
         <EmptyState
           icon={BellIcon}
@@ -64,12 +91,8 @@ function NotificationList() {
             <NotificationRow
               key={notification.id}
               notification={notification}
-              pending={action.pending}
-              onRead={() =>
-                void action.run(() =>
-                  markNotificationRead({ data: { notificationId: notification.id } }),
-                )
-              }
+              marking={marking === notification.id}
+              onRead={() => void markRead(notification.id)}
             />
           ))}
         </ul>
@@ -80,7 +103,7 @@ function NotificationList() {
 
 function NotificationRow(props: {
   notification: Notification;
-  pending: boolean;
+  marking: boolean;
   onRead: () => void;
 }) {
   const { notification } = props;
@@ -110,7 +133,8 @@ function NotificationRow(props: {
           Ver WhatsApp
         </Button>
         {!notification.read && (
-          <Button variant="outline" size="sm" disabled={props.pending} onClick={props.onRead}>
+          <Button variant="outline" size="sm" disabled={props.marking} onClick={props.onRead}>
+            {props.marking && <Spinner data-icon="inline-start" aria-hidden />}
             Marcar como leída
           </Button>
         )}

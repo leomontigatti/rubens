@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { notificationListSize, notificationReferenceSchema } from "#/lib/notifications.ts";
 import type { NotificationReference } from "#/lib/notifications.ts";
@@ -31,7 +31,10 @@ export function notifyAdmins(tx: Writer, content: NotificationContent) {
   }
 }
 
-/** `acting`'s latest notifications, newest first. */
+/**
+ * `acting`'s notifications, unread first, each part newest first: an unread
+ * one stays in the list however many came after it.
+ */
 export function listNotifications(database: Database, acting: Acting) {
   const rows = database
     .select({
@@ -47,7 +50,7 @@ export function listNotifications(database: Database, acting: Acting) {
     })
     .from(notification)
     .where(eq(notification.recipientId, acting.userId))
-    .orderBy(desc(notification.createdAt))
+    .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
     .all();
   return {

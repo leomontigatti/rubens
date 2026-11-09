@@ -1,5 +1,6 @@
 import { and, desc, eq, max, sql } from "drizzle-orm";
 
+import type { NotificationKind } from "#/lib/notifications.ts";
 import type {
   WhatsappTemplateCategoryUpdate,
   WhatsappTemplateStatusUpdate,
@@ -9,25 +10,33 @@ import {
   metaTemplateName,
   templateExamples,
   templateLanguage,
-  templateNames,
   templateCategoryOf,
+  templateNames,
   templateStatusOf,
   templateSubmissionSchema,
   versionOf,
 } from "#/lib/whatsapp-templates.ts";
-import type { TemplateName, TemplateSubmission } from "#/lib/whatsapp-templates.ts";
+import type {
+  TemplateCategory,
+  TemplateName,
+  TemplateStatus,
+  TemplateSubmission,
+} from "#/lib/whatsapp-templates.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError, WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Acting } from "#/organization/members.ts";
+import { notifyAdmins } from "#/organization/notifications.ts";
+import { waitingCount } from "#/organization/whatsapp-limits.ts";
 import { whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 
 // The organization's WhatsApp templates (#154): an admin writes a body for a
 // template of the set and submits it to Meta as a new version, and Meta's
 // verdict arrives by the webhook or by a refresh from the settings. Until
-// Embedded Signup (#159) they live on the Worker's configured account. Who may
-// call each is the object's concern: an admin.
+// Embedded Signup (#159) they live on the Worker's configured account. A
+// version Meta stops, by either way, warns every admin (`whatsapp-limits.ts`
+// counts what waits). Who may call each is the object's concern: an admin.
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 
@@ -281,7 +290,13 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
     return { ok: false, reason: missing } as const;
   }
   const stored = database
-    .select({ metaId: whatsappTemplate.metaId, revision: whatsappTemplate.statusRevision })
+    .select({
+      metaId: whatsappTemplate.metaId,
+      revision: whatsappTemplate.statusRevision,
+      name: whatsappTemplate.name,
+      version: whatsappTemplate.version,
+      status: whatsappTemplate.status,
+    })
     .from(whatsappTemplate)
     .all();
   const reviews = await Promise.all(
@@ -299,16 +314,73 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
         continue;
       }
       // A webhook event that changed the row while Meta was being read is newer.
-      tx.update(whatsappTemplate)
-        .set(statusColumns({ status, reason: review.rejectedReason }))
+      const update = { status, reason: review.rejectedReason };
+      const written = tx
+        .update(whatsappTemplate)
+        .set(statusColumns(update))
         .where(
           and(
             eq(whatsappTemplate.metaId, row.metaId),
             eq(whatsappTemplate.statusRevision, row.revision),
           ),
         )
-        .run();
+        .returning({ id: whatsappTemplate.id })
+        .get();
+      if (written) {
+        warnOfStoppedTemplate(tx, row, update);
+      }
     }
   });
   return { ok: true, failures } as const;
+}
+
+const stoppedKinds: Partial<Record<TemplateStatus, NotificationKind>> = {
+  rejected: "templateRejected",
+  paused: "templatePaused",
+  disabled: "templateDisabled",
+};
+
+/**
+ * Warns the admins when a template version's status moved to one that does
+ * not go, with Meta's reason and how many of its messages wait for another
+ * approved version.
+ */
+export function warnOfStoppedTemplate(
+  tx: Writer,
+  changed: { name: TemplateName; version: number; status: TemplateStatus },
+  update: { status: TemplateStatus; reason: string | null },
+) {
+  const kind = stoppedKinds[update.status];
+  if (!kind || changed.status === update.status) {
+    return;
+  }
+  notifyAdmins(tx, {
+    kind,
+    templateName: changed.name,
+    templateVersion: changed.version,
+    detail: update.reason,
+    waiting: approvedVersion(tx, changed.name) ? 0 : waitingCount(tx, { template: changed.name }),
+  });
+}
+
+/** Warns the admins when Meta moved a template version out of utility, which no longer goes. */
+export function warnOfRecategorizedTemplate(
+  tx: Writer,
+  changed: {
+    name: TemplateName;
+    version: number;
+    category: TemplateCategory;
+    previousCategory: TemplateCategory;
+  },
+) {
+  if (changed.category === "utility" || changed.previousCategory === changed.category) {
+    return;
+  }
+  notifyAdmins(tx, {
+    kind: "templateRecategorized",
+    templateName: changed.name,
+    templateVersion: changed.version,
+    detail: changed.category.toUpperCase(),
+    waiting: approvedVersion(tx, changed.name) ? 0 : waitingCount(tx, { template: changed.name }),
+  });
 }

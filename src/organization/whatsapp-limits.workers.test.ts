@@ -210,6 +210,18 @@ describe("a template Meta stops", () => {
     ]);
   });
 
+  it("warns when a refresh from the settings finds a template Meta paused", async () => {
+    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    fakeMeta.answerWith(200, { id: "900000000000001", status: "PAUSED" });
+
+    expectOk(await world.organization.refreshWhatsappTemplates(adminCaller));
+    await templateTurns({ metaId: "900000000000001", status: "paused", reason: null });
+
+    expect(await notificationsOf(adminCaller)).toEqual([
+      expect.objectContaining({ kind: "templatePaused", templateName: "confirmacion_turno" }),
+    ]);
+  });
+
   it("holds a template's messages once Meta moves it out of utility, until a utility version is approved", async () => {
     await submit("confirmacion_turno", "APPROVED", "900000000000001");
     await bookMartina();
@@ -410,6 +422,62 @@ describe("a number Meta restricts", () => {
   });
 });
 
+describe("a hold on the number and what changes it", () => {
+  beforeEach(async () => {
+    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+  });
+
+  it("ends when the organization connects a number on another account, which sends the held messages", async () => {
+    await numberTurns({ kind: "disabled" });
+    await bookMartina();
+
+    expectOk(
+      await world.organization.connectWhatsapp(adminCaller, {
+        code: "signup-code",
+        phoneNumberId: fakeMeta.signupNumber.phoneNumberId,
+        businessAccountId: fakeMeta.signupNumber.businessAccountId,
+      }),
+    );
+
+    expect(expectOk(await world.organization.whatsappSettings(adminCaller)).hold).toBeNull();
+    fakeMeta.requests = [];
+    await runDurableObjectAlarm(world.organization);
+    expect(sentTemplates()).toEqual(["confirmacion_turno_v1"]);
+  });
+
+  it("is not shortened by a send Meta refuses meanwhile for a block", async () => {
+    await bookMartina();
+    const release = fakeMeta.holdNext();
+    fakeMeta.answerNextWith(400, { error: { code: 131031, message: "Account locked" } });
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.received(1);
+
+    await numberTurns({ kind: "disabled" });
+    release();
+    await alarm;
+
+    expect(expectOk(await world.organization.whatsappSettings(adminCaller)).hold).toMatchObject({
+      reason: "disabled",
+      until: null,
+    });
+    expect((await notificationsOf(adminCaller)).map((row) => row.kind)).toEqual(["numberDisabled"]);
+  });
+
+  it("warns once when Meta repeats the same restriction", async () => {
+    const restricted = { kind: "restricted", until: Date.now() + hours(24) } as const;
+
+    await numberTurns(restricted);
+    await numberTurns(restricted);
+    await numberTurns({ kind: "disabled" });
+    await numberTurns({ kind: "disabled" });
+
+    expect((await notificationsOf(adminCaller)).map((row) => row.kind).sort()).toEqual([
+      "numberDisabled",
+      "numberRestricted",
+    ]);
+  });
+});
+
 describe("the number's messaging limit", () => {
   function connectWithLimit(messagingLimit: string) {
     return inStorage(world.organization, (database) =>
@@ -453,13 +521,14 @@ describe("the number's messaging limit", () => {
 
 describe("notifications", () => {
   beforeEach(async () => {
-    await numberTurns({ kind: "disabled" });
+    await numberTurns({ kind: "restricted", until: null });
   });
 
   it("marks a notification read for the admin who read it only", async () => {
     const otherAdmin = await addMember(world.organization, ["admin"]);
+    vi.setSystemTime(Date.now() + 60_000);
+    await numberTurns({ kind: "disabled" });
     const [notification] = await notificationsOf(adminCaller);
-    expect(expectOk(await world.organization.countUnreadNotifications(adminCaller)).count).toBe(1);
 
     expectOk(
       await world.organization.markNotificationRead(adminCaller, {
@@ -468,10 +537,32 @@ describe("notifications", () => {
     );
 
     expect(await notificationsOf(adminCaller)).toEqual([
+      expect.objectContaining({ kind: "numberRestricted", read: false }),
       expect.objectContaining({ kind: "numberDisabled", read: true }),
     ]);
-    expect(expectOk(await world.organization.countUnreadNotifications(adminCaller)).count).toBe(0);
-    expect(await notificationsOf(otherAdmin)).toEqual([]);
+    expect(expectOk(await world.organization.countUnreadNotifications(adminCaller)).count).toBe(1);
+    expect(await notificationsOf(otherAdmin)).toEqual([
+      expect.objectContaining({ kind: "numberDisabled", read: false }),
+    ]);
+  });
+
+  it("lists every unread notification before the read ones, past the list's length", async () => {
+    for (let index = 0; index < 50; index += 1) {
+      vi.setSystemTime(Date.now() + 60_000);
+      await numberTurns({ kind: "restricted", until: Date.now() + hours(24) });
+    }
+    const listed = await notificationsOf(adminCaller);
+    for (const notification of listed) {
+      expectOk(
+        await world.organization.markNotificationRead(adminCaller, {
+          notificationId: notification.id,
+        }),
+      );
+    }
+
+    const [first] = await notificationsOf(adminCaller);
+
+    expect(first).toMatchObject({ kind: "numberRestricted", until: null, read: false });
   });
 
   it("refuses marking another member's notification", async () => {
@@ -486,10 +577,25 @@ describe("notifications", () => {
     expect(await notificationsOf(adminCaller)).toEqual([expect.objectContaining({ read: false })]);
   });
 
-  it("refuses an unknown caller", async () => {
-    expect(await world.organization.listNotifications({ userId: "user-nobody" })).toEqual({
-      ok: false,
-      reason: "unauthenticated",
-    });
+  it("refuses a caller who is unknown, deactivated or must still change their password", async () => {
+    const [notification] = await notificationsOf(adminCaller);
+    const callers = [
+      { userId: "user-nobody" },
+      await addRefusedAdmin(world.organization, "deactivated"),
+      await addRefusedAdmin(world.organization, "mustChangePassword"),
+    ];
+
+    const answers = await Promise.all(
+      callers.flatMap((caller) => [
+        world.organization.listNotifications(caller),
+        world.organization.countUnreadNotifications(caller),
+        world.organization.markNotificationRead(caller, { notificationId: notification!.id }),
+      ]),
+    );
+
+    expect(answers.map((answer) => !answer.ok && answer.reason)).toEqual([
+      ...Array(6).fill("unauthenticated"),
+      ...Array(3).fill("mustChangePassword"),
+    ]);
   });
 });

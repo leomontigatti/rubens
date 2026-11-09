@@ -15,6 +15,7 @@ import type {
 import type { Acting } from "#/organization/members.ts";
 import { organization } from "#/organization/schema.ts";
 import { whatsappConnection } from "#/organization/whatsapp-schema.ts";
+import { endHold } from "#/organization/whatsapp-limits.ts";
 import type { ClaimResult, DirectoryEntry } from "#/server/whatsapp-directory.ts";
 
 // The organization's WhatsApp number, connected through Meta's Embedded
@@ -346,6 +347,9 @@ export class WhatsappNumber {
         .values({ id: connectionId, ...values })
         .onConflictDoUpdate({ target: whatsappConnection.id, set: values })
         .run();
+      if (previous?.businessAccountId !== entry.businessAccountId) {
+        endHold(tx);
+      }
       recordAudit(tx, acting.userId, {
         action: previous ? "update" : "create",
         entityType: "whatsappConnection",

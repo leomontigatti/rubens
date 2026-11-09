@@ -17,12 +17,13 @@ import {
   conversationPatient,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { storeNumberEvent } from "#/organization/whatsapp-limits.ts";
 import {
-  storeNumberEvent,
+  storeTemplateCategory,
+  storeTemplateStatus,
   warnOfRecategorizedTemplate,
   warnOfStoppedTemplate,
-} from "#/organization/whatsapp-limits.ts";
-import { storeTemplateCategory, storeTemplateStatus } from "#/organization/whatsapp-templates.ts";
+} from "#/organization/whatsapp-templates.ts";
 
 // What Meta's webhook brings in (ADR-0010 § The webhook stores, the object's
 // alarm acts): the Worker has checked Meta's signature and picked this

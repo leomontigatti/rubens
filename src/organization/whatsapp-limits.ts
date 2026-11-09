@@ -2,11 +2,10 @@ import { and, count, eq, inArray, lt } from "drizzle-orm";
 
 import { outboxTemplates } from "#/lib/outbox.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
-import type { NotificationKind } from "#/lib/notifications.ts";
 import { isLowerLimit } from "#/lib/whatsapp.ts";
 import type { NumberHoldReason } from "#/lib/whatsapp.ts";
 import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
-import type { TemplateCategory, TemplateName, TemplateStatus } from "#/lib/whatsapp-templates.ts";
+import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError } from "#/organization/graph-api.ts";
@@ -16,7 +15,6 @@ import {
   whatsappConnection,
   whatsappNumberHold,
 } from "#/organization/whatsapp-schema.ts";
-import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 
 // When Meta limits the number or a template (docs/domain/messages.md § When
 // Meta limits the number): what Meta's events change, the warning every admin
@@ -30,11 +28,17 @@ export function activeHold(database: Writer, now: number) {
   return hold && (hold.until === null || hold.until > now) ? hold : null;
 }
 
+/** Holds the number for `reason` until `until`, and says whether that changed the hold: Meta repeats its events. */
 function hold(tx: Writer, reason: NumberHoldReason, until: number | null) {
+  const current = activeHold(tx, Date.now());
+  if (current?.reason === reason && current.until === until) {
+    return false;
+  }
   tx.insert(whatsappNumberHold)
     .values({ id: 1, reason, until })
     .onConflictDoUpdate({ target: whatsappNumberHold.id, set: { reason, until } })
     .run();
+  return true;
 }
 
 /** Lifts a hold for `reason`; a hold for another reason stays. */
@@ -47,7 +51,10 @@ function lift(tx: Writer, reason: NumberHoldReason) {
  * the number, those due before its hold ends (`until`, every one while it
  * lasts until Meta lifts it).
  */
-function waitingCount(tx: Writer, held: { template: TemplateName } | { until: number | null }) {
+export function waitingCount(
+  tx: Writer,
+  held: { template: TemplateName } | { until: number | null },
+) {
   const kinds = (Object.keys(outboxTemplates) as OutboxKind[]).filter(
     (kind) => !("template" in held) || outboxTemplates[kind] === held.template,
   );
@@ -77,7 +84,9 @@ export function storeNumberEvent(tx: Writer, event: WhatsappNumberEvent) {
       if (activeHold(tx, Date.now())?.reason === "disabled") {
         return;
       }
-      hold(tx, "restricted", event.until);
+      if (!hold(tx, "restricted", event.until)) {
+        return;
+      }
       notifyAdmins(tx, {
         kind: "numberRestricted",
         until: event.until,
@@ -89,8 +98,9 @@ export function storeNumberEvent(tx: Writer, event: WhatsappNumberEvent) {
       lift(tx, "restricted");
       return;
     case "disabled":
-      hold(tx, "disabled", null);
-      notifyAdmins(tx, { kind: "numberDisabled", waiting: waitingCount(tx, { until: null }) });
+      if (hold(tx, "disabled", null)) {
+        notifyAdmins(tx, { kind: "numberDisabled", waiting: waitingCount(tx, { until: null }) });
+      }
       return;
     case "reinstated":
       lift(tx, "disabled");
@@ -128,8 +138,10 @@ const holdingErrors: Record<number, { reason: NumberHoldReason; minutes: number 
 
 /**
  * Holds the number when Meta refused a send for a limit on the number, and
- * says whether it did: the message then waits with no attempt spent. The
- * admins are warned when the hold starts, not at each refusal after it.
+ * says whether the refusal was one: the message then waits with no attempt
+ * spent. A hold already in place, which a webhook event may have set while
+ * the send waited on Meta, is kept, so the admins are warned only when a hold
+ * starts.
  */
 export function holdOnRefusal(database: Database, error: MetaError) {
   const holding = error.code === null ? undefined : holdingErrors[error.code];
@@ -138,64 +150,18 @@ export function holdOnRefusal(database: Database, error: MetaError) {
   }
   const now = Date.now();
   database.transaction((tx) => {
-    const wasHeld = activeHold(tx, now) !== null;
+    if (activeHold(tx, now)) {
+      return;
+    }
     const until = now + holding.minutes * 60_000;
     hold(tx, holding.reason, until);
-    if (!wasHeld) {
-      const kind = holding.reason === "rateLimited" ? "numberRateLimited" : "numberRestricted";
-      notifyAdmins(tx, { kind, until, waiting: waitingCount(tx, { until }) });
-    }
+    const kind = holding.reason === "rateLimited" ? "numberRateLimited" : "numberRestricted";
+    notifyAdmins(tx, { kind, until, waiting: waitingCount(tx, { until }) });
   });
   return true;
 }
 
-const stoppedKinds: Partial<Record<TemplateStatus, NotificationKind>> = {
-  rejected: "templateRejected",
-  paused: "templatePaused",
-  disabled: "templateDisabled",
-};
-
-/**
- * Warns the admins when a template version's status moved to one that does
- * not go, with Meta's reason and how many of its messages wait for another
- * approved version.
- */
-export function warnOfStoppedTemplate(
-  tx: Writer,
-  changed: { name: TemplateName; version: number; status: TemplateStatus },
-  update: { status: TemplateStatus; reason: string | null },
-) {
-  const kind = stoppedKinds[update.status];
-  if (!kind || changed.status === update.status) {
-    return;
-  }
-  notifyAdmins(tx, {
-    kind,
-    templateName: changed.name,
-    templateVersion: changed.version,
-    detail: update.reason,
-    waiting: approvedVersion(tx, changed.name) ? 0 : waitingCount(tx, { template: changed.name }),
-  });
-}
-
-/** Warns the admins when Meta moved a template version out of utility, which no longer goes. */
-export function warnOfRecategorizedTemplate(
-  tx: Writer,
-  changed: {
-    name: TemplateName;
-    version: number;
-    category: TemplateCategory;
-    previousCategory: TemplateCategory;
-  },
-) {
-  if (changed.category === "utility" || changed.previousCategory === changed.category) {
-    return;
-  }
-  notifyAdmins(tx, {
-    kind: "templateRecategorized",
-    templateName: changed.name,
-    templateVersion: changed.version,
-    detail: changed.category.toUpperCase(),
-    waiting: approvedVersion(tx, changed.name) ? 0 : waitingCount(tx, { template: changed.name }),
-  });
+/** Ends any hold: the organization connected a number on another account, which Meta's limits on the earlier one do not reach. */
+export function endHold(tx: Writer) {
+  tx.delete(whatsappNumberHold).run();
 }
