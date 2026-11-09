@@ -497,6 +497,22 @@ describe("answering a follow-up", () => {
     ]);
   });
 
+  it("answers an opt-out as one, not as the practitioner's", async () => {
+    await followUpSent();
+    await writes("no me escriban más");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, optOut: true });
+      return "";
+    });
+
+    await turn();
+
+    expect(await openHandoffs()).toEqual([]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Entendido. Le avisamos al equipo para que no te enviemos más mensajes por WhatsApp.",
+    ]);
+  });
+
   it("sorts only the first turn after it: a later message is not its answer", async () => {
     await followUpSent();
     await writes("muy bien!");

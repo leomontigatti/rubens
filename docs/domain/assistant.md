@@ -28,6 +28,11 @@ In the first release:
 - **Cancelling and moving** an appointment the patient already has
   ([below](#cancelling-and-moving)).
 - **Simple questions about an existing appointment**: when, where, with whom.
+- **Asking to stop**: a reply that looks like an opt-out gets a fixed answer that
+  the team is told, and reaches reception and the admins as a notification, one
+  per patient of the number who still accepts WhatsApp, for a person to turn
+  their consent off ([patients.md](./patients.md#whatsapp-consent)). It is not a
+  handoff, unless the reply is clinical too.
 
 In the second release:
 

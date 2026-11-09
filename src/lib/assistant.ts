@@ -58,6 +58,12 @@ export const assistantToolSchemas = {
         .describe(
           "False when you cannot tell what the patient wants and have to ask them to say it again",
         ),
+      optOut: z
+        .boolean()
+        .default(false)
+        .describe(
+          "True when the patient asks the practice to stop sending them messages, or not to write to them again",
+        ),
       followUpAnswer: z
         .enum(["plainlyGood", "other"])
         .optional()
@@ -128,6 +134,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
     "Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); the message is clinical (clinical, clinical: true); it is an emergency (emergency, clinical: true). Pass the appointmentId when it is about one appointment. A person then answers: do not answer it yourself.",
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
+    "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
     ...(context.more?.rules ?? []),
     "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Clinical messages go to the practitioner.",
     "If asked whether you are a bot or a person, say plainly that you are the practice's automated assistant. Do not say so unprompted.",
@@ -149,6 +156,17 @@ ${rules.map((rule, index) => `${index + 1}. ${rule}`).join("\n")}`;
 export function withSignOff(reply: string, signOff: string): string {
   const body = reply.trim();
   return signOff ? `${body}\n${signOff}` : body;
+}
+
+/**
+ * What the patient is told when they ask the practice to stop writing: that
+ * the team is told, since a person turns their WhatsApp consent off. Fixed,
+ * so it promises nothing the model wrote.
+ */
+export function optOutReply(formOfAddress: FormOfAddress): string {
+  return formOfAddress === "usted"
+    ? "Entendido. Le avisamos al equipo para que no le enviemos más mensajes por WhatsApp."
+    : "Entendido. Le avisamos al equipo para que no te enviemos más mensajes por WhatsApp.";
 }
 
 /**
