@@ -47,6 +47,16 @@ export const devPatients = [
 ] as const;
 
 /**
+ * WhatsApp messages patients sent, as Meta's webhook hands them over, for the
+ * inbox: two from Marta, and one from a number no patient has.
+ */
+export const devIncomingMessages = [
+  { from: "0351 15 400-0001", text: "Hola, quería confirmar el turno del jueves", minutesAgo: 90 },
+  { from: "0351 15 400-0001", text: "Me sigue doliendo la muela de abajo", minutesAgo: 60 },
+  { from: "0351 15 499-9999", text: "Hola, ¿atienden con obra social?", minutesAgo: 30 },
+] as const;
+
+/**
  * The practitioner works every day from 08:00 to 20:00 in the room, from the
  * day the seed runs on, so any later day has free starts.
  */

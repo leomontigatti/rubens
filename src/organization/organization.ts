@@ -60,7 +60,7 @@ import type {
   PatientUpdate,
   WhatsappConsentChange,
 } from "#/lib/patients.ts";
-import type { WhatsappEvents } from "#/lib/whatsapp-messages.ts";
+import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type {
   ClosureDelete,
   ClosureInput,
@@ -187,6 +187,7 @@ import {
   countToReschedule,
   listToReschedule,
 } from "#/organization/to-reschedule.ts";
+import { listConversations, readConversation } from "#/organization/inbox.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
 import { getWhatsappSettings, sendTemplate } from "#/organization/whatsapp.ts";
 import {
@@ -661,6 +662,19 @@ export class Organization extends OrganizationRuntime {
   async refreshWhatsappTemplates(caller: Caller) {
     return this.#asThenArm(caller, ["admin"], () =>
       refreshWhatsappTemplates(this.database, this.whatsapp),
+    );
+  }
+
+  // The inbox: every staff role reads it; which conversations, and which
+  // messages' words, is the area's to decide (`src/organization/inbox.ts`).
+
+  listConversations(caller: Caller) {
+    return this.#as(caller, patientEditors, (acting) => listConversations(this.database, acting));
+  }
+
+  readConversation(caller: Caller, input: ConversationReference) {
+    return this.#as(caller, patientEditors, (acting) =>
+      readConversation(this.database, acting, input),
     );
   }
 }

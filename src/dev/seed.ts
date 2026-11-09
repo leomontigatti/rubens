@@ -1,9 +1,11 @@
 import { defaultTimeZone } from "#/lib/offices.ts";
+import { parsePhone } from "#/lib/phones.ts";
 import { today } from "#/lib/schedules.ts";
 
 import type { Organization } from "#/organization/organization.ts";
 
 import {
+  devIncomingMessages,
   devMedicalService,
   devOffice,
   devOrganizationName,
@@ -74,6 +76,21 @@ export async function seedDevOrganization(
       weekdays: [1, 2, 3, 4, 5, 6, 7],
       firstDate: today(defaultTimeZone),
       lastDate: null,
+    }),
+  );
+  accepted(
+    "storeWhatsappEvents",
+    await organization.storeWhatsappEvents({
+      messages: devIncomingMessages.map((message, index) => ({
+        whatsappId: `wamid.dev-${index}`,
+        from: accepted("parsePhone", parsePhone(message.from)).phone,
+        sentAt: Date.now() - message.minutesAgo * 60_000,
+        type: "text",
+        text: message.text,
+        payload: "{}",
+      })),
+      statuses: [],
+      templateStatuses: [],
     }),
   );
 }

@@ -15,7 +15,11 @@ import { insurerKinds } from "#/lib/coverages.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
-import { whatsappMessageDirections, whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
+import {
+  messageJudgements,
+  whatsappMessageDirections,
+  whatsappMessageStatuses,
+} from "#/lib/whatsapp-messages.ts";
 import { templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
 // The organization object's SQLite schema (ADR-0008). Everything in it belongs
@@ -485,6 +489,8 @@ export const whatsappMessage = sqliteTable(
     // statuses can arrive out of order, so an older one does not replace it.
     status: text("status", { enum: whatsappMessageStatuses }),
     statusAt: instant("status_at"),
+    /** An incoming message's judgement; none until the assistant judges it. */
+    judgement: text("judgement", { enum: messageJudgements }),
     ...timestamps,
   },
   (table) => [index("whatsapp_message_conversation_idx").on(table.conversationId, table.sentAt)],
