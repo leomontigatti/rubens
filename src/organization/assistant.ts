@@ -66,6 +66,8 @@ export function nextTurnAlarm(database: Database, model: AssistantModel): number
 interface Recorded {
   judgement: Judgement | null;
   handOff: HandOffCall | null;
+  /** The appointment a rule kept the patient from moving, which underthing hands off. */
+  ruleRefused: string | null;
 }
 
 /**
@@ -143,7 +145,7 @@ function turnTools(
         return { ok: true };
       },
     },
-    ...proposalTools(database, turn),
+    ...proposalTools(database, { ...turn, recorded }),
   ];
 }
 
@@ -266,7 +268,7 @@ async function judgeTurn(
   turn: { conversationId: string; read: Read; appointments: Upcoming[] },
 ) {
   const rules = currentCommunicationRules(database);
-  const recorded: Recorded = { judgement: null, handOff: null };
+  const recorded: Recorded = { judgement: null, handOff: null, ruleRefused: null };
   const system = assistantSystemPrompt({
     ...promptSetting(database),
     now: new Date(),
@@ -286,7 +288,13 @@ async function judgeTurn(
   if (!ran || !judgement) {
     return null;
   }
-  return { reply: ran.reply, judgement, handOff: recorded.handOff, rules };
+  return {
+    reply: ran.reply,
+    judgement,
+    handOff: recorded.handOff,
+    ruleRefused: recorded.ruleRefused,
+    rules,
+  };
 }
 
 /**

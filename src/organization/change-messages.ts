@@ -31,6 +31,14 @@ function dropQueued(tx: Writer, appointmentId: string, kinds: readonly ChangeKin
 }
 
 /**
+ * Drops the change messages still queued about the appointment
+ * `appointmentId`: the patient moved it themselves, so none is news to them.
+ */
+export function dropChangeMessages(tx: Writer, appointmentId: string) {
+  dropQueued(tx, appointmentId, changeKinds);
+}
+
+/**
  * Queues the message `kind` about the appointment `appointmentId`, due at
  * once, when its patient accepts WhatsApp, in place of the change message
  * still queued for it.

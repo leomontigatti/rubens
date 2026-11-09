@@ -3,7 +3,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { assistantToolSchemas } from "#/lib/assistant.ts";
 import { assistantUserId } from "#/lib/audit-fields.ts";
 import { proposalExpiresAt } from "#/lib/proposals.ts";
-import type { ProposalKind } from "#/lib/proposals.ts";
+import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 
 import type { AssistantTool } from "#/organization/assistant-model.ts";
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
@@ -12,6 +12,8 @@ import { cancelAppointment, changeAppointmentStatus } from "#/organization/appoi
 import type { Database } from "#/organization/database.ts";
 import { openHandoffsOf } from "#/organization/handoffs.ts";
 import type { Acting } from "#/organization/members.ts";
+import { freeTimesFor, movePatientAppointment, slotFor } from "#/organization/moves.ts";
+import type { Slot } from "#/organization/moves.ts";
 import { lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
 
@@ -53,17 +55,73 @@ function latestProposal(database: Database, conversationId: string) {
   );
 }
 
+/** A move's new time as the patient reads it, beside the appointment's facts. */
+function statedMove(slot: Slot) {
+  return { newDate: slot.date, newTime: slot.time, newOffice: slot.office };
+}
+
 /** Makes the proposal's change through the appointment's own function. */
-function applyChange(database: Database, kind: ProposalKind, appointmentId: string) {
-  return kind === "confirm"
+function applyChange(database: Database, latest: NonNullable<ReturnType<typeof latestProposal>>) {
+  const { appointmentId } = latest;
+  if (latest.kind === "move") {
+    const { newDate, newTime, newOffice } = latest.statement;
+    return movePatientAppointment(database, assistantActing, {
+      appointmentId,
+      stated: {
+        slotId: new Date(latest.startsAt!).toISOString(),
+        date: newDate!,
+        time: newTime!,
+        office: newOffice!,
+      },
+    });
+  }
+  return latest.kind === "confirm"
     ? changeAppointmentStatus(database, assistantActing, { appointmentId, status: "confirmed" })
     : cancelAppointment(database, assistantActing, { appointmentId, cancelledBy: "patient" });
 }
 
-/** The turn a proposal tool runs in: its conversation, and its view of the number's upcoming appointments. */
+/**
+ * The turn a proposal tool runs in: its conversation, its view of the
+ * number's upcoming appointments, and where it records the appointment of a
+ * move a rule refused, which underthing hands off.
+ */
 interface ProposalTurn {
   conversationId: string;
   appointments: Upcoming[];
+  recorded: { ruleRefused: string | null };
+}
+
+/** Returns a refusal, noting a move a rule refused for the turn's handoff. */
+function refused(turn: ProposalTurn, appointmentId: string, reason: string) {
+  const rules: string[] = ["pastCutoff", "moveUsed"] satisfies MoveRefusal[];
+  if (rules.includes(reason)) {
+    turn.recorded.ruleRefused = appointmentId;
+  }
+  return { ok: false, reason };
+}
+
+/** The free times the appointment can move to, for an appointment of the turn's view only. */
+function findFreeTimes(database: Database, turn: ProposalTurn, args: unknown) {
+  const parsed = assistantToolSchemas.find_free_times.inputSchema.safeParse(args);
+  if (!parsed.success) {
+    return { ok: false, reason: "invalidInput" };
+  }
+  const { appointmentId, from } = parsed.data;
+  const upcoming = turn.appointments.find((one) => one.id === appointmentId);
+  if (!upcoming) {
+    return { ok: false, reason: "notFound" };
+  }
+  const found = freeTimesFor(database, appointmentId, from);
+  if (!found.ok) {
+    return refused(turn, appointmentId, found.reason);
+  }
+  return {
+    ok: true,
+    practitioner: upcoming.practitioner,
+    medicalService: upcoming.medicalService,
+    slots: found.slots,
+    more: found.more,
+  };
 }
 
 /** Stores the proposal the model made, for an appointment of the turn's view only. */
@@ -72,12 +130,23 @@ function proposeChange(database: Database, turn: ProposalTurn, args: unknown) {
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
-  const { appointmentId, kind } = parsed.data;
+  const { appointmentId, kind, slotId } = parsed.data;
   const upcoming = turn.appointments.find((one) => one.id === appointmentId);
   if (!upcoming) {
     return { ok: false, reason: "notFound" };
   }
-  const statement = stated(kind, upcoming);
+  let move: Slot | null = null;
+  if (kind === "move") {
+    const found = slotId === undefined ? null : slotFor(database, appointmentId, slotId);
+    if (!found) {
+      return { ok: false, reason: "invalidInput" };
+    }
+    if (!found.ok) {
+      return refused(turn, appointmentId, found.reason);
+    }
+    move = found.slot;
+  }
+  const statement = { ...stated(kind, upcoming), ...(move && statedMove(move)) };
   const now = Date.now();
   database
     .insert(proposal)
@@ -86,6 +155,7 @@ function proposeChange(database: Database, turn: ProposalTurn, args: unknown) {
       appointmentId,
       kind,
       statement,
+      startsAt: move && Date.parse(move.slotId),
       expiresAt: proposalExpiresAt(now, lastIncomingAt(database, turn.conversationId)),
       createdAt: now,
     })
@@ -141,17 +211,22 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
       return { ok: false, reason: "notFound" };
     }
     // Moved, or its practitioner or office changed, since it was proposed.
-    if (JSON.stringify(stated(latest.kind, current)) !== JSON.stringify(latest.statement)) {
+    const asNow = Object.entries(stated(latest.kind, current));
+    if (asNow.some(([key, value]) => latest.statement[key] !== value)) {
       return { ok: false, reason: "changed" };
     }
-    const changed = applyChange(database, latest.kind, current.id);
+    const changed = applyChange(database, latest);
     if (!changed.ok) {
-      return { ok: false, reason: changed.reason };
+      return refused(turn, current.id, changed.reason);
     }
     database.update(proposal).set({ acceptedAt: now }).where(eq(proposal.id, latest.id)).run();
     // Only the turn's own change: anything else changed meanwhile still holds its reply.
     if (latest.kind === "confirm") {
       appointments[index] = { ...appointments[index]!, status: "confirmed" };
+    } else if (latest.kind === "move") {
+      appointments[index] = appointmentNow(database, turn.conversationId, current.id)!;
+      // As upcomingAppointments orders them, so the reply's check compares like with like.
+      appointments.sort((a, b) => a.startsAt - b.startsAt || a.id.localeCompare(b.id));
     } else {
       appointments.splice(index, 1);
     }
@@ -172,6 +247,7 @@ export function proposalTools(database: Database, turn: ProposalTurn): Assistant
       ? { ok: false, reason: "handedOff" }
       : run();
   return [
+    { name: "find_free_times", run: (args) => findFreeTimes(database, turn, args) },
     {
       name: "propose_change",
       run: (args) => unlessHandedOff(() => proposeChange(database, turn, args)),

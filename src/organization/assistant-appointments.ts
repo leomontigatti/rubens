@@ -40,7 +40,7 @@ export function upcomingAppointments(database: Database, patientIds: string[], n
         gt(appointment.startsAt, now),
       ),
     )
-    .orderBy(asc(appointment.startsAt))
+    .orderBy(asc(appointment.startsAt), asc(appointment.id))
     .all();
 }
 

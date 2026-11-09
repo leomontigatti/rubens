@@ -290,7 +290,8 @@ export const handoffRecipient = sqliteTable(
 /**
  * A change the assistant stated to the patient in full (`src/lib/proposals.ts`):
  * only the conversation's latest can be accepted, once, before it expires.
- * Accepting runs the appointment's own change functions.
+ * Accepting runs the appointment's own change functions. The patient's own
+ * moves of an appointment are its accepted moves.
  */
 export const proposal = sqliteTable(
   "proposal",
@@ -305,6 +306,8 @@ export const proposal = sqliteTable(
     kind: text("kind", { enum: proposalKinds }).notNull(),
     /** What the patient was told: the change and the appointment's facts, compared again on the yes. */
     statement: text("statement", { mode: "json" }).$type<Record<string, string>>().notNull(),
+    /** A move's new start, one find_free_times offered; none for another kind. */
+    startsAt: instant("starts_at"),
     expiresAt: instant("expires_at").notNull(),
     /** When its change was made; none while it waits for its yes, or when it failed. */
     acceptedAt: instant("accepted_at"),
