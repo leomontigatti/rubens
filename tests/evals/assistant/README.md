@@ -77,8 +77,9 @@ case, give it a conversation so far, the patient's new messages and what the tur
 and must not do; `fake-object.ts` answers its tools from `world.ts`.
 
 `prompt.ts` and `tools.ts` run the assistant's real prompt and tool schemas
-(`src/lib/assistant.ts`, `hand_off` included since #171), with drafts of what later
-tickets add: proposals (#173, #174) and the `rule_refused` handoff reason (#174). Each
+(`src/lib/assistant.ts`, `hand_off` since #171, confirming and cancelling through
+proposals since #173), with drafts of what #174 adds: moving through a proposal,
+`find_free_times` and the `rule_refused` handoff reason. Each
 draft moves into `src/lib/assistant.ts` when its ticket lands. A second misunderstanding
 in a row is counted by underthing from `judge_messages`' `understood`, not handed off by
 the model, so its case checks the judgement.

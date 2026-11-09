@@ -23,6 +23,7 @@ import {
   patientBadges,
   patientName,
 } from "#/lib/patients.ts";
+import { assistantUserId } from "#/lib/audit-fields.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { formatLocalDate } from "#/lib/schedules.ts";
 import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-statuses.ts";
@@ -377,6 +378,14 @@ const entityLabels: Record<string, string> = {
   guardian: " de responsable",
 };
 
+/** Who made an entry's change: a member, the assistant on a patient's yes, or a member since removed. */
+function authorOf(entry: HistoryEntry) {
+  if (entry.userId === assistantUserId) {
+    return "Asistente";
+  }
+  return entry.userName ?? "Usuario eliminado";
+}
+
 function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, string> }) {
   const { entries, names } = props;
   return (
@@ -391,7 +400,7 @@ function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, 
               </span>
               <span className="text-muted-foreground">
                 {" · "}
-                {instantFormat.format(entry.createdAt)} · {entry.userName ?? "Usuario eliminado"}
+                {instantFormat.format(entry.createdAt)} · {authorOf(entry)}
               </span>
             </p>
             <ul className="text-muted-foreground text-sm">

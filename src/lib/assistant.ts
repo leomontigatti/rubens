@@ -72,6 +72,19 @@ export const assistantToolSchemas = {
         ),
     }),
   },
+  propose_change: {
+    description:
+      "Stores a proposal to confirm or cancel an appointment, and returns it in full. It replaces any earlier proposal. Nothing changes until accept_proposal.",
+    inputSchema: z.object({
+      appointmentId: z.string().describe("The appointmentId list_patients returned"),
+      kind: z.enum(["confirm", "cancel"]),
+    }),
+  },
+  accept_proposal: {
+    description:
+      "Applies the conversation's latest proposal, once the patient said yes to it. Can fail, for example when it expired or the appointment already started.",
+    inputSchema: z.object({}),
+  },
   hand_off: {
     description:
       "Hands the conversation to a person at the practice, who answers the patient here. Call it at most once a turn.",
@@ -125,6 +138,7 @@ function localNow(now: Date, timeZone: string) {
 export function assistantSystemPrompt(context: PromptContext): string {
   const capabilities = [
     "- Say when, where and with whom an appointment is.",
+    "- Confirm or cancel an appointment, through a proposal.",
     "- Hand the conversation to a person at the practice (hand_off).",
     ...(context.more?.capabilities ?? []),
   ];
@@ -135,6 +149,9 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); the message is clinical (clinical, clinical: true); it is an emergency (emergency, clinical: true). Pass the appointmentId when it is about one appointment. A person then answers: do not answer it yourself.",
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
+    'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',
+    '"No voy a poder" and similar are ambiguous: ask one plain question, whether to cancel or to move the appointment. Do not propose anything yet.',
+    "If accept_proposal fails, say plainly that the change was not made.",
     ...(context.more?.rules ?? []),
     "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Clinical messages go to the practitioner.",
     "If asked whether you are a bot or a person, say plainly that you are the practice's automated assistant. Do not say so unprompted.",

@@ -2,6 +2,12 @@
 // changed, before and after, or the fields an entity was created with, as the
 // organization object's audit writer records them.
 
+/**
+ * Who an entry names for a change the assistant made on a patient's yes to a
+ * proposal (GLOSSARY.md `assistant`): no member's id, as no member acted.
+ */
+export const assistantUserId = "assistant";
+
 /** A field's value as the log keeps it: a `Date` becomes its ISO string. */
 export type AuditValue = string | number | boolean | null;
 
