@@ -29,6 +29,7 @@ import { Route as AppHorariosPractitionerIdRouteImport } from './routes/_app/hor
 import { Route as AppLicenciasIndexRouteImport } from './routes/_app/licencias/index'
 import { Route as AppLicenciasTimeOffIdRouteImport } from './routes/_app/licencias/$timeOffId'
 import { Route as AppLicenciasNuevaRouteImport } from './routes/_app/licencias/nueva'
+import { Route as AppNotificacionesIndexRouteImport } from './routes/_app/notificaciones/index'
 import { Route as AppObrasSocialesIndexRouteImport } from './routes/_app/obras-sociales/index'
 import { Route as AppObrasSocialesInsurerIdRouteImport } from './routes/_app/obras-sociales/$insurerId'
 import { Route as AppObrasSocialesNuevaRouteImport } from './routes/_app/obras-sociales/nueva'
@@ -165,6 +166,11 @@ const AppLicenciasTimeOffIdRoute = AppLicenciasTimeOffIdRouteImport.update({
 const AppLicenciasNuevaRoute = AppLicenciasNuevaRouteImport.update({
   id: '/licencias/nueva',
   path: '/licencias/nueva',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificacionesIndexRoute = AppNotificacionesIndexRouteImport.update({
+  id: '/notificaciones/',
+  path: '/notificaciones/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppObrasSocialesIndexRoute = AppObrasSocialesIndexRouteImport.update({
@@ -398,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
   '/licencias/': typeof AppLicenciasIndexRoute
+  '/notificaciones/': typeof AppNotificacionesIndexRoute
   '/obras-sociales/': typeof AppObrasSocialesIndexRoute
   '/pacientes/': typeof AppPacientesIndexRoute
   '/personal/': typeof AppPersonalIndexRoute
@@ -455,6 +462,7 @@ export interface FileRoutesByTo {
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
   '/licencias': typeof AppLicenciasIndexRoute
+  '/notificaciones': typeof AppNotificacionesIndexRoute
   '/obras-sociales': typeof AppObrasSocialesIndexRoute
   '/pacientes': typeof AppPacientesIndexRoute
   '/personal': typeof AppPersonalIndexRoute
@@ -514,6 +522,7 @@ export interface FileRoutesById {
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
   '/_app/licencias/': typeof AppLicenciasIndexRoute
+  '/_app/notificaciones/': typeof AppNotificacionesIndexRoute
   '/_app/obras-sociales/': typeof AppObrasSocialesIndexRoute
   '/_app/pacientes/': typeof AppPacientesIndexRoute
   '/_app/personal/': typeof AppPersonalIndexRoute
@@ -573,6 +582,7 @@ export interface FileRouteTypes {
     | '/disponibilidad/'
     | '/horarios/'
     | '/licencias/'
+    | '/notificaciones/'
     | '/obras-sociales/'
     | '/pacientes/'
     | '/personal/'
@@ -630,6 +640,7 @@ export interface FileRouteTypes {
     | '/disponibilidad'
     | '/horarios'
     | '/licencias'
+    | '/notificaciones'
     | '/obras-sociales'
     | '/pacientes'
     | '/personal'
@@ -688,6 +699,7 @@ export interface FileRouteTypes {
     | '/_app/disponibilidad/'
     | '/_app/horarios/'
     | '/_app/licencias/'
+    | '/_app/notificaciones/'
     | '/_app/obras-sociales/'
     | '/_app/pacientes/'
     | '/_app/personal/'
@@ -864,6 +876,13 @@ declare module '@tanstack/react-router' {
       path: '/licencias/nueva'
       fullPath: '/licencias/nueva'
       preLoaderRoute: typeof AppLicenciasNuevaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notificaciones/': {
+      id: '/_app/notificaciones/'
+      path: '/notificaciones'
+      fullPath: '/notificaciones/'
+      preLoaderRoute: typeof AppNotificacionesIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/obras-sociales/': {
@@ -1147,6 +1166,7 @@ interface AppRouteChildren {
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
   AppLicenciasIndexRoute: typeof AppLicenciasIndexRoute
+  AppNotificacionesIndexRoute: typeof AppNotificacionesIndexRoute
   AppObrasSocialesIndexRoute: typeof AppObrasSocialesIndexRoute
   AppPacientesIndexRoute: typeof AppPacientesIndexRoute
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
@@ -1202,6 +1222,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,
   AppLicenciasIndexRoute: AppLicenciasIndexRoute,
+  AppNotificacionesIndexRoute: AppNotificacionesIndexRoute,
   AppObrasSocialesIndexRoute: AppObrasSocialesIndexRoute,
   AppPacientesIndexRoute: AppPacientesIndexRoute,
   AppPersonalIndexRoute: AppPersonalIndexRoute,

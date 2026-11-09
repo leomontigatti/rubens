@@ -18,8 +18,9 @@ import {
   templateLabels,
   templateRefusalMessages,
   templateStatusLabels,
+  templateCategoryLabels,
   templateStatusVariants,
-} from "#/routes/_app/whatsapp/-template-copy.ts";
+} from "#/lib/whatsapp-template-copy.ts";
 
 type Settings = Extract<Awaited<ReturnType<typeof getWhatsappSettings>>, { ok: true }>;
 
@@ -45,9 +46,14 @@ const columns: DataTableColumn<TemplateRow>[] = [
     header: "Estado",
     cell: (row) =>
       row.latest ? (
-        <Badge variant={templateStatusVariants[row.latest.status]}>
-          {templateStatusLabels[row.latest.status]}
-        </Badge>
+        <div className="flex flex-wrap gap-1">
+          <Badge variant={templateStatusVariants[row.latest.status]}>
+            {templateStatusLabels[row.latest.status]}
+          </Badge>
+          {row.latest.category !== "utility" && (
+            <Badge variant="warning">{templateCategoryLabels[row.latest.category]}</Badge>
+          )}
+        </div>
       ) : (
         <Badge variant="secondary">Sin enviar</Badge>
       ),

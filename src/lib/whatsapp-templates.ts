@@ -16,6 +16,22 @@ export const templateStatuses = ["pending", "approved", "rejected", "paused", "d
 
 export type TemplateStatus = (typeof templateStatuses)[number];
 
+/**
+ * A template's category at Meta (lowercase): every one is submitted as
+ * utility, and only a utility version goes (`docs/operations/whatsapp-templates.md`).
+ */
+export const templateCategories = ["utility", "marketing", "authentication"] as const;
+
+export type TemplateCategory = (typeof templateCategories)[number];
+
+/** Our category for Meta's word for it, or `null` for a word underthing does not know. */
+export function templateCategoryOf(metaCategory: string): TemplateCategory | null {
+  const category = metaCategory.toLowerCase();
+  return (templateCategories as readonly string[]).includes(category)
+    ? (category as TemplateCategory)
+    : null;
+}
+
 /** Our status for Meta's word for it; a word with no status here (`FLAGGED`, `IN_APPEAL`, …) has none. */
 export function templateStatusOf(metaStatus: string): TemplateStatus | null {
   const status = metaStatus.toLowerCase();

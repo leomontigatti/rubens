@@ -18,7 +18,7 @@ import { maxCareInstructionsLength, whatsappTemplates } from "#/lib/whatsapp-tem
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { approvedVersion } from "#/organization/outbox.ts";
+import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import { medicalService, medicalServiceReminder } from "#/organization/schema.ts";
 

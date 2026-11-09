@@ -1,3 +1,5 @@
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
 import { useEffect, useState } from "react";
 
 import { useFormAction } from "#/components/admin-form.tsx";
@@ -7,7 +9,9 @@ import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
-import type { ConnectionState } from "#/lib/whatsapp.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
+import { messagingLimitLabels } from "#/lib/whatsapp.ts";
+import type { ConnectionState, NumberHoldReason } from "#/lib/whatsapp.ts";
 import { connectWhatsapp, disconnectWhatsapp } from "#/server/whatsapp.functions.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
@@ -31,15 +35,6 @@ const stateVariants = {
   failed: "destructive",
   disconnected: "secondary",
 } as const satisfies Record<ConnectionState, string>;
-
-// Meta's tiers: how many people the number may start conversations with a day.
-const limitLabels: Record<string, string> = {
-  TIER_250: "250 personas por día",
-  TIER_2K: "2.000 personas por día",
-  TIER_10K: "10.000 personas por día",
-  TIER_100K: "100.000 personas por día",
-  TIER_UNLIMITED: "Sin límite",
-};
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -127,6 +122,7 @@ export function NumberSection({ settings }: { settings: Settings }) {
     >
       <div className="flex flex-col gap-4">
         <ConnectionNotices connection={connection} canSignUp={Boolean(signup) || connected} />
+        {settings.hold && <HoldNotice hold={settings.hold} />}
         {action.error && (
           <Alert variant="destructive">
             <AlertTitle>No se pudo cambiar el número</AlertTitle>
@@ -177,6 +173,29 @@ function ConnectionNotices(props: { connection: Connection | null; canSignUp: bo
   );
 }
 
+const holdTitles: Record<NumberHoldReason, string> = {
+  restricted: "Meta restringió el número",
+  disabled: "Meta deshabilitó la cuenta de WhatsApp",
+  rateLimited: "Meta frenó los envíos del número",
+};
+
+/** Meta's hold on the number: the messages to patients wait until it ends. */
+function HoldNotice({ hold }: { hold: NonNullable<Settings["hold"]> }) {
+  const until =
+    hold.until === null
+      ? "hasta que Meta lo levante"
+      : `hasta el ${format(hold.until, "dd/MM/yyyy HH:mm", { in: tz(defaultTimeZone) })}`;
+  return (
+    <Alert variant="warning">
+      <AlertTitle>{holdTitles[hold.reason]}</AlertTitle>
+      <AlertDescription>
+        Los mensajes a los pacientes esperan {until}, y salen después, salvo los que ya no
+        correspondan.
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 function ConnectionDetails({ connection }: { connection: Connection }) {
   const limit = connection.messagingLimit;
   return (
@@ -188,7 +207,10 @@ function ConnectionDetails({ connection }: { connection: Connection }) {
           <Badge variant={stateVariants[connection.state]}>{stateLabels[connection.state]}</Badge>
         }
       />
-      <Detail label="Límite de mensajes de Meta" value={limit && (limitLabels[limit] ?? limit)} />
+      <Detail
+        label="Límite de mensajes de Meta"
+        value={limit && (messagingLimitLabels[limit] ?? limit)}
+      />
     </dl>
   );
 }

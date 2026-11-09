@@ -16,6 +16,7 @@ import {
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getToRescheduleCount } from "#/server/appointments.functions.ts";
+import { getUnreadNotificationCount } from "#/server/notifications.functions.ts";
 
 // Every signed-in screen sits under this layout. A member who must still
 // replace the starting password is held on the change-password screen.
@@ -35,12 +36,22 @@ export const Route = createFileRoute("/_app")({
     return { viewer: result.viewer };
   },
   // Reloaded on every navigation and after every change a screen makes, so
-  // the menu's count of appointments to reschedule stays current. A preload is
-  // not a navigation, so hovering a link does not count them.
+  // the menu's counts of appointments to reschedule and of unread
+  // notifications stay current. A preload is not a navigation, so hovering a
+  // link does not count them.
   shouldReload: ({ preload }) => !preload,
   loader: async () => {
-    const counted = await getToRescheduleCount();
-    return { toReschedule: counted.ok ? counted.count : null, sidebarOpen: sidebarStartsOpen() };
+    const [toReschedule, unread] = await Promise.all([
+      getToRescheduleCount(),
+      getUnreadNotificationCount(),
+    ]);
+    return {
+      counts: {
+        toReschedule: toReschedule.ok ? toReschedule.count : null,
+        unreadNotifications: unread.ok ? unread.count : 0,
+      },
+      sidebarOpen: sidebarStartsOpen(),
+    };
   },
   // A signed-in page holds the viewer's data, patients' included: the browser
   // keeps no copy, so Back after a sign-out cannot show it to the next person.
@@ -97,7 +108,7 @@ function useSessionGuard(userId: string) {
 
 function AppShell() {
   const { viewer } = Route.useRouteContext();
-  const { toReschedule, sidebarOpen } = Route.useLoaderData();
+  const { counts, sidebarOpen } = Route.useLoaderData();
   const router = useRouter();
   const endSession = useSignOut();
 
@@ -116,7 +127,7 @@ function AppShell() {
   return (
     <TooltipProvider>
       <SidebarProvider defaultOpen={sidebarOpen}>
-        <AppSidebar viewer={viewer} toReschedule={toReschedule} onSignOut={() => void signOut()} />
+        <AppSidebar viewer={viewer} counts={counts} onSignOut={() => void signOut()} />
         <SidebarInset className="min-w-0">
           <header className="flex items-center border-b px-4 py-2">
             <SidebarTrigger />

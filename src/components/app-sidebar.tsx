@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronsUpDownIcon, CircleUserIcon } from "lucide-react";
 
 import { isCurrentPath, navFor, passwordChangePath } from "#/components/app-nav.ts";
+import type { NavCounts } from "#/components/app-nav.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import {
   DropdownMenu,
@@ -36,11 +37,11 @@ interface Viewer {
   roles: readonly Role[];
 }
 
-function NavMenu(props: { roles: readonly Role[]; toReschedule: number | null }) {
+function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { setOpenMobile } = useSidebar();
 
-  return navFor(props.roles, props.toReschedule).map((group) => (
+  return navFor(props.roles, props.counts).map((group) => (
     <SidebarGroup key={group.label}>
       <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
       <SidebarGroupContent>
@@ -99,11 +100,7 @@ function UserMenu(props: { viewer: Viewer; onSignOut: () => void }) {
 }
 
 /** The app's menu: the organization, the links by group and the member's account. */
-export function AppSidebar(props: {
-  viewer: Viewer;
-  toReschedule: number | null;
-  onSignOut: () => void;
-}) {
+export function AppSidebar(props: { viewer: Viewer; counts: NavCounts; onSignOut: () => void }) {
   const { viewer } = props;
   const { setOpenMobile } = useSidebar();
 
@@ -125,7 +122,7 @@ export function AppSidebar(props: {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMenu roles={viewer.roles} toReschedule={props.toReschedule} />
+        <NavMenu roles={viewer.roles} counts={props.counts} />
       </SidebarContent>
       <SidebarFooter>
         <UserMenu viewer={viewer} onSignOut={props.onSignOut} />

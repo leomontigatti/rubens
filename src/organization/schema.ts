@@ -4,8 +4,10 @@ import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-o
 import type { Role } from "#/lib/access.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 import { insurerKinds } from "#/lib/coverages.ts";
+import { notificationKinds } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
+import { templateNames } from "#/lib/whatsapp-templates.ts";
 
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
 
@@ -433,4 +435,29 @@ export const appointment = sqliteTable(
       sql`(${table.status} = 'cancelled') = (${table.cancelledBy} is not null)`,
     ),
   ],
+);
+
+/**
+ * A notification to one member (`src/lib/notifications.ts`), read or unread.
+ * What it is about is kept as it was when it happened: the template and its
+ * version, Meta's word (a rejection reason, a category, a limit), until when,
+ * and how many messages were waiting then.
+ */
+export const notification = sqliteTable(
+  "notification",
+  {
+    id: id(),
+    recipientId: text("recipient_id")
+      .notNull()
+      .references(() => member.userId),
+    kind: text("kind", { enum: notificationKinds }).notNull(),
+    templateName: text("template_name", { enum: templateNames }),
+    templateVersion: integer("template_version"),
+    detail: text("detail"),
+    until: instant("until"),
+    waiting: integer("waiting"),
+    readAt: instant("read_at"),
+    ...timestamps,
+  },
+  (table) => [index("notification_recipient_idx").on(table.recipientId, table.createdAt)],
 );

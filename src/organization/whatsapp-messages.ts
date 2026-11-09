@@ -6,6 +6,7 @@ import type {
   WhatsappEvents,
   WhatsappMessageStatus,
   WhatsappStatusUpdate,
+  WhatsappTemplateStatusUpdate,
 } from "#/lib/whatsapp-messages.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
 
@@ -16,7 +17,13 @@ import {
   conversationPatient,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
-import { storeTemplateStatus } from "#/organization/whatsapp-templates.ts";
+import { storeNumberEvent } from "#/organization/whatsapp-limits.ts";
+import {
+  storeTemplateCategory,
+  storeTemplateStatus,
+  warnOfRecategorizedTemplate,
+  warnOfStoppedTemplate,
+} from "#/organization/whatsapp-templates.ts";
 
 // What Meta's webhook brings in (ADR-0010 § The webhook stores, the object's
 // alarm acts): the Worker has checked Meta's signature and picked this
@@ -224,17 +231,40 @@ function storeStatus(database: Database, tx: Writer, update: WhatsappStatusUpdat
   return { whatsappId: update.whatsappId, updated: true };
 }
 
+/** Puts `update` on its template, and warns the admins when the version stopped going. */
+function storeTemplateUpdate(tx: Writer, update: WhatsappTemplateStatusUpdate) {
+  const { changed, ...stored } = storeTemplateStatus(tx, update);
+  if (changed) {
+    warnOfStoppedTemplate(tx, changed, update);
+  }
+  return stored;
+}
+
 /**
  * Stores one webhook call's events in one transaction: each incoming message
  * once by its WhatsApp id, in its number's conversation, linked to the
  * patients that number is the message contact of; each status update on
- * the outgoing message it names; and each template status on its template.
+ * the outgoing message it names; each template's status and category on its
+ * template; and Meta's news about the number (`whatsapp-limits.ts`). A
+ * template or a number Meta stopped warns every admin in the same transaction.
  */
 export function storeWhatsappEvents(database: Database, events: WhatsappEvents) {
-  return database.transaction((tx) => ({
-    ok: true as const,
-    messages: events.messages.map((message) => storeIncoming(tx, message)),
-    statuses: events.statuses.map((update) => storeStatus(database, tx, update)),
-    templateStatuses: events.templateStatuses.map((update) => storeTemplateStatus(tx, update)),
-  }));
+  return database.transaction((tx) => {
+    const stored = {
+      ok: true as const,
+      messages: events.messages.map((message) => storeIncoming(tx, message)),
+      statuses: events.statuses.map((update) => storeStatus(database, tx, update)),
+      templateStatuses: events.templateStatuses.map((update) => storeTemplateUpdate(tx, update)),
+    };
+    for (const update of events.templateCategories ?? []) {
+      const changed = storeTemplateCategory(tx, update);
+      if (changed) {
+        warnOfRecategorizedTemplate(tx, changed);
+      }
+    }
+    for (const event of events.numberEvents ?? []) {
+      storeNumberEvent(tx, event);
+    }
+    return stored;
+  });
 }

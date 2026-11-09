@@ -15,8 +15,8 @@ import {
   whatsappMessageDirections,
   whatsappMessageStatuses,
 } from "#/lib/whatsapp-messages.ts";
-import { connectionStates } from "#/lib/whatsapp.ts";
-import { templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
+import { connectionStates, numberHoldReasons } from "#/lib/whatsapp.ts";
+import { templateCategories, templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
 import { appointment, patient } from "#/organization/schema.ts";
 import { id, instant, timestamps } from "#/organization/schema-columns.ts";
@@ -109,6 +109,8 @@ export const whatsappTemplate = sqliteTable(
     status: text("status", { enum: templateStatuses }).notNull(),
     /** Meta's reason for a rejection, such as `INVALID_FORMAT`. */
     rejectionReason: text("rejection_reason"),
+    // Submitted as utility; Meta can move it to another category after approving it.
+    category: text("category", { enum: templateCategories }).notNull().default("utility"),
     // Raised by every status write, so a refresh that read Meta before a
     // webhook event does not write over it.
     statusRevision: integer("status_revision").notNull().default(0),
@@ -147,6 +149,25 @@ export const whatsappConnection = sqliteTable(
     ...timestamps,
   },
   (table) => [check("whatsapp_connection_one_row", sql`${table.id} = 1`)],
+);
+
+/**
+ * Why the organization's number cannot start conversations for now
+ * (docs/domain/messages.md § When Meta limits the number): one row at most,
+ * until a time or, when `until` is null, until Meta lifts it. It belongs to
+ * the account Meta limited, the configured test number's included, so it
+ * outlives no change of account.
+ */
+export const whatsappNumberHold = sqliteTable(
+  "whatsapp_number_hold",
+  {
+    // Always 1: an organization sends from one number.
+    id: integer("id").primaryKey(),
+    reason: text("reason", { enum: numberHoldReasons }).notNull(),
+    until: instant("until"),
+    ...timestamps,
+  },
+  (table) => [check("whatsapp_number_hold_one_row", sql`${table.id} = 1`)],
 );
 
 /**

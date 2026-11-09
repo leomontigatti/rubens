@@ -59,6 +59,9 @@ export interface WhatsappEvents {
   messages: IncomingWhatsappMessage[];
   statuses: WhatsappStatusUpdate[];
   templateStatuses: WhatsappTemplateStatusUpdate[];
+  /** Absent from a call that carries none, as from the dev seed. */
+  templateCategories?: WhatsappTemplateCategoryUpdate[];
+  numberEvents?: WhatsappNumberEvent[];
 }
 
 export const conversationReferenceSchema = z.object({ conversationId: z.uuid() });
@@ -74,3 +77,22 @@ export const conversationListSchema = z.object({
 });
 
 export type ConversationListOptions = z.input<typeof conversationListSchema>;
+
+/**
+ * Meta's news about the organization's account or number, as the webhook
+ * reads it (`account_update`, `phone_number_quality_update`): business-started
+ * messages restricted until a time (`null`, until Meta lifts it) or no longer
+ * restricted, the account disabled or reinstated, or a new messaging limit.
+ */
+export type WhatsappNumberEvent =
+  | { kind: "restricted"; until: number | null }
+  | { kind: "unrestricted" }
+  | { kind: "disabled" }
+  | { kind: "reinstated" }
+  | { kind: "messagingLimit"; limit: string };
+
+/** Meta moved a template to another category, in Meta's word for it (`MARKETING`). */
+export interface WhatsappTemplateCategoryUpdate {
+  metaId: string;
+  category: string;
+}

@@ -2,24 +2,35 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { isCurrentPath, navFor } from "#/components/app-nav.ts";
 
+const counts = (toReschedule: number | null, unreadNotifications = 0) => ({
+  toReschedule,
+  unreadNotifications,
+});
+
 describe("the menu a member sees", () => {
   it("leaves the admin's screens out for anyone else", () => {
-    const administration = navFor(["receptionist", "practitioner"], 0).at(-1)!;
+    const administration = navFor(["receptionist", "practitioner"], counts(0)).at(-1)!;
 
     expect(administration.items.map((item) => item.label)).toEqual(["Sedes", "Cierres"]);
   });
 
   it("keeps them for a member who is an admin among other roles", () => {
-    const administration = navFor(["practitioner", "admin"], 0).at(-1)!;
+    const administration = navFor(["practitioner", "admin"], counts(0)).at(-1)!;
 
     expect(administration.items.map((item) => item.label)).toContain("Personal");
   });
 
   it("counts the list on its link, and drops the link when the count is refused", () => {
-    const daily = (count: number | null) => navFor(["practitioner"], count)[0]!.items;
+    const daily = (count: number | null) => navFor(["practitioner"], counts(count))[0]!.items;
 
     expect(daily(3).find((item) => item.to === "/a-reprogramar")?.count).toBe(3);
     expect(daily(null).some((item) => item.to === "/a-reprogramar")).toBe(false);
+  });
+
+  it("counts the member's unread notifications on their link, for every role", () => {
+    const daily = navFor(["receptionist"], counts(0, 2))[0]!.items;
+
+    expect(daily.find((item) => item.to === "/notificaciones")?.count).toBe(2);
   });
 });
 
