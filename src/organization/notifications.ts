@@ -30,11 +30,14 @@ function activeWith(tx: Writer, roles: readonly Role[]) {
     .map((row) => row.userId);
 }
 
-/** Notifies each of `recipientIds` of `content`. */
-function notify(tx: Writer, recipientIds: string[], content: NotificationContent) {
-  if (recipientIds.length > 0) {
+/**
+ * Notifies each of `recipientIds` of `content`, a row per insert: each row
+ * binds several parameters, and the object's SQLite takes at most 100 a query.
+ */
+export function notify(tx: Writer, recipientIds: string[], content: NotificationContent) {
+  for (const recipientId of recipientIds) {
     tx.insert(notification)
-      .values(recipientIds.map((recipientId) => ({ ...content, recipientId })))
+      .values({ ...content, recipientId })
       .run();
   }
 }

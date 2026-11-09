@@ -16,6 +16,11 @@ export const Route = createFileRoute("/_app/whatsapp/recordatorios")({
 
 const wrongHours = `Ingresá una cantidad entera de horas, de 1 a ${maxReminderHours}.`;
 
+const noHours = "Ingresá las horas.";
+
+const othersFirst =
+  "A los demás se les recuerda más cerca del cierre: ingresá las mismas horas o menos que para quien la recibe.";
+
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
   forbidden: "Solo un administrador puede cambiar los recordatorios de derivaciones.",
@@ -31,9 +36,30 @@ function EditHandoffReminders() {
   return <HandoffRemindersForm {...settings.handoffReminders} />;
 }
 
+const fieldNames = ["recipientHours", "othersHours"] as const;
+
 /** Whole hours from a field, or `NaN` for an empty one. */
 function hoursOf(text: string) {
   return Number(text.trim() || Number.NaN);
+}
+
+/** What is wrong with the hours `value` holds, by field: empty ones first, then the schema's refusals. */
+function hoursProblems(value: Record<(typeof fieldNames)[number], string>) {
+  const empty = fieldNames.filter((field) => value[field].trim() === "");
+  if (empty.length > 0) {
+    return empty.map((field) => ({ field, message: noHours }));
+  }
+  const parsed = handoffRemindersSchema.safeParse({
+    recipientHours: hoursOf(value.recipientHours),
+    othersHours: hoursOf(value.othersHours),
+  });
+  if (parsed.success) {
+    return { hours: parsed.data };
+  }
+  return parsed.error.issues.map((issue) => ({
+    field: String(issue.path[0]),
+    message: issue.message === "othersBeforeRecipients" ? othersFirst : wrongHours,
+  }));
 }
 
 function HandoffRemindersForm(props: { recipientHours: number; othersHours: number }) {
@@ -46,17 +72,12 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
       othersHours: String(props.othersHours),
     },
     onSubmit: async ({ value }) => {
-      const input = {
-        recipientHours: hoursOf(value.recipientHours),
-        othersHours: hoursOf(value.othersHours),
-      };
-      const parsed = handoffRemindersSchema.safeParse(input);
-      if (!parsed.success) {
-        const wrong = new Set(parsed.error.issues.map((issue) => String(issue.path[0])));
-        page.showProblems([...wrong].map((field) => ({ field, message: wrongHours })));
+      const checked = hoursProblems(value);
+      if (Array.isArray(checked)) {
+        page.showProblems(checked);
         return;
       }
-      if (await action.save(() => saveHandoffReminders({ data: parsed.data }))) {
+      if (await action.save(() => saveHandoffReminders({ data: checked.hours }))) {
         page.leave();
       }
     },

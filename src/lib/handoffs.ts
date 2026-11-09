@@ -51,11 +51,18 @@ export const defaultHandoffReminders = { recipientHours: 6, othersHours: 2 } as 
 
 /**
  * The handoff reminders an admin sets, in whole hours before the window
- * closes: none can fall after the close, nor before the window opens.
+ * closes: none can fall after the close, nor before the window opens, and
+ * the others' goes no earlier than the recipients'.
  */
-export const handoffRemindersSchema = z.object({
-  recipientHours: z.number().int().min(1).max(maxReminderHours),
-  othersHours: z.number().int().min(1).max(maxReminderHours),
-});
+export const handoffRemindersSchema = z
+  .object({
+    recipientHours: z.number().int().min(1).max(maxReminderHours),
+    othersHours: z.number().int().min(1).max(maxReminderHours),
+  })
+  // The others' reminder widens the recipients': it goes with or after it.
+  .refine((hours) => hours.othersHours <= hours.recipientHours, {
+    path: ["othersHours"],
+    message: "othersBeforeRecipients",
+  });
 
 export type HandoffRemindersInput = z.input<typeof handoffRemindersSchema>;

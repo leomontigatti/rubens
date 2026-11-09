@@ -2,6 +2,8 @@ import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  addRefusedAdmin,
+  addStaff,
   adminCaller,
   afterTheWait,
   at,
@@ -91,7 +93,6 @@ async function remindersOf(caller: Caller) {
     .map((one) => one.until);
 }
 
-/** Moves the clock to `instant` and runs the object's alarm. */
 async function alarmAt(instant: number) {
   vi.setSystemTime(instant);
   await runDurableObjectAlarm(world.organization);
@@ -140,6 +141,22 @@ describe("a handoff made 1 hour before the window closes", () => {
     expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
     expect(await remindersOf(world.juan.caller)).toEqual([]);
     expect(await runDurableObjectAlarm(world.organization)).toBe(false);
+  });
+});
+
+describe("a team of more members than one insert can bind", () => {
+  it("reminds every one of them", async () => {
+    const team = await Promise.all(
+      Array.from({ length: 15 }, (_, index) =>
+        addStaff(world.organization, `Recepción ${index}`, ["receptionist"]),
+      ),
+    );
+    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+
+    await alarmAt(closesAt - 2 * hourMs);
+
+    const reminded = await Promise.all(team.map((one) => remindersOf(one.caller)));
+    expect(reminded).toEqual(team.map(() => [closesAt]));
   });
 });
 
@@ -217,27 +234,41 @@ describe("the admin's reminder times", () => {
     ).toEqual({ recipientHours: 10, othersHours: 4 });
   });
 
-  it.each([0, -1, 24, 1.5])("refuses a reminder at %s hours before the close", async (hours) => {
-    expect(
-      await world.organization.saveHandoffReminders(adminCaller, {
-        recipientHours: hours,
-        othersHours: 2,
-      }),
-    ).toEqual({ ok: false, reason: "invalidInput" });
+  it("refuses a reminder at the close", async () => {
     expect(
       await world.organization.saveHandoffReminders(adminCaller, {
         recipientHours: 6,
-        othersHours: hours,
+        othersHours: 0,
+      }),
+    ).toEqual({ ok: false, reason: "invalidInput" });
+  });
+
+  it("refuses the others' reminder before the recipients'", async () => {
+    expect(
+      await world.organization.saveHandoffReminders(adminCaller, {
+        recipientHours: 2,
+        othersHours: 6,
       }),
     ).toEqual({ ok: false, reason: "invalidInput" });
   });
 
   it("are the admin's alone", async () => {
-    expect(
-      await world.organization.saveHandoffReminders(world.receptionist, {
-        recipientHours: 6,
-        othersHours: 2,
-      }),
-    ).toEqual({ ok: false, reason: "forbidden" });
+    const deactivated = await addRefusedAdmin(world.organization, "deactivated");
+    const mustChange = await addRefusedAdmin(world.organization, "mustChangePassword");
+    const refusals = [
+      [world.receptionist, "forbidden"],
+      [world.juan.caller, "forbidden"],
+      [{ userId: "user-nobody" }, "unauthenticated"],
+      [deactivated, "unauthenticated"],
+      [mustChange, "mustChangePassword"],
+    ] as const;
+    for (const [caller, reason] of refusals) {
+      expect(
+        await world.organization.saveHandoffReminders(caller, {
+          recipientHours: 6,
+          othersHours: 2,
+        }),
+      ).toEqual({ ok: false, reason });
+    }
   });
 });

@@ -9,7 +9,8 @@ import { returnAfterHours } from "#/organization/conversation-holds.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import { readerOf } from "#/organization/inbox.ts";
 import type { Acting } from "#/organization/members.ts";
-import { member, notification } from "#/organization/schema.ts";
+import { notify } from "#/organization/notifications.ts";
+import { member } from "#/organization/schema.ts";
 import {
   conversation,
   handoff,
@@ -183,7 +184,6 @@ function mayAnswer(database: Database, countdown: Countdown) {
     .map((acting) => acting.userId);
 }
 
-/** Whether a reminder's time has come at `now`. */
 function isDue(at: number | null, now: number) {
   return at !== null && at <= now;
 }
@@ -204,18 +204,11 @@ function remindedMembers(
 
 /** Notifies `members` of the countdown's reminder, and records which close it went for. */
 function remind(tx: Writer, countdown: Countdown, members: string[], othersToo: boolean) {
-  if (members.length > 0) {
-    tx.insert(notification)
-      .values(
-        members.map((recipientId) => ({
-          recipientId,
-          kind: "handoffReminder" as const,
-          handoffId: countdown.id,
-          until: countdown.closesAt,
-        })),
-      )
-      .run();
-  }
+  notify(tx, members, {
+    kind: "handoffReminder",
+    handoffId: countdown.id,
+    until: countdown.closesAt,
+  });
   const closesAt = countdown.closesAt;
   tx.update(handoff)
     .set(

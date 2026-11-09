@@ -6,7 +6,8 @@ import type { OutboxKind } from "#/lib/outbox.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { keepsRecords } from "#/organization/handoff-contacts.ts";
-import { appointment, member, notification, practitioner } from "#/organization/schema.ts";
+import { notify } from "#/organization/notifications.ts";
+import { appointment, member, practitioner } from "#/organization/schema.ts";
 import {
   handoff,
   handoffRecipient,
@@ -99,15 +100,7 @@ export function openHandoff(tx: Writer, conversationId: string, wanted: HandoffW
     tx.insert(handoffRecipient)
       .values(recipients.map((memberId) => ({ handoffId: opened.id, memberId })))
       .run();
-    tx.insert(notification)
-      .values(
-        recipients.map((recipientId) => ({
-          recipientId,
-          kind: "handoff" as const,
-          handoffId: opened.id,
-        })),
-      )
-      .run();
+    notify(tx, recipients, { kind: "handoff", handoffId: opened.id });
   }
   return opened.id;
 }
