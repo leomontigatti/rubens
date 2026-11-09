@@ -51,7 +51,7 @@ function viewedSearch(search: DatedSearch, week: CalendarWeek | null): DatedSear
 }
 
 export const Route = createFileRoute("/_app/agenda/")({
-  head: () => ({ meta: [{ title: "Agenda · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Agenda · underthing" }] }),
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {

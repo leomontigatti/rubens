@@ -27,7 +27,9 @@ export const Route = createFileRoute("/_app/sedes/$officeId")({
   loader: ({ params, deps }) =>
     getOfficeWithRooms({ data: { officeId: params.officeId, ...deps } }),
   head: ({ loaderData }) => ({
-    meta: [{ title: loaderData?.ok ? `${loaderData.office.name} · Rubens` : "Sede · Rubens" }],
+    meta: [
+      { title: loaderData?.ok ? `${loaderData.office.name} · underthing` : "Sede · underthing" },
+    ],
   }),
   component: OfficeRooms,
 });

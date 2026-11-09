@@ -22,8 +22,8 @@ export const Route = createFileRoute("/_app/horarios/$practitionerId")({
     meta: [
       {
         title: loaderData?.ok
-          ? `Horarios de ${loaderData.practitioner.displayName} · Rubens`
-          : "Horarios · Rubens",
+          ? `Horarios de ${loaderData.practitioner.displayName} · underthing`
+          : "Horarios · underthing",
       },
     ],
   }),

@@ -1,7 +1,7 @@
 # WhatsApp templates
 
 The templates each organization submits to Meta from its own WhatsApp account, one
-for each message Rubens starts
+for each message underthing starts
 ([ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md)). When each
 is sent is in [messages.md](../domain/messages.md#to-patients).
 
@@ -15,7 +15,7 @@ is sent is in [messages.md](../domain/messages.md#to-patients).
   any approved one may go.
 - **No buttons.** The patient answers in their own words, and the assistant reads
   the answer.
-- **Variables** are named, lowercase with underscores, in double braces, and Rubens
+- **Variables** are named, lowercase with underscores, in double braces, and underthing
   fills each from the appointment. A template neither starts nor ends with a
   variable, and its body is at most 1,024 characters
   ([components](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/components),

@@ -11,7 +11,7 @@ import { RefusalAlert } from "#/routes/_app/horarios/-shared.tsx";
 const columns = practitionerColumns("/horarios/$practitionerId");
 
 export const Route = createFileRoute("/_app/horarios/")({
-  head: () => ({ meta: [{ title: "Horarios · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Horarios · underthing" }] }),
   loader: () => getSchedulePractitioners(),
   component: SchedulePractitioners,
 });

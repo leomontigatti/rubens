@@ -69,12 +69,12 @@ function RefusedAccount() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Sin acceso a Rubens</CardTitle>
+        <CardTitle>Sin acceso a underthing</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm">
-          Tu cuenta no tiene acceso a Rubens, o fue desactivada. Cerrá la sesión para ingresar con
-          otra cuenta.
+          Tu cuenta no tiene acceso a underthing, o fue desactivada. Cerrá la sesión para ingresar
+          con otra cuenta.
         </p>
         <Button type="button" disabled={pending} onClick={() => void handleSignOut()}>
           Cerrar sesión

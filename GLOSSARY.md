@@ -1,4 +1,4 @@
-# Rubens
+# underthing
 
 The domain vocabulary of a booking app for a health care business: offices, rooms,
 practitioners, receptionists, patients and their appointments. Each entry is the
@@ -192,7 +192,7 @@ _Avoid_: chatbot, agent, AI
 
 **`whatsappConnection`** — ui: "Conexión de WhatsApp"
 The `organization`'s WhatsApp number on Meta's Cloud API, owned by the
-`organization` and used only through Rubens, through which the `assistant` and the
+`organization` and used only through underthing, through which the `assistant` and the
 `organization`'s `template`s reach `patient`s.
 _Avoid_: WhatsApp account, instance, session, channel
 

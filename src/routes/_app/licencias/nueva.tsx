@@ -10,7 +10,7 @@ import { addTimeOff, getTimeOff } from "#/server/time-off.functions.ts";
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
 
 export const Route = createFileRoute("/_app/licencias/nueva")({
-  head: () => ({ meta: [{ title: "Nueva licencia · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Nueva licencia · underthing" }] }),
   loader: () => getTimeOff(),
   component: NewTimeOff,
 });

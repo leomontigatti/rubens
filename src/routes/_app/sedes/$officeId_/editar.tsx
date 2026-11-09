@@ -8,7 +8,7 @@ import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 export const Route = createFileRoute("/_app/sedes/$officeId_/editar")({
   loader: ({ params }) =>
     getOfficeWithRooms({ data: { officeId: params.officeId, includeInactive: false } }),
-  head: () => ({ meta: [{ title: "Editar sede · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar sede · underthing" }] }),
   component: EditOffice,
 });
 

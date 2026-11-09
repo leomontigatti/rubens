@@ -8,7 +8,7 @@ import { editTimeOff, getTimeOff, removeTimeOff } from "#/server/time-off.functi
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
 
 export const Route = createFileRoute("/_app/licencias/$timeOffId")({
-  head: () => ({ meta: [{ title: "Editar licencia · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Editar licencia · underthing" }] }),
   loader: () => getTimeOff(),
   component: EditTimeOff,
 });

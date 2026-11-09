@@ -18,7 +18,7 @@ import { passwordChangeSchema } from "#/lib/password-change.ts";
 import { changePassword } from "#/server/account.functions.ts";
 
 export const Route = createFileRoute("/_app/cambiar-contrasena")({
-  head: () => ({ meta: [{ title: "Cambiar contraseña · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Cambiar contraseña · underthing" }] }),
   component: ChangePassword,
 });
 

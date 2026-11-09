@@ -1,6 +1,6 @@
 # Housekeeping
 
-Rubens' per-worktree resources, for the shared `housekeeping` skill.
+underthing's per-worktree resources, for the shared `housekeeping` skill.
 
 ## Worktree state
 

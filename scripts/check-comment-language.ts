@@ -10,7 +10,7 @@ import { collectSourceFiles } from "./source-files.ts";
 // Ported from en-escena, a sibling project, where the rule lived only in
 // the coding standards until a sweep took 2,198 lines of Spanish comments back to
 // zero and reviews kept finding new ones defended with "the file around it is
-// already Spanish". Rubens starts at zero, so this runs over the whole tree
+// already Spanish". underthing starts at zero, so this runs over the whole tree
 // expecting zero, with no diff scoping and no allowlist for old debt.
 //
 // It reads prose through three instruments, because none of them reaches what

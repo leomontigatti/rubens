@@ -11,7 +11,7 @@ Admins, and each practitioner for their own, manage medical services. A medical
 service in use is deactivated, never deleted.
 
 What a medical service tells patients is for the assistant to answer with
-([assistant.md](./assistant.md)); Rubens bills nothing. Its price is the private
+([assistant.md](./assistant.md)); underthing bills nothing. Its price is the private
 one, with the patient's part per insurer where it differs. It accepts the
 practitioner's insurers unless it narrows them. Its text for patients says how to
 prepare and what to bring. A medical service can also make a patient's booking

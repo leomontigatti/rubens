@@ -5,7 +5,7 @@
 // since the URL parser drops some of them (`/\t/evil.example` is
 // `//evil.example`, another site).
 
-const placeholderOrigin = "https://rubens.invalid";
+const placeholderOrigin = "https://underthing.invalid";
 
 /** Whether `value` holds a character from U+0000 to U+0020 (control and space) or U+007F. */
 function hasControlOrSpace(value: string): boolean {

@@ -5,7 +5,8 @@ have no value and must not be guessed at.
 
 ## Shape
 
-One Cloudflare Worker, `rubens` (`wrangler.jsonc`), on Workers Paid, US$5/month
+One Cloudflare Worker, `underthing` (`wrangler.jsonc`), at
+<https://underthing.leomontigatti.workers.dev>, on Workers Paid, US$5/month
 ([ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organization.md)). It serves
 the app and holds one SQLite-backed Durable Object per organization (`ORGANIZATION`,
 class `Organization`), which keeps all of that organization's data and applies its own
@@ -32,7 +33,7 @@ consent are still to be done before real patient data goes in.
 
 One Clerk application per environment, created in Clerk's dashboard:
 
-- **Sign-in**: email and password. No public sign-up: members are created by Rubens
+- **Sign-in**: email and password. No public sign-up: members are created by underthing
   (the setup script, then the staff screens).
 - **Session token claims** (Configure → Sessions → Customize session token):
 
@@ -43,7 +44,7 @@ One Clerk application per environment, created in Clerk's dashboard:
   }
   ```
 
-  Without `org` every signed-in user is refused. Rubens writes both fields of the public
+  Without `org` every signed-in user is refused. underthing writes both fields of the public
   metadata when it creates a member.
 
 - **Passwords** (the password settings in Clerk's dashboard):
@@ -51,7 +52,7 @@ One Clerk application per environment, created in Clerk's dashboard:
   - reject compromised passwords: on;
   - enforce minimum password strength: off.
 
-  Rubens' own length check (`src/lib/password-change.ts`) uses the same 8 and 72: change
+  underthing's own length check (`src/lib/password-change.ts`) uses the same 8 and 72: change
   them together.
 
 - **Keys**: the publishable key (`pk_…`) and the secret key (`sk_…`), from API keys.
@@ -127,7 +128,7 @@ Worker's metrics on Cloudflare's dashboard (`observability` is on in `wrangler.j
 
 Measured deployed on 2026-11-06, a signed-in page takes about 20–30 ms of CPU (the agenda
 week a median 20–21 ms, a plain page 29 ms, 91 ms at most), and a server-function call
-about 2 ms. That is over the free plan's 10 ms, which is why Rubens is on Paid. #143 has
+about 2 ms. That is over the free plan's 10 ms, which is why underthing is on Paid. #143 has
 the measurements and how to take them again.
 
 ## Backups

@@ -7,7 +7,7 @@ import { AppointmentPage } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { ReschedulePage } from "#/routes/_app/agenda/-reschedule.tsx";
 
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/reprogramar")({
-  head: () => ({ meta: [{ title: "Reprogramar turno · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Reprogramar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
   component: RescheduleAppointment,
 });

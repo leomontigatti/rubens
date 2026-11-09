@@ -14,7 +14,7 @@ import type { TimeOff } from "#/organization/time-off.ts";
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
 
 export const Route = createFileRoute("/_app/licencias/")({
-  head: () => ({ meta: [{ title: "Licencias · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Licencias · underthing" }] }),
   loader: () => getTimeOff(),
   component: TimeOffList,
 });

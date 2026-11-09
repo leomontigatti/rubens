@@ -1,6 +1,6 @@
 # TDD for code that reaches the organization's data
 
-Rubens' facts for the shared `tdd` skill, when a change touches code that reads or writes an
+underthing's facts for the shared `tdd` skill, when a change touches code that reads or writes an
 organization's data: the organization object's methods and the area modules in
 `src/organization/`. The loop, and what not to test, are the skill's.
 

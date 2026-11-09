@@ -14,7 +14,7 @@ import type { Closure } from "#/organization/closures.ts";
 import { closurePlace, refusalMessages } from "#/routes/_app/cierres/-closure-fields.tsx";
 
 export const Route = createFileRoute("/_app/cierres/")({
-  head: () => ({ meta: [{ title: "Cierres · Rubens" }] }),
+  head: () => ({ meta: [{ title: "Cierres · underthing" }] }),
   loader: () => getClosures(),
   component: ClosureList,
 });

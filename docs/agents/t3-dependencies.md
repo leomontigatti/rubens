@@ -1,6 +1,6 @@
 # T3 Code dependencies
 
-What Rubens' own workflows assume about T3 Code, beyond what the shared workflow's
+What underthing's own workflows assume about T3 Code, beyond what the shared workflow's
 `t3-dependencies.md` (in `leomontigatti/agent-workflow`) records for the shared skills, agents
 and hooks. The `t3-update-review` skill reads both after every T3 update; agents don't need it for
 everyday work.
