@@ -60,8 +60,9 @@ run three of these checks for you:
 
 - every file the agent writes is formatted;
 - the end of a turn is blocked while `pnpm check`'s lint or type check is red, or
-  `pnpm check:fallow` fails, by exit code as [fallow.md](./fallow.md) reads it, so a
-  complexity finding lands on the turn that wrote it rather than at commit;
+  `pnpm check:fallow` or `pnpm check:dupes` fails, by exit code as [fallow.md](./fallow.md)
+  reads it, so a complexity finding or duplication over the threshold lands on the turn
+  that wrote it rather than at commit;
 - before those, the end of a turn is blocked with one line when `pnpm-lock.yaml` is
   newer than the installed dependencies: run `pnpm install --frozen-lockfile`, not a
   lint fix.
