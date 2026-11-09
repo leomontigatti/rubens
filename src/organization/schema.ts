@@ -44,6 +44,9 @@ export const member = sqliteTable(
     // Held on the change-password screen until they replace the starting
     // password; mirrored to the Clerk user's public metadata.
     mustChangePassword: flag("must_change_password").notNull().default(false),
+    // Receives the handoffs that concern no particular practitioner
+    // (`src/organization/handoff-contacts.ts`).
+    handoffContact: flag("handoff_contact").notNull().default(false),
     ...timestamps,
   },
   (table) => [

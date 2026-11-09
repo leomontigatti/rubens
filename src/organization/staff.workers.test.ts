@@ -478,6 +478,96 @@ describe("the last admin", () => {
   });
 });
 
+describe("the last handoff contact who keeps clinical records", () => {
+  async function lastClinicalContact() {
+    const contact = await newMember(["practitioner"], "contacto@example.com");
+    const receptionist = await newMember(["receptionist"], "recepcion@example.com");
+    const saved = await organization.saveHandoffContacts(adminCaller, {
+      memberIds: [contact.memberId, receptionist.memberId],
+    });
+    expect(saved).toEqual({ ok: true });
+    fakeAccounts.reset();
+    return contact;
+  }
+
+  it("can neither be deactivated, lose the role, nor stop keeping records, and nothing is saved", async () => {
+    const contact = await lastClinicalContact();
+
+    const results = [
+      await organization.setMemberActive(adminCaller, {
+        memberId: contact.memberId,
+        active: false,
+      }),
+      await organization.updateMember(adminCaller, {
+        memberId: contact.memberId,
+        roles: ["receptionist"],
+      }),
+      await organization.updateMember(adminCaller, {
+        memberId: contact.memberId,
+        practitioner: { ...settings, keepsClinicalRecords: false },
+      }),
+    ];
+
+    expect(results).toEqual([
+      { ok: false, reason: "lastClinicalContact" },
+      { ok: false, reason: "lastClinicalContact" },
+      { ok: false, reason: "lastClinicalContact" },
+    ]);
+    expect(
+      await organization.getStaffMember(adminCaller, { memberId: contact.memberId }),
+    ).toMatchObject({
+      ok: true,
+      member: {
+        roles: ["practitioner"],
+        active: true,
+        practitioner: { displayName: "Juan Gómez", keepsClinicalRecords: true },
+      },
+    });
+    expect(fakeAccounts.calls).toEqual([]);
+  });
+
+  it("lets their other settings change", async () => {
+    const contact = await lastClinicalContact();
+
+    expect(
+      await organization.updateMember(adminCaller, {
+        memberId: contact.memberId,
+        roles: ["practitioner", "receptionist"],
+        practitioner: { ...settings, keepsClinicalRecords: true },
+      }),
+    ).toMatchObject({ ok: true, member: { practitioner: { displayName: "Dra. Gómez" } } });
+  });
+
+  it("can step down while another active contact keeps clinical records", async () => {
+    const contact = await lastClinicalContact();
+    const other = await newMember(["practitioner"], "otro@example.com");
+    await organization.saveHandoffContacts(adminCaller, {
+      memberIds: [contact.memberId, other.memberId],
+    });
+
+    expect(
+      await organization.setMemberActive(adminCaller, {
+        memberId: contact.memberId,
+        active: false,
+      }),
+    ).toEqual({ ok: true });
+    expect(
+      await organization.setMemberActive(adminCaller, { memberId: other.memberId, active: false }),
+    ).toEqual({ ok: false, reason: "lastClinicalContact" });
+  });
+
+  it("guards nobody while the organization has no handoff contacts", async () => {
+    const practitioner = await newMember(["practitioner"]);
+
+    expect(
+      await organization.setMemberActive(adminCaller, {
+        memberId: practitioner.memberId,
+        active: false,
+      }),
+    ).toEqual({ ok: true });
+  });
+});
+
 describe("deactivating a member", () => {
   it("refuses their next call, asks Clerk to ban them, and deletes nothing", async () => {
     const created = await newMember(["receptionist"]);

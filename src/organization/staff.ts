@@ -29,6 +29,7 @@ import type {
 } from "#/organization/accounts.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
+import { isLastClinicalContact } from "#/organization/handoff-contacts.ts";
 import { ensurePractitioner, insertMember, setUpOrganization } from "#/organization/members.ts";
 import type { Acting } from "#/organization/members.ts";
 import { member, organization, practitioner } from "#/organization/schema.ts";
@@ -66,6 +67,7 @@ export interface StaffMember {
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const lastAdmin = { ok: false, reason: "lastAdmin" } as const;
+const lastClinicalContact = { ok: false, reason: "lastClinicalContact" } as const;
 
 function passwordLengthRefusal(password: string): PasswordRefusal | undefined {
   if (password.length < minPasswordLength) {
@@ -291,19 +293,42 @@ export async function updateMember(
   return { ok: true as const, member: findStaffMember(database, memberId)! };
 }
 
-/** Why an update of `target` is refused: settings for a member who is no practitioner, or the last admin's role. */
-function updateRefusal(
-  tx: Writer,
-  target: StaffMember,
-  { roles, practitioner: settings }: { roles?: Role[]; practitioner?: unknown },
-) {
-  if (settings && !target.practitioner && !roles?.includes("practitioner")) {
+interface MemberChange {
+  roles?: Role[];
+  practitioner?: { keepsClinicalRecords: boolean };
+}
+
+/**
+ * Why an update of `target` is refused: settings for a member who is no
+ * practitioner, the last admin's role, or what keeps the last handoff contact
+ * who keeps clinical records one.
+ */
+function updateRefusal(tx: Writer, target: StaffMember, change: MemberChange) {
+  if (change.practitioner && !target.practitioner && !change.roles?.includes("practitioner")) {
     return notFound;
   }
-  if (roles && !roles.includes("admin") && isLastActiveAdmin(tx, target.memberId)) {
+  if (change.roles && !change.roles.includes("admin") && isLastActiveAdmin(tx, target.memberId)) {
     return lastAdmin;
   }
+  if (stopsKeepingRecords(change) && isLastClinicalContact(tx, target.memberId)) {
+    return lastClinicalContact;
+  }
   return undefined;
+}
+
+function stopsKeepingRecords({ roles, practitioner: settings }: MemberChange): boolean {
+  if (roles && !roles.includes("practitioner")) {
+    return true;
+  }
+  return settings?.keepsClinicalRecords === false;
+}
+
+/** Why deactivating `memberId` is refused: the last active admin, or the last clinical handoff contact. */
+function deactivationRefusal(tx: Writer, memberId: string) {
+  if (isLastActiveAdmin(tx, memberId)) {
+    return lastAdmin;
+  }
+  return isLastClinicalContact(tx, memberId) ? lastClinicalContact : undefined;
 }
 
 function saveRoles(tx: Writer, acting: Acting, target: StaffMember, roles: Role[]) {
@@ -370,8 +395,9 @@ export async function setMemberActive(
     if (!target) {
       return notFound;
     }
-    if (!active && isLastActiveAdmin(tx, memberId)) {
-      return lastAdmin;
+    const refusal = active ? undefined : deactivationRefusal(tx, memberId);
+    if (refusal) {
+      return refusal;
     }
     if (target.active !== active) {
       tx.update(member).set({ active }).where(eq(member.userId, memberId)).run();

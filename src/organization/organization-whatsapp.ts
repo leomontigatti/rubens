@@ -1,9 +1,11 @@
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
+import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
 import { saveCommunicationRules } from "#/organization/communication-rules.ts";
+import { listHandoffContacts, replaceHandoffContacts } from "#/organization/handoff-contacts.ts";
 import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
@@ -65,6 +67,17 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   async saveCommunicationRules(caller: Caller, input: CommunicationRulesInput) {
     return this.as(caller, ["admin"], (acting) =>
       saveCommunicationRules(this.database, acting, input),
+    );
+  }
+
+  /** The members an admin picks the handoff contacts from (#170), with who is one now. */
+  handoffContacts(caller: Caller) {
+    return this.as(caller, ["admin"], () => listHandoffContacts(this.database));
+  }
+
+  saveHandoffContacts(caller: Caller, input: HandoffContactsInput) {
+    return this.as(caller, ["admin"], (acting) =>
+      replaceHandoffContacts(this.database, acting, input),
     );
   }
 

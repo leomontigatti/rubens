@@ -1,0 +1,1 @@
+ALTER TABLE `member` ADD `handoff_contact` integer DEFAULT false NOT NULL;

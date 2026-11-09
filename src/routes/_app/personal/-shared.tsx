@@ -15,6 +15,8 @@ const refusalMessages = {
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos a esa persona.",
   lastAdmin: "Tiene que quedar al menos un administrador activo.",
+  lastClinicalContact:
+    "Es el último contacto de derivación que lleva historias clínicas. Antes, elegí otro en la configuración de WhatsApp.",
   emailTaken: "Ya hay una cuenta con ese correo.",
   passwordTooShort:
     "La contraseña inicial debe tener entre 8 y 72 caracteres (una letra con tilde ocupa dos y un emoji, cuatro).",
