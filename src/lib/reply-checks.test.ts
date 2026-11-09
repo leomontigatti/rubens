@@ -44,8 +44,12 @@ describe("the fixed checks on an assistant reply", () => {
     });
   });
 
-  it("keeps the words on each side of an emoji apart", () => {
+  it("keeps the words on each side of an emoji apart, and adds no space before a closing mark", () => {
     expect(checkReply("Listo👍Te esperamos")).toEqual({ ok: true, text: "Listo Te esperamos" });
+    expect(checkReply("(te esperamos😊) «Hola😊» Gracias👍…")).toEqual({
+      ok: true,
+      text: "(te esperamos) «Hola» Gracias…",
+    });
   });
 
   it("keeps symbols that are not emojis: ® ™ © and arrows", () => {
@@ -53,6 +57,10 @@ describe("the fixed checks on an assistant reply", () => {
 
     expect(checkReply(text)).toEqual({ ok: true, text });
     expect(checkReply("Te esperamos ❤️")).toEqual({ ok: true, text: "Te esperamos" });
+    expect(checkReply("Te esperamos ❤ ✔ listo ☀")).toEqual({
+      ok: true,
+      text: "Te esperamos listo",
+    });
   });
 
   it("keeps accented letters and plain punctuation", () => {
