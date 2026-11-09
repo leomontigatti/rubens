@@ -15,7 +15,8 @@ export type TurnResult = {
   calls: ToolCall[];
   knownTimes: Set<string>;
   latencyMs: number;
-  usage: { input: number; output: number };
+  // `input` counts every prompt token, `cachedInput` the share served from cache.
+  usage: { input: number; cachedInput: number; output: number };
   finishReason: string | null;
 };
 
@@ -58,13 +59,14 @@ async function attemptTurn(
   patientMessages: string[] = evaluationCase.patient,
 ): Promise<TurnResult> {
   const object = fakeObject(evaluationCase);
-  const usage = { input: 0, output: 0 };
+  const usage = { input: 0, cachedInput: 0, output: 0 };
   let finishReason: string | null = null;
   // onFinish reports the last model call's usage only, so every call is summed.
   const meter: ChatMiddleware = {
     name: "meter",
     onUsage: (_context, used) => {
       usage.input += used.promptTokens ?? 0;
+      usage.cachedInput += used.promptTokensDetails?.cachedTokens ?? 0;
       usage.output += used.completionTokens ?? 0;
     },
     onFinish: (_context, info) => {
@@ -83,6 +85,7 @@ async function attemptTurn(
     toolExecution: "sequential",
     middleware: [meter],
     modelOptions: modelOptions(candidate),
+    ...(candidate.reasoning ? { reasoning: { level: candidate.reasoning } } : {}),
     stream: false,
   });
 
@@ -98,5 +101,7 @@ async function attemptTurn(
 
 export function costOf(candidate: Candidate, usage: TurnResult["usage"]): number | undefined {
   if (!candidate.rates) return undefined;
-  return (usage.input * candidate.rates.input + usage.output * candidate.rates.output) / 1_000_000;
+  const { input, cachedInput = input, output } = candidate.rates;
+  const uncached = usage.input - usage.cachedInput;
+  return (uncached * input + usage.cachedInput * cachedInput + usage.output * output) / 1_000_000;
 }
