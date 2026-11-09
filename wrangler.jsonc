@@ -8,9 +8,16 @@
   "observability": { "enabled": true },
   // One SQLite-backed object per organization, holding all its data (ADR-0008).
   "durable_objects": {
-    "bindings": [{ "name": "ORGANIZATION", "class_name": "Organization" }],
+    "bindings": [
+      { "name": "ORGANIZATION", "class_name": "Organization" },
+      // The one object that maps each connected WhatsApp number to its organization (ADR-0012).
+      { "name": "WHATSAPP_DIRECTORY", "class_name": "WhatsappDirectory" },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Organization"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Organization"] },
+    { "tag": "v2", "new_sqlite_classes": ["WhatsappDirectory"] },
+  ],
   // Secrets, never here: CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY
   // (`wrangler secret put`). With neither, only the dev server or a build run
   // with DEV_SIGN_IN=true serves; a deployed Worker refuses (src/server/caller.ts).
@@ -29,7 +36,12 @@
   // WhatsApp settings page sends templates with (src/organization/graph-api.ts);
   // without it or the phone number id, the page shows sending disabled and
   // why. It is never logged and never reaches the browser; the dashboard's
-  // temporary token lasts about a day, so prefer a system user's token.
+  // temporary token lasts about a day, so prefer a system user's token. These
+  // names serve WHATSAPP_ORGANIZATION_ID only: a real practice connects its own
+  // number through Embedded Signup, which needs META_APP_ID and
+  // WHATSAPP_SIGNUP_CONFIG_ID (configuration, set the same way) and
+  // ORGANIZATION_ENCRYPTION_KEY, a secret: 32 random bytes in base64, from which
+  // each organization's key is derived to seal its token (src/organization/encryption.ts).
   // In Clerk's dashboard, the session token's claims must carry the user's
   // public metadata as `"org": "{{user.public_metadata.organizationId}}"` and
   // `"roles": "{{user.public_metadata.roles}}"` (ADR-0009).

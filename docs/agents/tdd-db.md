@@ -24,11 +24,16 @@ organization's data: the organization object's methods and the area modules in
 - **Clerk is faked**: `fakeAccounts` (with `vi.mock` of `#/organization/accounts.ts`) stands in
   for Clerk's Backend API; a test asserts on the users and metadata it holds.
 - **Meta is faked at its HTTP boundary**: `fakeMeta`, with `vi.mock` of
-  `#/organization/graph-api.ts` passing its `settings` and `fetch` to the real `whatsappCloudFor`,
-  so a test asserts on the requests Meta received and picks Meta's answer (`answerWith`, or
-  `answerNextWith` for one request), holds a request (`holdNext`) to run another call meanwhile,
-  lists the account's templates from `templatesAtMeta`, and sets or unsets the WhatsApp settings
-  per test.
+  `#/organization/graph-api.ts` passing its `fetch` to the real `whatsappCloudFor` and
+  `metaSignupFor`, its `settings` in place of the Worker's configured test number and its
+  `signupSettings` to Embedded Signup, so a test asserts on the requests Meta received and
+  picks Meta's answer (`answerWith`, or `answerNextWith` for one request), holds a request
+  (`holdNext`) to run another call meanwhile, lists the account's templates from
+  `templatesAtMeta`, sets the number signup connects (`signupNumber`) and a refusal at
+  any of its steps (`signupRefusals`), and sets or unsets the WhatsApp settings per test.
+  The factory reads `fakeMeta` only inside the functions it returns: `vi.mock` is hoisted
+  above the imports. The Worker's WhatsApp directory is real: `whatsappDirectory()`
+  reads what an object wrote, and `freshWhatsappDirectory()` is one of a test's own.
 - **The alarm** runs when a test calls `runDurableObjectAlarm(organization)`. The runtime also
   fires a due alarm by itself, racing the test, so a test that sends from the outbox fakes the
   object's clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`) to a time

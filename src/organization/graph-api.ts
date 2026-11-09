@@ -1,11 +1,16 @@
 // The organization's side of Meta's Graph API: the one small adapter over the
 // WhatsApp Cloud API (ADR-0010). The object calls it; its tests fake Meta at
-// `fetch`. It reads the Worker's settings on each call, and the access token
-// never leaves this module: no result, error or log line carries it.
+// `fetch`. It reads the number's settings on each call, and an access token
+// never leaves this module: no result, error or log line carries it, the
+// business token Embedded Signup returns included.
 
 const graphApiVersion = "v26.0";
 
-/** The Worker's WhatsApp settings (`wrangler.jsonc`). */
+/**
+ * The number the object sends from: the organization's connection
+ * (`src/organization/whatsapp-connection.ts`), or the Worker's configured test
+ * number (`wrangler.jsonc`) for the organization it is configured for.
+ */
 export interface GraphApiSettings {
   /** A secret: the WhatsApp number's access token. */
   WHATSAPP_ACCESS_TOKEN?: string;
@@ -13,11 +18,39 @@ export interface GraphApiSettings {
   WHATSAPP_PHONE_NUMBER_ID?: string;
   /** The WhatsApp Business account the number belongs to, which owns the templates. */
   WHATSAPP_BUSINESS_ACCOUNT_ID?: string;
+  /** The organization's connection is in error: Meta refused its token, or an admin disconnected it. */
+  connectionFailed?: boolean;
 }
 
-export type MissingSetting = "missingAccessToken" | "missingPhoneNumberId";
+/**
+ * The Worker's test number, for the one organization `WHATSAPP_ORGANIZATION_ID`
+ * names: until Embedded Signup it stood in for every organization's number, and
+ * it stays for development.
+ */
+export function configuredWhatsappSettings(
+  env: GraphApiSettings & { WHATSAPP_ORGANIZATION_ID?: string },
+  organizationId: string | null,
+): GraphApiSettings {
+  if (!organizationId || env.WHATSAPP_ORGANIZATION_ID !== organizationId) {
+    return {};
+  }
+  const { WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_BUSINESS_ACCOUNT_ID } = env;
+  return { WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_BUSINESS_ACCOUNT_ID };
+}
 
-export type MissingTemplateSetting = "missingAccessToken" | "missingBusinessAccountId";
+/** Where the client reads its settings, and whom it tells that Meta refused the token. */
+export interface CloudConnection {
+  settings(): GraphApiSettings;
+  /** Meta refused `token`, the access token a call was made with: it expired, or the business revoked it. */
+  tokenRefused(error: MetaError, token: string): void;
+}
+
+export type MissingSetting = "connectionFailed" | "missingAccessToken" | "missingPhoneNumberId";
+
+export type MissingTemplateSetting =
+  | "connectionFailed"
+  | "missingAccessToken"
+  | "missingBusinessAccountId";
 
 export interface TemplateMessage {
   /** E.164. */
@@ -96,11 +129,27 @@ interface TemplateAnswer {
   rejected_reason?: unknown;
 }
 
+/** Meta's codes for a token it no longer accepts: expired or invalidated (190), or a user who blocked the app (0). */
+const refusedTokenCodes = new Set([0, 190]);
+
 export function whatsappCloudFor(
-  settings: GraphApiSettings,
+  connection: CloudConnection,
   fetcher: typeof fetch = (input, init) => fetch(input, init),
 ): WhatsappCloud {
+  /** Meta's answer to a call made with `token`, which is reported when Meta refused it. */
+  async function answerOf(response: Response, token: string) {
+    const answer = await metaAnswerOf(response);
+    if (!answer.ok && refusedTokenCodes.has(answer.metaError.code ?? -1)) {
+      connection.tokenRefused(answer.metaError, token);
+    }
+    return answer;
+  }
+
   function missingSetting(): MissingSetting | null {
+    const settings = connection.settings();
+    if (settings.connectionFailed) {
+      return "connectionFailed";
+    }
     if (!settings.WHATSAPP_ACCESS_TOKEN) {
       return "missingAccessToken";
     }
@@ -111,6 +160,10 @@ export function whatsappCloudFor(
   }
 
   function missingTemplateSetting(): MissingTemplateSetting | null {
+    const settings = connection.settings();
+    if (settings.connectionFailed) {
+      return "connectionFailed";
+    }
     if (!settings.WHATSAPP_ACCESS_TOKEN) {
       return "missingAccessToken";
     }
@@ -122,6 +175,7 @@ export function whatsappCloudFor(
 
   /** The token and the account, for a call `missingTemplateSetting()` has cleared. */
   function templateSettings() {
+    const settings = connection.settings();
     const token = settings.WHATSAPP_ACCESS_TOKEN;
     const accountId = settings.WHATSAPP_BUSINESS_ACCOUNT_ID;
     if (!token || !accountId) {
@@ -133,6 +187,7 @@ export function whatsappCloudFor(
   return {
     missingSetting,
     async sendTemplate({ to, templateName, languageCode, parameters = [] }) {
+      const settings = connection.settings();
       const token = settings.WHATSAPP_ACCESS_TOKEN;
       const phoneNumberId = settings.WHATSAPP_PHONE_NUMBER_ID;
       if (!token || !phoneNumberId) {
@@ -167,7 +222,7 @@ export function whatsappCloudFor(
           }),
         },
       );
-      const answer = await answerOf(response);
+      const answer = await answerOf(response, token);
       if (!answer.ok) {
         return answer;
       }
@@ -203,7 +258,7 @@ export function whatsappCloudFor(
           }),
         },
       );
-      const answer = await answerOf(response);
+      const answer = await answerOf(response, token);
       if (!answer.ok) {
         return answer;
       }
@@ -220,7 +275,7 @@ export function whatsappCloudFor(
         `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(templateId)}?${fields}`,
         { headers: { authorization: `Bearer ${token}` } },
       );
-      const answer = await answerOf(response);
+      const answer = await answerOf(response, token);
       if (!answer.ok) {
         return answer;
       }
@@ -240,7 +295,7 @@ export function whatsappCloudFor(
       const names: string[] = [];
       while (page) {
         const response = await fetcher(page, { headers: { authorization: `Bearer ${token}` } });
-        const answer = await answerOf(response);
+        const answer = await answerOf(response, token);
         if (!answer.ok) {
           return answer;
         }
@@ -260,6 +315,135 @@ export function whatsappCloudFor(
   };
 }
 
+/** The Worker's Embedded Signup settings (`wrangler.jsonc`). */
+export interface SignupSettings {
+  META_APP_ID?: string;
+  /** A secret: it also signs the webhook's calls. */
+  META_APP_SECRET?: string;
+  /** The Facebook Login for Business configuration that runs Embedded Signup v4. */
+  WHATSAPP_SIGNUP_CONFIG_ID?: string;
+}
+
+/** A number Embedded Signup connected, as Meta describes it. */
+export interface ConnectedNumber {
+  /** As Meta formats it, such as `+54 9 351 555-0100`. */
+  displayNumber: string;
+  /** Meta's messaging limit, such as `TIER_250`; `null` when Meta gave none. */
+  messagingLimit: string | null;
+}
+
+type MetaDone = { ok: true } | MetaRefusal;
+
+/** Embedded Signup's calls, each made with the business token its code exchanges for. */
+export interface MetaSignup {
+  /** What the browser launches signup with, or `null` while a setting is missing. */
+  launch(): { appId: string; configurationId: string } | null;
+  /** The business token for the code the signup popup returned. */
+  exchangeCode(code: string): Promise<{ ok: true; token: string } | MetaRefusal>;
+  /** The number, or `null` when the account has no such number. */
+  readNumber(
+    token: string,
+    businessAccountId: string,
+    phoneNumberId: string,
+  ): Promise<{ ok: true; number: ConnectedNumber | null } | MetaRefusal>;
+  /** Registers the number for the Cloud API, with `pin` as its two-step verification PIN. */
+  registerNumber(token: string, phoneNumberId: string, pin: string): Promise<MetaDone>;
+  /** Subscribes underthing's app to the account's webhooks. */
+  subscribeApp(token: string, businessAccountId: string): Promise<MetaDone>;
+}
+
+interface PhoneNumberAnswer {
+  id?: unknown;
+  display_phone_number?: unknown;
+  whatsapp_business_manager_messaging_limit?: unknown;
+}
+
+export function metaSignupFor(
+  settings: SignupSettings,
+  fetcher: typeof fetch = (input, init) => fetch(input, init),
+): MetaSignup {
+  const graph = `https://graph.facebook.com/${graphApiVersion}`;
+  const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
+
+  async function post(url: string, token: string, body: unknown): Promise<MetaDone> {
+    const response = await fetcher(url, {
+      method: "POST",
+      headers: { ...bearer(token), "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const answer = await metaAnswerOf(response);
+    return answer.ok ? { ok: true } : answer;
+  }
+
+  return {
+    launch() {
+      const { META_APP_ID: appId, WHATSAPP_SIGNUP_CONFIG_ID: configurationId } = settings;
+      return appId && configurationId && settings.META_APP_SECRET
+        ? { appId, configurationId }
+        : null;
+    },
+    async exchangeCode(code) {
+      const { META_APP_ID: appId, META_APP_SECRET: appSecret } = settings;
+      if (!appId || !appSecret) {
+        throw new Error("The signup settings are incomplete: check launch() first");
+      }
+      const query = new URLSearchParams({ client_id: appId, client_secret: appSecret, code });
+      const answer = await metaAnswerOf(await fetcher(`${graph}/oauth/access_token?${query}`));
+      if (!answer.ok) {
+        return answer;
+      }
+      const token = (answer.body as { access_token?: unknown }).access_token;
+      if (typeof token !== "string") {
+        throw new Error("The Graph API exchanged the code without returning a token");
+      }
+      return { ok: true, token };
+    },
+    async readNumber(token, businessAccountId, phoneNumberId) {
+      // The account's own list, so a number of another account is not taken on the browser's word.
+      const listed = await metaAnswerOf(
+        await fetcher(
+          `${graph}/${encodeURIComponent(businessAccountId)}/phone_numbers?fields=id,display_phone_number&limit=100`,
+          { headers: bearer(token) },
+        ),
+      );
+      if (!listed.ok) {
+        return listed;
+      }
+      const numbers = (listed.body as { data?: PhoneNumberAnswer[] }).data ?? [];
+      const listedNumber = numbers.find((number) => number.id === phoneNumberId);
+      if (typeof listedNumber?.display_phone_number !== "string") {
+        return { ok: true, number: null };
+      }
+      const read = await metaAnswerOf(
+        await fetcher(
+          `${graph}/${encodeURIComponent(phoneNumberId)}?fields=whatsapp_business_manager_messaging_limit`,
+          { headers: bearer(token) },
+        ),
+      );
+      if (!read.ok) {
+        return read;
+      }
+      const limit = (read.body as PhoneNumberAnswer).whatsapp_business_manager_messaging_limit;
+      return {
+        ok: true,
+        number: {
+          displayNumber: listedNumber.display_phone_number,
+          messagingLimit: typeof limit === "string" ? limit : null,
+        },
+      };
+    },
+    registerNumber(token, phoneNumberId, pin) {
+      return post(`${graph}/${encodeURIComponent(phoneNumberId)}/register`, token, {
+        messaging_product: "whatsapp",
+        pin,
+      });
+    },
+    subscribeApp(token, businessAccountId) {
+      return post(`${graph}/${encodeURIComponent(businessAccountId)}/subscribed_apps`, token, {});
+    },
+  };
+}
+
 /** Meta's link to a list's next page; the token goes only to the Graph API's own host. */
 function nextPage(next: unknown): string | undefined {
   if (typeof next !== "string") {
@@ -272,7 +456,9 @@ function nextPage(next: unknown): string | undefined {
 }
 
 /** Meta's answer: its JSON body when it accepted, or its error; a failure when it is neither. */
-async function answerOf(response: Response): Promise<{ ok: true; body: unknown } | MetaRefusal> {
+async function metaAnswerOf(
+  response: Response,
+): Promise<{ ok: true; body: unknown } | MetaRefusal> {
   const answer: unknown = await response.json().catch(() => null);
   if (response.ok) {
     return { ok: true, body: answer ?? {} };

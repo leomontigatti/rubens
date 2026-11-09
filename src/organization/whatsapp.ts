@@ -6,23 +6,36 @@ import { recordAudit } from "#/organization/audit.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import type { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 import { listWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
 
-// The WhatsApp settings: for now, the organization's templates
+// The WhatsApp settings: the organization's number
+// (`src/organization/whatsapp-connection.ts`), its templates
 // (`src/organization/whatsapp-templates.ts`) and one approved template sent by
-// hand through the Worker's configured number (#153), until the organization
-// connects its own (ADR-0010). Who may call each is the object's concern: an admin.
+// hand (#153). Who may call each is the object's concern: an admin.
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 
 /**
- * What the settings page shows: the setting that keeps a send from being
- * made, if any, and the templates with the setting that keeps them from being
- * submitted.
+ * What the settings page shows: the organization's number and what Embedded
+ * Signup launches with (`null` while the Worker misses a setting), the setting
+ * that keeps a send from being made, if any, and the templates with the
+ * setting that keeps them from being submitted.
  */
-export function getWhatsappSettings(database: Database, cloud: WhatsappCloud) {
+export function getWhatsappSettings(
+  database: Database,
+  cloud: WhatsappCloud,
+  number: WhatsappNumber,
+) {
   const { missing: templateMissing, templates } = listWhatsappTemplates(database, cloud);
-  return { ok: true, missing: cloud.missingSetting(), templateMissing, templates } as const;
+  return {
+    ok: true,
+    connection: number.read(),
+    signup: number.launch(),
+    missing: cloud.missingSetting(),
+    templateMissing,
+    templates,
+  } as const;
 }
 
 /**

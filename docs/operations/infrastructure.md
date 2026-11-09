@@ -63,14 +63,15 @@ Set with `pnpm exec wrangler secret put <NAME>`, which prompts for the value and
 deploys a new version with it. Never in `wrangler.jsonc`, the repository or a `.env`
 that is committed.
 
-| Secret                  | What it does                                                                                                                                                                                                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLERK_SECRET_KEY`      | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`).                                                                                                                           |
-| `CLERK_PUBLISHABLE_KEY` | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                                                                                                                                                    |
-| `SETUP_SECRET`          | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.                                                                                                                               |
-| `META_APP_SECRET`       | Meta's app secret, which signs each call to the WhatsApp webhook (`/api/whatsapp`). Without it the webhook answers 404.                                                                                                                                       |
-| `WHATSAPP_VERIFY_TOKEN` | The verify token entered in Meta's app dashboard when the webhook is set up. Without it the verification answers 404.                                                                                                                                         |
-| `WHATSAPP_ACCESS_TOKEN` | The access token of `WHATSAPP_PHONE_NUMBER_ID`, which the WhatsApp settings page (`/whatsapp`) sends and submits templates with. Without it the page shows both disabled. Use a system user's token: the dashboard's temporary one expires after about a day. |
+| Secret                        | What it does                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLERK_SECRET_KEY`            | Verifies session tokens and calls Clerk's Backend API. Without it a deployed Worker refuses every request (`src/server/caller.ts`).                                                                                                                                                                                                                                                       |
+| `CLERK_PUBLISHABLE_KEY`       | Served to the browser for Clerk's sign-in. Required beside the secret key.                                                                                                                                                                                                                                                                                                                |
+| `SETUP_SECRET`                | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.                                                                                                                                                                                                                                                           |
+| `META_APP_SECRET`             | Meta's app secret, which signs each call to the WhatsApp webhook (`/api/whatsapp`). Without it the webhook answers 404.                                                                                                                                                                                                                                                                   |
+| `WHATSAPP_VERIFY_TOKEN`       | The verify token entered in Meta's app dashboard when the webhook is set up. Without it the verification answers 404.                                                                                                                                                                                                                                                                     |
+| `WHATSAPP_ACCESS_TOKEN`       | The access token of `WHATSAPP_PHONE_NUMBER_ID`, which the WhatsApp settings page (`/whatsapp`) sends and submits templates with. Without it the page shows both disabled. Use a system user's token: the dashboard's temporary one expires after about a day.                                                                                                                             |
+| `ORGANIZATION_ENCRYPTION_KEY` | 32 random bytes in base64 (`openssl rand -base64 32`). Each organization's key is derived from it and the organization's id (`src/organization/encryption.ts`), and seals what the app encrypts: today, the token and PIN of the number connected through Embedded Signup. Without it a number cannot be connected. Never rotate it by replacing it: what it sealed would no longer open. |
 
 Three more names are configuration rather than secrets, set the same way so a deploy
 keeps them: `WHATSAPP_PHONE_NUMBER_ID`, Meta's test number (which the webhook
@@ -80,8 +81,19 @@ to, which the settings page submits templates to and whose template status event
 the webhook stores; and `WHATSAPP_ORGANIZATION_ID`, the organization its messages
 and templates are stored in. Without the account id the settings page shows
 submitting disabled. For the template statuses to arrive, subscribe the webhook to
-`message_template_status_update` beside `messages` in Meta's app dashboard. Embedded
-Signup (#159) replaces these names with each organization's own connection.
+`message_template_status_update` beside `messages` in Meta's app dashboard. These
+names serve that one organization only, for development and App Review; a real
+practice connects its own number through Embedded Signup.
+
+Embedded Signup, from the WhatsApp settings' `Conectar número`, needs two more
+configuration names, set the same way, beside `META_APP_SECRET`: `META_APP_ID`, the
+Meta app's id, and `WHATSAPP_SIGNUP_CONFIG_ID`, the id of the Facebook Login for
+Business configuration created for Embedded Signup v4 in the app dashboard. Without
+either, the settings show connecting disabled. Each practice's business token is
+then stored in its organization's object, sealed with `ORGANIZATION_ENCRYPTION_KEY`,
+and its number is mapped to the organization in the WhatsApp directory
+([ADR-0012](../adr/0012-whatsapp-directory-durable-object.md)). Connecting a real
+practice needs Meta's App Review passed.
 
 `DEV_SIGN_IN` is never set on a deployed Worker: it would let anyone sign in as any
 member.

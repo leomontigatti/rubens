@@ -7,11 +7,12 @@ import type {
   WhatsappStatusUpdate,
   WhatsappTemplateStatusUpdate,
 } from "#/lib/whatsapp-messages.ts";
-import { templateStatusOf } from "#/lib/whatsapp-templates.ts";
+import { templateStatusOf as templateStatus } from "#/lib/whatsapp-templates.ts";
 
 import { organizationObject } from "#/server/caller.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { sameSecret } from "#/server/same-secret.ts";
+import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
 import { isSignedByMeta } from "#/server/whatsapp-signature.ts";
 
 // Meta's WhatsApp webhook (ADR-0010 § The webhook stores, the object's alarm
@@ -79,56 +80,129 @@ function isKnownStatus(status: string): status is WhatsappStatusUpdate["status"]
   return (whatsappMessageStatuses as readonly string[]).includes(status);
 }
 
-/**
- * The template status changes of a call for `accountId`, the one WhatsApp
- * Business account this Worker serves until Embedded Signup (#159). An event
- * with no status underthing stores (such as `FLAGGED`) is skipped; a refresh
- * from the settings reads the status it leads to.
- */
-function templateStatusesFor(
-  payload: z.infer<typeof metaWebhook>,
-  accountId: string | undefined,
-): WhatsappTemplateStatusUpdate[] {
-  return payload.entry
-    .filter((entry) => accountId && entry.id === accountId)
-    .flatMap((entry) => entry.changes)
-    .filter((change) => change.field === "message_template_status_update")
-    .flatMap((change) => {
-      const value = metaTemplateStatus.safeParse(change.value);
-      const status = value.success ? templateStatusOf(value.data.event) : null;
-      if (!value.success || !status) {
-        return [];
-      }
-      const reason = value.data.reason && value.data.reason !== "NONE" ? value.data.reason : null;
-      return [{ metaId: value.data.message_template_id, status, reason }];
-    });
+type MetaPayload = z.infer<typeof metaWebhook>;
+
+/** A `message_template_status_update` change's status, or none for an event underthing does not store (such as `FLAGGED`). */
+function templateStatusOf(value: unknown): WhatsappTemplateStatusUpdate | null {
+  const parsed = metaTemplateStatus.safeParse(value);
+  const status = parsed.success ? templateStatus(parsed.data.event) : null;
+  if (!parsed.success || !status) {
+    return null;
+  }
+  const reason = parsed.data.reason && parsed.data.reason !== "NONE" ? parsed.data.reason : null;
+  return { metaId: parsed.data.message_template_id, status, reason };
 }
 
 /**
- * The `messages` changes of a call for `phoneNumberId`, the one number this
- * Worker serves until Embedded Signup (#159), and how many changes were for
- * another number. A status underthing does not store (such as `deleted`) is skipped.
+ * Finds whose object an event goes to: the Worker's configured test number
+ * and its account first (kept for development), then the WhatsApp directory
+ * (ADR-0012), which maps each connected number and its account. Each id is
+ * looked up once per call.
  */
-function messageEventsFor(
-  payload: z.infer<typeof metaWebhook>,
-  phoneNumberId: string | undefined,
-): { events: Omit<WhatsappEvents, "templateStatuses">; otherNumbers: number } {
-  const changes = payload.entry
-    .flatMap((entry) => entry.changes)
-    .filter((change) => change.field === "messages");
-  const ours = changes
-    .map((change) => change.value)
-    .filter((value) => phoneNumberId && value.metadata?.phone_number_id === phoneNumberId);
-  const statuses = ours.flatMap((value) => value.statuses ?? []);
+function organizationFinder(env: WorkerEnv) {
+  const directory = env.WHATSAPP_DIRECTORY.get(
+    env.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
+  );
+  const configured = env.WHATSAPP_ORGANIZATION_ID;
+  const found = new Map<string, Promise<string | null>>();
+  function memo(key: string, find: () => Promise<string | null>) {
+    let organizationId = found.get(key);
+    if (!organizationId) {
+      organizationId = find();
+      found.set(key, organizationId);
+    }
+    return organizationId;
+  }
   return {
-    events: {
-      messages: ours.flatMap((value) => (value.messages ?? []).map(incomingOf)),
-      statuses: statuses.flatMap(({ id, status, timestamp }) =>
-        isKnownStatus(status) ? [{ whatsappId: id, status, at: timestamp * 1000 }] : [],
+    forNumber: (phoneNumberId: string) =>
+      memo(`number:${phoneNumberId}`, async () =>
+        configured && phoneNumberId === env.WHATSAPP_PHONE_NUMBER_ID
+          ? configured
+          : directory.organizationForNumber(phoneNumberId),
       ),
-    },
-    otherNumbers: changes.length - ours.length,
+    forAccount: (accountId: string) =>
+      memo(`account:${accountId}`, async () =>
+        configured && accountId === env.WHATSAPP_BUSINESS_ACCOUNT_ID
+          ? configured
+          : directory.organizationForAccount(accountId),
+      ),
   };
+}
+
+type MetaChange = z.infer<typeof metaChange>;
+
+/** A `messages` change's messages and statuses. A status underthing does not store (such as `deleted`) is skipped. */
+function messageEventsOf(value: MetaChange["value"]): WhatsappEvents {
+  return {
+    messages: (value.messages ?? []).map(incomingOf),
+    statuses: (value.statuses ?? []).flatMap(({ id, status, timestamp }) =>
+      isKnownStatus(status) ? [{ whatsappId: id, status, at: timestamp * 1000 }] : [],
+    ),
+    templateStatuses: [],
+  };
+}
+
+/**
+ * A change's events, with the lookup of whose they are, run when the call's
+ * changes are read one by one: the number's
+ * organization for a `messages` change, the account's for a template's
+ * status. `null` for a change underthing does not store.
+ */
+function routeOf(
+  find: ReturnType<typeof organizationFinder>,
+  accountId: string | undefined,
+  change: MetaChange,
+) {
+  if (change.field === "messages") {
+    const phoneNumberId = change.value.metadata?.phone_number_id;
+    const lookup = async () => (phoneNumberId ? find.forNumber(phoneNumberId) : null);
+    return { lookup, events: messageEventsOf(change.value) };
+  }
+  const status =
+    change.field === "message_template_status_update" ? templateStatusOf(change.value) : null;
+  if (!status) {
+    return null;
+  }
+  const lookup = async () => (accountId ? find.forAccount(accountId) : null);
+  return { lookup, events: { messages: [], statuses: [], templateStatuses: [status] } };
+}
+
+/** Adds `events` to the organization's events of the call. */
+function addEvents(
+  all: Map<string, WhatsappEvents>,
+  organizationId: string,
+  events: WhatsappEvents,
+) {
+  const ours = all.get(organizationId);
+  if (!ours) {
+    all.set(organizationId, events);
+    return;
+  }
+  ours.messages.push(...events.messages);
+  ours.statuses.push(...events.statuses);
+  ours.templateStatuses.push(...events.templateStatuses);
+}
+
+/**
+ * The events of a call, by the organization each is for, and how many
+ * changes were for a number or an account no organization has.
+ */
+async function eventsByOrganization(payload: MetaPayload, env: WorkerEnv) {
+  const find = organizationFinder(env);
+  const routes = payload.entry.flatMap((entry) =>
+    entry.changes.map((change) => routeOf(find, entry.id, change)),
+  );
+  const events = new Map<string, WhatsappEvents>();
+  let unknown = 0;
+  for (const route of routes) {
+    const organizationId = route && (await route.lookup());
+    if (organizationId) {
+      addEvents(events, organizationId, route.events);
+    } else if (route) {
+      unknown += 1;
+    }
+  }
+  return { events, unknown };
 }
 
 /**
@@ -185,23 +259,30 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
     );
     return new Response(null, { status: 200 });
   }
-  const organizationId = env.WHATSAPP_ORGANIZATION_ID;
-  // A number with no organization to store it in is served by no one.
-  const servedNumber = organizationId ? env.WHATSAPP_PHONE_NUMBER_ID : undefined;
-  const { events: messageEvents, otherNumbers } = messageEventsFor(parsed.data, servedNumber);
-  if (otherNumbers > 0) {
+  const { events, unknown } = await eventsByOrganization(parsed.data, env);
+  if (unknown > 0) {
     console.warn(
-      `[whatsapp-webhook] dropped ${otherNumbers} change(s) for a phone number id no organization has`,
+      `[whatsapp-webhook] dropped ${unknown} change(s) for a number or account no organization has`,
     );
   }
-  const servedAccount = organizationId ? env.WHATSAPP_BUSINESS_ACCOUNT_ID : undefined;
-  const events = {
-    ...messageEvents,
-    templateStatuses: templateStatusesFor(parsed.data, servedAccount),
-  };
-  const count = events.messages.length + events.statuses.length + events.templateStatuses.length;
-  if (organizationId && count > 0) {
-    await organizationObject(env, organizationId).storeWhatsappEvents(events);
+  let stored = true;
+  for (const [organizationId, organizationEvents] of events) {
+    const { messages, statuses, templateStatuses } = organizationEvents;
+    if (messages.length + statuses.length + templateStatuses.length === 0) {
+      continue;
+    }
+    const result = await organizationObject(env, organizationId).storeWhatsappEvents(
+      organizationEvents,
+    );
+    if (!result.ok) {
+      // A mapping to an object no organization was set up in: Meta retries
+      // the call, for up to 7 days, while the mapping is corrected.
+      console.error(`[whatsapp-webhook] organization ${organizationId} is not set up`);
+      stored = false;
+    }
+  }
+  if (!stored) {
+    return new Response(null, { status: 500 });
   }
   return new Response(null, { status: 200 });
 }

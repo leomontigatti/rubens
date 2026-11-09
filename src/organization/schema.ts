@@ -20,6 +20,7 @@ import {
   whatsappMessageDirections,
   whatsappMessageStatuses,
 } from "#/lib/whatsapp-messages.ts";
+import { connectionStates } from "#/lib/whatsapp.ts";
 import { templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
 // The organization object's SQLite schema (ADR-0008). Everything in it belongs
@@ -524,6 +525,36 @@ export const whatsappTemplate = sqliteTable(
     ...timestamps,
   },
   (table) => [uniqueIndex("whatsapp_template_name_version_idx").on(table.name, table.version)],
+);
+
+/**
+ * The organization's WhatsApp number, as Embedded Signup connected it
+ * (`src/organization/whatsapp-connection.ts`): one row at most. The token and
+ * the PIN are sealed with the organization's key (`src/organization/encryption.ts`),
+ * never stored in clear, and dropped when the number is disconnected.
+ */
+export const whatsappConnection = sqliteTable(
+  "whatsapp_connection",
+  {
+    // Always 1: an organization connects one number.
+    id: integer("id").primaryKey(),
+    businessAccountId: text("business_account_id").notNull(),
+    phoneNumberId: text("phone_number_id").notNull(),
+    /** As Meta formats it, such as `+54 9 351 555-0100`. */
+    displayNumber: text("display_number").notNull(),
+    /** Meta's messaging limit, such as `TIER_250`. */
+    messagingLimit: text("messaging_limit"),
+    state: text("state", { enum: connectionStates }).notNull(),
+    /** Meta's words on a failed connection. */
+    failureReason: text("failure_reason"),
+    accessToken: text("access_token"),
+    /** The number's two-step verification PIN, set when it was registered. */
+    pin: text("pin"),
+    /** The admin who connected it. */
+    connectedBy: text("connected_by").notNull(),
+    ...timestamps,
+  },
+  (table) => [check("whatsapp_connection_one_row", sql`${table.id} = 1`)],
 );
 
 /**

@@ -55,7 +55,7 @@ Where this codebase gets hurt, for the correctness brief:
 two appointments that overlap without being an overbooking, or one outside its schedule or inside a closure;
 an instant stored or shown in the wrong time zone, or a local time stored without its office's
 zone; an organization id taken from the request instead of the verified session, or an object
-reached by another organization's name; an object method that skips `#as()` or states a weaker
+reached by another organization's name; an object method that skips `as()` or states a weaker
 requirement than the server function it replaced; an `await` between a check and the write it
 guards inside the object, which lets another event in; a server function reachable by a user who
 should be refused (a receptionist reading a clinical note, a deactivated member, one who must
@@ -81,7 +81,7 @@ measure appointments created per minute per `office`.
   different.
 - **Tenancy.** Every server function reaches data through `withOrganization()`, the organization
   comes from the verified session and never from the request body, and every object method
-  authorizes through `#as()` with its requirement
+  authorizes through `as()` with its requirement
   ([ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organization.md)).
 - **Interface.** A new component, variant or token is checked against what `src/components/`
   already has: lint catches a restyle or an off-theme class, not a second component doing the

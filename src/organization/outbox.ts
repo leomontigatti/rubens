@@ -260,6 +260,10 @@ export async function sendDueMessages(database: Database, cloud: WhatsappCloud) 
     .orderBy(asc(outboxMessage.dueAt))
     .all();
   for (const { id } of due) {
+    // Meta refusing the token mid-batch leaves the rest queued, not failed.
+    if (cloud.missingSetting()) {
+      return;
+    }
     await sendQueued(database, cloud, id);
   }
 }

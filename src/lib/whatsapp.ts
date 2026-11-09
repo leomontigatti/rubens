@@ -23,3 +23,20 @@ export const templateSendSchema = z.object({
 });
 
 export type TemplateSend = z.input<typeof templateSendSchema>;
+
+/**
+ * The organization's WhatsApp number (`src/organization/whatsapp-connection.ts`):
+ * connected, failed (Meta refused its token), or disconnected by an admin.
+ */
+export const connectionStates = ["connected", "failed", "disconnected"] as const;
+
+export type ConnectionState = (typeof connectionStates)[number];
+
+/** What Embedded Signup's popup returns, which the Worker completes the connection with. */
+export const signupCompletionSchema = z.object({
+  code: z.string().trim().min(1).max(2048),
+  phoneNumberId: z.string().regex(/^\d{1,32}$/),
+  businessAccountId: z.string().regex(/^\d{1,32}$/),
+});
+
+export type SignupCompletion = z.input<typeof signupCompletionSchema>;

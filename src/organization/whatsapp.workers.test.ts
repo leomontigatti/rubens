@@ -23,7 +23,9 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   const actual = await original();
   return {
     ...actual,
-    whatsappCloudFor: () => actual.whatsappCloudFor(fakeMeta.settings, fakeMeta.fetch),
+    whatsappCloudFor: (connection) => actual.whatsappCloudFor(connection, fakeMeta.fetch),
+    metaSignupFor: () => actual.metaSignupFor(fakeMeta.signupSettings, fakeMeta.fetch),
+    configuredWhatsappSettings: () => fakeMeta.settings,
   };
 });
 

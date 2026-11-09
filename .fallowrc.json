@@ -9,11 +9,13 @@
   "entry": ["scripts/oxlint-ui-plugin.mjs", "src/organization/test-worker.ts"],
   // A Durable Object's public methods are its RPC interface: the Worker calls
   // them through the binding's stub, which fallow cannot follow. The object
-  // class extends `OrganizationRuntime` (`src/organization/organization-runtime.ts`).
+  // class extends `OrganizationWhatsapp` (`src/organization/organization-whatsapp.ts`),
+  // which extends `OrganizationRuntime` (`src/organization/organization-runtime.ts`).
   // promptfoo calls a provider's `id` and `callApi` (tests/evals/).
   "usedClassMembers": [
     { "extends": "DurableObject", "members": ["*"] },
     { "extends": "OrganizationRuntime", "members": ["*"] },
+    { "extends": "OrganizationWhatsapp", "members": ["*"] },
     { "implements": "ApiProvider", "members": ["id", "callApi"] }
   ],
   // shadcn components are vendored whole (docs/agents/shadcn.md): a screen uses

@@ -5,8 +5,10 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   adminCaller,
+  freshOrganization,
   inStorage,
   setUpTestOrganization,
+  whatsappDirectory,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 import { whatsappMessage, whatsappTemplate } from "#/organization/schema.ts";
@@ -30,13 +32,30 @@ function bindingsFor(organizationId: string): WorkerEnv {
   };
 }
 
+/** The Worker's bindings with no configured test number: each number found in the directory. */
+function directoryBindings(): WorkerEnv {
+  return {
+    ...(env as unknown as WorkerEnv),
+    META_APP_SECRET: appSecret,
+    WHATSAPP_VERIFY_TOKEN: verifyToken,
+  };
+}
+
+/** A number and account of their own, connected to `organizationId` in the directory. */
+async function connectInDirectory(organizationId: string) {
+  const digits = () => String(crypto.getRandomValues(new Uint32Array(1))[0]);
+  const number = { phoneNumberId: digits(), businessAccountId: digits() };
+  await whatsappDirectory().claim({ ...number, organizationId });
+  return number;
+}
+
 /** A `messages` webhook call as Meta sends it, for the number `toPhoneNumberId`. */
-function metaPayload(toPhoneNumberId = phoneNumberId) {
+function metaPayload(toPhoneNumberId = phoneNumberId, accountId = businessAccountId) {
   return {
     object: "whatsapp_business_account",
     entry: [
       {
-        id: businessAccountId,
+        id: accountId,
         changes: [
           {
             field: "messages",
@@ -246,6 +265,62 @@ describe("Meta's WhatsApp webhook", () => {
     });
 
     expect([call.status, check.status]).toEqual([404, 404]);
+    expect(await storedMessages(organization)).toEqual([]);
+  });
+
+  it("stores a call's messages in the organization the directory maps the number to", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const number = await connectInDirectory(organizationId);
+    const body = JSON.stringify(metaPayload(number.phoneNumberId, number.businessAccountId));
+
+    const response = await handleWhatsappWebhook(post(body), directoryBindings());
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toMatchObject([
+      { text: "Hola, quería confirmar el turno" },
+    ]);
+  });
+
+  it("stores a template status event in the organization the directory maps the account to", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const number = await connectInDirectory(organizationId);
+    await addPendingTemplate(organization, "594425479261597");
+    const body = JSON.stringify(templateStatusPayload(594425479261597, number.businessAccountId));
+
+    await handleWhatsappWebhook(post(body), directoryBindings());
+
+    expect(await storedTemplateStatuses(organization)).toMatchObject([{ status: "rejected" }]);
+  });
+
+  it("stores each change of one call in its own number's organization, and nowhere else", async () => {
+    const first = await setUpTestOrganization();
+    const second = await setUpTestOrganization();
+    const firstNumber = await connectInDirectory(first.organizationId);
+    const secondNumber = await connectInDirectory(second.organizationId);
+    const forFirst = metaPayload(firstNumber.phoneNumberId, firstNumber.businessAccountId);
+    const forSecond = metaPayload(secondNumber.phoneNumberId, secondNumber.businessAccountId);
+    forSecond.entry[0]!.changes[0]!.value.messages[0]!.id = "wamid.second";
+    forSecond.entry[0]!.changes[0]!.value.messages[0]!.text.body = "Soy del segundo";
+    const body = JSON.stringify({ ...forFirst, entry: [...forFirst.entry, ...forSecond.entry] });
+
+    await handleWhatsappWebhook(post(body), directoryBindings());
+
+    expect(await storedMessages(first.organization)).toMatchObject([
+      { text: "Hola, quería confirmar el turno" },
+    ]);
+    expect(await storedMessages(second.organization)).toEqual([
+      { whatsappId: "wamid.second", text: "Soy del segundo" },
+    ]);
+  });
+
+  it("answers 500, so Meta retries, when the number maps to an organization never set up", async () => {
+    const { organizationId, organization } = freshOrganization();
+    const number = await connectInDirectory(organizationId);
+    const body = JSON.stringify(metaPayload(number.phoneNumberId, number.businessAccountId));
+
+    const response = await handleWhatsappWebhook(post(body), directoryBindings());
+
+    expect(response.status).toBe(500);
     expect(await storedMessages(organization)).toEqual([]);
   });
 });

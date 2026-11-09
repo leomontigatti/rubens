@@ -24,13 +24,17 @@ src/
 │   └── ui/            shadcn/ui components (see shadcn.md); add with the CLI, edit by hand
 ├── hooks/             shared React hooks; shadcn's `use-mobile.ts`
 ├── organization/      the organization's Durable Object (ADR-0008): `organization.ts` (the class, one
-│   │                  RPC method per operation) over `organization-runtime.ts` (its storage,
-│   │                  services and alarm), one module per area (`members.ts`, `audit.ts`, …),
+│   │                  RPC method per operation) over `organization-whatsapp.ts` (its WhatsApp
+│   │                  methods) over `organization-runtime.ts` (its storage, services, alarm and
+│   │                  `as()`, the authorization every method goes through), one module per area
+│   │                  (`members.ts`, `audit.ts`, …), `encryption.ts` (the organization's key),
 │   │                  `schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
 ├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
 ├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules
 ├── server/            server-only modules that are not routes: `*.functions.ts` (server functions),
+│                      `whatsapp-directory.ts` (the one object shared across organizations,
+│                      mapping each WhatsApp number to its organization, ADR-0012),
 │                      `caller.ts` (the request-to-caller step: Clerk's token or the dev sign-in),
 │                      `with-organization.ts` (the step in front of each server function)
 ├── router.tsx         the router factory; `routeTree.gen.ts` is generated and committed
