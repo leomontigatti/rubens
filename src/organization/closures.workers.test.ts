@@ -76,7 +76,7 @@ describe("creating a closure", () => {
         userId: adminCaller.userId,
         patientId: null,
         before: null,
-        after: { officeId: madrid.id, ...madridHoliday },
+        after: { officeId: madrid.id, ...madridHoliday, tellPatients: true },
       },
     ]);
   });

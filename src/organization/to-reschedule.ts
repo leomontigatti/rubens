@@ -1,4 +1,5 @@
 import { and, asc, eq, gt, gte, inArray, isNull, or } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 import { actsForEveryone } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
@@ -191,13 +192,13 @@ interface PractitionerWorkingTime {
 }
 
 /**
- * The future booked or confirmed appointments of `practitionerIds`, with only
- * what `reasonFor` reads: the menu's count. The practitioner and start bound
- * the read by their index.
+ * The future booked or confirmed appointments `which` picks, with only what
+ * `reasonFor` reads: the menu's count, and what a change sent to the list.
  */
-function upcomingForCount(writer: Writer, practitionerIds: string[]) {
+function upcomingWhere(writer: Writer, which: SQL | undefined) {
   return writer
     .select({
+      id: appointment.id,
       practitionerId: appointment.practitionerId,
       startsAt: appointment.startsAt,
       endsAt: appointment.endsAt,
@@ -216,13 +217,43 @@ function upcomingForCount(writer: Writer, practitionerIds: string[]) {
     .innerJoin(office, eq(office.id, room.officeId))
     .where(
       and(
-        inArray(appointment.practitionerId, practitionerIds),
+        which,
         gt(appointment.startsAt, Date.now()),
         inArray(appointment.status, ["booked", "confirmed"]),
       ),
     )
     .all()
     .map(({ startsAt, endsAt, ...row }) => ({ ...row, during: asRange({ startsAt, endsAt }) }));
+}
+
+/** The appointments `which` picks that are on the list, everyone's. */
+function listedAmong(writer: Writer, which: SQL | undefined) {
+  const rows = upcomingWhere(writer, which);
+  if (rows.length === 0) {
+    return [];
+  }
+  const workingTimeFor = workingTimeOf(
+    writer,
+    [...new Set(rows.map((row) => row.practitionerId))],
+    { start: new Date(), end: new Date(Math.max(...rows.map((row) => +row.during.end))) },
+  );
+  return rows.filter((row) => reasonFor(row, workingTimeFor(row.practitionerId).outside) !== null);
+}
+
+/**
+ * The ids of the appointments on the list, of `practitionerIds` or of
+ * everyone's when `null`: what a change to working time is read against,
+ * before and after it.
+ */
+export function listedIds(writer: Writer, practitionerIds: string[] | null): Set<string> {
+  const which =
+    practitionerIds === null ? undefined : inArray(appointment.practitionerId, practitionerIds);
+  return new Set(listedAmong(writer, which).map((row) => row.id));
+}
+
+/** Whether the appointment `appointmentId` is on the list now. */
+export function isToReschedule(writer: Writer, appointmentId: string): boolean {
+  return listedAmong(writer, eq(appointment.id, appointmentId)).length > 0;
 }
 
 type OutsideCheck = PractitionerWorkingTime["outside"];
@@ -322,18 +353,7 @@ export function countToReschedule(writer: Writer, acting: Acting): { ok: true; c
   if (practitionerIds.length === 0) {
     return { ok: true, count: 0 };
   }
-  const rows = upcomingForCount(writer, practitionerIds);
-  if (rows.length === 0) {
-    return { ok: true, count: 0 };
-  }
-  const workingTimeFor = workingTimeOf(
-    writer,
-    [...new Set(rows.map((row) => row.practitionerId))],
-    { start: new Date(), end: new Date(Math.max(...rows.map((row) => +row.during.end))) },
-  );
-  const listed = rows.filter(
-    (row) => reasonFor(row, workingTimeFor(row.practitionerId).outside) !== null,
-  );
+  const listed = listedAmong(writer, inArray(appointment.practitionerId, practitionerIds));
   return { ok: true, count: listed.length };
 }
 

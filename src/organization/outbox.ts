@@ -27,6 +27,7 @@ import {
   room,
 } from "#/organization/schema.ts";
 import { outboxMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
+import { isToReschedule } from "#/organization/to-reschedule.ts";
 import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
 
 // The outbox (`src/lib/outbox.ts`): messages to patients, queued in the
@@ -247,6 +248,7 @@ function readQueued(database: Database, id: string) {
       hoursBefore: outboxMessage.hoursBefore,
       attempts: outboxMessage.attempts,
       status: appointment.status,
+      cancelledBy: appointment.cancelledBy,
       startsAt: appointment.startsAt,
       careInstructions: medicalService.careInstructions,
       whatsappConsent: patient.whatsappConsent,
@@ -300,20 +302,38 @@ function overtaken(database: Database, queued: Queued, now: number, sendable: Ou
 
 /**
  * Whether the appointment of `queued` is still what its message is about at
- * `now`: one that has not started or been cancelled, or for the care
+ * `now`: one that has not started or been cancelled; for the care
  * instructions and the follow-up, one still attended, however long ago
- * (docs/domain/messages.md § When Meta limits the number).
+ * (docs/domain/messages.md § When Meta limits the number); for
+ * `turno_cancelado`, one the business cancelled that has not started. A
+ * reminder goes only while the appointment is off the "to reschedule" list,
+ * which would remind the patient of a time nobody works; `turno_a_reprogramar`
+ * only while it is on it.
  */
-function stillAbout(queued: Queued, now: number) {
+function stillAbout(database: Database, queued: Queued, now: number) {
   if ((aftercareKinds as readonly OutboxKind[]).includes(queued.kind)) {
     return queued.status === "attended";
   }
-  return upcomingStatuses.includes(queued.status) && queued.startsAt > now;
+  if (queued.kind === "appointmentCancelled") {
+    return (
+      queued.status === "cancelled" && queued.cancelledBy === "business" && queued.startsAt > now
+    );
+  }
+  if (!upcomingStatuses.includes(queued.status) || queued.startsAt <= now) {
+    return false;
+  }
+  if (queued.kind === "appointmentToReschedule") {
+    return isToReschedule(database, queued.appointmentId);
+  }
+  if ((reminderKinds as readonly OutboxKind[]).includes(queued.kind)) {
+    return !isToReschedule(database, queued.appointmentId);
+  }
+  return true;
 }
 
 /** Why `queued` may not go now, if anything. */
 function dropReason(database: Database, queued: Queued, now: number, sendable: OutboxKind[]) {
-  if (!stillAbout(queued, now)) {
+  if (!stillAbout(database, queued, now)) {
     return "appointmentChanged" as const;
   }
   if (!queued.whatsappConsent) {

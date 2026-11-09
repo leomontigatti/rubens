@@ -37,6 +37,7 @@ function EditClosure() {
       title="Editar cierre"
       description={closurePlace(closure)}
       initial={closure.entry}
+      tellPatients={closure.tellPatients}
       submitLabel="Guardar"
       owner={officeField(closureOfficeOptions(result.offices, closure), closure.officeId)}
       messages={refusalMessages}
@@ -50,6 +51,7 @@ function EditClosure() {
           closureId,
           officeId: readOfficeId(values.owner),
           entry: readRangeEntry(values),
+          tellPatients: values.tellPatients,
         });
         return input.success ? editClosure({ data: input.data }) : input.error;
       }}

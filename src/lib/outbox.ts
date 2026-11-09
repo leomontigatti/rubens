@@ -4,7 +4,8 @@ import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 // that changes the appointment (docs/domain/messages.md § To staff), and the
 // organization's alarm sends what is due (ADR-0008 § Jobs are Durable Object
 // alarms). It holds the booking confirmation, the reminders, the care
-// instructions and the follow-up.
+// instructions, the follow-up, and the messages for an appointment the
+// organization changed.
 
 /** What a queued message is, each sent as its template. */
 export const outboxKinds = [
@@ -13,6 +14,9 @@ export const outboxKinds = [
   "reminderWithoutConfirmation",
   "careInstructions",
   "followUp",
+  "appointmentMoved",
+  "appointmentCancelled",
+  "appointmentToReschedule",
 ] as const;
 
 export type OutboxKind = (typeof outboxKinds)[number];
@@ -23,6 +27,9 @@ export const outboxTemplates = {
   reminderWithoutConfirmation: "recordatorio_turno_sin_confirmacion",
   careInstructions: "indicaciones",
   followUp: "seguimiento",
+  appointmentMoved: "turno_movido",
+  appointmentCancelled: "turno_cancelado",
+  appointmentToReschedule: "turno_a_reprogramar",
 } as const satisfies Record<OutboxKind, TemplateName>;
 
 /** The kinds that are a reminder: one asks the patient to confirm, the other does not. */
@@ -35,6 +42,16 @@ export const reminderKinds = [
 export const aftercareKinds = [
   "careInstructions",
   "followUp",
+] as const satisfies readonly OutboxKind[];
+
+/**
+ * The kinds that tell the patient the organization changed their appointment:
+ * only the one for its latest change goes.
+ */
+export const changeKinds = [
+  "appointmentMoved",
+  "appointmentCancelled",
+  "appointmentToReschedule",
 ] as const satisfies readonly OutboxKind[];
 
 /** When a reminder set `hoursBefore` an appointment starting at `startsAt` goes. */

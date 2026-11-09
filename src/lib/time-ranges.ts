@@ -87,15 +87,33 @@ export function rangeEntryLabel(entry: RangeEntry): string {
 
 const id = z.uuid();
 
-/** Time off for a practitioner, shared by the form and the services. */
-export const timeOffInputSchema = z.object({ practitionerId: id, entry: rangeEntrySchema });
+/**
+ * Whether the patients a time off or a closure sends to the "to reschedule"
+ * list are told by WhatsApp (docs/domain/scheduling.md § Time off and closures).
+ */
+const tellPatients = z.boolean().default(true);
 
-export const timeOffUpdateSchema = z.object({ timeOffId: id, entry: rangeEntrySchema });
+/** Time off for a practitioner, shared by the form and the services. */
+export const timeOffInputSchema = z.object({
+  practitionerId: id,
+  entry: rangeEntrySchema,
+  tellPatients,
+});
+
+export const timeOffUpdateSchema = z.object({
+  timeOffId: id,
+  entry: rangeEntrySchema,
+  tellPatients,
+});
 
 export const timeOffDeleteSchema = z.object({ timeOffId: id });
 
 /** A closure of one office, or of the whole organization when `officeId` is null. */
-export const closureInputSchema = z.object({ officeId: id.nullable(), entry: rangeEntrySchema });
+export const closureInputSchema = z.object({
+  officeId: id.nullable(),
+  entry: rangeEntrySchema,
+  tellPatients,
+});
 
 export const closureUpdateSchema = closureInputSchema.extend({ closureId: id });
 

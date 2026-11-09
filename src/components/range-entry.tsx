@@ -14,7 +14,8 @@ import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 
 // The pieces the time-off and closure screens share: a form whose fields say
-// when (whole days or a range of hours), and the delete on its edit page.
+// when (whole days or a range of hours) and whether the patients it sends to
+// the "to reschedule" list are told, and the delete on its edit page.
 
 type Kind = RangeEntry["kind"];
 
@@ -28,6 +29,7 @@ interface EntryValues {
   lastDate: string;
   start: string;
   end: string;
+  tellPatients: boolean;
 }
 
 /** The entry the fields hold, unchecked: the schema decides whether it is one. */
@@ -62,8 +64,12 @@ const entryMessage = (issue: z.core.$ZodIssue) =>
 const entryFieldNames = { practitionerId: "owner", officeId: "owner" };
 
 /** What the form opens with: the entry's fields, and none for the other kind. */
-function entryValues(initial: RangeEntry | null, owner: string): EntryValues {
-  const empty = { owner, firstDate: "", lastDate: "", start: "", end: "" };
+function entryValues(
+  initial: RangeEntry | null,
+  owner: string,
+  tellPatients: boolean,
+): EntryValues {
+  const empty = { owner, firstDate: "", lastDate: "", start: "", end: "", tellPatients };
   return initial ? { ...empty, ...initial } : { ...empty, kind: "days" };
 }
 
@@ -83,6 +89,8 @@ export function EntryForm<R extends string>(props: {
   title: string;
   description?: string;
   initial: RangeEntry | null;
+  /** Whether the patients are told, as saved; a new entry tells them. */
+  tellPatients?: boolean;
   owner?: { label: string; initial: string; required?: boolean; options: ReactNode };
   submitLabel: string;
   creates?: boolean;
@@ -96,7 +104,7 @@ export function EntryForm<R extends string>(props: {
   const action = useFormAction(props.messages);
   const record = useDeletion(props.deletion, props.messages, () => page.leave());
   const form = useAppForm({
-    defaultValues: entryValues(props.initial, owner?.initial ?? ""),
+    defaultValues: entryValues(props.initial, owner?.initial ?? "", props.tellPatients ?? true),
     onSubmit: async ({ value }) => {
       const submitted = props.onSubmit(value);
       if (!(submitted instanceof Promise)) {
@@ -153,6 +161,9 @@ export function EntryForm<R extends string>(props: {
           }}
         </form.Subscribe>
       </div>
+      <form.AppField name="tellPatients">
+        {(field) => <field.CheckboxField label="Avisar por WhatsApp a los pacientes afectados" />}
+      </form.AppField>
     </ActionFormPage>
   );
 }

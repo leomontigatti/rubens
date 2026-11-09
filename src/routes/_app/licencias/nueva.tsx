@@ -36,6 +36,7 @@ function NewTimeOff() {
         const input = timeOffInputSchema.safeParse({
           practitionerId: values.owner,
           entry: readRangeEntry(values),
+          tellPatients: values.tellPatients,
         });
         return input.success ? addTimeOff({ data: input.data }) : input.error;
       }}

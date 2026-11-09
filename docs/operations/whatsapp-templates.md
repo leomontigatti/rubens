@@ -98,8 +98,9 @@ the second release, a reply asking for another time is handed off.
 
 ### `turno_a_reprogramar`
 
-Sent when time off or a closure leaves the appointment outside working time,
-unless whoever entered it chose not to tell the patients.
+Sent when time off, a closure or a schedule change leaves the appointment outside
+working time, unless whoever entered the time off or the closure chose not to tell
+the patients.
 
 > Hola {{paciente}}, tuvimos que mover tu turno del {{fecha}} con {{profesional}}. Respondé este mensaje y buscamos otro horario. [firma]
 

@@ -38,6 +38,7 @@ function NewClosure() {
         const input = closureInputSchema.safeParse({
           officeId: readOfficeId(values.owner),
           entry: readRangeEntry(values),
+          tellPatients: values.tellPatients,
         });
         return input.success ? addClosure({ data: input.data }) : input.error;
       }}

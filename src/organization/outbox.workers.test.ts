@@ -477,7 +477,7 @@ function setReminders(reminders: { hoursBefore: number; asksToConfirm: boolean }
 /** The queued reminders, latest first, as hours before the appointment and when each is due. */
 async function queuedReminders() {
   return (await outbox())
-    .filter((row) => row.state === "queued")
+    .filter((row) => row.state === "queued" && row.hoursBefore !== null)
     .map(({ kind, hoursBefore, dueAt }) => ({ kind, hoursBefore, dueAt }))
     .sort((a, b) => b.hoursBefore! - a.hoursBefore!);
 }

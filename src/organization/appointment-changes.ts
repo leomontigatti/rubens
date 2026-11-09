@@ -32,6 +32,7 @@ import {
 } from "#/organization/appointments.ts";
 import type { DayAppointment } from "#/organization/appointments.ts";
 import { recordAudit } from "#/organization/audit.ts";
+import { queueChangeMessage } from "#/organization/change-messages.ts";
 import { asRange, meets } from "#/organization/availability.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -130,6 +131,11 @@ function findPlaced(writer: Writer, appointmentId: string) {
 }
 
 type Placed = NonNullable<ReturnType<typeof findPlaced>>;
+
+function officeOf(writer: Writer, roomId: string) {
+  return writer.select({ officeId: room.officeId }).from(room).where(eq(room.id, roomId)).get()
+    ?.officeId;
+}
 
 /** The appointment, when `acting` sees it in full; another practitioner's is not found. */
 export function getAppointment(
@@ -288,6 +294,9 @@ export function rescheduleAppointment(
     const values = { startsAt: +span.start, endsAt: +span.end, roomId: where.roomId, overbooking };
     tx.update(appointment).set(values).where(eq(appointment.id, placed.id)).run();
     queueReminders(tx, placed.id);
+    if (+span.start !== +placed.during.start || officeOf(tx, where.roomId) !== placed.officeId) {
+      queueChangeMessage(tx, placed.id, "appointmentMoved");
+    }
     const changed = changedFields(
       { ...placed.during, roomId: placed.roomId, overbooking: placed.overbooking },
       { ...span, roomId: where.roomId, overbooking },
@@ -363,6 +372,9 @@ function setStatus(
     .where(eq(appointment.id, placed.id))
     .run();
   requeueOnStatus(writer, placed, next.status);
+  if (next.status === "cancelled" && next.cancelledBy === "business") {
+    queueChangeMessage(writer, placed.id, "appointmentCancelled");
+  }
   const { status, cancelledBy, cancellationReason } = placed;
   const changed = changedFields(
     { status, cancelledBy, cancellationReason },

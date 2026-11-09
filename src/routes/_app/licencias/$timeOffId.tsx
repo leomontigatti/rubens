@@ -32,6 +32,7 @@ function EditTimeOff() {
       title="Editar licencia"
       description={item.practitionerName}
       initial={item.entry}
+      tellPatients={item.tellPatients}
       submitLabel="Guardar"
       messages={refusalMessages}
       deletion={{
@@ -40,7 +41,11 @@ function EditTimeOff() {
         onDelete: () => removeTimeOff({ data: { timeOffId } }),
       }}
       onSubmit={(values) => {
-        const input = timeOffUpdateSchema.safeParse({ timeOffId, entry: readRangeEntry(values) });
+        const input = timeOffUpdateSchema.safeParse({
+          timeOffId,
+          entry: readRangeEntry(values),
+          tellPatients: values.tellPatients,
+        });
         return input.success ? editTimeOff({ data: input.data }) : input.error;
       }}
     />

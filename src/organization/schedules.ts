@@ -28,6 +28,7 @@ import type {
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
+import { settlingToReschedule } from "#/organization/change-messages.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
@@ -418,7 +419,12 @@ export function createSchedule(
     if (!checked.ok) {
       return checked;
     }
-    return { ok: true as const, schedule: insertSchedule(tx, acting, candidate) };
+    return {
+      ok: true as const,
+      schedule: settlingToReschedule(tx, [owner.id], true, () =>
+        insertSchedule(tx, acting, candidate),
+      ),
+    };
   });
 }
 
@@ -480,12 +486,14 @@ export function changeSchedule(
       return checked;
     }
     const started = found.firstDate <= editable.today && found.firstDate < from;
-    if (!started) {
-      updateSchedule(tx, acting, found, candidate);
-      return { ok: true as const, schedule: { id: found.id } };
-    }
-    updateSchedule(tx, acting, found, { lastDate: shiftDate(from, -1) });
-    return { ok: true as const, schedule: insertSchedule(tx, acting, candidate) };
+    return settlingToReschedule(tx, [owner.id], true, () => {
+      if (!started) {
+        updateSchedule(tx, acting, found, candidate);
+        return { ok: true as const, schedule: { id: found.id } };
+      }
+      updateSchedule(tx, acting, found, { lastDate: shiftDate(from, -1) });
+      return { ok: true as const, schedule: insertSchedule(tx, acting, candidate) };
+    });
   });
 }
 
@@ -516,7 +524,9 @@ export function endSchedule(
     if (lastDate < found.firstDate || extends_) {
       return invalidInput;
     }
-    updateSchedule(tx, acting, found, { lastDate });
+    settlingToReschedule(tx, [found.practitionerId], true, () =>
+      updateSchedule(tx, acting, found, { lastDate }),
+    );
     return { ok: true as const };
   });
 }
@@ -540,7 +550,9 @@ export function deleteSchedule(
     if (found.firstDate <= editable.today) {
       return { ok: false as const, reason: "alreadyStarted" as const };
     }
-    tx.delete(schedule).where(eq(schedule.id, found.id)).run();
+    settlingToReschedule(tx, [found.practitionerId], true, () =>
+      tx.delete(schedule).where(eq(schedule.id, found.id)).run(),
+    );
     recordAudit(tx, acting.userId, {
       action: "delete",
       entityType: "schedule",
