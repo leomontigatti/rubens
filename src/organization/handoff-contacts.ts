@@ -26,7 +26,7 @@ export interface HandoffContactCandidate {
 
 // Whether a member row keeps clinical records: the practitioner role, and the
 // setting on the practitioner row the role keeps after it is removed.
-const keepsRecords = sql<boolean>`(exists (select 1 from json_each(${member.roles}) where value = 'practitioner') and coalesce(${practitioner.keepsClinicalRecords}, 0) = 1)`;
+export const keepsRecords = sql<boolean>`(exists (select 1 from json_each(${member.roles}) where value = 'practitioner') and coalesce(${practitioner.keepsClinicalRecords}, 0) = 1)`;
 
 /** The active members an admin picks from, by name, with who is a contact now. */
 export function listHandoffContacts(database: Database) {

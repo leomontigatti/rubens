@@ -1,9 +1,11 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, max, min, or } from "drizzle-orm";
+import type * as z from "zod";
 
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
   assistantSystemPrompt,
   assistantToolSchemas,
+  handoffReply,
   newMessagesMark,
   withoutMark,
   withSignOff,
@@ -14,7 +16,14 @@ import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
 
 import type { AssistantModel, AssistantTool, TurnMessage } from "#/organization/assistant-model.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
-import type { Database } from "#/organization/database.ts";
+import type { Database, Writer } from "#/organization/database.ts";
+import {
+  addsToOpen,
+  answeredMessage,
+  openHandoff,
+  openHandoffsOf,
+} from "#/organization/handoffs.ts";
+import type { HandoffWanted } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { upcomingStatuses } from "#/organization/outbox.ts";
 import {
@@ -101,17 +110,26 @@ function whenOf(upcoming: Upcoming) {
   };
 }
 
-type Judgement = { clinical: boolean; emergency: boolean };
+type Judgement = z.output<typeof assistantToolSchemas.judge_messages.inputSchema>;
+
+type HandOffCall = z.output<typeof assistantToolSchemas.hand_off.inputSchema>;
+
+/** What the model recorded in a turn through its tools. */
+interface Recorded {
+  judgement: Judgement | null;
+  handOff: HandOffCall | null;
+}
 
 /**
  * The turn's tools, run with the permissions of the conversation's number:
  * they see only the patients it is the message contact of, and their
- * upcoming appointments. The judgement the model records lands in `judged`.
+ * upcoming appointments. The judgement and the handoff the model records
+ * land in `recorded`.
  */
 function turnTools(
   patients: { id: string; firstName: string }[],
   appointments: Upcoming[],
-  judged: { judgement: Judgement | null },
+  recorded: Recorded,
 ): AssistantTool[] {
   return [
     {
@@ -159,7 +177,18 @@ function turnTools(
         if (!parsed.success) {
           return { ok: false, reason: "invalidInput" };
         }
-        judged.judgement = parsed.data;
+        recorded.judgement = parsed.data;
+        return { ok: true };
+      },
+    },
+    {
+      name: "hand_off",
+      run: (args) => {
+        const parsed = assistantToolSchemas.hand_off.inputSchema.safeParse(args);
+        if (!parsed.success) {
+          return { ok: false, reason: "invalidInput" };
+        }
+        recorded.handOff = parsed.data;
         return { ok: true };
       },
     },
@@ -186,6 +215,7 @@ function patientsOf(database: Database, phone: string) {
 
 const messageColumns = {
   id: whatsappMessage.id,
+  sentAt: whatsappMessage.sentAt,
   direction: whatsappMessage.direction,
   type: whatsappMessage.type,
   text: whatsappMessage.text,
@@ -197,8 +227,8 @@ const messageColumns = {
  * others as the conversation so far.
  */
 function readConversation(database: Database, conversationId: string) {
-  const { phone } = database
-    .select({ phone: conversation.phone })
+  const { phone, misunderstandings } = database
+    .select({ phone: conversation.phone, misunderstandings: conversation.misunderstandings })
     .from(conversation)
     .where(eq(conversation.id, conversationId))
     .get()!;
@@ -226,18 +256,28 @@ function readConversation(database: Database, conversationId: string) {
     .limit(historyLength)
     .all()
     .reverse();
-  const lastIncoming = database
-    .select({ at: max(whatsappMessage.sentAt) })
-    .from(whatsappMessage)
-    .where(and(inConversation, eq(whatsappMessage.direction, "incoming")))
-    .get();
   return {
     phone,
+    misunderstandings,
     patients: patientsOf(database, phone),
     unjudged,
     history,
-    lastIncomingAt: lastIncoming?.at ?? null,
   };
+}
+
+/** When the patient last wrote in `conversationId`, which opens its window. */
+function lastIncomingAt(database: Database, conversationId: string) {
+  const last = database
+    .select({ at: max(whatsappMessage.sentAt) })
+    .from(whatsappMessage)
+    .where(
+      and(
+        eq(whatsappMessage.conversationId, conversationId),
+        eq(whatsappMessage.direction, "incoming"),
+      ),
+    )
+    .get();
+  return last?.at ?? null;
 }
 
 type Read = ReturnType<typeof readConversation>;
@@ -280,9 +320,8 @@ function promptSetting(database: Database) {
 }
 
 /**
- * Runs the model on the conversation and stores its judgement on the
- * messages `unjudged`: its reply, or `null` when it judged nothing or could
- * not run. A message that arrived meanwhile is left for the next turn.
+ * Runs the model on the conversation: its reply, judgement and hand_off, or
+ * `null` when it judged nothing or could not run.
  */
 async function judgeTurn(
   database: Database,
@@ -290,7 +329,7 @@ async function judgeTurn(
   turn: { conversationId: string; read: Read; appointments: Upcoming[] },
 ) {
   const rules = currentCommunicationRules(database);
-  const judged: { judgement: Judgement | null } = { judgement: null };
+  const recorded: Recorded = { judgement: null, handOff: null };
   const system = assistantSystemPrompt({
     ...promptSetting(database),
     now: new Date(),
@@ -302,37 +341,35 @@ async function judgeTurn(
       conversationId: turn.conversationId,
       system,
       messages: asTurnMessages(turn.read),
-      tools: turnTools(turn.read.patients, turn.appointments, judged),
+      tools: turnTools(turn.read.patients, turn.appointments, recorded),
     })
     // The model is unavailable: the messages wait, unjudged, for #179's retry.
     .catch(() => null);
-  const { judgement } = judged;
+  const { judgement } = recorded;
   if (!ran || !judgement) {
     return null;
   }
-  database
-    .update(whatsappMessage)
-    .set({
-      judgement: judgement.clinical ? "clinical" : "notClinical",
-      emergency: judgement.emergency,
-    })
-    .where(
-      and(
-        inArray(
-          whatsappMessage.id,
-          turn.read.unjudged.map((message) => message.id),
-        ),
-        isNull(whatsappMessage.judgement),
-      ),
-    )
-    .run();
-  return { reply: ran.reply, judgement, rules };
+  return { reply: ran.reply, judgement, handOff: recorded.handOff, rules };
 }
 
 /**
- * Whether the reply may go now: no newer message waits for its own turn, the
- * contacts and the appointments it read are as they were, the window is
- * open, and the number can send: no hold of Meta's (`whatsapp-limits.ts`).
+ * Whether a free-form message may go now: the window the patient's latest
+ * message opened, read now, since one may have arrived during the turn, is
+ * open, and no hold of Meta's (`whatsapp-limits.ts`) keeps the number from sending.
+ */
+function maySend(database: Database, cloud: WhatsappCloud, conversationId: string) {
+  const now = Date.now();
+  return (
+    isWindowOpen(lastIncomingAt(database, conversationId), now) &&
+    !cloud.missingSetting() &&
+    !activeHold(database, now)
+  );
+}
+
+/**
+ * Whether the model's reply may go now: no newer message waits for its own
+ * turn, the contacts and the appointments it read are as they were, and the
+ * number may send.
  */
 function mayReply(
   database: Database,
@@ -355,13 +392,7 @@ function mayReply(
         now,
       ),
     ) === JSON.stringify(turn.appointments);
-  return (
-    !newerWaits &&
-    unchanged &&
-    isWindowOpen(turn.read.lastIncomingAt, now) &&
-    !cloud.missingSetting() &&
-    !activeHold(database, now)
-  );
+  return !newerWaits && unchanged && maySend(database, cloud, turn.conversationId);
 }
 
 /** Sends `text` to the conversation's number, and stores it with the rules' version it was written under. */
@@ -423,26 +454,155 @@ async function runTurn(
   }
   const patientIds = read.patients.map((one) => one.id);
   const appointments = upcomingAppointments(database, patientIds, Date.now());
+  const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
   const turn = await judgeTurn(database, model, { conversationId, read, appointments });
-  // A clinical message, an unknown number or a patient with nothing booked is
-  // a handoff's (#171, #176), not an answer.
-  if (!turn || turn.judgement.clinical || turn.judgement.emergency || appointments.length === 0) {
+  if (!turn) {
     return;
   }
+  const settled = settleTurn(database, { conversationId, read, appointments, answered, ...turn });
+  if (settled === "silent") {
+    return;
+  }
+  // The fixed handoff reply says nothing the turn read, so a newer message or
+  // a changed appointment does not hold it: the next turn is silent.
+  const handedOff = settled === "handedOff";
+  const text = handedOff ? handoffReply(turn.rules.formOfAddress) : turn.reply;
   // A turn that ended on its tools has no words of its own to sign.
-  const words = checkReply(turn.reply);
-  const checked = checkReply(withSignOff(turn.reply, turn.rules.signOff));
-  if (
-    !words.ok ||
-    !checked.ok ||
-    !mayReply(database, cloud, { conversationId, read, appointments })
-  ) {
+  const words = checkReply(text);
+  const checked = checkReply(withSignOff(text, turn.rules.signOff));
+  const may = handedOff
+    ? maySend(database, cloud, conversationId)
+    : mayReply(database, cloud, { conversationId, read, appointments });
+  if (!words.ok || !checked.ok || !may) {
     return;
   }
   await sendReply(database, cloud, {
     phone: read.phone,
     text: checked.text,
     rulesVersion: turn.rules.version,
+  });
+}
+
+interface JudgedTurn {
+  conversationId: string;
+  read: Read;
+  appointments: Upcoming[];
+  /** The follow-up or cancellation the patient's new messages answer, if any. */
+  answered: ReturnType<typeof answeredMessage>;
+  judgement: Judgement;
+  handOff: HandOffCall | null;
+}
+
+const modelReasons = {
+  patient_asked: "patientAsked",
+  organization_cancelled: "organizationCancelled",
+  clinical: "clinical",
+  emergency: "emergency",
+} as const satisfies Record<HandOffCall["reason"], HandoffWanted["reason"]>;
+
+/** A follow-up's answer: only a plainly good one is the assistant's; any other is the practitioner's, as clinical. */
+function followUpHandoff(turn: JudgedTurn, appointmentId: string): HandoffWanted | null {
+  const { judgement } = turn;
+  if (judgement.followUpAnswer === "plainlyGood" && !judgement.emergency && !turn.handOff) {
+    return null;
+  }
+  const reason = judgement.emergency ? "emergency" : "followUpAnswer";
+  return { reason, clinical: true, appointmentId };
+}
+
+/** The model's hand_off, clinical when the call or the judgement says so. */
+function modelHandoff(turn: JudgedTurn, handOff: HandOffCall): HandoffWanted {
+  const { judgement, answered } = turn;
+  // Only an appointment the turn could speak of: the model's id is checked, not trusted.
+  const known = [...turn.appointments.map((one) => one.id), answered?.appointmentId];
+  const named = known.find((id) => id !== undefined && id === handOff.appointmentId);
+  const clinicalReason = handOff.reason === "clinical" || handOff.reason === "emergency";
+  return {
+    reason: modelReasons[handOff.reason],
+    clinical: judgement.clinical || judgement.emergency || handOff.clinical || clinicalReason,
+    appointmentId: named ?? null,
+  };
+}
+
+/** What underthing hands off without the model asking: a clinical judgement, a second misunderstanding, nothing booked. */
+function judgedHandoff(turn: JudgedTurn): HandoffWanted | null {
+  const { judgement } = turn;
+  if (judgement.clinical || judgement.emergency) {
+    const reason = judgement.emergency ? "emergency" : "clinical";
+    return { reason, clinical: true, appointmentId: null };
+  }
+  let reason: HandoffWanted["reason"] | null = null;
+  if (!judgement.understood && turn.read.misunderstandings >= 1) {
+    reason = "misunderstoodTwice";
+  } else if (turn.read.patients.length === 0) {
+    reason = "unknownNumber";
+  } else if (turn.appointments.length === 0) {
+    reason = "noUpcomingAppointment";
+  }
+  return reason ? { reason, clinical: false, appointmentId: null } : null;
+}
+
+/**
+ * The handoff the turn calls for, if any (assistant.md § Handoff): a
+ * follow-up's answer is sorted first, then the model's hand_off, then what
+ * underthing hands off itself.
+ */
+function handoffWanted(turn: JudgedTurn): HandoffWanted | null {
+  const { answered } = turn;
+  if (answered?.kind === "followUp" && answered.firstReply) {
+    return followUpHandoff(turn, answered.appointmentId);
+  }
+  const wanted = turn.handOff ? modelHandoff(turn, turn.handOff) : judgedHandoff(turn);
+  // A handoff about nothing in particular, right after a message about an
+  // appointment, concerns that appointment.
+  return (
+    wanted && { ...wanted, appointmentId: wanted.appointmentId ?? answered?.appointmentId ?? null }
+  );
+}
+
+/**
+ * Stores the turn's judgement on the messages it judged: clinical when the
+ * model judged them so or they open a clinical handoff, so their words reach
+ * only those who may read them. A message that arrived meanwhile is left for
+ * the next turn.
+ */
+function storeJudgement(tx: Writer, turn: JudgedTurn, clinical: boolean) {
+  tx.update(whatsappMessage)
+    .set({ judgement: clinical ? "clinical" : "notClinical", emergency: turn.judgement.emergency })
+    .where(
+      and(
+        inArray(
+          whatsappMessage.id,
+          turn.read.unjudged.map((message) => message.id),
+        ),
+        isNull(whatsappMessage.judgement),
+      ),
+    )
+    .run();
+}
+
+/**
+ * Settles the judged turn in one transaction: stores the judgement, counts a
+ * misunderstanding, opens the handoff it calls for, and says what the patient
+ * is told. While a handoff is open, the assistant is silent in the conversation.
+ */
+function settleTurn(database: Database, turn: JudgedTurn): "silent" | "handedOff" | "answered" {
+  const wanted = handoffWanted(turn);
+  return database.transaction((tx) => {
+    storeJudgement(tx, turn, turn.judgement.clinical || wanted?.clinical === true);
+    const open = openHandoffsOf(tx, turn.conversationId);
+    const misunderstood = !wanted && !turn.judgement.understood;
+    tx.update(conversation)
+      .set({ misunderstandings: misunderstood ? turn.read.misunderstandings + 1 : 0 })
+      .where(eq(conversation.id, turn.conversationId))
+      .run();
+    if (wanted && addsToOpen(open, wanted)) {
+      openHandoff(tx, turn.conversationId, wanted);
+    }
+    if (open.length > 0) {
+      return "silent";
+    }
+    return wanted ? "handedOff" : "answered";
   });
 }
 

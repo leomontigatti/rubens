@@ -1,6 +1,11 @@
+import { runDurableObjectAlarm } from "cloudflare:test";
+import { vi } from "vite-plus/test";
+
+import { assistantWaitMs } from "#/lib/assistant.ts";
 import type { AssistantToolName } from "#/lib/assistant.ts";
 
 import type { AssistantModel, ModelTurn } from "#/organization/assistant-model.ts";
+import type { Organization } from "#/organization/organization.ts";
 
 // The assistant's model scripted, for the organization object's tests
 // (`docs/agents/tdd-db.md`): a test writes what the model does in a turn,
@@ -74,3 +79,28 @@ class ScriptedModel implements AssistantModel {
  * function it returns: `vi.mock` is hoisted above the imports.
  */
 export const scriptedModel = new ScriptedModel();
+
+/** A text from `from`, stored as Meta's webhook hands it over, sent now by Meta's clock unless `sentAt` says. */
+export async function patientWrites(
+  organization: DurableObjectStub<Organization>,
+  text: string,
+  from: string,
+  sentAt = Date.now(),
+) {
+  const whatsappId = `wamid.${crypto.randomUUID()}`;
+  const stored = await organization.storeWhatsappEvents({
+    messages: [{ whatsappId, from, sentAt, type: "text", text, payload: "{}" }],
+    statuses: [],
+    templateStatuses: [],
+  });
+  if (!stored.ok) {
+    throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
+  }
+  return whatsappId;
+}
+
+/** Moves the object's faked clock past the assistant's wait, and runs its alarm. */
+export async function afterTheWait(organization: DurableObjectStub<Organization>) {
+  vi.setSystemTime(Date.now() + assistantWaitMs);
+  await runDurableObjectAlarm(organization);
+}

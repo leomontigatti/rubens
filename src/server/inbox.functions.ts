@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import type { HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 import type { ConversationListOptions, ConversationReference } from "#/lib/whatsapp-messages.ts";
 
 import { withOrganization } from "#/server/with-organization.ts";
@@ -26,4 +27,17 @@ export const getConversation = createServerFn({ method: "GET" })
   .validator((data: ConversationReference) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.readConversation(caller, data)),
+  );
+
+// The open handoffs the member sees (`src/organization/handoff-inbox.ts`).
+export const getOpenHandoffs = createServerFn({ method: "GET" })
+  .validator((data: OpenHandoffListOptions) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.listOpenHandoffs(caller, data)),
+  );
+
+export const closeHandoff = createServerFn({ method: "POST" })
+  .validator((data: HandoffReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.closeHandoff(caller, data)),
   );

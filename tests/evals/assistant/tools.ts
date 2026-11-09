@@ -1,6 +1,6 @@
-// The assistant's tools: the real schemas of #169's (`src/lib/assistant.ts`),
-// and drafts of the ones later tickets add (#171, #173, #174), each moved to
-// the real module when its ticket lands. Each runs against the case's fake
+// The assistant's tools: the real schemas (`src/lib/assistant.ts`, #169 and
+// #171's hand_off), and drafts of the ones later tickets add (#173, #174),
+// each moved to the real module when its ticket lands. Each runs against the case's fake
 // object, so the model sees scripted results.
 
 import { toolDefinition } from "@tanstack/ai";
@@ -12,18 +12,9 @@ import type { FakeObject } from "./fake-object.ts";
 
 const appointmentId = z.string().describe("The appointmentId list_patients returned");
 
-const handoffReason = z.enum([
-  "patient_asked",
-  "rule_refused",
-  "organization_cancelled",
-  "clinical",
-  "emergency",
-  "misunderstood_twice",
-]);
+const { hand_off: handOff, ...others } = assistantToolSchemas;
 
-const real = Object.entries(assistantToolSchemas).map(([name, schema]) =>
-  toolDefinition({ name, ...schema }),
-);
+const real = Object.entries(others).map(([name, schema]) => toolDefinition({ name, ...schema }));
 
 const drafts = [
   toolDefinition({
@@ -48,12 +39,12 @@ const drafts = [
       "Applies the conversation's latest proposal, once the patient said yes to it. Can fail, for example when the time was taken meanwhile.",
     inputSchema: z.object({}),
   }),
+  // The real hand_off, with the reason #174 adds for a move a rule refuses.
   toolDefinition({
     name: "hand_off",
-    description: "Hands the conversation to a person at the practice.",
-    inputSchema: z.object({
-      reason: handoffReason,
-      clinical: z.boolean().describe("True when the conversation is about health or symptoms"),
+    description: handOff.description,
+    inputSchema: handOff.inputSchema.extend({
+      reason: z.enum([...handOff.inputSchema.shape.reason.options, "rule_refused"]),
     }),
   }),
 ];

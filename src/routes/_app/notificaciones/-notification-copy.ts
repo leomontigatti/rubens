@@ -2,6 +2,8 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+import { handoffReasonLabels } from "#/lib/handoff-copy.ts";
+import type { HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { messagingLimitLabels } from "#/lib/whatsapp.ts";
@@ -20,6 +22,8 @@ export interface NotificationFacts {
   detail: string | null;
   until: number | null;
   waiting: number | null;
+  /** The handoff a `handoff` notification tells of. */
+  handoff: { conversationId: string; reason: HandoffReason; clinical: boolean } | null;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -63,6 +67,8 @@ export function notificationTitle(facts: NotificationFacts): string {
       return "Meta frenó los envíos del número de WhatsApp";
     case "messagingLimitLowered":
       return "Meta bajó el límite de mensajes del número";
+    case "handoff":
+      return "Te derivaron una conversación de WhatsApp";
   }
 }
 
@@ -86,7 +92,18 @@ export function notificationText(facts: NotificationFacts): string {
       return `Meta rechazó envíos por exceso de mensajes. underthing vuelve a intentar el ${day(facts.until ?? Date.now())}.`;
     case "messagingLimitLowered":
       return `Ahora puede iniciar conversaciones con hasta ${messagingLimitLabels[facts.detail ?? ""] ?? facts.detail}.`;
+    case "handoff":
+      return handoffText(facts.handoff);
   }
+}
+
+function handoffText(handoff: NotificationFacts["handoff"]) {
+  if (!handoff) {
+    return "La derivación ya no está disponible.";
+  }
+  const answer =
+    "El asistente no responde en esa conversación mientras la derivación siga abierta.";
+  return `${handoffReasonLabels[handoff.reason]}. ${answer}`;
 }
 
 /** How many messages waited when it happened, and what becomes of them; nothing for a kind that holds none. */

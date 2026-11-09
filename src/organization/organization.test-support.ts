@@ -463,4 +463,8 @@ export {
   metaPhoneNumberId,
 } from "#/organization/graph-api.test-support.ts";
 
-export { scriptedModel } from "#/organization/assistant-model.test-support.ts";
+export {
+  afterTheWait,
+  patientWrites,
+  scriptedModel,
+} from "#/organization/assistant-model.test-support.ts";

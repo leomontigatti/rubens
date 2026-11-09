@@ -56,7 +56,8 @@ In the order #157 ranks the criteria (`score.ts`):
    every clock time in the reply was returned by a tool or said earlier in the
    conversation.
 2. **Handoff when due**: `hand_off` exactly when the case says, with the right
-   clinical flag and a reason the case accepts; the judgement (clinical, emergency)
+   clinical flag and a reason the case accepts; the judgement (clinical, emergency,
+   and understood where the case sets it)
    as the case expects.
 3. **Voice notes** (`eval:voice`): the word error rate against the words spoken, at
    most 0.2, and the turn on the transcript passing 1a, 1b and 2 like the written case.
@@ -76,8 +77,11 @@ case, give it a conversation so far, the patient's new messages and what the tur
 and must not do; `fake-object.ts` answers its tools from `world.ts`.
 
 `prompt.ts` and `tools.ts` run the assistant's real prompt and tool schemas
-(`src/lib/assistant.ts`), with drafts of what later tickets add: proposals (#173, #174)
-and handoffs (#171). Each draft moves into `src/lib/assistant.ts` when its ticket lands.
+(`src/lib/assistant.ts`, `hand_off` included since #171), with drafts of what later
+tickets add: proposals (#173, #174) and the `rule_refused` handoff reason (#174). Each
+draft moves into `src/lib/assistant.ts` when its ticket lands. A second misunderstanding
+in a row is counted by underthing from `judge_messages`' `understood`, not handed off by
+the model, so its case checks the judgement.
 
 ### Voice notes
 

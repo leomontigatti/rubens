@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { formsOfAddress } from "#/lib/communication-rules.ts";
+import { handoffReasons, handoffStates } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import {
   messageJudgements,
@@ -19,7 +20,7 @@ import {
 import { connectionStates, numberHoldReasons } from "#/lib/whatsapp.ts";
 import { templateCategories, templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
-import { appointment, patient } from "#/organization/schema.ts";
+import { appointment, member, patient } from "#/organization/schema.ts";
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
 
 // The organization object's WhatsApp tables (ADR-0010), beside the rest of its
@@ -39,6 +40,11 @@ export const conversation = sqliteTable("conversation", {
    * while no message waits for it.
    */
   assistantDueAt: instant("assistant_due_at"),
+  /**
+   * How many of the patient's turns in a row the assistant misunderstood
+   * (assistant.md § Handoff): the second hands the conversation off.
+   */
+  misunderstandings: integer("misunderstandings").notNull().default(0),
   ...timestamps,
 });
 
@@ -235,4 +241,47 @@ export const communicationRules = sqliteTable(
     ...timestamps,
   },
   (table) => [check("communication_rules_one_row", sql`${table.id} = 1`)],
+);
+
+/**
+ * A conversation the assistant handed to a person (`src/lib/handoffs.ts`):
+ * open until a person's reply reaches the patient, or a person closes it
+ * without one. A clinical handoff goes only to practitioners who keep
+ * clinical records; anyone else sees that it exists, never its words.
+ */
+export const handoff = sqliteTable(
+  "handoff",
+  {
+    id: id(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id),
+    reason: text("reason", { enum: handoffReasons }).notNull(),
+    clinical: flag("clinical").notNull(),
+    /** The appointment it concerns, whose practitioner it goes to; none when it concerns none. */
+    appointmentId: text("appointment_id").references(() => appointment.id),
+    state: text("state", { enum: handoffStates }).notNull().default("open"),
+    closedAt: instant("closed_at"),
+    /** The member who closed it without a reply. */
+    closedBy: text("closed_by").references(() => member.userId),
+    ...timestamps,
+  },
+  (table) => [index("handoff_conversation_idx").on(table.conversationId, table.state)],
+);
+
+/** The members a handoff went to, each told at once by a notification. */
+export const handoffRecipient = sqliteTable(
+  "handoff_recipient",
+  {
+    handoffId: text("handoff_id")
+      .notNull()
+      .references(() => handoff.id),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => member.userId),
+  },
+  (table) => [
+    primaryKey({ columns: [table.handoffId, table.memberId] }),
+    index("handoff_recipient_member_idx").on(table.memberId),
+  ],
 );
