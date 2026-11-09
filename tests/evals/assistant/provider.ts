@@ -33,6 +33,7 @@ export class AssistantProvider implements ApiProvider {
           calls,
           score: score(evaluationCase, turn),
           finishReason: turn.finishReason,
+          cachedInput: turn.usage.cachedInput,
         }),
         latencyMs: turn.latencyMs,
         tokenUsage: {
