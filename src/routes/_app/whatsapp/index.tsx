@@ -20,6 +20,7 @@ import { getWhatsappSettings, sendWhatsappTemplate } from "#/server/whatsapp.fun
 import { CommunicationRulesSection } from "#/routes/_app/whatsapp/-communication-rules.tsx";
 import { HandoffContactsSection } from "#/routes/_app/whatsapp/-handoff-contacts.tsx";
 import { NumberSection } from "#/routes/_app/whatsapp/-number.tsx";
+import { ReturnTimeSection } from "#/routes/_app/whatsapp/-return-time.tsx";
 import { TemplateList } from "#/routes/_app/whatsapp/-templates.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/")({
@@ -139,12 +140,13 @@ function WhatsappSettings() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="WhatsApp"
-        description="El número del consultorio, las plantillas con las que escribe a los pacientes, cómo escribe el asistente, a quién deriva y un envío de prueba."
+        description="El número del consultorio, las plantillas con las que escribe a los pacientes, cómo escribe el asistente, a quién deriva, cuándo vuelve a responder una conversación tomada y un envío de prueba."
       />
       <NumberSection settings={settings} />
       <TemplateList settings={settings} />
       <CommunicationRulesSection settings={settings} />
       <HandoffContactsSection settings={settings} />
+      <ReturnTimeSection settings={settings} />
       <RecordSection title="Envío de prueba">
         <div className="flex max-w-xl flex-col gap-6">
           <p className="text-muted-foreground text-sm">

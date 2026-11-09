@@ -145,15 +145,19 @@ practitioner reads those about their own appointments and those handed to them.
 The assistant judges every message a patient sends, also while a person holds the
 conversation. A message judged clinical, the patient's or a held reply, is left out
 of every conversation shown to someone who is not a practitioner who keeps
-clinical records, in the app and on Telegram. A message not judged yet, because
+clinical records, in the app and on Telegram, and so is a practitioner's reply to a
+clinical handoff. A message not judged yet, because
 the model is unavailable, is left out the same way until it is; in its place, the
 conversation shows that a message is waiting to be read.
 
 Anyone allowed to read a conversation can take it over at any time, not only on a
-handoff. While a person holds a conversation, the assistant stays silent in it. It
-takes the conversation back when the person returns it, or after a time the admin
-sets. Its message on taking the conversation back goes out only inside the window;
-outside it, the assistant takes the conversation back without a word. A handoff
+handoff, from whoever held it. While a person holds a conversation, the assistant
+stays silent in it. The person's reply goes to the patient under their name, inside
+the window. The assistant takes the conversation back when the person returns it, or
+after a time the admin sets (4 hours until they do), counted from the hold or the
+person's latest reply. Its message on taking the conversation back goes out only
+when a person was the last to answer, no handoff is still open, and the window is
+open; otherwise the assistant takes the conversation back without a word. A handoff
 nobody answered stays open either way ([below](#handoff)).
 
 ## Handoff

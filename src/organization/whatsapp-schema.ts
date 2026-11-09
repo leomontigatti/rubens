@@ -46,6 +46,14 @@ export const conversation = sqliteTable("conversation", {
    * (assistant.md § Handoff): the second hands the conversation off.
    */
   misunderstandings: integer("misunderstandings").notNull().default(0),
+  /**
+   * The member who took the conversation over from the inbox
+   * (`src/organization/conversation-holds.ts`), while the assistant stays
+   * silent in it; none while the assistant holds it.
+   */
+  heldBy: text("held_by").references(() => member.userId),
+  /** When it goes back to the assistant on its own, while a member holds it. */
+  heldUntil: instant("held_until"),
   ...timestamps,
 });
 
@@ -102,6 +110,8 @@ export const whatsappMessage = sqliteTable(
     emergency: flag("emergency"),
     /** The communication rules' version an assistant reply was written under; none for other messages. */
     rulesVersion: integer("rules_version"),
+    /** The member whose reply from the inbox it is; none for the assistant's and the templates. */
+    sentBy: text("sent_by").references(() => member.userId),
     ...timestamps,
   },
   (table) => [index("whatsapp_message_conversation_idx").on(table.conversationId, table.sentAt)],
@@ -242,6 +252,22 @@ export const communicationRules = sqliteTable(
     ...timestamps,
   },
   (table) => [check("communication_rules_one_row", sql`${table.id} = 1`)],
+);
+
+/**
+ * The inbox's settings (`src/organization/conversation-holds.ts`): one row at
+ * most, none until an admin first saves them.
+ */
+export const inboxSettings = sqliteTable(
+  "inbox_settings",
+  {
+    // Always 1: an organization has one inbox.
+    id: integer("id").primaryKey(),
+    /** How long a member holds a conversation they took over before it goes back to the assistant. */
+    returnAfterHours: integer("return_after_hours").notNull(),
+    ...timestamps,
+  },
+  (table) => [check("inbox_settings_one_row", sql`${table.id} = 1`)],
 );
 
 /**

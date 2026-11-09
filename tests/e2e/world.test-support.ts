@@ -1,4 +1,5 @@
 import {
+  devIncomingMessages,
   devMedicalService,
   devOffice,
   devOrganizationName,
@@ -35,6 +36,9 @@ export const storageStateOf = (role: E2eRole) => `tests/e2e/.auth/${role}.json`;
 
 /** Patients already registered (`src/dev/world.ts`). */
 export const seededPatients = devPatients;
+
+/** The messages patients sent that the seed stores, as Meta's webhook hands them over (`src/dev/world.ts`). */
+export const seededIncomingMessages = devIncomingMessages;
 
 /** A patient's name as the app shows it, with no chosen name. */
 export const fullName = (patient: { firstName: string; lastName: string }) =>

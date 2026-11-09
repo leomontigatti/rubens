@@ -1,7 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
 
+import { fakeMetaFetch, fakesMeta } from "#/dev/fake-meta.ts";
 import { accountsFor } from "#/organization/accounts.ts";
 import { nextTurnAlarm, runDueTurns } from "#/organization/assistant.ts";
+import { nextReturnAlarm, returnDueConversations } from "#/organization/conversation-holds.ts";
 import { assistantModelFor } from "#/organization/assistant-model.ts";
 import type { AssistantModel } from "#/organization/assistant-model.ts";
 import type { Accounts } from "#/organization/accounts.ts";
@@ -29,6 +31,8 @@ type RuntimeEnv = WorkerEnv &
     ORGANIZATION_ENCRYPTION_KEY?: string;
     /** A secret: the assistant's model's API key (`src/organization/assistant-model.ts`). */
     ANTHROPIC_API_KEY?: string;
+    /** `"true"` answers Meta's calls inside the Worker, for the browser suite (`src/dev/fake-meta.ts`). */
+    WHATSAPP_FAKE_META?: string;
   };
 
 /**
@@ -72,12 +76,15 @@ export abstract class OrganizationRuntime extends DurableObject {
       cipher: (organizationId) =>
         organizationCipher(workerEnv.ORGANIZATION_ENCRYPTION_KEY, organizationId),
     });
-    this.whatsapp = whatsappCloudFor({
-      settings: () =>
-        this.number.settings() ??
-        configuredWhatsappSettings(workerEnv, organizationIdIn(this.database)),
-      tokenRefused: (error, token) => this.number.tokenRefused(error, token),
-    });
+    this.whatsapp = whatsappCloudFor(
+      {
+        settings: () =>
+          this.number.settings() ??
+          configuredWhatsappSettings(workerEnv, organizationIdIn(this.database)),
+        tokenRefused: (error, token) => this.number.tokenRefused(error, token),
+      },
+      fakesMeta(workerEnv) ? fakeMetaFetch : undefined,
+    );
     void ctx.blockConcurrencyWhile(async () => {
       await migrateDatabase(this.database);
       await this.number.open();
@@ -103,9 +110,13 @@ export abstract class OrganizationRuntime extends DurableObject {
     return this.thenArm(() => this.as(caller, requirement, work));
   }
 
-  /** Sends the outbox's due messages and runs the assistant's due turns, then sets the alarm for the next item. */
+  /**
+   * Sends the outbox's due messages, gives the conversations whose hold ended
+   * back to the assistant, and runs its due turns, then sets the alarm for the next item.
+   */
   override async alarm() {
     await sendDueMessages(this.database, this.whatsapp);
+    await returnDueConversations(this.database, this.whatsapp);
     await runDueTurns(this.database, this.whatsapp, this.assistant);
     await this.#armAlarm();
   }
@@ -115,6 +126,7 @@ export abstract class OrganizationRuntime extends DurableObject {
     const due = [
       nextOutboxAlarm(this.database, this.whatsapp),
       nextTurnAlarm(this.database, this.assistant),
+      nextReturnAlarm(this.database),
     ].filter((at) => at !== null);
     const next = due.length > 0 ? Math.min(...due) : null;
     if (next === null) {

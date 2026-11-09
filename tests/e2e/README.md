@@ -34,6 +34,10 @@ and a port swaps those alone:
 - `auth.setup.ts`: the `setup` project signs each role in through the dev sign-in on
   `/ingresar` once and saves its browser state under `.auth/`, which every spec starts from.
 
+Meta's Graph API is answered inside the Worker (`src/dev/fake-meta.ts`): `playwright.config.ts`
+turns it on with `WHATSAPP_FAKE_META` and gives the dev organization a made-up test number, so a
+reply from the inbox goes out. It runs only with no Clerk secret, so never on a deployed Worker.
+
 No spec queries the database or calls the auth server.
 
 ## Writing a spec

@@ -33,6 +33,7 @@ import { office, organization, patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import {
+  isHeld,
   lastIncomingAt,
   patientsReachedAt,
   storeOutgoing,
@@ -298,13 +299,15 @@ async function judgeTurn(
 }
 
 /**
- * Whether a free-form message may go now: the window the patient's latest
- * message opened, read now, since one may have arrived during the turn, is
- * open, and no hold of Meta's (`whatsapp-limits.ts`) keeps the number from sending.
+ * Whether the assistant's free-form message may go now: no member holds the
+ * conversation, the window the patient's latest message opened, read now,
+ * since one may have arrived during the turn, is open, and no hold of Meta's
+ * (`whatsapp-limits.ts`) keeps the number from sending.
  */
-function maySend(database: Database, cloud: WhatsappCloud, conversationId: string) {
+export function maySend(database: Database, cloud: WhatsappCloud, conversationId: string) {
   const now = Date.now();
   return (
+    !isHeld(database, conversationId) &&
     isWindowOpen(lastIncomingAt(database, conversationId), now) &&
     !cloud.missingSetting() &&
     !activeHold(database, now)
@@ -341,7 +344,7 @@ function mayReply(
 }
 
 /** Sends `text` to the conversation's number, and stores it with the rules' version it was written under. */
-async function sendReply(
+export async function sendReply(
   database: Database,
   cloud: WhatsappCloud,
   reply: { phone: string; text: string; rulesVersion: number },
@@ -488,8 +491,8 @@ function notifyOptOuts(tx: Writer, turn: JudgedTurn) {
 /**
  * Settles the judged turn in one transaction: stores the judgement, counts a
  * misunderstanding, opens the handoff it calls for, notifies an opt-out, and
- * says what the patient is told. While a handoff is open, the assistant is
- * silent in the conversation.
+ * says what the patient is told. While a handoff is open, or a member holds
+ * the conversation, the assistant is silent in it.
  */
 function settleTurn(
   database: Database,
@@ -510,7 +513,7 @@ function settleTurn(
       openHandoff(tx, turn.conversationId, wanted);
     }
     const optOutAsked = turn.judgement.optOut && notifyOptOuts(tx, turn);
-    if (open.length > 0) {
+    if (open.length > 0 || isHeld(tx, turn.conversationId)) {
       return "silent";
     }
     if (wanted) {

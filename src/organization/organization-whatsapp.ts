@@ -1,11 +1,18 @@
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
+import type { PersonalReply, ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type { HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
-import type { WhatsappEvents } from "#/lib/whatsapp-messages.ts";
+import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
 import { saveCommunicationRules } from "#/organization/communication-rules.ts";
+import {
+  replyToConversation,
+  returnConversation,
+  saveReturnTime,
+  takeOverConversation,
+} from "#/organization/conversation-holds.ts";
 import { listHandoffContacts, replaceHandoffContacts } from "#/organization/handoff-contacts.ts";
 import { closeHandoffWithoutReply, listOpenHandoffs } from "#/organization/handoff-inbox.ts";
 import { patientEditors } from "#/organization/members.ts";
@@ -21,7 +28,7 @@ import {
 
 /**
  * The organization object's WhatsApp methods (`Organization` extends this):
- * Meta's webhook events, the inbox's handoffs, and the WhatsApp settings,
+ * Meta's webhook events, the inbox's handoffs and takeovers, and the WhatsApp settings,
  * which only admins use.
  * Each method is one line into its area module, as in `organization.ts`.
  */
@@ -50,6 +57,31 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     return this.as(caller, patientEditors, (acting) =>
       closeHandoffWithoutReply(this.database, acting, input),
     );
+  }
+
+  /** Takes a conversation the member reads over from the assistant (`src/organization/conversation-holds.ts`). */
+  takeOverConversation(caller: Caller, input: ConversationReference) {
+    // Its hold ends by the alarm.
+    return this.asThenArm(caller, patientEditors, (acting) =>
+      takeOverConversation(this.database, acting, input),
+    );
+  }
+
+  async replyToConversation(caller: Caller, input: PersonalReply) {
+    return this.asThenArm(caller, patientEditors, (acting) =>
+      replyToConversation(this.database, this.whatsapp, acting, input),
+    );
+  }
+
+  async returnConversation(caller: Caller, input: ConversationReference) {
+    return this.asThenArm(caller, patientEditors, (acting) =>
+      returnConversation(this.database, this.whatsapp, acting, input),
+    );
+  }
+
+  /** How long a member holds a conversation before it goes back to the assistant. */
+  saveReturnTime(caller: Caller, input: ReturnTimeInput) {
+    return this.as(caller, ["admin"], (acting) => saveReturnTime(this.database, acting, input));
   }
 
   whatsappSettings(caller: Caller) {

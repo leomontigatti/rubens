@@ -3,6 +3,7 @@ import { templateSendSchema } from "#/lib/whatsapp.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
 
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
+import { returnAfterHours } from "#/organization/conversation-holds.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import { listHandoffContacts } from "#/organization/handoff-contacts.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
@@ -42,6 +43,7 @@ export function getWhatsappSettings(
     templates,
     communicationRules: currentCommunicationRules(database),
     handoffContacts: listHandoffContacts(database).members,
+    returnAfterHours: returnAfterHours(database),
   } as const;
 }
 

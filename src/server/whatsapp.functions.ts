@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
+import type { ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
@@ -54,4 +55,11 @@ export const saveHandoffContacts = createServerFn({ method: "POST" })
   .validator((data: HandoffContactsInput) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.saveHandoffContacts(caller, data)),
+  );
+
+// How long a member holds a conversation they took over before it goes back to the assistant.
+export const saveReturnTime = createServerFn({ method: "POST" })
+  .validator((data: ReturnTimeInput) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.saveReturnTime(caller, data)),
   );
