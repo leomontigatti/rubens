@@ -33,7 +33,7 @@ pnpm exec playwright install --only-shell chromium   # the browser, as tests/e2e
 pnpm test:e2e
 ```
 
-When no linked machine answers, the whole suite runs here.
+When no linked machine answers, the whole browser suite runs here.
 
 ## As you go
 
