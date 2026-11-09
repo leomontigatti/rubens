@@ -1,7 +1,9 @@
+import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
+import { saveCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
@@ -56,6 +58,13 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   async submitWhatsappTemplate(caller: Caller, input: TemplateSubmission) {
     return this.asThenArm(caller, ["admin"], (acting) =>
       submitWhatsappTemplate(this.database, this.whatsapp, acting, input),
+    );
+  }
+
+  /** The assistant's `vos` or `usted`, sign-off and tone (#185), which the settings read back. */
+  async saveCommunicationRules(caller: Caller, input: CommunicationRulesInput) {
+    return this.as(caller, ["admin"], (acting) =>
+      saveCommunicationRules(this.database, acting, input),
     );
   }
 

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
@@ -37,3 +38,9 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
 export const disconnectWhatsapp = createServerFn({ method: "POST" }).handler(() =>
   withOrganization((organization, caller) => organization.disconnectWhatsapp(caller)),
 );
+
+export const saveCommunicationRules = createServerFn({ method: "POST" })
+  .validator((data: CommunicationRulesInput) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.saveCommunicationRules(caller, data)),
+  );
