@@ -1,5 +1,6 @@
 import type { LinkProps } from "@tanstack/react-router";
 import {
+  BellIcon,
   BuildingIcon,
   CalendarDaysIcon,
   CalendarSearchIcon,
@@ -26,6 +27,8 @@ export const passwordChangePath = "/cambiar-contrasena";
 
 const toReschedulePath = "/a-reprogramar";
 
+const notificationsPath = "/notificaciones";
+
 interface NavLink {
   label: string;
   to: NonNullable<LinkProps["to"]>;
@@ -38,6 +41,7 @@ const groups: { label: string; items: NavLink[] }[] = [
     label: "Día a día",
     items: [
       { label: "Agenda", to: "/agenda", icon: CalendarDaysIcon },
+      { label: "Notificaciones", to: notificationsPath, icon: BellIcon },
       { label: "A reprogramar", to: toReschedulePath, icon: CalendarSyncIcon },
       { label: "Pacientes", to: "/pacientes", icon: UsersIcon },
       { label: "Conversaciones", to: "/conversaciones", icon: MessagesSquareIcon },
@@ -64,21 +68,28 @@ const groups: { label: string; items: NavLink[] }[] = [
   },
 ];
 
-/**
- * The links `roles` see. `toReschedule` is how many appointments the list
- * holds, `null` when the member may not see it.
- */
-export function navFor(roles: readonly Role[], toReschedule: number | null) {
+/** What the links count: the appointments to reschedule, `null` when the member may not see the list, and their unread notifications. */
+export interface NavCounts {
+  toReschedule: number | null;
+  unreadNotifications: number;
+}
+
+function countOf(to: string, counts: NavCounts) {
+  if (to === toReschedulePath) {
+    return counts.toReschedule ?? 0;
+  }
+  return to === notificationsPath ? counts.unreadNotifications : 0;
+}
+
+/** The links `roles` see, each with its count. */
+export function navFor(roles: readonly Role[], counts: NavCounts) {
   const isAdmin = roles.includes("admin");
   return groups.map((group) => ({
     label: group.label,
     items: group.items
       .filter((item) => isAdmin || !item.adminOnly)
-      .filter((item) => item.to !== toReschedulePath || toReschedule !== null)
-      .map((item) => ({
-        ...item,
-        count: item.to === toReschedulePath ? (toReschedule ?? 0) : 0,
-      })),
+      .filter((item) => item.to !== toReschedulePath || counts.toReschedule !== null)
+      .map((item) => ({ ...item, count: countOf(item.to, counts) })),
   }));
 }
 

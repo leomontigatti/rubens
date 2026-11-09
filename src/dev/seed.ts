@@ -93,6 +93,19 @@ export async function seedDevOrganization(
       templateStatuses: [],
     }),
   );
+  // A restriction Meta has since lifted: the admin's warning stays, and nothing is held.
+  accepted(
+    "storeWhatsappEvents restriction",
+    await organization.storeWhatsappEvents({
+      messages: [],
+      statuses: [],
+      templateStatuses: [],
+      numberEvents: [
+        { kind: "restricted", until: Date.now() + 24 * 60 * 60_000 },
+        { kind: "unrestricted" },
+      ],
+    }),
+  );
 }
 
 /** `result` when the object accepted the step; a refusal stops the seed. */

@@ -7,6 +7,7 @@ import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import type { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
+import { activeHold } from "#/organization/whatsapp-limits.ts";
 import { listWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
 
 // The WhatsApp settings: the organization's number
@@ -17,8 +18,8 @@ import { listWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 
 /**
- * What the settings page shows: the organization's number and what Embedded
- * Signup launches with (`null` while the Worker misses a setting), the setting
+ * What the settings page shows: the organization's number, the hold Meta put
+ * on it if any, and what Embedded Signup launches with (`null` while the Worker misses a setting), the setting
  * that keeps a send from being made, if any, and the templates with the
  * setting that keeps them from being submitted.
  */
@@ -31,6 +32,7 @@ export function getWhatsappSettings(
   return {
     ok: true,
     connection: number.read(),
+    hold: activeHold(database, Date.now()),
     signup: number.launch(),
     missing: cloud.missingSetting(),
     templateMissing,

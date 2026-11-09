@@ -1,12 +1,16 @@
 import { and, desc, eq, max, sql } from "drizzle-orm";
 
-import type { WhatsappTemplateStatusUpdate } from "#/lib/whatsapp-messages.ts";
+import type {
+  WhatsappTemplateCategoryUpdate,
+  WhatsappTemplateStatusUpdate,
+} from "#/lib/whatsapp-messages.ts";
 import {
   checkTemplateBody,
   metaTemplateName,
   templateExamples,
   templateLanguage,
   templateNames,
+  templateCategoryOf,
   templateStatusOf,
   templateSubmissionSchema,
   versionOf,
@@ -51,6 +55,7 @@ const listedColumns = {
   metaId: whatsappTemplate.metaId,
   status: whatsappTemplate.status,
   rejectionReason: whatsappTemplate.rejectionReason,
+  category: whatsappTemplate.category,
   submittedAt: whatsappTemplate.createdAt,
 };
 
@@ -182,6 +187,32 @@ async function createVersion(
   return { ok: true, template } as const;
 }
 
+/**
+ * The latest approved utility version of template `name`, the one that goes;
+ * `null` while none is. A version Meta moved to another category waits, like
+ * one paused (docs/domain/messages.md § When Meta limits the number).
+ */
+export function approvedVersion(database: Writer, name: TemplateName) {
+  return (
+    database
+      .select({
+        version: whatsappTemplate.version,
+        language: whatsappTemplate.language,
+        body: whatsappTemplate.body,
+      })
+      .from(whatsappTemplate)
+      .where(
+        and(
+          eq(whatsappTemplate.name, name),
+          eq(whatsappTemplate.status, "approved"),
+          eq(whatsappTemplate.category, "utility"),
+        ),
+      )
+      .orderBy(desc(whatsappTemplate.version))
+      .get() ?? null
+  );
+}
+
 /** The columns a status writes: a rejection reason stays only while the template is rejected. */
 function statusColumns({ status, reason }: Omit<WhatsappTemplateStatusUpdate, "metaId">) {
   return {
@@ -191,15 +222,52 @@ function statusColumns({ status, reason }: Omit<WhatsappTemplateStatusUpdate, "m
   };
 }
 
-/** Puts `update` on the template with its Meta id. An id no template has is ignored. */
+/** The template version with Meta's id `metaId`, as a change to it reports it. */
+function versionWithMetaId(tx: Writer, metaId: string) {
+  return tx
+    .select({
+      name: whatsappTemplate.name,
+      version: whatsappTemplate.version,
+      status: whatsappTemplate.status,
+      category: whatsappTemplate.category,
+    })
+    .from(whatsappTemplate)
+    .where(eq(whatsappTemplate.metaId, metaId))
+    .get();
+}
+
+/**
+ * Puts `update` on the template with its Meta id, and returns the version it
+ * changed, with the status it had before. An id no template has is ignored.
+ */
 export function storeTemplateStatus(tx: Writer, update: WhatsappTemplateStatusUpdate) {
-  const changed = tx
-    .update(whatsappTemplate)
+  const before = versionWithMetaId(tx, update.metaId);
+  if (!before) {
+    return { metaId: update.metaId, updated: false, changed: null };
+  }
+  tx.update(whatsappTemplate)
     .set(statusColumns(update))
     .where(eq(whatsappTemplate.metaId, update.metaId))
-    .returning({ id: whatsappTemplate.id })
-    .get();
-  return { metaId: update.metaId, updated: Boolean(changed) };
+    .run();
+  return { metaId: update.metaId, updated: true, changed: before };
+}
+
+/**
+ * Puts the category Meta moved a template to on its version, and returns the
+ * version with the category it had before. An id no template has, or a
+ * category underthing does not know, is ignored.
+ */
+export function storeTemplateCategory(tx: Writer, update: WhatsappTemplateCategoryUpdate) {
+  const category = templateCategoryOf(update.category);
+  const before = versionWithMetaId(tx, update.metaId);
+  if (!before || !category) {
+    return null;
+  }
+  tx.update(whatsappTemplate)
+    .set({ category })
+    .where(eq(whatsappTemplate.metaId, update.metaId))
+    .run();
+  return { ...before, category, previousCategory: before.category };
 }
 
 /**

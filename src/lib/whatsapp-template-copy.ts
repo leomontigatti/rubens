@@ -1,4 +1,9 @@
-import type { TemplateName, TemplateProblem, TemplateStatus } from "#/lib/whatsapp-templates.ts";
+import type {
+  TemplateCategory,
+  TemplateName,
+  TemplateProblem,
+  TemplateStatus,
+} from "#/lib/whatsapp-templates.ts";
 
 // What the WhatsApp settings say about templates: each template's name as a
 // person reads it, its status at Meta, and what to fix in a body.
@@ -22,6 +27,12 @@ export const templateStatusLabels: Record<TemplateStatus, string> = {
   rejected: "Rechazada",
   paused: "Pausada",
   disabled: "Deshabilitada",
+};
+
+export const templateCategoryLabels: Record<TemplateCategory, string> = {
+  utility: "Utilidad",
+  marketing: "Marketing",
+  authentication: "Autenticación",
 };
 
 export const templateStatusVariants = {

@@ -11,7 +11,11 @@ import {
   whatsappDirectory,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { whatsappMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
+import {
+  whatsappConnection,
+  whatsappMessage,
+  whatsappTemplate,
+} from "#/organization/whatsapp-schema.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { handleWhatsappWebhook } from "#/server/whatsapp-webhook.ts";
 
@@ -168,6 +172,22 @@ function storedMessages(organization: OrganizationStub) {
   );
 }
 
+/** A call with one change for the business account `accountId`, as Meta sends it. */
+function accountChange(field: string, value: unknown, accountId = businessAccountId) {
+  return JSON.stringify({
+    object: "whatsapp_business_account",
+    entry: [{ id: accountId, time: 4071240000, changes: [{ field, value }] }],
+  });
+}
+
+async function notificationsOf(organization: OrganizationStub) {
+  const listed = await organization.listNotifications(adminCaller);
+  if (!listed.ok) {
+    throw new Error(`listNotifications refused: ${listed.reason}`);
+  }
+  return listed.notifications;
+}
+
 describe("Meta's WhatsApp webhook", () => {
   it("answers the verification handshake with the challenge, only for the verify token", async () => {
     const bindings = bindingsFor("unused");
@@ -311,6 +331,125 @@ describe("Meta's WhatsApp webhook", () => {
     expect(await storedMessages(second.organization)).toEqual([
       { whatsappId: "wamid.second", text: "Soy del segundo" },
     ]);
+  });
+
+  it("holds the number until the expiration of Meta's restriction on business-started messages", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const restriction = accountChange("account_update", {
+      event: "ACCOUNT_RESTRICTION",
+      restriction_info: [
+        { restriction_type: "RESTRICTED_ADD_PHONE_NUMBER_ACTION", expiration: 4071340000 },
+        { restriction_type: "RESTRICTED_BIZ_INITIATED_MESSAGING", expiration: 4071330000 },
+      ],
+    });
+
+    const response = await handleWhatsappWebhook(post(restriction), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await notificationsOf(organization)).toEqual([
+      expect.objectContaining({ kind: "numberRestricted", until: 4071330000 * 1000 }),
+    ]);
+  });
+
+  it("reads a restriction that no longer limits business-started messages as lifted", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const bindings = bindingsFor(organizationId);
+    const restricted = accountChange("account_update", {
+      event: "ACCOUNT_RESTRICTION",
+      restriction_info: [{ restriction_type: "RESTRICTED_BIZ_INITIATED_MESSAGING" }],
+    });
+    const lifted = accountChange("account_update", {
+      event: "ACCOUNT_RESTRICTION",
+      restriction_info: [{ restriction_type: "RESTRICTED_ADD_PHONE_NUMBER_ACTION" }],
+    });
+
+    await handleWhatsappWebhook(post(restricted), bindings);
+    const held = await organization.whatsappSettings(adminCaller);
+    await handleWhatsappWebhook(post(lifted), bindings);
+    const free = await organization.whatsappSettings(adminCaller);
+
+    expect(held).toMatchObject({ hold: { reason: "restricted", until: null } });
+    expect(free).toMatchObject({ hold: null });
+  });
+
+  it("holds the number while Meta disables the account, until it reinstates it", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const bindings = bindingsFor(organizationId);
+    const ban = (state: string) =>
+      accountChange("account_update", {
+        event: "DISABLED_UPDATE",
+        ban_info: { waba_ban_state: state, waba_ban_date: "2099-01-01" },
+      });
+
+    await handleWhatsappWebhook(post(ban("DISABLE")), bindings);
+    const held = await organization.whatsappSettings(adminCaller);
+    await handleWhatsappWebhook(post(ban("REINSTATE")), bindings);
+
+    expect(held).toMatchObject({ hold: { reason: "disabled" } });
+    expect(await organization.whatsappSettings(adminCaller)).toMatchObject({ hold: null });
+    expect(await notificationsOf(organization)).toEqual([
+      expect.objectContaining({ kind: "numberDisabled" }),
+    ]);
+  });
+
+  it("stores a template Meta moved to marketing, and ignores a warning of a move still to come", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    await addPendingTemplate(organization, "594425479261598");
+    const bindings = bindingsFor(organizationId);
+    const template = {
+      message_template_id: 594425479261598,
+      message_template_name: "confirmacion_turno_v1",
+      message_template_language: "es_AR",
+    };
+    const upcoming = accountChange("template_category_update", {
+      ...template,
+      new_category: "UTILITY",
+      correct_category: "MARKETING",
+      category_update_timestamp: 4071330000,
+    });
+    const moved = accountChange("template_category_update", {
+      ...template,
+      previous_category: "UTILITY",
+      new_category: "MARKETING",
+    });
+
+    await handleWhatsappWebhook(post(upcoming), bindings);
+    const before = await notificationsOf(organization);
+    await handleWhatsappWebhook(post(moved), bindings);
+
+    expect(before).toEqual([]);
+    expect(await notificationsOf(organization)).toEqual([
+      expect.objectContaining({ kind: "templateRecategorized", detail: "MARKETING" }),
+    ]);
+  });
+
+  it("reads the number's new messaging limit from the business's daily limit", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    await inStorage(organization, (database) =>
+      database
+        .insert(whatsappConnection)
+        .values({
+          id: 1,
+          businessAccountId,
+          phoneNumberId,
+          displayNumber: "+1 555 078 3881",
+          messagingLimit: "TIER_2K",
+          state: "disconnected",
+          connectedBy: adminCaller.userId,
+        })
+        .run(),
+    );
+    const lowered = accountChange("phone_number_quality_update", {
+      display_phone_number: "15550783881",
+      event: "DOWNGRADE",
+      max_daily_conversations_per_business: "TIER_250",
+    });
+
+    await handleWhatsappWebhook(post(lowered), bindingsFor(organizationId));
+
+    expect(await organization.whatsappSettings(adminCaller)).toMatchObject({
+      connection: { messagingLimit: "TIER_250" },
+    });
   });
 
   it("answers 500, so Meta retries, when the number maps to an organization never set up", async () => {

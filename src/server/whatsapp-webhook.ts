@@ -4,6 +4,7 @@ import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
   IncomingWhatsappMessage,
   WhatsappEvents,
+  WhatsappNumberEvent,
   WhatsappStatusUpdate,
   WhatsappTemplateStatusUpdate,
 } from "#/lib/whatsapp-messages.ts";
@@ -55,6 +56,34 @@ const metaTemplateStatus = z.looseObject({
   event: z.string(),
   message_template_id: z.string().regex(/^\d+$/),
   reason: z.string().nullish(),
+});
+
+/** A `template_category_update` change's value: a move done, or, with no `previous_category`, one still to come. */
+const metaCategoryUpdate = z.looseObject({
+  message_template_id: z.string().regex(/^\d+$/),
+  previous_category: z.string().optional(),
+  new_category: z.string(),
+});
+
+/** An `account_update` change's value, for the events that limit the number. */
+const metaAccountUpdate = z.looseObject({
+  event: z.string(),
+  restriction_info: z
+    .array(
+      z.looseObject({
+        restriction_type: z.string(),
+        /** Unix seconds. */
+        expiration: z.coerce.number().int().optional(),
+      }),
+    )
+    .optional(),
+  ban_info: z.looseObject({ waba_ban_state: z.string() }).optional(),
+});
+
+/** A `phone_number_quality_update` change's value: the limit, under its newer name first. */
+const metaQualityUpdate = z.looseObject({
+  current_limit: z.string().optional(),
+  max_daily_conversations_per_business: z.string().optional(),
 });
 
 const metaWebhook = z.object({
@@ -131,22 +160,94 @@ function organizationFinder(env: WorkerEnv) {
 
 type MetaChange = z.infer<typeof metaChange>;
 
+const noEvents = (): WhatsappEvents => ({ messages: [], statuses: [], templateStatuses: [] });
+
 /** A `messages` change's messages and statuses. A status underthing does not store (such as `deleted`) is skipped. */
 function messageEventsOf(value: MetaChange["value"]): WhatsappEvents {
   return {
+    ...noEvents(),
     messages: (value.messages ?? []).map(incomingOf),
     statuses: (value.statuses ?? []).flatMap(({ id, status, timestamp }) =>
       isKnownStatus(status) ? [{ whatsappId: id, status, at: timestamp * 1000 }] : [],
     ),
-    templateStatuses: [],
   };
+}
+
+/** A completed move of a template to another category; a warning of one to come is not stored. */
+function templateCategoryOf(value: unknown): WhatsappEvents | null {
+  const parsed = metaCategoryUpdate.safeParse(value);
+  if (!parsed.success || !parsed.data.previous_category) {
+    return null;
+  }
+  const { message_template_id: metaId, new_category: category } = parsed.data;
+  return { ...noEvents(), templateCategories: [{ metaId, category }] };
+}
+
+/**
+ * The account's restriction of business-started messages, which holds every
+ * template underthing sends, until its latest expiration (or until lifted,
+ * when one has none); a restriction without it lifts the hold. A ban, until
+ * Meta reinstates the account.
+ */
+function accountEventOf(value: unknown): WhatsappNumberEvent | null {
+  const parsed = metaAccountUpdate.safeParse(value);
+  if (!parsed.success) {
+    return null;
+  }
+  const { event, restriction_info: restrictions = [], ban_info: ban } = parsed.data;
+  if (event === "ACCOUNT_RESTRICTION") {
+    const held = restrictions.filter(
+      (restriction) => restriction.restriction_type === "RESTRICTED_BIZ_INITIATED_MESSAGING",
+    );
+    if (held.length === 0) {
+      return { kind: "unrestricted" };
+    }
+    const expirations = held.map((restriction) => restriction.expiration);
+    const until = expirations.every((expiration) => expiration !== undefined)
+      ? Math.max(...expirations) * 1000
+      : null;
+    return { kind: "restricted", until };
+  }
+  if (event === "DISABLED_UPDATE" && ban?.waba_ban_state === "DISABLE") {
+    return { kind: "disabled" };
+  }
+  if (event === "DISABLED_UPDATE" && ban?.waba_ban_state === "REINSTATE") {
+    return { kind: "reinstated" };
+  }
+  return null;
+}
+
+function messagingLimitOf(value: unknown): WhatsappNumberEvent | null {
+  const parsed = metaQualityUpdate.safeParse(value);
+  const limit = parsed.success
+    ? (parsed.data.max_daily_conversations_per_business ?? parsed.data.current_limit)
+    : undefined;
+  return limit ? { kind: "messagingLimit", limit } : null;
+}
+
+/** The events of a change about the account: a template's status or category, or the number's limits. */
+function accountEventsOf(change: MetaChange): WhatsappEvents | null {
+  if (change.field === "message_template_status_update") {
+    const status = templateStatusOf(change.value);
+    return status && { ...noEvents(), templateStatuses: [status] };
+  }
+  if (change.field === "template_category_update") {
+    return templateCategoryOf(change.value);
+  }
+  const event =
+    change.field === "account_update"
+      ? accountEventOf(change.value)
+      : change.field === "phone_number_quality_update"
+        ? messagingLimitOf(change.value)
+        : null;
+  return event && { ...noEvents(), numberEvents: [event] };
 }
 
 /**
  * A change's events, with the lookup of whose they are, run when the call's
- * changes are read one by one: the number's
- * organization for a `messages` change, the account's for a template's
- * status. `null` for a change underthing does not store.
+ * changes are read one by one: the number's organization for a `messages`
+ * change, the account's for the others. `null` for a change underthing does
+ * not store.
  */
 function routeOf(
   find: ReturnType<typeof organizationFinder>,
@@ -158,13 +259,22 @@ function routeOf(
     const lookup = async () => (phoneNumberId ? find.forNumber(phoneNumberId) : null);
     return { lookup, events: messageEventsOf(change.value) };
   }
-  const status =
-    change.field === "message_template_status_update" ? templateStatusOf(change.value) : null;
-  if (!status) {
+  const events = accountEventsOf(change);
+  if (!events) {
     return null;
   }
   const lookup = async () => (accountId ? find.forAccount(accountId) : null);
-  return { lookup, events: { messages: [], statuses: [], templateStatuses: [status] } };
+  return { lookup, events };
+}
+
+function isEmpty(events: WhatsappEvents) {
+  return [
+    events.messages,
+    events.statuses,
+    events.templateStatuses,
+    events.templateCategories ?? [],
+    events.numberEvents ?? [],
+  ].every((list) => list.length === 0);
 }
 
 /** Adds `events` to the organization's events of the call. */
@@ -181,6 +291,11 @@ function addEvents(
   ours.messages.push(...events.messages);
   ours.statuses.push(...events.statuses);
   ours.templateStatuses.push(...events.templateStatuses);
+  ours.templateCategories = [
+    ...(ours.templateCategories ?? []),
+    ...(events.templateCategories ?? []),
+  ];
+  ours.numberEvents = [...(ours.numberEvents ?? []), ...(events.numberEvents ?? [])];
 }
 
 /**
@@ -267,8 +382,7 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
   }
   let stored = true;
   for (const [organizationId, organizationEvents] of events) {
-    const { messages, statuses, templateStatuses } = organizationEvents;
-    if (messages.length + statuses.length + templateStatuses.length === 0) {
+    if (isEmpty(organizationEvents)) {
       continue;
     }
     const result = await organizationObject(env, organizationId).storeWhatsappEvents(

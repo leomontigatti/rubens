@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, lt, lte, min } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, lte, min } from "drizzle-orm";
 
 import {
   aftercareKinds,
@@ -12,7 +12,6 @@ import type { OutboxKind } from "#/lib/outbox.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { fillTemplate, flattenCareInstructions } from "#/lib/template-filling.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError, TemplateMessage, WhatsappCloud } from "#/organization/graph-api.ts";
@@ -26,9 +25,11 @@ import {
   practitioner,
   room,
 } from "#/organization/schema.ts";
-import { outboxMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
+import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
+import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
+import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 
 // The outbox (`src/lib/outbox.ts`): messages to patients, queued in the
 // transaction that changes their appointment and sent by the object's alarm
@@ -194,25 +195,12 @@ export function requeueOnStatus(
   }
 }
 
-/** The latest approved version of template `name`, the one that goes; `null` while none is approved. */
-export function approvedVersion(database: Database, name: TemplateName) {
-  return (
-    database
-      .select({
-        version: whatsappTemplate.version,
-        language: whatsappTemplate.language,
-        body: whatsappTemplate.body,
-      })
-      .from(whatsappTemplate)
-      .where(and(eq(whatsappTemplate.name, name), eq(whatsappTemplate.status, "approved")))
-      .orderBy(desc(whatsappTemplate.version))
-      .get() ?? null
-  );
-}
-
-/** The kinds that can go now: Meta's settings are complete and their template has an approved version. */
+/**
+ * The kinds that can go now: Meta's settings are complete, the number is not
+ * held (`whatsapp-limits.ts`), and their template has an approved version.
+ */
 function sendableKinds(database: Database, cloud: WhatsappCloud): OutboxKind[] {
-  if (cloud.missingSetting()) {
+  if (cloud.missingSetting() || activeHold(database, Date.now())) {
     return [];
   }
   return (Object.keys(outboxTemplates) as OutboxKind[]).filter((kind) =>
@@ -223,9 +211,19 @@ function sendableKinds(database: Database, cloud: WhatsappCloud): OutboxKind[] {
 /**
  * When the object's alarm should next fire: at the earliest queued message
  * that can go, or `null` when none can. A message waiting for its template's
- * approval or for Meta's settings is left out, so the alarm does not spin.
+ * approval or for Meta's settings is left out, so the alarm does not spin;
+ * one waiting on a hold of the number, until the hold ends, if it ends by time.
  */
 export function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): number | null {
+  const hold = activeHold(database, Date.now());
+  if (hold) {
+    const anyQueued = database
+      .select({ id: outboxMessage.id })
+      .from(outboxMessage)
+      .where(eq(outboxMessage.state, "queued"))
+      .get();
+    return anyQueued ? hold.until : null;
+  }
   const kinds = sendableKinds(database, cloud);
   if (kinds.length === 0) {
     return null;
@@ -409,7 +407,10 @@ async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) 
       }) as const,
   );
   if (!sent.ok) {
-    recordFailure(database, id, attempts, sent.metaError);
+    // A limit on the number holds every message, this one with no attempt spent.
+    if (!holdOnRefusal(database, sent.metaError)) {
+      recordFailure(database, id, attempts, sent.metaError);
+    }
     return;
   }
   recordSent(database, queued, attempts, { ...message, text: filled.text, sent });
@@ -502,8 +503,8 @@ export async function sendDueMessages(database: Database, cloud: WhatsappCloud) 
     .orderBy(asc(outboxMessage.dueAt))
     .all();
   for (const { id } of due) {
-    // Meta refusing the token mid-batch leaves the rest queued, not failed.
-    if (cloud.missingSetting()) {
+    // Meta refusing the token, or limiting the number, mid-batch leaves the rest queued, not failed.
+    if (cloud.missingSetting() || activeHold(database, Date.now())) {
       return;
     }
     await sendQueued(database, cloud, id);

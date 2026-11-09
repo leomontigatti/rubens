@@ -7,7 +7,8 @@ is sent is in [messages.md](../domain/messages.md#to-patients).
 
 - **Category**: utility, every one. Each is about one patient's appointment, with
   nothing promotional in it. Meta can move a template to marketing after approving
-  it, which costs more than twice as much; the admins are warned
+  it, which costs more than twice as much: that version no longer goes, its messages
+  wait for an approved utility version, and the admins are warned
   ([messages.md](../domain/messages.md#when-meta-limits-the-number)).
 - **Voice**: the organization's own, `vos` or `usted` and its sign-off, written into
   the text when it is submitted. Communication rules do not change an approved

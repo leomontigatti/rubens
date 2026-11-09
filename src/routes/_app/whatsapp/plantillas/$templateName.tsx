@@ -21,8 +21,9 @@ import {
   templateLabels,
   templateRefusalMessages,
   templateStatusLabels,
+  templateCategoryLabels,
   templateStatusVariants,
-} from "#/routes/_app/whatsapp/-template-copy.ts";
+} from "#/lib/whatsapp-template-copy.ts";
 
 export const Route = createFileRoute("/_app/whatsapp/plantillas/$templateName")({
   head: () => ({ meta: [{ title: "Plantilla de WhatsApp · underthing" }] }),
@@ -133,16 +134,28 @@ function TemplateForm(props: { name: TemplateName; latest: Version | undefined }
         error: null,
       }}
       lead={
-        latest?.status === "rejected" && (
-          <Alert variant="destructive">
-            <AlertTitle>Meta rechazó la versión {latest.version}</AlertTitle>
+        latest && latest.category !== "utility" ? (
+          <Alert variant="warning">
+            <AlertTitle>
+              Meta pasó la versión {latest.version} a {templateCategoryLabels[latest.category]}
+            </AlertTitle>
             <AlertDescription>
-              {latest.rejectionReason
-                ? rejectionText(latest.rejectionReason)
-                : "Meta no dio el motivo."}{" "}
-              Corregí el texto y enviá una versión nueva.
+              Cuesta más del doble que una de utilidad, así que underthing deja de enviarla. Enviá
+              una versión nueva, sobre el turno del paciente y sin nada promocional.
             </AlertDescription>
           </Alert>
+        ) : (
+          latest?.status === "rejected" && (
+            <Alert variant="destructive">
+              <AlertTitle>Meta rechazó la versión {latest.version}</AlertTitle>
+              <AlertDescription>
+                {latest.rejectionReason
+                  ? rejectionText(latest.rejectionReason)
+                  : "Meta no dio el motivo."}{" "}
+                Corregí el texto y enviá una versión nueva.
+              </AlertDescription>
+            </Alert>
+          )
         )
       }
     >

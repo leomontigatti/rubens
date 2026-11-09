@@ -59,6 +59,7 @@ import type {
   WhatsappConsentChange,
 } from "#/lib/patients.ts";
 import type { ConversationListOptions, ConversationReference } from "#/lib/whatsapp-messages.ts";
+import type { NotificationReference } from "#/lib/notifications.ts";
 import type {
   ClosureDelete,
   ClosureInput,
@@ -185,6 +186,11 @@ import {
   listToReschedule,
 } from "#/organization/to-reschedule.ts";
 import { listConversations, readConversation } from "#/organization/inbox.ts";
+import {
+  countUnreadNotifications,
+  listNotifications,
+  markNotificationRead,
+} from "#/organization/notifications.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -591,6 +597,20 @@ export class Organization extends OrganizationWhatsapp {
 
   countToReschedule(caller: Caller) {
     return this.as(caller, bookers, (acting) => countToReschedule(this.database, acting));
+  }
+
+  // Each member reads and marks only their own notifications.
+
+  listNotifications(caller: Caller) {
+    return this.as(caller, "any", (acting) => listNotifications(this.database, acting));
+  }
+
+  countUnreadNotifications(caller: Caller) {
+    return this.as(caller, "any", (acting) => countUnreadNotifications(this.database, acting));
+  }
+
+  markNotificationRead(caller: Caller, input: NotificationReference) {
+    return this.as(caller, "any", (acting) => markNotificationRead(this.database, acting, input));
   }
 
   // Only admins deactivate, so only they ask what a deactivation would send to the list.
