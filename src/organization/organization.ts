@@ -556,23 +556,25 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   rescheduleAppointment(caller: Caller, input: RescheduleInput & WarningConfirmation) {
-    return this.as(caller, bookers, (acting) =>
+    return this.asThenArm(caller, bookers, (acting) =>
       rescheduleAppointment(this.database, acting, input),
     );
   }
 
   changeAppointmentStatus(caller: Caller, input: StatusChangeInput) {
-    return this.as(caller, bookers, (acting) =>
+    return this.asThenArm(caller, bookers, (acting) =>
       changeAppointmentStatus(this.database, acting, input),
     );
   }
 
   cancelAppointment(caller: Caller, input: CancellationInput) {
-    return this.as(caller, bookers, (acting) => cancelAppointment(this.database, acting, input));
+    return this.asThenArm(caller, bookers, (acting) =>
+      cancelAppointment(this.database, acting, input),
+    );
   }
 
   undoAppointmentStatus(caller: Caller, input: AppointmentIdInput) {
-    return this.as(caller, bookers, (acting) =>
+    return this.asThenArm(caller, bookers, (acting) =>
       undoAppointmentStatus(this.database, acting, input),
     );
   }

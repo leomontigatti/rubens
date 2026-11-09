@@ -13,6 +13,7 @@ import {
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
 import { conversation, outboxMessage, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
 // go to the fake Meta: each test reads the requests it received.
@@ -41,16 +42,27 @@ function metaSent(messageId: string, waId = "5491155550000") {
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
 
-/** Submits `confirmacion_turno` as the admin, and has Meta answer `status` at once. */
-async function submitConfirmation(status: "APPROVED" | "PENDING", metaId = "900000000000001") {
+const reminderBody =
+  "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia? Consultorios Prueba";
+
+const reminderWithoutConfirmationBody =
+  "Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}} con {{profesional}} en {{sede}} ({{direccion}}). Consultorios Prueba";
+
+/** Submits `templateName` as the admin, and has Meta answer `status` at once. */
+async function submitTemplate(
+  templateName: TemplateName,
+  body: string,
+  status: "APPROVED" | "PENDING",
+  metaId: string,
+) {
   fakeMeta.answerNextWith(200, { id: metaId, status, category: "UTILITY" });
-  expectOk(
-    await world.organization.submitWhatsappTemplate(adminCaller, {
-      templateName: "confirmacion_turno",
-      body: confirmationBody,
-    }),
-  );
+  expectOk(await world.organization.submitWhatsappTemplate(adminCaller, { templateName, body }));
   fakeMeta.requests = [];
+}
+
+/** Submits `confirmacion_turno` as the admin, and has Meta answer `status` at once. */
+function submitConfirmation(status: "APPROVED" | "PENDING", metaId = "900000000000001") {
+  return submitTemplate("confirmacion_turno", confirmationBody, status, metaId);
 }
 
 /** The messages the object sent Meta: its `POST`s to the number's `/messages`. */
@@ -64,6 +76,8 @@ function outbox() {
       .select({
         kind: outboxMessage.kind,
         appointmentId: outboxMessage.appointmentId,
+        hoursBefore: outboxMessage.hoursBefore,
+        dueAt: outboxMessage.dueAt,
         state: outboxMessage.state,
         attempts: outboxMessage.attempts,
         dropReason: outboxMessage.dropReason,
@@ -427,5 +441,402 @@ describe("sending the booking confirmation", () => {
     await runDurableObjectAlarm(world.organization);
 
     expect(await outbox()).toEqual([expect.objectContaining({ state: "sent", attempts: 2 })]);
+  });
+});
+
+const hours = (count: number) => count * 60 * 60_000;
+
+/** The medical service's reminders: hours before the appointment, and whether each asks to confirm. */
+async function setReminders(reminders: { hoursBefore: number; asksToConfirm: boolean }[]) {
+  expectOk(
+    await world.organization.updateMedicalService(adminCaller, {
+      medicalServiceId,
+      name: "Consulta",
+      durationMinutes: 30,
+      bookingConfirmation: false,
+      reminders,
+      careInstructions: null,
+      followUpHours: null,
+      rescheduleCutoffHours: 24,
+    }),
+  );
+}
+
+/** The queued reminders, latest first, as hours before the appointment and when each is due. */
+async function queuedReminders() {
+  return (await outbox())
+    .filter((row) => row.state === "queued")
+    .map(({ kind, hoursBefore, dueAt }) => ({ kind, hoursBefore, dueAt }))
+    .sort((a, b) => b.hoursBefore! - a.hoursBefore!);
+}
+
+/** The template name of each message the object sent Meta, in order. */
+function sentTemplates() {
+  return sentToMeta().map(
+    (request) => (request.body as { template: { name: string } }).template.name,
+  );
+}
+
+const nineOnMonday = at("12:00");
+
+describe("queueing reminders", () => {
+  beforeEach(async () => {
+    await setReminders([
+      { hoursBefore: 48, asksToConfirm: true },
+      { hoursBefore: 2, asksToConfirm: false },
+    ]);
+  });
+
+  it("queues one per reminder, each due its hours before the appointment", async () => {
+    await bookMartina();
+
+    expect(await queuedReminders()).toEqual([
+      { kind: "reminder", hoursBefore: 48, dueAt: +nineOnMonday - hours(48) },
+      { kind: "reminderWithoutConfirmation", hoursBefore: 2, dueAt: +nineOnMonday - hours(2) },
+    ]);
+  });
+
+  it("skips a reminder whose time has passed at booking", async () => {
+    vi.setSystemTime(+nineOnMonday - hours(24));
+
+    await bookMartina();
+
+    expect(await queuedReminders()).toEqual([expect.objectContaining({ hoursBefore: 2 })]);
+  });
+
+  it("keeps a reminder due at the very moment of booking", async () => {
+    vi.setSystemTime(+nineOnMonday - hours(2));
+
+    await bookMartina();
+
+    expect(await queuedReminders()).toEqual([expect.objectContaining({ hoursBefore: 2 })]);
+  });
+
+  it("queues none for a patient without WhatsApp consent", async () => {
+    const patient = await world.addPatient("Martina", "+5491155550000");
+    expectOk(
+      await world.organization.setWhatsappConsent(adminCaller, {
+        patientId: patient.id,
+        whatsappConsent: false,
+      }),
+    );
+
+    await world.book({
+      practitionerId: world.juan.practitionerId,
+      patientId: patient.id,
+      medicalServiceId,
+      start: nineOnMonday,
+      durationMinutes: 30,
+    });
+
+    expect(await outbox()).toEqual([]);
+  });
+
+  it("replaces them with reminders for the new time when the appointment is moved", async () => {
+    const { appointmentId } = await bookMartina();
+    const nextMonday = at("12:00", "2099-01-12");
+
+    expectOk(
+      await world.organization.rescheduleAppointment(adminCaller, {
+        appointmentId,
+        start: nextMonday,
+        durationMinutes: 30,
+      }),
+    );
+
+    expect(await queuedReminders()).toEqual([
+      { kind: "reminder", hoursBefore: 48, dueAt: +nextMonday - hours(48) },
+      { kind: "reminderWithoutConfirmation", hoursBefore: 2, dueAt: +nextMonday - hours(2) },
+    ]);
+    expect(await outbox()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hoursBefore: 48,
+          state: "dropped",
+          dueAt: +nineOnMonday - hours(48),
+        }),
+      ]),
+    );
+  });
+
+  it("leaves none to send once the appointment is cancelled", async () => {
+    const { appointmentId } = await bookMartina();
+
+    expectOk(
+      await world.organization.cancelAppointment(adminCaller, {
+        appointmentId,
+        cancelledBy: "patient",
+      }),
+    );
+
+    expect(await queuedReminders()).toEqual([]);
+  });
+
+  it("queues them again, less those already past, when the cancellation is undone", async () => {
+    const { appointmentId } = await bookMartina();
+    vi.setSystemTime(+nineOnMonday - hours(24));
+    expectOk(
+      await world.organization.cancelAppointment(adminCaller, {
+        appointmentId,
+        cancelledBy: "patient",
+      }),
+    );
+
+    expectOk(await world.organization.undoAppointmentStatus(adminCaller, { appointmentId }));
+
+    expect(await queuedReminders()).toEqual([expect.objectContaining({ hoursBefore: 2 })]);
+  });
+
+  it("keeps them when the appointment is confirmed", async () => {
+    const { appointmentId } = await bookMartina();
+
+    expectOk(
+      await world.organization.changeAppointmentStatus(adminCaller, {
+        appointmentId,
+        status: "confirmed",
+      }),
+    );
+
+    expect(await queuedReminders()).toHaveLength(2);
+  });
+});
+
+describe("sending reminders", () => {
+  beforeEach(async () => {
+    await submitTemplate("recordatorio_turno", reminderBody, "APPROVED", "900000000000011");
+    await submitTemplate(
+      "recordatorio_turno_sin_confirmacion",
+      reminderWithoutConfirmationBody,
+      "APPROVED",
+      "900000000000012",
+    );
+    fakeMeta.answerWith(200, metaSent("wamid.reminder"));
+  });
+
+  it("sends a reminder that asks to confirm as `recordatorio_turno`, at its time", async () => {
+    await setReminders([{ hoursBefore: 48, asksToConfirm: true }]);
+    await bookMartina();
+
+    vi.setSystemTime(+nineOnMonday - hours(49));
+    await runDurableObjectAlarm(world.organization);
+    expect(sentToMeta()).toEqual([]);
+
+    vi.setSystemTime(+nineOnMonday - hours(48));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["recordatorio_turno_v1"]);
+    const [stored] = await storedMessages();
+    expect(stored!.text).toBe(
+      "Hola Martina, te recordamos tu turno con Juan Gómez el lunes 5 de enero a las 09:00 en Sede Centro. ¿Nos confirmás tu asistencia? Consultorios Prueba",
+    );
+    expect(await outbox()).toEqual([expect.objectContaining({ state: "sent" })]);
+  });
+
+  it("sends one that does not ask to confirm as `recordatorio_turno_sin_confirmacion`", async () => {
+    await setReminders([{ hoursBefore: 2, asksToConfirm: false }]);
+    await bookMartina();
+
+    vi.setSystemTime(+nineOnMonday - hours(2));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["recordatorio_turno_sin_confirmacion_v1"]);
+  });
+
+  it("sends only the later of two due reminders for one appointment", async () => {
+    await setReminders([
+      { hoursBefore: 48, asksToConfirm: true },
+      { hoursBefore: 2, asksToConfirm: false },
+    ]);
+    await bookMartina();
+
+    vi.setSystemTime(+nineOnMonday - hours(1));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["recordatorio_turno_sin_confirmacion_v1"]);
+    expect(await outbox()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ hoursBefore: 48, state: "dropped", dropReason: "overtaken" }),
+        expect.objectContaining({ hoursBefore: 2, state: "sent" }),
+      ]),
+    );
+  });
+
+  it("drops an earlier reminder still retrying once a later one has gone", async () => {
+    await setReminders([
+      { hoursBefore: 3, asksToConfirm: true },
+      { hoursBefore: 2, asksToConfirm: false },
+    ]);
+    await bookMartina();
+    fakeMeta.answerWith(500, { error: { code: 1, message: "Temporary" } });
+    // Four failures put the 3 h reminder's next try 2 h 36 min after its time.
+    for (const minutes of [0, 1, 6, 36]) {
+      vi.setSystemTime(+nineOnMonday - hours(3) + minutes * 60_000);
+      await runDurableObjectAlarm(world.organization);
+    }
+    fakeMeta.answerWith(200, metaSent("wamid.reminder"));
+    fakeMeta.requests = [];
+
+    vi.setSystemTime(+nineOnMonday - hours(2));
+    await runDurableObjectAlarm(world.organization);
+    vi.setSystemTime(+nineOnMonday - 20 * 60_000);
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["recordatorio_turno_sin_confirmacion_v1"]);
+    expect(await outbox()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ hoursBefore: 3, state: "dropped", dropReason: "overtaken" }),
+      ]),
+    );
+  });
+
+  it("lets a reminder sent for the old time not stand for the new one after a move", async () => {
+    await setReminders([{ hoursBefore: 2, asksToConfirm: false }]);
+    const { appointmentId } = await bookMartina();
+    vi.setSystemTime(+nineOnMonday - hours(2));
+    await runDurableObjectAlarm(world.organization);
+    await setReminders([{ hoursBefore: 48, asksToConfirm: true }]);
+    const nextMonday = at("12:00", "2099-01-12");
+    expectOk(
+      await world.organization.rescheduleAppointment(adminCaller, {
+        appointmentId,
+        start: nextMonday,
+        durationMinutes: 30,
+      }),
+    );
+    fakeMeta.answerWith(200, metaSent("wamid.second"));
+
+    vi.setSystemTime(+nextMonday - hours(1));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual([
+      "recordatorio_turno_sin_confirmacion_v1",
+      "recordatorio_turno_v1",
+    ]);
+  });
+
+  it("keeps the new time's reminders when the appointment moves while one is sending", async () => {
+    await setReminders([
+      { hoursBefore: 48, asksToConfirm: true },
+      { hoursBefore: 2, asksToConfirm: false },
+    ]);
+    const { appointmentId } = await bookMartina();
+    vi.setSystemTime(+nineOnMonday - hours(2));
+    const release = fakeMeta.holdNext();
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.received(1);
+    const nextMonday = at("12:00", "2099-01-12");
+
+    expectOk(
+      await world.organization.rescheduleAppointment(adminCaller, {
+        appointmentId,
+        start: nextMonday,
+        durationMinutes: 30,
+      }),
+    );
+    release();
+    await alarm;
+
+    expect(await queuedReminders()).toEqual([
+      expect.objectContaining({ hoursBefore: 48, dueAt: +nextMonday - hours(48) }),
+      expect.objectContaining({ hoursBefore: 2, dueAt: +nextMonday - hours(2) }),
+    ]);
+  });
+
+  it("sends an earlier reminder when the later one's template is paused during the batch", async () => {
+    // Martina's 72 h reminder goes first in the batch; Lucas's two fall due behind it.
+    await setReminders([{ hoursBefore: 72, asksToConfirm: true }]);
+    const martina = await world.addPatient("Martina", "+5491155550000");
+    await world.book({
+      practitionerId: world.juan.practitionerId,
+      patientId: martina.id,
+      medicalServiceId,
+      start: at("13:30"),
+      durationMinutes: 30,
+    });
+    await setReminders([
+      { hoursBefore: 48, asksToConfirm: true },
+      { hoursBefore: 2, asksToConfirm: false },
+    ]);
+    const lucas = await world.addPatient("Lucas", "+5491155550001");
+    await world.book({
+      practitionerId: world.juan.practitionerId,
+      patientId: lucas.id,
+      medicalServiceId,
+      start: at("13:00"),
+      durationMinutes: 30,
+    });
+    vi.setSystemTime(+at("13:00") - hours(1));
+    fakeMeta.answerNextWith(200, metaSent("wamid.martina"));
+    fakeMeta.answerNextWith(200, metaSent("wamid.lucas", "5491155550001"));
+    const release = fakeMeta.holdNext();
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.received(1);
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: [],
+        templateStatuses: [{ metaId: "900000000000012", status: "paused", reason: null }],
+      }),
+    );
+    release();
+    await alarm;
+
+    expect(sentToMeta().map((request) => (request.body as { to: string }).to)).toEqual([
+      "5491155550000",
+      "5491155550001",
+    ]);
+  });
+
+  it("sends nothing for an appointment cancelled before its reminder", async () => {
+    await setReminders([{ hoursBefore: 2, asksToConfirm: false }]);
+    const { appointmentId } = await bookMartina();
+    expectOk(
+      await world.organization.cancelAppointment(adminCaller, {
+        appointmentId,
+        cancelledBy: "patient",
+      }),
+    );
+
+    vi.setSystemTime(+nineOnMonday - hours(2));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentToMeta()).toEqual([]);
+  });
+
+  it("sends nothing to a patient whose consent was withdrawn after the booking", async () => {
+    await setReminders([{ hoursBefore: 2, asksToConfirm: false }]);
+    const { patient } = await bookMartina();
+    expectOk(
+      await world.organization.setWhatsappConsent(adminCaller, {
+        patientId: patient.id,
+        whatsappConsent: false,
+      }),
+    );
+
+    vi.setSystemTime(+nineOnMonday - hours(2));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentToMeta()).toEqual([]);
+    expect(await outbox()).toEqual([
+      expect.objectContaining({ state: "dropped", dropReason: "noConsent" }),
+    ]);
+  });
+});
+
+describe("sending reminders while one template waits for approval", () => {
+  it("sends an earlier reminder when the later one's template is not approved", async () => {
+    await submitTemplate("recordatorio_turno", reminderBody, "APPROVED", "900000000000011");
+    fakeMeta.answerWith(200, metaSent("wamid.reminder"));
+    await setReminders([
+      { hoursBefore: 48, asksToConfirm: true },
+      { hoursBefore: 2, asksToConfirm: false },
+    ]);
+    await bookMartina();
+
+    vi.setSystemTime(+nineOnMonday - hours(1));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["recordatorio_turno_v1"]);
   });
 });
