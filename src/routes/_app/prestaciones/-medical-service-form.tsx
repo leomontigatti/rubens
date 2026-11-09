@@ -15,6 +15,7 @@ const fieldMessages: Record<keyof MedicalServiceFields | "practitionerId", strin
   practitionerId: "No encontramos ese profesional.",
   name: "Ingresá el nombre.",
   durationMinutes: "La duración tiene que ser de 1 a 720 minutos.",
+  bookingConfirmation: "Elegí si se envía la confirmación de turno.",
 };
 
 const fieldsSchema = medicalServiceInputSchema.omit({ practitionerId: true });
@@ -35,7 +36,11 @@ export function MedicalServiceForm(props: {
   const action = useFormAction(refusalMessages);
 
   const form = useAppForm({
-    defaultValues: { name: initial.name, durationMinutes: String(initial.durationMinutes) },
+    defaultValues: {
+      name: initial.name,
+      durationMinutes: String(initial.durationMinutes),
+      bookingConfirmation: initial.bookingConfirmation ?? true,
+    },
     onSubmit: async ({ value }) => {
       const fields = fieldsSchema.safeParse({
         ...value,
@@ -67,6 +72,9 @@ export function MedicalServiceForm(props: {
             required
           />
         )}
+      </form.AppField>
+      <form.AppField name="bookingConfirmation">
+        {(field) => <field.CheckboxField label="Enviar confirmación de turno por WhatsApp" />}
       </form.AppField>
     </ActionFormPage>
   );

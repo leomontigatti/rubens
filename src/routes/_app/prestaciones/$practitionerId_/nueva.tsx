@@ -14,7 +14,11 @@ export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/nueva"
   component: NewMedicalService,
 });
 
-const newMedicalService: MedicalServiceFields = { name: "", durationMinutes: 30 };
+const newMedicalService: MedicalServiceFields = {
+  name: "",
+  durationMinutes: 30,
+  bookingConfirmation: true,
+};
 
 function NewMedicalService() {
   const result = Route.useLoaderData();

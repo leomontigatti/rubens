@@ -24,6 +24,8 @@ export interface TemplateMessage {
   to: string;
   templateName: string;
   languageCode: string;
+  /** The value of each named variable the template's body uses; none for a body without them. */
+  parameters?: { name: string; value: string }[];
 }
 
 /** Meta's error, as it explains a refusal. */
@@ -34,7 +36,8 @@ export interface MetaError {
 
 type MetaRefusal = { ok: false; reason: "metaRefused"; metaError: MetaError };
 
-export type SendResult = { ok: true; messageId: string } | MetaRefusal;
+/** Meta's id for the message, and its WhatsApp id for the recipient, the number its replies come from. */
+export type SendResult = { ok: true; messageId: string; waId: string | null } | MetaRefusal;
 
 /** A template body to submit for review, with Meta's example for each of its variables. */
 export interface TemplateDraft {
@@ -61,7 +64,7 @@ export type TemplateNamesResult = { ok: true; names: string[] } | MetaRefusal;
 export interface WhatsappCloud {
   /** The setting that keeps a send from being made, or `null` when none is missing. */
   missingSetting(): MissingSetting | null;
-  /** Sends an approved template with no variables; requires every setting. */
+  /** Sends an approved template, with its variables' values; requires every setting. */
   sendTemplate(message: TemplateMessage): Promise<SendResult>;
   /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
   missingTemplateSetting(): MissingTemplateSetting | null;
@@ -78,6 +81,7 @@ interface GraphApiError {
 }
 
 interface MessagesAnswer {
+  contacts?: { wa_id?: unknown }[];
   messages?: { id?: unknown }[];
 }
 
@@ -128,7 +132,7 @@ export function whatsappCloudFor(
 
   return {
     missingSetting,
-    async sendTemplate({ to, templateName, languageCode }) {
+    async sendTemplate({ to, templateName, languageCode, parameters = [] }) {
       const token = settings.WHATSAPP_ACCESS_TOKEN;
       const phoneNumberId = settings.WHATSAPP_PHONE_NUMBER_ID;
       if (!token || !phoneNumberId) {
@@ -144,7 +148,22 @@ export function whatsappCloudFor(
             recipient_type: "individual",
             to: to.replace(/^\+/, ""),
             type: "template",
-            template: { name: templateName, language: { code: languageCode } },
+            template: {
+              name: templateName,
+              language: { code: languageCode },
+              ...(parameters.length > 0 && {
+                components: [
+                  {
+                    type: "body",
+                    parameters: parameters.map(({ name, value }) => ({
+                      type: "text",
+                      parameter_name: name,
+                      text: value,
+                    })),
+                  },
+                ],
+              }),
+            },
           }),
         },
       );
@@ -152,11 +171,13 @@ export function whatsappCloudFor(
       if (!answer.ok) {
         return answer;
       }
-      const messageId = (answer.body as MessagesAnswer).messages?.[0]?.id;
+      const { messages, contacts } = answer.body as MessagesAnswer;
+      const messageId = messages?.[0]?.id;
       if (typeof messageId !== "string") {
         throw new Error("The Graph API accepted a message without returning its id");
       }
-      return { ok: true, messageId };
+      const waId = contacts?.[0]?.wa_id;
+      return { ok: true, messageId, waId: typeof waId === "string" ? waId : null };
     },
     missingTemplateSetting,
     async createTemplate({ name, languageCode, body, examples }) {

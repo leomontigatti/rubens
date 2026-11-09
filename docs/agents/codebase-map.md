@@ -24,7 +24,8 @@ src/
 │   └── ui/            shadcn/ui components (see shadcn.md); add with the CLI, edit by hand
 ├── hooks/             shared React hooks; shadcn's `use-mobile.ts`
 ├── organization/      the organization's Durable Object (ADR-0008): `organization.ts` (the class, one
-│   │                  RPC method per operation), one module per area (`members.ts`, `audit.ts`, …),
+│   │                  RPC method per operation) over `organization-runtime.ts` (its storage,
+│   │                  services and alarm), one module per area (`members.ts`, `audit.ts`, …),
 │   │                  `schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
 ├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
@@ -55,8 +56,9 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   (`src/server/with-organization.ts`). A refusal comes back as `{ ok: false, reason }`.
 - **A schema change**: edit `src/organization/schema.ts`, run `pnpm organization:generate`,
   and review the generated SQL. Migrations on `main` are never edited.
-- **A background job**: a row in the organization's object and its alarm (ADR-0008);
-  none exists yet. Payload contents are never logged.
+- **A background job**: a row in the organization's object and its one alarm (ADR-0008):
+  `src/organization/outbox.ts` queues messages to patients and sends them when due, and
+  the object's `alarm()` is set to the earliest due item. Payload contents are never logged.
 - **A pure rule** (availability, formatting, state transitions): a module in `src/lib/`
   or beside its feature, tested without a database or React.
 

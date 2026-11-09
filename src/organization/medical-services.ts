@@ -28,6 +28,7 @@ export interface MedicalService {
   id: string;
   name: string;
   durationMinutes: number;
+  bookingConfirmation: boolean;
   active: boolean;
 }
 
@@ -44,6 +45,7 @@ const medicalServiceColumns = {
   id: medicalService.id,
   name: medicalService.name,
   durationMinutes: medicalService.durationMinutes,
+  bookingConfirmation: medicalService.bookingConfirmation,
   active: medicalService.active,
 };
 
