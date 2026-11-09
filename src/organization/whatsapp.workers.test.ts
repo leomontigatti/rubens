@@ -5,6 +5,7 @@ import type { Role } from "#/lib/access.ts";
 
 import {
   addMember,
+  addRefusedAdmin,
   adminCaller,
   expectOk,
   fakeMeta,
@@ -14,7 +15,7 @@ import {
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { auditLog, member } from "#/organization/schema.ts";
+import { auditLog } from "#/organization/schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
 // go to the fake Meta: each test reads the requests it received.
@@ -44,19 +45,6 @@ function messageAuditEntries() {
       .orderBy(sql`rowid`)
       .all(),
   );
-}
-
-/** An admin who has not yet replaced their starting password. */
-async function adminWithStartingPassword() {
-  const admin = await addMember(organization, ["admin"]);
-  await inStorage(organization, (database) =>
-    database
-      .update(member)
-      .set({ mustChangePassword: true })
-      .where(eq(member.userId, admin.userId))
-      .run(),
-  );
-  return admin;
 }
 
 beforeEach(async () => {
@@ -100,7 +88,7 @@ describe("sending a template", () => {
 
   it("refuses an unknown caller and an admin who must still change their password, and sends nothing", async () => {
     const stranger = { userId: "user-stranger" };
-    const admin = await adminWithStartingPassword();
+    const admin = await addRefusedAdmin(organization, "mustChangePassword");
 
     expect(await organization.sendWhatsappTemplate(stranger, helloWorld)).toEqual({
       ok: false,
@@ -192,11 +180,14 @@ describe("sending a template", () => {
 
 describe("the WhatsApp settings", () => {
   it("tell an admin which setting keeps a send from being made", async () => {
-    expect(await organization.whatsappSettings(adminCaller)).toEqual({ ok: true, missing: null });
+    expect(await organization.whatsappSettings(adminCaller)).toMatchObject({
+      ok: true,
+      missing: null,
+    });
 
     delete fakeMeta.settings.WHATSAPP_PHONE_NUMBER_ID;
 
-    expect(await organization.whatsappSettings(adminCaller)).toEqual({
+    expect(await organization.whatsappSettings(adminCaller)).toMatchObject({
       ok: true,
       missing: "missingPhoneNumberId",
     });
@@ -207,7 +198,7 @@ describe("the WhatsApp settings", () => {
       await addMember(organization, ["receptionist"]),
       await addMember(organization, ["practitioner"]),
       { userId: "user-stranger" },
-      await adminWithStartingPassword(),
+      await addRefusedAdmin(organization, "mustChangePassword"),
     ];
 
     const answers = await Promise.all(

@@ -13,6 +13,7 @@ import type {
 } from "#/lib/appointments.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
+import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 import type {
   CoverageId,
   CoverageInput,
@@ -126,10 +127,14 @@ import {
 import type { MedicalServiceListOptions } from "#/organization/medical-services.ts";
 import {
   authorize,
+  bookers,
   insertMember,
   listActiveMembers,
+  medicalServiceEditors,
+  patientEditors,
   setUpOrganization,
   viewerOf,
+  workingTimeEditors,
 } from "#/organization/members.ts";
 import type { Caller, MemberInput, Refusal, Requirement, Acting } from "#/organization/members.ts";
 import {
@@ -192,6 +197,10 @@ import {
 } from "#/organization/to-reschedule.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
 import { getWhatsappSettings, sendTemplate } from "#/organization/whatsapp.ts";
+import {
+  refreshWhatsappTemplates,
+  submitWhatsappTemplate,
+} from "#/organization/whatsapp-templates.ts";
 
 /**
  * One organization's data, in its own SQLite-backed Durable Object (ADR-0008):
@@ -206,19 +215,6 @@ import { getWhatsappSettings, sendTemplate } from "#/organization/whatsapp.ts";
  * requirement and calls it. The object runs one event at a time, and a
  * module's checks and writes are synchronous, so a check holds until its write.
  */
-// A practitioner changes their own medical services; which ones are theirs is
-// the area's to decide (`src/organization/medical-services.ts`).
-const medicalServiceEditors = ["admin", "practitioner"] as const;
-// The same for schedules and time off; a receptionist only reads them.
-const workingTimeEditors = medicalServiceEditors;
-
-// Every staff role registers and edits patients, their coverages and guardians.
-const patientEditors = ["admin", "receptionist", "practitioner"] as const;
-
-// Every staff role books; for whom is the area's to decide
-// (`src/organization/appointments.ts`).
-const bookers = patientEditors;
-
 export class Organization extends DurableObject {
   readonly #database: Database;
   /** The Clerk users staff sign in as (`src/organization/accounts.ts`). */
@@ -663,12 +659,24 @@ export class Organization extends DurableObject {
   // WhatsApp
 
   whatsappSettings(caller: Caller) {
-    return this.#as(caller, ["admin"], () => getWhatsappSettings(this.#whatsapp));
+    return this.#as(caller, ["admin"], () => getWhatsappSettings(this.#database, this.#whatsapp));
   }
 
   async sendWhatsappTemplate(caller: Caller, input: TemplateSend) {
     return this.#as(caller, ["admin"], (acting) =>
       sendTemplate(this.#database, this.#whatsapp, acting, input),
+    );
+  }
+
+  async submitWhatsappTemplate(caller: Caller, input: TemplateSubmission) {
+    return this.#as(caller, ["admin"], (acting) =>
+      submitWhatsappTemplate(this.#database, this.#whatsapp, acting, input),
+    );
+  }
+
+  async refreshWhatsappTemplates(caller: Caller) {
+    return this.#as(caller, ["admin"], () =>
+      refreshWhatsappTemplates(this.#database, this.#whatsapp),
     );
   }
 }

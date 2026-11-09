@@ -105,7 +105,7 @@ export default defineConfig({
           "src/routes/ingresar.tsx",
           "src/routes/_app/cambiar-contrasena.tsx",
           "src/routes/_app/disponibilidad/index.tsx",
-          "src/routes/_app/whatsapp.tsx",
+          "src/routes/_app/whatsapp/index.tsx",
           "**/*.test.tsx",
         ],
         rules: {

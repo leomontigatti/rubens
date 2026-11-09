@@ -30,6 +30,7 @@ import { Input } from "#/components/ui/input.tsx";
 import { InputGroupAddon } from "#/components/ui/input-group.tsx";
 import { NativeSelect } from "#/components/ui/native-select.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
+import { Textarea } from "#/components/ui/textarea.tsx";
 
 // The form kit: `useAppForm` holds a form's values, and each field below reads
 // and writes its own through `form.AppField`. Number inputs hold their text, as
@@ -91,6 +92,31 @@ function TextField(
         id={field.name}
         name={field.name}
         className={narrow ? "w-32 max-w-32" : undefined}
+        value={field.state.value}
+        onChange={(event) => field.handleChange(event.target.value)}
+        onBlur={field.handleBlur}
+        aria-invalid={invalid}
+        aria-describedby={joinIds(hintId, errorId)}
+      />
+      <FieldHint id={hintId}>{hint}</FieldHint>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+    </Field>
+  );
+}
+
+/** A long text, such as a message body, whose box grows with what it holds. */
+function TextareaField(props: { label: string; hint?: string; required?: boolean }) {
+  const { label, hint, required } = props;
+  const field = useFieldContext<string>();
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
+  const hintId = hint ? `${field.name}-hint` : undefined;
+  return (
+    <Field data-invalid={invalid}>
+      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <Textarea
+        id={field.name}
+        name={field.name}
+        required={required}
         value={field.state.value}
         onChange={(event) => field.handleChange(event.target.value)}
         onBlur={field.handleBlur}
@@ -351,6 +377,13 @@ function useComboboxText(pickedLabel: string | null, picked: boolean, dropPick: 
 export const { useAppForm } = createFormHook({
   fieldContext,
   formContext,
-  fieldComponents: { TextField, SelectField, CheckboxField, CheckboxGroupField, ComboboxField },
+  fieldComponents: {
+    TextField,
+    TextareaField,
+    SelectField,
+    CheckboxField,
+    CheckboxGroupField,
+    ComboboxField,
+  },
   formComponents: {},
 });

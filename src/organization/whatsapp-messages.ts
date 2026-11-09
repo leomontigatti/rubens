@@ -17,6 +17,7 @@ import {
   patient,
   whatsappMessage,
 } from "#/organization/schema.ts";
+import { storeTemplateStatus } from "#/organization/whatsapp-templates.ts";
 
 // What Meta's webhook brings in (ADR-0010 § The webhook stores, the object's
 // alarm acts): the Worker has checked Meta's signature and picked this
@@ -154,13 +155,14 @@ function storeStatus(tx: Writer, update: WhatsappStatusUpdate) {
 /**
  * Stores one webhook call's events in one transaction: each incoming message
  * once by its WhatsApp id, in its number's conversation, linked to the
- * patients that number is the message contact of; and each status update on
- * the outgoing message it names.
+ * patients that number is the message contact of; each status update on
+ * the outgoing message it names; and each template status on its template.
  */
 export function storeWhatsappEvents(database: Database, events: WhatsappEvents) {
   return database.transaction((tx) => ({
     ok: true as const,
     messages: events.messages.map((message) => storeIncoming(tx, message)),
     statuses: events.statuses.map((update) => storeStatus(tx, update)),
+    templateStatuses: events.templateStatuses.map((update) => storeTemplateStatus(tx, update)),
   }));
 }

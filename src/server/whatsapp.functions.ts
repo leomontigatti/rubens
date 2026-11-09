@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import type { TemplateSend } from "#/lib/whatsapp.ts";
+import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
 import { withOrganization } from "#/server/with-organization.ts";
 
@@ -16,3 +17,13 @@ export const sendWhatsappTemplate = createServerFn({ method: "POST" })
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.sendWhatsappTemplate(caller, data)),
   );
+
+export const submitWhatsappTemplate = createServerFn({ method: "POST" })
+  .validator((data: TemplateSubmission) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.submitWhatsappTemplate(caller, data)),
+  );
+
+export const refreshWhatsappTemplates = createServerFn({ method: "POST" }).handler(() =>
+  withOrganization((organization, caller) => organization.refreshWhatsappTemplates(caller)),
+);

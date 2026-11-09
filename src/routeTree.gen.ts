@@ -13,7 +13,6 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IngresarRouteImport } from './routes/ingresar'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppCambiarContrasenaRouteImport } from './routes/_app/cambiar-contrasena'
-import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as ApiSetupRouteImport } from './routes/api/setup'
 import { Route as ApiWhatsappRouteImport } from './routes/api/whatsapp'
 import { Route as AppAReprogramarIndexRouteImport } from './routes/_app/a-reprogramar/index'
@@ -42,6 +41,7 @@ import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
+import { Route as AppWhatsappIndexRouteImport } from './routes/_app/whatsapp/index'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
@@ -51,6 +51,7 @@ import { Route as AppPersonalMemberIdEditarRouteImport } from './routes/_app/per
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
 import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
+import { Route as AppWhatsappPlantillasTemplateNameRouteImport } from './routes/_app/whatsapp/plantillas/$templateName'
 import { Route as AppAgendaTurnosAppointmentIdCancelarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/cancelar'
 import { Route as AppAgendaTurnosAppointmentIdEditarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/editar'
 import { Route as AppAgendaTurnosAppointmentIdReprogramarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/reprogramar'
@@ -80,11 +81,6 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppCambiarContrasenaRoute = AppCambiarContrasenaRouteImport.update({
   id: '/cambiar-contrasena',
   path: '/cambiar-contrasena',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppWhatsappRoute = AppWhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiSetupRoute = ApiSetupRouteImport.update({
@@ -230,6 +226,11 @@ const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
   path: '/sedes/nueva',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWhatsappIndexRoute = AppWhatsappIndexRouteImport.update({
+  id: '/whatsapp/',
+  path: '/whatsapp/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAgendaSobreturnosNuevoRoute =
   AppAgendaSobreturnosNuevoRouteImport.update({
     id: '/agenda/sobreturnos/nuevo',
@@ -282,6 +283,12 @@ const AppSedesOfficeIdEditarRoute = AppSedesOfficeIdEditarRouteImport.update({
   path: '/sedes/$officeId/editar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWhatsappPlantillasTemplateNameRoute =
+  AppWhatsappPlantillasTemplateNameRouteImport.update({
+    id: '/whatsapp/plantillas/$templateName',
+    path: '/whatsapp/plantillas/$templateName',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAgendaTurnosAppointmentIdCancelarRoute =
   AppAgendaTurnosAppointmentIdCancelarRouteImport.update({
     id: '/agenda/turnos/$appointmentId/cancelar',
@@ -353,7 +360,6 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
-  '/whatsapp': typeof AppWhatsappRoute
   '/api/setup': typeof ApiSetupRoute
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
@@ -382,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/personal/': typeof AppPersonalIndexRoute
   '/prestaciones/': typeof AppPrestacionesIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
+  '/whatsapp/': typeof AppWhatsappIndexRoute
   '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
   '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
   '/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
   '/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -406,7 +414,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
   '/cambiar-contrasena': typeof AppCambiarContrasenaRoute
-  '/whatsapp': typeof AppWhatsappRoute
   '/api/setup': typeof ApiSetupRoute
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/': typeof AppIndexRoute
@@ -436,6 +443,7 @@ export interface FileRoutesByTo {
   '/personal': typeof AppPersonalIndexRoute
   '/prestaciones': typeof AppPrestacionesIndexRoute
   '/sedes': typeof AppSedesIndexRoute
+  '/whatsapp': typeof AppWhatsappIndexRoute
   '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
@@ -445,6 +453,7 @@ export interface FileRoutesByTo {
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
   '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
   '/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
   '/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -462,7 +471,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/ingresar': typeof IngresarRoute
   '/_app/cambiar-contrasena': typeof AppCambiarContrasenaRoute
-  '/_app/whatsapp': typeof AppWhatsappRoute
   '/api/setup': typeof ApiSetupRoute
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/_app/': typeof AppIndexRoute
@@ -492,6 +500,7 @@ export interface FileRoutesById {
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/prestaciones/': typeof AppPrestacionesIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
+  '/_app/whatsapp/': typeof AppWhatsappIndexRoute
   '/_app/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/_app/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
@@ -501,6 +510,7 @@ export interface FileRoutesById {
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
+  '/_app/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
   '/_app/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
   '/_app/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
   '/_app/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -519,7 +529,6 @@ export interface FileRouteTypes {
     | '/'
     | '/ingresar'
     | '/cambiar-contrasena'
-    | '/whatsapp'
     | '/api/setup'
     | '/api/whatsapp'
     | '/cierres/$closureId'
@@ -548,6 +557,7 @@ export interface FileRouteTypes {
     | '/personal/'
     | '/prestaciones/'
     | '/sedes/'
+    | '/whatsapp/'
     | '/agenda/sobreturnos/nuevo'
     | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
+    | '/whatsapp/plantillas/$templateName'
     | '/agenda/turnos/$appointmentId/cancelar'
     | '/agenda/turnos/$appointmentId/editar'
     | '/agenda/turnos/$appointmentId/reprogramar'
@@ -572,7 +583,6 @@ export interface FileRouteTypes {
   to:
     | '/ingresar'
     | '/cambiar-contrasena'
-    | '/whatsapp'
     | '/api/setup'
     | '/api/whatsapp'
     | '/'
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/personal'
     | '/prestaciones'
     | '/sedes'
+    | '/whatsapp'
     | '/agenda/sobreturnos/nuevo'
     | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
@@ -611,6 +622,7 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
+    | '/whatsapp/plantillas/$templateName'
     | '/agenda/turnos/$appointmentId/cancelar'
     | '/agenda/turnos/$appointmentId/editar'
     | '/agenda/turnos/$appointmentId/reprogramar'
@@ -627,7 +639,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/ingresar'
     | '/_app/cambiar-contrasena'
-    | '/_app/whatsapp'
     | '/api/setup'
     | '/api/whatsapp'
     | '/_app/'
@@ -657,6 +668,7 @@ export interface FileRouteTypes {
     | '/_app/personal/'
     | '/_app/prestaciones/'
     | '/_app/sedes/'
+    | '/_app/whatsapp/'
     | '/_app/agenda/sobreturnos/nuevo'
     | '/_app/agenda/turnos/nuevo'
     | '/_app/horarios/$practitionerId_/nuevo'
@@ -666,6 +678,7 @@ export interface FileRouteTypes {
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
     | '/_app/sedes/$officeId_/editar'
+    | '/_app/whatsapp/plantillas/$templateName'
     | '/_app/agenda/turnos/$appointmentId/cancelar'
     | '/_app/agenda/turnos/$appointmentId/editar'
     | '/_app/agenda/turnos/$appointmentId/reprogramar'
@@ -714,13 +727,6 @@ declare module '@tanstack/react-router' {
       path: '/cambiar-contrasena'
       fullPath: '/cambiar-contrasena'
       preLoaderRoute: typeof AppCambiarContrasenaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/whatsapp': {
-      id: '/_app/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/whatsapp'
-      preLoaderRoute: typeof AppWhatsappRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/setup': {
@@ -919,6 +925,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSedesNuevaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/whatsapp/': {
+      id: '/_app/whatsapp/'
+      path: '/whatsapp'
+      fullPath: '/whatsapp/'
+      preLoaderRoute: typeof AppWhatsappIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/agenda/sobreturnos/nuevo': {
       id: '/_app/agenda/sobreturnos/nuevo'
       path: '/agenda/sobreturnos/nuevo'
@@ -980,6 +993,13 @@ declare module '@tanstack/react-router' {
       path: '/sedes/$officeId/editar'
       fullPath: '/sedes/$officeId/editar'
       preLoaderRoute: typeof AppSedesOfficeIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/plantillas/$templateName': {
+      id: '/_app/whatsapp/plantillas/$templateName'
+      path: '/whatsapp/plantillas/$templateName'
+      fullPath: '/whatsapp/plantillas/$templateName'
+      preLoaderRoute: typeof AppWhatsappPlantillasTemplateNameRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/agenda/turnos/$appointmentId/cancelar': {
@@ -1064,7 +1084,6 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCambiarContrasenaRoute: typeof AppCambiarContrasenaRoute
-  AppWhatsappRoute: typeof AppWhatsappRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCierresClosureIdRoute: typeof AppCierresClosureIdRoute
   AppCierresNuevoRoute: typeof AppCierresNuevoRoute
@@ -1092,6 +1111,7 @@ interface AppRouteChildren {
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppPrestacionesIndexRoute: typeof AppPrestacionesIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
+  AppWhatsappIndexRoute: typeof AppWhatsappIndexRoute
   AppAgendaSobreturnosNuevoRoute: typeof AppAgendaSobreturnosNuevoRoute
   AppAgendaTurnosNuevoRoute: typeof AppAgendaTurnosNuevoRoute
   AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
@@ -1101,6 +1121,7 @@ interface AppRouteChildren {
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
   AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
+  AppWhatsappPlantillasTemplateNameRoute: typeof AppWhatsappPlantillasTemplateNameRoute
   AppAgendaTurnosAppointmentIdCancelarRoute: typeof AppAgendaTurnosAppointmentIdCancelarRoute
   AppAgendaTurnosAppointmentIdEditarRoute: typeof AppAgendaTurnosAppointmentIdEditarRoute
   AppAgendaTurnosAppointmentIdReprogramarRoute: typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -1116,7 +1137,6 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCambiarContrasenaRoute: AppCambiarContrasenaRoute,
-  AppWhatsappRoute: AppWhatsappRoute,
   AppIndexRoute: AppIndexRoute,
   AppCierresClosureIdRoute: AppCierresClosureIdRoute,
   AppCierresNuevoRoute: AppCierresNuevoRoute,
@@ -1144,6 +1164,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppPrestacionesIndexRoute: AppPrestacionesIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
+  AppWhatsappIndexRoute: AppWhatsappIndexRoute,
   AppAgendaSobreturnosNuevoRoute: AppAgendaSobreturnosNuevoRoute,
   AppAgendaTurnosNuevoRoute: AppAgendaTurnosNuevoRoute,
   AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
@@ -1155,6 +1176,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppPrestacionesPractitionerIdNuevaRoute:
     AppPrestacionesPractitionerIdNuevaRoute,
   AppSedesOfficeIdEditarRoute: AppSedesOfficeIdEditarRoute,
+  AppWhatsappPlantillasTemplateNameRoute:
+    AppWhatsappPlantillasTemplateNameRoute,
   AppAgendaTurnosAppointmentIdCancelarRoute:
     AppAgendaTurnosAppointmentIdCancelarRoute,
   AppAgendaTurnosAppointmentIdEditarRoute:

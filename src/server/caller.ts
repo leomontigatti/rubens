@@ -27,6 +27,8 @@ export interface WorkerEnv {
   WHATSAPP_VERIFY_TOKEN?: string;
   /** Meta's test number's phone number id, until Embedded Signup (#159) connects each organization's own. */
   WHATSAPP_PHONE_NUMBER_ID?: string;
+  /** The test number's WhatsApp Business account id, whose template status events the webhook stores. */
+  WHATSAPP_BUSINESS_ACCOUNT_ID?: string;
   /** The organization whose object the test number's messages are stored in. */
   WHATSAPP_ORGANIZATION_ID?: string;
 }
