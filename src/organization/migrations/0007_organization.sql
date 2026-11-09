@@ -1,0 +1,1 @@
+ALTER TABLE `outbox_message` ADD `hours_before` integer;

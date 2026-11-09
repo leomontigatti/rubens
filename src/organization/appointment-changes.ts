@@ -35,6 +35,7 @@ import { recordAudit } from "#/organization/audit.ts";
 import { asRange, meets } from "#/organization/availability.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { queueReminders, requeueRemindersOnStatus } from "#/organization/outbox.ts";
 import { findPatient } from "#/organization/patients.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import { appointment, office, room } from "#/organization/schema.ts";
@@ -286,6 +287,7 @@ export function rescheduleAppointment(
     }
     const values = { startsAt: +span.start, endsAt: +span.end, roomId: where.roomId, overbooking };
     tx.update(appointment).set(values).where(eq(appointment.id, placed.id)).run();
+    queueReminders(tx, placed.id);
     const changed = changedFields(
       { ...placed.during, roomId: placed.roomId, overbooking: placed.overbooking },
       { ...span, roomId: where.roomId, overbooking },
@@ -360,6 +362,7 @@ function setStatus(
     .set({ ...next, statusChangedAt: Date.now() })
     .where(eq(appointment.id, placed.id))
     .run();
+  requeueRemindersOnStatus(writer, placed, next.status);
   const { status, cancelledBy, cancellationReason } = placed;
   const changed = changedFields(
     { status, cancelledBy, cancellationReason },
