@@ -80,6 +80,13 @@ describe("the fixed checks on an assistant reply", () => {
     });
   });
 
+  it("reads nested WhatsApp marks as one, opening or closing", () => {
+    expect(checkReply("*_✅Hola_* y *_Hola_*✅Mundo")).toEqual({
+      ok: true,
+      text: "*_Hola_* y *_Hola_* Mundo",
+    });
+  });
+
   it("keeps a space after a closing quote, a closing WhatsApp mark or a percentage", () => {
     expect(
       checkReply(`"Sí"✅Mañana 'Sí'✅Mañana *Hola*✅Mundo _Hola_✅Mundo 50%✅descuento`),
