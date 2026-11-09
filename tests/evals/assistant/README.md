@@ -26,7 +26,11 @@ pnpm eval:assistant gpt-5.4-mini --repeat 3
 pnpm eval:assistant gemini-3.1-flash-lite --repeat 3
 pnpm eval:assistant claude-haiku-5-5 --repeat 3
 pnpm eval:assistant gpt-oss-120b --repeat 3
+pnpm eval:assistant glm-5.3-flash --repeat 3
+pnpm eval:assistant glm-5.3 --repeat 3
 ```
+
+The GLM models need the Workers Paid plan; the free plan refuses them.
 
 With no label it runs every candidate in `candidates.ts`. `--case <id>` runs one case,
 and `--concurrency 2` suits an account with a tight rate limit; a rate limit or an
