@@ -3,25 +3,41 @@
 # Stop hook, blocking. Wired from both `.claude/settings.json` and
 # `.codex/hooks.json`.
 #
-# A turn may not end on a red lint or typecheck. The gate is
-# `pnpm exec vp check --no-fmt`: Oxlint (type-aware) and the TypeScript check in
-# one pass, about 1.7 s measured on this repo. Formatting is not in it, because
-# the PostToolUse hook already formats every file the agent writes. Tests are
-# not in it either; they are the agent's to run for what it touched
+# A turn may not end on a red lint, typecheck or fallow gate. Two gates run, in
+# this order:
+#
+# - `pnpm exec vp check --no-fmt`: Oxlint (type-aware) and the TypeScript check
+#   in one pass, about 1.7 s measured on this repo. Formatting is not in it,
+#   because the PostToolUse hook already formats every file the agent writes.
+# - `pnpm check:fallow`: dead code, complexity and duplication this branch adds
+#   against `origin/main`, about a second. Without it a batch of components over
+#   the complexity limit surfaces only at commit. Read by exit code
+#   (docs/agents/fallow.md): 1 is the branch's findings, 2 is "could not run",
+#   and both block.
+#
+# Tests are not in it; they are the agent's to run for what it touched
 # (docs/agents/validation.md).
 #
 # It exits early on the paths where it buys nothing:
 #
 # - `SKIP_STOP_CHECKS` set: the documented local bypass.
 # - Running inside a GitHub Actions workflow: CI runs its own checks.
-# - No changed path, tracked or untracked, that the gate could read:
+# - No changed path, tracked or untracked, that the gates could read:
 #   `.ts`/`.tsx`/`.mts`/`.cts`, `.js`/`.jsx`/`.mjs`/`.cjs`, `tsconfig*.json` and
 #   `package.json`. `vite.config.ts` holds the lint configuration and is covered
-#   by the `.ts` rule. Changes to docs or agent files alone skip the gate.
+#   by the `.ts` rule. Changes to docs or agent files alone skip the gates.
+#
+# Before the gates, it blocks with one line when the dependencies are older than
+# `pnpm-lock.yaml` (or `node_modules` is missing): a lint run against stale
+# packages fails on imports, and that output reads as a code problem. The
+# reference is the newer of `node_modules/.modules.yaml` and
+# `node_modules/.pnpm-workspace-state-v1.json`, because pnpm rewrites only the
+# second on an install that finds nothing to do, and a lockfile touched without
+# a content change (a checkout back and forth) must not block forever.
 #
 # The filter reads the working tree only. Committed work already passed the Vite+
-# pre-commit hook, which runs the same check (`.vite-hooks/pre-commit`), so this
-# gate owns the uncommitted remainder of a turn.
+# pre-commit hook, which runs the same checks (`.vite-hooks/pre-commit`), so this
+# hook owns the uncommitted remainder of a turn.
 #
 # On failure it exits 2 with the failing output on stderr, which both harnesses
 # feed back to the agent: Claude Code as the block reason, Codex as a
@@ -32,7 +48,7 @@
 # There is no `SubagentStop` hook: it is a distinct event, and `research`,
 # `Explore` and `Plan` do not author app code.
 #
-# Every failure below is fail-open on purpose: this hook blocks the end of a
+# Every other failure is fail-open on purpose: this hook blocks the end of a
 # turn, so a broken project dir or a non-repo checkout must not wedge the
 # session. That is also why `set -e` is absent.
 #
@@ -61,10 +77,40 @@ if ! printf '%s\n' "$changed_status_lines" | grep -Eq '\.(ts|tsx|mts|cts|js|jsx|
   exit 0
 fi
 
+# `-nt` is true when the right-hand file is missing, which covers a missing
+# `node_modules` too.
+installed="node_modules/.modules.yaml"
+if [ node_modules/.pnpm-workspace-state-v1.json -nt "$installed" ]; then
+  installed="node_modules/.pnpm-workspace-state-v1.json"
+fi
+if [ -f pnpm-lock.yaml ] && [ pnpm-lock.yaml -nt "$installed" ]; then
+  echo "dependencies are older than pnpm-lock.yaml: run \`pnpm install --frozen-lockfile\`" >&2
+  exit 2
+fi
+
 vp="./node_modules/.bin/vp"
 [ -x "$vp" ] || exit 0
 
-if output="$("$vp" check --no-fmt 2>&1)"; then
+output=""
+if ! lint_output="$("$vp" check --no-fmt 2>&1)"; then
+  output="$lint_output"
+fi
+
+if command -v pnpm >/dev/null 2>&1; then
+  fallow_output="$(pnpm --silent check:fallow 2>&1)"
+  case $? in
+    0) ;;
+    2) output="${output:+$output
+
+}fallow could not run, so this branch was never checked; run \`git fetch origin\` and retry (docs/agents/fallow.md):
+$fallow_output" ;;
+    *) output="${output:+$output
+
+}$fallow_output" ;;
+  esac
+fi
+
+if [ -z "$output" ]; then
   exit 0
 fi
 

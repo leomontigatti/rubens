@@ -55,10 +55,15 @@ exist in `package.json` or in that index; check before running a guessed one.
 ## Hooks inside the session
 
 The project's agent hooks ([agent-configuration.md](./agent-configuration.md#session-hooks))
-run two of these checks for you:
+run three of these checks for you:
 
 - every file the agent writes is formatted;
-- the end of a turn is blocked while `pnpm check`'s lint or type check is red.
+- the end of a turn is blocked while `pnpm check`'s lint or type check is red, or
+  `pnpm check:fallow` fails, by exit code as [fallow.md](./fallow.md) reads it, so a
+  complexity finding lands on the turn that wrote it rather than at commit;
+- before those, the end of a turn is blocked with one line when `pnpm-lock.yaml` is
+  newer than the installed dependencies: run `pnpm install --frozen-lockfile`, not a
+  lint fix.
 
 The shared workflow's hooks, installed at user level, add one more: `pkill -f` is
 refused, in favour of `pnpm dev:stop` ([verification.md](./verification.md#cleanup)).
