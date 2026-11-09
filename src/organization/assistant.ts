@@ -5,6 +5,7 @@ import {
   assistantSystemPrompt,
   assistantToolSchemas,
   newMessagesMark,
+  withoutMark,
   withSignOff,
 } from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
@@ -245,11 +246,14 @@ type Read = ReturnType<typeof readConversation>;
  * The messages as the model reads them: the conversation so far, one message
  * per run of the same side, as WhatsApp shows a burst; then the messages the
  * turn judges together as the patient's last, so the judgement is about
- * exactly those and the turn always ends on the patient; after
- * `newMessagesMark` when the conversation so far ends on the patient too.
+ * exactly those and the turn always ends on the patient, after
+ * `newMessagesMark`. A patient's own text never carries the mark.
  */
 function asTurnMessages(read: Read): TurnMessage[] {
-  const contentOf = (message: Read["history"][number]) => message.text ?? `[${message.type}]`;
+  const contentOf = (message: Read["history"][number]) => {
+    const content = message.text ?? `[${message.type}]`;
+    return message.direction === "incoming" ? withoutMark(content) : content;
+  };
   const messages: TurnMessage[] = [];
   for (const message of read.history) {
     const role = message.direction === "incoming" ? "user" : "assistant";
@@ -260,10 +264,7 @@ function asTurnMessages(read: Read): TurnMessage[] {
       messages.push({ role, content: contentOf(message) });
     }
   }
-  const judged = read.unjudged.map(contentOf);
-  if (messages.at(-1)?.role === "user") {
-    judged.unshift(newMessagesMark);
-  }
+  const judged = [newMessagesMark, ...read.unjudged.map(contentOf)];
   return [...messages, { role: "user", content: judged.join("\n") }];
 }
 

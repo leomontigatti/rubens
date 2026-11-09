@@ -17,11 +17,24 @@ export const assistantModelId = "claude-haiku-5-5";
 export const assistantWaitMs = 8_000;
 
 /**
- * The line before the patient's new messages when the conversation so far
- * ends on the patient too: the model's provider joins consecutive messages of
- * one side, which would hide which ones the judgement is about.
+ * The line before the patient's new messages in a turn: what follows it is
+ * what the turn judges. The model's provider joins consecutive messages of
+ * one side, so without it the conversation so far and the new messages read
+ * as one.
  */
 export const newMessagesMark = "[new messages]";
+
+// The mark however a patient might type it: any case, any spacing inside the
+// brackets, anywhere in a line.
+const typedMark = /\[\s*new\s+messages\s*\]/giu;
+
+/**
+ * A patient's `text` with the mark taken out wherever they typed it, so only
+ * underthing places the boundary of what the turn judges.
+ */
+export function withoutMark(text: string): string {
+  return text.replace(typedMark, "");
+}
 
 /** The tools a turn can call, each run by the object with the permissions of the patient's number. */
 export const assistantToolSchemas = {
@@ -86,7 +99,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     ...(context.more?.capabilities ?? []),
   ];
   const rules = [
-    `Every turn, call judge_messages exactly once, about the patient's new messages: clinical (symptoms, a study, a treatment, how they feel, a photo) and emergency (a risk to life or health right now). The new messages are the patient's last message; when it has a line "${newMessagesMark}", only what follows that line is new.`,
+    `Every turn, call judge_messages exactly once, about the patient's new messages: clinical (symptoms, a study, a treatment, how they feel, a photo) and emergency (a risk to life or health right now). The new messages are what follows the line "${newMessagesMark}" in the patient's last message.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
     ...(context.more?.rules ?? []),
