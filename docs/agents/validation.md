@@ -10,7 +10,7 @@ reproduce CI.
 pnpm check                      # formatting check, lint and type check (`vp check`)
 pnpm test:unit <path>...        # the unit test files your change touches
 pnpm test:workers <path>...     # the Workers test files your change touches: the organization object, the request-to-caller step
-pnpm test:e2e tests/e2e/<spec>  # the browser spec of a flow your change touches, when one covers it
+pnpm test:e2e                   # the whole browser suite, as CI's `e2e` job runs it: on a linked machine (§ Heavy)
 ```
 
 Run this once, after your edits. Do not run `pnpm test` in a session: it runs
@@ -19,6 +19,21 @@ failures, each at its file and line; fix them and rerun it. Never pipe its outpu
 into `tail` or `head`, which hides the failure.
 
 Run `pnpm typecheck` and `pnpm build` one after the other, never in parallel.
+
+## Heavy
+
+`pnpm test:e2e` runs on the linked machine the user's instructions send heavy
+validation to, by the `implement` skill's `HEAVY.md`; the rest of § Before
+committing runs here meanwhile. That machine's checkout is usually stale, so before
+the command it installs, in order:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm exec playwright install --only-shell chromium   # the browser, as tests/e2e/README.md says
+pnpm test:e2e
+```
+
+When no linked machine answers, the whole browser suite runs here.
 
 ## As you go
 
@@ -38,7 +53,7 @@ pnpm test:unit <path>           # or `pnpm test:workers <path>`: the one test fi
 | `pnpm lint`                         | Oxlint, type-aware (`oxlint-tsgolint`): React hooks, import cycles, floating and misused promises, and the style guide's mechanical rules (`@shadcn/lint` and the `ui` plugin, [style-guide.md](./style-guide.md)). Its rules are in `vite.config.ts`; the custom ones are tested in `tests/lint/`. |
 | `pnpm typecheck`                    | The TypeScript check on its own.                                                                                                                                                                                                                                                                    |
 | `pnpm test:unit`                    | Vitest, the `unit` project: `src/**/*.test.{ts,tsx}`, `scripts/**/*.test.ts` and `tests/lint/`.                                                                                                                                                                                                     |
-| `pnpm test:e2e`                     | Playwright, the browser suite in `tests/e2e/`: the production build on its own object storage, driven in Chromium. A session runs the spec of the flow it touched; the `e2e` CI job runs them all ([tests/e2e/README.md](../../tests/e2e/README.md)).                                               |
+| `pnpm test:e2e`                     | Playwright, the browser suite in `tests/e2e/`: the production build on its own object storage, driven in Chromium. A session runs the whole suite on a linked machine (§ Heavy), as the `e2e` CI job does ([tests/e2e/README.md](../../tests/e2e/README.md)).                                       |
 | `pnpm test:workers`                 | Vitest, the `workers` project: `src/**/*.workers.test.ts` inside workerd, through Cloudflare's Vitest plugin, each object on its own SQLite storage.                                                                                                                                                |
 | `pnpm check:dependency-audit`       | High and critical advisories that the branch introduces, against `main`.                                                                                                                                                                                                                            |
 | `pnpm check:fallow`                 | Dead code, unused dependencies and duplication that the branch adds, against `origin/main`. Read it by exit code: [fallow.md](./fallow.md).                                                                                                                                                         |

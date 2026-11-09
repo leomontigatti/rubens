@@ -9,7 +9,7 @@ locally, and the `e2e` job in `.github/workflows/ci.yml` runs them on every PR.
 
 ```sh
 pnpm test:e2e                                  # the whole suite
-pnpm test:e2e tests/e2e/booking.spec.ts        # one spec: what a session runs for the flow it touched
+pnpm test:e2e tests/e2e/booking.spec.ts        # one spec, while working on its flow
 ```
 
 Each run builds the app (`pnpm build`), clears the suite's own object storage
