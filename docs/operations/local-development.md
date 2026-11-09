@@ -45,6 +45,8 @@ its own port, written to a gitignored `.env.local` by `scripts/worktree-port.ts`
 across runs; a port another worktree already claims is skipped. The browser suite
 serves on that port plus 10,000 (`tests/e2e/environment.ts`), so concurrent sessions'
 servers never collide. Each worktree keeps its own `.wrangler/` state.
+`pnpm dev:url` prints the checkout's dev URL, writing the port first the way `pnpm dev`
+does when none is written yet.
 
 ## The organization's schema
 

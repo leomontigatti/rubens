@@ -13,6 +13,9 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   (default 3000): the Worker and the organization objects in Miniflare, with the dev
   sign-in when no Clerk key is set. Strict port: if the port is taken, it fails rather
   than moving.
+- `dev:url`: prints this checkout's dev URL, `http://localhost:<PORT>`, the port `pnpm dev`
+  serves on (`scripts/worktree-port.ts --print`, writing it to `.env.local` first when
+  none is written yet).
 - `dev:stop`: stops the dev server this worktree runs, by port and working directory.
   It does not touch other worktrees' servers, and exits 1 if the port is held from
   outside this worktree.
