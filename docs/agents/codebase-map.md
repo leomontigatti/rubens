@@ -62,7 +62,9 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   and review the generated SQL. Migrations on `main` are never edited.
 - **A background job**: a row in the organization's object and its one alarm (ADR-0008):
   `src/organization/outbox.ts` queues messages to patients and sends them when due, and
-  the object's `alarm()` is set to the earliest due item. Payload contents are never logged.
+  `src/organization/assistant.ts` runs the patient assistant's turn once a conversation's
+  wait is over, and the object's `alarm()` is set to the earliest due item. Payload
+  contents are never logged.
 - **A pure rule** (availability, formatting, state transitions): a module in `src/lib/`
   or beside its feature, tested without a database or React.
 

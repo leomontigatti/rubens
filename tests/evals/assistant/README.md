@@ -75,8 +75,9 @@ against. Nothing in either is a real patient, number, practitioner or address. T
 case, give it a conversation so far, the patient's new messages and what the turn must
 and must not do; `fake-object.ts` answers its tools from `world.ts`.
 
-`prompt.ts` and `tools.ts` are drafts of #169's prompt and tool schemas. When #169
-lands, point `turn.ts` at the real ones and drop the drafts.
+`prompt.ts` and `tools.ts` run the assistant's real prompt and tool schemas
+(`src/lib/assistant.ts`), with drafts of what later tickets add: proposals (#173, #174)
+and handoffs (#171). Each draft moves into `src/lib/assistant.ts` when its ticket lands.
 
 ### Voice notes
 

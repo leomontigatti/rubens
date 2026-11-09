@@ -8,6 +8,7 @@ import type {
   WhatsappStatusUpdate,
   WhatsappTemplateStatusUpdate,
 } from "#/lib/whatsapp-messages.ts";
+import { assistantWaitMs } from "#/lib/assistant.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
@@ -27,8 +28,9 @@ import {
 
 // What Meta's webhook brings in (ADR-0010 § The webhook stores, the object's
 // alarm acts): the Worker has checked Meta's signature and picked this
-// organization from the phone number id; this module only stores. Nothing
-// here acts on a message or calls a model.
+// organization from the phone number id; this module only stores, and sets
+// the assistant's wait for its turn (`assistant.ts` runs it). Nothing here acts on a
+// message or calls a model.
 
 /** The conversation with `phone`, created on its first message. */
 function conversationWith(tx: Writer, phone: string): string {
@@ -52,7 +54,7 @@ function conversationWith(tx: Writer, phone: string): string {
  * The patients whose messages go to `phone`: through the guardian who is
  * their message contact, or to their own phone when no guardian is.
  */
-function patientsReachedAt(tx: Writer, phone: string) {
+export function patientsReachedAt(tx: Writer, phone: string) {
   const spellings = phoneSpellings(phone);
   const contactGuardian = (withPhone: boolean) =>
     tx
@@ -115,6 +117,11 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
     return { whatsappId: message.whatsappId, alreadyStored: true };
   }
   linkPatients(tx, conversationId, message.from);
+  // Each message restarts the assistant's wait, so a burst gets one turn (`assistant.ts`).
+  tx.update(conversation)
+    .set({ assistantDueAt: Date.now() + assistantWaitMs })
+    .where(eq(conversation.id, conversationId))
+    .run();
   return { whatsappId: message.whatsappId, alreadyStored: false };
 }
 
@@ -174,7 +181,15 @@ export async function whileSending<T>(database: Database, send: () => Promise<T>
 export function storeOutgoing(
   database: Database,
   tx: Writer,
-  message: { phone: string; whatsappId: string; type: string; text: string; payload: string },
+  message: {
+    phone: string;
+    whatsappId: string;
+    type: string;
+    text: string;
+    payload: string;
+    /** For an assistant reply: the communication rules' version it was written under. */
+    rulesVersion?: number;
+  },
 ) {
   const stored = tx
     .insert(whatsappMessage)
@@ -186,6 +201,7 @@ export function storeOutgoing(
       text: message.text,
       payload: message.payload,
       sentAt: Date.now(),
+      rulesVersion: message.rulesVersion,
     })
     .returning({ id: whatsappMessage.id })
     .get();

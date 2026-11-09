@@ -1,8 +1,12 @@
-// The assistant's tool schemas, drafted here until #169 lands the real ones. Each
-// runs against the case's fake object, so the model sees scripted results.
+// The assistant's tools: the real schemas of #169's (`src/lib/assistant.ts`),
+// and drafts of the ones later tickets add (#171, #173, #174), each moved to
+// the real module when its ticket lands. Each runs against the case's fake
+// object, so the model sees scripted results.
 
 import { toolDefinition } from "@tanstack/ai";
 import { z } from "zod";
+
+import { assistantToolSchemas } from "../../../src/lib/assistant.ts";
 
 import type { FakeObject } from "./fake-object.ts";
 
@@ -17,26 +21,18 @@ const handoffReason = z.enum([
   "misunderstood_twice",
 ]);
 
-const definitions = {
-  list_patients: toolDefinition({
-    name: "list_patients",
-    description:
-      "The patients this WhatsApp number is the contact of, each with their upcoming appointments (id, date, time, status).",
-    inputSchema: z.object({}),
-  }),
-  get_appointment: toolDefinition({
-    name: "get_appointment",
-    description:
-      "One appointment's medical service, practitioner, date, time, office and the office's address.",
-    inputSchema: z.object({ appointmentId }),
-  }),
-  find_free_times: toolDefinition({
+const real = Object.entries(assistantToolSchemas).map(([name, schema]) =>
+  toolDefinition({ name, ...schema }),
+);
+
+const drafts = [
+  toolDefinition({
     name: "find_free_times",
     description:
       "The free times the appointment can move to: same practitioner and medical service, any of their offices, next 3 weeks. Refuses when the move is not allowed.",
     inputSchema: z.object({ appointmentId }),
   }),
-  propose_change: toolDefinition({
+  toolDefinition({
     name: "propose_change",
     description:
       "Stores a proposal to confirm, cancel or move an appointment, and returns it in full. It replaces any earlier proposal. Nothing changes until accept_proposal.",
@@ -46,13 +42,13 @@ const definitions = {
       slotId: z.string().optional().describe("For a move: the slotId find_free_times returned"),
     }),
   }),
-  accept_proposal: toolDefinition({
+  toolDefinition({
     name: "accept_proposal",
     description:
       "Applies the conversation's latest proposal, once the patient said yes to it. Can fail, for example when the time was taken meanwhile.",
     inputSchema: z.object({}),
   }),
-  hand_off: toolDefinition({
+  toolDefinition({
     name: "hand_off",
     description: "Hands the conversation to a person at the practice.",
     inputSchema: z.object({
@@ -60,18 +56,15 @@ const definitions = {
       clinical: z.boolean().describe("True when the conversation is about health or symptoms"),
     }),
   }),
-  judge_messages: toolDefinition({
-    name: "judge_messages",
-    description: "Records the judgement of the patient's new messages. Call it once every turn.",
-    inputSchema: z.object({
-      clinical: z.boolean().describe("Mentions symptoms, a study, a treatment or how they feel"),
-      emergency: z.boolean().describe("A risk to life or health right now"),
-    }),
-  }),
-};
+];
 
 export function assistantTools(object: FakeObject) {
-  return Object.values(definitions).map((definition) =>
-    definition.server((args) => object.run(definition.name, args as Record<string, unknown>)),
+  return [...real, ...drafts].map((definition) =>
+    definition.server((args) =>
+      object.run(
+        definition.name as Parameters<FakeObject["run"]>[0],
+        args as Record<string, unknown>,
+      ),
+    ),
   );
 }

@@ -99,6 +99,11 @@ export interface WhatsappCloud {
   missingSetting(): MissingSetting | null;
   /** Sends an approved template, with its variables' values; requires every setting. */
   sendTemplate(message: TemplateMessage): Promise<SendResult>;
+  /**
+   * Sends free-form text, which Meta accepts only inside the conversation
+   * window (`src/lib/conversation-window.ts`); requires every setting.
+   */
+  sendText(message: { to: string; text: string }): Promise<SendResult>;
   /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
   missingTemplateSetting(): MissingTemplateSetting | null;
   /** Submits a utility template, with named variables and no buttons, for Meta's review. */
@@ -184,55 +189,65 @@ export function whatsappCloudFor(
     return { token, accountId };
   }
 
+  /** Sends `content` (a message's type and its body) to `to`; requires every setting. */
+  async function sendMessage(to: string, content: Record<string, unknown>): Promise<SendResult> {
+    const settings = connection.settings();
+    const token = settings.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = settings.WHATSAPP_PHONE_NUMBER_ID;
+    if (!token || !phoneNumberId) {
+      throw new Error("The WhatsApp settings are incomplete: check missingSetting() first");
+    }
+    const response = await fetcher(
+      `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: to.replace(/^\+/, ""),
+          ...content,
+        }),
+      },
+    );
+    const answer = await answerOf(response, token);
+    if (!answer.ok) {
+      return answer;
+    }
+    const { messages, contacts } = answer.body as MessagesAnswer;
+    const messageId = messages?.[0]?.id;
+    if (typeof messageId !== "string") {
+      throw new Error("The Graph API accepted a message without returning its id");
+    }
+    const waId = contacts?.[0]?.wa_id;
+    return { ok: true, messageId, waId: typeof waId === "string" ? waId : null };
+  }
+
   return {
     missingSetting,
-    async sendTemplate({ to, templateName, languageCode, parameters = [] }) {
-      const settings = connection.settings();
-      const token = settings.WHATSAPP_ACCESS_TOKEN;
-      const phoneNumberId = settings.WHATSAPP_PHONE_NUMBER_ID;
-      if (!token || !phoneNumberId) {
-        throw new Error("The WhatsApp settings are incomplete: check missingSetting() first");
-      }
-      const response = await fetcher(
-        `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
-        {
-          method: "POST",
-          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: to.replace(/^\+/, ""),
-            type: "template",
-            template: {
-              name: templateName,
-              language: { code: languageCode },
-              ...(parameters.length > 0 && {
-                components: [
-                  {
-                    type: "body",
-                    parameters: parameters.map(({ name, value }) => ({
-                      type: "text",
-                      parameter_name: name,
-                      text: value,
-                    })),
-                  },
-                ],
-              }),
-            },
+    sendTemplate({ to, templateName, languageCode, parameters = [] }) {
+      return sendMessage(to, {
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          ...(parameters.length > 0 && {
+            components: [
+              {
+                type: "body",
+                parameters: parameters.map(({ name, value }) => ({
+                  type: "text",
+                  parameter_name: name,
+                  text: value,
+                })),
+              },
+            ],
           }),
         },
-      );
-      const answer = await answerOf(response, token);
-      if (!answer.ok) {
-        return answer;
-      }
-      const { messages, contacts } = answer.body as MessagesAnswer;
-      const messageId = messages?.[0]?.id;
-      if (typeof messageId !== "string") {
-        throw new Error("The Graph API accepted a message without returning its id");
-      }
-      const waId = contacts?.[0]?.wa_id;
-      return { ok: true, messageId, waId: typeof waId === "string" ? waId : null };
+      });
+    },
+    sendText({ to, text }) {
+      return sendMessage(to, { type: "text", text: { body: text, preview_url: false } });
     },
     missingTemplateSetting,
     async createTemplate({ name, languageCode, body, examples }) {
