@@ -73,6 +73,13 @@ describe("the fixed checks on an assistant reply", () => {
     expect(checkReply("Hecho.✅Mañana")).toEqual({ ok: true, text: "Hecho. Mañana" });
   });
 
+  it("adds no space after an opening bracket, quote or WhatsApp's bold mark", () => {
+    expect(checkReply("(✅Hola) “✅Hola” *✅Hola*")).toEqual({
+      ok: true,
+      text: "(Hola) “Hola” *Hola*",
+    });
+  });
+
   it("strips a run of keycaps whole", () => {
     expect(checkReply("1️⃣2️⃣")).toEqual({ ok: false, reason: "empty", text: "", length: 0 });
   });

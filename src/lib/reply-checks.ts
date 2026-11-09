@@ -16,15 +16,22 @@ const emojiPiece = String.raw`[0-9#*]\p{Variation_Selector}?\p{Me}|(?![©®™�
 
 const emojiRun = new RegExp(`(?:${emojiPiece})+`, "gu");
 
+// What can end the text before an emoji run that a space must follow: a
+// letter, a digit, an accent's combining mark, closing punctuation or the end
+// of a sentence; not an opening bracket or quote, nor WhatsApp's `*`, `_`, `~`.
+const endsText = /[\p{L}\p{N}\p{M}\p{Pe}\p{Pf}.,;:!?…]$/u;
+
 /**
- * What takes an emoji run's place: a space when it sat between text and a
- * letter or digit, which it kept apart, and nothing otherwise. Each run is
- * matched whole from the left, so a keycap's digit is never read as text.
+ * What takes an emoji run's place: a space when it sat between the end of
+ * some text and a letter or digit, which it kept apart, and nothing
+ * otherwise. Each run is matched whole from the left, so a keycap's digit is
+ * never read as text.
  */
 function inPlaceOf(run: string, at: number, text: string) {
-  const before = text[at - 1];
+  // Two code units, so a letter outside the BMP is read whole.
+  const endsBefore = endsText.test(text.slice(Math.max(0, at - 2), at));
   const startsText = /^[\p{L}\p{N}]/u.test(text.slice(at + run.length));
-  const between = before !== undefined && !/\s/.test(before) && startsText;
+  const between = endsBefore && startsText;
   return between ? " " : "";
 }
 
