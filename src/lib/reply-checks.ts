@@ -30,7 +30,9 @@ const endsText = /[\p{L}\p{N}\p{M}\p{Pe}\p{Pf}.,;:!?…%]["'*_~]*$/u;
  * never read as text.
  */
 function inPlaceOf(run: string, at: number, text: string) {
-  const endsBefore = endsText.test(text.slice(0, at));
+  // A few code units are enough for a character and the marks after it, and
+  // keep a long reply with many emojis from being scanned again per run.
+  const endsBefore = endsText.test(text.slice(Math.max(0, at - 16), at));
   const startsText = /^[\p{L}\p{N}]/u.test(text.slice(at + run.length));
   const between = endsBefore && startsText;
   return between ? " " : "";
