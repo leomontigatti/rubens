@@ -22,7 +22,7 @@ export interface NotificationFacts {
   detail: string | null;
   until: number | null;
   waiting: number | null;
-  /** The handoff a `handoff` notification tells of. */
+  /** The handoff a `handoff` or `handoffReminder` notification tells of. */
   handoff: { conversationId: string; reason: HandoffReason; clinical: boolean } | null;
   /** The patient an `optOut` notification is about. */
   patient: { id: string; name: string } | null;
@@ -71,6 +71,8 @@ export function notificationTitle(facts: NotificationFacts): string {
       return "Meta bajó el límite de mensajes del número";
     case "handoff":
       return "Te derivaron una conversación de WhatsApp";
+    case "handoffReminder":
+      return "Una derivación de WhatsApp sigue sin respuesta";
     case "optOut":
       return `${facts.patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`;
   }
@@ -98,6 +100,8 @@ export function notificationText(facts: NotificationFacts): string {
       return `Ahora puede iniciar conversaciones con hasta ${messagingLimitLabels[facts.detail ?? ""] ?? facts.detail}.`;
     case "handoff":
       return handoffText(facts.handoff);
+    case "handoffReminder":
+      return reminderText(facts);
     case "optOut":
       return "Si es lo que pide, tocá Dejar de enviar por WhatsApp en su ficha. Hasta entonces le siguen llegando los recordatorios y avisos.";
   }
@@ -110,6 +114,17 @@ function handoffText(handoff: NotificationFacts["handoff"]) {
   const answer =
     "El asistente no responde en esa conversación mientras la derivación siga abierta.";
   return `${handoffReasonLabels[handoff.reason]}. ${answer}`;
+}
+
+function reminderText(facts: NotificationFacts) {
+  if (!facts.handoff) {
+    return "La derivación ya no está disponible.";
+  }
+  const closes =
+    facts.until === null
+      ? "La ventana de WhatsApp cierra pronto"
+      : `La ventana de WhatsApp cierra el ${day(facts.until)}`;
+  return `${handoffReasonLabels[facts.handoff.reason]}. ${closes}. Respondé antes para que tu respuesta le llegue enseguida.`;
 }
 
 /** How many messages waited when it happened, and what becomes of them; nothing for a kind that holds none. */

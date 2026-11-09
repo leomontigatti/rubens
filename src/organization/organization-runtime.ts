@@ -4,6 +4,7 @@ import { fakeMetaFetch, fakesMeta } from "#/dev/fake-meta.ts";
 import { accountsFor } from "#/organization/accounts.ts";
 import { nextTurnAlarm, runDueTurns } from "#/organization/assistant.ts";
 import { nextReturnAlarm, returnDueConversations } from "#/organization/conversation-holds.ts";
+import { nextReminderAlarm, sendDueReminders } from "#/organization/handoff-countdown.ts";
 import { assistantModelFor } from "#/organization/assistant-model.ts";
 import type { AssistantModel } from "#/organization/assistant-model.ts";
 import type { Accounts } from "#/organization/accounts.ts";
@@ -112,12 +113,14 @@ export abstract class OrganizationRuntime extends DurableObject {
 
   /**
    * Sends the outbox's due messages, gives the conversations whose hold ended
-   * back to the assistant, and runs its due turns, then sets the alarm for the next item.
+   * back to the assistant, and runs its due turns, then sends the handoff
+   * reminders those leave due, and sets the alarm for the next item.
    */
   override async alarm() {
     await sendDueMessages(this.database, this.whatsapp);
     await returnDueConversations(this.database, this.whatsapp);
     await runDueTurns(this.database, this.whatsapp, this.assistant);
+    sendDueReminders(this.database);
     await this.#armAlarm();
   }
 
@@ -127,6 +130,7 @@ export abstract class OrganizationRuntime extends DurableObject {
       nextOutboxAlarm(this.database, this.whatsapp),
       nextTurnAlarm(this.database, this.assistant),
       nextReturnAlarm(this.database),
+      nextReminderAlarm(this.database),
     ].filter((at) => at !== null);
     const next = due.length > 0 ? Math.min(...due) : null;
     if (next === null) {

@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import type { ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
+import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
@@ -62,4 +63,11 @@ export const saveReturnTime = createServerFn({ method: "POST" })
   .validator((data: ReturnTimeInput) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.saveReturnTime(caller, data)),
+  );
+
+// How many hours before the window closes a handoff's reminders go.
+export const saveHandoffReminders = createServerFn({ method: "POST" })
+  .validator((data: HandoffRemindersInput) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.saveHandoffReminders(caller, data)),
   );
