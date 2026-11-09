@@ -1,11 +1,13 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
+import type { Role } from "#/lib/access.ts";
 import { notificationListSize, notificationReferenceSchema } from "#/lib/notifications.ts";
 import type { NotificationReference } from "#/lib/notifications.ts";
+import { patientName } from "#/lib/patients.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { member, notification } from "#/organization/schema.ts";
+import { member, notification, patient } from "#/organization/schema.ts";
 import { handoff } from "#/organization/whatsapp-schema.ts";
 
 // Notifications to staff (`src/lib/notifications.ts`): written in the
@@ -17,19 +19,53 @@ type NotificationContent = Omit<
   "id" | "recipientId" | "readAt" | "createdAt" | "updatedAt"
 >;
 
-/** Notifies every active admin of `content`. */
-export function notifyAdmins(tx: Writer, content: NotificationContent) {
-  const admins = tx
+/** The active members with one of `roles`. */
+function activeWith(tx: Writer, roles: readonly Role[]) {
+  return tx
     .select({ userId: member.userId, roles: member.roles })
     .from(member)
     .where(eq(member.active, true))
     .all()
-    .filter((row) => row.roles.includes("admin"));
-  if (admins.length > 0) {
+    .filter((row) => row.roles.some((role) => roles.includes(role)))
+    .map((row) => row.userId);
+}
+
+/** Notifies each of `recipientIds` of `content`. */
+function notify(tx: Writer, recipientIds: string[], content: NotificationContent) {
+  if (recipientIds.length > 0) {
     tx.insert(notification)
-      .values(admins.map(({ userId }) => ({ ...content, recipientId: userId })))
+      .values(recipientIds.map((recipientId) => ({ ...content, recipientId })))
       .run();
   }
+}
+
+/** Notifies every active admin of `content`. */
+export function notifyAdmins(tx: Writer, content: NotificationContent) {
+  notify(tx, activeWith(tx, ["admin"]), content);
+}
+
+/**
+ * Notifies reception and the admins that `patientId`'s number asked to stop
+ * getting messages, so a person turns their WhatsApp consent off: each
+ * member once, while their earlier notification about the patient is unread.
+ */
+export function notifyOptOut(tx: Writer, patientId: string) {
+  const unread = new Set(
+    tx
+      .select({ recipientId: notification.recipientId })
+      .from(notification)
+      .where(
+        and(
+          eq(notification.kind, "optOut"),
+          eq(notification.patientId, patientId),
+          isNull(notification.readAt),
+        ),
+      )
+      .all()
+      .map((row) => row.recipientId),
+  );
+  const recipients = activeWith(tx, ["admin", "receptionist"]).filter((id) => !unread.has(id));
+  notify(tx, recipients, { kind: "optOut", patientId });
 }
 
 /**
@@ -51,9 +87,14 @@ export function listNotifications(database: Database, acting: Acting) {
       conversationId: handoff.conversationId,
       handoffReason: handoff.reason,
       handoffClinical: handoff.clinical,
+      patientId: patient.id,
+      firstName: patient.firstName,
+      chosenName: patient.chosenName,
+      lastName: patient.lastName,
     })
     .from(notification)
     .leftJoin(handoff, eq(handoff.id, notification.handoffId))
+    .leftJoin(patient, eq(patient.id, notification.patientId))
     .where(eq(notification.recipientId, acting.userId))
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
@@ -61,13 +102,28 @@ export function listNotifications(database: Database, acting: Acting) {
   return {
     ok: true,
     notifications: rows.map(
-      ({ readAt, conversationId, handoffReason, handoffClinical, ...row }) => ({
+      ({
+        readAt,
+        conversationId,
+        handoffReason,
+        handoffClinical,
+        patientId,
+        firstName,
+        chosenName,
+        lastName,
+        ...row
+      }) => ({
         ...row,
         read: readAt !== null,
         // A handoff's notification says what it was about and where, never the patient's words.
         handoff:
           conversationId !== null && handoffReason !== null
             ? { conversationId, reason: handoffReason, clinical: handoffClinical === true }
+            : null,
+        // An opt-out's names the patient whose consent to turn off, never the patient's words.
+        patient:
+          patientId !== null && firstName !== null && lastName !== null
+            ? { id: patientId, name: patientName({ firstName, lastName, chosenName }) }
             : null,
       }),
     ),

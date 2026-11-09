@@ -1,5 +1,4 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, max, min, or } from "drizzle-orm";
-import type * as z from "zod";
 
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
@@ -7,6 +6,7 @@ import {
   assistantToolSchemas,
   handoffReply,
   newMessagesMark,
+  optOutReply,
   withoutMark,
   withSignOff,
 } from "#/lib/assistant.ts";
@@ -23,9 +23,11 @@ import {
   openHandoff,
   openHandoffsOf,
 } from "#/organization/handoffs.ts";
-import type { HandoffWanted } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import { notifyOptOut } from "#/organization/notifications.ts";
 import { upcomingStatuses } from "#/organization/outbox.ts";
+import { handoffWanted } from "#/organization/turn-handoffs.ts";
+import type { HandOffCall, Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
 import {
   appointment,
   medicalService,
@@ -109,10 +111,6 @@ function whenOf(upcoming: Upcoming) {
     time: appointmentTime(start, upcoming.timeZone),
   };
 }
-
-type Judgement = z.output<typeof assistantToolSchemas.judge_messages.inputSchema>;
-
-type HandOffCall = z.output<typeof assistantToolSchemas.hand_off.inputSchema>;
 
 /** What the model recorded in a turn through its tools. */
 interface Recorded {
@@ -463,14 +461,18 @@ async function runTurn(
   if (settled === "silent") {
     return;
   }
-  // The fixed handoff reply says nothing the turn read, so a newer message or
-  // a changed appointment does not hold it: the next turn is silent.
-  const handedOff = settled === "handedOff";
-  const text = handedOff ? handoffReply(turn.rules.formOfAddress) : turn.reply;
+  // The fixed replies say nothing the turn read, so a newer message or a
+  // changed appointment does not hold them: the next turn is silent after a handoff.
+  const fixed = {
+    handedOff: handoffReply(turn.rules.formOfAddress),
+    optOutAsked: optOutReply(turn.rules.formOfAddress),
+    answered: null,
+  }[settled];
+  const text = fixed ?? turn.reply;
   // A turn that ended on its tools has no words of its own to sign.
   const words = checkReply(text);
   const checked = checkReply(withSignOff(text, turn.rules.signOff));
-  const may = handedOff
+  const may = fixed
     ? maySend(database, cloud, conversationId)
     : mayReply(database, cloud, { conversationId, read, appointments });
   if (!words.ok || !checked.ok || !may) {
@@ -483,81 +485,11 @@ async function runTurn(
   });
 }
 
-interface JudgedTurn {
+interface JudgedTurn extends TurnToSort {
   conversationId: string;
   read: Read;
   appointments: Upcoming[];
-  /** The follow-up or cancellation the patient's new messages answer, if any. */
-  answered: ReturnType<typeof answeredMessage>;
   judgement: Judgement;
-  handOff: HandOffCall | null;
-}
-
-const modelReasons = {
-  patient_asked: "patientAsked",
-  organization_cancelled: "organizationCancelled",
-  clinical: "clinical",
-  emergency: "emergency",
-} as const satisfies Record<HandOffCall["reason"], HandoffWanted["reason"]>;
-
-/** A follow-up's answer: only a plainly good one is the assistant's; any other is the practitioner's, as clinical. */
-function followUpHandoff(turn: JudgedTurn, appointmentId: string): HandoffWanted | null {
-  const { judgement } = turn;
-  if (judgement.followUpAnswer === "plainlyGood" && !judgement.emergency && !turn.handOff) {
-    return null;
-  }
-  const reason = judgement.emergency ? "emergency" : "followUpAnswer";
-  return { reason, clinical: true, appointmentId };
-}
-
-/** The model's hand_off, clinical when the call or the judgement says so. */
-function modelHandoff(turn: JudgedTurn, handOff: HandOffCall): HandoffWanted {
-  const { judgement, answered } = turn;
-  // Only an appointment the turn could speak of: the model's id is checked, not trusted.
-  const known = [...turn.appointments.map((one) => one.id), answered?.appointmentId];
-  const named = known.find((id) => id !== undefined && id === handOff.appointmentId);
-  const clinicalReason = handOff.reason === "clinical" || handOff.reason === "emergency";
-  return {
-    reason: modelReasons[handOff.reason],
-    clinical: judgement.clinical || judgement.emergency || handOff.clinical || clinicalReason,
-    appointmentId: named ?? null,
-  };
-}
-
-/** What underthing hands off without the model asking: a clinical judgement, a second misunderstanding, nothing booked. */
-function judgedHandoff(turn: JudgedTurn): HandoffWanted | null {
-  const { judgement } = turn;
-  if (judgement.clinical || judgement.emergency) {
-    const reason = judgement.emergency ? "emergency" : "clinical";
-    return { reason, clinical: true, appointmentId: null };
-  }
-  let reason: HandoffWanted["reason"] | null = null;
-  if (!judgement.understood && turn.read.misunderstandings >= 1) {
-    reason = "misunderstoodTwice";
-  } else if (turn.read.patients.length === 0) {
-    reason = "unknownNumber";
-  } else if (turn.appointments.length === 0) {
-    reason = "noUpcomingAppointment";
-  }
-  return reason ? { reason, clinical: false, appointmentId: null } : null;
-}
-
-/**
- * The handoff the turn calls for, if any (assistant.md § Handoff): a
- * follow-up's answer is sorted first, then the model's hand_off, then what
- * underthing hands off itself.
- */
-function handoffWanted(turn: JudgedTurn): HandoffWanted | null {
-  const { answered } = turn;
-  if (answered?.kind === "followUp" && answered.firstReply) {
-    return followUpHandoff(turn, answered.appointmentId);
-  }
-  const wanted = turn.handOff ? modelHandoff(turn, turn.handOff) : judgedHandoff(turn);
-  // A handoff about nothing in particular, right after a message about an
-  // appointment, concerns that appointment.
-  return (
-    wanted && { ...wanted, appointmentId: wanted.appointmentId ?? answered?.appointmentId ?? null }
-  );
 }
 
 /**
@@ -582,11 +514,39 @@ function storeJudgement(tx: Writer, turn: JudgedTurn, clinical: boolean) {
 }
 
 /**
- * Settles the judged turn in one transaction: stores the judgement, counts a
- * misunderstanding, opens the handoff it calls for, and says what the patient
- * is told. While a handoff is open, the assistant is silent in the conversation.
+ * Notifies reception and the admins of each patient the number reaches now
+ * who still accepts WhatsApp, for a person to turn their consent off
+ * (GLOSSARY.md `whatsappConsent`). Says whether any such patient was found,
+ * whose notification the team has then had or gets now.
  */
-function settleTurn(database: Database, turn: JudgedTurn): "silent" | "handedOff" | "answered" {
+function notifyOptOuts(tx: Writer, turn: JudgedTurn) {
+  if (turn.reachedNow.length === 0) {
+    return false;
+  }
+  const consenting = tx
+    .select({ id: patient.id })
+    .from(patient)
+    .where(and(inArray(patient.id, turn.reachedNow), eq(patient.whatsappConsent, true)))
+    .orderBy(asc(patient.id))
+    .all();
+  for (const { id } of consenting) {
+    notifyOptOut(tx, id);
+  }
+  return consenting.length > 0;
+}
+
+/**
+ * Settles the judged turn in one transaction: stores the judgement, counts a
+ * misunderstanding, opens the handoff it calls for, notifies an opt-out, and
+ * says what the patient is told. While a handoff is open, the assistant is
+ * silent in the conversation.
+ */
+function settleTurn(
+  database: Database,
+  judged: Omit<JudgedTurn, "reachedNow">,
+): "silent" | "handedOff" | "optOutAsked" | "answered" {
+  const reachedNow = patientsReachedAt(database, judged.read.phone).map((one) => one.id);
+  const turn = { ...judged, reachedNow };
   const wanted = handoffWanted(turn);
   return database.transaction((tx) => {
     storeJudgement(tx, turn, turn.judgement.clinical || wanted?.clinical === true);
@@ -599,10 +559,15 @@ function settleTurn(database: Database, turn: JudgedTurn): "silent" | "handedOff
     if (wanted && addsToOpen(open, wanted)) {
       openHandoff(tx, turn.conversationId, wanted);
     }
+    const optOutAsked = turn.judgement.optOut && notifyOptOuts(tx, turn);
     if (open.length > 0) {
       return "silent";
     }
-    return wanted ? "handedOff" : "answered";
+    if (wanted) {
+      return "handedOff";
+    }
+    // The fixed reply says the team is told: only with a patient to turn off.
+    return optOutAsked ? "optOutAsked" : "answered";
   });
 }
 

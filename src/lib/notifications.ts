@@ -3,8 +3,10 @@ import * as z from "zod";
 // Notifications to staff (docs/domain/messages.md § To staff): an event shown
 // in the app to the members it concerns, each read or unread on its own. The
 // first kinds are Meta's limits on the organization's number and templates
-// (§ When Meta limits the number), which every admin gets, and handoffs,
-// which their recipients get (docs/domain/assistant.md § Handoff).
+// (§ When Meta limits the number), which every admin gets; handoffs, which
+// their recipients get (docs/domain/assistant.md § Handoff); and replies that
+// look like opt-outs, which reception and the admins get, one per patient
+// whose WhatsApp consent a person may turn off.
 
 export const notificationKinds = [
   "templateRejected",
@@ -16,6 +18,7 @@ export const notificationKinds = [
   "numberRateLimited",
   "messagingLimitLowered",
   "handoff",
+  "optOut",
 ] as const;
 
 export type NotificationKind = (typeof notificationKinds)[number];

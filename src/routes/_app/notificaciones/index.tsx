@@ -24,7 +24,9 @@ import {
 // or unread on its own: Meta's limits on the number and the templates, which
 // go to every admin (docs/domain/messages.md § When Meta limits the number)
 // and link to the WhatsApp settings, where they are fixed; and handoffs, which
-// go to their recipients and link to the conversation.
+// go to their recipients and link to the conversation; and replies that look
+// like opt-outs, which go to reception and the admins and link to the
+// patient, whose WhatsApp consent is turned off there.
 
 export const Route = createFileRoute("/_app/notificaciones/")({
   head: () => ({ meta: [{ title: "Notificaciones · underthing" }] }),
@@ -78,7 +80,7 @@ function NotificationList() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notificaciones"
-        description="Los avisos para vos, como las conversaciones que te derivaron y los de Meta sobre el número de WhatsApp."
+        description="Los avisos para vos, como las conversaciones que te derivaron, los pacientes que pidieron no recibir más mensajes y los de Meta sobre el número de WhatsApp."
       />
       {result.notifications.length === 0 ? (
         <EmptyState
@@ -130,25 +132,7 @@ function NotificationRow(props: {
         <p className="text-muted-foreground text-xs">{localTime(notification.createdAt)}</p>
       </div>
       <div className="flex gap-2">
-        {notification.handoff ? (
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={
-              <Link
-                to="/conversaciones/$conversationId"
-                params={{ conversationId: notification.handoff.conversationId }}
-              />
-            }
-          >
-            Ver conversación
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/whatsapp" />}>
-            Ver WhatsApp
-          </Button>
-        )}
+        <NotificationLink notification={notification} />
         {!notification.read && (
           <Button variant="outline" size="sm" disabled={props.marking} onClick={props.onRead}>
             {props.marking && <Spinner data-icon="inline-start" aria-hidden />}
@@ -157,5 +141,43 @@ function NotificationRow(props: {
         )}
       </div>
     </li>
+  );
+}
+
+/** Where a notification is acted on: the conversation handed off, the patient to turn off, or the WhatsApp settings. */
+function NotificationLink({ notification }: { notification: Notification }) {
+  if (notification.handoff) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+        render={
+          <Link
+            to="/conversaciones/$conversationId"
+            params={{ conversationId: notification.handoff.conversationId }}
+          />
+        }
+      >
+        Ver conversación
+      </Button>
+    );
+  }
+  if (notification.patient) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+        render={<Link to="/pacientes/$patientId" params={{ patientId: notification.patient.id }} />}
+      >
+        Ver paciente
+      </Button>
+    );
+  }
+  return (
+    <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/whatsapp" />}>
+      Ver WhatsApp
+    </Button>
   );
 }

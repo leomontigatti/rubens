@@ -1,0 +1,1 @@
+ALTER TABLE `notification` ADD `patient_id` text REFERENCES patient(id);

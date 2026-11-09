@@ -77,6 +77,44 @@ export function queueBookingConfirmation(tx: Writer, appointmentId: string) {
 }
 
 /**
+ * Drops every queued message to `patientId`: in the transaction that turns
+ * their WhatsApp consent off, so nothing waiting for a template or a hold of
+ * Meta's goes once they are usable again (docs/domain/messages.md § To patients).
+ */
+export function dropQueuedForPatient(tx: Writer, patientId: string) {
+  const theirs = tx
+    .select({ id: appointment.id })
+    .from(appointment)
+    .where(eq(appointment.patientId, patientId));
+  tx.update(outboxMessage)
+    .set({ state: "dropped", dropReason: "noConsent" })
+    .where(and(eq(outboxMessage.state, "queued"), inArray(outboxMessage.appointmentId, theirs)))
+    .run();
+}
+
+/**
+ * Queues again the reminders of `patientId`'s upcoming appointments: in the
+ * transaction that turns their WhatsApp consent back on, since turning it
+ * off dropped them (`dropQueuedForPatient`).
+ */
+export function requeueRemindersForPatient(tx: Writer, patientId: string) {
+  const upcoming = tx
+    .select({ id: appointment.id })
+    .from(appointment)
+    .where(
+      and(
+        eq(appointment.patientId, patientId),
+        inArray(appointment.status, upcomingStatuses),
+        gt(appointment.startsAt, Date.now()),
+      ),
+    )
+    .all();
+  for (const { id } of upcoming) {
+    queueReminders(tx, id);
+  }
+}
+
+/**
  * Drops the queued reminders of the appointment `appointmentId` and, while it
  * is booked or confirmed and its patient accepts WhatsApp, queues its medical
  * service's reminders for its time now: in the transaction that booked, moved

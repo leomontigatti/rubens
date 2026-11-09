@@ -24,6 +24,8 @@ export interface NotificationFacts {
   waiting: number | null;
   /** The handoff a `handoff` notification tells of. */
   handoff: { conversationId: string; reason: HandoffReason; clinical: boolean } | null;
+  /** The patient an `optOut` notification is about. */
+  patient: { id: string; name: string } | null;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -69,6 +71,8 @@ export function notificationTitle(facts: NotificationFacts): string {
       return "Meta bajó el límite de mensajes del número";
     case "handoff":
       return "Te derivaron una conversación de WhatsApp";
+    case "optOut":
+      return `${facts.patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`;
   }
 }
 
@@ -94,6 +98,8 @@ export function notificationText(facts: NotificationFacts): string {
       return `Ahora puede iniciar conversaciones con hasta ${messagingLimitLabels[facts.detail ?? ""] ?? facts.detail}.`;
     case "handoff":
       return handoffText(facts.handoff);
+    case "optOut":
+      return "Si es lo que pide, tocá Dejar de enviar por WhatsApp en su ficha. Hasta entonces le siguen llegando los recordatorios y avisos.";
   }
 }
 

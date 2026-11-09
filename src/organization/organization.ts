@@ -388,7 +388,7 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   setWhatsappConsent(caller: Caller, input: WhatsappConsentChange) {
-    return this.as(caller, patientEditors, (acting) =>
+    return this.asThenArm(caller, patientEditors, (acting) =>
       setWhatsappConsent(this.database, acting, input),
     );
   }
