@@ -13,7 +13,8 @@ import type {
   MetaSignup,
 } from "#/organization/graph-api.ts";
 import type { Acting } from "#/organization/members.ts";
-import { organization, whatsappConnection } from "#/organization/schema.ts";
+import { organization } from "#/organization/schema.ts";
+import { whatsappConnection } from "#/organization/whatsapp-schema.ts";
 import type { ClaimResult, DirectoryEntry } from "#/server/whatsapp-directory.ts";
 
 // The organization's WhatsApp number, connected through Meta's Embedded

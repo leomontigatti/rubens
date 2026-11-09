@@ -13,7 +13,8 @@ import {
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { practitioner, whatsappMessage } from "#/organization/schema.ts";
+import { practitioner } from "#/organization/schema.ts";
+import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // The inbox's reading rules (docs/domain/assistant.md § Inbox): who reads
 // which conversations, and which messages they read the words of.

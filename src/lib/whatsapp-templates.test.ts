@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { checkTemplateBody, templateExamples } from "#/lib/whatsapp-templates.ts";
+import {
+  checkTemplateBody,
+  maxCareInstructionsLength,
+  templateExamples,
+} from "#/lib/whatsapp-templates.ts";
 
 const valid = "Hola {{paciente}}, tu turno es el {{fecha}} a las {{hora}}. Consultorios Prueba";
 
@@ -102,5 +106,19 @@ describe("a template at Meta", () => {
       { param_name: "fecha", example: "jueves 12 de noviembre" },
       { param_name: "hora", example: "10:30" },
     ]);
+  });
+});
+
+describe("the room a template leaves for care instructions", () => {
+  it("is the body's limit less the text outside its variables", () => {
+    expect(maxCareInstructionsLength("Hola {{paciente}}: {{indicaciones}}. Saludos")).toBe(
+      1024 - "Hola : . Saludos".length,
+    );
+  });
+
+  it("is shared among each place the body repeats them", () => {
+    expect(maxCareInstructionsLength("Hoy: {{indicaciones}}. Repito: {{indicaciones}}.")).toBe(
+      Math.floor((1024 - "Hoy: . Repito: .".length) / 2),
+    );
   });
 });

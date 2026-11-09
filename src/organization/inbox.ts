@@ -20,15 +20,13 @@ import type {
 
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { appointment, patient, practitioner } from "#/organization/schema.ts";
 import {
-  appointment,
   conversation,
   conversationPatient,
   outboxMessage,
-  patient,
-  practitioner,
   whatsappMessage,
-} from "#/organization/schema.ts";
+} from "#/organization/whatsapp-schema.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
 // only. Reception and admins read every conversation; a practitioner those

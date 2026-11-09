@@ -81,7 +81,7 @@ Scripts that call `scripts/*.ts` run under `tsx`.
 ## The organization's data
 
 - `organization:generate` runs `drizzle-kit generate` with `drizzle.organization.config.ts`:
-  diffs `src/organization/schema.ts`, the organization object's SQLite schema, against its
+  diffs `src/organization/schema.ts` and `whatsapp-schema.ts`, the organization object's SQLite schema, against its
   snapshot and writes the migration and `migrations.js` index under
   `src/organization/migrations`, which the object applies on start. Offline. Commit what it
   writes, and never edit a migration that is already on `main`.

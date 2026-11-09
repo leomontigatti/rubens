@@ -13,12 +13,11 @@ import {
   guardian,
   medicalService,
   office,
-  outboxMessage,
   patient,
   practitioner,
   room,
-  whatsappTemplate,
 } from "#/organization/schema.ts";
+import { outboxMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
 
 // The outbox (`src/lib/outbox.ts`): messages to patients, queued in the
@@ -55,7 +54,7 @@ export function queueBookingConfirmation(tx: Writer, appointmentId: string) {
 }
 
 /** The latest approved version of template `name`, the one that goes; `null` while none is approved. */
-function approvedVersion(database: Database, name: TemplateName) {
+export function approvedVersion(database: Database, name: TemplateName) {
   return (
     database
       .select({

@@ -10,7 +10,11 @@ import {
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { conversation, conversationPatient, whatsappMessage } from "#/organization/schema.ts";
+import {
+  conversation,
+  conversationPatient,
+  whatsappMessage,
+} from "#/organization/whatsapp-schema.ts";
 
 /** A text from `from` (E.164), as the webhook hands it over. */
 function incoming(from: string, whatsappId = `wamid.${crypto.randomUUID()}`) {

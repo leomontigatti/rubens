@@ -143,7 +143,8 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
 - **No patient data in logs or errors.** Names, phone numbers, appointment times and
   clinical text stay out of `console` and error messages. Ids are enough to find a
   record.
-- **The object's schema is `src/organization/schema.ts`**, and its migrations are
+- **The object's schema is `src/organization/schema.ts`**, with its WhatsApp tables in
+  `whatsapp-schema.ts`, and its migrations are
   generated from it (`pnpm organization:generate`) into `src/organization/migrations/`,
   which every object applies on start. A migration on `main` has run in deployed
   objects: it is never edited, and a schema change adds a new one.

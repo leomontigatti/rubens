@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { fillTemplate, sampleAppointment, templateValues } from "#/lib/template-filling.ts";
+import {
+  fillTemplate,
+  flattenCareInstructions,
+  sampleAppointment,
+  templateValues,
+} from "#/lib/template-filling.ts";
 import type { TemplateAppointment } from "#/lib/template-filling.ts";
 
 const appointment: TemplateAppointment = {
@@ -65,5 +70,15 @@ describe("filling a template", () => {
     expect(fillTemplate(body, sampleAppointment).text).toBe(
       "Tu turno con la Dra. Sofía Méndez es el jueves 12 de noviembre a las 10:30 en Sede Centro (Av. Colón 1234, Córdoba).",
     );
+  });
+});
+
+describe("flattening care instructions", () => {
+  it("joins lines with `; ` and collapses runs of spaces and tabs, so Meta takes the value", () => {
+    expect(
+      flattenCareInstructions(
+        "No comer  2 horas antes.\n\n\tTraer estudios.\r\nVenir\u00a0 acompañado\u2028Sin perfume",
+      ),
+    ).toBe("No comer 2 horas antes.; Traer estudios.; Venir acompañado; Sin perfume");
   });
 });
