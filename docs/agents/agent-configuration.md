@@ -40,9 +40,9 @@ Hooks are configuration, so they run in a headless session too. The project's tw
 
 - **`PostToolUse` on `Write|Edit`**: `format-edited-file.sh` runs `vp fmt` on each file the
   tool just wrote, silently, for the extensions Oxfmt formats.
-- **`Stop`**: `stop-typecheck-lint.sh` runs `vp check --no-fmt` (lint and type check) and
-  `pnpm check:fallow`, and **blocks** with exit 2 while either is red, putting the failing output
-  in front of the agent. Before them it blocks with a single `pnpm install --frozen-lockfile` line
+- **`Stop`**: `stop-typecheck-lint.sh` runs `vp check --no-fmt` (lint and type check),
+  `pnpm check:fallow` and `pnpm check:dupes`, and **blocks** with exit 2 while any is red, putting
+  the failing output in front of the agent. Before them it blocks with a single `pnpm install --frozen-lockfile` line
   when `pnpm-lock.yaml` is newer than the installed dependencies, instead of the import errors a
   stale `node_modules` would produce. It runs only when the working tree has a TypeScript or
   JavaScript file or a `package.json` or `tsconfig` change, and it reads the uncommitted tree, so

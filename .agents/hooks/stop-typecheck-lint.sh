@@ -3,8 +3,8 @@
 # Stop hook, blocking. Wired from both `.claude/settings.json` and
 # `.codex/hooks.json`.
 #
-# A turn may not end on a red lint, typecheck or fallow gate. Two gates run, in
-# this order:
+# A turn may not end on a red lint, typecheck or fallow gate. Three gates run,
+# in this order:
 #
 # - `pnpm exec vp check --no-fmt`: Oxlint (type-aware) and the TypeScript check
 #   in one pass, about 1.7 s measured on this repo. Formatting is not in it,
@@ -14,6 +14,10 @@
 #   the complexity limit surfaces only at commit. Read by exit code
 #   (docs/agents/fallow.md): 1 is the branch's findings, 2 is "could not run",
 #   and both block.
+# - `pnpm check:dupes`: duplicated lines over the whole codebase against
+#   `duplicates.threshold` in `.fallowrc.json`, which `fallow audit` ignores.
+#   Same codes: 1 is over the threshold, 2 is a config or argument error, and
+#   both block.
 #
 # Tests are not in it; they are the agent's to run for what it touched
 # (docs/agents/validation.md).
@@ -115,6 +119,14 @@ if command -v pnpm >/dev/null 2>&1; then
 $fallow_output" ;;
     2) append "fallow could not run, so this branch was never checked; run \`git fetch origin\` and retry (docs/agents/fallow.md):
 $fallow_output" ;;
+  esac
+
+  dupes_output="$(pnpm --silent check:dupes 2>&1)"
+  case $? in
+    1) append "pnpm check:dupes found duplication over the threshold; extract the shared idiom, don't raise the threshold (docs/agents/fallow.md):
+$dupes_output" ;;
+    2) append "fallow dupes could not run, so duplication was never checked; check .fallowrc.json (docs/agents/fallow.md):
+$dupes_output" ;;
   esac
 fi
 
