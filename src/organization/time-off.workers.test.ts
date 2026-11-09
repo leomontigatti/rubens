@@ -80,6 +80,7 @@ describe("recording time off", () => {
           practitionerId: juan.practitionerId,
           startsAt: Date.parse("2099-01-05T03:00:00Z"),
           endsAt: Date.parse("2099-01-10T03:00:00Z"),
+          tellPatients: true,
         },
       },
     ]);

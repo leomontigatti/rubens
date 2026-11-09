@@ -46,9 +46,11 @@ reply. The assistant gives no advice, and writes nothing into the clinical recor
 the practitioner decides what goes there.
 
 The organization also writes when it changes an appointment itself: when staff
-move or cancel it, and when a time off or a closure sends their appointments to
-the "to reschedule" list, unless whoever entered it chose not to tell them. The
-message says what happened and, where the appointment still needs a time, invites
+move or cancel it, and when time off, a closure or a schedule change sends their
+appointments to the "to reschedule" list, unless whoever entered the time off or
+the closure chose not to tell them. Only the message for the latest change goes.
+No reminder goes while an appointment is on the list, told or not. The message
+says what happened and, where the appointment still needs a time, invites
 a reply, such as `Tuvimos que mover tu turno del jueves con la Dra. X. Respondé
 este mensaje y buscamos otro horario.` The assistant then offers times, except for
 a cancelled appointment: until booking arrives, in the second release, a reply

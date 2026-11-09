@@ -452,25 +452,25 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   createSchedule(caller: Caller, input: ScheduleInput) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       createSchedule(this.database, acting, input),
     );
   }
 
   changeSchedule(caller: Caller, input: ScheduleChange) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       changeSchedule(this.database, acting, input),
     );
   }
 
   endSchedule(caller: Caller, input: ScheduleEnd) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       endSchedule(this.database, acting, input),
     );
   }
 
   deleteSchedule(caller: Caller, input: ScheduleDelete) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       deleteSchedule(this.database, acting, input),
     );
   }
@@ -480,19 +480,19 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   createTimeOff(caller: Caller, input: TimeOffInput) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       createTimeOff(this.database, acting, input),
     );
   }
 
   updateTimeOff(caller: Caller, input: TimeOffUpdate) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       updateTimeOff(this.database, acting, input),
     );
   }
 
   deleteTimeOff(caller: Caller, input: TimeOffDelete) {
-    return this.as(caller, workingTimeEditors, (acting) =>
+    return this.asThenArm(caller, workingTimeEditors, (acting) =>
       deleteTimeOff(this.database, acting, input),
     );
   }
@@ -502,15 +502,21 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   createClosure(caller: Caller, input: ClosureInput) {
-    return this.as(caller, ["admin"], (acting) => createClosure(this.database, acting, input));
+    return this.asThenArm(caller, ["admin"], (acting) =>
+      createClosure(this.database, acting, input),
+    );
   }
 
   updateClosure(caller: Caller, input: ClosureUpdate) {
-    return this.as(caller, ["admin"], (acting) => updateClosure(this.database, acting, input));
+    return this.asThenArm(caller, ["admin"], (acting) =>
+      updateClosure(this.database, acting, input),
+    );
   }
 
   deleteClosure(caller: Caller, input: ClosureDelete) {
-    return this.as(caller, ["admin"], (acting) => deleteClosure(this.database, acting, input));
+    return this.asThenArm(caller, ["admin"], (acting) =>
+      deleteClosure(this.database, acting, input),
+    );
   }
 
   listAvailabilityPractitioners(caller: Caller) {
