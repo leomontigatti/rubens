@@ -130,6 +130,11 @@ jobs:
       - name: fallow audit (findings this branch introduces)
         if: steps.diff.outputs.docs_only != 'true'
         run: pnpm check:fallow
+      # The whole codebase's duplicated share against `duplicates.threshold`
+      # (.fallowrc.json), which `fallow audit` does not read.
+      - name: fallow dupes (duplication ceiling)
+        if: steps.diff.outputs.docs_only != 'true'
+        run: pnpm check:dupes
       - run: pnpm test:unit
       # The organization object's tests, in the Workers runtime (Miniflare, local).
       - if: steps.diff.outputs.docs_only != 'true'

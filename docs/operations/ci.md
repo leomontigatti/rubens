@@ -12,7 +12,7 @@ protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
   `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
-  `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm test:unit`, `pnpm test:workers`
+  `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm check:dupes`, `pnpm test:unit`, `pnpm test:workers`
   and `pnpm build`. No database service: `test:workers` runs the organization object in
   Miniflare.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
@@ -71,8 +71,10 @@ current `main`.
 10. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
     branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
     run) fails the job too.
-11. **`pnpm test:unit`** and **`pnpm test:workers`**.
-12. **`pnpm build`**: the production build a deploy ships
+11. **`pnpm check:dupes`**: the whole codebase's duplicated lines against the 3%
+    ceiling ([fallow.md](../agents/fallow.md#the-gate)).
+12. **`pnpm test:unit`** and **`pnpm test:workers`**.
+13. **`pnpm build`**: the production build a deploy ships
     ([infrastructure.md](./infrastructure.md#deploy)).
 
 ## What `e2e` does, in order
