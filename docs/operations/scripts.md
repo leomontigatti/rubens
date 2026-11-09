@@ -35,10 +35,10 @@ Scripts that call `scripts/*.ts` run under `tsx`.
 - `check:dependency-audit`: fails on high and critical advisories this branch
   introduces, against `origin/main`. CI runs it.
 - `check:fallow`: `fallow audit` gated on what this branch adds against `origin/main`
-  ([fallow.md](../agents/fallow.md)). The pre-commit hook and CI run it.
+  ([fallow.md](../agents/fallow.md)). The agent `Stop` hook, the pre-commit hook and CI run it.
 - `check:dupes`: `fallow dupes --quiet`, failing when duplicated lines pass
   `duplicates.threshold` (3%) of the whole codebase ([fallow.md](../agents/fallow.md)).
-  The pre-commit hook and CI run it.
+  The agent `Stop` hook, the pre-commit hook and CI run it.
 - `check:pr-title`: the conventional-commit prefix and English subject rule, over the
   `PR_TITLE` environment variable. CI runs it on PR events.
 - `check:labels`: fails when a workflow, a script or a doc under `docs/agents/` names
