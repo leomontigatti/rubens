@@ -24,13 +24,15 @@ import { appointment, patient, practitioner } from "#/organization/schema.ts";
 import {
   conversation,
   conversationPatient,
+  handoffRecipient,
+  handoff,
   outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
 // only. Reception and admins read every conversation; a practitioner those
-// about their own appointments. A patient's message judged clinical, or not
+// about their own appointments and those handed to them. A patient's message judged clinical, or not
 // judged yet, is withheld from anyone who is not a practitioner who keeps
 // clinical records: its words never leave the object for them, only that it
 // exists.
@@ -80,13 +82,28 @@ function ownPractitioner(database: Database, acting: Acting) {
 }
 
 /** How `acting` reads the inbox: which conversations, and whether clinical words. */
-function readerOf(database: Database, acting: Acting) {
+export function readerOf(database: Database, acting: Acting) {
   const own = ownPractitioner(database, acting);
   let visible: SQL | undefined = undefined;
   if (!actsForEveryone(acting)) {
-    visible = own ? aboutAppointmentsOf(database, own.id) : sql`false`;
+    visible = own
+      ? or(aboutAppointmentsOf(database, own.id), handedTo(database, acting.userId))
+      : sql`false`;
   }
   return { readsClinical: own?.keepsClinicalRecords === true, visible };
+}
+
+/** The conversations a handoff went to `memberId` in. */
+function handedTo(database: Database, memberId: string): SQL {
+  return exists(
+    database
+      .select({ one: handoffRecipient.handoffId })
+      .from(handoffRecipient)
+      .innerJoin(handoff, eq(handoff.id, handoffRecipient.handoffId))
+      .where(
+        and(eq(handoff.conversationId, conversation.id), eq(handoffRecipient.memberId, memberId)),
+      ),
+  );
 }
 
 /**
@@ -110,7 +127,7 @@ function aboutAppointmentsOf(database: Database, practitionerId: string): SQL {
   return or(exists(throughPatient), exists(throughOutbox))!;
 }
 
-const messageColumns = {
+export const messageColumns = {
   id: whatsappMessage.id,
   conversationId: whatsappMessage.conversationId,
   direction: whatsappMessage.direction,
@@ -134,7 +151,7 @@ function withheldBecause(row: MessageRow, readsClinical: boolean) {
   return row.judgement === "clinical" ? "clinical" : "notJudged";
 }
 
-function asRead(row: MessageRow, readsClinical: boolean): InboxMessage {
+export function asRead(row: MessageRow, readsClinical: boolean): InboxMessage {
   const withheld = withheldBecause(row, readsClinical);
   if (withheld !== null) {
     return { id: row.id, direction: "incoming", sentAt: row.sentAt, withheld };
@@ -143,7 +160,7 @@ function asRead(row: MessageRow, readsClinical: boolean): InboxMessage {
   return { id, direction, sentAt, type, text, status, judgement, withheld: null };
 }
 
-function patientsOf(database: Database, conversationIds: string[]) {
+export function patientsOf(database: Database, conversationIds: string[]) {
   const rows =
     conversationIds.length === 0
       ? []

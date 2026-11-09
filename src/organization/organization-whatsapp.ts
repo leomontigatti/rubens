@@ -1,11 +1,14 @@
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
+import type { HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
 import { saveCommunicationRules } from "#/organization/communication-rules.ts";
 import { listHandoffContacts, replaceHandoffContacts } from "#/organization/handoff-contacts.ts";
+import { closeHandoffWithoutReply, listOpenHandoffs } from "#/organization/handoff-inbox.ts";
+import { patientEditors } from "#/organization/members.ts";
 import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
@@ -18,7 +21,8 @@ import {
 
 /**
  * The organization object's WhatsApp methods (`Organization` extends this):
- * Meta's webhook events, and the WhatsApp settings, which only admins use.
+ * Meta's webhook events, the inbox's handoffs, and the WhatsApp settings,
+ * which only admins use.
  * Each method is one line into its area module, as in `organization.ts`.
  */
 export abstract class OrganizationWhatsapp extends OrganizationRuntime {
@@ -33,6 +37,19 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     }
     // A template's approval lets the messages waiting on it go.
     return this.thenArm(() => storeWhatsappEvents(this.database, events));
+  }
+
+  /** The open handoffs the member sees in the inbox (`src/organization/handoff-inbox.ts`). */
+  listOpenHandoffs(caller: Caller, input: OpenHandoffListOptions) {
+    return this.as(caller, patientEditors, (acting) =>
+      listOpenHandoffs(this.database, acting, input),
+    );
+  }
+
+  closeHandoff(caller: Caller, input: HandoffReference) {
+    return this.as(caller, patientEditors, (acting) =>
+      closeHandoffWithoutReply(this.database, acting, input),
+    );
   }
 
   whatsappSettings(caller: Caller) {

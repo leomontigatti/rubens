@@ -20,10 +20,11 @@ import {
   waitingText,
 } from "#/routes/_app/notificaciones/-notification-copy.ts";
 
-// The member's notifications (ui: "Notificaciones"), newest first, each read
-// or unread on its own. The first are Meta's limits on the number and the
-// templates, which go to every admin (docs/domain/messages.md § When Meta
-// limits the number); each links to the WhatsApp settings, where they are fixed.
+// The member's notifications (ui: "Notificaciones"), unread first, each read
+// or unread on its own: Meta's limits on the number and the templates, which
+// go to every admin (docs/domain/messages.md § When Meta limits the number)
+// and link to the WhatsApp settings, where they are fixed; and handoffs, which
+// go to their recipients and link to the conversation.
 
 export const Route = createFileRoute("/_app/notificaciones/")({
   head: () => ({ meta: [{ title: "Notificaciones · underthing" }] }),
@@ -77,7 +78,7 @@ function NotificationList() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notificaciones"
-        description="Los avisos para vos, como los de Meta sobre el número de WhatsApp y sus plantillas."
+        description="Los avisos para vos, como las conversaciones que te derivaron y los de Meta sobre el número de WhatsApp."
       />
       {result.notifications.length === 0 ? (
         <EmptyState
@@ -129,9 +130,25 @@ function NotificationRow(props: {
         <p className="text-muted-foreground text-xs">{localTime(notification.createdAt)}</p>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/whatsapp" />}>
-          Ver WhatsApp
-        </Button>
+        {notification.handoff ? (
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={
+              <Link
+                to="/conversaciones/$conversationId"
+                params={{ conversationId: notification.handoff.conversationId }}
+              />
+            }
+          >
+            Ver conversación
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/whatsapp" />}>
+            Ver WhatsApp
+          </Button>
+        )}
         {!notification.read && (
           <Button variant="outline" size="sm" disabled={props.marking} onClick={props.onRead}>
             {props.marking && <Spinner data-icon="inline-start" aria-hidden />}

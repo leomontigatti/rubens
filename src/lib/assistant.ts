@@ -52,6 +52,32 @@ export const assistantToolSchemas = {
     inputSchema: z.object({
       clinical: z.boolean().describe("Mentions symptoms, a study, a treatment or how they feel"),
       emergency: z.boolean().describe("A risk to life or health right now"),
+      understood: z
+        .boolean()
+        .default(true)
+        .describe(
+          "False when you cannot tell what the patient wants and have to ask them to say it again",
+        ),
+      followUpAnswer: z
+        .enum(["plainlyGood", "other"])
+        .optional()
+        .describe(
+          "Only when the new messages answer the practice's follow-up (how they feel after an appointment): plainlyGood when they plainly say they are well, with nothing to ask or report; other otherwise",
+        ),
+    }),
+  },
+  hand_off: {
+    description:
+      "Hands the conversation to a person at the practice, who answers the patient here. Call it at most once a turn.",
+    inputSchema: z.object({
+      reason: z.enum(["patient_asked", "organization_cancelled", "clinical", "emergency"]),
+      clinical: z.boolean().describe("True when the conversation is about health or symptoms"),
+      appointmentId: z
+        .string()
+        .optional()
+        .describe(
+          "The appointment it is about, as list_patients returned it, when it is about one",
+        ),
     }),
   },
 } as const;
@@ -93,12 +119,15 @@ function localNow(now: Date, timeZone: string) {
 export function assistantSystemPrompt(context: PromptContext): string {
   const capabilities = [
     "- Say when, where and with whom an appointment is.",
+    "- Hand the conversation to a person at the practice (hand_off).",
     ...(context.more?.capabilities ?? []),
   ];
   const rules = [
     `Every turn, call judge_messages exactly once, about the patient's new messages: clinical (symptoms, a study, a treatment, how they feel, a photo) and emergency (a risk to life or health right now). The new messages are what follows the line "${newMessagesMark}" in the patient's last message.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
+    "Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); the message is clinical (clinical, clinical: true); it is an emergency (emergency, clinical: true). Pass the appointmentId when it is about one appointment. A person then answers: do not answer it yourself.",
+    "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     ...(context.more?.rules ?? []),
     "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Clinical messages go to the practitioner.",
     "If asked whether you are a bot or a person, say plainly that you are the practice's automated assistant. Do not say so unprompted.",
@@ -120,4 +149,15 @@ ${rules.map((rule, index) => `${index + 1}. ${rule}`).join("\n")}`;
 export function withSignOff(reply: string, signOff: string): string {
   const body = reply.trim();
   return signOff ? `${body}\n${signOff}` : body;
+}
+
+/**
+ * What the patient is told when the assistant hands the conversation off:
+ * that a person answers here. Fixed, so a handoff's reply says nothing the
+ * model wrote.
+ */
+export function handoffReply(formOfAddress: FormOfAddress): string {
+  return formOfAddress === "usted"
+    ? "Gracias por escribirnos. Le pasamos su mensaje a una persona del equipo, que le va a responder por acá."
+    : "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
 }

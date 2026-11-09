@@ -12,7 +12,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { useDebounced } from "#/components/use-debounced.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { conversationPageSize } from "#/lib/whatsapp-messages.ts";
-import { findConversations, getConversations } from "#/server/inbox.functions.ts";
+import { findConversations, getConversations, getOpenHandoffs } from "#/server/inbox.functions.ts";
 import type { ConversationSummary } from "#/organization/inbox.ts";
 
 import {
@@ -20,10 +20,11 @@ import {
   messageText,
   messageTime,
 } from "#/routes/_app/conversaciones/-labels.ts";
+import { OpenHandoffList } from "#/routes/_app/conversaciones/-handoffs.tsx";
 import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
-// The inbox (ui: "Conversaciones"): the WhatsApp conversations the member
-// reads, latest first, a page at a time. Which ones, and which messages'
+// The inbox (ui: "Conversaciones"): the open handoffs, then the WhatsApp
+// conversations the member reads, latest first, a page at a time. Which ones, and which messages'
 // words, the object decides by role (docs/domain/assistant.md § Inbox).
 
 export const Route = createFileRoute("/_app/conversaciones/")({
@@ -34,7 +35,13 @@ export const Route = createFileRoute("/_app/conversaciones/")({
     pagina: z.number().int().positive().optional().catch(undefined),
   }),
   loaderDeps: ({ search }) => ({ page: search.pagina }),
-  loader: ({ deps }) => getConversations({ data: deps }),
+  loader: async ({ deps }) => {
+    const [conversations, handoffs] = await Promise.all([
+      getConversations({ data: deps }),
+      getOpenHandoffs({ data: {} }),
+    ]);
+    return { conversations, handoffs };
+  },
   component: Conversations,
 });
 
@@ -92,7 +99,7 @@ function useConversationSearch(typed: string) {
 }
 
 function Conversations() {
-  const result = Route.useLoaderData();
+  const { conversations: result, handoffs } = Route.useLoaderData();
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
@@ -103,6 +110,7 @@ function Conversations() {
         title="Conversaciones"
         description="Los mensajes de WhatsApp con los pacientes."
       />
+      {handoffs.ok && <OpenHandoffList handoffs={handoffs.handoffs} />}
       <ConversationTable listed={result} />
     </div>
   );

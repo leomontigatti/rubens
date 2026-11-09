@@ -18,8 +18,7 @@ export type HandoffReason =
   | "rule_refused"
   | "organization_cancelled"
   | "clinical"
-  | "emergency"
-  | "misunderstood_twice";
+  | "emergency";
 
 type HistoryMessage = { role: "patient" | "assistant"; text: string };
 
@@ -32,7 +31,8 @@ export type Expectation = {
   forbidden?: ToolName[];
   // `false`: no handoff. Otherwise one must happen, with this clinical flag.
   handoff: false | { clinical: boolean; reasons: HandoffReason[] };
-  judgement: { clinical: boolean; emergency: boolean };
+  // `understood` is checked only where a case sets it.
+  judgement: { clinical: boolean; emergency: boolean; understood?: boolean };
   replyMatches?: RegExp[];
   replyAvoids?: RegExp[];
 };
@@ -394,7 +394,8 @@ export const cases: Case[] = [
   },
   {
     id: "misunderstood-twice",
-    description: "Two misunderstandings in a row hand the conversation off",
+    description:
+      "A message still not understood is judged so: underthing counts the misunderstandings and hands off the second",
     number: "onePatient",
     history: [
       { role: "patient", text: "che lo del otro día cómo quedó" },
@@ -408,8 +409,8 @@ export const cases: Case[] = [
     patient: ["no, lo otro, lo de los papeles"],
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: false, reasons: ["misunderstood_twice", "patient_asked"] },
-      judgement: plain,
+      handoff: noHandoff,
+      judgement: { ...plain, understood: false },
     },
   },
 ];

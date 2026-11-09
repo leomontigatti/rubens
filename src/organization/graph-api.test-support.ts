@@ -54,6 +54,10 @@ class FakeMeta {
   settings: GraphApiSettings = {};
   requests: MetaRequest[] = [];
   #answer = { status: 200, body: {} as unknown };
+  // Meta's own answer to a send, until a test sets another: each message gets
+  // an id of its own, the first `wamid.test-message`.
+  #answersSends = true;
+  #sends = 0;
   #nextAnswers: { status: number; body: unknown }[] = [];
   #hold: Promise<void> | null = null;
   #heldStep: { step: SignupStep; until: Promise<void> } | null = null;
@@ -95,16 +99,25 @@ class FakeMeta {
     };
     this.signupRefusals = {};
     this.businessToken = metaBusinessToken;
-    this.answerWith(200, {
+    this.answerWith(200, {});
+    this.#answersSends = true;
+    this.#sends = 0;
+  }
+
+  #sendAnswer() {
+    this.#sends += 1;
+    const id = this.#sends === 1 ? "wamid.test-message" : `wamid.test-message-${this.#sends}`;
+    return {
       messaging_product: "whatsapp",
       contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
-      messages: [{ id: "wamid.test-message" }],
-    });
+      messages: [{ id }],
+    };
   }
 
   /** Meta's next answers: `body` as JSON with `status`. */
   answerWith(status: number, body: unknown) {
     this.#answer = { status, body };
+    this.#answersSends = false;
   }
 
   /**
@@ -137,6 +150,15 @@ class FakeMeta {
     while (this.requests.length < count) {
       await new Promise((resolve) => setTimeout(resolve, 1));
     }
+  }
+
+  /** The free-form texts the object sent through Meta, to whom, in order. */
+  textsSent() {
+    return this.requests
+      .filter((request) => request.url.endsWith("/messages"))
+      .map((request) => request.body as { to: string; type: string; text?: { body: string } })
+      .filter((body) => body.type === "text")
+      .map((body) => ({ to: body.to, text: body.text?.body }));
   }
 
   /** Meta's answer to the next request only, before those `answerWith` set; queued in order. */
@@ -177,6 +199,9 @@ class FakeMeta {
       return Response.json({ data, paging: { cursors: { after: String(next) }, next: url.href } });
     }
     const answer = this.#nextAnswers.shift() ?? this.#answer;
+    if (answer === this.#answer && this.#answersSends && request.url.endsWith("/messages")) {
+      return Response.json(this.#sendAnswer(), { status: 200 });
+    }
     return Response.json(answer.body, { status: answer.status });
   };
 

@@ -1,5 +1,5 @@
-// The assistant's real system prompt (`src/lib/assistant.ts`, #169), with the
-// drafts of what later tickets add: proposals (#173, #174) and handoffs (#171).
+// The assistant's real system prompt (`src/lib/assistant.ts`, #169, #171), with
+// the drafts of what later tickets add: proposals (#173, #174).
 // Each draft line moves into the real prompt when its ticket lands.
 
 import { assistantSystemPrompt } from "../../../src/lib/assistant.ts";
@@ -14,7 +14,6 @@ const draftRules = [
   '"No voy a poder" and similar are ambiguous: ask one plain question, whether to cancel or to move the appointment. Do not propose anything yet.',
   "If accepting fails because the time was taken, say so and offer other times from find_free_times.",
   "If find_free_times refuses a move (past the cutoff, or the one move already used), do not offer times: tell the patient a person will contact them, and call hand_off with reason rule_refused.",
-  "Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); a rule refuses what they want (rule_refused); they want a new time for an appointment the practice cancelled (organization_cancelled); the message is clinical (clinical, clinical: true); it is an emergency (emergency, clinical: true); you misunderstood the patient twice in a row and still do not understand (misunderstood_twice). After a handoff, tell the patient a person will answer soon.",
 ];
 
 export function systemPrompt(): string {

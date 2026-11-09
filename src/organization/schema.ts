@@ -459,6 +459,9 @@ export const notification = sqliteTable(
     detail: text("detail"),
     until: instant("until"),
     waiting: integer("waiting"),
+    // The handoff it tells of (`whatsapp-schema.ts`, which imports this file,
+    // so no reference is declared here).
+    handoffId: text("handoff_id"),
     readAt: instant("read_at"),
     ...timestamps,
   },

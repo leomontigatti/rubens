@@ -104,6 +104,10 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
       problems.push(`judged clinical=${String(judged.clinical)}`);
     if (judged.emergency !== judgement.emergency)
       problems.push(`judged emergency=${String(judged.emergency)}`);
+    // An unset `understood` is the schema's default, true.
+    const understood = judged.understood !== false;
+    if (judgement.understood !== undefined && understood !== judgement.understood)
+      problems.push(`judged understood=${String(understood)}`);
   } else problems.push("not judged");
   return { pass: problems.length === 0, reason: problems.join("; ") || "ok" };
 }

@@ -4,7 +4,7 @@ import { cn } from "cn";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { formatPhone } from "#/lib/phones.ts";
-import { getConversation } from "#/server/inbox.functions.ts";
+import { getConversation, getOpenHandoffs } from "#/server/inbox.functions.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
 
 import {
@@ -12,19 +12,27 @@ import {
   messageText,
   messageTime,
 } from "#/routes/_app/conversaciones/-labels.ts";
+import { ConversationHandoffs } from "#/routes/_app/conversaciones/-handoffs.tsx";
 import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
-// One conversation in the inbox, oldest message first, read only. A message
-// the member may not read shows that it exists, never its words.
+// One conversation in the inbox, oldest message first, under its open
+// handoffs. A message the member may not read shows that it exists, never its words.
 
 export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
-  loader: ({ params }) => getConversation({ data: { conversationId: params.conversationId } }),
+  loader: async ({ params }) => {
+    const data = { conversationId: params.conversationId };
+    const [conversation, handoffs] = await Promise.all([
+      getConversation({ data }),
+      getOpenHandoffs({ data }),
+    ]);
+    return { conversation, handoffs };
+  },
   head: () => ({ meta: [{ title: "Conversación · underthing" }] }),
   component: ConversationPage,
 });
 
 function ConversationPage() {
-  const result = Route.useLoaderData();
+  const { conversation: result, handoffs } = Route.useLoaderData();
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
@@ -37,6 +45,7 @@ function ConversationPage() {
         title={conversationName(conversation)}
         description={formatPhone(conversation.phone)}
       />
+      {handoffs.ok && <ConversationHandoffs handoffs={handoffs.handoffs} />}
       <ul className="flex flex-col divide-y rounded-xl border">
         {messages.map((message) => (
           <MessageRow key={message.id} message={message} />
