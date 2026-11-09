@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import type { MessageJudgement } from "#/lib/whatsapp-messages.ts";
 
 import {
+  addRefusedAdmin,
   adminCaller,
   at,
   expectOk,
@@ -63,7 +64,7 @@ function judge(whatsappId: string, judgement: MessageJudgement) {
 
 /** The one conversation `caller` lists, read in full. */
 async function readOnlyConversation(caller: { userId: string }) {
-  const listed = expectOk(await world.organization.listConversations(caller));
+  const listed = expectOk(await world.organization.listConversations(caller, {}));
   expect(listed.conversations).toHaveLength(1);
   return expectOk(
     await world.organization.readConversation(caller, {
@@ -156,10 +157,10 @@ describe("reading a conversation in the inbox", () => {
   it("refuses a practitioner a conversation about another practitioner's appointments", async () => {
     await patientWrites(symptoms);
     const [conversation] = expectOk(
-      await world.organization.listConversations(world.receptionist),
+      await world.organization.listConversations(world.receptionist, {}),
     ).conversations;
 
-    const listed = expectOk(await world.organization.listConversations(world.lucia.caller));
+    const listed = expectOk(await world.organization.listConversations(world.lucia.caller, {}));
     const opened = await world.organization.readConversation(world.lucia.caller, {
       conversationId: conversation!.id,
     });
@@ -184,7 +185,7 @@ describe("reading a conversation in the inbox", () => {
     await patientWrites(symptoms, "+5491155550001");
     await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notClinical"));
 
-    const listed = expectOk(await world.organization.listConversations(world.receptionist));
+    const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
 
     expect(listed.conversations).toEqual([
       expect.objectContaining({
@@ -221,7 +222,7 @@ describe("reading a conversation in the inbox", () => {
     );
 
     const read = await readOnlyConversation(world.juan.caller);
-    const elsewhere = expectOk(await world.organization.listConversations(world.lucia.caller));
+    const elsewhere = expectOk(await world.organization.listConversations(world.lucia.caller, {}));
 
     expect(read.conversation.patients).toEqual([]);
     expect(read.messages).toEqual([
@@ -233,5 +234,74 @@ describe("reading a conversation in the inbox", () => {
       }),
     ]);
     expect(elsewhere.conversations).toEqual([]);
+  });
+
+  it("finds conversations by a patient's name or by the number, a page at a time", async () => {
+    await patientWrites("Hola");
+    await world.addPatient("Bruno", "+5491155550001");
+    await patientWrites("Hola", "+5491155550001");
+    await patientWrites("Hola", "+5491155559999");
+    const search = async (query: string) =>
+      expectOk(
+        await world.organization.listConversations(world.receptionist, { query }),
+      ).conversations.map((conversation) => conversation.phone);
+
+    expect(await search("martina paz")).toEqual([martinaPhone]);
+    expect(await search("011 15 5555-9999")).toEqual(["+5491155559999"]);
+    expect(await search("5555000")).toEqual(
+      expect.arrayContaining([martinaPhone, "+5491155550001"]),
+    );
+    expect(await search("lucía")).toEqual([]);
+  });
+
+  it("pages the list, 25 conversations at a time", async () => {
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: Array.from({ length: 26 }, (_, index) => ({
+          whatsappId: `wamid.page-${index}`,
+          from: `+54911555600${String(index).padStart(2, "0")}`,
+          sentAt: Date.UTC(2099, 0, 5, 12, index),
+          type: "text",
+          text: "Hola",
+          payload: "{}",
+        })),
+        statuses: [],
+        templateStatuses: [],
+      }),
+    );
+
+    const second = expectOk(
+      await world.organization.listConversations(world.receptionist, { page: 2 }),
+    );
+
+    expect(second).toMatchObject({ total: 26, page: 2 });
+    expect(second.conversations.map((conversation) => conversation.phone)).toEqual([
+      "+5491155560000",
+    ]);
+  });
+
+  it("is refused to anyone signed out, deactivated or still holding the starting password", async () => {
+    await patientWrites(symptoms);
+    const [conversation] = expectOk(
+      await world.organization.listConversations(world.receptionist, {}),
+    ).conversations;
+    const callers = [
+      { userId: "user-stranger" },
+      await addRefusedAdmin(world.organization, "deactivated"),
+      await addRefusedAdmin(world.organization, "mustChangePassword"),
+    ];
+
+    const answers = await Promise.all(
+      callers.flatMap((caller) => [
+        world.organization.listConversations(caller, {}),
+        world.organization.readConversation(caller, { conversationId: conversation!.id }),
+      ]),
+    );
+
+    expect(answers.map((answer) => (answer.ok ? "done" : answer.reason))).toEqual([
+      ...["unauthenticated", "unauthenticated"],
+      ...["unauthenticated", "unauthenticated"],
+      ...["mustChangePassword", "mustChangePassword"],
+    ]);
   });
 });

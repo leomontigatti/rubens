@@ -1,11 +1,18 @@
-import { and, asc, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, like, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { actsForEveryone } from "#/lib/access.ts";
 import { patientName } from "#/lib/patients.ts";
-import { conversationReferenceSchema } from "#/lib/whatsapp-messages.ts";
+import { parsePhone } from "#/lib/phones.ts";
+import { normalizeText, wordsOf } from "#/lib/search-text.ts";
+import {
+  conversationListSchema,
+  conversationPageSize,
+  conversationReferenceSchema,
+} from "#/lib/whatsapp-messages.ts";
 import type {
+  ConversationListOptions,
   ConversationReference,
   MessageJudgement,
   WhatsappMessageStatus,
@@ -63,7 +70,6 @@ export interface ConversationSummary {
   lastMessage: InboxMessage;
 }
 
-/** The practitioner row of `acting`, when they hold the role. */
 function ownPractitioner(database: Database, acting: Acting) {
   if (!acting.roles.includes("practitioner")) {
     return undefined;
@@ -130,7 +136,6 @@ function withheldBecause(row: MessageRow, readsClinical: boolean) {
   return row.judgement === "clinical" ? "clinical" : "notJudged";
 }
 
-/** The message as `readsClinical` decides the reader sees it. */
 function asRead(row: MessageRow, readsClinical: boolean): InboxMessage {
   const withheld = withheldBecause(row, readsClinical);
   if (withheld !== null) {
@@ -168,25 +173,71 @@ function patientsOf(database: Database, conversationIds: string[]) {
 
 const latestMessage = alias(whatsappMessage, "latest_message");
 
-/** The conversations `acting` reads, latest message first, each with its latest message. */
+/**
+ * The conversations a search matches: every word of it in the names of a
+ * patient the number stands for, or its digits in the number.
+ */
+function matching(database: Database, query: string): SQL | undefined {
+  if (query === "") {
+    return undefined;
+  }
+  const words = wordsOf(normalizeText(query));
+  const padded = sql`' ' || ${patient.searchName} || ' '`;
+  const byName = database
+    .select({ one: conversationPatient.patientId })
+    .from(conversationPatient)
+    .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
+    .where(
+      and(
+        eq(conversationPatient.conversationId, conversation.id),
+        ...words.map((word) => sql`${padded} like ${`%${word}%`}`),
+      ),
+    );
+  const digits = query.replace(/[\s.()+-]/g, "");
+  const phone = parsePhone(query);
+  return or(
+    words.length > 0 ? exists(byName) : undefined,
+    /^\d+$/.test(digits) ? like(conversation.phone, `%${digits}%`) : undefined,
+    phone.ok ? eq(conversation.phone, phone.phone) : undefined,
+  );
+}
+
+/**
+ * A page of the conversations `acting` reads, latest message first, each with
+ * its latest message, narrowed to what `query` matches.
+ */
 export function listConversations(
   database: Database,
   acting: Acting,
-): { ok: true; conversations: ConversationSummary[] } {
+  options: ConversationListOptions,
+):
+  | { ok: true; conversations: ConversationSummary[]; total: number; page: number }
+  | { ok: false; reason: "invalidInput" } {
+  const parsed = conversationListSchema.safeParse(options);
+  if (!parsed.success) {
+    return { ok: false, reason: "invalidInput" };
+  }
   const reader = readerOf(database, acting);
+  const shown = and(reader.visible, matching(database, parsed.data.query));
+  const { total } = database.select({ total: count() }).from(conversation).where(shown).get() ?? {
+    total: 0,
+  };
+  const page = Math.min(parsed.data.page, Math.max(1, Math.ceil(total / conversationPageSize)));
   const latestId = database
     .select({ id: latestMessage.id })
     .from(latestMessage)
     .where(eq(latestMessage.conversationId, conversation.id))
-    .orderBy(desc(latestMessage.sentAt), desc(latestMessage.createdAt))
+    .orderBy(desc(latestMessage.sentAt), desc(sql`${latestMessage}.rowid`))
     .limit(1);
   // A conversation is created with its first message, so each has a latest.
   const rows = database
     .select({ phone: conversation.phone, ...messageColumns })
     .from(conversation)
     .innerJoin(whatsappMessage, eq(whatsappMessage.id, sql`(${latestId})`))
-    .where(reader.visible)
-    .orderBy(desc(whatsappMessage.sentAt), desc(whatsappMessage.createdAt))
+    .where(shown)
+    .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
+    .limit(conversationPageSize)
+    .offset((page - 1) * conversationPageSize)
     .all();
   const patients = patientsOf(
     database,
@@ -194,6 +245,8 @@ export function listConversations(
   );
   return {
     ok: true,
+    total,
+    page,
     conversations: rows.map((row) => ({
       id: row.conversationId,
       phone: row.phone,
@@ -236,7 +289,8 @@ export function readConversation(
     .select(messageColumns)
     .from(whatsappMessage)
     .where(eq(whatsappMessage.conversationId, conversationId))
-    .orderBy(asc(whatsappMessage.sentAt), asc(whatsappMessage.createdAt))
+    // Meta stamps in whole seconds; the row order keeps a batch as it came.
+    .orderBy(asc(whatsappMessage.sentAt), asc(sql`${whatsappMessage}.rowid`))
     .all();
   return {
     ok: true,

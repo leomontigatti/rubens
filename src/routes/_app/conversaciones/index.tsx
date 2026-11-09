@@ -1,32 +1,44 @@
 import { MessagesSquareIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import * as z from "zod";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowLink, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { useDebounced } from "#/components/use-debounced.ts";
 import { formatPhone } from "#/lib/phones.ts";
+import { conversationPageSize } from "#/lib/whatsapp-messages.ts";
 import { getConversations } from "#/server/inbox.functions.ts";
 import type { ConversationSummary } from "#/organization/inbox.ts";
 
 import {
-  StatusBadge,
   conversationName,
   messageText,
   messageTime,
-  refusalMessages,
-} from "#/routes/_app/conversaciones/-messages.tsx";
+} from "#/routes/_app/conversaciones/-labels.ts";
+import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // The inbox (ui: "Conversaciones"): the WhatsApp conversations the member
-// reads, latest first. Which ones, and which messages' words, the object
-// decides by role (docs/domain/assistant.md § Inbox).
+// reads, latest first, a page at a time. Which ones, and which messages'
+// words, the object decides by role (docs/domain/assistant.md § Inbox).
 
 export const Route = createFileRoute("/_app/conversaciones/")({
   head: () => ({ meta: [{ title: "Conversaciones · underthing" }] }),
-  loader: () => getConversations(),
+  // The search text stays out of the address: a URL ends up in proxy logs and
+  // the browser's history, and patient data must not.
+  validateSearch: z.object({
+    pagina: z.number().int().positive().optional().catch(undefined),
+  }),
+  loaderDeps: ({ search }) => ({ page: search.pagina }),
+  loader: ({ deps }) => getConversations({ data: deps }),
   component: Conversations,
 });
+
+const searchDelay = 300;
 
 const columns: DataTableColumn<ConversationSummary>[] = [
   {
@@ -49,12 +61,25 @@ const columns: DataTableColumn<ConversationSummary>[] = [
       </span>
     ),
   },
-  {
-    id: "at",
-    header: "Fecha",
-    cell: ({ lastMessage }) => messageTime(lastMessage.sentAt),
-  },
+  { id: "at", header: "Fecha", cell: ({ lastMessage }) => messageTime(lastMessage.sentAt) },
 ];
+
+/**
+ * The conversations matching what is typed, asked for once typing pauses;
+ * only the answer to the text in the box is shown.
+ */
+function useConversationSearch(typed: string) {
+  const { viewer } = Route.useRouteContext();
+  const asked = useDebounced(typed.trim(), searchDelay);
+  const answer = useQuery({
+    queryKey: ["conversation-search", viewer.organizationId, viewer.userId, asked],
+    queryFn: () => getConversations({ data: { query: asked } }),
+    enabled: asked !== "",
+  });
+  const searching = typed.trim() !== "";
+  const current = searching && asked === typed.trim() && answer.data?.ok ? answer.data : null;
+  return { searching, waiting: searching && current === null, found: current };
+}
 
 function Conversations() {
   const result = Route.useLoaderData();
@@ -68,41 +93,61 @@ function Conversations() {
         title="Conversaciones"
         description="Los mensajes de WhatsApp con los pacientes."
       />
-      <ConversationTable conversations={result.conversations} />
+      <ConversationTable listed={result} />
     </div>
   );
 }
 
-function ConversationTable({ conversations }: { conversations: ConversationSummary[] }) {
-  const { table, pager, query, setQuery } = useClientDataTable({
-    rows: conversations,
+function ConversationTable(props: {
+  listed: { conversations: ConversationSummary[]; total: number; page: number };
+}) {
+  const { listed } = props;
+  const navigate = Route.useNavigate();
+  const [query, setQuery] = useState("");
+  const search = useConversationSearch(query);
+  const shown = search.searching ? (search.found?.conversations ?? []) : listed.conversations;
+  const table = useServerDataTable({
+    rows: shown,
     columns,
     getRowId: (conversation) => conversation.id,
-    searchText: (conversation) =>
-      `${conversationName(conversation)} ${formatPhone(conversation.phone)} ${conversation.phone}`,
   });
+  const pager = {
+    page: listed.page,
+    pageCount: Math.ceil(listed.total / conversationPageSize),
+    total: listed.total,
+    onPageChange: (pagina: number) =>
+      void navigate({ search: (previous) => ({ ...previous, pagina }) }),
+  };
+  const more =
+    search.found && search.found.total > search.found.conversations.length
+      ? `Se muestran las ${search.found.conversations.length} conversaciones más recientes de ${search.found.total}. Escribí más para acotar la búsqueda.`
+      : null;
   return (
-    <DataTable
-      table={table}
-      pager={pager}
-      search={{
-        value: query,
-        onChange: setQuery,
-        label: "Buscar conversación",
-        placeholder: "Buscar por paciente o teléfono",
-      }}
-      noRecords={conversations.length === 0}
-      empty={
-        conversations.length === 0 ? (
-          <EmptyState
-            icon={MessagesSquareIcon}
-            title="Sin conversaciones"
-            description="Todavía no hay conversaciones de WhatsApp."
-          />
-        ) : (
-          <NoMatches icon={MessagesSquareIcon} />
-        )
-      }
-    />
+    <div className="flex flex-col gap-3 has-data-[slot=empty]:flex-1">
+      <DataTable
+        table={table}
+        search={{
+          value: query,
+          onChange: setQuery,
+          label: "Buscar conversación",
+          placeholder: "Buscar por paciente o teléfono",
+          loading: search.waiting,
+        }}
+        pager={search.searching ? undefined : pager}
+        noRecords={!search.searching && listed.total === 0}
+        empty={
+          search.searching ? (
+            search.found && <NoMatches icon={MessagesSquareIcon} />
+          ) : (
+            <EmptyState
+              icon={MessagesSquareIcon}
+              title="Sin conversaciones"
+              description="Todavía no hay conversaciones de WhatsApp."
+            />
+          )
+        }
+      />
+      {more && <p className="text-muted-foreground text-sm">{more}</p>}
+    </div>
   );
 }

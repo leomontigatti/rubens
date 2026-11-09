@@ -61,7 +61,16 @@ export interface WhatsappEvents {
   templateStatuses: WhatsappTemplateStatusUpdate[];
 }
 
-/** A conversation the inbox opens. */
 export const conversationReferenceSchema = z.object({ conversationId: z.uuid() });
 
 export type ConversationReference = z.input<typeof conversationReferenceSchema>;
+
+export const conversationPageSize = 25;
+
+/** A page of the inbox, and what the search box holds; the search text stays out of the URL. */
+export const conversationListSchema = z.object({
+  page: z.number().int().positive().default(1),
+  query: z.string().trim().max(200).default(""),
+});
+
+export type ConversationListOptions = z.input<typeof conversationListSchema>;

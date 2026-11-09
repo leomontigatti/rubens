@@ -8,12 +8,11 @@ import { getConversation } from "#/server/inbox.functions.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
 
 import {
-  StatusBadge,
   conversationName,
   messageText,
   messageTime,
-  refusalMessages,
-} from "#/routes/_app/conversaciones/-messages.tsx";
+} from "#/routes/_app/conversaciones/-labels.ts";
+import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // One conversation in the inbox, oldest message first, read only. A message
 // the member may not read shows that it exists, never its words.

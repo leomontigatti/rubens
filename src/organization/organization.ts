@@ -60,7 +60,11 @@ import type {
   PatientUpdate,
   WhatsappConsentChange,
 } from "#/lib/patients.ts";
-import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
+import type {
+  ConversationListOptions,
+  ConversationReference,
+  WhatsappEvents,
+} from "#/lib/whatsapp-messages.ts";
 import type {
   ClosureDelete,
   ClosureInput,
@@ -668,8 +672,10 @@ export class Organization extends OrganizationRuntime {
   // The inbox: every staff role reads it; which conversations, and which
   // messages' words, is the area's to decide (`src/organization/inbox.ts`).
 
-  listConversations(caller: Caller) {
-    return this.#as(caller, patientEditors, (acting) => listConversations(this.database, acting));
+  listConversations(caller: Caller, input: ConversationListOptions) {
+    return this.#as(caller, patientEditors, (acting) =>
+      listConversations(this.database, acting, input),
+    );
   }
 
   readConversation(caller: Caller, input: ConversationReference) {

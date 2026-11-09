@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
+import type { ConversationListOptions, ConversationReference } from "#/lib/whatsapp-messages.ts";
 
 import { withOrganization } from "#/server/with-organization.ts";
 
@@ -9,9 +9,11 @@ import { withOrganization } from "#/server/with-organization.ts";
 // member reads (`src/organization/inbox.ts`), so each validator here only
 // names the type.
 
-export const getConversations = createServerFn({ method: "GET" }).handler(() =>
-  withOrganization((organization, caller) => organization.listConversations(caller)),
-);
+export const getConversations = createServerFn({ method: "GET" })
+  .validator((data: ConversationListOptions) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.listConversations(caller, data)),
+  );
 
 export const getConversation = createServerFn({ method: "GET" })
   .validator((data: ConversationReference) => data)
