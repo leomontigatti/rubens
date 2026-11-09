@@ -16,6 +16,8 @@ export interface CommunicationRules {
   formOfAddress: FormOfAddress;
   signOff: string;
   tone: string;
+  /** E.164, which the emergency reply gives; empty for none. */
+  phone: string;
   /** 0 until an admin first saves them. */
   version: number;
 }
@@ -25,6 +27,7 @@ const startingRules: CommunicationRules = {
   formOfAddress: "vos",
   signOff: "",
   tone: "",
+  phone: "",
   version: 0,
 };
 
@@ -35,6 +38,7 @@ export function currentCommunicationRules(database: Writer): CommunicationRules 
       formOfAddress: communicationRules.formOfAddress,
       signOff: communicationRules.signOff,
       tone: communicationRules.tone,
+      phone: communicationRules.phone,
       version: communicationRules.version,
     })
     .from(communicationRules)

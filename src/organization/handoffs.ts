@@ -23,6 +23,8 @@ export interface HandoffWanted {
   clinical: boolean;
   /** The appointment it concerns, whose practitioner it goes to; `null` for none. */
   appointmentId: string | null;
+  /** The assistant's reply the clinical check held, for a `heldReply` handoff. */
+  heldReply?: string;
 }
 
 /**

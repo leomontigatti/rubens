@@ -112,8 +112,10 @@ No organization can edit or override these:
 - It never invents availability, prices, insurers or anything else the data does
   not hold.
 - It never gives clinical advice. A message that reads as an emergency gets a
-  fixed reply with the organization's phone and the emergency number, and a
-  handoff.
+  fixed reply with the emergency number (107) and the organization's phone, which
+  an admin sets with the communication rules, and a clinical handoff. That reply
+  goes even while a handoff is open, though not while a person holds the
+  conversation.
 - It changes things only through accepted proposals.
 - It says it is a bot when asked.
 - It reads nothing clinical: its tools return no clinical record, note or
@@ -121,10 +123,14 @@ No organization can edit or override these:
 - Every reply is checked before it goes out. One that says anything clinical
   (advice, a diagnosis, a symptom, a treatment), or anything about a patient other
   than the number's own, is held
-  unsent, and the conversation is handed off. The held reply is shown only in the
-  app, for the person to send, fix or drop; Telegram gets the handoff without it.
+  unsent, and the conversation is handed off as clinical. A reply that could not
+  be checked is held the same way. The held reply is shown only in the app, only
+  to the handoff's recipients, for them to send, fix or drop; Telegram gets the
+  handoff without it. The check is a model call of its own that reads the reply
+  alone, never the conversation.
 - Clinical details a patient sends (symptoms, a study, a photo) are not answered:
-  they are handed off to the practitioner.
+  they are handed off to the practitioner. A photo, a video or a file never
+  reaches the model: it is stored as a clinical message and handed off.
 
 ## The conversation window
 

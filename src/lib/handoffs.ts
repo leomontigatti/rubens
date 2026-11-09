@@ -24,6 +24,8 @@ export const handoffReasons = [
   "unknownNumber",
   /** The number's patients have no upcoming appointment. */
   "noUpcomingAppointment",
+  /** The clinical check held the assistant's reply: clinical, or about another patient. */
+  "heldReply",
 ] as const;
 
 export type HandoffReason = (typeof handoffReasons)[number];

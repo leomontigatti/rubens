@@ -41,7 +41,8 @@ const modelReasons = {
  */
 function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted | null {
   const { judgement } = turn;
-  const plainlyGood = judgement.followUpAnswer === "plainlyGood";
+  // A photo or a file beside the answer makes it clinical (`assistant.ts`).
+  const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.clinical;
   const optOutOnly = judgement.optOut && !judgement.clinical;
   if ((plainlyGood || optOutOnly) && !judgement.emergency && !turn.handOff) {
     return null;

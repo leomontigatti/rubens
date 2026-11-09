@@ -1,13 +1,10 @@
-import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { Textarea } from "#/components/ui/textarea.tsx";
-import { toast } from "#/components/ui/toast.tsx";
 import { maxReplyLength } from "#/lib/conversation-holds.ts";
 import type { ConversationHold, ConversationWindow } from "#/organization/inbox.ts";
 import {
@@ -17,6 +14,7 @@ import {
 } from "#/server/inbox.functions.ts";
 
 import { messageTime } from "#/routes/_app/conversaciones/-labels.ts";
+import { useInboxAction } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // Who answers the conversation: the assistant, or the member who took it
 // over. Anyone who reads it takes it over at any time; its holder replies to
@@ -37,38 +35,24 @@ const refusals = {
   tooLong: "Acortá la respuesta: con tu nombre supera el largo que acepta WhatsApp.",
 };
 
-type Refusal = keyof typeof refusals;
-
 /** Runs one of the hold's calls, then reloads the page; a refusal is a toast. */
-function useHoldAction() {
-  const router = useRouter();
-  const [running, setRunning] = useState(false);
+export function useHoldAction() {
+  return useInboxAction(refusals);
+}
 
-  async function run(
-    tag: string,
-    call: () => Promise<{ ok: true } | { ok: false; reason: Refusal }>,
-  ) {
-    setRunning(true);
-    try {
-      const result = await serverAnswer(tag, shownPath(router), call);
-      if (result?.ok) {
-        await router.invalidate();
-      } else if (result) {
-        toast.add({ title: refusals[result.reason], type: "destructive" });
-      }
-      return result?.ok === true;
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  return { running, run };
+/** A text put in the reply's box from elsewhere on the page, such as a held reply; `id` tells two apart. */
+export interface ReplyDraft {
+  id: number;
+  /** The conversation it belongs to: the page outlives a navigation to another one. */
+  conversationId: string;
+  text: string;
 }
 
 export function ConversationHolder(props: {
   conversationId: string;
   hold: ConversationHold | null;
   window: ConversationWindow;
+  draft: ReplyDraft | null;
 }) {
   const { conversationId, hold } = props;
   const action = useHoldAction();
@@ -106,14 +90,25 @@ export function ConversationHolder(props: {
           </Button>
         )}
       </div>
-      {hold?.mine && <ReplyForm conversationId={conversationId} window={props.window} />}
+      {hold?.mine && (
+        <ReplyForm
+          key={props.draft?.id}
+          conversationId={conversationId}
+          window={props.window}
+          initialText={props.draft?.text ?? ""}
+        />
+      )}
     </section>
   );
 }
 
-function ReplyForm(props: { conversationId: string; window: ConversationWindow }) {
+function ReplyForm(props: {
+  conversationId: string;
+  window: ConversationWindow;
+  initialText: string;
+}) {
   const { running, run } = useHoldAction();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(props.initialText);
 
   async function submit(event: FormEvent) {
     event.preventDefault();

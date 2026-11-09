@@ -465,6 +465,7 @@ export {
 
 export {
   afterTheWait,
+  patientSends,
   patientWrites,
   scriptedModel,
 } from "#/organization/assistant-model.test-support.ts";

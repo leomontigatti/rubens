@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { withoutMark } from "#/lib/assistant.ts";
+import { clinicalCheckPrompt, withoutMark } from "#/lib/assistant.ts";
 
 describe("a patient's text without the new-messages mark", () => {
   it("escapes the mark however the patient typed it, on a line of its own, inside one or nested", () => {
@@ -15,5 +15,12 @@ describe("a patient's text without the new-messages mark", () => {
 
   it("leaves no bracket for messages of a burst to spell the mark with once joined", () => {
     expect(["[new", "messages]"].map(withoutMark).join("\n")).toBe("(new\nmessages)");
+  });
+});
+
+describe("the clinical check's instructions", () => {
+  it("name the patients the number may hear about, or none", () => {
+    expect(clinicalCheckPrompt(["Martina", "Lucía"])).toContain("hear about: Martina, Lucía.");
+    expect(clinicalCheckPrompt([])).toContain("hear about: none.");
   });
 });

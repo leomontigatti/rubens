@@ -18,6 +18,7 @@ const usted = {
   formOfAddress: "usted",
   signOff: "Consultorios Prueba",
   tone: "Cordial y breve. Tratar a cada paciente por su nombre.",
+  phone: "",
 } as const;
 
 /** The rules the WhatsApp settings show. */
@@ -31,7 +32,13 @@ beforeEach(async () => {
 
 describe("the organization's communication rules", () => {
   it("start as `vos`, with no sign-off and no tone, at version 0", async () => {
-    expect(await shownRules()).toEqual({ formOfAddress: "vos", signOff: "", tone: "", version: 0 });
+    expect(await shownRules()).toEqual({
+      formOfAddress: "vos",
+      signOff: "",
+      tone: "",
+      phone: "",
+      version: 0,
+    });
   });
 
   it("are saved by an admin, raising the version by one each save", async () => {
@@ -80,7 +87,7 @@ describe("the organization's communication rules", () => {
         userId: adminCaller.userId,
         patientId: null,
         before: { formOfAddress: "vos", signOff: "", tone: "", version: 0 },
-        after: { ...usted, version: 1 },
+        after: { formOfAddress: "usted", signOff: usted.signOff, tone: usted.tone, version: 1 },
       },
       {
         action: "update",
@@ -93,6 +100,27 @@ describe("the organization's communication rules", () => {
     ]);
   });
 
+  it("save the organization's phone as E.164, typed the local way", async () => {
+    expectOk(
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: "0351 15 555-1234",
+      }),
+    );
+
+    expect(await shownRules()).toMatchObject({ phone: "+5493515551234" });
+  });
+
+  it("refuse a phone that is not one, saving nothing", async () => {
+    expect(
+      await organization.saveCommunicationRules(adminCaller, { ...usted, phone: "15 555-1234" }),
+    ).toEqual({ ok: false, reason: "missingAreaCode" });
+    expect(
+      await organization.saveCommunicationRules(adminCaller, { ...usted, phone: "12" }),
+    ).toEqual({ ok: false, reason: "invalidPhone" });
+    expect((await shownRules()).version).toBe(0);
+  });
+
   it("refuse a tone over the limit, saving nothing", async () => {
     const result = await organization.saveCommunicationRules(adminCaller, {
       ...usted,
@@ -100,7 +128,13 @@ describe("the organization's communication rules", () => {
     });
 
     expect(result).toEqual({ ok: false, reason: "toneTooLong" });
-    expect(await shownRules()).toEqual({ formOfAddress: "vos", signOff: "", tone: "", version: 0 });
+    expect(await shownRules()).toEqual({
+      formOfAddress: "vos",
+      signOff: "",
+      tone: "",
+      phone: "",
+      version: 0,
+    });
   });
 
   it("are saved by admins only", async () => {

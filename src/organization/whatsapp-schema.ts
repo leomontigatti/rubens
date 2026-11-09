@@ -248,6 +248,8 @@ export const communicationRules = sqliteTable(
     formOfAddress: text("form_of_address", { enum: formsOfAddress }).notNull(),
     signOff: text("sign_off").notNull(),
     tone: text("tone").notNull(),
+    /** The organization's phone, E.164, which the emergency reply gives the patient; empty for none. */
+    phone: text("phone").notNull().default(""),
     version: integer("version").notNull(),
     ...timestamps,
   },
@@ -291,6 +293,12 @@ export const handoff = sqliteTable(
     closedAt: instant("closed_at"),
     /** The member who closed it without a reply. */
     closedBy: text("closed_by").references(() => member.userId),
+    /**
+     * The assistant's reply the clinical check held unsent, for its
+     * recipients to send, fix or drop; none once dropped or the handoff
+     * closed, and for other reasons.
+     */
+    heldReply: text("held_reply"),
     ...timestamps,
   },
   (table) => [index("handoff_conversation_idx").on(table.conversationId, table.state)],

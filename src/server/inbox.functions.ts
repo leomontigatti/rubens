@@ -43,6 +43,12 @@ export const closeHandoff = createServerFn({ method: "POST" })
     withOrganization((organization, caller) => organization.closeHandoff(caller, data)),
   );
 
+export const dropHeldReply = createServerFn({ method: "POST" })
+  .validator((data: HandoffReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.dropHeldReply(caller, data)),
+  );
+
 // Taking a conversation over, replying under one's name and giving it back
 // (`src/organization/conversation-holds.ts`).
 export const takeOverConversation = createServerFn({ method: "POST" })

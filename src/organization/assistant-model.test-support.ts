@@ -4,7 +4,12 @@ import { vi } from "vite-plus/test";
 import { assistantWaitMs } from "#/lib/assistant.ts";
 import type { AssistantToolName } from "#/lib/assistant.ts";
 
-import type { AssistantModel, ModelTurn } from "#/organization/assistant-model.ts";
+import type {
+  AssistantModel,
+  CheckedReply,
+  ModelTurn,
+  ReplyToCheck,
+} from "#/organization/assistant-model.ts";
 import type { Organization } from "#/organization/organization.ts";
 
 // The assistant's model scripted, for the organization object's tests
@@ -33,19 +38,41 @@ const plainTurn: Script = (turn) => {
   return "Hola, ¿en qué te puedo ayudar?";
 };
 
+/** What the clinical check finds in a reply, or that it failed; a reply nothing scripts passes. */
+type CheckScript = CheckedReply | "fails";
+
 class ScriptedModel implements AssistantModel {
   /** Every turn the object ran, in order. */
   turns: ModelTurn[] = [];
   calls: ToolCall[] = [];
+  /** Every reply the object asked the clinical check about, in order. */
+  checks: ReplyToCheck[] = [];
   /** Whether the Worker has the model's API key. */
   hasApiKey = true;
   #scripts: Script[] = [];
+  #checkScripts: CheckScript[] = [];
 
   reset() {
     this.turns = [];
     this.calls = [];
+    this.checks = [];
     this.hasApiKey = true;
     this.#scripts = [];
+    this.#checkScripts = [];
+  }
+
+  /** What the clinical check finds in the next reply it is asked about; queued in order. */
+  scriptCheck(found: CheckScript) {
+    this.#checkScripts.push(found);
+  }
+
+  async checkReply(request: ReplyToCheck) {
+    this.checks.push(request);
+    const found = this.#checkScripts.shift() ?? { clinical: false, otherPatient: false };
+    if (found === "fails") {
+      throw new Error("The scripted clinical check failed");
+    }
+    return found;
   }
 
   /** What the model does in the next unscripted turn; queued in order. */
@@ -90,6 +117,26 @@ export async function patientWrites(
   const whatsappId = `wamid.${crypto.randomUUID()}`;
   const stored = await organization.storeWhatsappEvents({
     messages: [{ whatsappId, from, sentAt, type: "text", text, payload: "{}" }],
+    statuses: [],
+    templateStatuses: [],
+  });
+  if (!stored.ok) {
+    throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
+  }
+  return whatsappId;
+}
+
+/** A photo, a document or another message with no text from `from`, as Meta's webhook hands it over. */
+export async function patientSends(
+  organization: DurableObjectStub<Organization>,
+  type: string,
+  from: string,
+) {
+  const whatsappId = `wamid.${crypto.randomUUID()}`;
+  const stored = await organization.storeWhatsappEvents({
+    messages: [
+      { whatsappId, from, sentAt: Date.now(), type, text: null, payload: '{"caption":"mirá"}' },
+    ],
     statuses: [],
     templateStatuses: [],
   });
