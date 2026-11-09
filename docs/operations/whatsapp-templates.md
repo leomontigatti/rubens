@@ -63,9 +63,11 @@ A reminder that asks nothing, such as one two hours before.
 ## `indicaciones`
 
 A medical service's care instructions, sent when the appointment is marked
-attended. The medical service's text goes whole, and must fit the
-body's limit. Whether Meta accepts line breaks in a value is to be tested before
-it is built; care instructions are often a list.
+attended. The medical service's text goes whole, and must fit the body's limit.
+Meta refuses a line break, a tab or a run of spaces in a value (error 132018),
+so care instructions, often a list, go on one line: each line break is joined
+as `; ` and each run of spaces becomes one (decided in #162). The medical
+service's form shows that line under the text.
 
 > Hola {{paciente}}, te dejamos las indicaciones de {{profesional}} para después de tu turno: {{indicaciones}}. Cualquier duda, respondé este mensaje. [firma]
 

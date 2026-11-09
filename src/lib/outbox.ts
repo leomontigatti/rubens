@@ -3,13 +3,16 @@ import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 // The outbox: every message to a patient is a row queued in the transaction
 // that changes the appointment (docs/domain/messages.md § To staff), and the
 // organization's alarm sends what is due (ADR-0008 § Jobs are Durable Object
-// alarms). It holds the booking confirmation and the reminders.
+// alarms). It holds the booking confirmation, the reminders, the care
+// instructions and the follow-up.
 
 /** What a queued message is, each sent as its template. */
 export const outboxKinds = [
   "bookingConfirmation",
   "reminder",
   "reminderWithoutConfirmation",
+  "careInstructions",
+  "followUp",
 ] as const;
 
 export type OutboxKind = (typeof outboxKinds)[number];
@@ -18,6 +21,8 @@ export const outboxTemplates = {
   bookingConfirmation: "confirmacion_turno",
   reminder: "recordatorio_turno",
   reminderWithoutConfirmation: "recordatorio_turno_sin_confirmacion",
+  careInstructions: "indicaciones",
+  followUp: "seguimiento",
 } as const satisfies Record<OutboxKind, TemplateName>;
 
 /** The kinds that are a reminder: one asks the patient to confirm, the other does not. */
@@ -26,9 +31,20 @@ export const reminderKinds = [
   "reminderWithoutConfirmation",
 ] as const satisfies readonly OutboxKind[];
 
+/** The kinds sent after an appointment was attended: of all, only these go however late. */
+export const aftercareKinds = [
+  "careInstructions",
+  "followUp",
+] as const satisfies readonly OutboxKind[];
+
 /** When a reminder set `hoursBefore` an appointment starting at `startsAt` goes. */
 export function reminderDueAt(startsAt: number, hoursBefore: number) {
   return startsAt - hoursBefore * 60 * 60_000;
+}
+
+/** When a follow-up set `hoursAfter` an appointment ending at `endsAt` goes. */
+export function followUpDueAt(endsAt: number, hoursAfter: number) {
+  return endsAt + hoursAfter * 60 * 60_000;
 }
 
 /**
@@ -39,10 +55,16 @@ export const outboxStates = ["queued", "sent", "dropped", "failed"] as const;
 
 /**
  * Why a message was dropped before it went: its appointment changed, its
- * patient withdrew consent, or a later reminder for the same appointment was
- * due too (docs/domain/messages.md § When Meta limits the number).
+ * patient withdrew consent, a later reminder for the same appointment was due
+ * too (docs/domain/messages.md § When Meta limits the number), or the care
+ * instructions it carries were cleared from the medical service.
  */
-export const outboxDropReasons = ["appointmentChanged", "noConsent", "overtaken"] as const;
+export const outboxDropReasons = [
+  "appointmentChanged",
+  "noConsent",
+  "overtaken",
+  "noCareInstructions",
+] as const;
 
 /** The waits after each failed attempt; the attempt after the last one is final. */
 const retryDelaysMinutes = [1, 5, 30, 120];

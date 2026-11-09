@@ -35,7 +35,7 @@ import { recordAudit } from "#/organization/audit.ts";
 import { asRange, meets } from "#/organization/availability.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { queueReminders, requeueRemindersOnStatus } from "#/organization/outbox.ts";
+import { queueReminders, requeueOnStatus } from "#/organization/outbox.ts";
 import { findPatient } from "#/organization/patients.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import { appointment, office, room } from "#/organization/schema.ts";
@@ -362,7 +362,7 @@ function setStatus(
     .set({ ...next, statusChangedAt: Date.now() })
     .where(eq(appointment.id, placed.id))
     .run();
-  requeueRemindersOnStatus(writer, placed, next.status);
+  requeueOnStatus(writer, placed, next.status);
   const { status, cancelledBy, cancellationReason } = placed;
   const changed = changedFields(
     { status, cancelledBy, cancellationReason },

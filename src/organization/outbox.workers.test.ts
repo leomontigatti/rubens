@@ -446,20 +446,32 @@ describe("sending the booking confirmation", () => {
 
 const hours = (count: number) => count * 60 * 60_000;
 
-/** The medical service's reminders: hours before the appointment, and whether each asks to confirm. */
-async function setReminders(reminders: { hoursBefore: number; asksToConfirm: boolean }[]) {
+/** The medical service's messages: none but those given. */
+async function setMessages(
+  messages: Partial<{
+    reminders: { hoursBefore: number; asksToConfirm: boolean }[];
+    careInstructions: string | null;
+    followUpHours: number | null;
+  }>,
+) {
   expectOk(
     await world.organization.updateMedicalService(adminCaller, {
       medicalServiceId,
       name: "Consulta",
       durationMinutes: 30,
       bookingConfirmation: false,
-      reminders,
+      reminders: [],
       careInstructions: null,
       followUpHours: null,
       rescheduleCutoffHours: 24,
+      ...messages,
     }),
   );
+}
+
+/** The medical service's reminders: hours before the appointment, and whether each asks to confirm. */
+function setReminders(reminders: { hoursBefore: number; asksToConfirm: boolean }[]) {
+  return setMessages({ reminders });
 }
 
 /** The queued reminders, latest first, as hours before the appointment and when each is due. */
@@ -838,5 +850,204 @@ describe("sending reminders while one template waits for approval", () => {
     await runDurableObjectAlarm(world.organization);
 
     expect(sentTemplates()).toEqual(["recordatorio_turno_v1"]);
+  });
+});
+
+const careInstructionsBody =
+  "Hola {{paciente}}, te dejamos las indicaciones de {{profesional}} para después de tu turno: {{indicaciones}}. Cualquier duda, respondé este mensaje. Consultorios Prueba";
+
+const followUpBody =
+  "Hola {{paciente}}, ¿cómo te sentís después de tu turno del {{fecha}} con {{profesional}}? Contanos respondiendo este mensaje. Consultorios Prueba";
+
+/** Meta reports the template `metaId` moved to `status`. */
+async function templateTurns(metaId: string, status: "approved" | "paused") {
+  expectOk(
+    await world.organization.storeWhatsappEvents({
+      messages: [],
+      statuses: [],
+      templateStatuses: [{ metaId, status, reason: null }],
+    }),
+  );
+}
+
+/** Marks the appointment `appointmentId` attended, as the admin. */
+async function markAttended(appointmentId: string) {
+  expectOk(
+    await world.organization.changeAppointmentStatus(adminCaller, {
+      appointmentId,
+      status: "attended",
+    }),
+  );
+}
+
+/** The queued care instructions and follow-ups, as their kind and when each is due. */
+async function queuedAftercare() {
+  return (await outbox())
+    .filter((row) => row.state === "queued" && row.kind !== "bookingConfirmation")
+    .map(({ kind, dueAt }) => ({ kind, dueAt }));
+}
+
+describe("queueing care instructions and the follow-up", () => {
+  it("queues the care instructions, due at once, when an appointment is marked attended", async () => {
+    await setMessages({ careInstructions: "No comer por 2 horas." });
+    const { appointmentId } = await bookMartina();
+
+    await markAttended(appointmentId);
+
+    expect(await queuedAftercare()).toEqual([{ kind: "careInstructions", dueAt: Date.now() }]);
+  });
+
+  it("queues none when the medical service has no care instructions or follow-up", async () => {
+    const { appointmentId } = await bookMartina();
+
+    await markAttended(appointmentId);
+
+    expect(await queuedAftercare()).toEqual([]);
+  });
+
+  it("queues the follow-up for the appointment's end plus the medical service's hours", async () => {
+    await setMessages({ followUpHours: 72 });
+    const { appointmentId } = await bookMartina();
+
+    await markAttended(appointmentId);
+
+    const endsAt = +nineOnMonday + 30 * 60_000;
+    expect(await queuedAftercare()).toEqual([{ kind: "followUp", dueAt: endsAt + hours(72) }]);
+  });
+
+  it("queues none for a patient without WhatsApp consent", async () => {
+    await setMessages({ careInstructions: "No comer por 2 horas.", followUpHours: 72 });
+    const { patient, appointmentId } = await bookMartina();
+    expectOk(
+      await world.organization.setWhatsappConsent(adminCaller, {
+        patientId: patient.id,
+        whatsappConsent: false,
+      }),
+    );
+
+    await markAttended(appointmentId);
+
+    expect(await queuedAftercare()).toEqual([]);
+  });
+
+  it("drops both when marking it attended is undone", async () => {
+    await setMessages({ careInstructions: "No comer por 2 horas.", followUpHours: 72 });
+    const { appointmentId } = await bookMartina();
+    await markAttended(appointmentId);
+
+    expectOk(await world.organization.undoAppointmentStatus(adminCaller, { appointmentId }));
+
+    expect(await queuedAftercare()).toEqual([]);
+    expect(
+      (await outbox()).filter((row) => row.kind !== "bookingConfirmation").map((row) => row.state),
+    ).toEqual(["dropped", "dropped"]);
+  });
+});
+
+describe("sending care instructions and the follow-up", () => {
+  beforeEach(async () => {
+    await submitTemplate("indicaciones", careInstructionsBody, "APPROVED", "900000000000021");
+    await submitTemplate("seguimiento", followUpBody, "APPROVED", "900000000000022");
+    fakeMeta.answerWith(200, metaSent("wamid.aftercare"));
+  });
+
+  /** The parameters of each message the object sent Meta, in order. */
+  function sentParameters() {
+    return sentToMeta().map(
+      (request) =>
+        (
+          request.body as {
+            template: { components: { parameters: { parameter_name: string; text: string }[] }[] };
+          }
+        ).template.components[0]!.parameters,
+    );
+  }
+
+  it("sends care instructions written as lines as one line, joined with `; `", async () => {
+    await setMessages({
+      careInstructions:
+        "No comer por 2 horas.\n\tEvitá el sol directo.\r\nTomá el analgésico      cada 8 horas.",
+    });
+    const { appointmentId } = await bookMartina();
+    await markAttended(appointmentId);
+
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["indicaciones_v1"]);
+    const instructions = sentParameters()[0]!.find(
+      (parameter) => parameter.parameter_name === "indicaciones",
+    )!.text;
+    expect(instructions).toBe(
+      "No comer por 2 horas.; Evitá el sol directo.; Tomá el analgésico cada 8 horas.",
+    );
+    expect(instructions).not.toMatch(/[\n\t]| {5}/);
+    const [stored] = await storedMessages();
+    expect(stored!.text).toBe(
+      "Hola Martina, te dejamos las indicaciones de Juan Gómez para después de tu turno: No comer por 2 horas.; Evitá el sol directo.; Tomá el analgésico cada 8 horas.. Cualquier duda, respondé este mensaje. Consultorios Prueba",
+    );
+    expect(await outbox()).toEqual([expect.objectContaining({ state: "sent" })]);
+  });
+
+  it("sends the follow-up as `seguimiento` at its time, days after the appointment", async () => {
+    await setMessages({ followUpHours: 72 });
+    const { appointmentId } = await bookMartina();
+    await markAttended(appointmentId);
+    const dueAt = +nineOnMonday + 30 * 60_000 + hours(72);
+
+    vi.setSystemTime(dueAt - 1);
+    await runDurableObjectAlarm(world.organization);
+    expect(sentToMeta()).toEqual([]);
+
+    vi.setSystemTime(dueAt);
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual(["seguimiento_v1"]);
+    const [stored] = await storedMessages();
+    expect(stored!.text).toBe(
+      "Hola Martina, ¿cómo te sentís después de tu turno del lunes 5 de enero con Juan Gómez? Contanos respondiendo este mensaje. Consultorios Prueba",
+    );
+  });
+
+  it("still sends care instructions held weeks past the appointment while Meta paused the template", async () => {
+    await setMessages({ careInstructions: "No comer por 2 horas." });
+    const { appointmentId } = await bookMartina();
+    await templateTurns("900000000000021", "paused");
+    await markAttended(appointmentId);
+    await runDurableObjectAlarm(world.organization);
+    expect(sentToMeta()).toEqual([]);
+
+    vi.setSystemTime(+nineOnMonday + hours(24 * 21));
+    await templateTurns("900000000000021", "approved");
+    expect(await runDurableObjectAlarm(world.organization)).toBe(true);
+
+    expect(sentTemplates()).toEqual(["indicaciones_v1"]);
+  });
+
+  it("drops the care instructions when the medical service cleared them before they went", async () => {
+    await setMessages({ careInstructions: "No comer por 2 horas." });
+    const { appointmentId } = await bookMartina();
+    await templateTurns("900000000000021", "paused");
+    await markAttended(appointmentId);
+
+    await setMessages({ careInstructions: null });
+    await templateTurns("900000000000021", "approved");
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentToMeta()).toEqual([]);
+    expect(await outbox()).toEqual([
+      expect.objectContaining({ state: "dropped", dropReason: "noCareInstructions" }),
+    ]);
+  });
+
+  it("sends nothing once marking the appointment attended is undone before the alarm fires", async () => {
+    await setMessages({ careInstructions: "No comer por 2 horas.", followUpHours: 1 });
+    const { appointmentId } = await bookMartina();
+    await markAttended(appointmentId);
+    expectOk(await world.organization.undoAppointmentStatus(adminCaller, { appointmentId }));
+
+    vi.setSystemTime(+nineOnMonday + hours(2));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentToMeta()).toEqual([]);
   });
 });
