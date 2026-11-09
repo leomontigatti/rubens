@@ -32,7 +32,8 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá el número, la plantilla y el idioma.",
   connectionFailed: "La conexión del número de WhatsApp falló. Conectalo de nuevo.",
-  missingAccessToken: "Todavía no hay un número de WhatsApp conectado.",
+  missingAccessToken:
+    "Falta el token de acceso de WhatsApp: conectá el número del consultorio, o revisá la configuración del servidor.",
   missingPhoneNumberId:
     "Falta el identificador del número de WhatsApp en la configuración del servidor.",
 };

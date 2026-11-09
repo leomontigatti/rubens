@@ -476,6 +476,7 @@ describe("connecting again", () => {
         cipher: (id) => organizationCipher(key, id),
       });
       await restarted.open();
+      return restarted.settings();
     });
   }
 
@@ -491,9 +492,11 @@ describe("connecting again", () => {
     ["missing", undefined],
     ["too short to be a key", btoa("short")],
   ])("keeps the connection and its token when the Worker's key is %s", async (_name, key) => {
-    await restartWithKey(key);
+    const restarted = await restartWithKey(key);
 
     expect(await connection()).toMatchObject({ state: "connected" });
     expect((await storedConnection())?.accessToken).toEqual(expect.any(String));
+    // The Worker's setting is missing, not the connection failed: connecting again would not help.
+    expect(restarted).toMatchObject({ connectionFailed: false, WHATSAPP_ACCESS_TOKEN: undefined });
   });
 });

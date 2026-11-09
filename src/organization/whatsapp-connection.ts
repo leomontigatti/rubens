@@ -157,20 +157,21 @@ export class WhatsappNumber {
   /**
    * The number the object sends from, or `null` before any number connected,
    * when the Worker's configured test number applies. A connection that is
-   * not connected, or whose token did not open, sends nothing.
+   * not connected, or whose token is not open, sends nothing.
    */
   settings(): GraphApiSettings | null {
     const row = this.#row();
     if (!row) {
       return null;
     }
-    const token = this.#opened?.sealed === row.accessToken ? this.#opened?.token : undefined;
-    const sending = row.state === "connected" && token !== undefined;
+    const connected = row.state === "connected";
+    // A connected number whose token is not open lacks the Worker's key: its token is missing, not failed.
+    const opened = this.#opened?.sealed === row.accessToken ? this.#opened?.token : undefined;
     return {
-      WHATSAPP_ACCESS_TOKEN: sending ? token : undefined,
+      WHATSAPP_ACCESS_TOKEN: connected ? opened : undefined,
       WHATSAPP_PHONE_NUMBER_ID: row.phoneNumberId,
       WHATSAPP_BUSINESS_ACCOUNT_ID: row.businessAccountId,
-      connectionFailed: !sending,
+      connectionFailed: !connected,
     };
   }
 

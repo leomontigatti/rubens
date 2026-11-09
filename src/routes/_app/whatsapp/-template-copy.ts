@@ -51,7 +51,8 @@ export const templateRefusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá el texto de la plantilla.",
   connectionFailed: "La conexión del número de WhatsApp falló. Conectalo de nuevo.",
-  missingAccessToken: "Todavía no hay un número de WhatsApp conectado.",
+  missingAccessToken:
+    "Falta el token de acceso de WhatsApp: conectá el número del consultorio, o revisá la configuración del servidor.",
   missingBusinessAccountId:
     "Falta el identificador de la cuenta de WhatsApp Business en la configuración del servidor.",
 };
