@@ -467,20 +467,33 @@ describe("connecting again", () => {
     expect(await connecting).toEqual({ ok: true });
   });
 
-  it("shows as failed, to be connected again, when the Worker's key no longer opens its token", async () => {
-    // What the object does when it starts again under another key.
-    await inStorage(organization, async (database) => {
-      const otherKey = btoa("o".repeat(32));
+  /** What the object does when it starts again with the Worker's key set to `key`. */
+  function restartWithKey(key: string | undefined) {
+    return inStorage(organization, async (database) => {
       const restarted = new WhatsappNumber(database, {
         signup: metaSignupFor({}),
         directory: whatsappDirectory(),
-        cipher: (id) => organizationCipher(otherKey, id),
+        cipher: (id) => organizationCipher(key, id),
       });
       await restarted.open();
     });
+  }
+
+  it("shows as failed, to be connected again, when the Worker's key no longer opens its token", async () => {
+    await restartWithKey(btoa("o".repeat(32)));
 
     const settings = expectOk(await organization.whatsappSettings(adminCaller));
     expect(settings.connection).toMatchObject({ state: "failed", failureReason: null });
     expect(settings.missing).toBe("connectionFailed");
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["too short to be a key", btoa("short")],
+  ])("keeps the connection and its token when the Worker's key is %s", async (_name, key) => {
+    await restartWithKey(key);
+
+    expect(await connection()).toMatchObject({ state: "connected" });
+    expect((await storedConnection())?.accessToken).toEqual(expect.any(String));
   });
 });

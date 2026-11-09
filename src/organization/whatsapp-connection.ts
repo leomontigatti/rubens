@@ -83,8 +83,10 @@ export class WhatsappNumber {
 
   /**
    * Opens the connected number's sealed token, when the object starts. A
-   * token that does not open (the Worker's key is missing or changed) leaves
-   * the connection failed, to be connected again, never the object unable to start.
+   * token the Worker's key no longer opens (the key changed) leaves the
+   * connection failed, to be connected again. A key that is missing or not a
+   * key is the Worker's setting to fix: the connection is left as it is, and
+   * sends nothing until the key is back. Neither keeps the object from starting.
    */
   async open() {
     const row = this.#row();
@@ -92,7 +94,16 @@ export class WhatsappNumber {
     if (row?.state !== "connected" || !row.accessToken || !organizationId) {
       return;
     }
-    const token = await this.#opening(organizationId, row.accessToken, "whatsappAccessToken");
+    const cipher = await this.#usableCipher(organizationId);
+    if (!cipher) {
+      return;
+    }
+    const token = await this.#opening(
+      cipher,
+      organizationId,
+      row.accessToken,
+      "whatsappAccessToken",
+    );
     if (token) {
       this.#opened = { sealed: row.accessToken, token };
     } else {
@@ -101,11 +112,29 @@ export class WhatsappNumber {
     }
   }
 
-  /** `sealed` opened, or `null` when the Worker's key cannot open it. */
-  async #opening(organizationId: string, sealed: string, purpose: SealedPurpose) {
+  /** The organization's cipher, or `null`, logged, when the Worker's key is missing or not a key. */
+  async #usableCipher(organizationId: string) {
     try {
       const cipher = await this.#services.cipher(organizationId);
-      return (await cipher?.open(sealed, purpose)) ?? null;
+      if (!cipher) {
+        console.error("[whatsapp-connection] ORGANIZATION_ENCRYPTION_KEY is not set");
+      }
+      return cipher;
+    } catch {
+      console.error("[whatsapp-connection] ORGANIZATION_ENCRYPTION_KEY is not a usable key");
+      return null;
+    }
+  }
+
+  /** `sealed` opened, or `null` when the key does not open it. */
+  async #opening(
+    cipher: OrganizationCipher,
+    organizationId: string,
+    sealed: string,
+    purpose: SealedPurpose,
+  ) {
+    try {
+      return await cipher.open(sealed, purpose);
     } catch {
       // The cipher's error says nothing more than that it did not open.
       console.error(
@@ -201,7 +230,7 @@ export class WhatsappNumber {
       return { ok: false, reason: "invalidInput" } as const;
     }
     const organizationId = organizationIdIn(this.#database);
-    const cipher = organizationId ? await this.#services.cipher(organizationId) : null;
+    const cipher = organizationId ? await this.#usableCipher(organizationId) : null;
     if (!organizationId || !cipher || !this.launch()) {
       return { ok: false, reason: "signupNotConfigured" } as const;
     }
@@ -215,7 +244,7 @@ export class WhatsappNumber {
     if (!found.ok) {
       return found;
     }
-    const pin = await this.#pinFor(organizationId, phoneNumberId);
+    const pin = await this.#pinFor(cipher, organizationId, phoneNumberId);
     const joined = await this.#claimedWhile(entry, () => this.#joinAtMeta(found.token, entry, pin));
     if (!joined.ok) {
       return joined;
@@ -284,11 +313,11 @@ export class WhatsappNumber {
    * The PIN the number was registered with before, since Meta asks for it
    * again; a new one for another number, or when the stored one does not open.
    */
-  async #pinFor(organizationId: string, phoneNumberId: string) {
+  async #pinFor(cipher: OrganizationCipher, organizationId: string, phoneNumberId: string) {
     const row = this.#row();
     const stored =
       row?.phoneNumberId === phoneNumberId && row.pin
-        ? await this.#opening(organizationId, row.pin, "whatsappPin")
+        ? await this.#opening(cipher, organizationId, row.pin, "whatsappPin")
         : null;
     return stored ?? newPin();
   }
