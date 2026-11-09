@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   adminCaller,
   afterTheWait as afterWait,
+  auditEntriesFor,
   at,
   expectOk,
   fakeMeta,
@@ -377,6 +378,33 @@ describe("a number that stopped being a patient's contact", () => {
 
     expect(textsToMeta()).toEqual([]);
   });
+
+  it("changes nothing on a yes accepted after reception changed the contact while the model wrote", async () => {
+    const martina = await martinaThroughLaura();
+    await patientWrites("cancelá el turno de Martina");
+    const { released, release } = holdingTurn();
+    let accepted: unknown;
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId: martina.appointmentId, kind: "cancel" });
+      await released;
+      accepted = turn.call("accept_proposal");
+      return "Listo, cancelamos el turno de Martina.";
+    });
+    wait(8_000);
+    const { alarm } = await alarmUntilTurn();
+    expectOk(
+      await world.organization.setMessageContact(adminCaller, {
+        patientId: martina.patientId,
+        guardianId: null,
+      }),
+    );
+    release();
+    await alarm;
+
+    expect(accepted).toEqual({ ok: false, reason: "notFound" });
+    expect((await world.appointmentOf(martina.appointmentId)).status).toBe("booked");
+  });
 });
 
 describe("the organization's voice", () => {
@@ -715,5 +743,347 @@ describe("what keeps a reply from going", () => {
       database.select({ reason: whatsappNumberHold.reason }).from(whatsappNumberHold).get(),
     );
     expect(hold).toEqual({ reason: "rateLimited" });
+  });
+});
+
+describe("confirming and cancelling through proposals", () => {
+  it("confirms the appointment when the patient's yes to a reminder is proposed and accepted", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("sí, voy");
+    let proposed: unknown;
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      proposed = turn.call("propose_change", { appointmentId, kind: "confirm" });
+      accepted = turn.call("accept_proposal");
+      return "Listo, tu turno quedó confirmado.";
+    });
+
+    await afterTheWait();
+
+    const stated = {
+      kind: "confirm",
+      medicalService: "Consulta",
+      practitioner: "Juan Gómez",
+      date: "lunes 5 de enero",
+      time: "09:00",
+      office: "Sede Centro",
+    };
+    expect(proposed).toEqual({ ok: true, proposal: stated });
+    expect(accepted).toEqual({ ok: true, applied: stated });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(textsToMeta()).toEqual([
+      { to: "5491155550000", text: "Listo, tu turno quedó confirmado." },
+    ]);
+  });
+
+  it("cancels by the patient, frees the time, and audits the change as the assistant's", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelalo por favor");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      accepted = turn.call("accept_proposal");
+      return "Listo, cancelamos tu turno.";
+    });
+
+    await afterTheWait();
+
+    expect(accepted).toMatchObject({ ok: true, applied: { kind: "cancel" } });
+    const cancelled = await world.appointmentOf(appointmentId);
+    expect(cancelled).toMatchObject({ status: "cancelled", cancelledBy: "patient" });
+    expect((await auditEntriesFor(world.organization, appointmentId)).at(-1)).toMatchObject({
+      userId: "assistant",
+      after: { status: "cancelled", cancelledBy: "patient" },
+    });
+    // The time is free: another patient books it without an overbooking.
+    await bookPatient("Tomás", "+5493515550002");
+    expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "Listo, cancelamos tu turno." }]);
+  });
+
+  it("refuses a cancellation accepted once the appointment started", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    vi.setSystemTime(at("11:30"));
+    await patientWrites("quiero cancelar el turno");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      return "Querés que cancele tu turno del lunes 5 de enero a las 09:00?";
+    });
+    await afterTheWait();
+
+    vi.setSystemTime(at("12:05"));
+    await patientWrites("sí");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      accepted = turn.call("accept_proposal");
+      return "Tu turno ya empezó, no lo pude cancelar.";
+    });
+    await afterTheWait();
+
+    expect(accepted).toEqual({ ok: false, reason: "notFound" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("accepts only the latest proposal", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("no sé si voy");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      return "Querés cancelarlo?";
+    });
+    await afterTheWait();
+    await patientWrites("no, mejor confirmalo");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return "Confirmo tu turno del lunes 5 de enero a las 09:00?";
+    });
+    await afterTheWait();
+
+    await patientWrites("sí");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("accept_proposal");
+      return "Listo, quedó confirmado.";
+    });
+    await afterTheWait();
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+  });
+
+  it("accepts a proposal once", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("sí, voy");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      turn.call("accept_proposal");
+      return "Listo, quedó confirmado.";
+    });
+    await afterTheWait();
+    await patientWrites("sí sí, voy");
+    let again: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      again = turn.call("accept_proposal");
+      return "Ya está confirmado.";
+    });
+    await afterTheWait();
+
+    expect(again).toEqual({ ok: false, reason: "alreadyAccepted" });
+  });
+
+  it("refuses a proposal accepted after its hour", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("quiero cancelar");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      return "Querés que lo cancele?";
+    });
+    await afterTheWait();
+
+    wait(60 * 60_000);
+    await patientWrites("sí");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      accepted = turn.call("accept_proposal");
+      return "No pude cancelarlo.";
+    });
+    await afterTheWait();
+
+    expect(accepted).toEqual({ ok: false, reason: "expired" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("refuses a proposal accepted after the window it was made in closed, though within its hour", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("quiero cancelar");
+    // The turn runs late, 20 minutes before the window closes.
+    wait(24 * 60 * 60_000 - 20 * 60_000);
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      return "Querés que lo cancele?";
+    });
+    await runDurableObjectAlarm(world.organization);
+
+    wait(30 * 60_000);
+    await patientWrites("sí");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      accepted = turn.call("accept_proposal");
+      return "No pude cancelarlo.";
+    });
+    await afterTheWait();
+
+    expect(accepted).toEqual({ ok: false, reason: "expired" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("fails the yes to a proposal whose appointment staff cancelled meanwhile", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("voy a ir?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return "Confirmo tu turno?";
+    });
+    await afterTheWait();
+    expectOk(
+      await world.organization.cancelAppointment(world.receptionist, {
+        appointmentId,
+        cancelledBy: "business",
+      }),
+    );
+
+    await patientWrites("sí");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      accepted = turn.call("accept_proposal");
+      return "No pude confirmarlo.";
+    });
+    await afterTheWait();
+
+    expect(accepted).toEqual({ ok: false, reason: "notFound" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("cancelled");
+  });
+
+  it("changes nothing on a proposal alone, nor on an appointment the number is not the contact of", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    const other = await bookPatient("Lucía", "+5493515559999", at("12:30"));
+    await patientWrites("no voy a poder");
+    let othersProposal: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      othersProposal = turn.call("propose_change", {
+        appointmentId: other.appointmentId,
+        kind: "cancel",
+      });
+      return "Querés cancelarlo o pasarlo a otro día?";
+    });
+
+    await afterTheWait();
+
+    expect(othersProposal).toEqual({ ok: false, reason: "notFound" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+    expect((await world.appointmentOf(other.appointmentId)).status).toBe("booked");
+  });
+
+  it("neither proposes nor accepts while a person holds the conversation", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("quiero hablar con alguien");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("hand_off", { reason: "patient_asked", clinical: false });
+      return "";
+    });
+    await afterTheWait();
+
+    await patientWrites("cancelalo");
+    const results: unknown[] = [];
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      results.push(turn.call("propose_change", { appointmentId, kind: "cancel" }));
+      results.push(turn.call("accept_proposal"));
+      return "Listo.";
+    });
+    await afterTheWait();
+
+    expect(results).toEqual([
+      { ok: false, reason: "handedOff" },
+      { ok: false, reason: "handedOff" },
+    ]);
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("changes nothing on a yes to an appointment staff moved since it was proposed", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("quiero cancelar");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      return "Cancelo tu turno del lunes 5 de enero a las 09:00?";
+    });
+    await afterTheWait();
+    expectOk(
+      await world.organization.rescheduleAppointment(world.receptionist, {
+        appointmentId,
+        start: at("12:30"),
+        durationMinutes: 30,
+      }),
+    );
+
+    await patientWrites("sí");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      accepted = turn.call("accept_proposal");
+      return "Tu turno cambió, no lo cancelé.";
+    });
+    await afterTheWait();
+
+    expect(accepted).toEqual({ ok: false, reason: "changed" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("refuses a cancellation once the appointment started while the model wrote", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    vi.setSystemTime(new Date(at("12:00").getTime() - 10_000));
+    await patientWrites("cancelalo");
+    const { released, release } = holdingTurn();
+    let accepted: unknown;
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      await released;
+      accepted = turn.call("accept_proposal");
+      return "Listo, cancelamos tu turno.";
+    });
+    wait(8_000);
+    const { alarm } = await alarmUntilTurn();
+    wait(5_000);
+    release();
+    await alarm;
+
+    expect(accepted).toEqual({ ok: false, reason: "notFound" });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("confirms but sends no reply quoting an address an admin changed while the model wrote", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("sí, voy. dónde queda?");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("get_appointment", { appointmentId });
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      await released;
+      turn.call("accept_proposal");
+      return `Listo, te esperamos en ${world.office.address}.`;
+    });
+    wait(8_000);
+    const { alarm } = await alarmUntilTurn();
+    expectOk(
+      await world.organization.updateOffice(adminCaller, {
+        officeId: world.office.id,
+        name: "Sede Centro",
+        address: "Cabildo 1",
+      }),
+    );
+    release();
+    await alarm;
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(textsToMeta()).toEqual([]);
   });
 });

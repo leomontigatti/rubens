@@ -1,4 +1,4 @@
-import { and, eq, exists, inArray, not, or } from "drizzle-orm";
+import { and, eq, exists, inArray, max, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -283,4 +283,19 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
     }
     return stored;
   });
+}
+
+/** When the patient last wrote in `conversationId`, which opens its window. */
+export function lastIncomingAt(database: Database, conversationId: string) {
+  const last = database
+    .select({ at: max(whatsappMessage.sentAt) })
+    .from(whatsappMessage)
+    .where(
+      and(
+        eq(whatsappMessage.conversationId, conversationId),
+        eq(whatsappMessage.direction, "incoming"),
+      ),
+    )
+    .get();
+  return last?.at ?? null;
 }

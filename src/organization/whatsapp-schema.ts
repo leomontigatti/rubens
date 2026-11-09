@@ -12,6 +12,7 @@ import {
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { handoffReasons, handoffStates } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
+import { proposalKinds } from "#/lib/proposals.ts";
 import {
   messageJudgements,
   whatsappMessageDirections,
@@ -284,4 +285,30 @@ export const handoffRecipient = sqliteTable(
     primaryKey({ columns: [table.handoffId, table.memberId] }),
     index("handoff_recipient_member_idx").on(table.memberId),
   ],
+);
+
+/**
+ * A change the assistant stated to the patient in full (`src/lib/proposals.ts`):
+ * only the conversation's latest can be accepted, once, before it expires.
+ * Accepting runs the appointment's own change functions.
+ */
+export const proposal = sqliteTable(
+  "proposal",
+  {
+    id: id(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id),
+    appointmentId: text("appointment_id")
+      .notNull()
+      .references(() => appointment.id),
+    kind: text("kind", { enum: proposalKinds }).notNull(),
+    /** What the patient was told: the change and the appointment's facts, compared again on the yes. */
+    statement: text("statement", { mode: "json" }).$type<Record<string, string>>().notNull(),
+    expiresAt: instant("expires_at").notNull(),
+    /** When its change was made; none while it waits for its yes, or when it failed. */
+    acceptedAt: instant("accepted_at"),
+    ...timestamps,
+  },
+  (table) => [index("proposal_conversation_idx").on(table.conversationId, table.createdAt)],
 );

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, max, min, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "drizzle-orm";
 
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
@@ -12,8 +12,9 @@ import {
 } from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
-import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
 
+import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
+import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import type { AssistantModel, AssistantTool, TurnMessage } from "#/organization/assistant-model.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -25,21 +26,14 @@ import {
 } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { notifyOptOut } from "#/organization/notifications.ts";
-import { upcomingStatuses } from "#/organization/outbox.ts";
+import { proposalTools } from "#/organization/proposals.ts";
 import { handoffWanted } from "#/organization/turn-handoffs.ts";
 import type { HandOffCall, Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
-import {
-  appointment,
-  medicalService,
-  office,
-  organization,
-  patient,
-  practitioner,
-  room,
-} from "#/organization/schema.ts";
+import { office, organization, patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import {
+  lastIncomingAt,
   patientsReachedAt,
   storeOutgoing,
   whileSending,
@@ -68,50 +62,6 @@ export function nextTurnAlarm(database: Database, model: AssistantModel): number
   return next?.dueAt ?? null;
 }
 
-/** The upcoming appointments of `patientIds`, with what the patient may be told of each. */
-function upcomingAppointments(database: Database, patientIds: string[], now: number) {
-  if (patientIds.length === 0) {
-    return [];
-  }
-  return database
-    .select({
-      id: appointment.id,
-      patientId: appointment.patientId,
-      status: appointment.status,
-      startsAt: appointment.startsAt,
-      medicalService: medicalService.name,
-      practitioner: practitioner.displayName,
-      office: office.name,
-      address: office.address,
-      timeZone: office.timeZone,
-    })
-    .from(appointment)
-    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
-    .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
-    .innerJoin(room, eq(room.id, appointment.roomId))
-    .innerJoin(office, eq(office.id, room.officeId))
-    .where(
-      and(
-        inArray(appointment.patientId, patientIds),
-        inArray(appointment.status, upcomingStatuses),
-        gt(appointment.startsAt, now),
-      ),
-    )
-    .orderBy(asc(appointment.startsAt))
-    .all();
-}
-
-type Upcoming = ReturnType<typeof upcomingAppointments>[number];
-
-/** The day and the time of `upcoming` as the templates write them, in its office's zone. */
-function whenOf(upcoming: Upcoming) {
-  const start = new Date(upcoming.startsAt);
-  return {
-    date: appointmentDay(start, upcoming.timeZone),
-    time: appointmentTime(start, upcoming.timeZone),
-  };
-}
-
 /** What the model recorded in a turn through its tools. */
 interface Recorded {
   judgement: Judgement | null;
@@ -121,14 +71,17 @@ interface Recorded {
 /**
  * The turn's tools, run with the permissions of the conversation's number:
  * they see only the patients it is the message contact of, and their
- * upcoming appointments. The judgement and the handoff the model records
- * land in `recorded`.
+ * upcoming appointments, which they change only through a proposal
+ * (`proposals.ts`). The judgement and the handoff the model records land in
+ * `recorded`.
  */
 function turnTools(
-  patients: { id: string; firstName: string }[],
-  appointments: Upcoming[],
+  database: Database,
+  turn: { conversationId: string; read: Read; appointments: Upcoming[] },
   recorded: Recorded,
 ): AssistantTool[] {
+  const { patients } = turn.read;
+  const { appointments } = turn;
   return [
     {
       name: "list_patients",
@@ -190,6 +143,7 @@ function turnTools(
         return { ok: true };
       },
     },
+    ...proposalTools(database, turn),
   ];
 }
 
@@ -263,21 +217,6 @@ function readConversation(database: Database, conversationId: string) {
   };
 }
 
-/** When the patient last wrote in `conversationId`, which opens its window. */
-function lastIncomingAt(database: Database, conversationId: string) {
-  const last = database
-    .select({ at: max(whatsappMessage.sentAt) })
-    .from(whatsappMessage)
-    .where(
-      and(
-        eq(whatsappMessage.conversationId, conversationId),
-        eq(whatsappMessage.direction, "incoming"),
-      ),
-    )
-    .get();
-  return last?.at ?? null;
-}
-
 type Read = ReturnType<typeof readConversation>;
 
 /**
@@ -339,7 +278,7 @@ async function judgeTurn(
       conversationId: turn.conversationId,
       system,
       messages: asTurnMessages(turn.read),
-      tools: turnTools(turn.read.patients, turn.appointments, recorded),
+      tools: turnTools(database, turn, recorded),
     })
     // The model is unavailable: the messages wait, unjudged, for #179's retry.
     .catch(() => null);
@@ -452,8 +391,11 @@ async function runTurn(
   }
   const patientIds = read.patients.map((one) => one.id);
   const appointments = upcomingAppointments(database, patientIds, Date.now());
+  // The turn's own view of them, which a proposal it accepts changes: its
+  // reply is checked against the state its own change left.
+  const view = [...appointments];
   const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
-  const turn = await judgeTurn(database, model, { conversationId, read, appointments });
+  const turn = await judgeTurn(database, model, { conversationId, read, appointments: view });
   if (!turn) {
     return;
   }
@@ -474,7 +416,7 @@ async function runTurn(
   const checked = checkReply(withSignOff(text, turn.rules.signOff));
   const may = fixed
     ? maySend(database, cloud, conversationId)
-    : mayReply(database, cloud, { conversationId, read, appointments });
+    : mayReply(database, cloud, { conversationId, read, appointments: view });
   if (!words.ok || !checked.ok || !may) {
     return;
   }
