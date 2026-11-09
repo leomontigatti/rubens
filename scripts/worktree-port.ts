@@ -4,11 +4,14 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { loadEnv } from "vite-plus";
+
 // A worktree's own dev server port, so concurrent sessions' dev servers and
 // browser suites (`tests/e2e/environment.ts`, the port plus 10,000) never take
 // each other's. It lands in a gitignored `.env.local`, which `vp dev` loads
 // over the `.env`. `ensure` (run ahead of `pnpm dev`) writes it on first use;
-// the main checkout keeps port 3000.
+// the main checkout keeps port 3000. `--print` (`pnpm dev:url`) prints the URL,
+// so nobody has to open `.env.local`, which agents are denied.
 
 const PORT_MIN = 5200;
 const PORT_SPAN = 800;
@@ -33,6 +36,14 @@ export function choosePort(worktreeName: string, claimed: Set<number>): number {
   }
 
   throw new Error(`Every port from ${PORT_MIN} is claimed by a worktree.`);
+}
+
+const DEFAULT_PORT = 3000;
+
+// The port `vp dev` serves on: `vite.config.ts` reads it here, so the URL
+// `--print` gives is the one the server takes.
+export function devPort(root: string): number {
+  return Number(loadEnv("development", root, "").PORT) || DEFAULT_PORT;
 }
 
 export function renderEnvLocal(port: number): string {
@@ -70,12 +81,13 @@ function isMainCheckout(root: string): boolean {
   );
 }
 
-function ensure() {
+// Writes the worktree's `.env.local` when it has none; returns the port it wrote.
+function ensure(): number | undefined {
   const root = git(["rev-parse", "--show-toplevel"]);
   const envLocalPath = path.join(root, ENV_LOCAL);
 
   if (isMainCheckout(root) || existsSync(envLocalPath)) {
-    return;
+    return undefined;
   }
 
   const claimed = new Set(
@@ -89,12 +101,22 @@ function ensure() {
   const port = choosePort(path.basename(root), claimed);
 
   writeFileSync(envLocalPath, renderEnvLocal(port));
-  console.log(`Dev server: http://localhost:${port} (pnpm dev)`);
+  return port;
+}
+
+function main() {
+  const written = ensure();
+
+  if (process.argv.includes("--print")) {
+    console.log(`http://localhost:${devPort(git(["rev-parse", "--show-toplevel"]))}`);
+  } else if (written !== undefined) {
+    console.log(`Dev server: http://localhost:${written} (pnpm dev)`);
+  }
 }
 
 if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   try {
-    ensure();
+    main();
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

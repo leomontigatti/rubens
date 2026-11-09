@@ -12,8 +12,8 @@ validation command, and CI does not run it.
    the gitignored `.env.local` ([local-development.md](../operations/local-development.md#one-port-per-worktree)).
    Miniflare runs the Worker and the organization objects; each object applies the branch's
    migrations when it starts.
-2. The URL is `http://localhost:<PORT>` with `PORT` from `.env.local`. The port is strict: a
-   port another server holds fails loudly instead of moving.
+2. `pnpm dev:url` prints the URL. Never open `.env.local` for the port: agents are denied it.
+   The port is strict: a port another server holds fails loudly instead of moving.
 3. Sign in at `/ingresar` through the dev sign-in: it lists the seeded members of the dev
    organization (`src/dev/world.ts`), one per role; pick the role the screen is for.
 
