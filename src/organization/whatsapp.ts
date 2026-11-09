@@ -4,6 +4,7 @@ import type { TemplateSend } from "#/lib/whatsapp.ts";
 
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import { recordAudit } from "#/organization/audit.ts";
+import { listHandoffContacts } from "#/organization/handoff-contacts.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -22,8 +23,8 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
  * What the settings page shows: the organization's number, the hold Meta put
  * on it if any, and what Embedded Signup launches with (`null` while the Worker misses a setting), the setting
  * that keeps a send from being made, if any, and the templates with the
- * setting that keeps them from being submitted, and the assistant's
- * communication rules.
+ * setting that keeps them from being submitted, the assistant's
+ * communication rules, and the members who may be handoff contacts.
  */
 export function getWhatsappSettings(
   database: Database,
@@ -40,6 +41,7 @@ export function getWhatsappSettings(
     templateMissing,
     templates,
     communicationRules: currentCommunicationRules(database),
+    handoffContacts: listHandoffContacts(database).members,
   } as const;
 }
 

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
+import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
@@ -43,4 +44,14 @@ export const saveCommunicationRules = createServerFn({ method: "POST" })
   .validator((data: CommunicationRulesInput) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.saveCommunicationRules(caller, data)),
+  );
+
+export const getHandoffContacts = createServerFn({ method: "GET" }).handler(() =>
+  withOrganization((organization, caller) => organization.handoffContacts(caller)),
+);
+
+export const saveHandoffContacts = createServerFn({ method: "POST" })
+  .validator((data: HandoffContactsInput) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.saveHandoffContacts(caller, data)),
   );
