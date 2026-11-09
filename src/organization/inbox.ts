@@ -173,6 +173,8 @@ function patientsOf(database: Database, conversationIds: string[]) {
 
 const latestMessage = alias(whatsappMessage, "latest_message");
 
+const searchWordLimit = 10;
+
 /**
  * The conversations a search matches: every word of it in the names of a
  * patient the number stands for, or its digits in the number.
@@ -181,7 +183,8 @@ function matching(database: Database, query: string): SQL | undefined {
   if (query === "") {
     return undefined;
   }
-  const words = wordsOf(normalizeText(query));
+  // Each word is a bound parameter, and the object's SQLite takes at most 100 a query.
+  const words = wordsOf(normalizeText(query)).slice(0, searchWordLimit);
   const padded = sql`' ' || ${patient.searchName} || ' '`;
   const byName = database
     .select({ one: conversationPatient.patientId })
@@ -195,10 +198,13 @@ function matching(database: Database, query: string): SQL | undefined {
     );
   const digits = query.replace(/[\s.()+-]/g, "");
   const phone = parsePhone(query);
-  return or(
-    words.length > 0 ? exists(byName) : undefined,
-    /^\d+$/.test(digits) ? like(conversation.phone, `%${digits}%`) : undefined,
-    phone.ok ? eq(conversation.phone, phone.phone) : undefined,
+  // A query with nothing to match by, such as a lone `+`, matches nothing.
+  return (
+    or(
+      words.length > 0 ? exists(byName) : undefined,
+      /^\d+$/.test(digits) ? like(conversation.phone, `%${digits}%`) : undefined,
+      phone.ok ? eq(conversation.phone, phone.phone) : undefined,
+    ) ?? sql`false`
   );
 }
 

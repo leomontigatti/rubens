@@ -252,6 +252,8 @@ describe("reading a conversation in the inbox", () => {
       expect.arrayContaining([martinaPhone, "+5491155550001"]),
     );
     expect(await search("lucía")).toEqual([]);
+    expect(await search("+")).toEqual([]);
+    expect(await search("a ".repeat(100))).toEqual(expect.arrayContaining([martinaPhone]));
   });
 
   it("pages the list, 25 conversations at a time", async () => {

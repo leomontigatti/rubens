@@ -10,6 +10,13 @@ import { withOrganization } from "#/server/with-organization.ts";
 // names the type.
 
 export const getConversations = createServerFn({ method: "GET" })
+  .validator((data: Pick<ConversationListOptions, "page">) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.listConversations(caller, data)),
+  );
+
+// A POST, so the search text travels in the body and stays out of URLs.
+export const findConversations = createServerFn({ method: "POST" })
   .validator((data: ConversationListOptions) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.listConversations(caller, data)),

@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
+import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowLink, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
@@ -12,7 +12,7 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { useDebounced } from "#/components/use-debounced.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { conversationPageSize } from "#/lib/whatsapp-messages.ts";
-import { getConversations } from "#/server/inbox.functions.ts";
+import { findConversations, getConversations } from "#/server/inbox.functions.ts";
 import type { ConversationSummary } from "#/organization/inbox.ts";
 
 import {
@@ -73,12 +73,17 @@ function useConversationSearch(typed: string) {
   const asked = useDebounced(typed.trim(), searchDelay);
   const answer = useQuery({
     queryKey: ["conversation-search", viewer.organizationId, viewer.userId, asked],
-    queryFn: () => getConversations({ data: { query: asked } }),
+    queryFn: () => findConversations({ data: { query: asked } }),
     enabled: asked !== "",
   });
   const searching = typed.trim() !== "";
-  const current = searching && asked === typed.trim() && answer.data?.ok ? answer.data : null;
-  return { searching, waiting: searching && current === null, found: current };
+  const settled = searching && asked === typed.trim() ? answer.data : undefined;
+  return {
+    searching,
+    waiting: searching && settled === undefined && !answer.isError,
+    found: settled?.ok ? settled : null,
+    refused: settled && !settled.ok ? settled.reason : null,
+  };
 }
 
 function Conversations() {
@@ -136,7 +141,9 @@ function ConversationTable(props: {
         pager={search.searching ? undefined : pager}
         noRecords={!search.searching && listed.total === 0}
         empty={
-          search.searching ? (
+          search.refused ? (
+            <ErrorAlert message={refusalMessages[search.refused]} />
+          ) : search.searching ? (
             search.found && <NoMatches icon={MessagesSquareIcon} />
           ) : (
             <EmptyState
