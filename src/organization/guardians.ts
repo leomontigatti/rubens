@@ -20,6 +20,7 @@ import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { findPatient } from "#/organization/patients.ts";
 import { guardian } from "#/organization/schema.ts";
+import { relinkPatient } from "#/organization/whatsapp-messages.ts";
 
 // A patient's guardians: contacts kept on the patient, not links to other
 // patients. Reception, admins and practitioners add, edit and remove them, and
@@ -193,6 +194,9 @@ export function updateGuardian(
       .where(eq(guardian.id, guardianId))
       .returning(guardianColumns)
       .get();
+    if (updated.phone !== current.phone) {
+      relinkPatient(tx, current.patientId);
+    }
     const changed = changedFields(auditedValues(current), auditedValues(updated));
     if (changed) {
       recordAudit(tx, acting.userId, {
@@ -233,6 +237,7 @@ export function removeGuardian(
     });
     if (current.messageContact) {
       auditContact(tx, acting, current.patientId, current.name, null);
+      relinkPatient(tx, current.patientId);
     }
     return { ok: true as const };
   });
@@ -269,6 +274,7 @@ export function setMessageContact(
       tx.update(guardian).set({ messageContact: true }).where(eq(guardian.id, target.id)).run();
     }
     auditContact(tx, acting, patientId, from.name, target.name);
+    relinkPatient(tx, patientId);
     return { ok: true as const };
   });
 }

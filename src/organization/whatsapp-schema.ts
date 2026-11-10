@@ -67,8 +67,9 @@ export const conversation = sqliteTable("conversation", {
 
 /**
  * The patients a conversation's number is the message contact of
- * (`docs/domain/assistant.md`), as of its latest incoming message: a
- * guardian's number can stand for several, and an unknown number for none.
+ * (`docs/domain/assistant.md`), kept current by each incoming message and by
+ * each change to a patient's phone or message contact: a guardian's number
+ * can stand for several, and an unknown number for none.
  */
 export const conversationPatient = sqliteTable(
   "conversation_patient",
