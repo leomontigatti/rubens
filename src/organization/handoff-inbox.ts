@@ -9,6 +9,7 @@ import { recipientsByHandoff } from "#/organization/handoffs.ts";
 import { asRead, messageColumns, patientsOf, readerOf } from "#/organization/inbox.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
 import type { Acting } from "#/organization/members.ts";
+import { answeredByPerson } from "#/organization/turn-retries.ts";
 import {
   conversation,
   handoff,
@@ -149,7 +150,11 @@ export function closeHandoffWithoutReply(
   const reader = readerOf(database, acting);
   return database.transaction((tx) => {
     const found = tx
-      .select({ id: handoff.id, clinical: handoff.clinical })
+      .select({
+        id: handoff.id,
+        clinical: handoff.clinical,
+        conversationId: handoff.conversationId,
+      })
       .from(handoff)
       .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
       .where(and(eq(handoff.id, parsed.data.handoffId), eq(handoff.state, "open"), reader.visible))
@@ -164,6 +169,10 @@ export function closeHandoffWithoutReply(
       .set({ state: "closed", closedAt: Date.now(), closedBy: acting.userId, heldReply: null })
       .where(eq(handoff.id, found.id))
       .run();
+    // Closed with nothing left to answer: the words it saw are answered.
+    if (reader.readsClinical) {
+      answeredByPerson(tx, found.conversationId, Date.now());
+    }
     recordAudit(tx, acting.userId, {
       action: "update",
       entityType: "handoff",

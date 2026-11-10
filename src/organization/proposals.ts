@@ -14,6 +14,7 @@ import { openHandoffsOf } from "#/organization/handoffs.ts";
 import type { Acting } from "#/organization/members.ts";
 import { freeTimesFor, movePatientAppointment, slotFor } from "#/organization/moves.ts";
 import type { Slot } from "#/organization/moves.ts";
+import { answeredMeanwhile } from "#/organization/turn-retries.ts";
 import { isHeld, lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
 
@@ -87,6 +88,8 @@ function applyChange(database: Database, latest: NonNullable<ReturnType<typeof l
  */
 interface ProposalTurn {
   conversationId: string;
+  /** The patient's messages the turn reads as new. */
+  read: { unjudged: { id: string }[] };
   appointments: Upcoming[];
   recorded: { ruleRefused: string | null };
 }
@@ -242,10 +245,15 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
  * person holds the conversation.
  */
 export function proposalTools(database: Database, turn: ProposalTurn): AssistantTool[] {
-  // A person answers while a handoff is open or a member holds the conversation.
+  // A person answers while a handoff is open or a member holds the
+  // conversation, or answered the turn's words since it read them.
   const unlessHandedOff = (run: () => unknown) =>
     openHandoffsOf(database, turn.conversationId).length > 0 ||
-    isHeld(database, turn.conversationId)
+    isHeld(database, turn.conversationId) ||
+    answeredMeanwhile(
+      database,
+      turn.read.unjudged.map((message) => message.id),
+    )
       ? { ok: false, reason: "handedOff" }
       : run();
   return [

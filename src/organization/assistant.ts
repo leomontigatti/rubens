@@ -23,7 +23,11 @@ import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { notifyOptOut } from "#/organization/notifications.ts";
 import { proposalTools } from "#/organization/proposals.ts";
 import { handoffWanted } from "#/organization/turn-handoffs.ts";
-import { clearFailedTurns, retryOrHandOff } from "#/organization/turn-retries.ts";
+import {
+  answeredMeanwhile,
+  clearFailedTurns,
+  retryOrHandOff,
+} from "#/organization/turn-retries.ts";
 import type { HandOffCall, Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
 import { deliverReply, maySend } from "#/organization/turn-replies.ts";
 import type { Settled } from "#/organization/turn-replies.ts";
@@ -370,7 +374,14 @@ async function runTurn(
   } else {
     clearFailedTurns(database, conversationId);
   }
-  if (!turn) {
+  // A person answered the turn's words while the model read them: theirs is the answer.
+  if (
+    !turn ||
+    answeredMeanwhile(
+      database,
+      turn.read.unjudged.map((message) => message.id),
+    )
+  ) {
     return;
   }
   const settled = settleTurn(database, { conversationId, appointments, answered, ...turn });

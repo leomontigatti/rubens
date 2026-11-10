@@ -10,6 +10,7 @@ import {
   expectOk,
   fakeMeta,
   inStorage,
+  patientSends,
   patientWrites as writes,
   scriptedModel,
   setUpBookingWorld,
@@ -685,6 +686,93 @@ describe("a message the model could not read", () => {
       role: "user",
       content: "[new messages]\nok gracias",
     });
+  });
+
+  it("is not retried once a practitioner closed the handoff of a photo sent beside it", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelá mi próximo turno");
+    await patientSends(world.organization, "document", martinaPhone);
+    modelFails();
+    await afterTheWait();
+    const [photoHandoff] = await openHandoffs();
+    expectOk(
+      await world.organization.closeHandoff(world.juan.caller, { handoffId: photoHandoff!.id }),
+    );
+
+    await runAlarmsUntil(Date.now() + 24 * hourMs);
+
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect(await judgementsShown()).toEqual(["clinical", "clinical"]);
+  });
+
+  it("changes nothing in a retry that was running when a practitioner closed the photo's handoff", async () => {
+    const { appointmentId, patientId } = await bookPatient("Martina", martinaPhone);
+    const later = await world.book({
+      practitionerId: world.juan.practitionerId,
+      patientId,
+      medicalServiceId,
+      start: at("13:00"),
+      durationMinutes: 30,
+      confirmWarnings: true,
+    });
+    await patientWrites("cancelá mi próximo turno");
+    await patientSends(world.organization, "document", martinaPhone);
+    modelFails();
+    await afterTheWait();
+    const [photoHandoff] = await openHandoffs();
+    const { released, release } = holdingTurn();
+    let accepted: unknown;
+    scriptedModel.script(async (turn) => {
+      await released;
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId: later.id, kind: "cancel" });
+      accepted = turn.call("accept_proposal");
+      return "Listo, cancelamos tu turno.";
+    });
+    wait(minuteMs);
+    const alarm = runDurableObjectAlarm(world.organization);
+    while (scriptedModel.turns.length < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    expectOk(
+      await world.organization.closeHandoff(world.juan.caller, { handoffId: photoHandoff!.id }),
+    );
+    release();
+    await alarm;
+
+    expect(accepted).toMatchObject({ ok: false });
+    expect(await world.appointmentOf(appointmentId)).not.toMatchObject({ status: "cancelled" });
+    expect(await world.appointmentOf(later.id)).not.toMatchObject({ status: "cancelled" });
+    expect(textsToMeta()).toEqual([]);
+  });
+
+  it("is not retried once a person who reads clinical words answered the conversation", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelá mi próximo turno");
+    modelFails();
+    await afterTheWait();
+    const [listed] = expectOk(
+      await world.organization.listConversations(adminCaller, {}),
+    ).conversations;
+    expectOk(
+      await world.organization.takeOverConversation(world.juan.caller, {
+        conversationId: listed!.id,
+      }),
+    );
+    expectOk(
+      await world.organization.replyToConversation(world.juan.caller, {
+        conversationId: listed!.id,
+        text: "Ya lo cancelé, Martina.",
+      }),
+    );
+
+    // Past the hold's return: the conversation is the assistant's again.
+    await runAlarmsUntil(Date.now() + 24 * hourMs);
+
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect(await judgementsShown()).toEqual(["clinical"]);
+    expect(await openHandoffs()).toEqual([]);
   });
 
   it("is handed off as clinical 6 hours before the window closes, with no reply to the patient", async () => {

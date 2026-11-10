@@ -1,8 +1,8 @@
-import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 
-import type { Database } from "#/organization/database.ts";
+import type { Database, Writer } from "#/organization/database.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { HandoffWanted } from "#/organization/handoffs.ts";
 import { conversation, proposal, whatsappMessage } from "#/organization/whatsapp-schema.ts";
@@ -13,8 +13,9 @@ import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 // runs again from the alarm, each time a little later, while the window is
 // open. Still unread at the hand-off time, they go to a person as a clinical
 // handoff, since nobody knows what they say, and are stored as clinical: a
-// person answers them, and no later turn reads them again as new. No code
-// reads them in the model's place.
+// person answers them, and no later turn reads them again as new. So are
+// those a person answered meanwhile, by a reply or by closing a handoff. No
+// code reads them in the model's place.
 
 const minuteMs = 60_000;
 
@@ -103,4 +104,58 @@ export function clearFailedTurns(database: Database, conversationId: string) {
     .set({ failedTurns: 0 })
     .where(eq(conversation.id, conversationId))
     .run();
+}
+
+/**
+ * Stores as clinical the messages of `conversationId` the model could not
+ * read, sent up to `upTo`, once a person who reads clinical words answered
+ * them, by a reply or by closing a handoff, and stops their retry: a retry
+ * would read them as new after that answer, and act on them twice. Only
+ * while the model is failing: a message waiting for its first turn is still
+ * the assistant's to judge.
+ */
+export function answeredByPerson(tx: Writer, conversationId: string, upTo: number) {
+  const failing = tx
+    .update(conversation)
+    .set({ failedTurns: 0 })
+    .where(and(eq(conversation.id, conversationId), gt(conversation.failedTurns, 0)))
+    .returning({ id: conversation.id })
+    .get();
+  if (!failing) {
+    return;
+  }
+  const unread = and(
+    eq(whatsappMessage.conversationId, conversationId),
+    eq(whatsappMessage.direction, "incoming"),
+    isNull(whatsappMessage.judgement),
+  );
+  tx.update(whatsappMessage)
+    .set({ judgement: "clinical" })
+    .where(and(unread, lte(whatsappMessage.sentAt, upTo)))
+    .run();
+  const stillUnread = tx
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(unread)
+    .get();
+  if (!stillUnread) {
+    tx.update(conversation)
+      .set({ assistantDueAt: null })
+      .where(eq(conversation.id, conversationId))
+      .run();
+  }
+}
+
+/**
+ * Whether a person answered any of `messageIds` while a turn reading them
+ * ran (`answeredByPerson`): the turn then acts on nothing and says nothing,
+ * since its words were answered after it read them.
+ */
+export function answeredMeanwhile(database: Writer, messageIds: string[]) {
+  const judged = database
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(and(inArray(whatsappMessage.id, messageIds), isNotNull(whatsappMessage.judgement)))
+    .get();
+  return judged !== undefined;
 }

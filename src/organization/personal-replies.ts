@@ -4,6 +4,7 @@ import { defaultReturnAfterHours } from "#/lib/conversation-holds.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { openHandoffsOf } from "#/organization/handoffs.ts";
+import { answeredByPerson } from "#/organization/turn-retries.ts";
 import { conversation, handoff, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { storeOutgoing } from "#/organization/whatsapp-messages.ts";
 
@@ -92,6 +93,9 @@ export function settleReply(
     sentBy: writtenBy,
     judgement: clinical ? "clinical" : undefined,
   });
+  if (reply.readsClinical) {
+    answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
+  }
   if (answered.length > 0) {
     tx.update(handoff)
       .set({ state: "closed", closedAt: Date.now(), heldReply: null })
