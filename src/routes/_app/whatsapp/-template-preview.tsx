@@ -1,0 +1,109 @@
+import { CircleCheckIcon } from "lucide-react";
+
+import { RecordSection } from "#/components/record-section.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
+import { Badge } from "#/components/ui/badge.tsx";
+import { WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
+import {
+  appointmentDay,
+  appointmentTime,
+  fillSample,
+  sampleAppointment,
+} from "#/lib/template-filling.ts";
+import { checkTemplateBody } from "#/lib/whatsapp-templates.ts";
+import type { TemplateName } from "#/lib/whatsapp-templates.ts";
+import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
+
+import {
+  problemText,
+  rejectionText,
+  templateCategoryLabels,
+  templateStatusLabels,
+  templateStatusVariants,
+} from "#/lib/whatsapp-template-copy.ts";
+
+// The template preview (docs/domain/assistant.md § Trying it): a template as
+// the patient reads it on WhatsApp, filled with the sample appointment.
+
+/** A submitted version of a template, as the WhatsApp settings list it. */
+export type TemplateVersion = Extract<
+  Awaited<ReturnType<typeof getWhatsappSettings>>,
+  { ok: true }
+>["templates"][number]["versions"][number];
+
+const { patient, start, timeZone } = sampleAppointment;
+
+const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${appointmentDay(start, timeZone)} a las ${appointmentTime(start, timeZone)}.`;
+
+/** The body being written, as WhatsApp shows it, and what Meta's rules would refuse in it. */
+export function TemplatePreview(props: { name: TemplateName; body: string }) {
+  const checked = checkTemplateBody(props.name, props.body);
+  return (
+    <section aria-labelledby="template-preview" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <h2 id="template-preview" className="text-sm font-medium">
+          Vista previa
+        </h2>
+        <p className="text-muted-foreground text-sm">{sampleNote}</p>
+      </div>
+      <WhatsappChat label="Así lo lee el paciente">
+        <WhatsappBubble>{fillSample(props.body) || "…"}</WhatsappBubble>
+      </WhatsappChat>
+      {checked.ok ? (
+        <p className="text-muted-foreground flex items-center gap-2 text-sm">
+          <CircleCheckIcon className="size-4" aria-hidden />
+          Cumple las reglas de Meta.
+        </p>
+      ) : (
+        <Alert variant="warning">
+          <AlertTitle>Meta no la aceptaría así</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc pl-4">
+              {checked.problems.map((problem) => {
+                const text = problemText(problem);
+                return <li key={text}>{text}</li>;
+              })}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+    </section>
+  );
+}
+
+/** Each version submitted to Meta side by side, newest first, with Meta's verdict. */
+export function TemplateVersions({ versions }: { versions: TemplateVersion[] }) {
+  if (versions.length === 0) {
+    return null;
+  }
+  return (
+    <RecordSection title="Versiones">
+      <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {versions.map((version) => (
+          <li key={version.id} className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-medium">Versión {version.version}</h3>
+              <Badge variant={templateStatusVariants[version.status]}>
+                {templateStatusLabels[version.status]}
+              </Badge>
+              {version.category !== "utility" && (
+                <Badge variant="warning">{templateCategoryLabels[version.category]}</Badge>
+              )}
+              {version.inUse && <Badge variant="outline">En uso</Badge>}
+            </div>
+            {version.status === "rejected" && (
+              <p className="text-destructive text-sm">
+                {version.rejectionReason
+                  ? rejectionText(version.rejectionReason)
+                  : "Meta no dio el motivo."}
+              </p>
+            )}
+            <WhatsappChat label={`Versión ${version.version}, como la lee el paciente`}>
+              <WhatsappBubble>{fillSample(version.body)}</WhatsappBubble>
+            </WhatsappChat>
+          </li>
+        ))}
+      </ul>
+    </RecordSection>
+  );
+}

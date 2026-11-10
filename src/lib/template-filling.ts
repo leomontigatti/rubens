@@ -114,6 +114,11 @@ export function fillTemplate(body: string, values: Partial<Record<TemplateVariab
   };
 }
 
+/** `body` as the template preview shows it: trimmed, as it is submitted, and filled from `sampleAppointment`. */
+export function fillSample(body: string) {
+  return fillTemplate(body.trim(), templateValues(sampleAppointment)).text;
+}
+
 /**
  * Care instructions as they go in `{{indicaciones}}` (decided in #162): Meta
  * refuses a value with a line break, a tab or a run of spaces, so each line

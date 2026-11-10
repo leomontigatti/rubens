@@ -211,6 +211,13 @@ the field: `DocumentTakenAlert`.
 The pages that are only their form show one problem in an `ErrorAlert`: `/ingresar`,
 `/cambiar-contrasena`, `/disponibilidad`.
 
+## WhatsApp messages
+
+- **A message the patient reads is a `WhatsappBubble` in a `WhatsappChat`**
+  (`src/components/whatsapp-bubble.tsx`), drawn in the app's own tokens rather than WhatsApp's
+  colours, with its line breaks kept: the template preview and its versions. A screen that shows
+  what a patient will get, or got, uses them rather than plain text.
+
 ## Alerts
 
 An `Alert` says what kind of message it is, not how loud: `variant` is required, and `Alert`

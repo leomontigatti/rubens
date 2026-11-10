@@ -1,3 +1,4 @@
+import { useStore } from "@tanstack/react-form";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
@@ -24,6 +25,9 @@ import {
   templateCategoryLabels,
   templateStatusVariants,
 } from "#/lib/whatsapp-template-copy.ts";
+
+import { TemplatePreview, TemplateVersions } from "#/routes/_app/whatsapp/-template-preview.tsx";
+import type { TemplateVersion } from "#/routes/_app/whatsapp/-template-preview.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/plantillas/$templateName")({
   head: () => ({ meta: [{ title: "Plantilla de WhatsApp · underthing" }] }),
@@ -56,20 +60,20 @@ function EditTemplate() {
   if (!template || !isTemplateName(templateName)) {
     return <RefusalMessage message={notFound} />;
   }
-  return <TemplateForm name={templateName} latest={template.versions[0]} />;
+  return (
+    <div className="flex flex-col gap-6">
+      <TemplateForm name={templateName} latest={template.versions[0]} />
+      <TemplateVersions versions={template.versions} />
+    </div>
+  );
 }
-
-type Version = Extract<
-  Awaited<ReturnType<typeof getWhatsappSettings>>,
-  { ok: true }
->["templates"][number]["versions"][number];
 
 /** The body's problems, as the one problem under its field. */
 function bodyProblem(problems: TemplateProblem[]): FieldProblem[] {
   return [{ field: "body", message: problems.map(problemText).join(" ") }];
 }
 
-function TemplateForm(props: { name: TemplateName; latest: Version | undefined }) {
+function TemplateForm(props: { name: TemplateName; latest: TemplateVersion | undefined }) {
   const { name, latest } = props;
   const page = useFormPage({ to: "/whatsapp" });
   const action = useFormAction(refusalMessages);
@@ -109,6 +113,8 @@ function TemplateForm(props: { name: TemplateName; latest: Version | undefined }
       }
     },
   });
+
+  const body = useStore(form.store, (state) => state.values.body);
 
   const description = latest
     ? `Versión ${latest.version} en Meta. Al enviarla, se crea la versión ${latest.version + 1}, que Meta revisa de nuevo.`
@@ -159,15 +165,22 @@ function TemplateForm(props: { name: TemplateName; latest: Version | undefined }
         )
       }
     >
-      <form.AppField name="body">
-        {(field) => (
-          <field.TextareaField
-            label="Texto"
-            required
-            hint={`Podés usar ${variables}. Escribí la firma del consultorio en lugar de [firma]. Hasta 1024 caracteres, sin empezar ni terminar con una variable.`}
-          />
-        )}
-      </form.AppField>
+      <div className="grid items-start gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <form.AppField name="body">
+            {(field) => (
+              <field.TextareaField
+                label="Texto"
+                required
+                hint={`Podés usar ${variables}. Escribí la firma del consultorio en lugar de [firma]. Hasta 1024 caracteres, sin empezar ni terminar con una variable.`}
+              />
+            )}
+          </form.AppField>
+        </div>
+        <div className="lg:col-span-2">
+          <TemplatePreview name={name} body={body} />
+        </div>
+      </div>
     </FormPage>
   );
 }

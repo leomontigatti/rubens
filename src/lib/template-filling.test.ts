@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  fillSample,
   fillTemplate,
   flattenCareInstructions,
   sampleAppointment,
@@ -70,6 +71,25 @@ describe("filling a template", () => {
     expect(fillTemplate(body, templateValues(sampleAppointment)).text).toBe(
       "Tu turno con la Dra. Sofía Méndez es el jueves 12 de noviembre a las 10:30 en Sede Centro (Av. Colón 1234, Córdoba).",
     );
+  });
+});
+
+describe("the sample appointment", () => {
+  it("gives every variable a value", () => {
+    const values = Object.entries(templateValues(sampleAppointment));
+
+    expect(values.filter(([, value]) => !value)).toEqual([]);
+  });
+
+  it("fills a body as the template preview shows it, the time read in the office's zone", () => {
+    // 13:30 UTC is 10:30 in Buenos Aires.
+    expect(fillSample("  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n")).toBe(
+      "Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30.",
+    );
+  });
+
+  it("leaves what is not a variable of any template as written", () => {
+    expect(fillSample("Hola {{nombre}}, en {{sede}}.")).toBe("Hola {{nombre}}, en Sede Centro.");
   });
 });
 
