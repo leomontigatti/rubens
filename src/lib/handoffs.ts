@@ -22,6 +22,8 @@ export const handoffReasons = [
   "followUpAnswer",
   /** The assistant misunderstood the patient twice in a row. */
   "misunderstoodTwice",
+  /** A voice note nobody could understand, after a misunderstanding: the patient was asked to write. */
+  "voiceUnintelligible",
   /** The number is not the contact of any patient. */
   "unknownNumber",
   /** The number's patients have no upcoming appointment. */

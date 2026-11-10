@@ -18,7 +18,8 @@ import {
 // and its model on the organization's day, and admins read the month's totals
 // in the WhatsApp settings, which refuse anyone else (`whatsapp.workers.test.ts`).
 // The sandbox's turns are recorded as sandbox use, shown apart in the month's
-// totals (`assistant-sandbox.workers.test.ts`).
+// totals (`assistant-sandbox.workers.test.ts`). Voice notes record the length
+// of their audio (`voice-notes.workers.test.ts`).
 // The model is scripted at its port, reporting the
 // tokens each of its calls used; Meta is faked at its HTTP boundary.
 
@@ -83,7 +84,7 @@ afterEach(() => {
 
 describe("the assistant's usage", () => {
   it("is nothing in a month with no turn", async () => {
-    expect(await monthUsage()).toEqual({ month: "2098-12", models: [] });
+    expect(await monthUsage()).toEqual({ month: "2098-12", models: [], transcriptions: [] });
   });
 
   it("records the tokens of every model call of a turn and of its clinical check, with the model", async () => {
@@ -96,6 +97,7 @@ describe("the assistant's usage", () => {
     expect(await monthUsage()).toEqual({
       month: "2098-12",
       models: [{ model: assistantModelId, sandbox: false, inputTokens: 2_800, outputTokens: 110 }],
+      transcriptions: [],
     });
   });
 
@@ -129,6 +131,7 @@ describe("the assistant's usage", () => {
     expect(await monthUsage()).toEqual({
       month: "2099-01",
       models: [{ model: assistantModelId, sandbox: false, inputTokens: 5_000, outputTokens: 200 }],
+      transcriptions: [],
     });
   });
 });

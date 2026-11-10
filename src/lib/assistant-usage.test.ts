@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { assistantModelId } from "#/lib/assistant.ts";
-import { usageLine, usageMonthName } from "#/lib/assistant-usage.ts";
+import { assistantModelId, transcriptionModelId } from "#/lib/assistant.ts";
+import { transcriptionLine, usageLine, usageMonthName } from "#/lib/assistant-usage.ts";
 
 describe("the assistant's usage as the WhatsApp settings show it", () => {
   it("names the month in Spanish", () => {
@@ -23,5 +23,19 @@ describe("the assistant's usage as the WhatsApp settings show it", () => {
     expect(
       usageLine({ model: "other-model", sandbox: false, inputTokens: 0, outputTokens: 0 }).label,
     ).toBe("other-model · Pacientes");
+  });
+});
+
+describe("transcription's usage as the WhatsApp settings show it", () => {
+  it("names Whisper and the patients' use, with the audio in minutes to the tenth", () => {
+    expect(
+      transcriptionLine({ model: transcriptionModelId, sandbox: false, seconds: 754 }),
+    ).toEqual({ label: "Whisper · Pacientes", value: "12,6 min de audio" });
+  });
+
+  it("gives less than a minute of audio in whole seconds", () => {
+    expect(
+      transcriptionLine({ model: transcriptionModelId, sandbox: false, seconds: 7.5 }).value,
+    ).toBe("8 s de audio");
   });
 });

@@ -30,6 +30,12 @@ import {
   retryOrHandOff,
 } from "#/organization/turn-retries.ts";
 import type { HandOffCall, Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
+import type { Transcriber } from "#/organization/transcription.ts";
+import {
+  allUnintelligible,
+  transcribeVoiceNotes,
+  unintelligibleTurn,
+} from "#/organization/voice-notes.ts";
 import { deliverReply, maySend } from "#/organization/turn-replies.ts";
 import type { Settled } from "#/organization/turn-replies.ts";
 import { office, organization, patient } from "#/organization/schema.ts";
@@ -42,7 +48,9 @@ import { isHeld, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 // conversation's number may know, nothing clinical; the model judges each
 // new patient message; and the code here settles the turn, whose reply
 // `turn-replies.ts` sends when underthing allows it. A photo or a file never
-// reaches the model. Nothing here logs a patient's words or data.
+// reaches the model; a voice note reaches it as its transcript
+// (`voice-notes.ts`), and one nobody could understand does not reach it.
+// Nothing here logs a patient's words or data.
 
 /** The conversation history a turn reads, newest messages last. */
 const historyLength = 30;
@@ -247,7 +255,8 @@ const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run
  */
 function asTurnMessages(read: Read): TurnMessage[] {
   const contentOf = (message: Read["history"][number]) => {
-    const content = message.text ?? `[${message.type}]`;
+    // A voice note nobody could understand has no words.
+    const content = message.text || `[${message.type}]`;
     return message.direction === "incoming" ? withoutMark(content) : content;
   };
   const messages: TurnMessage[] = [];
@@ -356,15 +365,38 @@ function mayReply(
 }
 
 /**
+ * The conversation as its turn judges it, once the voice notes among its
+ * messages are transcribed, or `null` when no message waits. Only the messages
+ * waiting when the turn began are judged: one that arrives while a note is
+ * transcribed waits for its own turn, which its arrival set.
+ */
+async function readTranscribed(
+  database: Database,
+  cloud: WhatsappCloud,
+  transcriber: Transcriber,
+  conversationId: string,
+) {
+  const waiting = readConversation(database, conversationId).unjudged.map((message) => message.id);
+  if (waiting.length === 0) {
+    return null;
+  }
+  const transcribed = await transcribeVoiceNotes(database, cloud, transcriber, waiting);
+  const read = readConversation(database, conversationId);
+  const unjudged = read.unjudged.filter((message) => waiting.includes(message.id));
+  return unjudged.length > 0 ? { ...read, unjudged, transcribed } : null;
+}
+
+/**
  * Runs the turn of `conversationId`: judges the patient's new messages, and
  * sends the reply when underthing allows it.
  */
 async function runTurn(
   database: Database,
   cloud: WhatsappCloud,
-  model: AssistantModel,
+  ports: { model: AssistantModel; transcriber: Transcriber },
   conversationId: string,
 ) {
+  const { model } = ports;
   // Claimed only while still due, then cleared before the model runs: a
   // message that arrived during an earlier turn of the batch restarted the
   // wait, and one that arrives during this one sets a new wait.
@@ -377,10 +409,11 @@ async function runTurn(
   if (!claimed) {
     return;
   }
-  const read = readConversation(database, conversationId);
-  if (read.unjudged.length === 0) {
+  const read = await readTranscribed(database, cloud, ports.transcriber, conversationId);
+  if (!read) {
     return;
   }
+  const { transcribed } = read;
   const patientIds = read.patients.map((one) => one.id);
   const appointments = upcomingAppointments(database, patientIds, Date.now());
   // The turn's own view of them, which a proposal it accepts changes: its
@@ -394,6 +427,7 @@ async function runTurn(
     read,
     appointments: view,
     media,
+    transcribed,
   });
   if (unread.length > 0) {
     const appointmentId = answered?.appointmentId ?? null;
@@ -433,20 +467,31 @@ async function runTurn(
 /**
  * Judges the turn's messages but the photos and files among them, which the
  * model never reads: they make the turn clinical, so it is handed off. With
- * nothing else to judge the model does not run. `unread` lists the rest when
- * the model could not judge them: they wait for its retry (`turn-retries.ts`).
+ * nothing else to judge the model does not run, nor with only voice notes
+ * nobody could understand. `unread` lists the rest when the model could not
+ * judge them, or a voice note among them has no transcript yet: they wait for
+ * the retry (`turn-retries.ts`).
  */
 async function judgeWithoutMedia(
   database: Database,
   model: AssistantModel,
-  turn: { conversationId: string; read: Read; appointments: Upcoming[]; media: Read["unjudged"] },
+  turn: {
+    conversationId: string;
+    read: Read;
+    appointments: Upcoming[];
+    media: Read["unjudged"];
+    /** Every voice note among the messages has its transcript. */
+    transcribed: boolean;
+  },
 ) {
   const { read, media } = turn;
   const unjudged = read.unjudged.filter((message) => !media.includes(message));
-  const judged =
-    unjudged.length > 0
-      ? await judgeTurn(database, model, { ...turn, read: { ...read, unjudged } }, forPatients)
-      : null;
+  let judged: Awaited<ReturnType<typeof judgeTurn>> | ReturnType<typeof unintelligibleTurn> = null;
+  if (unjudged.length > 0 && turn.transcribed) {
+    judged = allUnintelligible(unjudged)
+      ? unintelligibleTurn(currentCommunicationRules(database))
+      : await judgeTurn(database, model, { ...turn, read: { ...read, unjudged } }, forPatients);
+  }
   const unread = judged ? [] : unjudged.map((message) => message.id);
   if (media.length === 0) {
     return { turn: judged && { ...judged, read }, unread };
@@ -547,14 +592,21 @@ export function settleTurn(database: Database, judged: Omit<JudgedTurn, "reached
     if (wanted) {
       return "handedOff";
     }
+    if (turn.unintelligible) {
+      return "unintelligible";
+    }
     // The fixed reply says the team is told: only with a patient to turn off.
     return optOutAsked ? "optOutAsked" : "answered";
   });
 }
 
 /** Runs every turn whose wait is over, earliest first: the object's alarm. */
-export async function runDueTurns(database: Database, cloud: WhatsappCloud, model: AssistantModel) {
-  if (model.missingSetting()) {
+export async function runDueTurns(
+  database: Database,
+  cloud: WhatsappCloud,
+  ports: { model: AssistantModel; transcriber: Transcriber },
+) {
+  if (ports.model.missingSetting()) {
     return;
   }
   const due = database
@@ -564,6 +616,6 @@ export async function runDueTurns(database: Database, cloud: WhatsappCloud, mode
     .orderBy(asc(conversation.assistantDueAt))
     .all();
   for (const { id } of due) {
-    await runTurn(database, cloud, model, id);
+    await runTurn(database, cloud, ports, id);
   }
 }

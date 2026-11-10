@@ -22,6 +22,8 @@ import { nextOutboxAlarm, sendDueMessages } from "#/organization/outbox.ts";
 import { authorize } from "#/organization/members.ts";
 import type { Acting, Caller, Refusal, Requirement } from "#/organization/members.ts";
 import type { EmailsInFlight } from "#/organization/staff.ts";
+import { transcriberFor } from "#/organization/transcription.ts";
+import type { Transcriber } from "#/organization/transcription.ts";
 import { organizationIdIn, WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
@@ -33,6 +35,8 @@ type RuntimeEnv = WorkerEnv &
     ORGANIZATION_ENCRYPTION_KEY?: string;
     /** A secret: the assistant's model's API key (`src/organization/assistant-model.ts`). */
     ANTHROPIC_API_KEY?: string;
+    /** Workers AI, which transcribes voice notes (`src/organization/transcription.ts`). */
+    AI?: Ai;
     /** `"true"` answers Meta's calls inside the Worker, for the browser suite (`src/dev/fake-meta.ts`). */
     WHATSAPP_FAKE_META?: string;
   };
@@ -58,6 +62,8 @@ export abstract class OrganizationRuntime extends DurableObject {
   protected readonly number: WhatsappNumber;
   /** The patient assistant's model (`src/organization/assistant-model.ts`). */
   protected readonly assistant: AssistantModel;
+  /** What transcribes patients' voice notes (`src/organization/transcription.ts`). */
+  protected readonly transcriber: Transcriber;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
@@ -65,6 +71,7 @@ export abstract class OrganizationRuntime extends DurableObject {
     this.database = openDatabase(ctx.storage);
     this.accounts = accountsFor(workerEnv);
     this.assistant = assistantModelFor(workerEnv);
+    this.transcriber = transcriberFor(workerEnv);
     const directory = workerEnv.WHATSAPP_DIRECTORY.get(
       workerEnv.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
     );
@@ -123,7 +130,10 @@ export abstract class OrganizationRuntime extends DurableObject {
     await sendDueMessages(this.database, this.whatsapp);
     await settleLateReplies(this.database, this.whatsapp);
     await returnDueConversations(this.database, this.whatsapp);
-    await runDueTurns(this.database, this.whatsapp, this.assistant);
+    await runDueTurns(this.database, this.whatsapp, {
+      model: this.assistant,
+      transcriber: this.transcriber,
+    });
     sendDueReminders(this.database);
     await this.#armAlarm();
   }

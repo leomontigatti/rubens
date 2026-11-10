@@ -35,7 +35,9 @@ export default defineConfig({
     ? []
     : [
         sqlAsText,
-        cloudflare({ viteEnvironment: { name: "ssr" } }),
+        // Workers AI is remote only, and the dev server runs offline: a voice
+        // note there is not transcribed, and waits as one Workers AI could not hear.
+        cloudflare({ viteEnvironment: { name: "ssr" }, remoteBindings: false }),
         tailwindcss(),
         tanstackStart(),
         viteReact(),
@@ -186,6 +188,8 @@ export default defineConfig({
           cloudflareTest({
             main: "./src/organization/test-worker.ts",
             wrangler: { configPath: "./wrangler.jsonc" },
+            // Workers AI is remote only: the tests fake transcription at its port, offline.
+            remoteBindings: false,
             // A made-up key, so the objects can seal what the app encrypts (ADR-0008).
             miniflare: { bindings: { ORGANIZATION_ENCRYPTION_KEY: btoa("k".repeat(32)) } },
           }),

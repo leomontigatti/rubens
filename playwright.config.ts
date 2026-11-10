@@ -41,7 +41,8 @@ export default defineConfig({
     // `--env-file` reads an empty file, so a Clerk key in a local `.env` cannot
     // switch the suite off the dev sign-in.
     command: [
-      "pnpm exec wrangler dev",
+      // Local only: Workers AI's binding would otherwise ask for a Cloudflare login.
+      "pnpm exec wrangler dev --local",
       `--port ${e2e.port}`,
       "--var DEV_SIGN_IN:true",
       // Meta answered inside the Worker (`src/dev/fake-meta.ts`), on a made-up

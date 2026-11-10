@@ -12,6 +12,7 @@ export const handoffReasonLabels: Record<HandoffReason, string> = {
   emergency: "Posible urgencia",
   followUpAnswer: "Respuesta al seguimiento",
   misunderstoodTwice: "El asistente no lo entendió dos veces seguidas",
+  voiceUnintelligible: "No se entendió su nota de voz",
   unknownNumber: "Número que no es de ningún paciente",
   noUpcomingAppointment: "Sin turnos próximos",
   heldReply: "Respuesta retenida",

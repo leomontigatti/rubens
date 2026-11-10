@@ -32,6 +32,9 @@ function signupStepOf(request: Request): SignupStep | null {
   return fields.includes("messaging_limit") ? "number" : null;
 }
 
+/** Where Meta serves the bytes of a message's media. */
+const mediaHost = "lookaside.fbsbx.com";
+
 /** Digits no other test uses, for a number's or an account's id at Meta. */
 function freshMetaId() {
   return String(crypto.getRandomValues(new Uint32Array(2)).join("")).slice(0, 15);
@@ -77,6 +80,8 @@ class FakeMeta {
   #heldPause: { index: number; until: Promise<void> } | null = null;
   /** How many templates Meta lists per page. */
   templatesPerPage = 100;
+  /** The voice notes Meta holds, by media id: the bytes of each, which the object downloads. */
+  media = new Map<string, Uint8Array>();
   /** The Worker's Embedded Signup settings. */
   signupSettings: SignupSettings = {};
   /** The number Embedded Signup connects, as Meta lists it in its account. */
@@ -99,6 +104,7 @@ class FakeMeta {
     this.#hold = null;
     this.#heldStep = null;
     this.templatesAtMeta = [];
+    this.media = new Map();
     this.templatesPerPage = 100;
     this.signupSettings = {
       META_APP_ID: "1234567890",
@@ -242,6 +248,10 @@ class FakeMeta {
     if (step) {
       return this.#signupAnswer(step);
     }
+    const media = this.#mediaAnswer(request);
+    if (media) {
+      return media;
+    }
     if (request.method === "GET" && new URL(request.url).pathname.endsWith("/message_templates")) {
       const url = new URL(request.url);
       const from = Number(url.searchParams.get("after") ?? 0);
@@ -266,6 +276,37 @@ class FakeMeta {
     }
     return Response.json(answer.body, { status: answer.status });
   };
+
+  /**
+   * A voice note's media, as Meta serves it: its id answers with a link on
+   * Meta's media host, and the link with the bytes; an id Meta does not hold
+   * answers Meta's error. `null` for a request that is not about media.
+   */
+  #mediaAnswer(request: Request) {
+    const url = new URL(request.url);
+    if (url.hostname === mediaHost) {
+      const bytes = this.media.get(url.searchParams.get("mid") ?? "");
+      return bytes
+        ? new Response(bytes.slice().buffer, { headers: { "content-type": "audio/ogg" } })
+        : new Response("Not found", { status: 404 });
+    }
+    const mediaId = /^\/v[\d.]+\/(media-[\w-]+)$/.exec(url.pathname)?.[1];
+    if (request.method !== "GET" || !mediaId) {
+      return null;
+    }
+    if (!this.media.has(mediaId)) {
+      return Response.json(
+        { error: { message: "Unsupported get request.", code: 100 } },
+        { status: 400 },
+      );
+    }
+    return Response.json({
+      messaging_product: "whatsapp",
+      url: `https://${mediaHost}/whatsapp_business/attachments/?mid=${mediaId}`,
+      mime_type: "audio/ogg; codecs=opus",
+      id: mediaId,
+    });
+  }
 
   #signupAnswer(step: SignupStep) {
     const refusal = this.signupRefusals[step];

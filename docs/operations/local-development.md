@@ -30,6 +30,11 @@ them. The dev organization is seeded on the sign-in page's first load
 (`src/dev/seed.ts`). Its data lives in `.wrangler/state/`; deleting that folder starts
 from a fresh seed.
 
+Everything runs offline: the dev server and the built Worker start with remote
+bindings off, so Workers AI's `AI` binding, which transcribes voice notes, is not
+reached, and a voice note waits untranscribed as it would while Workers AI is down.
+The object's tests fake transcription at its port.
+
 `.env` is optional and gitignored. `.env.example` lists every variable the app reads:
 the port, and the Clerk keys to sign in through Clerk locally instead of the dev
 sign-in.
@@ -99,7 +104,7 @@ blocking.
 
 ```sh
 pnpm build
-pnpm exec wrangler dev --var DEV_SIGN_IN:true   # the built Worker, with the dev sign-in
+pnpm exec wrangler dev --local --var DEV_SIGN_IN:true   # the built Worker, with the dev sign-in
 ```
 
 A build has no dev server, so without a Clerk key it refuses to serve unless

@@ -50,9 +50,10 @@ In the second release:
   their WhatsApp consent recorded as given to the assistant.
 
 Patients write in their own words; there are no buttons. A voice note is
-transcribed and read like text; one that cannot be understood gets a request to
-write it, then a handoff. Voice notes are in the first release only if
-transcription passes the evaluation set on Argentine Spanish. The assistant
+transcribed and read like text, and the inbox shows its transcript as the
+patient's words; one that cannot be understood gets a request to write it, and a
+second misunderstanding in a row is handed off. Transcription is Whisper on
+Workers AI, chosen by the evaluation set on Argentine Spanish. The assistant
 replies in text only, never with a voice note.
 
 The patient is identified by the WhatsApp number. A number is the contact of

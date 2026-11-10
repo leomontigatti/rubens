@@ -13,6 +13,9 @@ import type { FormOfAddress } from "#/lib/communication-rules.ts";
 /** The model the assistant runs on, decided on #151 from the evaluation report. */
 export const assistantModelId = "claude-haiku-5-5";
 
+/** The model that transcribes patients' voice notes, on Workers AI, decided on #151 from the evaluation report. */
+export const transcriptionModelId = "@cf/openai/whisper-large-v3-turbo";
+
 /** What a run of the model is for, as the organization's usage records it (assistant.md § Costs). */
 export const modelRunPurposes = ["turn", "clinicalCheck"] as const;
 
@@ -205,6 +208,16 @@ export function optOutReply(formOfAddress: FormOfAddress): string {
   return formOfAddress === "usted"
     ? "Entendido. Le avisamos al equipo para que no le enviemos más mensajes por WhatsApp."
     : "Entendido. Le avisamos al equipo para que no te enviemos más mensajes por WhatsApp.";
+}
+
+/**
+ * What the patient is told of a voice note that could not be understood: a
+ * request to write it. Fixed, since no model read the note.
+ */
+export function unintelligibleVoiceReply(formOfAddress: FormOfAddress): string {
+  return formOfAddress === "usted"
+    ? "Perdón, no pudimos entender su nota de voz. Escríbanos lo que necesita, por favor."
+    : "Perdón, no pudimos entender tu nota de voz. Escribinos lo que necesitás, por favor.";
 }
 
 /**

@@ -1,6 +1,12 @@
 import { and, desc, eq } from "drizzle-orm";
 
-import { emergencyReply, handoffReply, optOutReply, withSignOff } from "#/lib/assistant.ts";
+import {
+  emergencyReply,
+  handoffReply,
+  optOutReply,
+  unintelligibleVoiceReply,
+  withSignOff,
+} from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
@@ -25,7 +31,7 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // How a settled turn of the patient assistant (`assistant.ts`) answers the
 // patient (docs/domain/assistant.md § Rules it always keeps): a fixed reply
-// for a handoff, an opt-out or an emergency; otherwise the model's own,
+// for a handoff, an opt-out, an emergency or a voice note nobody understood; otherwise the model's own,
 // which goes out only once the fixed checks pass and the clinical check
 // finds nothing clinical in it and nothing about a patient the number may not
 // hear about. A reply the check flags is held on a clinical handoff, for its
@@ -34,7 +40,14 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 // When Meta limits the number). Nothing here logs a patient's words.
 
 /** What a settled turn tells the patient: nothing, a fixed reply, or the model's. */
-export type Settled = "silent" | "emergency" | "handedOff" | "optOutAsked" | "answered";
+export type Settled =
+  | "silent"
+  | "emergency"
+  | "handedOff"
+  | "optOutAsked"
+  /** Voice notes nobody could understand: the patient is asked to write. */
+  | "unintelligible"
+  | "answered";
 
 /**
  * Whether the assistant's free-form message may go now: no member holds the
@@ -173,6 +186,7 @@ function fixedReply(rules: CommunicationRules, settled: Exclude<Settled, "silent
   return {
     handedOff: handoffReply(rules.formOfAddress),
     optOutAsked: optOutReply(rules.formOfAddress),
+    unintelligible: unintelligibleVoiceReply(rules.formOfAddress),
     answered: null,
   }[settled];
 }
