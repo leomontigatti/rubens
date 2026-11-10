@@ -19,12 +19,13 @@ const dayMs = 24 * 60 * 60_000;
  * Holds each of `patientIds`, the patients the number reaches now, who still
  * accepts WhatsApp, and notifies reception and the admins of each, for a
  * person to turn their consent off or keep it: in the transaction of the turn
- * that judged the opt-out. Says whether any such patient was found, whose
- * notification the team has then had or gets now.
+ * that judged the opt-out, or of the person who reported one among words the
+ * model could not read. Returns those patients, whose notification the team
+ * has then had or gets now.
  */
 export function holdForOptOut(tx: Writer, patientIds: string[]) {
   if (patientIds.length === 0) {
-    return false;
+    return [];
   }
   const consenting = tx
     .select({ id: patient.id })
@@ -37,7 +38,7 @@ export function holdForOptOut(tx: Writer, patientIds: string[]) {
     notifyOptOut(tx, id, "optOut");
     tx.insert(optOutHold).values({ patientId: id, remindAt }).onConflictDoNothing().run();
   }
-  return consenting.length > 0;
+  return consenting.map(({ id }) => id);
 }
 
 /** Lifts `patientId`'s hold, once a person decided on them; says whether there was one. */

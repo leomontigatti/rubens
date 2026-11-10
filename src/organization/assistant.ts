@@ -556,7 +556,7 @@ export function settleTurn(database: Database, judged: Omit<JudgedTurn, "reached
     if (wanted && addsToOpen(open, wanted)) {
       openHandoff(tx, turn.conversationId, wanted);
     }
-    const optOutAsked = turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow);
+    const optOutAsked = turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow).length > 0;
     if (isHeld(tx, turn.conversationId)) {
       return "silent";
     }

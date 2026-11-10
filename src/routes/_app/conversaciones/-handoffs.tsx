@@ -8,8 +8,9 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { handoffReasonLabels } from "#/lib/handoff-copy.ts";
+import type { OptOutReport } from "#/lib/handoffs.ts";
 import { formatPhone } from "#/lib/phones.ts";
-import { closeHandoff, dropHeldReply } from "#/server/inbox.functions.ts";
+import { closeHandoff, dropHeldReply, reportOptOut } from "#/server/inbox.functions.ts";
 import type { OpenHandoff } from "#/organization/handoff-inbox.ts";
 
 import {
@@ -24,7 +25,8 @@ import { useInboxAction } from "#/routes/_app/conversaciones/-messages.tsx";
 // answer it closes it without a reply. A clinical one shows that it exists,
 // never words the member may not read: the object withholds them. A reply the
 // clinical check held reaches only the handoff's recipients, who send it, fix
-// it in the reply's box or drop it.
+// it in the reply's box or drop it. On a clinical one, whoever reads its words
+// reports an opt-out among them to reception, which cannot read them.
 
 const closeRefusals = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -33,6 +35,12 @@ const closeRefusals = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "No encontramos la derivación.",
   notFound: "La derivación ya está cerrada. Recargá la página.",
+};
+
+const optOutRefusals = {
+  ...closeRefusals,
+  forbidden: "Solo un profesional que lleva historias clínicas puede leer estos mensajes.",
+  nobodyToTurnOff: "Ningún paciente de este número recibe mensajes por WhatsApp.",
 };
 
 function recipientsText(recipients: string[]) {
@@ -162,6 +170,12 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
           </Button>
         )}
       </div>
+      {handoff.optOut !== null && handoff.lastPatientMessage && (
+        <ClinicalOptOut
+          report={{ handoffId: handoff.id, throughMessageId: handoff.lastPatientMessage.id }}
+          reported={handoff.optOut === "reported"}
+        />
+      )}
       {handoff.heldReply !== null && (
         <HeldReply
           handoffId={handoff.id}
@@ -176,6 +190,49 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
         description="Usalo cuando no queda nada que contestarle al paciente. El asistente vuelve a responder en esta conversación."
         confirmLabel="Cerrar derivación"
         onConfirm={() => void close.run("close-handoff", () => closeHandoff({ data }))}
+      />
+    </div>
+  );
+}
+
+/**
+ * The prompt on a clinical handoff: its reader looks for an opt-out among
+ * words reception cannot read, and reports it to reception, which decides.
+ */
+function ClinicalOptOut(props: { report: OptOutReport; reported: boolean }) {
+  const report = useInboxAction(optOutRefusals);
+  const [confirming, setConfirming] = useState(false);
+  if (props.reported) {
+    return (
+      <p className="bg-muted/50 text-muted-foreground rounded-lg p-3">
+        Se avisó a recepción que este número pidió no recibir mensajes por WhatsApp.
+      </p>
+    );
+  }
+  return (
+    <div className="bg-muted/50 flex flex-wrap items-center justify-between gap-3 rounded-lg p-3">
+      <p className="text-muted-foreground">
+        Recepción no ve estos mensajes. Si el paciente pide no recibir más mensajes por WhatsApp,
+        avisale desde acá.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={report.running}
+        onClick={() => setConfirming(true)}
+      >
+        {report.running && <Spinner data-icon="inline-start" aria-hidden />}
+        Pidió no recibir mensajes
+      </Button>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="¿Avisar a recepción que pidió no recibir mensajes?"
+        description="Recepción decide si desactiva WhatsApp para los pacientes de este número. Hasta entonces no les enviamos recordatorios ni avisos. La derivación sigue abierta."
+        confirmLabel="Avisar a recepción"
+        onConfirm={() =>
+          void report.run("report-opt-out", () => reportOptOut({ data: props.report }))
+        }
       />
     </div>
   );

@@ -366,6 +366,12 @@ export const handoff = sqliteTable(
     remindedFor: instant("reminded_for"),
     /** The window's close every other member who may answer it was last reminded of. */
     widelyRemindedFor: instant("widely_reminded_for"),
+    /**
+     * On a clinical one, the newest patient message its reader had seen when
+     * they reported an opt-out among its words, which reception cannot read:
+     * the report covers it and every message before it.
+     */
+    optOutReportedThrough: text("opt_out_reported_through").references(() => whatsappMessage.id),
     ...timestamps,
   },
   (table) => [index("handoff_conversation_idx").on(table.conversationId, table.state)],

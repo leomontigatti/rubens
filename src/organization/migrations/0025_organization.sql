@@ -1,0 +1,1 @@
+ALTER TABLE `handoff` ADD `opt_out_reported_through` text REFERENCES whatsapp_message(id);
