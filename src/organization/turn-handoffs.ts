@@ -25,6 +25,8 @@ export interface TurnToSort {
   ruleRefused: string | null;
   /** The patients whose messages go to the number as the turn settles: a contact may change while the model runs. */
   reachedNow: string[];
+  /** The turn's messages are voice notes nobody could understand (`assistant.ts`). */
+  unintelligible?: boolean;
 }
 
 const modelReasons = {
@@ -67,7 +69,8 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
 
 /**
  * What underthing hands off without the model asking: a clinical judgement,
- * a move a rule refused, a second misunderstanding, nothing booked. An
+ * a move a rule refused, a second misunderstanding (a voice note nobody could
+ * understand counts as one), nothing booked. An
  * opt-out from a number of patients is answered, not handed off, unless it is
  * clinical too.
  */
@@ -85,7 +88,7 @@ function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   }
   let reason: HandoffWanted["reason"] | null = null;
   if (!judgement.understood && turn.read.misunderstandings >= 1) {
-    reason = "misunderstoodTwice";
+    reason = turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";
   } else if (turn.read.patients.length === 0) {
     reason = "unknownNumber";
   } else if (turn.appointments.length === 0) {

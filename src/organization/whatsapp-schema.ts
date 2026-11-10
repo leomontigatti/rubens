@@ -102,9 +102,13 @@ export const whatsappMessage = sqliteTable(
     direction: text("direction", { enum: whatsappMessageDirections }).notNull(),
     /** Meta's message type: `text`, `image`, `audio`, … */
     type: text("type").notNull(),
-    /** A text message's body; other types keep theirs in `payload`. */
+    /**
+     * A text message's body, or a voice note's transcript once it is
+     * transcribed (empty when nobody could understand it, `voice-notes.ts`);
+     * other types keep theirs in `payload`.
+     */
     text: text("text"),
-    /** The message as Meta sent it, JSON, for the types nothing reads yet. */
+    /** The message as Meta sent it, JSON: a voice note's media id, and the rest for the types nothing reads yet. */
     payload: text("payload").notNull(),
     /** When Meta says it was sent. */
     sentAt: instant("sent_at").notNull(),
@@ -431,4 +435,24 @@ export const modelUsage = sqliteTable(
     createdAt: timestamps.createdAt,
   },
   (table) => [index("model_usage_day_idx").on(table.day)],
+);
+
+/**
+ * One voice note the assistant had transcribed (docs/domain/assistant.md §
+ * Costs): the model and the audio's length, which Workers AI bills, on the
+ * organization's day, beside the model's tokens (`model_usage`).
+ */
+export const transcriptionUsage = sqliteTable(
+  "transcription_usage",
+  {
+    id: id(),
+    /** The local date of the transcription, in the organization's zone. */
+    day: text("day").notNull(),
+    model: text("model").notNull(),
+    sandbox: flag("sandbox").notNull(),
+    /** The audio's length, in milliseconds. */
+    audioMs: integer("audio_ms").notNull(),
+    createdAt: timestamps.createdAt,
+  },
+  (table) => [index("transcription_usage_day_idx").on(table.day)],
 );

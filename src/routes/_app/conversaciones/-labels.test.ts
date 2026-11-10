@@ -37,6 +37,24 @@ describe("a message's text", () => {
 
     expect(messageText(photo)).toBe("Mensaje sin texto (image)");
   });
+
+  it("marks a voice note's transcript, and says when it has none", () => {
+    const voiceNote = {
+      id: "1",
+      direction: "incoming",
+      sentAt: 0,
+      type: "audio",
+      text: "quiero cancelar el turno",
+      status: null,
+      judgement: "notClinical",
+      sentBy: null,
+      withheld: null,
+    } as const;
+
+    expect(messageText(voiceNote)).toBe("Nota de voz: quiero cancelar el turno");
+    expect(messageText({ ...voiceNote, text: "" })).toBe("Nota de voz que no se pudo entender");
+    expect(messageText({ ...voiceNote, text: null })).toBe("Nota de voz sin transcribir");
+  });
 });
 
 describe("who wrote a message", () => {

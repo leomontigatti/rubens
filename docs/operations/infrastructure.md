@@ -96,6 +96,11 @@ and its number is mapped to the organization in the WhatsApp directory
 ([ADR-0012](../adr/0012-whatsapp-directory-durable-object.md)). Connecting a real
 practice needs Meta's App Review passed.
 
+Voice notes are transcribed with Whisper (`@cf/openai/whisper-large-v3-turbo`) on
+Workers AI, through the `AI` binding in `wrangler.jsonc`
+(`src/organization/transcription.ts`): no key, billed to the Cloudflare account by
+the minute of audio. Workers AI needs the account's Workers Paid plan.
+
 `DEV_SIGN_IN` is never set on a deployed Worker: it would let anyone sign in as any
 member.
 

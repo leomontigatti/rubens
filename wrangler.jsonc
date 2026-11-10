@@ -14,6 +14,8 @@
       { "name": "WHATSAPP_DIRECTORY", "class_name": "WhatsappDirectory" },
     ],
   },
+  // Workers AI, which transcribes patients' voice notes (src/organization/transcription.ts).
+  "ai": { "binding": "AI" },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Organization"] },
     { "tag": "v2", "new_sqlite_classes": ["WhatsappDirectory"] },

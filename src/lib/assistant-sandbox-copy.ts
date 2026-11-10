@@ -23,6 +23,7 @@ export const sandboxOutcomeLabels = {
   handedOff: "Derivó la conversación a una persona.",
   emergency: "Lo trató como una urgencia.",
   optOutAsked: "Entendió que el paciente no quiere más mensajes: avisaría al equipo.",
+  unintelligible: "No entendió la nota de voz: pediría que la escriba.",
   silent: "No respondió: la conversación ya está derivada.",
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;

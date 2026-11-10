@@ -27,10 +27,18 @@ export function messageTime(sentAt: number) {
   return format(sentAt, "dd/MM/yyyy HH:mm", { in: tz(defaultTimeZone) });
 }
 
-/** The message's words, or what stands in their place. */
+/** The message's words, or what stands in their place: a voice note's are its transcript. */
 export function messageText(message: InboxMessage) {
   if (message.withheld !== null) {
     return withheldLabels[message.withheld];
+  }
+  if (message.type === "audio") {
+    if (message.text === null) {
+      return "Nota de voz sin transcribir";
+    }
+    return message.text === ""
+      ? "Nota de voz que no se pudo entender"
+      : `Nota de voz: ${message.text}`;
   }
   return message.text ?? `Mensaje sin texto (${message.type})`;
 }
