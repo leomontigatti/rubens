@@ -181,13 +181,14 @@ function fixedReply(rules: CommunicationRules, settled: Exclude<Settled, "silent
  * Whether the clinical check holds the reply: clinical, about a patient the
  * number may not hear about, or unchecked because the check failed.
  */
-async function clinicalCheckHolds(
+export async function clinicalCheckHolds(
   database: Database,
   model: AssistantModel,
   request: Omit<ReplyToCheck, "recordUsage">,
+  sandbox: boolean,
 ) {
   const recordUsage = (used: ModelUsage) =>
-    recordModelUsage(database, { ...used, purpose: "clinicalCheck", sandbox: false });
+    recordModelUsage(database, { ...used, purpose: "clinicalCheck", sandbox });
   const found = await model.checkReply({ ...request, recordUsage }).catch((error: unknown) => {
     // Any failure leaves the reply unchecked, so it is held. The error's
     // message can carry the reply, so only its class is logged.
@@ -198,6 +199,31 @@ async function clinicalCheckHolds(
     return null;
   });
   return !found || found.clinical || found.otherPatient;
+}
+
+/**
+ * Opens the clinical handoff that holds `held.words`, unless a clinical one is
+ * open already; says whether it is the conversation's only open handoff, whose
+ * reply the patient then gets.
+ */
+export function openHeldReply(
+  database: Database,
+  held: { conversationId: string; answered: TurnToSort["answered"]; words: string },
+) {
+  return database.transaction((tx) => {
+    const open = openHandoffsOf(tx, held.conversationId);
+    const wanted = {
+      reason: "heldReply" as const,
+      clinical: true,
+      appointmentId: held.answered?.appointmentId ?? null,
+      heldReply: held.words,
+    };
+    if (!addsToOpen(open, wanted)) {
+      return false;
+    }
+    openHandoff(tx, held.conversationId, wanted);
+    return open.length === 0;
+  });
 }
 
 /**
@@ -218,29 +244,42 @@ async function holdReply(
   },
 ) {
   const { conversationId, rules } = held;
-  const opened = database.transaction((tx) => {
-    const open = openHandoffsOf(tx, conversationId);
-    const wanted = {
-      reason: "heldReply" as const,
-      clinical: true,
-      appointmentId: held.answered?.appointmentId ?? null,
-      heldReply: held.words,
-    };
-    if (!addsToOpen(open, wanted)) {
-      return false;
-    }
-    openHandoff(tx, conversationId, wanted);
-    return open.length === 0;
-  });
-  const checked = checkReply(withSignOff(handoffReply(rules.formOfAddress), rules.signOff));
-  if (opened && checked.ok && maySend(database, cloud, conversationId)) {
+  const opened = openHeldReply(database, held);
+  const text = handoffReplyText(rules);
+  if (opened && text && maySend(database, cloud, conversationId)) {
     await sendReply(database, cloud, {
       conversationId,
       phone: held.phone,
-      text: checked.text,
+      text,
       rulesVersion: rules.version,
     });
   }
+}
+
+/**
+ * What a settled turn would say: its fixed reply, or the model's words; each
+ * signed, once the fixed checks pass, or `null` when they do not.
+ */
+export function replyTexts(turn: {
+  settled: Exclude<Settled, "silent">;
+  reply: string;
+  rules: CommunicationRules;
+}) {
+  const { rules } = turn;
+  const fixed = fixedReply(rules, turn.settled);
+  // A turn that ended on its tools has no words of its own to sign.
+  const words = checkReply(fixed ?? turn.reply);
+  const checked = checkReply(withSignOff(fixed ?? turn.reply, rules.signOff));
+  if (!words.ok || !checked.ok) {
+    return null;
+  }
+  return { fixed, words: words.text, checked: checked.text };
+}
+
+/** The fixed reply to a handoff, signed, as the patient reads it; `null` when the fixed checks fail. */
+export function handoffReplyText(rules: CommunicationRules) {
+  const checked = checkReply(withSignOff(handoffReply(rules.formOfAddress), rules.signOff));
+  return checked.ok ? checked.text : null;
 }
 
 /**
@@ -268,17 +307,15 @@ export async function deliverReply(
   },
 ) {
   const { conversationId, rules } = turn;
-  const fixed = fixedReply(rules, turn.settled);
-  // A turn that ended on its tools has no words of its own to sign.
-  const words = checkReply(fixed ?? turn.reply);
-  const checked = checkReply(withSignOff(fixed ?? turn.reply, rules.signOff));
-  if (!words.ok || !checked.ok) {
+  const texts = replyTexts(turn);
+  if (!texts) {
     return;
   }
+  const { fixed, words, checked } = texts;
   const reply = {
     conversationId,
     phone: turn.phone,
-    text: checked.text,
+    text: checked,
     rulesVersion: rules.version,
     whole: turn.proposed,
     urgent: turn.settled === "emergency",
@@ -296,9 +333,9 @@ export async function deliverReply(
     return;
   }
   // The whole text that would go, sign-off included; the held reply is the model's words alone.
-  const request = { conversationId, reply: checked.text, patients: turn.patients };
-  if (await clinicalCheckHolds(database, model, request)) {
-    await holdReply(database, cloud, { ...turn, words: words.text });
+  const request = { conversationId, reply: checked, patients: turn.patients };
+  if (await clinicalCheckHolds(database, model, request, false)) {
+    await holdReply(database, cloud, { ...turn, words });
   } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
     // Read again after each typing pause: a message or a change may have come
     // while the check ran or the reply typed.

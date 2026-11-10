@@ -61,8 +61,11 @@ function statedMove(slot: Slot) {
   return { newDate: slot.date, newTime: slot.time, newOffice: slot.office };
 }
 
-/** Makes the proposal's change through the appointment's own function. */
-function applyChange(database: Database, latest: NonNullable<ReturnType<typeof latestProposal>>) {
+/** Makes the proposal's change through the appointment's own function; the sandbox replays its accepted ones with it. */
+export function applyChange(
+  database: Database,
+  latest: NonNullable<ReturnType<typeof latestProposal>>,
+) {
   const { appointmentId } = latest;
   if (latest.kind === "move") {
     const { newDate, newTime, newOffice } = latest.statement;

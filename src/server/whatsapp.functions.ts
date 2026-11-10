@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import type { ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
@@ -70,4 +71,20 @@ export const saveHandoffReminders = createServerFn({ method: "POST" })
   .validator((data: HandoffRemindersInput) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.saveHandoffReminders(caller, data)),
+  );
+
+export const getSandboxScenarios = createServerFn({ method: "GET" }).handler(() =>
+  withOrganization((organization, caller) => organization.sandboxScenarios(caller)),
+);
+
+export const startSandbox = createServerFn({ method: "POST" })
+  .validator((data: SandboxStart) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.startSandbox(caller, data)),
+  );
+
+export const playSandboxTurn = createServerFn({ method: "POST" })
+  .validator((data: SandboxTurnInput) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.sandboxTurn(caller, data)),
   );
