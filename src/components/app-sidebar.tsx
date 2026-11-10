@@ -101,7 +101,12 @@ function NavFolder(props: { folder: NavFolderItem; pathname: string }) {
   const collapsed = state === "collapsed";
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
+    <Collapsible
+      open={open}
+      // Collapsed, its entries are hidden whatever it says: a click shows them, never hides them.
+      onOpenChange={(next) => setOpen(collapsed || next)}
+      render={<SidebarMenuItem />}
+    >
       <CollapsibleTrigger
         render={
           <SidebarMenuButton
