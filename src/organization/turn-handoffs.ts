@@ -39,14 +39,17 @@ const modelReasons = {
 
 /**
  * A follow-up's answer: only a plainly good one, or an opt-out that is not
- * clinical from a number that reaches a patient now, is the assistant's; any other is the practitioner's, as clinical.
+ * clinical, is the assistant's; any other is the practitioner's, as clinical.
+ * So is an opt-out from a number that reaches no patient now, its contact
+ * moved while the model ran: there is no consent to turn off.
  */
 function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted | null {
   const { judgement } = turn;
   // A photo or a file beside the answer makes it clinical (`assistant.ts`).
   const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.clinical;
-  const optOutOnly = judgement.optOut && !judgement.clinical && turn.reachedNow.length > 0;
-  if ((plainlyGood || optOutOnly) && !judgement.emergency && !turn.handOff) {
+  const optOutOnly = judgement.optOut && !judgement.clinical;
+  const nobodyToTurnOff = judgement.optOut && turn.reachedNow.length === 0;
+  if ((plainlyGood || optOutOnly) && !nobodyToTurnOff && !judgement.emergency && !turn.handOff) {
     return null;
   }
   const reason = judgement.emergency ? "emergency" : "followUpAnswer";

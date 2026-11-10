@@ -537,45 +537,51 @@ describe("answering a follow-up", () => {
     ]);
   });
 
-  it("hands an opt-out off when reception sent the patient's messages elsewhere while the model wrote", async () => {
-    const { patientId } = await world.appointmentOf(await followUpSent());
-    const added = expectOk(
-      await world.organization.addGuardian(adminCaller, {
-        patientId,
-        name: "Laura Gómez",
-        relationship: "Madre",
-        phone: "+5493515550009",
-      }),
-    );
-    await writes("no me escriban más");
-    let release!: () => void;
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    scriptedModel.script(async (one) => {
-      one.call("judge_messages", { ...notClinical, optOut: true });
-      await released;
-      return "";
-    });
-    vi.setSystemTime(Date.now() + assistantWaitMs);
-    const alarm = runDurableObjectAlarm(world.organization);
-    while (scriptedModel.turns.length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
-    expectOk(
-      await world.organization.setMessageContact(adminCaller, {
-        patientId,
-        guardianId: added.guardian.id,
-      }),
-    );
-    release();
-    await alarm;
+  it.each([
+    { judged: "an opt-out", followUpAnswer: undefined },
+    { judged: "a good answer and an opt-out", followUpAnswer: "plainlyGood" as const },
+  ])(
+    "hands $judged off when reception sent the patient's messages elsewhere while the model wrote",
+    async ({ followUpAnswer }) => {
+      const { patientId } = await world.appointmentOf(await followUpSent());
+      const added = expectOk(
+        await world.organization.addGuardian(adminCaller, {
+          patientId,
+          name: "Laura Gómez",
+          relationship: "Madre",
+          phone: "+5493515550009",
+        }),
+      );
+      await writes("no me escriban más");
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      scriptedModel.script(async (one) => {
+        one.call("judge_messages", { ...notClinical, optOut: true, followUpAnswer });
+        await released;
+        return "";
+      });
+      vi.setSystemTime(Date.now() + assistantWaitMs);
+      const alarm = runDurableObjectAlarm(world.organization);
+      while (scriptedModel.turns.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+      }
+      expectOk(
+        await world.organization.setMessageContact(adminCaller, {
+          patientId,
+          guardianId: added.guardian.id,
+        }),
+      );
+      release();
+      await alarm;
 
-    // Nobody is left on the number to turn off: the follow-up's practitioner answers it.
-    expect(await openHandoffs()).toEqual([
-      expect.objectContaining({ reason: "followUpAnswer", recipients: ["Juan Gómez"] }),
-    ]);
-  });
+      // Nobody is left on the number to turn off: the follow-up's practitioner answers it.
+      expect(await openHandoffs()).toEqual([
+        expect.objectContaining({ reason: "followUpAnswer", recipients: ["Juan Gómez"] }),
+      ]);
+    },
+  );
 
   it("sorts only the first turn after it: a later message is not its answer", async () => {
     await followUpSent();
