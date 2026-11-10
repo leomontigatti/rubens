@@ -44,7 +44,8 @@ const refusalMessages = {
   forbidden: "Solo un administrador puede usar la configuración de WhatsApp.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Meta no devolvió los datos del número. Probá de nuevo.",
-  signupNotConfigured: "Falta la configuración del registro de Meta en el servidor.",
+  // The setting the Worker misses is logged for whoever runs it (`src/organization/whatsapp.ts`).
+  signupNotConfigured: "Todavía no se puede conectar un número desde underthing.",
   numberNotInAccount: "El número no pertenece a la cuenta de WhatsApp Business elegida.",
   numberTaken: "Ese número ya está conectado a otra organización.",
   accountTaken: "Esa cuenta de WhatsApp Business ya está conectada a otra organización.",

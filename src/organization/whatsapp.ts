@@ -50,6 +50,10 @@ export function getWhatsappSettings(
 ) {
   const { missing: templateMissing, templates } = listWhatsappTemplates(database, cloud);
   logMissingSettings(cloud.missingSetting(), templateMissing);
+  const signupMissing = number.missingSignupSetting();
+  if (signupMissing) {
+    console.warn(`[whatsapp-settings] signupNotConfigured: ${signupMissing} is not set`);
+  }
   return {
     ok: true,
     connection: number.read(),

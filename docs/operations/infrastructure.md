@@ -94,7 +94,8 @@ Embedded Signup, from the WhatsApp `Configuración`'s `Conectar número`, needs 
 configuration names, set the same way, beside `META_APP_SECRET`: `META_APP_ID`, the
 Meta app's id, and `WHATSAPP_SIGNUP_CONFIG_ID`, the id of the Facebook Login for
 Business configuration created for Embedded Signup v4 in the app dashboard. Without
-either, the settings show connecting disabled. Each practice's business token is
+either, the settings show connecting disabled, and the Worker logs which setting is
+missing. Each practice's business token is
 then stored in its organization's object, sealed with `ORGANIZATION_ENCRYPTION_KEY`,
 and its number is mapped to the organization in the WhatsApp directory
 ([ADR-0012](../adr/0012-whatsapp-directory-durable-object.md)). Connecting a real

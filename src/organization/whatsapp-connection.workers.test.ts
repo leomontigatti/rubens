@@ -61,6 +61,7 @@ function storedConnection() {
 }
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
   fakeMeta.reset();
   // A real practice: no configured test number stands in for its own.
   fakeMeta.settings = {};
@@ -211,10 +212,12 @@ describe("connecting the organization's number", () => {
     expect(await connection()).toMatchObject({ state: "connected" });
   });
 
-  it("refuses when the Worker misses a signup setting", async () => {
+  it("refuses when the Worker misses a signup setting, and logs which", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     delete fakeMeta.signupSettings.WHATSAPP_SIGNUP_CONFIG_ID;
 
     expect(expectOk(await organization.whatsappSettings(adminCaller)).signup).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("WHATSAPP_SIGNUP_CONFIG_ID"));
     expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({
       ok: false,
       reason: "signupNotConfigured",

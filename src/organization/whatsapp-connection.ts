@@ -192,6 +192,11 @@ export class WhatsappNumber {
     return this.#services.signup.launch();
   }
 
+  /** The signup setting the Worker misses, if any, which keeps `launch()` empty. */
+  missingSignupSetting() {
+    return this.#services.signup.missingSetting();
+  }
+
   /**
    * Meta refused `token`: it expired, or the business revoked it. When it is
    * still the connected number's, the connection shows as failed with Meta's
