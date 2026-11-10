@@ -21,9 +21,21 @@ export function returnAfterHours(database: Writer) {
   return row?.hours ?? defaultReturnAfterHours;
 }
 
-/** The open handoffs a reply answers: a clinical one only from a practitioner who keeps clinical records. */
-function answeredHandoffs(database: Writer, conversationId: string, readsClinical: boolean) {
-  return openHandoffsOf(database, conversationId).filter((one) => !one.clinical || readsClinical);
+/**
+ * The open handoffs a reply answers: a clinical one only from a practitioner
+ * who keeps clinical records; for a late reply, only those opened before it
+ * was written, since a later one is about a message it never read.
+ */
+function answeredHandoffs(
+  database: Writer,
+  conversationId: string,
+  reply: { readsClinical: boolean; writtenAt?: number },
+) {
+  return openHandoffsOf(database, conversationId).filter(
+    (one) =>
+      (!one.clinical || reply.readsClinical) &&
+      (reply.writtenAt === undefined || one.createdAt <= reply.writtenAt),
+  );
 }
 
 /**
@@ -48,8 +60,8 @@ export function clinicalHandoffOpenSince(tx: Writer, conversationId: string, sin
 /**
  * Stores the reply Meta accepted, closes the open handoffs its writer may
  * answer, and runs their hold's return time again from it. A late reply
- * (`retake`) makes its writer the holder again while nobody holds it, since
- * the patient just answered them.
+ * makes its writer the holder again while nobody holds it, since the patient
+ * just answered them.
  */
 export function settleReply(
   database: Database,
@@ -63,12 +75,13 @@ export function settleReply(
     since: number;
     whatsappId: string;
     text: string;
-    retake?: boolean;
+    /** For a late reply: when it was written. */
+    writtenAt?: number;
   },
 ) {
   const { conversationId, text, writtenBy } = reply;
   // Read after the send: a handoff may have opened while Meta answered.
-  const answered = answeredHandoffs(tx, conversationId, reply.readsClinical);
+  const answered = answeredHandoffs(tx, conversationId, reply);
   const clinical = reply.readsClinical && clinicalHandoffOpenSince(tx, conversationId, reply.since);
   const stored = storeOutgoing(database, tx, {
     phone: reply.phone,
@@ -97,7 +110,7 @@ export function settleReply(
     .where(
       and(
         eq(conversation.id, conversationId),
-        reply.retake ? or(theirs, isNull(conversation.heldBy)) : theirs,
+        reply.writtenAt === undefined ? theirs : or(theirs, isNull(conversation.heldBy)),
       ),
     )
     .run();

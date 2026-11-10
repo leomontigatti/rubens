@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7bbee62d-4dc2-41c8-8d4d-690f13222a86",
+  "id": "b9079dea-6f53-446c-9299-bd51bd58c512",
   "prevId": "b4f580e4-6934-41fe-8788-ace7353b95ce",
   "tables": {
     "appointment": {
@@ -2326,6 +2326,13 @@
         "clinical": {
           "name": "clinical",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "patient_ids": {
+          "name": "patient_ids",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

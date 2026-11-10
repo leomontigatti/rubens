@@ -144,9 +144,8 @@ export async function replyToConversation(
   if (!isWindowOpen(lastIncomingAt(database, conversationId), now)) {
     // Held behind the reopen template, which waits out a hold of Meta's like any other.
     const writer = { userId: acting.userId, readsClinical: found.readsClinical };
-    return queueLateReply(database, writer, { conversationId, phone: found.phone, text })
-      ? { ok: true as const, held: true }
-      : { ok: false as const, reason: "cannotReopen" as const };
+    const queued = queueLateReply(database, writer, { conversationId, phone: found.phone, text });
+    return queued.ok ? { ok: true as const, held: true } : queued;
   }
   if (activeHold(database, now)) {
     return { ok: false as const, reason: "numberHeld" as const };

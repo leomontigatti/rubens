@@ -105,7 +105,7 @@ export function notificationText(facts: NotificationFacts): string {
     case "handoffReminder":
       return reminderText(facts);
     case "replyNotDelivered":
-      return "La escribiste con la ventana de conversación cerrada, y el paciente no respondió la plantilla para reabrirla. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio.";
+      return "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio.";
     case "optOut":
       return "Si es lo que pide, tocá Dejar de enviar por WhatsApp en su ficha. Hasta entonces le siguen llegando los recordatorios y avisos.";
   }

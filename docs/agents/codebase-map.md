@@ -64,10 +64,8 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
 - **A background job**: a row in the organization's object and its one alarm (ADR-0008):
   `src/organization/outbox.ts` queues messages to patients and sends them when due, and
   `src/organization/assistant.ts` runs the patient assistant's turn once a conversation's
-  wait is over (`turn-replies.ts` sends its reply, after the clinical check),
-  `src/organization/late-replies.ts` sends a person's reply written after the window closed
-  once the patient answers the reopen template (`personal-replies.ts` settles either kind of
-  person's reply), and the object's `alarm()` is set to the earliest due item. Payload
+  wait is over (`turn-replies.ts` sends its reply, after the clinical check), and the
+  object's `alarm()` is set to the earliest due item. Payload
   contents are never logged.
 - **A pure rule** (availability, formatting, state transitions): a module in `src/lib/`
   or beside its feature, tested without a database or React.

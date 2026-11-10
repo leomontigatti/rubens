@@ -1,6 +1,7 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
 import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
 
 import {
@@ -84,6 +85,28 @@ async function approveReopen() {
     }),
   );
   fakeMeta.requests = [];
+}
+
+/** Meta reports the reopen template moved to `status`. */
+function reopenStatus(status: "approved" | "paused") {
+  return world.organization.storeWhatsappEvents({
+    messages: [],
+    statuses: [],
+    templateStatuses: [{ metaId: "900000000000031", status, reason: null }],
+  });
+}
+
+function pauseReopen() {
+  return reopenStatus("paused");
+}
+
+function numberTurns(event: WhatsappNumberEvent) {
+  return world.organization.storeWhatsappEvents({
+    messages: [],
+    statuses: [],
+    templateStatuses: [],
+    numberEvents: [event],
+  });
 }
 
 /** The templates the object sent Meta, each with its parameters, in order. */
@@ -211,10 +234,9 @@ describe("a person's reply after the window closed", () => {
     expect(after.hold).toMatchObject({ mine: false, holder: "Rita Paz" });
   });
 
-  it("waits behind one reopen template however many replies are written, which go in order", async () => {
+  it("waits behind one reopen template however many replies are written before it goes, which go in order", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist, "Primera"));
-    await runDurableObjectAlarm(world.organization);
     expectOk(await replyAs(world.receptionist, "Segunda"));
     await runDurableObjectAlarm(world.organization);
 
@@ -272,6 +294,99 @@ describe("a person's reply after the window closed", () => {
     await writes("perdón, recién lo veo");
     await runDurableObjectAlarm(world.organization);
     expect(fakeMeta.textsSent()).toEqual([]);
+  });
+
+  it("gets a template of its own when written after the earlier one went, with its own chance", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist, "Primera"));
+    await runDurableObjectAlarm(world.organization);
+    vi.setSystemTime(Date.now() + 6 * day);
+    expectOk(await replyAs(world.receptionist, "Segunda"));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(templatesSent()).toHaveLength(2);
+    vi.setSystemTime(Date.now() + 2 * day);
+    await runDurableObjectAlarm(world.organization);
+    expect((await read()).lateReplies.map((one) => one.state)).toEqual(["notDelivered", "waiting"]);
+  });
+
+  it("is not delivered when the number stopped reaching its patient, whose words it carries", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    // Martina's messages now go to a guardian on another number.
+    const added = expectOk(
+      await world.organization.addGuardian(adminCaller, {
+        patientId,
+        name: "Laura Gómez",
+        relationship: "Madre",
+        phone: "+5491155559999",
+      }),
+    );
+    expectOk(
+      await world.organization.setMessageContact(adminCaller, {
+        patientId,
+        guardianId: added.guardian.id,
+      }),
+    );
+    fakeMeta.requests = [];
+
+    await writes("¿quién habla?");
+    await runDurableObjectAlarm(world.organization);
+
+    expect(fakeMeta.textsSent()).toEqual([]);
+    expect(await notificationsOf(world.receptionist)).toEqual([
+      expect.objectContaining({ kind: "replyNotDelivered" }),
+    ]);
+  });
+
+  it("is refused while the reopen template has no approved version, holding nothing", async () => {
+    await handedOffThenClosed();
+    await pauseReopen();
+
+    expect(await replyAs(world.receptionist)).toEqual({ ok: false, reason: "noReopenTemplate" });
+    expect((await read()).lateReplies).toEqual([]);
+  });
+
+  it("is not delivered when its template cannot go for the template's whole chance, which is then dropped", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await pauseReopen();
+    vi.setSystemTime(Date.now() + 7 * day);
+    await runDurableObjectAlarm(world.organization);
+
+    expect(await notificationsOf(world.receptionist)).toEqual([
+      expect.objectContaining({ kind: "replyNotDelivered" }),
+    ]);
+    // Approved again, it has nothing left to reopen for.
+    await reopenStatus("approved");
+    await runDurableObjectAlarm(world.organization);
+    expect(templatesSent()).toEqual([]);
+  });
+
+  it("closes only the handoffs opened before it was written", async () => {
+    await handedOffThenClosed();
+    // Juan keeps clinical records, so his reply may answer a clinical handoff.
+    expectOk(await world.organization.takeOverConversation(world.juan.caller, { conversationId }));
+    expectOk(await replyAs(world.juan.caller));
+    await runDurableObjectAlarm(world.organization);
+    vi.setSystemTime(Date.now() + day);
+    await runDurableObjectAlarm(world.organization);
+    await numberTurns({ kind: "restricted", until: null });
+    // The patient answers while Meta holds the number, with something new and clinical.
+    await writes("y además me duele la muela");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { clinical: true, emergency: false });
+      return "";
+    });
+    await afterTheWait(world.organization);
+    expect(await openHandoffs()).toHaveLength(2);
+
+    await numberTurns({ kind: "unrestricted" });
+    await runDurableObjectAlarm(world.organization);
+
+    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Juan Gómez*\n${reply}` }]);
+    expect(await openHandoffs()).toEqual([expect.objectContaining({ reason: "clinical" })]);
   });
 
   it("is refused when no patient the number reaches accepts WhatsApp, holding nothing", async () => {

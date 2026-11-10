@@ -258,6 +258,8 @@ export const lateReply = sqliteTable(
     readsClinical: flag("reads_clinical").notNull(),
     /** Whether it answers a clinical handoff, so its words are withheld like clinical ones. */
     clinical: flag("clinical").notNull(),
+    /** The patients the number reached when it was written: it goes only while it still reaches each. */
+    patientIds: text("patient_ids", { mode: "json" }).$type<string[]>().notNull(),
     state: text("state", { enum: lateReplyStates }).notNull().default("waiting"),
     /** The reopen template it waits behind, which later replies before the patient answers share. */
     reopenId: text("reopen_id")

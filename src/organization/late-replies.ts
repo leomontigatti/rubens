@@ -1,8 +1,9 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { lateReplyChanceMs } from "#/lib/conversation-holds.ts";
 import type { LateReplyState } from "#/lib/conversation-holds.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
+import { outboxTemplates } from "#/lib/outbox.ts";
 import type { OutboxDropReason } from "#/lib/outbox.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
@@ -17,6 +18,7 @@ import {
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
+import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 import {
   lastIncomingAt,
   patientsReachedAt,
@@ -67,9 +69,13 @@ export function queueLateReply(
 ) {
   const { conversationId } = reply;
   return database.transaction((tx) => {
-    if (!greetedAt(tx, reply.phone)) {
-      return false;
+    if (!approvedVersion(database, outboxTemplates.reopenConversation)) {
+      return { ok: false as const, reason: "noReopenTemplate" as const };
     }
+    if (!greetedAt(tx, reply.phone)) {
+      return { ok: false as const, reason: "cannotReopen" as const };
+    }
+    // Only one not sent yet: a reply joining a sent one would get what is left of its chance.
     const waiting = tx
       .select({ reopenId: lateReply.reopenId })
       .from(lateReply)
@@ -78,7 +84,7 @@ export function queueLateReply(
         and(
           eq(lateReply.conversationId, conversationId),
           eq(lateReply.state, "waiting"),
-          inArray(outboxMessage.state, ["queued", "sent"]),
+          eq(outboxMessage.state, "queued"),
         ),
       )
       .get();
@@ -96,11 +102,17 @@ export function queueLateReply(
         text: reply.text,
         readsClinical: writer.readsClinical,
         clinical: writer.readsClinical && clinicalHandoffOpenSince(tx, conversationId, Date.now()),
+        patientIds: reachedIds(tx, reply.phone),
         reopenId,
       })
       .run();
-    return true;
+    return { ok: true as const };
   });
+}
+
+/** The patients `phone` reaches now, by id. */
+function reachedIds(tx: Writer, phone: string) {
+  return patientsReachedAt(tx, phone).map((one) => one.id);
 }
 
 /**
@@ -139,9 +151,11 @@ function waitingReplies(database: Database) {
       writtenBy: lateReply.writtenBy,
       text: lateReply.text,
       readsClinical: lateReply.readsClinical,
+      patientIds: lateReply.patientIds,
       createdAt: lateReply.createdAt,
       reopenId: lateReply.reopenId,
       reopenState: outboxMessage.state,
+      reopenQueuedAt: outboxMessage.createdAt,
       reopenSentAt: whatsappMessage.sentAt,
     })
     .from(lateReply)
@@ -155,12 +169,16 @@ function waitingReplies(database: Database) {
 
 type Waiting = ReturnType<typeof waitingReplies>[number];
 
-/** When `waiting` stops waiting for the patient without an answer: at once when its template cannot go; `null` while it is queued. */
+/**
+ * When `waiting` stops waiting for the patient without an answer: its
+ * template's chance after it went, or after it was queued while it cannot go
+ * (Meta paused it, or the number is held); at once when it was dropped or failed.
+ */
 function chanceEndsAt(waiting: Waiting) {
   if (waiting.reopenState === "dropped" || waiting.reopenState === "failed") {
     return Date.now();
   }
-  return waiting.reopenSentAt === null ? null : waiting.reopenSentAt + lateReplyChanceMs;
+  return (waiting.reopenSentAt ?? waiting.reopenQueuedAt) + lateReplyChanceMs;
 }
 
 /**
@@ -184,9 +202,10 @@ export function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): nu
   return times.length > 0 ? Math.min(...times) : null;
 }
 
-/** Marks `waiting` not delivered and tells its writer, once. */
+/** Marks `waiting` not delivered and tells its writer, once; a template it alone waited behind is dropped. */
 function notDelivered(database: Database, waiting: Waiting) {
   database.transaction((tx) => {
+    dropUnneededReopen(tx, waiting.reopenId, waiting.id);
     const marked = tx
       .update(lateReply)
       .set({ state: "notDelivered" })
@@ -202,12 +221,18 @@ function notDelivered(database: Database, waiting: Waiting) {
   });
 }
 
-/** Drops the reopen template `reopenId` while it is queued and no reply waits behind it any more. */
-function dropUnneededReopen(tx: Writer, reopenId: string) {
+/** Drops the reopen template `reopenId` while it is queued and no reply but `leaving` waits behind it any more. */
+function dropUnneededReopen(tx: Writer, reopenId: string, leaving: string) {
   const stillWaiting = tx
     .select({ id: lateReply.id })
     .from(lateReply)
-    .where(and(eq(lateReply.reopenId, reopenId), eq(lateReply.state, "waiting")))
+    .where(
+      and(
+        eq(lateReply.reopenId, reopenId),
+        eq(lateReply.state, "waiting"),
+        ne(lateReply.id, leaving),
+      ),
+    )
     .get();
   if (!stillWaiting) {
     tx.update(outboxMessage)
@@ -223,6 +248,12 @@ function dropUnneededReopen(tx: Writer, reopenId: string) {
  * its writer to try again.
  */
 async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waiting) {
+  // A contact changed since it was written: the number may no longer hear about each patient.
+  const reachedNow = new Set(reachedIds(database, waiting.phone));
+  if (!waiting.patientIds.every((id) => reachedNow.has(id))) {
+    notDelivered(database, waiting);
+    return;
+  }
   const sent = await whileSending(database, () =>
     cloud.sendText({ to: waiting.phone, text: waiting.text }),
   ).catch((error: unknown) => {
@@ -244,13 +275,13 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
       ...waiting,
       since: waiting.createdAt,
       whatsappId: sent.messageId,
-      retake: true,
+      writtenAt: waiting.createdAt,
     });
     tx.update(lateReply)
       .set({ state: "delivered", whatsappMessageId: stored.id })
       .where(eq(lateReply.id, waiting.id))
       .run();
-    dropUnneededReopen(tx, waiting.reopenId);
+    dropUnneededReopen(tx, waiting.reopenId, waiting.id);
   });
 }
 

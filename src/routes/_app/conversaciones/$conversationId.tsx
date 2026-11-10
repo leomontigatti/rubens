@@ -112,7 +112,7 @@ const lateReplyLabels = {
   },
   notDelivered: {
     badge: "No entregada",
-    hint: "El paciente no respondió la plantilla para reabrir la conversación, así que no le llegó.",
+    hint: "No le llegó: el paciente no respondió a tiempo la plantilla para reabrir la conversación, o no se le pudo enviar.",
   },
 } as const;
 

@@ -308,19 +308,6 @@ describe("a person's reply", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
-  it("is held outside the window, sending no text and leaving the handoff open (late-replies.workers.test.ts)", async () => {
-    await handedOff(false);
-    expectOk(await takeOver(world.receptionist));
-    vi.setSystemTime(Date.now() + 25 * hour);
-    // The hold outlives the window only if the return time is long, so take it again now.
-    expectOk(await takeOver(world.receptionist));
-
-    expect((await read()).window.open).toBe(false);
-    expect(await reply(world.receptionist, "Hola")).toEqual({ ok: true, held: true });
-    expect(fakeMeta.textsSent()).toEqual([]);
-    expect(await openHandoffs()).toHaveLength(1);
-  });
-
   it("is refused when Meta refuses it, leaving the handoff open", async () => {
     await handedOff(false);
     expectOk(await takeOver(world.receptionist));

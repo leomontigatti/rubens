@@ -37,6 +37,7 @@ CREATE TABLE `late_reply` (
 	`text` text NOT NULL,
 	`reads_clinical` integer NOT NULL,
 	`clinical` integer NOT NULL,
+	`patient_ids` text NOT NULL,
 	`state` text DEFAULT 'waiting' NOT NULL,
 	`reopen_id` text NOT NULL,
 	`whatsapp_message_id` text,
