@@ -31,8 +31,8 @@ import {
 // as its writer wrote it once the patient writes again, whether or not the
 // template went first. The replies written before the patient answers wait
 // behind the same template. If the patient has not answered within
-// `lateReplyChanceMs` of it, or it could not go, the writer is told the reply
-// was not delivered. The reply itself never goes into the template.
+// `lateReplyChanceMs` of the reply, or of the template when it went later, or
+// the template could not go, the writer is told the reply was not delivered. The reply itself never goes into the template.
 
 /**
  * The first names of the patients `phone` reaches who accept WhatsApp, as the
