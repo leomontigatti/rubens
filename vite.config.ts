@@ -191,6 +191,7 @@ export default defineConfig({
         test: {
           name: "workers",
           include: ["src/**/*.workers.test.ts"],
+          setupFiles: ["./src/organization/typing-pause.test-support.ts"],
         },
       },
     ],

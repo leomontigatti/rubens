@@ -256,7 +256,12 @@ async function sayReturned(database: Database, cloud: WhatsappCloud, conversatio
     .from(conversation)
     .where(eq(conversation.id, conversationId))
     .get()!;
-  await sendReply(database, cloud, { phone, text: checked.text, rulesVersion: rules.version });
+  await sendReply(database, cloud, {
+    conversationId,
+    phone,
+    text: checked.text,
+    rulesVersion: rules.version,
+  });
 }
 
 /** When the next hold ends, or `null` when nobody holds a conversation. */

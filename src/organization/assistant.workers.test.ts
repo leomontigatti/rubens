@@ -204,6 +204,140 @@ describe("the assistant's pace", () => {
     ]);
   });
 
+  it("marks the patient's message read and types before each message of a four-paragraph reply, sent as three", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    const lastId = await patientWrites("cuándo es mi turno y dónde?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Hola Martina.\n\nTu turno es el lunes 5 de enero a las 09:00.\n\nEs con Juan Gómez.\n\nEn Sede Centro.";
+    });
+
+    await afterTheWait();
+
+    const to = "5491155550000";
+    expect(fakeMeta.sendsInOrder()).toEqual([
+      { typingAfter: lastId },
+      { to, type: "text", text: "Hola Martina." },
+      { typingAfter: lastId },
+      { to, type: "text", text: "Tu turno es el lunes 5 de enero a las 09:00." },
+      { typingAfter: lastId },
+      { to, type: "text", text: "Es con Juan Gómez.\n\nEn Sede Centro." },
+    ]);
+    expect(fakeMeta.typingPauses).toEqual([1_825, 2_600, 2_375]);
+    expect((await storedFlags()).filter((one) => one.direction === "outgoing")).toHaveLength(3);
+  });
+
+  it("signs the last message of a split reply only", async () => {
+    expectOk(
+      await world.organization.saveCommunicationRules(adminCaller, {
+        formOfAddress: "vos",
+        signOff: "Consultorio Sur",
+        tone: "",
+        phone: "",
+      }),
+    );
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("cuándo es mi turno?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Hola Martina.\n\nEl lunes a las 09:00.";
+    });
+
+    await afterTheWait();
+
+    expect(textsToMeta().map((one) => one.text)).toEqual([
+      "Hola Martina.",
+      "El lunes a las 09:00.\nConsultorio Sur",
+    ]);
+  });
+
+  it("sends a reply holding a proposal whole, in one message", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("quiero confirmar");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.\n\nMe decís que sí?";
+    });
+
+    await afterTheWait();
+
+    expect(textsToMeta()).toEqual([
+      {
+        to: "5491155550000",
+        text: "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.\n\nMe decís que sí?",
+      },
+    ]);
+  });
+
+  it("sends none of the rest of a split reply once a member takes the conversation over", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("cuándo es mi turno?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Hola Martina.\n\nEl lunes a las 09:00.";
+    });
+    const release = fakeMeta.holdTypingPause(1);
+    wait(8_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.typingPaused(2);
+    const listed = expectOk(await world.organization.listConversations(adminCaller, {}));
+    expectOk(
+      await world.organization.takeOverConversation(world.juan.caller, {
+        conversationId: listed.conversations[0]!.id,
+      }),
+    );
+    release();
+    await alarm;
+
+    expect(textsToMeta().map((one) => one.text)).toEqual(["Hola Martina."]);
+  });
+
+  it("sends none of the reply once the patient writes again while it types", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("cuándo es mi turno?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "El lunes a las 09:00.";
+    });
+    const release = fakeMeta.holdTypingPause(0);
+    wait(8_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.typingPaused(1);
+    await patientWrites("y dónde?");
+    release();
+    await alarm;
+
+    expect(textsToMeta()).toEqual([]);
+  });
+
+  it("hands the conversation off when its window closes while the reply types", async () => {
+    await bookPatient("Martina", martinaPhone);
+    // The patient wrote a day ago less a minute: the window closes during the turn.
+    await patientWrites(
+      "cuándo es mi turno?",
+      martinaPhone,
+      Date.now() - 24 * 60 * 60_000 + 60_000,
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "El lunes a las 09:00.";
+    });
+    const release = fakeMeta.holdTypingPause(0);
+    wait(8_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.typingPaused(1);
+    wait(60_000);
+    release();
+    await alarm;
+
+    expect(textsToMeta()).toEqual([]);
+    expect(expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs).toEqual([
+      expect.objectContaining({ reason: "windowClosed", clinical: false }),
+    ]);
+  });
+
   it("sets no alarm for a turn while the Worker has no model API key", async () => {
     scriptedModel.hasApiKey = false;
     await bookPatient("Martina", martinaPhone);
