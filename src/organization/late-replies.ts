@@ -75,7 +75,7 @@ export function queueLateReply(
     if (!greetedAt(tx, reply.phone)) {
       return { ok: false as const, reason: "cannotReopen" as const };
     }
-    // One template per patient's silence: each reply still gets its own chance (`chanceEndsAt`).
+    // A reply joins the template an earlier reply still waits behind, keeping its own chance (`chanceEndsAt`).
     const waiting = tx
       .select({ reopenId: lateReply.reopenId })
       .from(lateReply)

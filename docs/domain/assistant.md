@@ -211,8 +211,9 @@ the reopen template (`Tenemos una respuesta para vos, respondé este mensaje par
 verla`). The reply goes out when the patient answers, or writes again before the
 template went; the replies written meanwhile wait behind the same template and go
 in order, and the person is the conversation's holder again, since the patient
-answered them. If the patient has not answered about 7 days after the template,
-or it could not go, the person is told it was not delivered. The reply itself
+answered them. If the patient has not answered about 7 days after the reply, or
+after the template when it went later, or the template could not go, the person
+is told it was not delivered. The reply itself
 never goes into a template, and it needs a patient of the number who accepts
 WhatsApp, whom the template greets.
 
