@@ -296,7 +296,7 @@ describe("a person's reply after the window closed", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
-  it("gets a template of its own when written after the earlier one went, with its own chance", async () => {
+  it("joins the template that already went, sending no second one, with a whole chance of its own", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist, "Primera"));
     await runDurableObjectAlarm(world.organization);
@@ -304,7 +304,7 @@ describe("a person's reply after the window closed", () => {
     expectOk(await replyAs(world.receptionist, "Segunda"));
     await runDurableObjectAlarm(world.organization);
 
-    expect(templatesSent()).toHaveLength(2);
+    expect(templatesSent()).toHaveLength(1);
     vi.setSystemTime(Date.now() + 2 * day);
     await runDurableObjectAlarm(world.organization);
     expect((await read()).lateReplies.map((one) => one.state)).toEqual(["notDelivered", "waiting"]);

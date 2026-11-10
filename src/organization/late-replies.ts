@@ -75,7 +75,7 @@ export function queueLateReply(
     if (!greetedAt(tx, reply.phone)) {
       return { ok: false as const, reason: "cannotReopen" as const };
     }
-    // Only one not sent yet: a reply joining a sent one would get what is left of its chance.
+    // One template per patient's silence: each reply still gets its own chance (`chanceEndsAt`).
     const waiting = tx
       .select({ reopenId: lateReply.reopenId })
       .from(lateReply)
@@ -84,7 +84,7 @@ export function queueLateReply(
         and(
           eq(lateReply.conversationId, conversationId),
           eq(lateReply.state, "waiting"),
-          eq(outboxMessage.state, "queued"),
+          inArray(outboxMessage.state, ["queued", "sent"]),
         ),
       )
       .get();
@@ -155,7 +155,6 @@ function waitingReplies(database: Database) {
       createdAt: lateReply.createdAt,
       reopenId: lateReply.reopenId,
       reopenState: outboxMessage.state,
-      reopenQueuedAt: outboxMessage.createdAt,
       reopenSentAt: whatsappMessage.sentAt,
     })
     .from(lateReply)
@@ -171,14 +170,16 @@ type Waiting = ReturnType<typeof waitingReplies>[number];
 
 /**
  * When `waiting` stops waiting for the patient without an answer: its
- * template's chance after it went, or after it was queued while it cannot go
- * (Meta paused it, or the number is held); at once when it was dropped or failed.
+ * chance after it was written, or after its template went if that was later,
+ * so a reply joining an older template still gets the whole of it; a
+ * template that cannot go (Meta paused it, or the number is held) waits out
+ * the same chance. At once when the template was dropped or failed.
  */
 function chanceEndsAt(waiting: Waiting) {
   if (waiting.reopenState === "dropped" || waiting.reopenState === "failed") {
     return Date.now();
   }
-  return (waiting.reopenSentAt ?? waiting.reopenQueuedAt) + lateReplyChanceMs;
+  return Math.max(waiting.reopenSentAt ?? 0, waiting.createdAt) + lateReplyChanceMs;
 }
 
 /**
@@ -205,7 +206,7 @@ export function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): nu
 /** Marks `waiting` not delivered and tells its writer, once; a template it alone waited behind is dropped. */
 function notDelivered(database: Database, waiting: Waiting) {
   database.transaction((tx) => {
-    dropUnneededReopen(tx, waiting.reopenId, waiting.id);
+    dropUnneededReopen(tx, waiting, "replyNotDelivered");
     const marked = tx
       .update(lateReply)
       .set({ state: "notDelivered" })
@@ -221,8 +222,13 @@ function notDelivered(database: Database, waiting: Waiting) {
   });
 }
 
-/** Drops the reopen template `reopenId` while it is queued and no reply but `leaving` waits behind it any more. */
-function dropUnneededReopen(tx: Writer, reopenId: string, leaving: string) {
+/** Drops the reopen template of `leaving` while it is queued and no other reply waits behind it. */
+function dropUnneededReopen(
+  tx: Writer,
+  leaving: { id: string; reopenId: string },
+  reason: "answered" | "replyNotDelivered",
+) {
+  const { reopenId } = leaving;
   const stillWaiting = tx
     .select({ id: lateReply.id })
     .from(lateReply)
@@ -230,13 +236,13 @@ function dropUnneededReopen(tx: Writer, reopenId: string, leaving: string) {
       and(
         eq(lateReply.reopenId, reopenId),
         eq(lateReply.state, "waiting"),
-        ne(lateReply.id, leaving),
+        ne(lateReply.id, leaving.id),
       ),
     )
     .get();
   if (!stillWaiting) {
     tx.update(outboxMessage)
-      .set({ state: "dropped", dropReason: "answered" })
+      .set({ state: "dropped", dropReason: reason })
       .where(and(eq(outboxMessage.id, reopenId), eq(outboxMessage.state, "queued")))
       .run();
   }
@@ -281,7 +287,7 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
       .set({ state: "delivered", whatsappMessageId: stored.id })
       .where(eq(lateReply.id, waiting.id))
       .run();
-    dropUnneededReopen(tx, waiting.reopenId, waiting.id);
+    dropUnneededReopen(tx, waiting, "answered");
   });
 }
 
