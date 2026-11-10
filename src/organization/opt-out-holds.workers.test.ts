@@ -299,6 +299,7 @@ describe("reception keeping a patient of a held number", () => {
     const entries = await auditEntriesFor(world.organization, martina.id);
     expect(entries.at(-1)).toMatchObject({
       action: "update",
+      userId: world.receptionist.userId,
       before: { optOutPending: true },
       after: { optOutPending: false },
     });
