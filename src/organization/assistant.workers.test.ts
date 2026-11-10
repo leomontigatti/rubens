@@ -621,6 +621,23 @@ describe("judging every patient message", () => {
     ]);
   });
 
+  it("answers an emergency with typing but no pause, at once", async () => {
+    await bookPatient("Martina", martinaPhone);
+    const messageId = await patientWrites("no puedo respirar");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { clinical: true, emergency: true });
+      return "Llamá al 107.";
+    });
+
+    await afterTheWait();
+
+    expect(fakeMeta.sendsInOrder()).toEqual([
+      { typingAfter: messageId },
+      expect.objectContaining({ type: "text" }),
+    ]);
+    expect(fakeMeta.typingPauses).toEqual([]);
+  });
+
   it("judges an earlier message only once", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");

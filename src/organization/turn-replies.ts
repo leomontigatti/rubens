@@ -107,7 +107,8 @@ async function showTyping(database: Database, cloud: WhatsappCloud, conversation
 /**
  * Sends the assistant's `text` to the conversation's number at a person's
  * pace (docs/domain/assistant.md § Pace): as up to three messages, or whole
- * when it holds a proposal, each after its typing. `mayGo` is read again
+ * when it holds a proposal, each after its typing, with no pause for an
+ * emergency. `mayGo` is read again
  * after each pause, `maySend` unless the caller checks more: once it fails,
  * the rest does not go. Says whether every message went.
  */
@@ -121,12 +122,16 @@ export async function sendReply(
     rulesVersion: number;
     /** The reply holds a proposal, which stays whole in one message. */
     whole?: boolean;
+    /** An emergency's reply, which goes without the typing pause. */
+    urgent?: boolean;
   },
   mayGo = () => maySend(database, cloud, reply.conversationId),
 ) {
   for (const text of splitReply(reply.text, { whole: reply.whole ?? false })) {
     await showTyping(database, cloud, reply.conversationId);
-    await typingPause(typingPauseOf(text));
+    if (!reply.urgent) {
+      await typingPause(typingPauseOf(text));
+    }
     if (!mayGo() || !(await sendMessage(database, cloud, { ...reply, text }))) {
       return false;
     }
@@ -269,6 +274,7 @@ export async function deliverReply(
     text: checked.text,
     rulesVersion: rules.version,
     whole: turn.proposed,
+    urgent: turn.settled === "emergency",
   };
   if (fixed) {
     // The fixed replies say nothing the turn read, so a newer message or a
