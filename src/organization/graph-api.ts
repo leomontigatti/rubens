@@ -104,6 +104,11 @@ export interface WhatsappCloud {
    * window (`src/lib/conversation-window.ts`); requires every setting.
    */
   sendText(message: { to: string; text: string }): Promise<SendResult>;
+  /**
+   * Marks the patient's message `messageId`, and every earlier one, read, and
+   * shows them typing until the next message or 25 seconds; requires every setting.
+   */
+  showTyping(messageId: string): Promise<{ ok: true } | MetaRefusal>;
   /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
   missingTemplateSetting(): MissingTemplateSetting | null;
   /** Submits a utility template, with named variables and no buttons, for Meta's review. */
@@ -189,8 +194,8 @@ export function whatsappCloudFor(
     return { token, accountId };
   }
 
-  /** Sends `content` (a message's type and its body) to `to`; requires every setting. */
-  async function sendMessage(to: string, content: Record<string, unknown>): Promise<SendResult> {
+  /** Posts `body` to the number's `/messages`, Meta's answer to it; requires every setting. */
+  async function postToMessages(body: Record<string, unknown>) {
     const settings = connection.settings();
     const token = settings.WHATSAPP_ACCESS_TOKEN;
     const phoneNumberId = settings.WHATSAPP_PHONE_NUMBER_ID;
@@ -202,15 +207,19 @@ export function whatsappCloudFor(
       {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: to.replace(/^\+/, ""),
-          ...content,
-        }),
+        body: JSON.stringify({ messaging_product: "whatsapp", ...body }),
       },
     );
-    const answer = await answerOf(response, token);
+    return answerOf(response, token);
+  }
+
+  /** Sends `content` (a message's type and its body) to `to`; requires every setting. */
+  async function sendMessage(to: string, content: Record<string, unknown>): Promise<SendResult> {
+    const answer = await postToMessages({
+      recipient_type: "individual",
+      to: to.replace(/^\+/, ""),
+      ...content,
+    });
     if (!answer.ok) {
       return answer;
     }
@@ -248,6 +257,14 @@ export function whatsappCloudFor(
     },
     sendText({ to, text }) {
       return sendMessage(to, { type: "text", text: { body: text, preview_url: false } });
+    },
+    async showTyping(messageId) {
+      const answer = await postToMessages({
+        status: "read",
+        message_id: messageId,
+        typing_indicator: { type: "text" },
+      });
+      return answer.ok ? { ok: true } : answer;
     },
     missingTemplateSetting,
     async createTemplate({ name, languageCode, body, examples }) {

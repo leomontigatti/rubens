@@ -1,7 +1,10 @@
+import { and, desc, eq } from "drizzle-orm";
+
 import { emergencyReply, handoffReply, optOutReply, withSignOff } from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
+import { splitReply, typingPauseOf } from "#/lib/reply-pacing.ts";
 
 import type { AssistantModel, ReplyToCheck } from "#/organization/assistant-model.ts";
 import type { CommunicationRules } from "#/organization/communication-rules.ts";
@@ -9,6 +12,7 @@ import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { TurnToSort } from "#/organization/turn-handoffs.ts";
+import { typingPause } from "#/organization/typing-pause.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import {
   isHeld,
@@ -16,6 +20,7 @@ import {
   storeOutgoing,
   whileSending,
 } from "#/organization/whatsapp-messages.ts";
+import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // How a settled turn of the patient assistant (`assistant.ts`) answers the
 // patient (docs/domain/assistant.md § Rules it always keeps): a fixed reply
@@ -46,35 +51,92 @@ export function maySend(database: Database, cloud: WhatsappCloud, conversationId
   );
 }
 
-/** Sends `text` to the conversation's number, and stores it with the rules' version it was written under. */
-export async function sendReply(
+/**
+ * Sends one message of a reply, and stores it with the rules' version it was
+ * written under; says whether it went.
+ */
+async function sendMessage(
   database: Database,
   cloud: WhatsappCloud,
-  reply: { phone: string; text: string; rulesVersion: number },
+  message: { phone: string; text: string; rulesVersion: number },
 ) {
   // A send that did not reach Meta drops the reply, as a refusal does: the
   // patient's messages stay judged, and their next one gets a turn of its own.
   const sent = await whileSending(database, () =>
-    cloud.sendText({ to: reply.phone, text: reply.text }),
+    cloud.sendText({ to: message.phone, text: message.text }),
   ).catch(() => null);
   if (!sent) {
-    return;
+    return false;
   }
   if (!sent.ok) {
     // A limit on the number holds the outbox too.
     holdOnRefusal(database, sent.metaError);
-    return;
+    return false;
   }
   database.transaction((tx) =>
     storeOutgoing(database, tx, {
-      phone: reply.phone,
+      phone: message.phone,
       whatsappId: sent.messageId,
       type: "text",
-      text: reply.text,
-      payload: JSON.stringify({ text: reply.text }),
-      rulesVersion: reply.rulesVersion,
+      text: message.text,
+      payload: JSON.stringify({ text: message.text }),
+      rulesVersion: message.rulesVersion,
     }),
   );
+  return true;
+}
+
+/** Marks the patient's latest message read and shows them typing; a failure only skips it. */
+async function showTyping(database: Database, cloud: WhatsappCloud, conversationId: string) {
+  const latest = database
+    .select({ whatsappId: whatsappMessage.whatsappId })
+    .from(whatsappMessage)
+    .where(
+      and(
+        eq(whatsappMessage.conversationId, conversationId),
+        eq(whatsappMessage.direction, "incoming"),
+      ),
+    )
+    .orderBy(desc(whatsappMessage.sentAt))
+    .get();
+  if (latest) {
+    await cloud.showTyping(latest.whatsappId).catch(() => null);
+  }
+}
+
+/**
+ * Sends the assistant's `text` to the conversation's number at a person's
+ * pace (docs/domain/assistant.md § Pace): as up to three messages, or whole
+ * when it holds a proposal, each after its typing, with no pause for an
+ * emergency. `mayGo` is read again
+ * after each pause, `maySend` unless the caller checks more: once it fails,
+ * the rest does not go. Says whether every message went.
+ */
+export async function sendReply(
+  database: Database,
+  cloud: WhatsappCloud,
+  reply: {
+    conversationId: string;
+    phone: string;
+    text: string;
+    rulesVersion: number;
+    /** The reply holds a proposal, which stays whole in one message. */
+    whole?: boolean;
+    /** An emergency's reply, which goes without the typing pause. */
+    urgent?: boolean;
+  },
+  mayGo = () => maySend(database, cloud, reply.conversationId),
+) {
+  for (const text of splitReply(reply.text, { whole: reply.whole ?? false })) {
+    await showTyping(database, cloud, reply.conversationId);
+    if (!reply.urgent) {
+      await typingPause(typingPauseOf(text));
+    }
+    if (!mayGo() || !(await sendMessage(database, cloud, { ...reply, text }))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -166,6 +228,7 @@ async function holdReply(
   const checked = checkReply(withSignOff(handoffReply(rules.formOfAddress), rules.signOff));
   if (opened && checked.ok && maySend(database, cloud, conversationId)) {
     await sendReply(database, cloud, {
+      conversationId,
       phone: held.phone,
       text: checked.text,
       rulesVersion: rules.version,
@@ -191,6 +254,8 @@ export async function deliverReply(
     settled: Exclude<Settled, "silent">;
     reply: string;
     rules: CommunicationRules;
+    /** The turn proposed a change, which its reply states: it goes out whole. */
+    proposed: boolean;
     /** Whether the model's reply may go now (`assistant.ts`). */
     mayReply: () => boolean;
   },
@@ -203,13 +268,18 @@ export async function deliverReply(
   if (!words.ok || !checked.ok) {
     return;
   }
-  const reply = { phone: turn.phone, text: checked.text, rulesVersion: rules.version };
+  const reply = {
+    conversationId,
+    phone: turn.phone,
+    text: checked.text,
+    rulesVersion: rules.version,
+    whole: turn.proposed,
+    urgent: turn.settled === "emergency",
+  };
   if (fixed) {
     // The fixed replies say nothing the turn read, so a newer message or a
     // changed appointment does not hold them: the next turn is silent after a handoff.
-    if (maySend(database, cloud, conversationId)) {
-      await sendReply(database, cloud, reply);
-    } else {
+    if (!maySend(database, cloud, conversationId) || !(await sendReply(database, cloud, reply))) {
       handOffClosed(database, turn);
     }
     return;
@@ -222,10 +292,9 @@ export async function deliverReply(
   const request = { conversationId, reply: checked.text, patients: turn.patients };
   if (await clinicalCheckHolds(model, request)) {
     await holdReply(database, cloud, { ...turn, words: words.text });
-  } else if (turn.mayReply()) {
-    // Read again: a message or a change may have come while the check ran.
-    await sendReply(database, cloud, reply);
-  } else {
+  } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
+    // Read again after each typing pause: a message or a change may have come
+    // while the check ran or the reply typed.
     handOffClosed(database, turn);
   }
 }

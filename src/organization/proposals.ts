@@ -91,7 +91,7 @@ interface ProposalTurn {
   /** The patient's messages the turn reads as new. */
   read: { unjudged: { id: string }[] };
   appointments: Upcoming[];
-  recorded: { ruleRefused: string | null };
+  recorded: { ruleRefused: string | null; proposed: boolean };
 }
 
 /** Returns a refusal, noting a move a rule refused for the turn's handoff. */
@@ -163,6 +163,7 @@ function proposeChange(database: Database, turn: ProposalTurn, args: unknown) {
       createdAt: now,
     })
     .run();
+  turn.recorded.proposed = true;
   return { ok: true, proposal: statement };
 }
 

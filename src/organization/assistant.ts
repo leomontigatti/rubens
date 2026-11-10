@@ -70,6 +70,8 @@ interface Recorded {
   handOff: HandOffCall | null;
   /** The appointment a rule kept the patient from moving, which underthing hands off. */
   ruleRefused: string | null;
+  /** The model stored a proposal, which its reply states. */
+  proposed: boolean;
 }
 
 /**
@@ -270,7 +272,12 @@ async function judgeTurn(
   turn: { conversationId: string; read: Read; appointments: Upcoming[] },
 ) {
   const rules = currentCommunicationRules(database);
-  const recorded: Recorded = { judgement: null, handOff: null, ruleRefused: null };
+  const recorded: Recorded = {
+    judgement: null,
+    handOff: null,
+    ruleRefused: null,
+    proposed: false,
+  };
   const system = assistantSystemPrompt({
     ...promptSetting(database),
     now: new Date(),
@@ -295,6 +302,7 @@ async function judgeTurn(
     judgement,
     handOff: recorded.handOff,
     ruleRefused: recorded.ruleRefused,
+    proposed: recorded.proposed,
     rules,
   };
 }
@@ -398,6 +406,7 @@ async function runTurn(
     settled,
     reply: turn.reply,
     rules: turn.rules,
+    proposed: turn.proposed,
     mayReply: () => mayReply(database, cloud, replying),
   });
 }
@@ -427,7 +436,7 @@ async function judgeWithoutMedia(
     // Only the media is judged now: the rest waits for the model.
     const judgement = { clinical: true, emergency: false, understood: true, optOut: false };
     const rules = currentCommunicationRules(database);
-    const nothingElse = { reply: "", handOff: null, ruleRefused: null, rules };
+    const nothingElse = { reply: "", handOff: null, ruleRefused: null, proposed: false, rules };
     return { turn: { ...nothingElse, judgement, read: { ...read, unjudged: media } }, unread };
   }
   return { turn: { ...judged, judgement: { ...judged.judgement, clinical: true }, read }, unread };

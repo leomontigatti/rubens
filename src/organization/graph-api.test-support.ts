@@ -37,6 +37,15 @@ function freshMetaId() {
   return String(crypto.getRandomValues(new Uint32Array(2)).join("")).slice(0, 15);
 }
 
+/** The body of a call to a number's `/messages`: a message, or a read receipt with typing. */
+interface MessageBody {
+  to?: string;
+  type?: string;
+  text?: { body: string };
+  status?: string;
+  message_id?: string;
+}
+
 /** A request the object made to Meta's Graph API, as the fake received it. */
 interface MetaRequest {
   method: string;
@@ -63,6 +72,9 @@ class FakeMeta {
   #heldStep: { step: SignupStep; until: Promise<void> } | null = null;
   /** The template names Meta already has on the account, which it lists page by page. */
   templatesAtMeta: string[] = [];
+  /** The typing pauses the assistant waited, in milliseconds, in order (`typing-pause.test-support.ts`). */
+  typingPauses: number[] = [];
+  #heldPause: { index: number; until: Promise<void> } | null = null;
   /** How many templates Meta lists per page. */
   templatesPerPage = 100;
   /** The Worker's Embedded Signup settings. */
@@ -81,6 +93,8 @@ class FakeMeta {
       WHATSAPP_BUSINESS_ACCOUNT_ID: metaBusinessAccountId,
     };
     this.requests = [];
+    this.typingPauses = [];
+    this.#heldPause = null;
     this.#nextAnswers = [];
     this.#hold = null;
     this.#heldStep = null;
@@ -145,6 +159,34 @@ class FakeMeta {
     return release;
   }
 
+  /**
+   * Makes the assistant's typing pause number `index` (from 0) last until the
+   * returned function is called: the patient watching it type.
+   */
+  holdTypingPause(index: number) {
+    let release!: () => void;
+    const until = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.#heldPause = { index, until };
+    return release;
+  }
+
+  /** The assistant's typing pause of `ms`, as the object's tests run it. */
+  async typingPause(ms: number) {
+    this.typingPauses.push(ms);
+    if (this.#heldPause?.index === this.typingPauses.length - 1) {
+      await this.#heldPause.until;
+    }
+  }
+
+  /** Resolves once the assistant has started `count` typing pauses. */
+  async typingPaused(count: number) {
+    while (this.typingPauses.length < count) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+  }
+
   /** Resolves once Meta has received `count` requests. */
   async received(count: number) {
     while (this.requests.length < count) {
@@ -161,6 +203,21 @@ class FakeMeta {
       .map((body) => ({ to: body.to, text: body.text?.body }));
   }
 
+  /**
+   * What the object sent the patients, in order: each text, and each typing
+   * indicator, which also marks read the patient's message it names.
+   */
+  sendsInOrder() {
+    return this.requests
+      .filter((request) => request.url.endsWith("/messages"))
+      .map((request) => request.body as MessageBody)
+      .map((body) =>
+        body.status === "read"
+          ? { typingAfter: body.message_id }
+          : { to: body.to, type: body.type, text: body.text?.body },
+      );
+  }
+
   /** Meta's answer to the next request only, before those `answerWith` set; queued in order. */
   answerNextWith(status: number, body: unknown) {
     this.#nextAnswers.push({ status, body });
@@ -168,11 +225,12 @@ class FakeMeta {
 
   readonly fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const request = new Request(input, init);
+    const body: unknown = request.method === "GET" ? null : await request.json();
     this.requests.push({
       method: request.method,
       url: request.url,
       authorization: request.headers.get("authorization"),
-      body: request.method === "GET" ? null : await request.json(),
+      body,
     });
     const held = this.#hold;
     this.#hold = null;
@@ -197,6 +255,10 @@ class FakeMeta {
       }
       url.searchParams.set("after", String(next));
       return Response.json({ data, paging: { cursors: { after: String(next) }, next: url.href } });
+    }
+    // A typing indicator always succeeds: the answers a test sets are for sends.
+    if ((body as MessageBody | null)?.status === "read") {
+      return Response.json({ success: true });
     }
     const answer = this.#nextAnswers.shift() ?? this.#answer;
     if (answer === this.#answer && this.#answersSends && request.url.endsWith("/messages")) {

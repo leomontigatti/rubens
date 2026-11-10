@@ -31,6 +31,10 @@ organization's data: the organization object's methods and the area modules in
   (`holdNext`) to run another call meanwhile, lists the account's templates from
   `templatesAtMeta`, sets the number signup connects (`signupNumber`) and a refusal at
   any of its steps (`signupRefusals`), and sets or unsets the WhatsApp settings per test.
+  `sendsInOrder` lists the texts and typing indicators sent, which always succeed. The
+  assistant's typing pause (`src/organization/typing-pause.ts`) is mocked for every test file
+  by the `workers` project's setup file: it returns at once, `typingPauses` lists the pauses,
+  and `holdTypingPause` keeps one going for a test to act meanwhile.
   The factory reads `fakeMeta` only inside the functions it returns: `vi.mock` is hoisted
   above the imports. The Worker's WhatsApp directory is real: `whatsappDirectory()`
   reads what an object wrote, and `freshWhatsappDirectory()` is one of a test's own.
