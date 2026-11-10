@@ -6,7 +6,8 @@ import { formatPhone } from "#/lib/phones.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
 import { splitReply, typingPauseOf } from "#/lib/reply-pacing.ts";
 
-import type { AssistantModel, ReplyToCheck } from "#/organization/assistant-model.ts";
+import type { AssistantModel, ModelUsage, ReplyToCheck } from "#/organization/assistant-model.ts";
+import { recordModelUsage } from "#/organization/assistant-usage.ts";
 import type { CommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
@@ -180,8 +181,14 @@ function fixedReply(rules: CommunicationRules, settled: Exclude<Settled, "silent
  * Whether the clinical check holds the reply: clinical, about a patient the
  * number may not hear about, or unchecked because the check failed.
  */
-async function clinicalCheckHolds(model: AssistantModel, request: ReplyToCheck) {
-  const found = await model.checkReply(request).catch((error: unknown) => {
+async function clinicalCheckHolds(
+  database: Database,
+  model: AssistantModel,
+  request: Omit<ReplyToCheck, "recordUsage">,
+) {
+  const recordUsage = (used: ModelUsage) =>
+    recordModelUsage(database, { ...used, purpose: "clinicalCheck", sandbox: false });
+  const found = await model.checkReply({ ...request, recordUsage }).catch((error: unknown) => {
     // Any failure leaves the reply unchecked, so it is held. The error's
     // message can carry the reply, so only its class is logged.
     console.error(
@@ -290,7 +297,7 @@ export async function deliverReply(
   }
   // The whole text that would go, sign-off included; the held reply is the model's words alone.
   const request = { conversationId, reply: checked.text, patients: turn.patients };
-  if (await clinicalCheckHolds(model, request)) {
+  if (await clinicalCheckHolds(database, model, request)) {
     await holdReply(database, cloud, { ...turn, words: words.text });
   } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
     // Read again after each typing pause: a message or a change may have come

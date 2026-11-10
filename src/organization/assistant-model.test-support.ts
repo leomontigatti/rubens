@@ -1,13 +1,14 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { vi } from "vite-plus/test";
 
-import { assistantWaitMs } from "#/lib/assistant.ts";
+import { assistantModelId, assistantWaitMs } from "#/lib/assistant.ts";
 import type { AssistantToolName } from "#/lib/assistant.ts";
 
 import type {
   AssistantModel,
   CheckedReply,
   ModelTurn,
+  ModelUsage,
   ReplyToCheck,
 } from "#/organization/assistant-model.ts";
 import type { Organization } from "#/organization/organization.ts";
@@ -17,9 +18,16 @@ import type { Organization } from "#/organization/organization.ts";
 // which calls the object's real tools through the same port the real model
 // uses. `organization.test-support.ts` re-exports it.
 
-/** A turn as a script sees it: the request, and a way to call one of its tools. */
+/** The tokens a scripted call to the model used. */
+type Tokens = Omit<ModelUsage, "model">;
+
+/**
+ * A turn as a script sees it: the request, a way to call one of its tools,
+ * and one to end a call to the model that used `tokens` of the real model.
+ */
 interface ScriptedTurn extends ModelTurn {
   call(name: AssistantToolName, args?: Record<string, unknown>): unknown;
+  uses(tokens: Tokens): void;
 }
 
 /** What the model does in one turn: calls tools, then returns its reply. */
@@ -51,6 +59,7 @@ class ScriptedModel implements AssistantModel {
   hasApiKey = true;
   #scripts: Script[] = [];
   #checkScripts: CheckScript[] = [];
+  #checkTokens: Tokens | null = null;
 
   reset() {
     this.turns = [];
@@ -59,6 +68,12 @@ class ScriptedModel implements AssistantModel {
     this.hasApiKey = true;
     this.#scripts = [];
     this.#checkScripts = [];
+    this.#checkTokens = null;
+  }
+
+  /** The tokens every clinical check reports from now on; none until a test says. */
+  checkUses(tokens: Tokens) {
+    this.#checkTokens = tokens;
   }
 
   /** What the clinical check finds in the next reply it is asked about; queued in order. */
@@ -68,6 +83,9 @@ class ScriptedModel implements AssistantModel {
 
   async checkReply(request: ReplyToCheck) {
     this.checks.push(request);
+    if (this.#checkTokens) {
+      request.recordUsage({ model: assistantModelId, ...this.#checkTokens });
+    }
     const found = this.#checkScripts.shift() ?? { clinical: false, otherPatient: false };
     if (found === "fails") {
       throw new Error("The scripted clinical check failed");
@@ -96,7 +114,8 @@ class ScriptedModel implements AssistantModel {
       this.calls.push({ name, args, result });
       return result;
     };
-    return { reply: await script({ ...turn, call }) };
+    const uses = (tokens: Tokens) => turn.recordUsage({ model: assistantModelId, ...tokens });
+    return { reply: await script({ ...turn, call, uses }) };
   }
 }
 
