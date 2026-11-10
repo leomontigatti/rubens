@@ -16,4 +16,5 @@ export const handoffReasonLabels: Record<HandoffReason, string> = {
   noUpcomingAppointment: "Sin turnos próximos",
   heldReply: "Respuesta retenida",
   windowClosed: "La ventana se cerró antes de la respuesta del asistente",
+  modelUnavailable: "El asistente no pudo leer el mensaje",
 };

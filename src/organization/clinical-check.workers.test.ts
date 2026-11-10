@@ -399,4 +399,16 @@ describe("a photo or a file from the patient", () => {
       { withheld: "clinical" },
     ]);
   });
+
+  it("is handed off while the text beside it, which the model could not read, gets no reply", async () => {
+    await writes("te mando el estudio");
+    await patientSends(world.organization, "document", martinaPhone);
+    scriptedModel.script(() => {
+      throw new Error("The model is overloaded");
+    });
+    await turn();
+
+    expect(fakeMeta.textsSent()).toEqual([]);
+    expect(await openHandoffs(world.juan.caller)).toMatchObject([{ clinical: true }]);
+  });
 });

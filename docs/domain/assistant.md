@@ -141,8 +141,11 @@ underthing can send only an approved template ([messages.md](./messages.md#to-pa
 
 When the model is unavailable, an incoming message is kept and retried while the
 window is open. If it still cannot be read, it is handed to a person well before
-the window closes, as a clinical handoff, since nobody knows yet what it says. No
-code reads it in the model's place.
+the window closes, as a clinical handoff, and kept as clinical from then on, since
+nobody knows yet what it says. A message a person answers first, by replying or
+by closing its handoff, is kept as clinical too, and no longer retried. No code
+reads it in the model's place, and nothing is sent to the patient while it is
+unread.
 
 ## Inbox
 
