@@ -29,14 +29,24 @@ const toReschedulePath = "/a-reprogramar";
 
 const notificationsPath = "/notificaciones";
 
+type Path = NonNullable<LinkProps["to"]>;
+
 interface NavLink {
   label: string;
-  to: NonNullable<LinkProps["to"]>;
+  to: Path;
   icon: LucideIcon;
   adminOnly?: boolean;
 }
 
-const groups: { label: string; items: NavLink[] }[] = [
+/** A link that only opens its entries, each a page of its own. */
+interface NavFolder {
+  label: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+  entries: { label: string; to: Path }[];
+}
+
+const groups: { label: string; items: (NavLink | NavFolder)[] }[] = [
   {
     label: "Día a día",
     items: [
@@ -63,7 +73,15 @@ const groups: { label: string; items: NavLink[] }[] = [
       { label: "Cierres", to: "/cierres", icon: CalendarXIcon },
       { label: "Obras sociales", to: "/obras-sociales", icon: ShieldIcon, adminOnly: true },
       { label: "Personal", to: "/personal", icon: UserCogIcon, adminOnly: true },
-      { label: "WhatsApp", to: "/whatsapp", icon: MessageCircleIcon, adminOnly: true },
+      {
+        label: "WhatsApp",
+        icon: MessageCircleIcon,
+        adminOnly: true,
+        entries: [
+          { label: "Configuración", to: "/whatsapp/configuracion" },
+          { label: "Plantillas", to: "/whatsapp/plantillas" },
+        ],
+      },
     ],
   },
 ];
@@ -74,7 +92,11 @@ export interface NavCounts {
   unreadNotifications: number;
 }
 
-function countOf(to: string, counts: NavCounts) {
+function countOf(item: NavLink | NavFolder, counts: NavCounts) {
+  if (!("to" in item)) {
+    return 0;
+  }
+  const { to } = item;
   if (to === toReschedulePath) {
     return counts.toReschedule ?? 0;
   }
@@ -88,12 +110,19 @@ export function navFor(roles: readonly Role[], counts: NavCounts) {
     label: group.label,
     items: group.items
       .filter((item) => isAdmin || !item.adminOnly)
-      .filter((item) => item.to !== toReschedulePath || counts.toReschedule !== null)
-      .map((item) => ({ ...item, count: countOf(item.to, counts) })),
+      .filter(
+        (item) => !("to" in item) || item.to !== toReschedulePath || counts.toReschedule !== null,
+      )
+      .map((item) => ({ ...item, count: countOf(item, counts) })),
   }));
 }
 
 /** Whether `pathname` is the link's page or one under it. */
 export function isCurrentPath(pathname: string, to: string) {
   return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+/** Whether `folder` stands open on `pathname`: the page is one of its entries, or under one. */
+export function isOpenOn(pathname: string, folder: Pick<NavFolder, "entries">) {
+  return folder.entries.some((entry) => isCurrentPath(pathname, entry.to));
 }

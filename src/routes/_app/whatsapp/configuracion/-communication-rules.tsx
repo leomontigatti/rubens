@@ -23,7 +23,11 @@ export function CommunicationRulesSection({ settings }: { settings: Settings }) 
     <RecordSection
       title="Reglas de comunicación"
       action={
-        <Button variant="outline" nativeButton={false} render={<Link to="/whatsapp/reglas" />}>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/whatsapp/configuracion/reglas" />}
+        >
           Editar
         </Button>
       }

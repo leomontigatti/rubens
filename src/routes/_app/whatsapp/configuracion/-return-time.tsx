@@ -22,7 +22,11 @@ export function ReturnTimeSection({ settings }: { settings: Settings }) {
     <RecordSection
       title="Devolución al asistente"
       action={
-        <Button variant="outline" nativeButton={false} render={<Link to="/whatsapp/devolucion" />}>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/whatsapp/configuracion/devolucion" />}
+        >
           Editar
         </Button>
       }

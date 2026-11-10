@@ -15,7 +15,10 @@ import type { ConnectionState, NumberHoldReason } from "#/lib/whatsapp.ts";
 import { connectWhatsapp, disconnectWhatsapp } from "#/server/whatsapp.functions.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
-import { loadFacebookSdk, runEmbeddedSignup } from "#/routes/_app/whatsapp/-embedded-signup.ts";
+import {
+  loadFacebookSdk,
+  runEmbeddedSignup,
+} from "#/routes/_app/whatsapp/configuracion/-embedded-signup.ts";
 
 // The organization's number in the WhatsApp settings: connected through Meta's
 // Embedded Signup, with its state and messaging limit, or the button to connect it.
@@ -41,7 +44,8 @@ const refusalMessages = {
   forbidden: "Solo un administrador puede usar la configuración de WhatsApp.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Meta no devolvió los datos del número. Probá de nuevo.",
-  signupNotConfigured: "Falta la configuración del registro de Meta en el servidor.",
+  // The setting the Worker misses is logged for whoever runs it (`src/organization/whatsapp.ts`).
+  signupNotConfigured: "Todavía no se puede conectar un número desde underthing.",
   numberNotInAccount: "El número no pertenece a la cuenta de WhatsApp Business elegida.",
   numberTaken: "Ese número ya está conectado a otra organización.",
   accountTaken: "Esa cuenta de WhatsApp Business ya está conectada a otra organización.",
@@ -106,7 +110,7 @@ export function NumberSection({ settings }: { settings: Settings }) {
 
   return (
     <RecordSection
-      title="Número de WhatsApp"
+      title="Número"
       action={
         connected ? (
           <Button variant="outline" disabled={action.pending} onClick={() => setConfirming(true)}>

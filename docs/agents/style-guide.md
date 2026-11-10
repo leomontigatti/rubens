@@ -54,6 +54,11 @@ beside it.
   fits: `Día a día` for what reception uses all day, `Profesionales` for what a practitioner sets
   up, `Administración` for the organization's own setup. A detail page gets no link: its parent
   stays current. A new group is a product decision: ask.
+- **An area of several pages is a folder in its group**: a link with a chevron that opens its
+  entries (`SidebarMenuSub`, in a `Collapsible`), never a page of its own, and open while the
+  current page is one of them: `WhatsApp`, with `Configuración` and `Plantillas`. Its entries have
+  no icon: with the sidebar collapsed, the folder's icon stands for them, and a click on it opens
+  the menu.
 - **A link is hidden only when the screen has nothing for that role.** The menu spares a click and
   guards nothing: the screen's server functions decide what a member may do.
 - **Every link has a `lucide` icon**, the only thing left when the sidebar is collapsed.
@@ -110,6 +115,8 @@ beside it.
   is more than one page. A patient search has no count: it stops at its 20 best matches, and when
   more patients match, a muted line under the results says so and asks for more text.
 - **A list page takes the full width.** Patient search text stays out of the URL.
+- **A short fixed list has no search or filters**, only the table and its count: `DataTable`
+  with no `search`, as `/whatsapp/plantillas`, whose set of templates never changes.
 
 ## Form pages
 
@@ -138,13 +145,16 @@ beside it.
   (`src/components/record-section.tsx`), and one `Editar` opens them all, saved together in one
   transaction. A record of its own, such as a coverage, and a one-off action, such as a starting
   password, keep their own page.
+- **A page of settings is `RecordSection`s**, one per setting, each showing its values; its
+  `Editar` opens that setting's own form page, saved apart from the rest, and a section that
+  leads elsewhere has that link as its action (`Probar`): `/whatsapp/configuracion`.
 - **When the edit page is a record's only page, its actions sit beside its title**: `Desactivar` or
   `Reactivar`, with an `Inactiva` badge (`activeRecord`, `src/components/admin-form.tsx`), or
   `Eliminar`, which asks first and goes back to the list (`FormPage`'s `record`). A record with a
   page of its own, such as an office (`Sedes`), has them in that page's header beside `Editar`.
   Its list's name cell links only for someone who may open the page, and is plain text otherwise.
 - **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
-  `/disponibilidad` and `/whatsapp`, which ask and answer.
+  `/disponibilidad`, which asks and answers.
 
 ## Forms
 

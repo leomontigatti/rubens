@@ -81,13 +81,13 @@ function useColumnDefs<Row extends RowData>(columns: DataTableColumn<Row>[]) {
 /** A list the loader sends whole: searched and paged in the browser. */
 export function useClientDataTable<Row extends RowData>(
   options: DataTableOptions<Row> & {
-    /** What the search box matches in a row. */
-    searchText: (row: Row) => string;
+    /** What the search box matches in a row; none for a list with no search. */
+    searchText?: (row: Row) => string;
   },
 ) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const rows = matchingRows(options.rows, options.searchText, query);
+  const rows = matchingRows(options.rows, options.searchText ?? (() => ""), query);
   const pageCount = Math.max(1, Math.ceil(rows.length / clientPageSize));
   const shownPage = Math.min(page, pageCount);
   const table = useTable({
@@ -136,7 +136,8 @@ export function RowLink(props: LinkProps & { children: ReactNode }) {
 
 export function DataTable<Row extends RowData>(props: {
   table: TanStackTable<typeof features, Row>;
-  search: Search;
+  /** None for a short fixed list, which has nothing to narrow. */
+  search?: Search;
   filters?: ComponentProps<typeof FilterBar>;
   pager?: Pager;
   /** What shows with no rows: `NoMatches`, or the list's own `EmptyState`. */
@@ -204,11 +205,14 @@ function Rows<Row extends RowData>(props: { table: TanStackTable<typeof features
   );
 }
 
-function Toolbar(props: { search: Search; filters?: ComponentProps<typeof FilterBar> }) {
+function Toolbar(props: { search?: Search; filters?: ComponentProps<typeof FilterBar> }) {
   const { search, filters } = props;
+  if (!search && !filters) {
+    return null;
+  }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <SearchInput className="w-full sm:w-96" {...search} />
+      {search && <SearchInput className="w-full sm:w-96" {...search} />}
       {filters && <FilterBar {...filters} />}
     </div>
   );

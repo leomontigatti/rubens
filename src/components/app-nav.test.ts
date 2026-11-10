@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { isCurrentPath, navFor } from "#/components/app-nav.ts";
+import { isCurrentPath, isOpenOn, navFor } from "#/components/app-nav.ts";
 
 const counts = (toReschedule: number | null, unreadNotifications = 0) => ({
   toReschedule,
@@ -23,14 +23,50 @@ describe("the menu a member sees", () => {
   it("counts the list on its link, and drops the link when the count is refused", () => {
     const daily = (count: number | null) => navFor(["practitioner"], counts(count))[0]!.items;
 
-    expect(daily(3).find((item) => item.to === "/a-reprogramar")?.count).toBe(3);
-    expect(daily(null).some((item) => item.to === "/a-reprogramar")).toBe(false);
+    expect(daily(3).find((item) => "to" in item && item.to === "/a-reprogramar")?.count).toBe(3);
+    expect(daily(null).some((item) => "to" in item && item.to === "/a-reprogramar")).toBe(false);
   });
 
   it("counts the member's unread notifications on their link, for every role", () => {
     const daily = navFor(["receptionist"], counts(0, 2))[0]!.items;
 
-    expect(daily.find((item) => item.to === "/notificaciones")?.count).toBe(2);
+    expect(daily.find((item) => "to" in item && item.to === "/notificaciones")?.count).toBe(2);
+  });
+});
+
+describe("the WhatsApp group", () => {
+  const whatsapp = () => {
+    const item = navFor(["admin"], counts(0))
+      .at(-1)!
+      .items.find((one) => one.label === "WhatsApp")!;
+    if (!("entries" in item)) {
+      throw new Error("WhatsApp is a link, not a group");
+    }
+    return item;
+  };
+
+  it("is a group of its two pages, with no page of its own", () => {
+    const group = whatsapp();
+
+    expect(group).not.toHaveProperty("to");
+    expect(group.entries).toEqual([
+      { label: "Configuración", to: "/whatsapp/configuracion" },
+      { label: "Plantillas", to: "/whatsapp/plantillas" },
+    ]);
+  });
+
+  it("opens on one of its pages and the pages under them, closed elsewhere", () => {
+    const group = whatsapp();
+
+    expect(isOpenOn("/whatsapp/configuracion/reglas", group)).toBe(true);
+    expect(isOpenOn("/whatsapp/plantillas/seguimiento", group)).toBe(true);
+    expect(isOpenOn("/agenda", group)).toBe(false);
+  });
+
+  it("is an admin's only", () => {
+    const administration = navFor(["receptionist"], counts(0)).at(-1)!;
+
+    expect(administration.items.some((item) => item.label === "WhatsApp")).toBe(false);
   });
 });
 

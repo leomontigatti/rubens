@@ -144,7 +144,7 @@ function NotificationRow(props: {
   );
 }
 
-/** Where a notification is acted on: the conversation handed off or not delivered to, the patient to turn off, or the WhatsApp settings. */
+/** Where a notification is acted on: the conversation handed off or not delivered to, the patient to turn off, the template, or the WhatsApp settings. */
 function NotificationLink({ notification }: { notification: Notification }) {
   if (notification.conversationId) {
     return (
@@ -175,8 +175,30 @@ function NotificationLink({ notification }: { notification: Notification }) {
       </Button>
     );
   }
+  if (notification.templateName) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+        render={
+          <Link
+            to="/whatsapp/plantillas/$templateName"
+            params={{ templateName: notification.templateName }}
+          />
+        }
+      >
+        Ver plantilla
+      </Button>
+    );
+  }
   return (
-    <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/whatsapp" />}>
+    <Button
+      variant="outline"
+      size="sm"
+      nativeButton={false}
+      render={<Link to="/whatsapp/configuracion" />}
+    >
       Ver WhatsApp
     </Button>
   );

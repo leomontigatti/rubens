@@ -411,6 +411,8 @@ type MetaDone = { ok: true } | MetaRefusal;
 export interface MetaSignup {
   /** What the browser launches signup with, or `null` while a setting is missing. */
   launch(): { appId: string; configurationId: string } | null;
+  /** The first setting `launch()` misses, for the Worker's log. */
+  missingSetting(): keyof SignupSettings | null;
   /** The business token for the code the signup popup returned. */
   exchangeCode(code: string): Promise<{ ok: true; token: string } | MetaRefusal>;
   /** The number, or `null` when the account has no such number. */
@@ -454,6 +456,10 @@ export function metaSignupFor(
       return appId && configurationId && settings.META_APP_SECRET
         ? { appId, configurationId }
         : null;
+    },
+    missingSetting() {
+      const names = ["META_APP_ID", "META_APP_SECRET", "WHATSAPP_SIGNUP_CONFIG_ID"] as const;
+      return names.find((name) => !settings[name]) ?? null;
     },
     async exchangeCode(code) {
       const { META_APP_ID: appId, META_APP_SECRET: appSecret } = settings;

@@ -3,7 +3,7 @@ import type { ProposalKind } from "#/lib/proposals.ts";
 import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
 
 // The copy of the assistant's sandbox in the WhatsApp settings
-// (`src/routes/_app/whatsapp/prueba.tsx`): its refusals, what a turn did, and
+// (`src/routes/_app/whatsapp/configuracion/prueba.tsx`): its refusals, what a turn did, and
 // the conversation window's countdown.
 
 export const sandboxRefusalMessages = {

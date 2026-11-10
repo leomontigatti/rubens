@@ -42,6 +42,16 @@ function completion() {
   return { code: "signup-code", phoneNumberId, businessAccountId };
 }
 
+const confirmation = {
+  templateName: "confirmacion_turno",
+  body: "Hola {{paciente}}, tu turno con {{profesional}} es el {{fecha}} a las {{hora}}. Consultorios Prueba",
+} as const;
+
+/** A call to Meta with the number's token: an admin submitting a template. */
+function callMeta() {
+  return organization.submitWhatsappTemplate(adminCaller, confirmation);
+}
+
 async function connection() {
   return expectOk(await organization.whatsappSettings(adminCaller)).connection;
 }
@@ -51,6 +61,7 @@ function storedConnection() {
 }
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
   fakeMeta.reset();
   // A real practice: no configured test number stands in for its own.
   fakeMeta.settings = {};
@@ -120,21 +131,16 @@ describe("connecting the organization's number", () => {
     );
   });
 
-  it("sends from the connected number with its token, which was opened from the sealed copy", async () => {
+  it("calls Meta for the connected number's account with its token, which was opened from the sealed copy", async () => {
     expectOk(await organization.connectWhatsapp(adminCaller, completion()));
     fakeMeta.requests = [];
+    fakeMeta.answerWith(200, { id: "594425479261596", status: "PENDING", category: "UTILITY" });
 
-    expectOk(
-      await organization.sendWhatsappTemplate(adminCaller, {
-        to: "+54 9 11 5555-0000",
-        templateName: "hello_world",
-        languageCode: "en_US",
-      }),
-    );
+    expectOk(await callMeta());
 
-    expect(fakeMeta.requests).toMatchObject([
+    expect(fakeMeta.requests.filter((request) => request.method === "POST")).toMatchObject([
       {
-        url: `https://graph.facebook.com/v26.0/${fakeMeta.signupNumber.phoneNumberId}/messages`,
+        url: `https://graph.facebook.com/v26.0/${fakeMeta.signupNumber.businessAccountId}/message_templates`,
         authorization: `Bearer ${metaBusinessToken}`,
       },
     ]);
@@ -206,10 +212,12 @@ describe("connecting the organization's number", () => {
     expect(await connection()).toMatchObject({ state: "connected" });
   });
 
-  it("refuses when the Worker misses a signup setting", async () => {
+  it("refuses when the Worker misses a signup setting, and logs which", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     delete fakeMeta.signupSettings.WHATSAPP_SIGNUP_CONFIG_ID;
 
     expect(expectOk(await organization.whatsappSettings(adminCaller)).signup).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("WHATSAPP_SIGNUP_CONFIG_ID"));
     expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({
       ok: false,
       reason: "signupNotConfigured",
@@ -306,40 +314,26 @@ describe("a connection Meta no longer accepts", () => {
     expectOk(await organization.connectWhatsapp(adminCaller, completion()));
   });
 
-  it("shows as failed with Meta's reason once Meta refuses its token, and sends nothing more", async () => {
+  it("shows as failed with Meta's reason once Meta refuses its token, and calls Meta no more", async () => {
     fakeMeta.answerNextWith(401, {
       error: { message: "Error validating access token: the user has revoked access", code: 190 },
     });
-    const send = {
-      to: "+54 9 11 5555-0000",
-      templateName: "hello_world",
-      languageCode: "en_US",
-    };
 
-    expect(await organization.sendWhatsappTemplate(adminCaller, send)).toMatchObject({
-      reason: "metaRefused",
-    });
+    expect(await callMeta()).toMatchObject({ reason: "metaRefused" });
 
     const settings = expectOk(await organization.whatsappSettings(adminCaller));
     expect(settings.connection).toMatchObject({
       state: "failed",
       failureReason: "Error validating access token: the user has revoked access",
     });
-    expect(settings.missing).toBe("connectionFailed");
-    expect(await organization.sendWhatsappTemplate(adminCaller, send)).toEqual({
-      ok: false,
-      reason: "connectionFailed",
-    });
+    expect(settings.templateMissing).toBe("connectionFailed");
+    expect(await callMeta()).toEqual({ ok: false, reason: "connectionFailed" });
   });
 
   it("stays connected when Meta refuses for another reason", async () => {
     fakeMeta.answerNextWith(400, { error: { message: "Recipient not allowed", code: 131030 } });
 
-    await organization.sendWhatsappTemplate(adminCaller, {
-      to: "+54 9 11 5555-0000",
-      templateName: "hello_world",
-      languageCode: "en_US",
-    });
+    await callMeta();
 
     expect(await connection()).toMatchObject({ state: "connected" });
   });
@@ -355,7 +349,7 @@ describe("disconnecting the number", () => {
 
     const settings = expectOk(await organization.whatsappSettings(adminCaller));
     expect(settings.connection).toMatchObject({ state: "disconnected" });
-    expect(settings.missing).toBe("connectionFailed");
+    expect(settings.templateMissing).toBe("connectionFailed");
     expect((await storedConnection())?.accessToken).toBeNull();
     expect(
       await whatsappDirectory().organizationForNumber(fakeMeta.signupNumber.phoneNumberId),
@@ -382,7 +376,6 @@ describe("disconnecting the number", () => {
 
 describe("connecting again", () => {
   const refused = { status: 400, body: { error: { message: "Meta says no", code: 100 } } };
-  const send = { to: "+54 9 11 5555-0000", templateName: "hello_world", languageCode: "en_US" };
 
   beforeEach(async () => {
     expectOk(await organization.connectWhatsapp(adminCaller, completion()));
@@ -406,7 +399,7 @@ describe("connecting again", () => {
 
   it("keeps the number in the directory when reconnecting a failed connection is refused", async () => {
     fakeMeta.answerNextWith(401, { error: { message: "Token expired", code: 190 } });
-    await organization.sendWhatsappTemplate(adminCaller, send);
+    await callMeta();
     fakeMeta.signupRefusals.register = refused;
 
     expect(await organization.connectWhatsapp(adminCaller, completion())).toMatchObject({
@@ -437,16 +430,19 @@ describe("connecting again", () => {
   });
 
   it("is not failed by a late refusal of the token it replaced", async () => {
+    // A version waiting on Meta's review, whose status is then read in one call.
+    fakeMeta.answerNextWith(200, { id: "594425479261596", status: "PENDING", category: "UTILITY" });
+    expectOk(await callMeta());
     fakeMeta.requests = [];
     const release = fakeMeta.holdNext();
     fakeMeta.answerNextWith(401, { error: { message: "Token expired", code: 190 } });
-    const lateSend = organization.sendWhatsappTemplate(adminCaller, send);
+    const lateCall = organization.refreshWhatsappTemplates(adminCaller);
     await fakeMeta.received(1);
     fakeMeta.businessToken = "a-newer-business-token";
     expectOk(await organization.connectWhatsapp(adminCaller, completion()));
 
     release();
-    await lateSend;
+    await lateCall;
 
     expect(await connection()).toMatchObject({ state: "connected" });
   });
@@ -486,7 +482,7 @@ describe("connecting again", () => {
 
     const settings = expectOk(await organization.whatsappSettings(adminCaller));
     expect(settings.connection).toMatchObject({ state: "failed", failureReason: null });
-    expect(settings.missing).toBe("connectionFailed");
+    expect(settings.templateMissing).toBe("connectionFailed");
   });
 
   it.each([

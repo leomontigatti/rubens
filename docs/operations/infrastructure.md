@@ -70,18 +70,18 @@ that is committed.
 | `SETUP_SECRET`                | Lets `pnpm setup:organization` create an organization. Without it `/api/setup` answers 404. Remove it when no setup is pending.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `META_APP_SECRET`             | Meta's app secret, which signs each call to the WhatsApp webhook (`/api/whatsapp`). Without it the webhook answers 404.                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `WHATSAPP_VERIFY_TOKEN`       | The verify token entered in Meta's app dashboard when the webhook is set up. Without it the verification answers 404.                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `WHATSAPP_ACCESS_TOKEN`       | The access token of `WHATSAPP_PHONE_NUMBER_ID`, which the WhatsApp settings page (`/whatsapp`) sends and submits templates with. Without it the page shows both disabled. Use a system user's token: the dashboard's temporary one expires after about a day.                                                                                                                                                                                                                                                                                    |
+| `WHATSAPP_ACCESS_TOKEN`       | The access token of `WHATSAPP_PHONE_NUMBER_ID`, which messages to patients go out with and the WhatsApp templates page (`/whatsapp/plantillas`) submits templates with. Without it the admin is told to connect the number, and the Worker logs the missing setting. Use a system user's token: the dashboard's temporary one expires after about a day.                                                                                                                                                                                         |
 | `ORGANIZATION_ENCRYPTION_KEY` | 32 random bytes in base64 (`openssl rand -base64 32`). Each organization's key is derived from it and the organization's id (`src/organization/encryption.ts`), and seals what the app encrypts: today, the token and PIN of the number connected through Embedded Signup. Without it a number cannot be connected, and a connected number sends nothing until it is back (its connection is kept). Never rotate it by replacing it: what it sealed would no longer open, and each connected number would show as failed, to be connected again. |
 | `ANTHROPIC_API_KEY`           | The patient assistant's key for Claude Haiku 5.5 (`src/organization/assistant-model.ts`). Without it patients' messages are stored unjudged, the inbox withholds them, and the assistant answers nobody.                                                                                                                                                                                                                                                                                                                                         |
 
 Three more names are configuration rather than secrets, set the same way so a deploy
 keeps them: `WHATSAPP_PHONE_NUMBER_ID`, Meta's test number (which the webhook
-expects and the WhatsApp settings page sends from);
+expects and messages to patients go out from);
 `WHATSAPP_BUSINESS_ACCOUNT_ID`, the WhatsApp Business account that number belongs
-to, which the settings page submits templates to and whose template status events
+to, which the templates page submits templates to and whose template status events
 the webhook stores; and `WHATSAPP_ORGANIZATION_ID`, the organization its messages
-and templates are stored in. Without the account id the settings page shows
-submitting disabled. In Meta's app dashboard, subscribe the webhook to every field
+and templates are stored in. Without the account id the templates page shows
+submitting disabled, and the Worker logs which setting is missing. In Meta's app dashboard, subscribe the webhook to every field
 it reads (`src/server/whatsapp-webhook.ts`): `messages` (patients' messages and
 delivery statuses), `message_template_status_update` (a template's review),
 `template_category_update` (Meta moving a template to another category),
@@ -90,11 +90,12 @@ number). A field left out is never heard of, and nothing says so. These
 names serve that one organization only, for development and App Review; a real
 practice connects its own number through Embedded Signup.
 
-Embedded Signup, from the WhatsApp settings' `Conectar número`, needs two more
+Embedded Signup, from the WhatsApp `Configuración`'s `Conectar número`, needs two more
 configuration names, set the same way, beside `META_APP_SECRET`: `META_APP_ID`, the
 Meta app's id, and `WHATSAPP_SIGNUP_CONFIG_ID`, the id of the Facebook Login for
 Business configuration created for Embedded Signup v4 in the app dashboard. Without
-either, the settings show connecting disabled. Each practice's business token is
+either, the settings show connecting disabled, and the Worker logs which setting is
+missing. Each practice's business token is
 then stored in its organization's object, sealed with `ORGANIZATION_ENCRYPTION_KEY`,
 and its number is mapped to the organization in the WhatsApp directory
 ([ADR-0012](../adr/0012-whatsapp-directory-durable-object.md)). Connecting a real

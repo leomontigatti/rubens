@@ -8,7 +8,9 @@ when a directory is added, moved or given a new job.
 
 ```
 src/
-├── routes/            TanStack Router file routes; `__root.tsx` is the document shell
+├── routes/            TanStack Router file routes; `__root.tsx` is the document shell;
+│   │                  `_app/whatsapp/` holds two pages, `configuracion/` (the settings and the
+│   │                  form page of each) and `plantillas/` (the templates and each one's edit page)
 │   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET),
 │                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature)
 ├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),

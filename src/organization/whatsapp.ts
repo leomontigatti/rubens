@@ -1,32 +1,45 @@
-import { maskPhone, parsePhone } from "#/lib/phones.ts";
-import { templateSendSchema } from "#/lib/whatsapp.ts";
-import type { TemplateSend } from "#/lib/whatsapp.ts";
-
 import { monthUsage } from "#/organization/assistant-usage.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import { returnAfterHours } from "#/organization/personal-replies.ts";
 import { handoffReminders } from "#/organization/handoff-countdown.ts";
-import { recordAudit } from "#/organization/audit.ts";
 import { listHandoffContacts } from "#/organization/handoff-contacts.ts";
-import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import type {
+  MissingSetting,
+  MissingTemplateSetting,
+  WhatsappCloud,
+} from "#/organization/graph-api.ts";
 import type { Database } from "#/organization/database.ts";
-import type { Acting } from "#/organization/members.ts";
 import type { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 import { activeHold } from "#/organization/whatsapp-limits.ts";
 import { listWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
 
 // The WhatsApp settings: the organization's number
-// (`src/organization/whatsapp-connection.ts`), its templates
-// (`src/organization/whatsapp-templates.ts`) and one approved template sent by
-// hand (#153). Who may call each is the object's concern: an admin.
+// (`src/organization/whatsapp-connection.ts`) and its templates
+// (`src/organization/whatsapp-templates.ts`), with the rest of what the
+// assistant runs on. Who may read them is the object's concern: an admin.
 
-const invalidInput = { ok: false, reason: "invalidInput" } as const;
+// What the Worker misses, for whoever runs it: the admin is only told to connect the number.
+const missingSettingLogs: Record<
+  Exclude<MissingSetting | MissingTemplateSetting, "connectionFailed">,
+  string
+> = {
+  missingAccessToken: "no number is connected and WHATSAPP_ACCESS_TOKEN is not set",
+  missingPhoneNumberId: "WHATSAPP_PHONE_NUMBER_ID is not set",
+  missingBusinessAccountId: "WHATSAPP_BUSINESS_ACCOUNT_ID is not set",
+};
+
+function logMissingSettings(...settings: (MissingSetting | MissingTemplateSetting | null)[]) {
+  for (const setting of new Set(settings)) {
+    if (setting && setting !== "connectionFailed") {
+      console.warn(`[whatsapp-settings] ${setting}: ${missingSettingLogs[setting]}`);
+    }
+  }
+}
 
 /**
- * What the settings page shows: the organization's number, the hold Meta put
- * on it if any, and what Embedded Signup launches with (`null` while the Worker misses a setting), the setting
- * that keeps a send from being made, if any, and the templates with the
- * setting that keeps them from being submitted, the assistant's
+ * What the settings pages show: the organization's number, the hold Meta put
+ * on it if any, and what Embedded Signup launches with (`null` while the Worker misses a setting),
+ * the templates with the setting that keeps them from being submitted, the assistant's
  * communication rules, the members who may be handoff contacts, the return
  * time, the handoff reminders and what the assistant used this month.
  */
@@ -36,12 +49,16 @@ export function getWhatsappSettings(
   number: WhatsappNumber,
 ) {
   const { missing: templateMissing, templates } = listWhatsappTemplates(database, cloud);
+  logMissingSettings(cloud.missingSetting(), templateMissing);
+  const signupMissing = number.missingSignupSetting();
+  if (signupMissing) {
+    console.warn(`[whatsapp-settings] signupNotConfigured: ${signupMissing} is not set`);
+  }
   return {
     ok: true,
     connection: number.read(),
     hold: activeHold(database, Date.now()),
     signup: number.launch(),
-    missing: cloud.missingSetting(),
     templateMissing,
     templates,
     communicationRules: currentCommunicationRules(database),
@@ -50,48 +67,4 @@ export function getWhatsappSettings(
     handoffReminders: handoffReminders(database),
     usage: monthUsage(database),
   } as const;
-}
-
-/**
- * Sends `input`'s template to its recipient, as `acting`, and answers with
- * Meta's verdict. Every send Meta answers is audited, accepted or refused.
- */
-export async function sendTemplate(
-  database: Database,
-  cloud: WhatsappCloud,
-  acting: Acting,
-  input: TemplateSend,
-) {
-  const parsed = templateSendSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidInput;
-  }
-  const phone = parsePhone(parsed.data.to);
-  if (!phone.ok) {
-    return phone;
-  }
-  const missing = cloud.missingSetting();
-  if (missing) {
-    return { ok: false, reason: missing } as const;
-  }
-  const { templateName, languageCode } = parsed.data;
-  const sent = await cloud.sendTemplate({ to: phone.phone, templateName, languageCode });
-  database.transaction((tx) =>
-    recordAudit(tx, acting.userId, {
-      action: "create",
-      entityType: "whatsappMessage",
-      // A refused send has no message id of Meta's, so each send gets its own.
-      entityId: crypto.randomUUID(),
-      patientId: null,
-      before: null,
-      after: {
-        to: maskPhone(phone.phone),
-        templateName,
-        languageCode,
-        messageId: sent.ok ? sent.messageId : null,
-        metaErrorCode: sent.ok ? null : sent.metaError.code,
-      },
-    }),
-  );
-  return sent;
 }

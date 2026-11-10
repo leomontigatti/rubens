@@ -6,9 +6,9 @@ import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { maxReturnAfterHours, returnTimeSchema } from "#/lib/conversation-holds.ts";
 import { getWhatsappSettings, saveReturnTime } from "#/server/whatsapp.functions.ts";
 
-import { returnTimeHint } from "#/routes/_app/whatsapp/-return-time.tsx";
+import { returnTimeHint } from "#/routes/_app/whatsapp/configuracion/-return-time.tsx";
 
-export const Route = createFileRoute("/_app/whatsapp/devolucion")({
+export const Route = createFileRoute("/_app/whatsapp/configuracion/devolucion")({
   head: () => ({ meta: [{ title: "Devolución al asistente · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: EditReturnTime,
@@ -36,7 +36,7 @@ function EditReturnTime() {
 }
 
 function ReturnTimeForm(props: { hours: number }) {
-  const page = useFormPage({ to: "/whatsapp" });
+  const page = useFormPage({ to: "/whatsapp/configuracion" });
   const action = useFormAction(refusalMessages, refusalFields);
 
   const form = useAppForm({

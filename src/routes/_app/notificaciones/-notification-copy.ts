@@ -33,7 +33,7 @@ const categoryLabels: Record<string, string> = {
   AUTHENTICATION: "autenticación",
 };
 
-const resubmit = "Enviá una versión nueva desde la configuración de WhatsApp.";
+const resubmit = "Enviá una versión nueva desde su página en Plantillas.";
 
 export function localTime(instant: number) {
   return format(instant, "dd/MM/yyyy HH:mm", { in: tz(defaultTimeZone) });
