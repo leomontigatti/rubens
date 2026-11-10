@@ -5,7 +5,9 @@ import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 // organization's alarm sends what is due (ADR-0008 § Jobs are Durable Object
 // alarms). It holds the booking confirmation, the reminders, the care
 // instructions, the follow-up, and the messages for an appointment the
-// organization changed.
+// organization changed; and the reopen template, about a conversation rather
+// than an appointment, for a person's reply written after its window closed
+// (`src/organization/late-replies.ts`).
 
 /** What a queued message is, each sent as its template. */
 export const outboxKinds = [
@@ -17,6 +19,7 @@ export const outboxKinds = [
   "appointmentMoved",
   "appointmentCancelled",
   "appointmentToReschedule",
+  "reopenConversation",
 ] as const;
 
 export type OutboxKind = (typeof outboxKinds)[number];
@@ -30,6 +33,7 @@ export const outboxTemplates = {
   appointmentMoved: "turno_movido",
   appointmentCancelled: "turno_cancelado",
   appointmentToReschedule: "turno_a_reprogramar",
+  reopenConversation: "reabrir_conversacion",
 } as const satisfies Record<OutboxKind, TemplateName>;
 
 /** The kinds that are a reminder: one asks the patient to confirm, the other does not. */
@@ -73,15 +77,21 @@ export const outboxStates = ["queued", "sent", "dropped", "failed"] as const;
 /**
  * Why a message was dropped before it went: its appointment changed, its
  * patient withdrew consent, a later reminder for the same appointment was due
- * too (docs/domain/messages.md § When Meta limits the number), or the care
- * instructions it carries were cleared from the medical service.
+ * too (docs/domain/messages.md § When Meta limits the number), the care
+ * instructions it carries were cleared from the medical service, or, for the
+ * reopen template, the patient wrote first, so the replies it waited for went
+ * without it, or the last of them was not delivered before it could go.
  */
 export const outboxDropReasons = [
   "appointmentChanged",
   "noConsent",
   "overtaken",
   "noCareInstructions",
+  "answered",
+  "replyNotDelivered",
 ] as const;
+
+export type OutboxDropReason = (typeof outboxDropReasons)[number];
 
 /** The waits after each failed attempt; the attempt after the last one is final. */
 const retryDelaysMinutes = [1, 5, 30, 120];

@@ -108,7 +108,7 @@ export function openHandoff(tx: Writer, conversationId: string, wanted: HandoffW
 /** The open handoffs of `conversationId`, each clinical or not. */
 export function openHandoffsOf(database: Writer, conversationId: string) {
   return database
-    .select({ id: handoff.id, clinical: handoff.clinical })
+    .select({ id: handoff.id, clinical: handoff.clinical, createdAt: handoff.createdAt })
     .from(handoff)
     .where(and(eq(handoff.conversationId, conversationId), eq(handoff.state, "open")))
     .all();

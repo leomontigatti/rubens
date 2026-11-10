@@ -10,7 +10,7 @@ import {
 } from "#/lib/outbox.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
-import { fillTemplate, flattenCareInstructions } from "#/lib/template-filling.ts";
+import { fillTemplate, flattenCareInstructions, templateValues } from "#/lib/template-filling.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
@@ -26,6 +26,7 @@ import {
   room,
 } from "#/organization/schema.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
+import { reopenToSend } from "#/organization/late-replies.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
@@ -280,9 +281,8 @@ function readQueued(database: Database, id: string) {
     .select({
       id: outboxMessage.id,
       kind: outboxMessage.kind,
-      appointmentId: outboxMessage.appointmentId,
+      appointmentId: appointment.id,
       hoursBefore: outboxMessage.hoursBefore,
-      attempts: outboxMessage.attempts,
       status: appointment.status,
       cancelledBy: appointment.cancelledBy,
       startsAt: appointment.startsAt,
@@ -399,28 +399,26 @@ function recordFailure(database: Database, id: string, attempts: number, error: 
     .run();
 }
 
-/** Sends the queued message `id`, if it is still queued and may still go. */
-async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) {
+/**
+ * What the queued message `id` says and to whom, read now: from its
+ * appointment, or for the reopen template from its conversation
+ * (`late-replies.ts`); why it is dropped instead; `null` once it is not queued.
+ */
+function toSend(database: Database, cloud: WhatsappCloud, id: string, kind: OutboxKind) {
+  if (kind === "reopenConversation") {
+    const reopen = reopenToSend(database, id);
+    return reopen && (reopen.drop ? reopen : { ...reopen, values: { paciente: reopen.paciente } });
+  }
   const queued = readQueued(database, id);
   if (!queued) {
-    return;
+    return null;
   }
   // Read again: a template can change at Meta while an earlier send waits.
-  const dropped = dropReason(database, queued, Date.now(), sendableKinds(database, cloud));
-  if (dropped) {
-    database
-      .update(outboxMessage)
-      .set({ state: "dropped", dropReason: dropped })
-      .where(eq(outboxMessage.id, id))
-      .run();
-    return;
+  const drop = dropReason(database, queued, Date.now(), sendableKinds(database, cloud));
+  if (drop) {
+    return { drop };
   }
-  const templateName = outboxTemplates[queued.kind];
-  const template = approvedVersion(database, templateName);
-  if (!template) {
-    return;
-  }
-  const filled = fillTemplate(template.body, {
+  const values = templateValues({
     patient: queued,
     practitionerName: queued.practitionerName,
     start: new Date(queued.startsAt),
@@ -429,10 +427,37 @@ async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) 
     officeAddress: queued.officeAddress,
     careInstructions: flattenCareInstructions(queued.careInstructions ?? ""),
   });
-  const to = queued.guardianPhone ?? queued.patientPhone;
-  const attempts = queued.attempts + 1;
+  return { drop: null, to: queued.guardianPhone ?? queued.patientPhone, values, queued };
+}
+
+/** Sends the queued message `id`, if it is still queued and may still go. */
+async function sendQueued(
+  database: Database,
+  cloud: WhatsappCloud,
+  due: { id: string; kind: OutboxKind; attempts: number },
+) {
+  const { id, kind } = due;
+  const prepared = toSend(database, cloud, id, kind);
+  if (!prepared) {
+    return;
+  }
+  if (prepared.drop) {
+    database
+      .update(outboxMessage)
+      .set({ state: "dropped", dropReason: prepared.drop })
+      .where(eq(outboxMessage.id, id))
+      .run();
+    return;
+  }
+  const templateName = outboxTemplates[kind];
+  const template = approvedVersion(database, templateName);
+  if (!template) {
+    return;
+  }
+  const filled = fillTemplate(template.body, prepared.values);
+  const attempts = due.attempts + 1;
   const message: TemplateMessage = {
-    to,
+    to: prepared.to,
     templateName: metaTemplateName(templateName, template.version),
     languageCode: template.language,
     parameters: filled.parameters,
@@ -451,7 +476,8 @@ async function sendQueued(database: Database, cloud: WhatsappCloud, id: string) 
     }
     return;
   }
-  recordSent(database, queued, attempts, { ...message, text: filled.text, sent });
+  const overtakes = "queued" in prepared ? (prepared.queued ?? null) : null;
+  recordSent(database, { id, overtakes }, attempts, { ...message, text: filled.text, sent });
 }
 
 /**
@@ -482,7 +508,7 @@ function dropEarlierReminders(tx: Writer, sent: Queued) {
  */
 function recordSent(
   database: Database,
-  queued: Queued,
+  queued: { id: string; overtakes: Queued | null },
   attempts: number,
   message: TemplateMessage & { text: string; sent: { messageId: string; waId: string | null } },
 ) {
@@ -512,8 +538,8 @@ function recordSent(
       .set({ state: "sent", attempts, whatsappMessageId: stored.id })
       .where(eq(outboxMessage.id, queued.id))
       .run();
-    if (stillQueued) {
-      dropEarlierReminders(tx, queued);
+    if (stillQueued && queued.overtakes) {
+      dropEarlierReminders(tx, queued.overtakes);
     }
   });
 }
@@ -529,7 +555,7 @@ export async function sendDueMessages(database: Database, cloud: WhatsappCloud) 
     return;
   }
   const due = database
-    .select({ id: outboxMessage.id })
+    .select({ id: outboxMessage.id, kind: outboxMessage.kind, attempts: outboxMessage.attempts })
     .from(outboxMessage)
     .where(
       and(
@@ -540,11 +566,11 @@ export async function sendDueMessages(database: Database, cloud: WhatsappCloud) 
     )
     .orderBy(asc(outboxMessage.dueAt))
     .all();
-  for (const { id } of due) {
+  for (const one of due) {
     // Meta refusing the token, or limiting the number, mid-batch leaves the rest queued, not failed.
     if (cloud.missingSetting() || activeHold(database, Date.now())) {
       return;
     }
-    await sendQueued(database, cloud, id);
+    await sendQueued(database, cloud, one);
   }
 }

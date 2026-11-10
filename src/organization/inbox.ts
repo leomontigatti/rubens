@@ -30,6 +30,8 @@ import {
   outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { lateRepliesShown } from "#/organization/late-replies.ts";
+import type { ShownLateReply } from "#/organization/late-replies.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
@@ -307,6 +309,8 @@ export function readConversation(
       /** Who took the conversation over, until when; `null` while the assistant holds it. */
       hold: ConversationHold | null;
       window: ConversationWindow;
+      /** The replies written after the window closed that wait for the patient, or never reached them. */
+      lateReplies: ShownLateReply[];
     }
   | { ok: false; reason: "invalidInput" | "notFound" } {
   const parsed = conversationReferenceSchema.safeParse(input);
@@ -337,6 +341,7 @@ export function readConversation(
     messages: messages.map((row) => asRead(row, reader.readsClinical)),
     hold: holdOf(database, acting, conversationId),
     window: windowOf(lastIncomingAt(database, conversationId)),
+    lateReplies: lateRepliesShown(database, conversationId, reader.readsClinical),
   };
 }
 

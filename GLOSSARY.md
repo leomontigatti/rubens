@@ -223,6 +223,12 @@ says something clinical or about another `patient`. It waits on a clinical `hand
 read only by its recipients, who send it, fix it or drop it.
 _Avoid_: draft, blocked message, pending reply
 
+**`lateReply`** — ui: "Respuesta en espera"
+A person's reply to a patient written after the conversation window closed. It waits
+while the patient is asked, by a template, to answer, and goes as written once they
+do; if they never do, its writer is told it was not delivered.
+_Avoid_: queued reply, heldReply, deferred message
+
 **`handoffContact`** — ui: "Contacto de derivación"
 A member an admin picks to receive the `handoff`s that concern no particular
 `practitioner`.

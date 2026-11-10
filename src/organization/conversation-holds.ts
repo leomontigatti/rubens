@@ -1,8 +1,7 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, lte, min, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, lte, min } from "drizzle-orm";
 
 import { withSignOff } from "#/lib/assistant.ts";
 import {
-  defaultReturnAfterHours,
   maxReplyLength,
   personalReplySchema,
   returnedReply,
@@ -22,32 +21,24 @@ import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { openHandoffsOf } from "#/organization/handoffs.ts";
 import { readerOf } from "#/organization/inbox.ts";
+import { queueLateReply } from "#/organization/late-replies.ts";
+import { returnAfterHours, settleReply } from "#/organization/personal-replies.ts";
 import type { Acting } from "#/organization/members.ts";
 import { member } from "#/organization/schema.ts";
-import {
-  conversation,
-  handoff,
-  inboxSettings,
-  whatsappMessage,
-} from "#/organization/whatsapp-schema.ts";
+import { conversation, inboxSettings, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
-import { lastIncomingAt, storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
+import { lastIncomingAt, whileSending } from "#/organization/whatsapp-messages.ts";
 
 // Taking a conversation over from the inbox (docs/domain/assistant.md §
 // Inbox): anyone who reads a conversation can hold it, at any time, and the
 // assistant stays silent in it while they do (`assistant.ts`), still judging
-// each message. The holder replies to the patient under their name, inside
-// the window; a reply that reaches the patient closes the open handoffs its
-// writer may answer. The conversation goes back to the assistant when the
+// each message. The holder replies to the patient under their name: inside
+// the window it goes at once, after it the reply waits behind the reopen
+// template (`late-replies.ts`); a reply that reaches the patient closes the
+// open handoffs its writer may answer (`personal-replies.ts`). The conversation goes back to the assistant when the
 // holder returns it, or by the object's alarm after the admin's return time.
 
 const hourMs = 60 * 60_000;
-
-/** How long a hold lasts before the conversation goes back to the assistant, as the admin set it. */
-export function returnAfterHours(database: Writer) {
-  const row = database.select({ hours: inboxSettings.returnAfterHours }).from(inboxSettings).get();
-  return row?.hours ?? defaultReturnAfterHours;
-}
 
 export function saveReturnTime(database: Database, acting: Acting, input: ReturnTimeInput) {
   const parsed = returnTimeSchema.safeParse(input);
@@ -113,10 +104,11 @@ export function takeOverConversation(
 
 /**
  * Sends `acting`'s reply to the patient under their name, when they hold the
- * conversation and its window is open; the open handoffs they may answer
- * close with it (a clinical one only for a practitioner who keeps clinical
- * records, whose reply is then withheld like clinical words), and their hold
- * runs the return time again from it.
+ * conversation; the open handoffs they may answer close with it (a clinical
+ * one only for a practitioner who keeps clinical records, whose reply is then
+ * withheld like clinical words), and their hold runs the return time again
+ * from it. After the window closed the reply is held instead, behind the
+ * reopen template (`late-replies.ts`), and goes when the patient answers.
  */
 export async function replyToConversation(
   database: Database,
@@ -136,15 +128,8 @@ export async function replyToConversation(
   if (found.heldBy !== acting.userId) {
     return { ok: false as const, reason: "notHolding" as const };
   }
-  const now = Date.now();
-  if (!isWindowOpen(lastIncomingAt(database, conversationId), now)) {
-    return { ok: false as const, reason: "windowClosed" as const };
-  }
   if (cloud.missingSetting()) {
     return { ok: false as const, reason: "notConnected" as const };
-  }
-  if (activeHold(database, now)) {
-    return { ok: false as const, reason: "numberHeld" as const };
   }
   const { name } = database
     .select({ name: member.name })
@@ -154,6 +139,16 @@ export async function replyToConversation(
   const text = withSenderName(parsed.data.text, name);
   if (text.length > maxReplyLength) {
     return { ok: false as const, reason: "tooLong" as const };
+  }
+  const now = Date.now();
+  if (!isWindowOpen(lastIncomingAt(database, conversationId), now)) {
+    // Held behind the reopen template, which waits out a hold of Meta's like any other.
+    const writer = { userId: acting.userId, readsClinical: found.readsClinical };
+    const queued = queueLateReply(database, writer, { conversationId, phone: found.phone, text });
+    return queued.ok ? { ok: true as const, held: true } : queued;
+  }
+  if (activeHold(database, now)) {
+    return { ok: false as const, reason: "numberHeld" as const };
   }
   const sendingFrom = Date.now();
   const sent = await whileSending(database, () => cloud.sendText({ to: found.phone, text })).catch(
@@ -174,90 +169,18 @@ export async function replyToConversation(
     }
     return { ok: false as const, reason: "sendFailed" as const };
   }
-  settleReply(database, acting, {
-    conversationId,
-    phone: found.phone,
-    readsClinical: found.readsClinical,
-    sendingFrom,
-    whatsappId: sent.messageId,
-    text,
-  });
-  return { ok: true as const };
-}
-
-/** The open handoffs a reply answers: a clinical one only from a practitioner who keeps clinical records. */
-function answeredHandoffs(database: Writer, conversationId: string, readsClinical: boolean) {
-  return openHandoffsOf(database, conversationId).filter((one) => !one.clinical || readsClinical);
-}
-
-/**
- * Whether a clinical handoff of the conversation was open at any time since
- * `since`: one may open, and close, while Meta answers the reply that answers it.
- */
-function clinicalHandoffOpenSince(tx: Writer, conversationId: string, since: number) {
-  const found = tx
-    .select({ id: handoff.id })
-    .from(handoff)
-    .where(
-      and(
-        eq(handoff.conversationId, conversationId),
-        eq(handoff.clinical, true),
-        or(eq(handoff.state, "open"), gte(handoff.closedAt, since)),
-      ),
-    )
-    .get();
-  return found !== undefined;
-}
-
-/**
- * Stores the reply Meta accepted, closes the open handoffs its writer may
- * answer, and runs their hold's return time again from it.
- */
-function settleReply(
-  database: Database,
-  acting: Acting,
-  reply: {
-    conversationId: string;
-    phone: string;
-    readsClinical: boolean;
-    /** When the send to Meta started. */
-    sendingFrom: number;
-    whatsappId: string;
-    text: string;
-  },
-) {
-  const { conversationId, text } = reply;
-  database.transaction((tx) => {
-    // Read after the send: a handoff may have opened while Meta answered.
-    const answered = answeredHandoffs(tx, conversationId, reply.readsClinical);
-    const clinical =
-      reply.readsClinical && clinicalHandoffOpenSince(tx, conversationId, reply.sendingFrom);
-    storeOutgoing(database, tx, {
-      phone: reply.phone,
-      whatsappId: reply.whatsappId,
-      type: "text",
+  database.transaction((tx) =>
+    settleReply(database, tx, {
+      writtenBy: acting.userId,
+      conversationId,
+      phone: found.phone,
+      readsClinical: found.readsClinical,
+      since: sendingFrom,
+      whatsappId: sent.messageId,
       text,
-      payload: JSON.stringify({ text }),
-      sentBy: acting.userId,
-      judgement: clinical ? "clinical" : undefined,
-    });
-    if (answered.length > 0) {
-      tx.update(handoff)
-        .set({ state: "closed", closedAt: Date.now(), heldReply: null })
-        .where(
-          inArray(
-            handoff.id,
-            answered.map((one) => one.id),
-          ),
-        )
-        .run();
-    }
-    // Still theirs unless someone took it over while Meta answered.
-    tx.update(conversation)
-      .set({ heldUntil: Date.now() + returnAfterHours(tx) * hourMs })
-      .where(and(eq(conversation.id, conversationId), eq(conversation.heldBy, acting.userId)))
-      .run();
-  });
+    }),
+  );
+  return { ok: true as const, held: false };
 }
 
 /** Gives a conversation `acting` holds back to the assistant. */

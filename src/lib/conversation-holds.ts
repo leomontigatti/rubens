@@ -28,6 +28,18 @@ export const personalReplySchema = z.object({
 
 export type PersonalReply = z.input<typeof personalReplySchema>;
 
+/**
+ * Where a person's reply written after the window closed stands (docs/domain/
+ * assistant.md § Handoff): waiting for the patient to answer the reopen
+ * template, delivered once they did, or not delivered because they never did.
+ */
+export const lateReplyStates = ["waiting", "delivered", "notDelivered"] as const;
+
+export type LateReplyState = (typeof lateReplyStates)[number];
+
+/** How long a late reply waits for the patient's answer after the reopen template went, before it is not delivered (#151). */
+export const lateReplyChanceMs = 7 * 24 * 60 * 60_000;
+
 /** A person's reply as the patient reads it on WhatsApp: under their name, in bold. */
 export function withSenderName(text: string, name: string): string {
   return `*${name}*\n${text}`;

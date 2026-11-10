@@ -5,7 +5,7 @@ import { defaultHandoffReminders, handoffRemindersSchema } from "#/lib/handoffs.
 import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import { returnAfterHours } from "#/organization/conversation-holds.ts";
+import { returnAfterHours } from "#/organization/personal-replies.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import { readerOf } from "#/organization/inbox.ts";
 import type { Acting } from "#/organization/members.ts";

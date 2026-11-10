@@ -23,7 +23,9 @@ import {
 // which goes out only once the fixed checks pass and the clinical check
 // finds nothing clinical in it and nothing about a patient the number may not
 // hear about. A reply the check flags is held on a clinical handoff, for its
-// recipients to send, fix or drop. Nothing here logs a patient's words.
+// recipients to send, fix or drop. A reply whose window closed before it could
+// go is dropped and the conversation handed off (docs/domain/messages.md §
+// When Meta limits the number). Nothing here logs a patient's words.
 
 /** What a settled turn tells the patient: nothing, a fixed reply, or the model's. */
 export type Settled = "silent" | "emergency" | "handedOff" | "optOutAsked" | "answered";
@@ -73,6 +75,31 @@ export async function sendReply(
       rulesVersion: reply.rulesVersion,
     }),
   );
+}
+
+/**
+ * Hands the conversation off when the reply of its turn cannot go because its
+ * window closed, and no member holds it nor a handoff is open already: the
+ * handoff, opened after the close, tells the patient nothing.
+ */
+function handOffClosed(
+  database: Database,
+  turn: { conversationId: string; answered: TurnToSort["answered"] },
+) {
+  const { conversationId } = turn;
+  if (isWindowOpen(lastIncomingAt(database, conversationId), Date.now())) {
+    return;
+  }
+  database.transaction((tx) => {
+    if (isHeld(tx, conversationId) || openHandoffsOf(tx, conversationId).length > 0) {
+      return;
+    }
+    openHandoff(tx, conversationId, {
+      reason: "windowClosed",
+      clinical: false,
+      appointmentId: turn.answered?.appointmentId ?? null,
+    });
+  });
 }
 
 /** The fixed reply a settled turn gets, or `null` for the model's own. */
@@ -182,10 +209,13 @@ export async function deliverReply(
     // changed appointment does not hold them: the next turn is silent after a handoff.
     if (maySend(database, cloud, conversationId)) {
       await sendReply(database, cloud, reply);
+    } else {
+      handOffClosed(database, turn);
     }
     return;
   }
   if (!turn.mayReply()) {
+    handOffClosed(database, turn);
     return;
   }
   // The whole text that would go, sign-off included; the held reply is the model's words alone.
@@ -195,5 +225,7 @@ export async function deliverReply(
   } else if (turn.mayReply()) {
     // Read again: a message or a change may have come while the check ran.
     await sendReply(database, cloud, reply);
+  } else {
+    handOffClosed(database, turn);
   }
 }

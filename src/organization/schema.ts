@@ -464,6 +464,8 @@ export const notification = sqliteTable(
     handoffId: text("handoff_id"),
     /** The patient it is about: who asked to stop getting messages, for `optOut`. */
     patientId: text("patient_id").references(() => patient.id),
+    // The conversation of a `replyNotDelivered` (`whatsapp-schema.ts`, so no reference, as `handoffId`).
+    conversationId: text("conversation_id"),
     readAt: instant("read_at"),
     ...timestamps,
   },
