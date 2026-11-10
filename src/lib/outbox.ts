@@ -80,7 +80,8 @@ export const outboxStates = ["queued", "sent", "dropped", "failed"] as const;
  * too (docs/domain/messages.md § When Meta limits the number), the care
  * instructions it carries were cleared from the medical service, or, for the
  * reopen template, the patient wrote first, so the replies it waited for went
- * without it, or the last of them was not delivered before it could go.
+ * without it, or the last of them was not delivered, or was withdrawn, before
+ * it could go.
  */
 export const outboxDropReasons = [
   "appointmentChanged",
@@ -89,6 +90,7 @@ export const outboxDropReasons = [
   "noCareInstructions",
   "answered",
   "replyNotDelivered",
+  "replyWithdrawn",
 ] as const;
 
 export type OutboxDropReason = (typeof outboxDropReasons)[number];

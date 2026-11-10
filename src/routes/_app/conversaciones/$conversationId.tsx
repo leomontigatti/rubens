@@ -11,8 +11,6 @@ import {
   takeOverConversation,
 } from "#/server/inbox.functions.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
-import type { ShownLateReply } from "#/organization/late-replies.ts";
-import { Badge } from "#/components/ui/badge.tsx";
 
 import {
   conversationName,
@@ -22,6 +20,7 @@ import {
 } from "#/routes/_app/conversaciones/-labels.ts";
 import { ConversationHandoffs } from "#/routes/_app/conversaciones/-handoffs.tsx";
 import { ConversationHolder, useHoldAction } from "#/routes/_app/conversaciones/-hold.tsx";
+import { LateReplyRow } from "#/routes/_app/conversaciones/-late-replies.tsx";
 import type { ReplyDraft } from "#/routes/_app/conversaciones/-hold.tsx";
 import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
@@ -30,7 +29,7 @@ import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-mess
 // message the member may not read shows that it exists, never its words. A
 // reply the clinical check held goes to the reply's box to be sent or fixed.
 // A reply written after the window closed follows the messages until the
-// patient answers, or shows it never reached them.
+// patient answers, or its writer withdraws it, or shows it never reached them.
 
 export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
   loader: async ({ params }) => {
@@ -102,38 +101,6 @@ function ConversationPage() {
         ))}
       </ul>
     </div>
-  );
-}
-
-const lateReplyLabels = {
-  waiting: {
-    badge: "En espera",
-    hint: "Le enviamos al paciente la plantilla para reabrir la conversación. Le llega cuando responda.",
-  },
-  notDelivered: {
-    badge: "No entregada",
-    hint: "No le llegó: el paciente no respondió a tiempo la plantilla para reabrir la conversación, o no se le pudo enviar.",
-  },
-} as const;
-
-function LateReplyRow({ reply }: { reply: ShownLateReply }) {
-  const labels = lateReplyLabels[reply.state];
-  return (
-    <li className="flex flex-col gap-1 p-4 text-sm">
-      <p className="text-muted-foreground flex items-center gap-2">
-        <span className="text-foreground font-medium">{reply.writer}</span>
-        {messageTime(reply.writtenAt)}
-        <Badge variant={reply.state === "notDelivered" ? "destructive" : "secondary"}>
-          {labels.badge}
-        </Badge>
-      </p>
-      <p
-        className={cn("whitespace-pre-wrap", reply.text === null && "text-muted-foreground italic")}
-      >
-        {reply.text ?? "Hay una respuesta clínica. Solo la leen los profesionales."}
-      </p>
-      <p className="text-muted-foreground">{labels.hint}</p>
-    </li>
   );
 }
 

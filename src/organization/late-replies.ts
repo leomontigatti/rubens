@@ -1,13 +1,15 @@
 import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
-import { lateReplyChanceMs } from "#/lib/conversation-holds.ts";
-import type { LateReplyState } from "#/lib/conversation-holds.ts";
+import { lateReplyChanceMs, lateReplyReferenceSchema } from "#/lib/conversation-holds.ts";
+import type { LateReplyReference, LateReplyState } from "#/lib/conversation-holds.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { outboxTemplates } from "#/lib/outbox.ts";
 import type { OutboxDropReason } from "#/lib/outbox.ts";
 
+import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import type { Acting } from "#/organization/members.ts";
 import { notify } from "#/organization/notifications.ts";
 import { clinicalHandoffOpenSince, settleReply } from "#/organization/personal-replies.ts";
 import { member, patient } from "#/organization/schema.ts";
@@ -32,7 +34,8 @@ import {
 // template went first. The replies written before the patient answers wait
 // behind the same template. If the patient has not answered within
 // `lateReplyChanceMs` of the reply, or of the template when it went later, or
-// the template could not go, the writer is told the reply was not delivered. The reply itself never goes into the template.
+// the template could not go, the writer is told the reply was not delivered.
+// Until the patient answers, its writer may withdraw it. The reply itself never goes into the template.
 
 /**
  * The first names of the patients `phone` reaches who accept WhatsApp, as the
@@ -226,7 +229,7 @@ function notDelivered(database: Database, waiting: Waiting) {
 function dropUnneededReopen(
   tx: Writer,
   leaving: { id: string; reopenId: string },
-  reason: "answered" | "replyNotDelivered",
+  reason: "answered" | "replyNotDelivered" | "replyWithdrawn",
 ) {
   const { reopenId } = leaving;
   const stillWaiting = tx
@@ -249,11 +252,74 @@ function dropUnneededReopen(
 }
 
 /**
+ * Withdraws `acting`'s own late reply while it waits for the patient, who has
+ * not answered: it never goes, and a template it alone waited behind that has
+ * not gone is dropped. Once the patient answered, the alarm sends it, so it
+ * stays; another member's reply is not found.
+ */
+export function withdrawOwnLateReply(
+  database: Database,
+  acting: Acting,
+  input: LateReplyReference,
+) {
+  const parsed = lateReplyReferenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, reason: "invalidInput" as const };
+  }
+  return database.transaction((tx) => {
+    const found = tx
+      .select({
+        id: lateReply.id,
+        conversationId: lateReply.conversationId,
+        state: lateReply.state,
+        reopenId: lateReply.reopenId,
+      })
+      .from(lateReply)
+      .where(and(eq(lateReply.id, parsed.data.lateReplyId), eq(lateReply.writtenBy, acting.userId)))
+      .get();
+    if (!found) {
+      return { ok: false as const, reason: "notFound" as const };
+    }
+    if (found.state !== "waiting") {
+      return { ok: false as const, reason: "notWaiting" as const };
+    }
+    if (isWindowOpen(lastIncomingAt(tx, found.conversationId), Date.now())) {
+      return { ok: false as const, reason: "answered" as const };
+    }
+    dropUnneededReopen(tx, found, "replyWithdrawn");
+    tx.update(lateReply).set({ state: "withdrawn" }).where(eq(lateReply.id, found.id)).run();
+    // Its words stay out of the log: they may answer a clinical handoff.
+    recordAudit(tx, acting.userId, {
+      action: "update",
+      entityType: "lateReply",
+      entityId: found.id,
+      patientId: null,
+      before: { state: "waiting" },
+      after: { state: "withdrawn" },
+    });
+    return { ok: true as const };
+  });
+}
+
+/** Whether late reply `id` still waits: its writer may have withdrawn it while the alarm sent earlier ones. */
+function stillWaiting(database: Database, id: string) {
+  const current = database
+    .select({ state: lateReply.state })
+    .from(lateReply)
+    .where(eq(lateReply.id, id))
+    .get();
+  return current?.state === "waiting";
+}
+
+/**
  * Sends `waiting` as its writer wrote it. A limit on the number leaves it
  * waiting for the hold to end; any other failure makes it not delivered, for
  * its writer to try again.
  */
 async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waiting) {
+  if (!stillWaiting(database, waiting.id)) {
+    return;
+  }
   // A contact changed since it was written: the number may no longer hear about each patient.
   const reachedNow = new Set(reachedIds(database, waiting.phone));
   if (!waiting.patientIds.every((id) => reachedNow.has(id))) {
@@ -318,21 +384,27 @@ export interface ShownLateReply {
   /** Its writer, by name. */
   writer: string;
   writtenAt: number;
-  state: Exclude<LateReplyState, "delivered">;
+  state: Exclude<LateReplyState, "delivered" | "withdrawn">;
+  /** Whether the reader wrote it, so may withdraw it while it waits. */
+  mine: boolean;
   /** Its words, under its writer's name; `null` when it answers a clinical handoff and the reader may not read clinical words. */
   text: string | null;
 }
 
-/** The late replies of `conversationId` not delivered, oldest first: a delivered one is a message. */
+/**
+ * The late replies of `conversationId` not delivered, oldest first, as
+ * `reader` reads them: a delivered one is a message, a withdrawn one is gone.
+ */
 export function lateRepliesShown(
   database: Database,
   conversationId: string,
-  readsClinical: boolean,
+  reader: { userId: string; readsClinical: boolean },
 ): ShownLateReply[] {
   return database
     .select({
       id: lateReply.id,
       writer: member.name,
+      writtenBy: lateReply.writtenBy,
       writtenAt: lateReply.createdAt,
       state: lateReply.state,
       text: lateReply.text,
@@ -348,9 +420,10 @@ export function lateRepliesShown(
     )
     .orderBy(asc(lateReply.createdAt), asc(sql`${lateReply}.rowid`))
     .all()
-    .map(({ clinical, text, state, ...one }) => ({
+    .map(({ clinical, text, state, writtenBy, ...one }) => ({
       ...one,
       state: state === "waiting" ? "waiting" : "notDelivered",
-      text: clinical && !readsClinical ? null : text,
+      mine: writtenBy === reader.userId,
+      text: clinical && !reader.readsClinical ? null : text,
     }));
 }

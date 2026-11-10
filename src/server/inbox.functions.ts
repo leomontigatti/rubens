@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import type { PersonalReply } from "#/lib/conversation-holds.ts";
+import type { LateReplyReference, PersonalReply } from "#/lib/conversation-holds.ts";
 import type { HandoffReference, OpenHandoffListOptions, OptOutReport } from "#/lib/handoffs.ts";
 import type { ConversationListOptions, ConversationReference } from "#/lib/whatsapp-messages.ts";
 
@@ -74,4 +74,11 @@ export const returnConversation = createServerFn({ method: "POST" })
   .validator((data: ConversationReference) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.returnConversation(caller, data)),
+  );
+
+// A reply written after the window closed, withdrawn by its writer while it waits (`src/organization/late-replies.ts`).
+export const withdrawLateReply = createServerFn({ method: "POST" })
+  .validator((data: LateReplyReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.withdrawLateReply(caller, data)),
   );

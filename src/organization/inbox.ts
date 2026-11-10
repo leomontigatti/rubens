@@ -341,7 +341,10 @@ export function readConversation(
     messages: messages.map((row) => asRead(row, reader.readsClinical)),
     hold: holdOf(database, acting, conversationId),
     window: windowOf(lastIncomingAt(database, conversationId)),
-    lateReplies: lateRepliesShown(database, conversationId, reader.readsClinical),
+    lateReplies: lateRepliesShown(database, conversationId, {
+      userId: acting.userId,
+      readsClinical: reader.readsClinical,
+    }),
   };
 }
 
