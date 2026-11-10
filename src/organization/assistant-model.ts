@@ -75,7 +75,7 @@ export interface AssistantModel {
 }
 
 /** A turn's model calls: enough for a lookup or two, the judgement and the reply. */
-const maxModelCalls = 8;
+export const maxModelCalls = 8;
 
 /** Reports each call's tokens to `recordUsage`: TanStack AI's hook runs once per call. */
 function usageOf(recordUsage: RecordUsage): ChatMiddleware {

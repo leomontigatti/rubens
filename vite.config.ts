@@ -100,7 +100,8 @@ export default defineConfig({
       {
         // The one place a form is drawn; the pages that are only their form, with
         // no list to return to; the patient's quick registration, a form of its
-        // own inside booking; and the reply to a patient, under the conversation it answers.
+        // own inside booking; the reply to a patient, under the conversation it answers;
+        // and the sandbox's scenario and patient's message, around its conversation.
         files: [
           "src/components/form-page.tsx",
           "src/components/patient-form.tsx",
@@ -109,6 +110,7 @@ export default defineConfig({
           "src/routes/_app/disponibilidad/index.tsx",
           "src/routes/_app/whatsapp/index.tsx",
           "src/routes/_app/conversaciones/-hold.tsx",
+          "src/routes/_app/whatsapp/prueba.tsx",
           "**/*.test.tsx",
         ],
         rules: {

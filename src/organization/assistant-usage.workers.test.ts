@@ -17,8 +17,8 @@ import {
 // each model run of a turn, the clinical check's included, records its tokens
 // and its model on the organization's day, and admins read the month's totals
 // in the WhatsApp settings, which refuse anyone else (`whatsapp.workers.test.ts`).
-// No method runs a sandbox turn yet: the sandbox (#183) records its turns as
-// sandbox use, and its tests show them apart in the month's totals.
+// The sandbox's turns are recorded as sandbox use, shown apart in the month's
+// totals (`assistant-sandbox.workers.test.ts`).
 // The model is scripted at its port, reporting the
 // tokens each of its calls used; Meta is faked at its HTTP boundary.
 

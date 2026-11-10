@@ -6,10 +6,17 @@ import type {
   HandoffRemindersInput,
   OpenHandoffListOptions,
 } from "#/lib/handoffs.ts";
+import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
 import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
+import {
+  listSandboxScenarios,
+  runSandboxTurn,
+  startSandbox,
+} from "#/organization/assistant-sandbox.ts";
+import type { SandboxTurnsRunning } from "#/organization/assistant-sandbox.ts";
 import { saveCommunicationRules } from "#/organization/communication-rules.ts";
 import {
   replyToConversation,
@@ -42,6 +49,9 @@ import {
  * Each method is one line into its area module, as in `organization.ts`.
  */
 export abstract class OrganizationWhatsapp extends OrganizationRuntime {
+  /** The sandbox turns running now, held against the sandbox's hourly limit. */
+  readonly #sandboxTurns: SandboxTurnsRunning = { count: 0 };
+
   /**
    * Meta's webhook, after the Worker checked its signature and found the
    * organization (`src/server/whatsapp-webhook.ts`). Refused by an object no
@@ -156,6 +166,23 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   async refreshWhatsappTemplates(caller: Caller) {
     return this.asThenArm(caller, ["admin"], () =>
       refreshWhatsappTemplates(this.database, this.whatsapp),
+    );
+  }
+
+  /** The upcoming appointments the assistant's sandbox can start from (#183). */
+  sandboxScenarios(caller: Caller) {
+    return this.as(caller, ["admin"], () => listSandboxScenarios(this.database));
+  }
+
+  /** A sandbox conversation from the scenario's reminder; nothing is stored. */
+  startSandbox(caller: Caller, input: SandboxStart) {
+    return this.as(caller, ["admin"], () => startSandbox(this.database, input));
+  }
+
+  /** The assistant's turn on the patient's message the admin wrote: its writes are discarded. */
+  async sandboxTurn(caller: Caller, input: SandboxTurnInput) {
+    return this.as(caller, ["admin"], () =>
+      runSandboxTurn(this.database, this.assistant, this.#sandboxTurns, input),
     );
   }
 }

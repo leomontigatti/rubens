@@ -185,7 +185,7 @@ const messageColumns = {
  * messages it judges (every incoming one not judged yet), and the latest
  * others as the conversation so far.
  */
-function readConversation(database: Database, conversationId: string) {
+export function readConversation(database: Database, conversationId: string) {
   const { phone, misunderstandings } = database
     .select({ phone: conversation.phone, misunderstandings: conversation.misunderstandings })
     .from(conversation)
@@ -225,6 +225,18 @@ function readConversation(database: Database, conversationId: string) {
 }
 
 type Read = ReturnType<typeof readConversation>;
+
+/**
+ * How a turn runs: for patients, or in the sandbox (`assistant-sandbox.ts`),
+ * which runs each tool through `step`, inside a transaction it rolls back,
+ * and records its model runs as sandbox use.
+ */
+export interface TurnMode {
+  sandbox: boolean;
+  step(name: AssistantTool["name"], args: unknown, run: () => unknown): unknown;
+}
+
+const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run() };
 
 /**
  * The messages as the model reads them: the conversation so far, one message
@@ -267,10 +279,11 @@ function promptSetting(database: Database) {
  * Runs the model on the conversation: its reply, judgement and hand_off, or
  * `null` when it judged nothing or could not run.
  */
-async function judgeTurn(
+export async function judgeTurn(
   database: Database,
   model: AssistantModel,
   turn: { conversationId: string; read: Read; appointments: Upcoming[] },
+  mode: TurnMode,
 ) {
   const rules = currentCommunicationRules(database);
   const recorded: Recorded = {
@@ -290,9 +303,12 @@ async function judgeTurn(
       conversationId: turn.conversationId,
       system,
       messages: asTurnMessages(turn.read),
-      tools: turnTools(database, turn, recorded),
+      tools: turnTools(database, turn, recorded).map((tool) => ({
+        name: tool.name,
+        run: (args) => mode.step(tool.name, args, () => tool.run(args)),
+      })),
       recordUsage: (used) =>
-        recordModelUsage(database, { ...used, purpose: "turn", sandbox: false }),
+        recordModelUsage(database, { ...used, purpose: "turn", sandbox: mode.sandbox }),
     })
     // The model is unavailable: the messages wait, unjudged, for their retry.
     .catch(() => null);
@@ -429,7 +445,7 @@ async function judgeWithoutMedia(
   const unjudged = read.unjudged.filter((message) => !media.includes(message));
   const judged =
     unjudged.length > 0
-      ? await judgeTurn(database, model, { ...turn, read: { ...read, unjudged } })
+      ? await judgeTurn(database, model, { ...turn, read: { ...read, unjudged } }, forPatients)
       : null;
   const unread = judged ? [] : unjudged.map((message) => message.id);
   if (media.length === 0) {
@@ -502,7 +518,7 @@ function notifyOptOuts(tx: Writer, turn: JudgedTurn) {
  * the conversation, the assistant is silent in it, but for an emergency's reply
  * while no member holds it.
  */
-function settleTurn(database: Database, judged: Omit<JudgedTurn, "reachedNow">): Settled {
+export function settleTurn(database: Database, judged: Omit<JudgedTurn, "reachedNow">): Settled {
   const reachedNow = patientsReachedAt(database, judged.read.phone).map((one) => one.id);
   const turn = { ...judged, reachedNow };
   const wanted = handoffWanted(turn);
