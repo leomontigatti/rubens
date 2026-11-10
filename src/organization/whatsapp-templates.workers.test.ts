@@ -363,3 +363,58 @@ describe("a template's status", () => {
     expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "pending" }]);
   });
 });
+
+describe("a template's versions", () => {
+  /** Submits `count` versions of the confirmation, `1` up, Meta's ids `v1`, `v2`… */
+  async function submitVersions(count: number) {
+    for (let version = 1; version <= count; version += 1) {
+      fakeMeta.answerNextWith(200, metaCreated(`v${version}`));
+      expectOk(
+        await organization.submitWhatsappTemplate(adminCaller, {
+          ...confirmation,
+          body: `${body} (${version})`,
+        }),
+      );
+    }
+  }
+
+  it("are listed newest first, each with its body, its status and Meta's reason for a rejection", async () => {
+    await submitVersions(3);
+    await organization.storeWhatsappEvents(statusEvent("v1", "approved"));
+    await organization.storeWhatsappEvents(statusEvent("v2", "rejected", "INVALID_FORMAT"));
+
+    expect(await versionsOf("confirmacion_turno")).toMatchObject([
+      { version: 3, body: `${body} (3)`, status: "pending", rejectionReason: null },
+      { version: 2, body: `${body} (2)`, status: "rejected", rejectionReason: "INVALID_FORMAT" },
+      { version: 1, body: `${body} (1)`, status: "approved", rejectionReason: null },
+    ]);
+  });
+
+  it("mark the latest approved utility one as the one in use, and only it", async () => {
+    await submitVersions(4);
+    await organization.storeWhatsappEvents(statusEvent("v1", "approved"));
+    await organization.storeWhatsappEvents(statusEvent("v2", "approved"));
+    await organization.storeWhatsappEvents(statusEvent("v3", "approved"));
+    // Meta moved v3 to marketing, which no longer goes.
+    await organization.storeWhatsappEvents({
+      ...statusEvent("v3", "approved"),
+      templateStatuses: [],
+      templateCategories: [{ metaId: "v3", category: "MARKETING" }],
+    });
+
+    const versions = await versionsOf("confirmacion_turno");
+
+    expect(versions.map(({ version, inUse }) => ({ version, inUse }))).toEqual([
+      { version: 4, inUse: false },
+      { version: 3, inUse: false },
+      { version: 2, inUse: true },
+      { version: 1, inUse: false },
+    ]);
+  });
+
+  it("have none in use while none is approved", async () => {
+    await submitVersions(1);
+
+    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ inUse: false }]);
+  });
+});

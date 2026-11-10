@@ -70,8 +70,8 @@ const listedColumns = {
 
 /**
  * Every template of the set, in the doc's order, each with its submitted
- * versions newest first; and the setting that keeps templates from being
- * submitted, if any.
+ * versions newest first, the one in use marked (`approvedVersion`'s); and the
+ * setting that keeps templates from being submitted, if any.
  */
 export function listWhatsappTemplates(database: Database, cloud: WhatsappCloud) {
   const rows = database
@@ -81,10 +81,11 @@ export function listWhatsappTemplates(database: Database, cloud: WhatsappCloud) 
     .all();
   return {
     missing: cloud.missingTemplateSetting(),
-    templates: templateNames.map((name) => ({
-      name,
-      versions: rows.filter((row) => row.name === name),
-    })),
+    templates: templateNames.map((name) => {
+      const versions = rows.filter((row) => row.name === name);
+      const inUse = versions.find((row) => row.status === "approved" && row.category === "utility");
+      return { name, versions: versions.map((row) => ({ ...row, inUse: row === inUse })) };
+    }),
   };
 }
 

@@ -28,6 +28,7 @@ import {
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
 
 // Each pattern of docs/agents/style-guide.md, drawn once, so an agent or a
 // reviewer can compare a screen with it. Only `pnpm dev` serves this page.
@@ -301,6 +302,15 @@ function Patterns() {
             </Field>
           </FieldGroup>
         </FieldSet>
+      </Pattern>
+      <Pattern title="Mensaje de WhatsApp">
+        <WhatsappChat label="Así lo lee el paciente">
+          <WhatsappBubble>
+            {
+              "Hola Lucía, tu turno es el jueves 12 de noviembre a las 10:30.\n\nConsultorios Prueba"
+            }
+          </WhatsappBubble>
+        </WhatsappChat>
       </Pattern>
     </div>
   );
