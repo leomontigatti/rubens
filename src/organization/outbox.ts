@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lt, lte, min } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, lte, min, notInArray, or } from "drizzle-orm";
 
 import {
   aftercareKinds,
@@ -27,6 +27,7 @@ import {
 } from "#/organization/schema.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 import { reopenToSend } from "#/organization/late-replies.ts";
+import { heldAppointmentIds } from "#/organization/opt-out-holds.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
@@ -248,9 +249,21 @@ function sendableKinds(database: Database, cloud: WhatsappCloud): OutboxKind[] {
 }
 
 /**
+ * The queued messages that may go now as far as their patient goes: none to a
+ * patient an opt-out-looking reply holds (`opt-out-holds.ts`). The reopen
+ * template answers the patient, so it has no appointment and is never held.
+ */
+function notHeldByOptOut(database: Database) {
+  return or(
+    isNull(outboxMessage.appointmentId),
+    notInArray(outboxMessage.appointmentId, heldAppointmentIds(database)),
+  );
+}
+
+/**
  * When the object's alarm should next fire: at the earliest queued message
  * that can go, or `null` when none can. A message waiting for its template's
- * approval or for Meta's settings is left out, so the alarm does not spin;
+ * approval, for Meta's settings or for an opt-out's decision is left out, so the alarm does not spin;
  * one waiting on a hold of the number, until the hold ends, if it ends by time.
  */
 export function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): number | null {
@@ -270,7 +283,13 @@ export function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): numbe
   const next = database
     .select({ dueAt: min(outboxMessage.dueAt) })
     .from(outboxMessage)
-    .where(and(eq(outboxMessage.state, "queued"), inArray(outboxMessage.kind, kinds)))
+    .where(
+      and(
+        eq(outboxMessage.state, "queued"),
+        inArray(outboxMessage.kind, kinds),
+        notHeldByOptOut(database),
+      ),
+    )
     .get();
   return next?.dueAt ?? null;
 }
@@ -562,6 +581,7 @@ export async function sendDueMessages(database: Database, cloud: WhatsappCloud) 
         eq(outboxMessage.state, "queued"),
         inArray(outboxMessage.kind, kinds),
         lte(outboxMessage.dueAt, Date.now()),
+        notHeldByOptOut(database),
       ),
     )
     .orderBy(asc(outboxMessage.dueAt))

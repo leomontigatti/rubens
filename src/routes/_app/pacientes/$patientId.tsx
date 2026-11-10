@@ -13,6 +13,7 @@ import {
   MinorPrompt,
 } from "#/components/patient-guardians.tsx";
 import { patientSearchQueries } from "#/components/patient-search.ts";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { defaultTimeZone } from "#/lib/offices.ts";
@@ -95,7 +96,7 @@ function PatientScreen() {
       <DetailsSection patient={patient} />
       <CoverageSection patientId={patient.id} coverages={coverages} />
       <GuardianSection patient={patient} guardians={guardians} />
-      <WhatsappSection patient={patient} />
+      <WhatsappSection patient={patient} optOutPendingSince={details.optOutPendingSince} />
       <AppointmentsSection appointments={appointments} />
       {history?.ok && <HistorySection entries={history.entries} names={history.names} />}
     </div>
@@ -256,8 +257,56 @@ function GuardianCard(props: { patient: Patient; guardians: Guardian[] }) {
   );
 }
 
-function WhatsappSection({ patient }: { patient: Patient }) {
+/**
+ * The patient's WhatsApp consent, turned off or back on here. While an
+ * opt-out-looking reply holds them, what the organization starts waits until
+ * a person turns them off or keeps them.
+ */
+function WhatsappSection({
+  patient,
+  optOutPendingSince,
+}: {
+  patient: Patient;
+  optOutPendingSince: number | null;
+}) {
   const action = useAction();
+  const setConsent = (whatsappConsent: boolean) =>
+    void action.run(() =>
+      changeWhatsappConsent({ data: { patientId: patient.id, whatsappConsent } }),
+    );
+  if (optOutPendingSince !== null) {
+    return (
+      <RecordSection title="WhatsApp">
+        <div className="flex flex-col gap-4">
+          <ErrorAlert message={action.error} />
+          <Alert variant="warning">
+            <AlertTitle>Pidió no recibir más mensajes</AlertTitle>
+            <AlertDescription>
+              {`El ${instantFormat.format(optOutPendingSince)} su número respondió algo que parece un pedido de baja. Sus recordatorios y avisos quedan en espera hasta que decidas.`}
+            </AlertDescription>
+          </Alert>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={action.pending}
+              onClick={() => setConsent(false)}
+            >
+              Dejar de enviar por WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={action.pending}
+              onClick={() => setConsent(true)}
+            >
+              Seguir enviando
+            </Button>
+          </div>
+        </div>
+      </RecordSection>
+    );
+  }
   const consent = !patient.whatsappConsent;
   return (
     <RecordSection title="WhatsApp">
@@ -273,13 +322,7 @@ function WhatsappSection({ patient }: { patient: Patient }) {
             variant="outline"
             size="sm"
             disabled={action.pending}
-            onClick={() =>
-              void action.run(() =>
-                changeWhatsappConsent({
-                  data: { patientId: patient.id, whatsappConsent: consent },
-                }),
-              )
-            }
+            onClick={() => setConsent(consent)}
           >
             {consent ? "Volver a aceptar WhatsApp" : "Dejar de enviar por WhatsApp"}
           </Button>

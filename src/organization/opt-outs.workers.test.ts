@@ -204,9 +204,10 @@ describe("a reply the model judges an opt-out", () => {
     expect(fakeMeta.textsSent().map((one) => one.text)).toEqual([optedOutText, optedOutText]);
   });
 
-  it("names no patient whose messages reception sent elsewhere while the model wrote", async () => {
+  it("names and holds no patient whose messages reception sent elsewhere while the model wrote, and hands the number off", async () => {
     const martina = await world.addPatient("Martina", "+5493515550001");
     await makeGuardianContact(martina.id);
+    await bookAt(martina.id, "12:00");
     await patientWrites(world.organization, "no me escriban más", martinaPhone);
     let release!: () => void;
     const released = new Promise<void>((resolve) => {
@@ -232,6 +233,13 @@ describe("a reply the model judges an opt-out", () => {
     await alarm;
 
     expect(await optOutsNotified(world.receptionist)).toEqual([]);
+    const shown = expectOk(
+      await world.organization.getPatient(adminCaller, { patientId: martina.id }),
+    );
+    expect(shown.optOutPendingSince).toBeNull();
+    // Nobody is left on the number to turn off: a person answers it.
+    const [opened] = expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs;
+    expect(opened).toMatchObject({ reason: "unknownNumber" });
   });
 
   it("hands off a number of no patient, since there is no consent to turn off", async () => {

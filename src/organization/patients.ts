@@ -24,6 +24,7 @@ import type {
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { liftOptOutHold, optOutPendingSince } from "#/organization/opt-out-holds.ts";
 import { dropQueuedForPatient, requeueRemindersForPatient } from "#/organization/outbox.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import { coverage, insurer, patient } from "#/organization/schema.ts";
@@ -276,13 +277,17 @@ export function listPatients(database: Database, options: PatientListOptions): R
 export function getPatient(
   database: Database,
   input: { patientId: string },
-): Result<{ patient: Patient }> {
+): Result<{ patient: Patient; optOutPendingSince: number | null }> {
   const patientId = patientIdSchema.safeParse(input.patientId);
   if (!patientId.success) {
     return notFound;
   }
   const found = findPatient(database, patientId.data);
-  return found ? { ok: true, patient: toPatient(found) } : notFound;
+  if (!found) {
+    return notFound;
+  }
+  const optOutPending = optOutPendingSince(database, found.id);
+  return { ok: true, patient: toPatient(found), optOutPendingSince: optOutPending };
 }
 
 export function registerPatient(
@@ -382,7 +387,10 @@ function auditUpdate(writer: Writer, acting: Acting, before: PatientRow, after: 
 
 /**
  * Turns WhatsApp consent off when the patient asks, or back on, which records
- * who gave it and when, as registration does.
+ * who gave it and when, as registration does. Either answers an
+ * opt-out-looking reply that holds the patient (`opt-out-holds.ts`): off drops
+ * their held messages with the rest, and on while consent is on keeps the
+ * patient, whose held messages then go, read again as they are by then.
  */
 export function setWhatsappConsent(
   database: Database,
@@ -399,7 +407,18 @@ export function setWhatsappConsent(
     if (!current) {
       return notFound;
     }
+    const held = liftOptOutHold(tx, patientId);
     if (current.whatsappConsent === whatsappConsent) {
+      if (held) {
+        recordAudit(tx, acting.userId, {
+          action: "update",
+          entityType: "patient",
+          entityId: patientId,
+          patientId,
+          before: { optOutPending: true },
+          after: { optOutPending: false },
+        });
+      }
       return { ok: true as const, patient: toPatient(current) };
     }
     const updated = tx

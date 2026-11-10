@@ -201,6 +201,7 @@ const fieldLabels: Record<string, string> = {
   email: "Correo electrónico",
   address: "Dirección",
   whatsappConsent: "Acepta WhatsApp",
+  optOutPending: "Pedido de baja sin decidir",
   active: "Activo",
   // A coverage's, in its form's order.
   insurer: "Obra social / prepaga",

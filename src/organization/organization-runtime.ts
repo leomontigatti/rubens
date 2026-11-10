@@ -18,6 +18,7 @@ import {
   whatsappCloudFor,
 } from "#/organization/graph-api.ts";
 import type { GraphApiSettings, SignupSettings, WhatsappCloud } from "#/organization/graph-api.ts";
+import { nextOptOutReminderAlarm, remindHeldOptOuts } from "#/organization/opt-out-holds.ts";
 import { nextOutboxAlarm, sendDueMessages } from "#/organization/outbox.ts";
 import { authorize } from "#/organization/members.ts";
 import type { Acting, Caller, Refusal, Requirement } from "#/organization/members.ts";
@@ -123,8 +124,8 @@ export abstract class OrganizationRuntime extends DurableObject {
    * Sends the outbox's due messages, then the late replies the patient
    * answered (or tells their writers they were not delivered), gives the
    * conversations whose hold ended back to the assistant, and runs its due
-   * turns, then sends the handoff reminders those leave due, and sets the
-   * alarm for the next item.
+   * turns, then sends the handoff reminders those leave due and the daily
+   * reminders of patients an opt-out holds, and sets the alarm for the next item.
    */
   override async alarm() {
     await sendDueMessages(this.database, this.whatsapp);
@@ -135,6 +136,7 @@ export abstract class OrganizationRuntime extends DurableObject {
       transcriber: this.transcriber,
     });
     sendDueReminders(this.database);
+    remindHeldOptOuts(this.database);
     await this.#armAlarm();
   }
 
@@ -146,6 +148,7 @@ export abstract class OrganizationRuntime extends DurableObject {
       nextReturnAlarm(this.database),
       nextReminderAlarm(this.database),
       nextLateReplyAlarm(this.database, this.whatsapp),
+      nextOptOutReminderAlarm(this.database),
     ].filter((at) => at !== null);
     const next = due.length > 0 ? Math.min(...due) : null;
     if (next === null) {

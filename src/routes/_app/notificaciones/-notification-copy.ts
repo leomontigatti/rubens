@@ -24,7 +24,7 @@ export interface NotificationFacts {
   waiting: number | null;
   /** The handoff a `handoff` or `handoffReminder` notification tells of. */
   handoff: { conversationId: string; reason: HandoffReason; clinical: boolean } | null;
-  /** The patient an `optOut` notification is about. */
+  /** The patient an `optOut` or `optOutReminder` notification is about. */
   patient: { id: string; name: string } | null;
 }
 
@@ -77,6 +77,8 @@ export function notificationTitle(facts: NotificationFacts): string {
       return "Tu respuesta de WhatsApp no le llegó al paciente";
     case "optOut":
       return `${facts.patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`;
+    case "optOutReminder":
+      return `Falta decidir si ${facts.patient?.name ?? "un paciente"} sigue recibiendo mensajes de WhatsApp`;
   }
 }
 
@@ -107,7 +109,8 @@ export function notificationText(facts: NotificationFacts): string {
     case "replyNotDelivered":
       return "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio.";
     case "optOut":
-      return "Si es lo que pide, tocá Dejar de enviar por WhatsApp en su ficha. Hasta entonces le siguen llegando los recordatorios y avisos.";
+    case "optOutReminder":
+      return "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.";
   }
 }
 

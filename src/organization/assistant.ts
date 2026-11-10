@@ -21,7 +21,7 @@ import {
   openHandoffsOf,
 } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { notifyOptOut } from "#/organization/notifications.ts";
+import { holdForOptOut } from "#/organization/opt-out-holds.ts";
 import { proposalTools } from "#/organization/proposals.ts";
 import { handoffWanted } from "#/organization/turn-handoffs.ts";
 import {
@@ -535,28 +535,6 @@ function storeJudgement(tx: Writer, turn: JudgedTurn, clinical: boolean) {
 }
 
 /**
- * Notifies reception and the admins of each patient the number reaches now
- * who still accepts WhatsApp, for a person to turn their consent off
- * (GLOSSARY.md `whatsappConsent`). Says whether any such patient was found,
- * whose notification the team has then had or gets now.
- */
-function notifyOptOuts(tx: Writer, turn: JudgedTurn) {
-  if (turn.reachedNow.length === 0) {
-    return false;
-  }
-  const consenting = tx
-    .select({ id: patient.id })
-    .from(patient)
-    .where(and(inArray(patient.id, turn.reachedNow), eq(patient.whatsappConsent, true)))
-    .orderBy(asc(patient.id))
-    .all();
-  for (const { id } of consenting) {
-    notifyOptOut(tx, id);
-  }
-  return consenting.length > 0;
-}
-
-/**
  * Settles the judged turn in one transaction: stores the judgement, counts a
  * misunderstanding, opens the handoff it calls for, notifies an opt-out, and
  * says what the patient is told. While a handoff is open, or a member holds
@@ -578,7 +556,7 @@ export function settleTurn(database: Database, judged: Omit<JudgedTurn, "reached
     if (wanted && addsToOpen(open, wanted)) {
       openHandoff(tx, turn.conversationId, wanted);
     }
-    const optOutAsked = turn.judgement.optOut && notifyOptOuts(tx, turn);
+    const optOutAsked = turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow);
     if (isHeld(tx, turn.conversationId)) {
       return "silent";
     }
