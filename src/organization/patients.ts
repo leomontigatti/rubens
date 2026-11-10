@@ -27,6 +27,7 @@ import type { Acting } from "#/organization/members.ts";
 import { dropQueuedForPatient, requeueRemindersForPatient } from "#/organization/outbox.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import { coverage, insurer, patient } from "#/organization/schema.ts";
+import { relinkPatient } from "#/organization/whatsapp-messages.ts";
 
 // The organization's patient registry. Reception, admins and practitioners
 // register and edit patients; only an admin deactivates one (the object's
@@ -318,6 +319,7 @@ export function registerPatient(
       before: null,
       after: createdFields(auditedValues(created)),
     });
+    relinkPatient(tx, created.id);
     return { ok: true as const, patient: toPatient(created) };
   });
 }
@@ -357,6 +359,9 @@ export function updatePatient(
       .returning(patientColumns)
       .get();
     auditUpdate(tx, acting, current, updated);
+    if (updated.phone !== current.phone) {
+      relinkPatient(tx, patientId);
+    }
     return { ok: true as const, patient: toPatient(updated) };
   });
 }

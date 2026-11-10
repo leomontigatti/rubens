@@ -82,9 +82,8 @@ export function patientsReachedAt(tx: Writer, phone: string) {
 
 /**
  * Links the conversation to exactly the patients its number reaches now: one
- * registered or given this number as a contact since its last message joins,
- * and one whose messages went elsewhere since leaves, so the number is never
- * taken for theirs.
+ * registered or given this number as a contact joins, and one whose messages
+ * went elsewhere leaves, so the number is never taken for theirs.
  */
 function linkPatients(tx: Writer, conversationId: string, phone: string) {
   const patients = patientsReachedAt(tx, phone);
@@ -95,6 +94,36 @@ function linkPatients(tx: Writer, conversationId: string, phone: string) {
     tx.insert(conversationPatient)
       .values(patients.map(({ id }) => ({ conversationId, patientId: id })))
       .run();
+  }
+}
+
+/**
+ * Links again every conversation whose number reached `patientId` or may
+ * reach them now (their own phone, or their contact guardian's), after a change to their
+ * phone or message contact: a practitioner reads what the number says about
+ * their appointments without waiting for its next message, and nothing more
+ * through a number that no longer reaches the patient.
+ */
+export function relinkPatient(tx: Writer, patientId: string) {
+  const phones = [
+    ...tx.select({ phone: patient.phone }).from(patient).where(eq(patient.id, patientId)).all(),
+    ...tx
+      .select({ phone: guardian.phone })
+      .from(guardian)
+      .where(and(eq(guardian.patientId, patientId), eq(guardian.messageContact, true)))
+      .all(),
+  ].flatMap(({ phone }) => phoneSpellings(phone));
+  const linked = tx
+    .select({ id: conversationPatient.conversationId })
+    .from(conversationPatient)
+    .where(eq(conversationPatient.patientId, patientId));
+  const conversations = tx
+    .select({ id: conversation.id, phone: conversation.phone })
+    .from(conversation)
+    .where(or(inArray(conversation.id, linked), inArray(conversation.phone, phones)))
+    .all();
+  for (const { id, phone } of conversations) {
+    linkPatients(tx, id, phone);
   }
 }
 

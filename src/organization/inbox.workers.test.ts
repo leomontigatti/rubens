@@ -36,6 +36,7 @@ const symptoms = "Me duele mucho la muela desde ayer";
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let martinaId: string;
+let medicalServiceId: string;
 
 let minutesIn = 0;
 
@@ -85,12 +86,12 @@ beforeEach(async () => {
   fakeMeta.reset();
   world = await setUpBookingWorld();
   await world.addSchedule({ practitionerId: world.juan.practitionerId });
-  const medicalService = await world.addMedicalService(world.juan.practitionerId);
+  medicalServiceId = (await world.addMedicalService(world.juan.practitionerId)).id;
   martinaId = (await world.addPatient("Martina", martinaPhone)).id;
   await world.book({
     practitionerId: world.juan.practitionerId,
     patientId: martinaId,
-    medicalServiceId: medicalService.id,
+    medicalServiceId,
     start: at("12:00"),
     durationMinutes: 30,
   });
@@ -308,5 +309,127 @@ describe("reading a conversation in the inbox", () => {
       ...["unauthenticated", "unauthenticated"],
       ...["mustChangePassword", "mustChangePassword"],
     ]);
+  });
+});
+
+describe("the patients a conversation's number stands for", () => {
+  const unknownPhone = "+5491155559999";
+
+  /** Books `patientId` with Juan at `time`, as reception; nothing is sent while no template is approved. */
+  function bookWithJuan(patientId: string, time: string) {
+    return world.book({
+      practitionerId: world.juan.practitionerId,
+      patientId,
+      medicalServiceId,
+      start: at(time),
+      durationMinutes: 30,
+    });
+  }
+
+  it("shows the practitioner a number's conversation once its patient is registered and booked, before they write again", async () => {
+    await patientWrites("Hola, ¿atienden con obra social?", unknownPhone);
+    const bruno = await world.addPatient("Bruno", unknownPhone);
+    await bookWithJuan(bruno.id, "13:00");
+
+    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
+
+    expect(listed.conversations).toEqual([
+      expect.objectContaining({
+        phone: unknownPhone,
+        patients: [{ id: bruno.id, name: "Bruno Paz" }],
+      }),
+    ]);
+  });
+
+  it("moves the link with the patient's number, so the old number's conversation is no longer theirs", async () => {
+    const newPhone = "+5491155558888";
+    await patientWrites(symptoms);
+    await patientWrites("Hola", newPhone);
+    const [atOldNumber] = expectOk(
+      await world.organization.listConversations(world.receptionist, { query: martinaPhone }),
+    ).conversations;
+
+    expectOk(
+      await world.organization.updatePatient(world.receptionist, {
+        patientId: martinaId,
+        firstName: "Martina",
+        lastName: "Paz",
+        phone: newPhone,
+      }),
+    );
+
+    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
+    const opened = await world.organization.readConversation(world.juan.caller, {
+      conversationId: atOldNumber!.id,
+    });
+    expect(listed.conversations).toEqual([
+      expect.objectContaining({
+        phone: newPhone,
+        patients: [{ id: martinaId, name: "Martina Paz" }],
+      }),
+    ]);
+    expect(opened).toEqual({ ok: false, reason: "notFound" });
+  });
+
+  it("follows the patient's message contact to a guardian's number and back", async () => {
+    const guardianPhone = "+5491155557777";
+    await patientWrites("Hola");
+    await patientWrites("Hola, soy la mamá", guardianPhone);
+    const added = expectOk(
+      await world.organization.addGuardian(world.receptionist, {
+        patientId: martinaId,
+        name: "Laura Paz",
+        relationship: "Madre",
+        phone: guardianPhone,
+      }),
+    ).guardian;
+    const phonesJuanSees = async () =>
+      expectOk(await world.organization.listConversations(world.juan.caller, {})).conversations.map(
+        (conversation) => [conversation.phone, conversation.patients.map(({ id }) => id)],
+      );
+
+    expectOk(
+      await world.organization.setMessageContact(world.receptionist, {
+        patientId: martinaId,
+        guardianId: added.id,
+      }),
+    );
+    const throughGuardian = await phonesJuanSees();
+    expectOk(await world.organization.removeGuardian(world.receptionist, { guardianId: added.id }));
+    const backToPatient = await phonesJuanSees();
+
+    expect(throughGuardian).toEqual([[guardianPhone, [martinaId]]]);
+    expect(backToPatient).toEqual([[martinaPhone, [martinaId]]]);
+  });
+
+  it("moves the link with the contact guardian's number when it is edited", async () => {
+    const [oldPhone, newPhone] = ["+5491155557777", "+5491155556666"];
+    await patientWrites("Hola, soy la mamá", oldPhone);
+    await patientWrites("Hola, soy la mamá, desde mi número nuevo", newPhone);
+    const laura = { name: "Laura Paz", relationship: "Madre" };
+    const added = expectOk(
+      await world.organization.addGuardian(world.receptionist, {
+        ...laura,
+        patientId: martinaId,
+        phone: oldPhone,
+      }),
+    ).guardian;
+    expectOk(
+      await world.organization.setMessageContact(world.receptionist, {
+        patientId: martinaId,
+        guardianId: added.id,
+      }),
+    );
+
+    expectOk(
+      await world.organization.updateGuardian(world.receptionist, {
+        ...laura,
+        guardianId: added.id,
+        phone: newPhone,
+      }),
+    );
+
+    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
+    expect(listed.conversations.map((conversation) => conversation.phone)).toEqual([newPhone]);
   });
 });
