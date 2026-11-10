@@ -81,8 +81,12 @@ expects and the WhatsApp settings page sends from);
 to, which the settings page submits templates to and whose template status events
 the webhook stores; and `WHATSAPP_ORGANIZATION_ID`, the organization its messages
 and templates are stored in. Without the account id the settings page shows
-submitting disabled. For the template statuses to arrive, subscribe the webhook to
-`message_template_status_update` beside `messages` in Meta's app dashboard. These
+submitting disabled. In Meta's app dashboard, subscribe the webhook to every field
+it reads (`src/server/whatsapp-webhook.ts`): `messages` (patients' messages and
+delivery statuses), `message_template_status_update` (a template's review),
+`template_category_update` (Meta moving a template to another category),
+`account_update` and `phone_number_quality_update` (Meta restricting or limiting the
+number). A field left out is never heard of, and nothing says so. These
 names serve that one organization only, for development and App Review; a real
 practice connects its own number through Embedded Signup.
 

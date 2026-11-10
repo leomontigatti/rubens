@@ -132,6 +132,13 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   writes, its checks and its audit entry (`recordAudit()`) in one
   `database.transaction`, with no `await` inside: an object runs one event at a time,
   so a check and the write it guards cannot be raced (double booking, ADR-0003).
+  The one exception is a call to an outside service (Clerk, Meta), which cannot sit
+  inside a synchronous transaction: the area function checks, awaits the call, then
+  makes the write and its audit entry in one transaction. While the call is awaited
+  the object takes other events, so when what it checked depends on stored state, a
+  per-object in-flight set refuses a second call for the same key until the first
+  settles, as `emailsInFlight` does for `createStaffMember` in
+  `src/organization/staff.ts`.
 - **Instants are integers**, Unix milliseconds in UTC; a span is `[start, end)`.
   Local times are derived from the office's IANA time zone, never stored bare.
 - **Clinical note versions are append-only** (ADR-0005). Editing a note adds a
