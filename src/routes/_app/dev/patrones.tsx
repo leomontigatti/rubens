@@ -83,6 +83,48 @@ function PatternTable() {
   );
 }
 
+/** A short fixed list: no search, only the rows and their count. */
+function PatternFixedTable() {
+  const { table, pager } = useClientDataTable({
+    rows: patternRows,
+    columns: patternColumns,
+    getRowId: (row) => row.id,
+  });
+  return <DataTable table={table} pager={pager} empty={null} />;
+}
+
+/** A page of settings: one section per setting, each with its own form page or link. */
+function PatternSettings() {
+  return (
+    <div className="flex flex-col gap-6">
+      <RecordSection
+        title="Devolución al asistente"
+        action={
+          <Button variant="outline" size="sm">
+            Editar
+          </Button>
+        }
+      >
+        <dl>
+          <Detail label="Vuelve al asistente después de" value="4 horas" />
+        </dl>
+      </RecordSection>
+      <RecordSection
+        title="Prueba del asistente"
+        action={
+          <Button variant="outline" size="sm">
+            Probar
+          </Button>
+        }
+      >
+        <p className="text-muted-foreground text-sm">
+          Escribí como un paciente y mirá qué responde el asistente.
+        </p>
+      </RecordSection>
+    </div>
+  );
+}
+
 function PatternFilters() {
   const [practitioner, setPractitioner] = useState<string | null>("laura");
   return (
@@ -196,6 +238,9 @@ function Patterns() {
           </dl>
         </RecordSection>
       </Pattern>
+      <Pattern title="Página de configuración">
+        <PatternSettings />
+      </Pattern>
       <Pattern title="Campo">
         <Field>
           <FieldLabel htmlFor="pattern-name">Nombre</FieldLabel>
@@ -232,6 +277,9 @@ function Patterns() {
       </Pattern>
       <Pattern title="Tabla">
         <PatternTable />
+      </Pattern>
+      <Pattern title="Lista fija, sin búsqueda">
+        <PatternFixedTable />
       </Pattern>
       <Pattern title="Búsqueda de pacientes con más coincidencias">
         <MorePatientMatches

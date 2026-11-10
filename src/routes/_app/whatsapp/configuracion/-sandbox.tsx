@@ -10,7 +10,11 @@ export function SandboxSection() {
     <RecordSection
       title="Prueba del asistente"
       action={
-        <Button variant="outline" nativeButton={false} render={<Link to="/whatsapp/prueba" />}>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/whatsapp/configuracion/prueba" />}
+        >
           Probar
         </Button>
       }

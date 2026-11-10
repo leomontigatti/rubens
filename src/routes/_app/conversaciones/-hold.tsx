@@ -29,7 +29,7 @@ const refusals = {
   notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
   notHolding: "Otra persona tomó la conversación, o volvió al asistente. Recargá la página.",
   noReopenTemplate:
-    "La ventana de conversación está cerrada y la plantilla Reabrir la conversación no está aprobada: un administrador la envía desde la configuración de WhatsApp.",
+    "La ventana de conversación está cerrada y la plantilla Reabrir la conversación no está aprobada: un administrador la envía desde las plantillas de WhatsApp.",
   cannotReopen:
     "La ventana de conversación está cerrada y no podemos reabrirla: el número no es de ningún paciente que acepte WhatsApp.",
   notConnected: "El número de WhatsApp no está conectado.",

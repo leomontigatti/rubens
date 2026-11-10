@@ -44,12 +44,6 @@ import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
-import { Route as AppWhatsappIndexRouteImport } from './routes/_app/whatsapp/index'
-import { Route as AppWhatsappContactosRouteImport } from './routes/_app/whatsapp/contactos'
-import { Route as AppWhatsappDevolucionRouteImport } from './routes/_app/whatsapp/devolucion'
-import { Route as AppWhatsappPruebaRouteImport } from './routes/_app/whatsapp/prueba'
-import { Route as AppWhatsappRecordatoriosRouteImport } from './routes/_app/whatsapp/recordatorios'
-import { Route as AppWhatsappReglasRouteImport } from './routes/_app/whatsapp/reglas'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
@@ -59,6 +53,13 @@ import { Route as AppPersonalMemberIdEditarRouteImport } from './routes/_app/per
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
 import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
+import { Route as AppWhatsappConfiguracionIndexRouteImport } from './routes/_app/whatsapp/configuracion/index'
+import { Route as AppWhatsappConfiguracionContactosRouteImport } from './routes/_app/whatsapp/configuracion/contactos'
+import { Route as AppWhatsappConfiguracionDevolucionRouteImport } from './routes/_app/whatsapp/configuracion/devolucion'
+import { Route as AppWhatsappConfiguracionPruebaRouteImport } from './routes/_app/whatsapp/configuracion/prueba'
+import { Route as AppWhatsappConfiguracionRecordatoriosRouteImport } from './routes/_app/whatsapp/configuracion/recordatorios'
+import { Route as AppWhatsappConfiguracionReglasRouteImport } from './routes/_app/whatsapp/configuracion/reglas'
+import { Route as AppWhatsappPlantillasIndexRouteImport } from './routes/_app/whatsapp/plantillas/index'
 import { Route as AppWhatsappPlantillasTemplateNameRouteImport } from './routes/_app/whatsapp/plantillas/$templateName'
 import { Route as AppAgendaTurnosAppointmentIdCancelarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/cancelar'
 import { Route as AppAgendaTurnosAppointmentIdEditarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/editar'
@@ -250,37 +251,6 @@ const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
   path: '/sedes/nueva',
   getParentRoute: () => AppRoute,
 } as any)
-const AppWhatsappIndexRoute = AppWhatsappIndexRouteImport.update({
-  id: '/whatsapp/',
-  path: '/whatsapp/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppWhatsappContactosRoute = AppWhatsappContactosRouteImport.update({
-  id: '/whatsapp/contactos',
-  path: '/whatsapp/contactos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppWhatsappDevolucionRoute = AppWhatsappDevolucionRouteImport.update({
-  id: '/whatsapp/devolucion',
-  path: '/whatsapp/devolucion',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppWhatsappPruebaRoute = AppWhatsappPruebaRouteImport.update({
-  id: '/whatsapp/prueba',
-  path: '/whatsapp/prueba',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppWhatsappRecordatoriosRoute =
-  AppWhatsappRecordatoriosRouteImport.update({
-    id: '/whatsapp/recordatorios',
-    path: '/whatsapp/recordatorios',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppWhatsappReglasRoute = AppWhatsappReglasRouteImport.update({
-  id: '/whatsapp/reglas',
-  path: '/whatsapp/reglas',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAgendaSobreturnosNuevoRoute =
   AppAgendaSobreturnosNuevoRouteImport.update({
     id: '/agenda/sobreturnos/nuevo',
@@ -333,6 +303,48 @@ const AppSedesOfficeIdEditarRoute = AppSedesOfficeIdEditarRouteImport.update({
   path: '/sedes/$officeId/editar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWhatsappConfiguracionIndexRoute =
+  AppWhatsappConfiguracionIndexRouteImport.update({
+    id: '/whatsapp/configuracion/',
+    path: '/whatsapp/configuracion/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappConfiguracionContactosRoute =
+  AppWhatsappConfiguracionContactosRouteImport.update({
+    id: '/whatsapp/configuracion/contactos',
+    path: '/whatsapp/configuracion/contactos',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappConfiguracionDevolucionRoute =
+  AppWhatsappConfiguracionDevolucionRouteImport.update({
+    id: '/whatsapp/configuracion/devolucion',
+    path: '/whatsapp/configuracion/devolucion',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappConfiguracionPruebaRoute =
+  AppWhatsappConfiguracionPruebaRouteImport.update({
+    id: '/whatsapp/configuracion/prueba',
+    path: '/whatsapp/configuracion/prueba',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappConfiguracionRecordatoriosRoute =
+  AppWhatsappConfiguracionRecordatoriosRouteImport.update({
+    id: '/whatsapp/configuracion/recordatorios',
+    path: '/whatsapp/configuracion/recordatorios',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappConfiguracionReglasRoute =
+  AppWhatsappConfiguracionReglasRouteImport.update({
+    id: '/whatsapp/configuracion/reglas',
+    path: '/whatsapp/configuracion/reglas',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappPlantillasIndexRoute =
+  AppWhatsappPlantillasIndexRouteImport.update({
+    id: '/whatsapp/plantillas/',
+    path: '/whatsapp/plantillas/',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppWhatsappPlantillasTemplateNameRoute =
   AppWhatsappPlantillasTemplateNameRouteImport.update({
     id: '/whatsapp/plantillas/$templateName',
@@ -428,11 +440,6 @@ export interface FileRoutesByFullPath {
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
-  '/whatsapp/contactos': typeof AppWhatsappContactosRoute
-  '/whatsapp/devolucion': typeof AppWhatsappDevolucionRoute
-  '/whatsapp/prueba': typeof AppWhatsappPruebaRoute
-  '/whatsapp/recordatorios': typeof AppWhatsappRecordatoriosRoute
-  '/whatsapp/reglas': typeof AppWhatsappReglasRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
@@ -446,7 +453,6 @@ export interface FileRoutesByFullPath {
   '/personal/': typeof AppPersonalIndexRoute
   '/prestaciones/': typeof AppPrestacionesIndexRoute
   '/sedes/': typeof AppSedesIndexRoute
-  '/whatsapp/': typeof AppWhatsappIndexRoute
   '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
@@ -456,7 +462,14 @@ export interface FileRoutesByFullPath {
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
+  '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
+  '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
+  '/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
+  '/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
   '/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
+  '/whatsapp/configuracion/': typeof AppWhatsappConfiguracionIndexRoute
+  '/whatsapp/plantillas/': typeof AppWhatsappPlantillasIndexRoute
   '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
   '/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
   '/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -491,11 +504,6 @@ export interface FileRoutesByTo {
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
-  '/whatsapp/contactos': typeof AppWhatsappContactosRoute
-  '/whatsapp/devolucion': typeof AppWhatsappDevolucionRoute
-  '/whatsapp/prueba': typeof AppWhatsappPruebaRoute
-  '/whatsapp/recordatorios': typeof AppWhatsappRecordatoriosRoute
-  '/whatsapp/reglas': typeof AppWhatsappReglasRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
@@ -509,7 +517,6 @@ export interface FileRoutesByTo {
   '/personal': typeof AppPersonalIndexRoute
   '/prestaciones': typeof AppPrestacionesIndexRoute
   '/sedes': typeof AppSedesIndexRoute
-  '/whatsapp': typeof AppWhatsappIndexRoute
   '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
@@ -519,7 +526,14 @@ export interface FileRoutesByTo {
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
+  '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
+  '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
+  '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
+  '/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
+  '/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
   '/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
+  '/whatsapp/configuracion': typeof AppWhatsappConfiguracionIndexRoute
+  '/whatsapp/plantillas': typeof AppWhatsappPlantillasIndexRoute
   '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
   '/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
   '/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -556,11 +570,6 @@ export interface FileRoutesById {
   '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
   '/_app/sedes/nueva': typeof AppSedesNuevaRoute
-  '/_app/whatsapp/contactos': typeof AppWhatsappContactosRoute
-  '/_app/whatsapp/devolucion': typeof AppWhatsappDevolucionRoute
-  '/_app/whatsapp/prueba': typeof AppWhatsappPruebaRoute
-  '/_app/whatsapp/recordatorios': typeof AppWhatsappRecordatoriosRoute
-  '/_app/whatsapp/reglas': typeof AppWhatsappReglasRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
@@ -574,7 +583,6 @@ export interface FileRoutesById {
   '/_app/personal/': typeof AppPersonalIndexRoute
   '/_app/prestaciones/': typeof AppPrestacionesIndexRoute
   '/_app/sedes/': typeof AppSedesIndexRoute
-  '/_app/whatsapp/': typeof AppWhatsappIndexRoute
   '/_app/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/_app/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
@@ -584,7 +592,14 @@ export interface FileRoutesById {
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
+  '/_app/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
+  '/_app/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
+  '/_app/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
+  '/_app/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
+  '/_app/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
   '/_app/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
+  '/_app/whatsapp/configuracion/': typeof AppWhatsappConfiguracionIndexRoute
+  '/_app/whatsapp/plantillas/': typeof AppWhatsappPlantillasIndexRoute
   '/_app/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
   '/_app/agenda/turnos/$appointmentId/editar': typeof AppAgendaTurnosAppointmentIdEditarRoute
   '/_app/agenda/turnos/$appointmentId/reprogramar': typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -621,11 +636,6 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
     | '/sedes/nueva'
-    | '/whatsapp/contactos'
-    | '/whatsapp/devolucion'
-    | '/whatsapp/prueba'
-    | '/whatsapp/recordatorios'
-    | '/whatsapp/reglas'
     | '/a-reprogramar/'
     | '/agenda/'
     | '/cierres/'
@@ -639,7 +649,6 @@ export interface FileRouteTypes {
     | '/personal/'
     | '/prestaciones/'
     | '/sedes/'
-    | '/whatsapp/'
     | '/agenda/sobreturnos/nuevo'
     | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
@@ -649,7 +658,14 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
+    | '/whatsapp/configuracion/contactos'
+    | '/whatsapp/configuracion/devolucion'
+    | '/whatsapp/configuracion/prueba'
+    | '/whatsapp/configuracion/recordatorios'
+    | '/whatsapp/configuracion/reglas'
     | '/whatsapp/plantillas/$templateName'
+    | '/whatsapp/configuracion/'
+    | '/whatsapp/plantillas/'
     | '/agenda/turnos/$appointmentId/cancelar'
     | '/agenda/turnos/$appointmentId/editar'
     | '/agenda/turnos/$appointmentId/reprogramar'
@@ -684,11 +700,6 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
     | '/sedes/nueva'
-    | '/whatsapp/contactos'
-    | '/whatsapp/devolucion'
-    | '/whatsapp/prueba'
-    | '/whatsapp/recordatorios'
-    | '/whatsapp/reglas'
     | '/a-reprogramar'
     | '/agenda'
     | '/cierres'
@@ -702,7 +713,6 @@ export interface FileRouteTypes {
     | '/personal'
     | '/prestaciones'
     | '/sedes'
-    | '/whatsapp'
     | '/agenda/sobreturnos/nuevo'
     | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
@@ -712,7 +722,14 @@ export interface FileRouteTypes {
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
+    | '/whatsapp/configuracion/contactos'
+    | '/whatsapp/configuracion/devolucion'
+    | '/whatsapp/configuracion/prueba'
+    | '/whatsapp/configuracion/recordatorios'
+    | '/whatsapp/configuracion/reglas'
     | '/whatsapp/plantillas/$templateName'
+    | '/whatsapp/configuracion'
+    | '/whatsapp/plantillas'
     | '/agenda/turnos/$appointmentId/cancelar'
     | '/agenda/turnos/$appointmentId/editar'
     | '/agenda/turnos/$appointmentId/reprogramar'
@@ -748,11 +765,6 @@ export interface FileRouteTypes {
     | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
     | '/_app/sedes/nueva'
-    | '/_app/whatsapp/contactos'
-    | '/_app/whatsapp/devolucion'
-    | '/_app/whatsapp/prueba'
-    | '/_app/whatsapp/recordatorios'
-    | '/_app/whatsapp/reglas'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
     | '/_app/cierres/'
@@ -766,7 +778,6 @@ export interface FileRouteTypes {
     | '/_app/personal/'
     | '/_app/prestaciones/'
     | '/_app/sedes/'
-    | '/_app/whatsapp/'
     | '/_app/agenda/sobreturnos/nuevo'
     | '/_app/agenda/turnos/nuevo'
     | '/_app/horarios/$practitionerId_/nuevo'
@@ -776,7 +787,14 @@ export interface FileRouteTypes {
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
     | '/_app/sedes/$officeId_/editar'
+    | '/_app/whatsapp/configuracion/contactos'
+    | '/_app/whatsapp/configuracion/devolucion'
+    | '/_app/whatsapp/configuracion/prueba'
+    | '/_app/whatsapp/configuracion/recordatorios'
+    | '/_app/whatsapp/configuracion/reglas'
     | '/_app/whatsapp/plantillas/$templateName'
+    | '/_app/whatsapp/configuracion/'
+    | '/_app/whatsapp/plantillas/'
     | '/_app/agenda/turnos/$appointmentId/cancelar'
     | '/_app/agenda/turnos/$appointmentId/editar'
     | '/_app/agenda/turnos/$appointmentId/reprogramar'
@@ -1044,48 +1062,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSedesNuevaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/whatsapp/': {
-      id: '/_app/whatsapp/'
-      path: '/whatsapp'
-      fullPath: '/whatsapp/'
-      preLoaderRoute: typeof AppWhatsappIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/whatsapp/contactos': {
-      id: '/_app/whatsapp/contactos'
-      path: '/whatsapp/contactos'
-      fullPath: '/whatsapp/contactos'
-      preLoaderRoute: typeof AppWhatsappContactosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/whatsapp/devolucion': {
-      id: '/_app/whatsapp/devolucion'
-      path: '/whatsapp/devolucion'
-      fullPath: '/whatsapp/devolucion'
-      preLoaderRoute: typeof AppWhatsappDevolucionRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/whatsapp/prueba': {
-      id: '/_app/whatsapp/prueba'
-      path: '/whatsapp/prueba'
-      fullPath: '/whatsapp/prueba'
-      preLoaderRoute: typeof AppWhatsappPruebaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/whatsapp/recordatorios': {
-      id: '/_app/whatsapp/recordatorios'
-      path: '/whatsapp/recordatorios'
-      fullPath: '/whatsapp/recordatorios'
-      preLoaderRoute: typeof AppWhatsappRecordatoriosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/whatsapp/reglas': {
-      id: '/_app/whatsapp/reglas'
-      path: '/whatsapp/reglas'
-      fullPath: '/whatsapp/reglas'
-      preLoaderRoute: typeof AppWhatsappReglasRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/agenda/sobreturnos/nuevo': {
       id: '/_app/agenda/sobreturnos/nuevo'
       path: '/agenda/sobreturnos/nuevo'
@@ -1147,6 +1123,55 @@ declare module '@tanstack/react-router' {
       path: '/sedes/$officeId/editar'
       fullPath: '/sedes/$officeId/editar'
       preLoaderRoute: typeof AppSedesOfficeIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/configuracion/': {
+      id: '/_app/whatsapp/configuracion/'
+      path: '/whatsapp/configuracion'
+      fullPath: '/whatsapp/configuracion/'
+      preLoaderRoute: typeof AppWhatsappConfiguracionIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/configuracion/contactos': {
+      id: '/_app/whatsapp/configuracion/contactos'
+      path: '/whatsapp/configuracion/contactos'
+      fullPath: '/whatsapp/configuracion/contactos'
+      preLoaderRoute: typeof AppWhatsappConfiguracionContactosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/configuracion/devolucion': {
+      id: '/_app/whatsapp/configuracion/devolucion'
+      path: '/whatsapp/configuracion/devolucion'
+      fullPath: '/whatsapp/configuracion/devolucion'
+      preLoaderRoute: typeof AppWhatsappConfiguracionDevolucionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/configuracion/prueba': {
+      id: '/_app/whatsapp/configuracion/prueba'
+      path: '/whatsapp/configuracion/prueba'
+      fullPath: '/whatsapp/configuracion/prueba'
+      preLoaderRoute: typeof AppWhatsappConfiguracionPruebaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/configuracion/recordatorios': {
+      id: '/_app/whatsapp/configuracion/recordatorios'
+      path: '/whatsapp/configuracion/recordatorios'
+      fullPath: '/whatsapp/configuracion/recordatorios'
+      preLoaderRoute: typeof AppWhatsappConfiguracionRecordatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/configuracion/reglas': {
+      id: '/_app/whatsapp/configuracion/reglas'
+      path: '/whatsapp/configuracion/reglas'
+      fullPath: '/whatsapp/configuracion/reglas'
+      preLoaderRoute: typeof AppWhatsappConfiguracionReglasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/plantillas/': {
+      id: '/_app/whatsapp/plantillas/'
+      path: '/whatsapp/plantillas'
+      fullPath: '/whatsapp/plantillas/'
+      preLoaderRoute: typeof AppWhatsappPlantillasIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/whatsapp/plantillas/$templateName': {
@@ -1255,11 +1280,6 @@ interface AppRouteChildren {
   AppPrestacionesPractitionerIdRoute: typeof AppPrestacionesPractitionerIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
   AppSedesNuevaRoute: typeof AppSedesNuevaRoute
-  AppWhatsappContactosRoute: typeof AppWhatsappContactosRoute
-  AppWhatsappDevolucionRoute: typeof AppWhatsappDevolucionRoute
-  AppWhatsappPruebaRoute: typeof AppWhatsappPruebaRoute
-  AppWhatsappRecordatoriosRoute: typeof AppWhatsappRecordatoriosRoute
-  AppWhatsappReglasRoute: typeof AppWhatsappReglasRoute
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
@@ -1273,7 +1293,6 @@ interface AppRouteChildren {
   AppPersonalIndexRoute: typeof AppPersonalIndexRoute
   AppPrestacionesIndexRoute: typeof AppPrestacionesIndexRoute
   AppSedesIndexRoute: typeof AppSedesIndexRoute
-  AppWhatsappIndexRoute: typeof AppWhatsappIndexRoute
   AppAgendaSobreturnosNuevoRoute: typeof AppAgendaSobreturnosNuevoRoute
   AppAgendaTurnosNuevoRoute: typeof AppAgendaTurnosNuevoRoute
   AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
@@ -1283,7 +1302,14 @@ interface AppRouteChildren {
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
   AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
+  AppWhatsappConfiguracionContactosRoute: typeof AppWhatsappConfiguracionContactosRoute
+  AppWhatsappConfiguracionDevolucionRoute: typeof AppWhatsappConfiguracionDevolucionRoute
+  AppWhatsappConfiguracionPruebaRoute: typeof AppWhatsappConfiguracionPruebaRoute
+  AppWhatsappConfiguracionRecordatoriosRoute: typeof AppWhatsappConfiguracionRecordatoriosRoute
+  AppWhatsappConfiguracionReglasRoute: typeof AppWhatsappConfiguracionReglasRoute
   AppWhatsappPlantillasTemplateNameRoute: typeof AppWhatsappPlantillasTemplateNameRoute
+  AppWhatsappConfiguracionIndexRoute: typeof AppWhatsappConfiguracionIndexRoute
+  AppWhatsappPlantillasIndexRoute: typeof AppWhatsappPlantillasIndexRoute
   AppAgendaTurnosAppointmentIdCancelarRoute: typeof AppAgendaTurnosAppointmentIdCancelarRoute
   AppAgendaTurnosAppointmentIdEditarRoute: typeof AppAgendaTurnosAppointmentIdEditarRoute
   AppAgendaTurnosAppointmentIdReprogramarRoute: typeof AppAgendaTurnosAppointmentIdReprogramarRoute
@@ -1316,11 +1342,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppPrestacionesPractitionerIdRoute: AppPrestacionesPractitionerIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
   AppSedesNuevaRoute: AppSedesNuevaRoute,
-  AppWhatsappContactosRoute: AppWhatsappContactosRoute,
-  AppWhatsappDevolucionRoute: AppWhatsappDevolucionRoute,
-  AppWhatsappPruebaRoute: AppWhatsappPruebaRoute,
-  AppWhatsappRecordatoriosRoute: AppWhatsappRecordatoriosRoute,
-  AppWhatsappReglasRoute: AppWhatsappReglasRoute,
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
@@ -1334,7 +1355,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalIndexRoute: AppPersonalIndexRoute,
   AppPrestacionesIndexRoute: AppPrestacionesIndexRoute,
   AppSedesIndexRoute: AppSedesIndexRoute,
-  AppWhatsappIndexRoute: AppWhatsappIndexRoute,
   AppAgendaSobreturnosNuevoRoute: AppAgendaSobreturnosNuevoRoute,
   AppAgendaTurnosNuevoRoute: AppAgendaTurnosNuevoRoute,
   AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
@@ -1346,8 +1366,18 @@ const AppRouteChildren: AppRouteChildren = {
   AppPrestacionesPractitionerIdNuevaRoute:
     AppPrestacionesPractitionerIdNuevaRoute,
   AppSedesOfficeIdEditarRoute: AppSedesOfficeIdEditarRoute,
+  AppWhatsappConfiguracionContactosRoute:
+    AppWhatsappConfiguracionContactosRoute,
+  AppWhatsappConfiguracionDevolucionRoute:
+    AppWhatsappConfiguracionDevolucionRoute,
+  AppWhatsappConfiguracionPruebaRoute: AppWhatsappConfiguracionPruebaRoute,
+  AppWhatsappConfiguracionRecordatoriosRoute:
+    AppWhatsappConfiguracionRecordatoriosRoute,
+  AppWhatsappConfiguracionReglasRoute: AppWhatsappConfiguracionReglasRoute,
   AppWhatsappPlantillasTemplateNameRoute:
     AppWhatsappPlantillasTemplateNameRoute,
+  AppWhatsappConfiguracionIndexRoute: AppWhatsappConfiguracionIndexRoute,
+  AppWhatsappPlantillasIndexRoute: AppWhatsappPlantillasIndexRoute,
   AppAgendaTurnosAppointmentIdCancelarRoute:
     AppAgendaTurnosAppointmentIdCancelarRoute,
   AppAgendaTurnosAppointmentIdEditarRoute:

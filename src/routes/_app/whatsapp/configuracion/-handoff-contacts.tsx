@@ -22,7 +22,11 @@ export function HandoffContactsSection({ settings }: { settings: Settings }) {
     <RecordSection
       title="Contactos de derivación"
       action={
-        <Button variant="outline" nativeButton={false} render={<Link to="/whatsapp/contactos" />}>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/whatsapp/configuracion/contactos" />}
+        >
           {contacts.length ? "Editar" : "Elegir"}
         </Button>
       }

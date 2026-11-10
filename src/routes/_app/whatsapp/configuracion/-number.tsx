@@ -15,7 +15,10 @@ import type { ConnectionState, NumberHoldReason } from "#/lib/whatsapp.ts";
 import { connectWhatsapp, disconnectWhatsapp } from "#/server/whatsapp.functions.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
-import { loadFacebookSdk, runEmbeddedSignup } from "#/routes/_app/whatsapp/-embedded-signup.ts";
+import {
+  loadFacebookSdk,
+  runEmbeddedSignup,
+} from "#/routes/_app/whatsapp/configuracion/-embedded-signup.ts";
 
 // The organization's number in the WhatsApp settings: connected through Meta's
 // Embedded Signup, with its state and messaging limit, or the button to connect it.
@@ -106,7 +109,7 @@ export function NumberSection({ settings }: { settings: Settings }) {
 
   return (
     <RecordSection
-      title="Número de WhatsApp"
+      title="Número"
       action={
         connected ? (
           <Button variant="outline" disabled={action.pending} onClick={() => setConfirming(true)}>

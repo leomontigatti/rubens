@@ -1,9 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronsUpDownIcon, CircleUserIcon } from "lucide-react";
+import { ChevronRightIcon, ChevronsUpDownIcon, CircleUserIcon } from "lucide-react";
+import { useState } from "react";
 
-import { isCurrentPath, navFor, passwordChangePath } from "#/components/app-nav.ts";
+import { isCurrentPath, isOpenOn, navFor, passwordChangePath } from "#/components/app-nav.ts";
 import type { NavCounts } from "#/components/app-nav.ts";
 import { Badge } from "#/components/ui/badge.tsx";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "#/components/ui/collapsible.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +31,9 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from "#/components/ui/sidebar.tsx";
@@ -37,6 +46,9 @@ interface Viewer {
   roles: readonly Role[];
 }
 
+type NavItem = ReturnType<typeof navFor>[number]["items"][number];
+type NavFolderItem = Extract<NavItem, { entries: unknown }>;
+
 function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { setOpenMobile } = useSidebar();
@@ -46,27 +58,85 @@ function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
       <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {group.items.map((item) => (
-            <SidebarMenuItem key={item.to}>
-              <SidebarMenuButton
-                isActive={isCurrentPath(pathname, item.to)}
-                tooltip={item.count > 0 ? `${item.label} (${item.count})` : item.label}
-                render={<Link to={item.to} onClick={() => setOpenMobile(false)} />}
-              >
-                <item.icon />
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-              {item.count > 0 && (
-                <SidebarMenuBadge>
-                  <Badge variant="destructive">{item.count}</Badge>
-                </SidebarMenuBadge>
-              )}
-            </SidebarMenuItem>
-          ))}
+          {group.items.map((item) =>
+            "entries" in item ? (
+              <NavFolder key={item.label} folder={item} pathname={pathname} />
+            ) : (
+              <SidebarMenuItem key={item.to}>
+                <SidebarMenuButton
+                  isActive={isCurrentPath(pathname, item.to)}
+                  tooltip={item.count > 0 ? `${item.label} (${item.count})` : item.label}
+                  render={<Link to={item.to} onClick={() => setOpenMobile(false)} />}
+                >
+                  <item.icon />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+                {item.count > 0 && (
+                  <SidebarMenuBadge>
+                    <Badge variant="destructive">{item.count}</Badge>
+                  </SidebarMenuBadge>
+                )}
+              </SidebarMenuItem>
+            ),
+          )}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
   ));
+}
+
+/** A link that opens its entries rather than a page: open while the page is one of them. */
+function NavFolder(props: { folder: NavFolderItem; pathname: string }) {
+  const { folder, pathname } = props;
+  const { state, setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
+  const current = isOpenOn(pathname, folder);
+  const [open, setOpen] = useState(current);
+  const [wasCurrent, setWasCurrent] = useState(current);
+  if (current !== wasCurrent) {
+    setWasCurrent(current);
+    if (current) {
+      setOpen(true);
+    }
+  }
+  const collapsed = state === "collapsed";
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
+      <CollapsibleTrigger
+        render={
+          <SidebarMenuButton
+            isActive={collapsed && current}
+            tooltip={folder.label}
+            // With only icons showing, its entries would stay hidden: show the menu whole.
+            onClick={() => collapsed && setSidebarOpen(true)}
+          />
+        }
+      >
+        <folder.icon />
+        <span>{folder.label}</span>
+        <ChevronRightIcon
+          className={
+            open ? "ml-auto rotate-90 transition-transform" : "ml-auto transition-transform"
+          }
+          aria-hidden
+        />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <SidebarMenuSub>
+          {folder.entries.map((entry) => (
+            <SidebarMenuSubItem key={entry.to}>
+              <SidebarMenuSubButton
+                isActive={isCurrentPath(pathname, entry.to)}
+                render={<Link to={entry.to} onClick={() => setOpenMobile(false)} />}
+              >
+                <span>{entry.label}</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 function UserMenu(props: { viewer: Viewer; onSignOut: () => void }) {

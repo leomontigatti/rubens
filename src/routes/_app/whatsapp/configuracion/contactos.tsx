@@ -10,9 +10,9 @@ import { getHandoffContacts, saveHandoffContacts } from "#/server/whatsapp.funct
 import {
   handoffContactsHint,
   keepsRecordsLabel,
-} from "#/routes/_app/whatsapp/-handoff-contacts.tsx";
+} from "#/routes/_app/whatsapp/configuracion/-handoff-contacts.tsx";
 
-export const Route = createFileRoute("/_app/whatsapp/contactos")({
+export const Route = createFileRoute("/_app/whatsapp/configuracion/contactos")({
   head: () => ({ meta: [{ title: "Contactos de derivación · underthing" }] }),
   loader: () => getHandoffContacts(),
   component: EditHandoffContacts,
@@ -42,7 +42,7 @@ function EditHandoffContacts() {
 }
 
 function ContactsForm({ members }: { members: HandoffContactCandidate[] }) {
-  const page = useFormPage({ to: "/whatsapp" });
+  const page = useFormPage({ to: "/whatsapp/configuracion" });
   const action = useFormAction(refusalMessages, refusalFields);
   const options = members.map((one) => ({
     value: one.memberId,

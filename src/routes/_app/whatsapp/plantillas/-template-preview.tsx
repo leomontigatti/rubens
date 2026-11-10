@@ -52,7 +52,7 @@ export function TemplatePreview(props: { name: TemplateName; body: string }) {
       {checked.ok ? (
         <p className="text-muted-foreground flex items-center gap-2 text-sm">
           <CircleCheckIcon className="size-4" aria-hidden />
-          Cumple las reglas de Meta.
+          Cumple el formato de Meta. Meta revisa el contenido antes de aprobarla.
         </p>
       ) : (
         <Alert variant="warning">
@@ -67,7 +67,22 @@ export function TemplatePreview(props: { name: TemplateName; body: string }) {
           </AlertDescription>
         </Alert>
       )}
+      <MetaReview />
     </section>
+  );
+}
+
+/** What Meta's review looks for in a utility template, beyond the format checked above. */
+function MetaReview() {
+  return (
+    <div className="flex flex-col gap-1">
+      <h3 className="text-sm font-medium">Qué revisa Meta</h3>
+      <ul className="text-muted-foreground list-disc pl-4 text-sm">
+        <li>Que sea sobre el turno de este paciente.</li>
+        <li>Que no tenga nada promocional.</li>
+        <li>Que no tenga ofertas ni descuentos.</li>
+      </ul>
+    </div>
   );
 }
 

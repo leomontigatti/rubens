@@ -24,13 +24,17 @@ import {
   templateStatusLabels,
   templateCategoryLabels,
   templateStatusVariants,
+  unsentLabel,
 } from "#/lib/whatsapp-template-copy.ts";
 
-import { TemplatePreview, TemplateVersions } from "#/routes/_app/whatsapp/-template-preview.tsx";
-import type { TemplateVersion } from "#/routes/_app/whatsapp/-template-preview.tsx";
+import {
+  TemplatePreview,
+  TemplateVersions,
+} from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
+import type { TemplateVersion } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/plantillas/$templateName")({
-  head: () => ({ meta: [{ title: "Plantilla de WhatsApp · underthing" }] }),
+  head: () => ({ meta: [{ title: "Editar plantilla · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: EditTemplate,
 });
@@ -75,7 +79,7 @@ function bodyProblem(problems: TemplateProblem[]): FieldProblem[] {
 
 function TemplateForm(props: { name: TemplateName; latest: TemplateVersion | undefined }) {
   const { name, latest } = props;
-  const page = useFormPage({ to: "/whatsapp" });
+  const page = useFormPage({ to: "/whatsapp/plantillas" });
   const action = useFormAction(refusalMessages);
   const variables = whatsappTemplates[name].variables.map((one) => "{{" + one + "}}").join(", ");
 
@@ -116,7 +120,7 @@ function TemplateForm(props: { name: TemplateName; latest: TemplateVersion | und
 
   const body = useStore(form.store, (state) => state.values.body);
 
-  const description = latest
+  const versionNote = latest
     ? `Versión ${latest.version} en Meta. Al enviarla, se crea la versión ${latest.version + 1}, que Meta revisa de nuevo.`
     : "Todavía no se envió a Meta. Al enviarla, Meta la revisa antes de que se pueda usar.";
 
@@ -124,17 +128,19 @@ function TemplateForm(props: { name: TemplateName; latest: TemplateVersion | und
     <FormPage
       page={page}
       form={form}
-      title={templateLabels[name]}
-      description={description}
+      title="Editar plantilla"
+      description={templateLabels[name]}
       submitLabel="Enviar a Meta"
       pending={action.pending}
       refusals={action.error ? [{ field: "", message: action.error }] : undefined}
       onClear={() => action.setError(null)}
       record={{
-        status: latest && (
+        status: latest ? (
           <Badge variant={templateStatusVariants[latest.status]}>
             {templateStatusLabels[latest.status]}
           </Badge>
+        ) : (
+          <Badge variant="secondary">{unsentLabel}</Badge>
         ),
         actions: () => null,
         error: null,
@@ -165,6 +171,7 @@ function TemplateForm(props: { name: TemplateName; latest: TemplateVersion | und
         )
       }
     >
+      <p className="text-muted-foreground text-sm">{versionNote}</p>
       <div className="grid items-start gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <form.AppField name="body">

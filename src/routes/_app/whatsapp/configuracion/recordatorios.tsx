@@ -6,9 +6,9 @@ import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { handoffRemindersSchema, maxReminderHours } from "#/lib/handoffs.ts";
 import { getWhatsappSettings, saveHandoffReminders } from "#/server/whatsapp.functions.ts";
 
-import { handoffRemindersHint } from "#/routes/_app/whatsapp/-handoff-reminders.tsx";
+import { handoffRemindersHint } from "#/routes/_app/whatsapp/configuracion/-handoff-reminders.tsx";
 
-export const Route = createFileRoute("/_app/whatsapp/recordatorios")({
+export const Route = createFileRoute("/_app/whatsapp/configuracion/recordatorios")({
   head: () => ({ meta: [{ title: "Recordatorios de derivaciones · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: EditHandoffReminders,
@@ -63,7 +63,7 @@ function hoursProblems(value: Record<(typeof fieldNames)[number], string>) {
 }
 
 function HandoffRemindersForm(props: { recipientHours: number; othersHours: number }) {
-  const page = useFormPage({ to: "/whatsapp" });
+  const page = useFormPage({ to: "/whatsapp/configuracion" });
   const action = useFormAction(refusalMessages);
 
   const form = useAppForm({

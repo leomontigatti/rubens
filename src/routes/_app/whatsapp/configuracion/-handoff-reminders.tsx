@@ -26,7 +26,7 @@ export function HandoffRemindersSection({ settings }: { settings: Settings }) {
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link to="/whatsapp/recordatorios" />}
+          render={<Link to="/whatsapp/configuracion/recordatorios" />}
         >
           Editar
         </Button>

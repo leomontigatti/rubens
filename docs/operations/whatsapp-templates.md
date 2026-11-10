@@ -25,7 +25,7 @@ is sent is in [messages.md](../domain/messages.md#to-patients).
   for the patient to answer `reabrir_conversacion`.
 
 The code refers to a template by its name. An admin submits a template's body
-from the WhatsApp settings, and each submission is a new version, named
+from the WhatsApp `Plantillas` page, and each submission is a new version, named
 `<name>_v<n>` at Meta, after the highest version stored or already at Meta; the
 check before it refuses `[firma]` left in place. The texts below are drafts in `vos`,
 with `[firma]` standing for the organization's sign-off, fixed text and not a

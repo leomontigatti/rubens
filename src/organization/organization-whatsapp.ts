@@ -12,7 +12,7 @@ import type {
   OptOutReport,
 } from "#/lib/handoffs.ts";
 import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
-import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
+import type { SignupCompletion } from "#/lib/whatsapp.ts";
 import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
 import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
 
@@ -43,7 +43,7 @@ import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
-import { getWhatsappSettings, sendTemplate } from "#/organization/whatsapp.ts";
+import { getWhatsappSettings } from "#/organization/whatsapp.ts";
 import {
   refreshWhatsappTemplates,
   submitWhatsappTemplate,
@@ -153,12 +153,6 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
 
   async disconnectWhatsapp(caller: Caller) {
     return this.as(caller, ["admin"], (acting) => this.number.disconnect(acting));
-  }
-
-  async sendWhatsappTemplate(caller: Caller, input: TemplateSend) {
-    return this.as(caller, ["admin"], (acting) =>
-      sendTemplate(this.database, this.whatsapp, acting, input),
-    );
   }
 
   async submitWhatsappTemplate(caller: Caller, input: TemplateSubmission) {

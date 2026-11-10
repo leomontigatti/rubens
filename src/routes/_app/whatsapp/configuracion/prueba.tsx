@@ -18,14 +18,17 @@ import { sandboxRefusalMessages, scenarioLabel } from "#/lib/assistant-sandbox-c
 import { sandboxTurnSchema } from "#/lib/assistant-sandbox.ts";
 import { getSandboxScenarios, playSandboxTurn, startSandbox } from "#/server/whatsapp.functions.ts";
 
-import { SandboxLastTurn, SandboxState } from "#/routes/_app/whatsapp/-sandbox-turn.tsx";
-import type { Played } from "#/routes/_app/whatsapp/-sandbox-turn.tsx";
+import {
+  SandboxLastTurn,
+  SandboxState,
+} from "#/routes/_app/whatsapp/configuracion/-sandbox-turn.tsx";
+import type { Played } from "#/routes/_app/whatsapp/configuracion/-sandbox-turn.tsx";
 
 // The assistant's sandbox (docs/domain/assistant.md § Trying it): the admin
 // picks a scenario, an upcoming appointment whose reminder was just sent, and
 // writes as its patient; the real assistant answers, and nothing is kept.
 
-export const Route = createFileRoute("/_app/whatsapp/prueba")({
+export const Route = createFileRoute("/_app/whatsapp/configuracion/prueba")({
   head: () => ({ meta: [{ title: "Prueba del asistente · underthing" }] }),
   loader: () => getSandboxScenarios(),
   component: AssistantSandbox,

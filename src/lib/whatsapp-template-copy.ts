@@ -29,6 +29,9 @@ export const templateStatusLabels: Record<TemplateStatus, string> = {
   disabled: "Deshabilitada",
 };
 
+/** A template of the set no version of which was ever submitted. */
+export const unsentLabel = "Sin enviar";
+
 export const templateCategoryLabels: Record<TemplateCategory, string> = {
   utility: "Utilidad",
   marketing: "Marketing",
@@ -56,16 +59,17 @@ export function rejectionText(reason: string) {
   return rejectionLabels[reason] ?? reason;
 }
 
+const connectNumber = "Conectá el número del consultorio.";
+
 export const templateRefusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
   forbidden: "Solo un administrador puede usar la configuración de WhatsApp.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá el texto de la plantilla.",
   connectionFailed: "La conexión del número de WhatsApp falló. Conectalo de nuevo.",
-  missingAccessToken:
-    "Falta el token de acceso de WhatsApp: conectá el número del consultorio, o revisá la configuración del servidor.",
-  missingBusinessAccountId:
-    "Falta el identificador de la cuenta de WhatsApp Business en la configuración del servidor.",
+  // What the Worker misses is logged for whoever runs it (`src/organization/whatsapp.ts`).
+  missingAccessToken: connectNumber,
+  missingBusinessAccountId: connectNumber,
 };
 
 const variable = (name: string) => "{{" + name + "}}";

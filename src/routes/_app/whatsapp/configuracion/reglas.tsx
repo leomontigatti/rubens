@@ -14,9 +14,9 @@ import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { getWhatsappSettings, saveCommunicationRules } from "#/server/whatsapp.functions.ts";
 
-import { formOfAddressLabels } from "#/routes/_app/whatsapp/-communication-rules.tsx";
+import { formOfAddressLabels } from "#/routes/_app/whatsapp/configuracion/-communication-rules.tsx";
 
-export const Route = createFileRoute("/_app/whatsapp/reglas")({
+export const Route = createFileRoute("/_app/whatsapp/configuracion/reglas")({
   head: () => ({ meta: [{ title: "Reglas de comunicación · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: EditCommunicationRules,
@@ -53,7 +53,7 @@ function EditCommunicationRules() {
 
 function RulesForm(props: { initial: CommunicationRulesInput & { version: number } }) {
   const { initial } = props;
-  const page = useFormPage({ to: "/whatsapp" });
+  const page = useFormPage({ to: "/whatsapp/configuracion" });
   const action = useFormAction(refusalMessages, refusalFields);
 
   const form = useAppForm({
