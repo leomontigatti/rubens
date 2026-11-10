@@ -1,5 +1,9 @@
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
-import type { PersonalReply, ReturnTimeInput } from "#/lib/conversation-holds.ts";
+import type {
+  LateReplyReference,
+  PersonalReply,
+  ReturnTimeInput,
+} from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type {
   HandoffReference,
@@ -33,6 +37,7 @@ import {
   listOpenHandoffs,
 } from "#/organization/handoff-inbox.ts";
 import { reportUnreadOptOut } from "#/organization/handoff-opt-outs.ts";
+import { withdrawOwnLateReply } from "#/organization/late-replies.ts";
 import { patientEditors } from "#/organization/members.ts";
 import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
@@ -111,6 +116,14 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   async returnConversation(caller: Caller, input: ConversationReference) {
     return this.asThenArm(caller, patientEditors, (acting) =>
       returnConversation(this.database, this.whatsapp, acting, input),
+    );
+  }
+
+  /** Withdraws the member's own reply that waits behind the reopen template (`src/organization/late-replies.ts`). */
+  withdrawLateReply(caller: Caller, input: LateReplyReference) {
+    // A template dropped with it no longer wakes the alarm.
+    return this.asThenArm(caller, patientEditors, (acting) =>
+      withdrawOwnLateReply(this.database, acting, input),
     );
   }
 

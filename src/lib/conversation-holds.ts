@@ -31,11 +31,16 @@ export type PersonalReply = z.input<typeof personalReplySchema>;
 /**
  * Where a person's reply written after the window closed stands (docs/domain/
  * assistant.md § Handoff): waiting for the patient to answer the reopen
- * template, delivered once they did, or not delivered because they never did.
+ * template, delivered once they did, not delivered because they never did, or
+ * withdrawn by its writer while it waited.
  */
-export const lateReplyStates = ["waiting", "delivered", "notDelivered"] as const;
+export const lateReplyStates = ["waiting", "delivered", "notDelivered", "withdrawn"] as const;
 
 export type LateReplyState = (typeof lateReplyStates)[number];
+
+export const lateReplyReferenceSchema = z.object({ lateReplyId: z.uuid() });
+
+export type LateReplyReference = z.input<typeof lateReplyReferenceSchema>;
 
 /** How long a late reply waits for the patient's answer after the reopen template went, before it is not delivered (#151). */
 export const lateReplyChanceMs = 7 * 24 * 60 * 60_000;

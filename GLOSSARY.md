@@ -226,7 +226,8 @@ _Avoid_: draft, blocked message, pending reply
 **`lateReply`** — ui: "Respuesta en espera"
 A person's reply to a patient written after the conversation window closed. It waits
 while the patient is asked, by a template, to answer, and goes as written once they
-do; if they never do, its writer is told it was not delivered.
+do; if they never do, its writer is told it was not delivered. Until the patient
+answers, its writer may withdraw it (ui: "Retirar"), and it never goes.
 _Avoid_: queued reply, heldReply, deferred message
 
 **`handoffContact`** — ui: "Contacto de derivación"

@@ -5,8 +5,10 @@ import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
 import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
 
 import {
+  addRefusedAdmin,
   adminCaller,
   afterTheWait,
+  auditEntriesFor,
   at,
   expectOk,
   fakeMeta,
@@ -65,6 +67,11 @@ async function openHandoffs(caller: Caller = adminCaller) {
 
 function replyAs(caller: Caller, text = reply) {
   return world.organization.replyToConversation(caller, { conversationId, text });
+}
+
+async function withdraw(caller: Caller, lateReplyId?: string) {
+  const id = lateReplyId ?? (await read(caller)).lateReplies[0]!.id;
+  return world.organization.withdrawLateReply(caller, { lateReplyId: id });
 }
 
 async function notificationsOf(caller: Caller) {
@@ -207,7 +214,11 @@ describe("a person's reply after the window closed", () => {
         writtenAt: Date.now(),
         state: "waiting",
         text: `*Rita Paz*\n${reply}`,
+        mine: false,
       },
+    ]);
+    expect((await read(world.receptionist)).lateReplies).toEqual([
+      expect.objectContaining({ mine: true }),
     ]);
     expect(await openHandoffs()).toHaveLength(1);
   });
@@ -422,6 +433,148 @@ describe("a person's reply after the window closed", () => {
     expect((await read(world.juan.caller)).lateReplies).toEqual([
       expect.objectContaining({ text: "*Juan Gómez*\nTomá un ibuprofeno" }),
     ]);
+  });
+});
+
+describe("withdrawing a late reply", () => {
+  it("takes it out of the conversation for everyone, and it never goes when the patient answers", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    fakeMeta.requests = [];
+    const { id } = (await read()).lateReplies[0]!;
+
+    expect(await withdraw(world.receptionist, id)).toEqual({ ok: true });
+
+    expect((await read(world.receptionist)).lateReplies).toEqual([]);
+    expect((await read()).lateReplies).toEqual([]);
+    await writes("sí, decime");
+    await runDurableObjectAlarm(world.organization);
+    expect(fakeMeta.textsSent()).toEqual([]);
+    // The handoff it would have answered stays open.
+    expect(await openHandoffs()).toHaveLength(1);
+    expect(await auditEntriesFor(world.organization, id)).toEqual([
+      expect.objectContaining({
+        action: "update",
+        userId: world.receptionist.userId,
+        before: { state: "waiting" },
+        after: { state: "withdrawn" },
+      }),
+    ]);
+    // Nor is its writer told later that it was not delivered.
+    vi.setSystemTime(Date.now() + 8 * day);
+    await runDurableObjectAlarm(world.organization);
+    expect(await notificationsOf(world.receptionist)).toEqual([]);
+  });
+
+  it("drops the reopen template not sent yet when no other reply waits behind it", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+
+    expectOk(await withdraw(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+
+    expect(templatesSent()).toEqual([]);
+  });
+
+  it("keeps the reopen template for the replies still waiting behind it", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist, "Primera"));
+    expectOk(await replyAs(world.receptionist, "Segunda"));
+
+    expectOk(await withdraw(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    expect(templatesSent()).toHaveLength(1);
+    await writes("hola");
+    await runDurableObjectAlarm(world.organization);
+
+    expect(fakeMeta.textsSent().map((one) => one.text)).toEqual(["*Rita Paz*\nSegunda"]);
+  });
+
+  it("never goes when withdrawn while the alarm sends another conversation's reply", async () => {
+    const luciaPhone = "+5491155551111";
+    await world.addPatient("Lucía", luciaPhone);
+    await patientWrites(world.organization, "hola", luciaPhone);
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { clinical: false, emergency: false });
+      return "Hola Lucía, ¿en qué te ayudo?";
+    });
+    await afterTheWait(world.organization);
+    await handedOffThenClosed();
+    const lucias = expectOk(
+      await world.organization.listConversations(adminCaller, {}),
+    ).conversations.find((one) => one.phone === luciaPhone)!.id;
+    expectOk(
+      await world.organization.takeOverConversation(world.receptionist, {
+        conversationId: lucias,
+      }),
+    );
+    expectOk(await replyAs(world.receptionist, "Para Martina"));
+    expectOk(
+      await world.organization.replyToConversation(world.receptionist, {
+        conversationId: lucias,
+        text: "Para Lucía",
+      }),
+    );
+    await runDurableObjectAlarm(world.organization);
+    fakeMeta.requests = [];
+    const luciasReply = expectOk(
+      await world.organization.readConversation(world.receptionist, { conversationId: lucias }),
+    ).lateReplies[0]!.id;
+
+    // Martina answers and Meta is slow to take her reply; meanwhile the other reply is withdrawn and its patient answers too.
+    await writes("sí, decime");
+    const release = fakeMeta.holdNext();
+    const settling = runDurableObjectAlarm(world.organization);
+    await fakeMeta.received(1);
+    expectOk(await withdraw(world.receptionist, luciasReply));
+    await patientWrites(world.organization, "hola de nuevo", luciaPhone);
+    release();
+    await settling;
+    await runDurableObjectAlarm(world.organization);
+
+    expect(fakeMeta.textsSent().map((one) => one.text)).toEqual(["*Rita Paz*\nPara Martina"]);
+  });
+
+  it("is refused to anyone but its writer", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    const { id } = (await read()).lateReplies[0]!;
+
+    expect(await withdraw(adminCaller, id)).toEqual({ ok: false, reason: "notFound" });
+    expect((await read()).lateReplies).toEqual([expect.objectContaining({ state: "waiting" })]);
+  });
+
+  it("is refused to an unknown member, a deactivated one, and one who must still change their password", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    const { id } = (await read()).lateReplies[0]!;
+    const refusals = [
+      [{ userId: "user-nobody" }, "unauthenticated"],
+      [await addRefusedAdmin(world.organization, "deactivated"), "unauthenticated"],
+      [await addRefusedAdmin(world.organization, "mustChangePassword"), "mustChangePassword"],
+    ] as const;
+
+    for (const [caller, reason] of refusals) {
+      expect(await withdraw(caller, id)).toEqual({ ok: false, reason });
+    }
+    expect((await read()).lateReplies).toEqual([expect.objectContaining({ state: "waiting" })]);
+  });
+
+  it("is refused once the patient answered, and once it went", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    const { id } = (await read()).lateReplies[0]!;
+    // Meta holds the number, so the reply waits although the patient answered.
+    await numberTurns({ kind: "restricted", until: null });
+    await writes("sí, decime");
+
+    expect(await withdraw(world.receptionist, id)).toEqual({ ok: false, reason: "answered" });
+
+    await numberTurns({ kind: "unrestricted" });
+    await runDurableObjectAlarm(world.organization);
+    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Rita Paz*\n${reply}` }]);
+    expect(await withdraw(world.receptionist, id)).toEqual({ ok: false, reason: "notWaiting" });
   });
 });
 
