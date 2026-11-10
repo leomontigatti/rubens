@@ -68,6 +68,8 @@ beside it.
   `description` saying what it is for; a detail or form page uses it for the record (an address,
   an email, a name). A page that is one card holding one form,
   `/ingresar` and `/cambiar-contrasena`, is titled by its `CardTitle` instead.
+- **A refused detail page keeps its header and back link**, above the refusal's `ErrorAlert`, so
+  the way back to its list stays where it always is: `/conversaciones/$conversationId`.
 
 ## Filters
 
@@ -227,6 +229,10 @@ The pages that are only their form show one problem in an `ErrorAlert`: `/ingres
   (`src/components/whatsapp-bubble.tsx`), drawn in the app's own tokens rather than WhatsApp's
   colours, with its line breaks kept: the template preview and its versions. A screen that shows
   what a patient will get, or got, uses them rather than plain text.
+- **A conversation reads as the chat**: the patient's messages in `PatientBubble`s on one side, the
+  clinic's (templates, the assistant's, staff replies) in `WhatsappBubble`s on the other. A
+  clinic bubble names its `author`; every bubble's `footer` holds its time and its status `Badge`.
+  What the patient never reads, such as a late reply's hint, sits beside the bubble, outside it.
 
 ## Alerts
 

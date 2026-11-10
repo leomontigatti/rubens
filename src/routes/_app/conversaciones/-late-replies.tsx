@@ -5,6 +5,7 @@ import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
+import { WhatsappBubble } from "#/components/whatsapp-bubble.tsx";
 import type { ShownLateReply } from "#/organization/late-replies.ts";
 import { withdrawLateReply } from "#/server/inbox.functions.ts";
 
@@ -37,27 +38,29 @@ const withdrawRefusals = {
   answered: "El paciente ya respondió: la respuesta le llega ahora y no se puede retirar.",
 };
 
-export function LateReplyRow({ reply }: { reply: ShownLateReply }) {
+/** The reply as the patient will read it, on the clinic's side, with what it waits for under it. */
+export function LateReplyBubble({ reply }: { reply: ShownLateReply }) {
   const labels = lateReplyLabels[reply.state];
   return (
-    <li className="flex flex-col gap-1 p-4 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-muted-foreground flex items-center gap-2">
-          <span className="text-foreground font-medium">{reply.writer}</span>
-          {messageTime(reply.writtenAt)}
-          <Badge variant={reply.state === "notDelivered" ? "destructive" : "secondary"}>
-            {labels.badge}
-          </Badge>
-        </p>
-        {reply.mine && reply.state === "waiting" && <WithdrawButton lateReplyId={reply.id} />}
-      </div>
-      <p
-        className={cn("whitespace-pre-wrap", reply.text === null && "text-muted-foreground italic")}
+    <div className="flex max-w-md flex-col items-end gap-1 self-end">
+      <WhatsappBubble
+        author={reply.writer}
+        footer={
+          <>
+            {messageTime(reply.writtenAt)}
+            <Badge variant={reply.state === "notDelivered" ? "destructive" : "secondary"}>
+              {labels.badge}
+            </Badge>
+          </>
+        }
       >
-        {reply.text ?? "Hay una respuesta clínica. Solo la leen los profesionales."}
-      </p>
-      <p className="text-muted-foreground">{labels.hint}</p>
-    </li>
+        <span className={cn(reply.text === null && "text-muted-foreground italic")}>
+          {reply.text ?? "Hay una respuesta clínica. Solo la leen los profesionales."}
+        </span>
+      </WhatsappBubble>
+      <p className="text-muted-foreground text-right text-xs">{labels.hint}</p>
+      {reply.mine && reply.state === "waiting" && <WithdrawButton lateReplyId={reply.id} />}
+    </div>
   );
 }
 

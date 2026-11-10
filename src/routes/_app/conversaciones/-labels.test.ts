@@ -4,6 +4,7 @@ import {
   conversationName,
   messageSender,
   messageText,
+  registeredName,
 } from "#/routes/_app/conversaciones/-labels.ts";
 
 describe("who a conversation is with", () => {
@@ -19,9 +20,22 @@ describe("who a conversation is with", () => {
   it("falls back to the number, written the local way, when it stands for no patient", () => {
     expect(conversationName({ phone: "+5493515551234", patients: [] })).toBe("0351 15-555-1234");
   });
+
+  it("names no one in the list's contact when the number stands for no patient", () => {
+    expect(registeredName({ patients: [] })).toBeNull();
+    expect(registeredName({ patients: [{ id: "1", name: "Martina Paz" }] })).toBe("Martina Paz");
+  });
 });
 
 describe("a message's text", () => {
+  it("says a message the assistant has not checked yet shows once it does", () => {
+    const unchecked = { id: "1", direction: "incoming", sentAt: 0, withheld: "notJudged" } as const;
+
+    expect(messageText(unchecked)).toBe(
+      "Mensaje sin revisar. Se muestra cuando el asistente lo revise.",
+    );
+  });
+
   it("names the type of a message with no words, such as a photo", () => {
     const photo = {
       id: "1",
@@ -69,6 +83,10 @@ describe("who wrote a message", () => {
     sentBy: null,
     withheld: null,
   } as const;
+
+  it("names no one for the patient's own messages, which sit on their side of the chat", () => {
+    expect(messageSender({ ...reply, direction: "incoming", status: null })).toBeNull();
+  });
 
   it("names the member who replied from the inbox, and the assistant otherwise", () => {
     expect(messageSender({ ...reply, sentBy: "Rita Paz" })).toBe("Rita Paz");

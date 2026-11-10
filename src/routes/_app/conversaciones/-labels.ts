@@ -10,7 +10,7 @@ import type { ConversationSummary, InboxMessage } from "#/organization/inbox.ts"
 // withheld message arrives with no words: it shows only why.
 
 const withheldLabels = {
-  notJudged: "Hay un mensaje esperando ser leído.",
+  notJudged: "Mensaje sin revisar. Se muestra cuando el asistente lo revise.",
   clinical: "Hay un mensaje clínico. Solo lo leen los profesionales.",
 } as const;
 
@@ -43,10 +43,13 @@ export function messageText(message: InboxMessage) {
   return message.text ?? `Mensaje sin texto (${message.type})`;
 }
 
-/** Who wrote the message: the patient, a template, the member who replied, or the assistant. */
+/**
+ * Who wrote an outgoing message: a template, the member who replied, or the
+ * assistant. None for the patient's: their side of the chat says it.
+ */
 export function messageSender(message: InboxMessage) {
   if (message.direction === "incoming") {
-    return "Paciente";
+    return null;
   }
   if (message.withheld !== null) {
     return "Profesional";
@@ -57,9 +60,14 @@ export function messageSender(message: InboxMessage) {
   return message.sentBy ?? "Asistente";
 }
 
-/** Who the conversation is with: its patients, or its number when it stands for none. */
-export function conversationName(conversation: Pick<ConversationSummary, "phone" | "patients">) {
+/** The patients the conversation's number stands for, or none when it stands for no patient. */
+export function registeredName(conversation: Pick<ConversationSummary, "patients">) {
   return conversation.patients.length > 0
     ? conversation.patients.map((patient) => patient.name).join(", ")
-    : formatPhone(conversation.phone);
+    : null;
+}
+
+/** Who the conversation is with: its patients, or its number when it stands for none. */
+export function conversationName(conversation: Pick<ConversationSummary, "phone" | "patients">) {
+  return registeredName(conversation) ?? formatPhone(conversation.phone);
 }

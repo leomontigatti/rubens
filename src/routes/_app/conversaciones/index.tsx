@@ -15,11 +15,7 @@ import { conversationPageSize } from "#/lib/whatsapp-messages.ts";
 import { findConversations, getConversations, getOpenHandoffs } from "#/server/inbox.functions.ts";
 import type { ConversationSummary } from "#/organization/inbox.ts";
 
-import {
-  conversationName,
-  messageText,
-  messageTime,
-} from "#/routes/_app/conversaciones/-labels.ts";
+import { messageText, messageTime, registeredName } from "#/routes/_app/conversaciones/-labels.ts";
 import { OpenHandoffList } from "#/routes/_app/conversaciones/-handoffs.tsx";
 import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
@@ -52,17 +48,41 @@ const searchRefusalMessages = {
   invalidInput: "La búsqueda es demasiado larga. Escribí menos para buscar.",
 };
 
+function ConversationLink(props: { conversationId: string; children: string }) {
+  return (
+    <RowLink to="/conversaciones/$conversationId" params={{ conversationId: props.conversationId }}>
+      {props.children}
+    </RowLink>
+  );
+}
+
+// A number that stands for no patient is named by its phone, so the phone
+// opens its conversation.
 const columns: DataTableColumn<ConversationSummary>[] = [
   {
     id: "name",
     header: "Contacto",
-    cell: (conversation) => (
-      <RowLink to="/conversaciones/$conversationId" params={{ conversationId: conversation.id }}>
-        {conversationName(conversation)}
-      </RowLink>
-    ),
+    cell: (conversation) => {
+      const name = registeredName(conversation);
+      return name === null ? (
+        <span className="text-muted-foreground">Sin registrar</span>
+      ) : (
+        <ConversationLink conversationId={conversation.id}>{name}</ConversationLink>
+      );
+    },
   },
-  { id: "phone", header: "Teléfono", cell: (conversation) => formatPhone(conversation.phone) },
+  {
+    id: "phone",
+    header: "Teléfono",
+    cell: (conversation) =>
+      registeredName(conversation) === null ? (
+        <ConversationLink conversationId={conversation.id}>
+          {formatPhone(conversation.phone)}
+        </ConversationLink>
+      ) : (
+        formatPhone(conversation.phone)
+      ),
+  },
   {
     id: "last",
     header: "Último mensaje",
@@ -136,9 +156,13 @@ function ConversationTable(props: {
     onPageChange: (pagina: number) =>
       void navigate({ search: (previous) => ({ ...previous, pagina }) }),
   };
+  // A search's answer is one page, counted against everything it matched.
+  const searchPager = search.found
+    ? { page: 1, pageCount: 1, total: search.found.total, onPageChange: () => {} }
+    : undefined;
   const more =
     search.found && search.found.total > search.found.conversations.length
-      ? `Se muestran las ${search.found.conversations.length} conversaciones más recientes de ${search.found.total}. Escribí más para acotar la búsqueda.`
+      ? "Se muestran las conversaciones más recientes. Escribí más para acotar la búsqueda."
       : null;
   return (
     <div className="flex flex-col gap-3 has-data-[slot=empty]:flex-1">
@@ -151,7 +175,7 @@ function ConversationTable(props: {
           placeholder: "Buscar por paciente o teléfono",
           loading: search.waiting,
         }}
-        pager={search.searching ? undefined : pager}
+        pager={search.searching ? searchPager : pager}
         noRecords={!search.searching && listed.total === 0}
         empty={
           search.refused ? (
