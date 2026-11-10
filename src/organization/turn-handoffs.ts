@@ -40,13 +40,16 @@ const modelReasons = {
 /**
  * A follow-up's answer: only a plainly good one, or an opt-out that is not
  * clinical, is the assistant's; any other is the practitioner's, as clinical.
+ * So is an opt-out from a number that reaches no patient now, its contact
+ * moved while the model ran: there is no consent to turn off.
  */
 function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted | null {
   const { judgement } = turn;
   // A photo or a file beside the answer makes it clinical (`assistant.ts`).
   const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.clinical;
   const optOutOnly = judgement.optOut && !judgement.clinical;
-  if ((plainlyGood || optOutOnly) && !judgement.emergency && !turn.handOff) {
+  const nobodyToTurnOff = judgement.optOut && turn.reachedNow.length === 0;
+  if ((plainlyGood || optOutOnly) && !nobodyToTurnOff && !judgement.emergency && !turn.handOff) {
     return null;
   }
   const reason = judgement.emergency ? "emergency" : "followUpAnswer";
@@ -86,15 +89,25 @@ function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   if (judgement.optOut && turn.reachedNow.length > 0) {
     return null;
   }
-  let reason: HandoffWanted["reason"] | null = null;
-  if (!judgement.understood && turn.read.misunderstandings >= 1) {
-    reason = turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";
-  } else if (turn.read.patients.length === 0) {
-    reason = "unknownNumber";
-  } else if (turn.appointments.length === 0) {
-    reason = "noUpcomingAppointment";
-  }
+  const reason = unansweredReason(turn);
   return reason ? { reason, clinical: false, appointmentId: null } : null;
+}
+
+/**
+ * Why a turn that is neither clinical nor refused is handed off, if it is: a
+ * second misunderstanding, a number of no patient, nothing booked. An opt-out
+ * reaching here comes from a number that reaches nobody now, its contact moved
+ * while the model ran, so there is no consent to turn off.
+ */
+function unansweredReason(turn: TurnToSort): HandoffWanted["reason"] | null {
+  const { judgement } = turn;
+  if (!judgement.understood && turn.read.misunderstandings >= 1) {
+    return turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";
+  }
+  if (turn.read.patients.length === 0 || judgement.optOut) {
+    return "unknownNumber";
+  }
+  return turn.appointments.length === 0 ? "noUpcomingAppointment" : null;
 }
 
 /**

@@ -81,8 +81,10 @@ unsubscribe. A patient who asks to stop, by any channel, is turned off by
 reception, and that change is audited. A reply that looks like such a request
 holds every message the organization starts to that number at once, for every
 patient whose messages go to it, since someone who keeps getting them may block or
-report the organization's number. It reaches reception as a notification, where
-each of those patients is turned off or kept, and reception is reminded of it
-daily. The hold lasts until every one of them is decided; then the kept patients' held messages go out, less those no
-longer true ([messages.md](./messages.md#when-meta-limits-the-number)),
-and the turned-off patients' are dropped.
+report the organization's number. Replies to the patient's own messages are not
+held. It reaches reception as a notification, where each of those patients is
+turned off or kept, and reception is reminded of each undecided one daily. The
+hold lifts for each patient as they are decided: a kept patient's held messages
+go out, less those no longer true
+([messages.md](./messages.md#when-meta-limits-the-number)), and a turned-off
+patient's are dropped.

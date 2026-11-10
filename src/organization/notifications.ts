@@ -49,17 +49,18 @@ export function notifyAdmins(tx: Writer, content: NotificationContent) {
 
 /**
  * Notifies reception and the admins that `patientId`'s number asked to stop
- * getting messages, so a person turns their WhatsApp consent off: each
- * member once, while their earlier notification about the patient is unread.
+ * getting messages, or, as `optOutReminder`, that nobody decided on them yet,
+ * so a person turns their WhatsApp consent off or keeps it: each member once,
+ * while their earlier notification of that kind about the patient is unread.
  */
-export function notifyOptOut(tx: Writer, patientId: string) {
+export function notifyOptOut(tx: Writer, patientId: string, kind: "optOut" | "optOutReminder") {
   const unread = new Set(
     tx
       .select({ recipientId: notification.recipientId })
       .from(notification)
       .where(
         and(
-          eq(notification.kind, "optOut"),
+          eq(notification.kind, kind),
           eq(notification.patientId, patientId),
           isNull(notification.readAt),
         ),
@@ -68,7 +69,7 @@ export function notifyOptOut(tx: Writer, patientId: string) {
       .map((row) => row.recipientId),
   );
   const recipients = activeWith(tx, ["admin", "receptionist"]).filter((id) => !unread.has(id));
-  notify(tx, recipients, { kind: "optOut", patientId });
+  notify(tx, recipients, { kind, patientId });
 }
 
 /**
