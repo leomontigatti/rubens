@@ -13,6 +13,9 @@ import type { FormOfAddress } from "#/lib/communication-rules.ts";
 /** The model the assistant runs on, decided on #151 from the evaluation report. */
 export const assistantModelId = "claude-haiku-5-5";
 
+/** What a run of the model is for, as the organization's usage records it (assistant.md § Costs). */
+export const modelRunPurposes = ["turn", "clinicalCheck"] as const;
+
 /** How long the assistant waits after a patient's message before its turn (§ Pace). */
 export const assistantWaitMs = 8_000;
 

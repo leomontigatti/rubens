@@ -65,7 +65,8 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   `src/organization/outbox.ts` queues messages to patients and sends them when due, and
   `src/organization/assistant.ts` runs the patient assistant's turn once a conversation's
   wait is over (`turn-replies.ts` sends its reply, after the clinical check; `turn-retries.ts`
-  retries a turn the model could not read, then hands it off), and the
+  retries a turn the model could not read, then hands it off; `assistant-usage.ts` records
+  the tokens of each model run, for the WhatsApp settings' month totals), and the
   object's `alarm()` is set to the earliest due item. Payload
   contents are never logged.
 - **A pure rule** (availability, formatting, state transitions): a module in `src/lib/`

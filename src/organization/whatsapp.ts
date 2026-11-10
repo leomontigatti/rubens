@@ -2,6 +2,7 @@ import { maskPhone, parsePhone } from "#/lib/phones.ts";
 import { templateSendSchema } from "#/lib/whatsapp.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
 
+import { monthUsage } from "#/organization/assistant-usage.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import { returnAfterHours } from "#/organization/personal-replies.ts";
 import { handoffReminders } from "#/organization/handoff-countdown.ts";
@@ -27,7 +28,7 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
  * that keeps a send from being made, if any, and the templates with the
  * setting that keeps them from being submitted, the assistant's
  * communication rules, the members who may be handoff contacts, the return
- * time and the handoff reminders.
+ * time, the handoff reminders and what the assistant used this month.
  */
 export function getWhatsappSettings(
   database: Database,
@@ -47,6 +48,7 @@ export function getWhatsappSettings(
     handoffContacts: listHandoffContacts(database).members,
     returnAfterHours: returnAfterHours(database),
     handoffReminders: handoffReminders(database),
+    usage: monthUsage(database),
   } as const;
 }
 

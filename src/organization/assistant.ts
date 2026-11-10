@@ -11,6 +11,7 @@ import {
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import type { AssistantModel, AssistantTool, TurnMessage } from "#/organization/assistant-model.ts";
+import { recordModelUsage } from "#/organization/assistant-usage.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import {
@@ -290,6 +291,8 @@ async function judgeTurn(
       system,
       messages: asTurnMessages(turn.read),
       tools: turnTools(database, turn, recorded),
+      recordUsage: (used) =>
+        recordModelUsage(database, { ...used, purpose: "turn", sandbox: false }),
     })
     // The model is unavailable: the messages wait, unjudged, for their retry.
     .catch(() => null);

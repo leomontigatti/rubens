@@ -9,6 +9,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+import { modelRunPurposes } from "#/lib/assistant.ts";
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { lateReplyStates } from "#/lib/conversation-holds.ts";
 import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
@@ -409,4 +410,25 @@ export const proposal = sqliteTable(
     ...timestamps,
   },
   (table) => [index("proposal_conversation_idx").on(table.conversationId, table.createdAt)],
+);
+
+/**
+ * What one run of the assistant's model used (docs/domain/assistant.md §
+ * Costs): a turn's, or a clinical check's, in the sandbox or not, on the
+ * organization's day, for the practice to pay for what it uses.
+ */
+export const modelUsage = sqliteTable(
+  "model_usage",
+  {
+    id: id(),
+    /** The local date of the run, in the organization's zone. */
+    day: text("day").notNull(),
+    model: text("model").notNull(),
+    purpose: text("purpose", { enum: modelRunPurposes }).notNull(),
+    sandbox: flag("sandbox").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    createdAt: timestamps.createdAt,
+  },
+  (table) => [index("model_usage_day_idx").on(table.day)],
 );
