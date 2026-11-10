@@ -18,7 +18,8 @@ import { useInboxAction } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // Who answers the conversation: the assistant, or the member who took it
 // over. Anyone who reads it takes it over at any time; its holder replies to
-// the patient under their name, inside the window, and gives it back.
+// the patient under their name, and gives it back. After the window closed
+// the reply waits behind the reopen template until the patient answers.
 
 const refusals = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -27,8 +28,8 @@ const refusals = {
   invalidInput: "Escribí la respuesta.",
   notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
   notHolding: "Otra persona tomó la conversación, o volvió al asistente. Recargá la página.",
-  windowClosed:
-    "La ventana de conversación se cerró: el paciente tiene que escribir de nuevo para que le lleguen respuestas.",
+  cannotReopen:
+    "La ventana de conversación está cerrada y no podemos reabrirla: el número no es de ningún paciente que acepte WhatsApp.",
   notConnected: "El número de WhatsApp no está conectado.",
   numberHeld: "Meta limitó el número por ahora: probá más tarde.",
   sendFailed: "WhatsApp no aceptó el mensaje. Probá de nuevo.",
@@ -124,7 +125,7 @@ function ReplyForm(props: {
   const hint =
     open && closesAt !== null
       ? `Le llega al paciente por WhatsApp con tu nombre. La ventana de conversación se cierra el ${messageTime(closesAt)}.`
-      : "La ventana de conversación está cerrada: el paciente tiene que escribir de nuevo para que le lleguen respuestas.";
+      : "La ventana de conversación está cerrada: le enviamos al paciente una plantilla para reabrirla, y tu respuesta le llega con tu nombre cuando conteste.";
 
   return (
     <form
@@ -140,14 +141,13 @@ function ReplyForm(props: {
           name="reply"
           value={text}
           maxLength={maxReplyLength}
-          disabled={!open}
           onChange={(event) => setText(event.target.value)}
           aria-describedby="reply-hint"
         />
         <FieldDescription id="reply-hint">{hint}</FieldDescription>
       </Field>
       <div>
-        <Button type="submit" disabled={running || !open || text.trim() === ""}>
+        <Button type="submit" disabled={running || text.trim() === ""}>
           {running && <Spinner data-icon="inline-start" aria-hidden />}
           Enviar
         </Button>

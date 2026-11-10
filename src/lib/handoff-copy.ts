@@ -15,4 +15,5 @@ export const handoffReasonLabels: Record<HandoffReason, string> = {
   unknownNumber: "Número que no es de ningún paciente",
   noUpcomingAppointment: "Sin turnos próximos",
   heldReply: "Respuesta retenida",
+  windowClosed: "La ventana se cerró antes de la respuesta del asistente",
 };

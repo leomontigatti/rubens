@@ -144,9 +144,9 @@ function NotificationRow(props: {
   );
 }
 
-/** Where a notification is acted on: the conversation handed off, the patient to turn off, or the WhatsApp settings. */
+/** Where a notification is acted on: the conversation handed off or not delivered to, the patient to turn off, or the WhatsApp settings. */
 function NotificationLink({ notification }: { notification: Notification }) {
-  if (notification.handoff) {
+  if (notification.conversationId) {
     return (
       <Button
         variant="outline"
@@ -155,7 +155,7 @@ function NotificationLink({ notification }: { notification: Notification }) {
         render={
           <Link
             to="/conversaciones/$conversationId"
-            params={{ conversationId: notification.handoff.conversationId }}
+            params={{ conversationId: notification.conversationId }}
           />
         }
       >

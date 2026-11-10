@@ -28,6 +28,8 @@ export const handoffReasons = [
   "noUpcomingAppointment",
   /** The clinical check held the assistant's reply: clinical, or about another patient. */
   "heldReply",
+  /** The window closed before the assistant's reply could go, so it was dropped. */
+  "windowClosed",
 ] as const;
 
 export type HandoffReason = (typeof handoffReasons)[number];

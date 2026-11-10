@@ -53,7 +53,7 @@ describe("filling a template", () => {
     const body =
       "Hola {{paciente}}, tu turno es el {{fecha}} a las {{hora}}. Gracias {{paciente}}!";
 
-    expect(fillTemplate(body, appointment)).toEqual({
+    expect(fillTemplate(body, templateValues(appointment))).toEqual({
       text: "Hola Martina, tu turno es el lunes 5 de enero a las 09:05. Gracias Martina!",
       parameters: [
         { name: "paciente", value: "Martina" },
@@ -67,7 +67,7 @@ describe("filling a template", () => {
     const body =
       "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
 
-    expect(fillTemplate(body, sampleAppointment).text).toBe(
+    expect(fillTemplate(body, templateValues(sampleAppointment)).text).toBe(
       "Tu turno con la Dra. Sofía Méndez es el jueves 12 de noviembre a las 10:30 en Sede Centro (Av. Colón 1234, Córdoba).",
     );
   });

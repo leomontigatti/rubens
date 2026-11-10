@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { formsOfAddress } from "#/lib/communication-rules.ts";
+import { lateReplyStates } from "#/lib/conversation-holds.ts";
 import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
@@ -202,16 +203,17 @@ export const whatsappNumberHold = sqliteTable(
  * A message to a patient, queued in the transaction that changed its
  * appointment and sent by the object's alarm once due (`src/lib/outbox.ts`).
  * Who it goes to and what it says are read when it is sent, from the
- * appointment as it is then.
+ * appointment as it is then; for the reopen template, from its conversation.
  */
 export const outboxMessage = sqliteTable(
   "outbox_message",
   {
     id: id(),
     kind: text("kind", { enum: outboxKinds }).notNull(),
-    appointmentId: text("appointment_id")
-      .notNull()
-      .references(() => appointment.id),
+    /** The appointment it is about; none for the reopen template. */
+    appointmentId: text("appointment_id").references(() => appointment.id),
+    /** The conversation the reopen template goes to; none for the other kinds. */
+    conversationId: text("conversation_id").references(() => conversation.id),
     state: text("state", { enum: outboxStates }).notNull().default("queued"),
     /** When it goes next, while queued. */
     dueAt: instant("due_at").notNull(),
@@ -232,6 +234,40 @@ export const outboxMessage = sqliteTable(
     index("outbox_message_due_idx").on(table.state, table.dueAt),
     index("outbox_message_appointment_id_idx").on(table.appointmentId),
   ],
+);
+
+/**
+ * A member's reply written after the conversation's window closed
+ * (`src/organization/late-replies.ts`): held until the patient answers the
+ * reopen template it waits behind, then sent as they wrote it. The reply
+ * never goes into the template.
+ */
+export const lateReply = sqliteTable(
+  "late_reply",
+  {
+    id: id(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id),
+    writtenBy: text("written_by")
+      .notNull()
+      .references(() => member.userId),
+    /** The reply as the patient will read it, under its writer's name. */
+    text: text("text").notNull(),
+    /** Whether its writer is a practitioner who keeps clinical records, who may answer a clinical handoff. */
+    readsClinical: flag("reads_clinical").notNull(),
+    /** Whether it answers a clinical handoff, so its words are withheld like clinical ones. */
+    clinical: flag("clinical").notNull(),
+    state: text("state", { enum: lateReplyStates }).notNull().default("waiting"),
+    /** The reopen template it waits behind, which later replies before the patient answers share. */
+    reopenId: text("reopen_id")
+      .notNull()
+      .references(() => outboxMessage.id),
+    /** The message it went as, once delivered. */
+    whatsappMessageId: text("whatsapp_message_id").references(() => whatsappMessage.id),
+    ...timestamps,
+  },
+  (table) => [index("late_reply_state_idx").on(table.state, table.conversationId)],
 );
 
 /**

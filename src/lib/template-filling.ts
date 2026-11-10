@@ -98,17 +98,19 @@ export function variablesIn(body: string): TemplateVariable[] {
 }
 
 /**
- * `body` filled from `appointment`: the text the patient reads, and Meta's
- * value for each variable it uses, once each, in order. A body passed the
- * template rules check, so every variable in it is one underthing fills.
+ * `body` filled from `values`: the text the patient reads, and Meta's value
+ * for each variable it uses, once each, in order. A body passed the template
+ * rules check, so every variable in it is one of its template's, which
+ * `values` holds: those of an appointment (`templateValues`), or the
+ * patient's name alone for `reabrir_conversacion`.
  */
-export function fillTemplate(body: string, appointment: TemplateAppointment) {
-  const values = templateValues(appointment);
+export function fillTemplate(body: string, values: Partial<Record<TemplateVariable, string>>) {
+  const valueOf = (name: TemplateVariable) => values[name] ?? "";
   return {
     text: body.replace(variablePattern, (whole, name: string) =>
-      isTemplateVariable(name) ? values[name] : whole,
+      isTemplateVariable(name) ? valueOf(name) : whole,
     ),
-    parameters: variablesIn(body).map((name) => ({ name, value: values[name] })),
+    parameters: variablesIn(body).map((name) => ({ name, value: valueOf(name) })),
   };
 }
 

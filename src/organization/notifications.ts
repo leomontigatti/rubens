@@ -85,6 +85,7 @@ export function listNotifications(database: Database, acting: Acting) {
       detail: notification.detail,
       until: notification.until,
       waiting: notification.waiting,
+      notDeliveredIn: notification.conversationId,
       readAt: notification.readAt,
       createdAt: notification.createdAt,
       conversationId: handoff.conversationId,
@@ -107,6 +108,7 @@ export function listNotifications(database: Database, acting: Acting) {
     notifications: rows.map(
       ({
         readAt,
+        notDeliveredIn,
         conversationId,
         handoffReason,
         handoffClinical,
@@ -118,6 +120,8 @@ export function listNotifications(database: Database, acting: Acting) {
       }) => ({
         ...row,
         read: readAt !== null,
+        // The conversation of a handoff, or of a reply that was not delivered.
+        conversationId: notDeliveredIn ?? conversationId,
         // A handoff's notification says what it was about and where, never the patient's words.
         handoff:
           conversationId !== null && handoffReason !== null

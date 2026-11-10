@@ -3,7 +3,7 @@ import { templateSendSchema } from "#/lib/whatsapp.ts";
 import type { TemplateSend } from "#/lib/whatsapp.ts";
 
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
-import { returnAfterHours } from "#/organization/conversation-holds.ts";
+import { returnAfterHours } from "#/organization/personal-replies.ts";
 import { handoffReminders } from "#/organization/handoff-countdown.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import { listHandoffContacts } from "#/organization/handoff-contacts.ts";

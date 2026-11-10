@@ -308,7 +308,7 @@ describe("a person's reply", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
-  it("is refused outside the window, sending nothing and leaving the handoff open", async () => {
+  it("is held outside the window, sending no text and leaving the handoff open (late-replies.workers.test.ts)", async () => {
     await handedOff(false);
     expectOk(await takeOver(world.receptionist));
     vi.setSystemTime(Date.now() + 25 * hour);
@@ -316,10 +316,7 @@ describe("a person's reply", () => {
     expectOk(await takeOver(world.receptionist));
 
     expect((await read()).window.open).toBe(false);
-    expect(await reply(world.receptionist, "Hola")).toEqual({
-      ok: false,
-      reason: "windowClosed",
-    });
+    expect(await reply(world.receptionist, "Hola")).toEqual({ ok: true, held: true });
     expect(fakeMeta.textsSent()).toEqual([]);
     expect(await openHandoffs()).toHaveLength(1);
   });

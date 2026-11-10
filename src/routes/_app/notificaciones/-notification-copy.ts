@@ -73,6 +73,8 @@ export function notificationTitle(facts: NotificationFacts): string {
       return "Te derivaron una conversación de WhatsApp";
     case "handoffReminder":
       return "Una derivación de WhatsApp sigue sin respuesta";
+    case "replyNotDelivered":
+      return "Tu respuesta de WhatsApp no le llegó al paciente";
     case "optOut":
       return `${facts.patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`;
   }
@@ -102,6 +104,8 @@ export function notificationText(facts: NotificationFacts): string {
       return handoffText(facts.handoff);
     case "handoffReminder":
       return reminderText(facts);
+    case "replyNotDelivered":
+      return "La escribiste con la ventana de conversación cerrada, y el paciente no respondió la plantilla para reabrirla. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio.";
     case "optOut":
       return "Si es lo que pide, tocá Dejar de enviar por WhatsApp en su ficha. Hasta entonces le siguen llegando los recordatorios y avisos.";
   }
