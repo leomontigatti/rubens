@@ -366,6 +366,11 @@ export const handoff = sqliteTable(
     remindedFor: instant("reminded_for"),
     /** The window's close every other member who may answer it was last reminded of. */
     widelyRemindedFor: instant("widely_reminded_for"),
+    /**
+     * When a reader of a clinical one reported an opt-out among its words,
+     * which reception cannot read: the number was held for reception then.
+     */
+    optOutReportedAt: instant("opt_out_reported_at"),
     ...timestamps,
   },
   (table) => [index("handoff_conversation_idx").on(table.conversationId, table.state)],

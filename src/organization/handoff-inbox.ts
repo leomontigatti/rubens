@@ -1,10 +1,10 @@
-import { and, desc, eq, exists, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, exists, gt, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
 import type { HandoffReason, HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import type { Database } from "#/organization/database.ts";
+import type { Database, Writer } from "#/organization/database.ts";
 import { recipientsByHandoff } from "#/organization/handoffs.ts";
 import { asRead, messageColumns, patientsOf, readerOf } from "#/organization/inbox.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
@@ -23,6 +23,8 @@ import {
 // read. Closing one without a reply is for whoever may answer it: for a
 // clinical one, a practitioner who keeps clinical records. A reply the
 // clinical check held is read, and dropped, only by the handoff's recipients.
+// An opt-out among a clinical handoff's words is reported to reception by
+// whoever reads them (`handoff-opt-outs.ts`).
 
 export interface OpenHandoff {
   id: string;
@@ -40,6 +42,12 @@ export interface OpenHandoff {
   mayClose: boolean;
   /** The assistant's reply the clinical check held, for its recipients only; `null` for anyone else. */
   heldReply: string | null;
+  /**
+   * On a clinical handoff, for a reader of its words: whether they may
+   * report an opt-out among them to reception, which cannot read them, or
+   * did already for every message the patient sent; `null` for anyone else.
+   */
+  optOut: "mayReport" | "reported" | null;
 }
 
 /** Whether `memberId` is one of the handoff's recipients. */
@@ -72,6 +80,40 @@ function lastPatientMessages(database: Database, conversationIds: string[]) {
   return latest;
 }
 
+/**
+ * Whether an opt-out reported on a handoff of `conversationId` at
+ * `reportedAt` covers every message the patient sent: one stored since may
+ * ask to stop again, after reception decided.
+ */
+export function optOutReportCovers(
+  database: Writer,
+  conversationId: string,
+  reportedAt: number | null,
+) {
+  if (reportedAt === null) {
+    return false;
+  }
+  const newer = database
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(
+      and(
+        eq(whatsappMessage.conversationId, conversationId),
+        eq(whatsappMessage.direction, "incoming"),
+        gt(whatsappMessage.createdAt, reportedAt),
+      ),
+    )
+    .get();
+  return newer === undefined;
+}
+
+function optOutOf(clinical: boolean, readsClinical: boolean, covered: () => boolean) {
+  if (!clinical || !readsClinical) {
+    return null;
+  }
+  return covered() ? ("reported" as const) : ("mayReport" as const);
+}
+
 /** The open handoffs `acting` sees, newest first, of one conversation when `conversationId` says. */
 export function listOpenHandoffs(
   database: Database,
@@ -93,6 +135,7 @@ export function listOpenHandoffs(
       clinical: handoff.clinical,
       createdAt: handoff.createdAt,
       heldReply: handoff.heldReply,
+      optOutReportedAt: handoff.optOutReportedAt,
       toReader: exists(
         database
           .select({ one: handoffRecipient.memberId })
@@ -118,7 +161,7 @@ export function listOpenHandoffs(
     rows.map((row) => row.id),
   );
   const lastMessages = lastPatientMessages(database, conversationIds);
-  const handoffs: OpenHandoff[] = rows.map(({ heldReply, toReader, ...row }) => {
+  const handoffs: OpenHandoff[] = rows.map(({ heldReply, toReader, optOutReportedAt, ...row }) => {
     const last = lastMessages.get(row.conversationId);
     return {
       ...row,
@@ -128,9 +171,45 @@ export function listOpenHandoffs(
       recipients: recipients.get(row.id) ?? [],
       lastPatientMessage: last ? asRead(last, reader.readsClinical) : null,
       mayClose: !row.clinical || reader.readsClinical,
+      optOut: optOutOf(row.clinical, reader.readsClinical, () =>
+        optOutReportCovers(database, row.conversationId, optOutReportedAt),
+      ),
     };
   });
   return { ok: true as const, handoffs };
+}
+
+/** The handoff `input` names, with what `acting` reads, or why the input is refused. */
+export function handoffInputOf(database: Database, acting: Acting, input: HandoffReference) {
+  const parsed = handoffReferenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, reason: "invalidInput" as const };
+  }
+  return {
+    ok: true as const,
+    handoffId: parsed.data.handoffId,
+    reader: readerOf(database, acting),
+  };
+}
+
+/** The open handoff `handoffId`, if `reader` sees it. */
+export function openHandoffSeen(
+  tx: Writer,
+  reader: ReturnType<typeof readerOf>,
+  handoffId: string,
+) {
+  return tx
+    .select({
+      id: handoff.id,
+      clinical: handoff.clinical,
+      conversationId: handoff.conversationId,
+      phone: conversation.phone,
+      optOutReportedAt: handoff.optOutReportedAt,
+    })
+    .from(handoff)
+    .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
+    .where(and(eq(handoff.id, handoffId), eq(handoff.state, "open"), reader.visible))
+    .get();
 }
 
 /**
@@ -143,22 +222,13 @@ export function closeHandoffWithoutReply(
   acting: Acting,
   input: HandoffReference,
 ) {
-  const parsed = handoffReferenceSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false as const, reason: "invalidInput" as const };
+  const named = handoffInputOf(database, acting, input);
+  if (!named.ok) {
+    return named;
   }
-  const reader = readerOf(database, acting);
+  const { reader } = named;
   return database.transaction((tx) => {
-    const found = tx
-      .select({
-        id: handoff.id,
-        clinical: handoff.clinical,
-        conversationId: handoff.conversationId,
-      })
-      .from(handoff)
-      .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
-      .where(and(eq(handoff.id, parsed.data.handoffId), eq(handoff.state, "open"), reader.visible))
-      .get();
+    const found = openHandoffSeen(tx, reader, named.handoffId);
     if (!found) {
       return { ok: false as const, reason: "notFound" as const };
     }
@@ -191,12 +261,11 @@ export function closeHandoffWithoutReply(
  * or not theirs, is not found. The audit records the drop, never the words.
  */
 export function dropHandoffHeldReply(database: Database, acting: Acting, input: HandoffReference) {
-  const parsed = handoffReferenceSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false as const, reason: "invalidInput" as const };
+  const named = handoffInputOf(database, acting, input);
+  if (!named.ok) {
+    return named;
   }
-  const reader = readerOf(database, acting);
-  if (!reader.readsClinical) {
+  if (!named.reader.readsClinical) {
     return { ok: false as const, reason: "notFound" as const };
   }
   return database.transaction((tx) => {
@@ -205,7 +274,7 @@ export function dropHandoffHeldReply(database: Database, acting: Acting, input: 
       .set({ heldReply: null })
       .where(
         and(
-          eq(handoff.id, parsed.data.handoffId),
+          eq(handoff.id, named.handoffId),
           eq(handoff.state, "open"),
           isNotNull(handoff.heldReply),
           exists(

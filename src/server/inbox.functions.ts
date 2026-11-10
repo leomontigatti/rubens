@@ -49,6 +49,13 @@ export const dropHeldReply = createServerFn({ method: "POST" })
     withOrganization((organization, caller) => organization.dropHeldReply(caller, data)),
   );
 
+// An opt-out a practitioner read among words the model could not read.
+export const reportOptOut = createServerFn({ method: "POST" })
+  .validator((data: HandoffReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.reportOptOut(caller, data)),
+  );
+
 // Taking a conversation over, replying under one's name and giving it back
 // (`src/organization/conversation-holds.ts`).
 export const takeOverConversation = createServerFn({ method: "POST" })

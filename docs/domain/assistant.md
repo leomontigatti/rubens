@@ -148,7 +148,12 @@ the window closes, as a clinical handoff, and kept as clinical from then on, sin
 nobody knows yet what it says. A message a person answers first, by replying or
 by closing its handoff, is kept as clinical too, and no longer retried. No code
 reads it in the model's place, and nothing is sent to the patient while it is
-unread.
+unread. An opt-out among such words is a person's to see, and so is one the
+model missed among words it judged clinical: reception reads neither. On a
+clinical handoff, the inbox asks the practitioner who reads it to look for one,
+and reporting it from there, once for the messages it saw, holds the number and notifies
+reception and the admins, as the assistant's opt-out does
+([above](#for-patients)).
 
 ## Inbox
 

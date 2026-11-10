@@ -755,6 +755,9 @@ describe("an open handoff", () => {
       expect(await world.organization.closeHandoff(caller, { handoffId: opened!.id })).toEqual(
         refused,
       );
+      expect(await world.organization.reportOptOut(caller, { handoffId: opened!.id })).toEqual(
+        refused,
+      );
     }
     expect(await openHandoffs()).toHaveLength(1);
   });
