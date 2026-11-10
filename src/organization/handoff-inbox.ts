@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, gt, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
 import type { HandoffReason, HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
@@ -81,30 +81,62 @@ function lastPatientMessages(database: Database, conversationIds: string[]) {
 }
 
 /**
- * Whether an opt-out reported on a handoff of `conversationId` at
- * `reportedAt` covers every message the patient sent: one stored since may
- * ask to stop again, after reception decided.
+ * Messages after `messageId` in the order the inbox shows them, by when
+ * the patient sent them, then by when they were stored: as
+ * `lastPatientMessages` picks the latest.
  */
-export function optOutReportCovers(
+function laterThan(messageId: string) {
+  return sql`(${whatsappMessage.sentAt}, ${whatsappMessage}.rowid) > (
+    select seen.sent_at, seen.rowid from whatsapp_message as seen where seen.id = ${messageId}
+  )`;
+}
+
+/**
+ * Whether `messageId`, a message of the patient in `conversationId`, comes
+ * after `throughId` in the inbox's order; any comes after none.
+ */
+export function shownAfter(
   database: Writer,
   conversationId: string,
-  reportedAt: number | null,
+  messageId: string,
+  throughId: string | null,
 ) {
-  if (reportedAt === null) {
+  const found = database
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(
+      and(
+        eq(whatsappMessage.id, messageId),
+        eq(whatsappMessage.conversationId, conversationId),
+        eq(whatsappMessage.direction, "incoming"),
+        throughId === null ? undefined : laterThan(throughId),
+      ),
+    )
+    .get();
+  return found !== undefined;
+}
+
+/**
+ * Whether an opt-out reported on a handoff of `conversationId`, through
+ * the patient's message `throughId`, covers every message the patient sent:
+ * one shown after it may ask to stop again, after reception decided.
+ */
+function optOutReportCovers(database: Writer, conversationId: string, throughId: string | null) {
+  if (throughId === null) {
     return false;
   }
-  const newer = database
+  const later = database
     .select({ id: whatsappMessage.id })
     .from(whatsappMessage)
     .where(
       and(
         eq(whatsappMessage.conversationId, conversationId),
         eq(whatsappMessage.direction, "incoming"),
-        gt(whatsappMessage.createdAt, reportedAt),
+        laterThan(throughId),
       ),
     )
     .get();
-  return newer === undefined;
+  return later === undefined;
 }
 
 function optOutOf(clinical: boolean, readsClinical: boolean, covered: () => boolean) {
@@ -135,7 +167,7 @@ export function listOpenHandoffs(
       clinical: handoff.clinical,
       createdAt: handoff.createdAt,
       heldReply: handoff.heldReply,
-      optOutReportedAt: handoff.optOutReportedAt,
+      optOutReportedThrough: handoff.optOutReportedThrough,
       toReader: exists(
         database
           .select({ one: handoffRecipient.memberId })
@@ -161,21 +193,23 @@ export function listOpenHandoffs(
     rows.map((row) => row.id),
   );
   const lastMessages = lastPatientMessages(database, conversationIds);
-  const handoffs: OpenHandoff[] = rows.map(({ heldReply, toReader, optOutReportedAt, ...row }) => {
-    const last = lastMessages.get(row.conversationId);
-    return {
-      ...row,
-      // A recipient of a clinical handoff keeps clinical records (`handoffs.ts`).
-      heldReply: toReader && reader.readsClinical ? heldReply : null,
-      patients: patients.get(row.conversationId) ?? [],
-      recipients: recipients.get(row.id) ?? [],
-      lastPatientMessage: last ? asRead(last, reader.readsClinical) : null,
-      mayClose: !row.clinical || reader.readsClinical,
-      optOut: optOutOf(row.clinical, reader.readsClinical, () =>
-        optOutReportCovers(database, row.conversationId, optOutReportedAt),
-      ),
-    };
-  });
+  const handoffs: OpenHandoff[] = rows.map(
+    ({ heldReply, toReader, optOutReportedThrough, ...row }) => {
+      const last = lastMessages.get(row.conversationId);
+      return {
+        ...row,
+        // A recipient of a clinical handoff keeps clinical records (`handoffs.ts`).
+        heldReply: toReader && reader.readsClinical ? heldReply : null,
+        patients: patients.get(row.conversationId) ?? [],
+        recipients: recipients.get(row.id) ?? [],
+        lastPatientMessage: last ? asRead(last, reader.readsClinical) : null,
+        mayClose: !row.clinical || reader.readsClinical,
+        optOut: optOutOf(row.clinical, reader.readsClinical, () =>
+          optOutReportCovers(database, row.conversationId, optOutReportedThrough),
+        ),
+      };
+    },
+  );
   return { ok: true as const, handoffs };
 }
 
@@ -204,7 +238,7 @@ export function openHandoffSeen(
       clinical: handoff.clinical,
       conversationId: handoff.conversationId,
       phone: conversation.phone,
-      optOutReportedAt: handoff.optOutReportedAt,
+      optOutReportedThrough: handoff.optOutReportedThrough,
     })
     .from(handoff)
     .innerJoin(conversation, eq(conversation.id, handoff.conversationId))

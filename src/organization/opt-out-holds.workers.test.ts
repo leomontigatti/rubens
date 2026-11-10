@@ -392,7 +392,7 @@ describe("an opt-out among words reception cannot read", () => {
       await world.organization.listOpenHandoffs(world.juan.caller, {}),
     ).handoffs;
     expect(handedOff).toMatchObject({ reason: "modelUnavailable", optOut: "mayReport" });
-    return { martina, handoffId: handedOff!.id };
+    return { martina, handoffId: handedOff!.id, seen: handedOff!.lastPatientMessage!.id };
   }
 
   async function openHandoffOf(caller: Caller) {
@@ -401,9 +401,14 @@ describe("an opt-out among words reception cannot read", () => {
 
   it("holds the number and notifies reception and the admins once the handoff's reader reports it", async () => {
     const tomas = await addThroughGuardian("Tomás", "+5493515550002");
-    const { martina, handoffId } = await unreadAndHandedOff("no me escriban más por acá");
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más por acá");
 
-    expectOk(await world.organization.reportOptOut(world.juan.caller, { handoffId }));
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    );
 
     expect(await pendingSince(martina.id)).not.toBeNull();
     expect(await pendingSince(tomas.id)).not.toBeNull();
@@ -419,9 +424,14 @@ describe("an opt-out among words reception cannot read", () => {
   });
 
   it("records who reported it", async () => {
-    const { martina, handoffId } = await unreadAndHandedOff("no me escriban más");
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más");
 
-    expectOk(await world.organization.reportOptOut(world.juan.caller, { handoffId }));
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    );
 
     const entries = await auditEntriesFor(world.organization, martina.id);
     expect(entries.at(-1)).toMatchObject({
@@ -433,9 +443,14 @@ describe("an opt-out among words reception cannot read", () => {
   });
 
   it("is reported only by a practitioner who keeps clinical records", async () => {
-    const { martina, handoffId } = await unreadAndHandedOff("no me escriban más");
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más");
 
-    expect(await world.organization.reportOptOut(world.receptionist, { handoffId })).toEqual({
+    expect(
+      await world.organization.reportOptOut(world.receptionist, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    ).toEqual({
       ok: false,
       reason: "forbidden",
     });
@@ -456,7 +471,10 @@ describe("an opt-out among words reception cannot read", () => {
     expect(handedOff).toMatchObject({ reason: "clinical", optOut: "mayReport" });
 
     expectOk(
-      await world.organization.reportOptOut(world.juan.caller, { handoffId: handedOff!.id }),
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId: handedOff!.id,
+        throughMessageId: handedOff!.lastPatientMessage!.id,
+      }),
     );
 
     expect(await pendingSince(martina.id)).not.toBeNull();
@@ -473,13 +491,21 @@ describe("an opt-out among words reception cannot read", () => {
     expect(handedOff).toMatchObject({ reason: "unknownNumber", optOut: null });
 
     expect(
-      await world.organization.reportOptOut(adminCaller, { handoffId: handedOff!.id }),
+      await world.organization.reportOptOut(adminCaller, {
+        handoffId: handedOff!.id,
+        throughMessageId: handedOff!.lastPatientMessage!.id,
+      }),
     ).toEqual({ ok: false, reason: "notFound" });
   });
 
   it("is reported once for the same messages, so reception's decision stands", async () => {
-    const { martina, handoffId } = await unreadAndHandedOff("no me escriban más");
-    expectOk(await world.organization.reportOptOut(world.juan.caller, { handoffId }));
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más");
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    );
     expectOk(
       await world.organization.setWhatsappConsent(world.receptionist, {
         patientId: martina.id,
@@ -488,15 +514,25 @@ describe("an opt-out among words reception cannot read", () => {
     );
 
     expect(await openHandoffOf(world.juan.caller)).toMatchObject({ optOut: "reported" });
-    expectOk(await world.organization.reportOptOut(world.juan.caller, { handoffId }));
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    );
 
     expect(await pendingSince(martina.id)).toBeNull();
     expect(await notificationsOf(world.receptionist, "optOut")).toEqual([martina.id]);
   });
 
   it("can be reported again once the patient writes again", async () => {
-    const { martina, handoffId } = await unreadAndHandedOff("no me escriban más");
-    expectOk(await world.organization.reportOptOut(world.juan.caller, { handoffId }));
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más");
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    );
     expectOk(
       await world.organization.setWhatsappConsent(world.receptionist, {
         patientId: martina.id,
@@ -507,14 +543,43 @@ describe("an opt-out among words reception cannot read", () => {
     // The model is still failing: the new message joins the open handoff unread.
     await patientWrites(world.organization, "en serio, dejen de escribirme", numberPhone);
 
-    expect(await openHandoffOf(world.juan.caller)).toMatchObject({ optOut: "mayReport" });
-    expectOk(await world.organization.reportOptOut(world.juan.caller, { handoffId }));
+    const shown = await openHandoffOf(world.juan.caller);
+    expect(shown).toMatchObject({ optOut: "mayReport" });
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: shown!.lastPatientMessage!.id,
+      }),
+    );
 
     expect(await pendingSince(martina.id)).not.toBeNull();
   });
 
+  it("covers only the messages the reader saw, not one stored before they clicked", async () => {
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más");
+    vi.setSystemTime(Date.now() + 60_000);
+    // Stored while the page was open: the reader reports without having seen it.
+    await patientWrites(world.organization, "en serio, dejen de escribirme", numberPhone);
+    vi.setSystemTime(Date.now() + 60_000);
+
+    expectOk(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    );
+    expectOk(
+      await world.organization.setWhatsappConsent(world.receptionist, {
+        patientId: martina.id,
+        whatsappConsent: true,
+      }),
+    );
+
+    expect(await openHandoffOf(world.juan.caller)).toMatchObject({ optOut: "mayReport" });
+  });
+
   it("is refused when no patient of the number accepts WhatsApp", async () => {
-    const { martina, handoffId } = await unreadAndHandedOff("no me escriban más");
+    const { martina, handoffId, seen } = await unreadAndHandedOff("no me escriban más");
     expectOk(
       await world.organization.setWhatsappConsent(world.receptionist, {
         patientId: martina.id,
@@ -522,7 +587,12 @@ describe("an opt-out among words reception cannot read", () => {
       }),
     );
 
-    expect(await world.organization.reportOptOut(world.juan.caller, { handoffId })).toEqual({
+    expect(
+      await world.organization.reportOptOut(world.juan.caller, {
+        handoffId,
+        throughMessageId: seen,
+      }),
+    ).toEqual({
       ok: false,
       reason: "nobodyToTurnOff",
     });

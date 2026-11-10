@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d789c7df-b445-45e7-a37b-c3da27859c7f",
+  "id": "5fb9dacc-a0e7-479a-bd5c-e7af0253b6a6",
   "prevId": "6915f44f-bd13-46f4-9b97-9d3ff8cb11a2",
   "tables": {
     "appointment": {
@@ -2097,9 +2097,9 @@
           "notNull": false,
           "autoincrement": false
         },
-        "opt_out_reported_at": {
-          "name": "opt_out_reported_at",
-          "type": "integer",
+        "opt_out_reported_through": {
+          "name": "opt_out_reported_through",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -2165,6 +2165,19 @@
           ],
           "columnsTo": [
             "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "handoff_opt_out_reported_through_whatsapp_message_id_fk": {
+          "name": "handoff_opt_out_reported_through_whatsapp_message_id_fk",
+          "tableFrom": "handoff",
+          "tableTo": "whatsapp_message",
+          "columnsFrom": [
+            "opt_out_reported_through"
+          ],
+          "columnsTo": [
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"

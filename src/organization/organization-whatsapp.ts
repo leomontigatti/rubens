@@ -5,6 +5,7 @@ import type {
   HandoffReference,
   HandoffRemindersInput,
   OpenHandoffListOptions,
+  OptOutReport,
 } from "#/lib/handoffs.ts";
 import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { SignupCompletion, TemplateSend } from "#/lib/whatsapp.ts";
@@ -87,7 +88,7 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   }
 
   /** Reports an opt-out among words the model could not read: its hold's reminders wake the alarm. */
-  reportOptOut(caller: Caller, input: HandoffReference) {
+  reportOptOut(caller: Caller, input: OptOutReport) {
     return this.asThenArm(caller, patientEditors, (acting) =>
       reportUnreadOptOut(this.database, acting, input),
     );

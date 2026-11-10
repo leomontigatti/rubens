@@ -47,6 +47,11 @@ export const handoffReferenceSchema = z.object({ handoffId: z.uuid() });
 
 export type HandoffReference = z.input<typeof handoffReferenceSchema>;
 
+/** An opt-out reported on a clinical handoff, through the newest patient message its reader saw. */
+export const optOutReportSchema = handoffReferenceSchema.extend({ throughMessageId: z.uuid() });
+
+export type OptOutReport = z.input<typeof optOutReportSchema>;
+
 /** Which open handoffs to list: all the reader sees, or one conversation's. */
 export const openHandoffListSchema = z.object({ conversationId: z.uuid().optional() });
 

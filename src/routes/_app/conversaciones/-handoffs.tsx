@@ -8,6 +8,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { handoffReasonLabels } from "#/lib/handoff-copy.ts";
+import type { OptOutReport } from "#/lib/handoffs.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { closeHandoff, dropHeldReply, reportOptOut } from "#/server/inbox.functions.ts";
 import type { OpenHandoff } from "#/organization/handoff-inbox.ts";
@@ -169,8 +170,11 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
           </Button>
         )}
       </div>
-      {handoff.optOut !== null && (
-        <ClinicalOptOut handoffId={handoff.id} reported={handoff.optOut === "reported"} />
+      {handoff.optOut !== null && handoff.lastPatientMessage && (
+        <ClinicalOptOut
+          report={{ handoffId: handoff.id, throughMessageId: handoff.lastPatientMessage.id }}
+          reported={handoff.optOut === "reported"}
+        />
       )}
       {handoff.heldReply !== null && (
         <HeldReply
@@ -195,7 +199,7 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
  * The prompt on a clinical handoff: its reader looks for an opt-out among
  * words reception cannot read, and reports it to reception, which decides.
  */
-function ClinicalOptOut(props: { handoffId: string; reported: boolean }) {
+function ClinicalOptOut(props: { report: OptOutReport; reported: boolean }) {
   const report = useInboxAction(optOutRefusals);
   const [confirming, setConfirming] = useState(false);
   if (props.reported) {
@@ -227,9 +231,7 @@ function ClinicalOptOut(props: { handoffId: string; reported: boolean }) {
         description="Recepción decide si desactiva WhatsApp para los pacientes de este número. Hasta entonces no les enviamos recordatorios ni avisos. La derivación sigue abierta."
         confirmLabel="Avisar a recepción"
         onConfirm={() =>
-          void report.run("report-opt-out", () =>
-            reportOptOut({ data: { handoffId: props.handoffId } }),
-          )
+          void report.run("report-opt-out", () => reportOptOut({ data: props.report }))
         }
       />
     </div>
