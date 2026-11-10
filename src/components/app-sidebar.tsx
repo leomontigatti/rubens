@@ -88,7 +88,7 @@ function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
 /** A link that opens its entries rather than a page: open while the page is one of them. */
 function NavFolder(props: { folder: NavFolderItem; pathname: string }) {
   const { folder, pathname } = props;
-  const { state, setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
   const current = isOpenOn(pathname, folder);
   const [open, setOpen] = useState(current);
   const [wasCurrent, setWasCurrent] = useState(current);
@@ -98,7 +98,8 @@ function NavFolder(props: { folder: NavFolderItem; pathname: string }) {
       setOpen(true);
     }
   }
-  const collapsed = state === "collapsed";
+  // On a phone the menu is a sheet, shown whole: the desktop's collapsed state does not apply.
+  const collapsed = state === "collapsed" && !isMobile;
 
   return (
     <Collapsible
