@@ -512,18 +512,6 @@ describe("judging every patient message", () => {
     expect(textsToMeta()).toEqual([]);
   });
 
-  it("leaves a message unjudged when the model fails, and sets no alarm for it again", async () => {
-    await bookPatient("Martina", martinaPhone);
-    await patientWrites("hola");
-    scriptedModel.script(() => {
-      throw new Error("The model is overloaded");
-    });
-
-    await afterTheWait();
-
-    expect(await judgementsShown()).toEqual(["notJudged"]);
-    expect(await scheduledAlarm()).toBeNull();
-  });
   it("judges a symptom as clinical though the patient typed the mark after it", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
@@ -571,6 +559,154 @@ describe("judging every patient message", () => {
       { role: "assistant", content: "Hola, en qué te puedo ayudar?" },
       { role: "user", content: "[new messages]\nme duele la muela\ngracias" },
     ]);
+  });
+});
+
+describe("a message the model could not read", () => {
+  const minuteMs = 60_000;
+  const hourMs = 60 * minuteMs;
+
+  /** The model fails the next `times` turns. */
+  function modelFails(times = 1) {
+    for (let i = 0; i < times; i += 1) {
+      scriptedModel.script(() => {
+        throw new Error("The model is overloaded");
+      });
+    }
+  }
+
+  /** Runs the object's alarm at each time it sets, while one is set before `until`. */
+  async function runAlarmsUntil(until: number) {
+    const ranAt: number[] = [];
+    for (let next = await scheduledAlarm(); next !== null && next <= until;) {
+      vi.setSystemTime(next);
+      ranAt.push(next);
+      await runDurableObjectAlarm(world.organization);
+      next = await scheduledAlarm();
+    }
+    return ranAt;
+  }
+
+  async function openHandoffs() {
+    return expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs;
+  }
+
+  it("stays unjudged and unanswered, and is retried a minute later", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    modelFails();
+
+    await afterTheWait();
+
+    expect(await judgementsShown()).toEqual(["notJudged"]);
+    expect(textsToMeta()).toEqual([]);
+    expect(await scheduledAlarm()).toBe(Date.now() + minuteMs);
+  });
+
+  it("runs the turn as usual once a retry succeeds", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    modelFails();
+    await afterTheWait();
+
+    await runAlarmsUntil(Date.now() + minuteMs);
+
+    expect(scriptedModel.turns).toHaveLength(2);
+    expect(await judgementsShown()).toEqual(["notClinical"]);
+    expect(textsToMeta().map((sent) => sent.text)).toEqual(["Hola, en qué te puedo ayudar?"]);
+    expect(await scheduledAlarm()).toBeNull();
+  });
+
+  it("is retried later each time, never past the hand-off time", async () => {
+    await bookPatient("Martina", martinaPhone);
+    const sentAt = Date.now();
+    await patientWrites("hola");
+    modelFails(100);
+    await afterTheWait();
+    const firstFailure = Date.now();
+
+    const ranAt = await runAlarmsUntil(sentAt + 18 * hourMs);
+
+    const gaps = ranAt.map((at, i) => at - (ranAt[i - 1] ?? firstFailure));
+    expect(gaps.slice(0, 4)).toEqual([minuteMs, 2 * minuteMs, 4 * minuteMs, 8 * minuteMs]);
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(hourMs);
+    expect(ranAt.at(-1)).toBe(sentAt + 18 * hourMs);
+  });
+
+  it("is handed off at once, not retried, when the model failed after accepting a change", async () => {
+    const { appointmentId, patientId } = await bookPatient("Martina", martinaPhone);
+    const later = await world.book({
+      practitionerId: world.juan.practitionerId,
+      patientId,
+      medicalServiceId,
+      start: at("13:00"),
+      durationMinutes: 30,
+      confirmWarnings: true,
+    });
+    await patientWrites("cancelá mi próximo turno");
+    scriptedModel.script((turn) => {
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("accept_proposal");
+      throw new Error("The model is overloaded");
+    });
+
+    await afterTheWait();
+    await runAlarmsUntil(Date.now() + 24 * hourMs);
+
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect(await world.appointmentOf(appointmentId)).toMatchObject({ status: "cancelled" });
+    expect(await world.appointmentOf(later.id)).not.toMatchObject({
+      status: "cancelled",
+    });
+    expect(await openHandoffs()).toEqual([
+      expect.objectContaining({ reason: "modelUnavailable", clinical: true }),
+    ]);
+    expect(textsToMeta()).toEqual([]);
+  });
+
+  it("is not read again as new once the handoff is closed and the patient writes", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelá mi próximo turno");
+    scriptedModel.script((turn) => {
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("accept_proposal");
+      throw new Error("The model is overloaded");
+    });
+    await afterTheWait();
+    const [handedOff] = await openHandoffs();
+    expectOk(
+      await world.organization.closeHandoff(world.juan.caller, { handoffId: handedOff!.id }),
+    );
+
+    await patientWrites("ok gracias");
+    await afterTheWait();
+
+    expect(scriptedModel.turns[1]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: "[new messages]\nok gracias",
+    });
+  });
+
+  it("is handed off as clinical 6 hours before the window closes, with no reply to the patient", async () => {
+    await bookPatient("Martina", martinaPhone);
+    const sentAt = Date.now();
+    await patientWrites("me duele la muela");
+    modelFails(100);
+    await afterTheWait();
+
+    await runAlarmsUntil(sentAt + 24 * hourMs);
+
+    expect(await openHandoffs()).toEqual([
+      expect.objectContaining({
+        reason: "modelUnavailable",
+        clinical: true,
+        recipients: ["Juan Gómez", "Lucía Díaz"],
+      }),
+    ]);
+    // Stored as clinical, so only those who may read clinical words see them.
+    expect(await judgementsShown()).toEqual(["clinical"]);
+    expect(textsToMeta()).toEqual([]);
+    expect(await scheduledAlarm()).toBeNull();
   });
 });
 

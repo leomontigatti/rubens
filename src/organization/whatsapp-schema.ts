@@ -48,6 +48,12 @@ export const conversation = sqliteTable("conversation", {
    */
   misunderstandings: integer("misunderstandings").notNull().default(0),
   /**
+   * How many turns in a row the model could not read the patient's messages
+   * (assistant.md § The conversation window): each failure waits longer
+   * before the next retry (`src/organization/turn-retries.ts`).
+   */
+  failedTurns: integer("failed_turns").notNull().default(0),
+  /**
    * The member who took the conversation over from the inbox
    * (`src/organization/conversation-holds.ts`), while the assistant stays
    * silent in it; none while the assistant holds it.

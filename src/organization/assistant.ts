@@ -23,6 +23,7 @@ import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { notifyOptOut } from "#/organization/notifications.ts";
 import { proposalTools } from "#/organization/proposals.ts";
 import { handoffWanted } from "#/organization/turn-handoffs.ts";
+import { clearFailedTurns, retryOrHandOff } from "#/organization/turn-retries.ts";
 import type { HandOffCall, Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
 import { deliverReply, maySend } from "#/organization/turn-replies.ts";
 import type { Settled } from "#/organization/turn-replies.ts";
@@ -279,7 +280,7 @@ async function judgeTurn(
       messages: asTurnMessages(turn.read),
       tools: turnTools(database, turn, recorded),
     })
-    // The model is unavailable: the messages wait, unjudged, for #179's retry.
+    // The model is unavailable: the messages wait, unjudged, for their retry.
     .catch(() => null);
   const { judgement } = recorded;
   if (!ran || !judgement) {
@@ -356,17 +357,25 @@ async function runTurn(
   const view = [...appointments];
   const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
   const media = read.unjudged.filter((message) => clinicalMediaTypes.has(message.type));
-  const turn = await judgeWithoutMedia(database, model, {
+  const startedAt = Date.now();
+  const { turn, unread } = await judgeWithoutMedia(database, model, {
     conversationId,
     read,
     appointments: view,
     media,
   });
+  if (unread.length > 0) {
+    const appointmentId = answered?.appointmentId ?? null;
+    retryOrHandOff(database, { conversationId, messageIds: unread, appointmentId, startedAt });
+  } else {
+    clearFailedTurns(database, conversationId);
+  }
   if (!turn) {
     return;
   }
   const settled = settleTurn(database, { conversationId, appointments, answered, ...turn });
-  if (settled === "silent") {
+  // A photo's handoff is settled, but the patient hears nothing while their text is unread.
+  if (settled === "silent" || unread.length > 0) {
     return;
   }
   const replying = { conversationId, read, appointments: view };
@@ -385,7 +394,8 @@ async function runTurn(
 /**
  * Judges the turn's messages but the photos and files among them, which the
  * model never reads: they make the turn clinical, so it is handed off. With
- * nothing else to judge the model does not run.
+ * nothing else to judge the model does not run. `unread` lists the rest when
+ * the model could not judge them: they wait for its retry (`turn-retries.ts`).
  */
 async function judgeWithoutMedia(
   database: Database,
@@ -398,17 +408,18 @@ async function judgeWithoutMedia(
     unjudged.length > 0
       ? await judgeTurn(database, model, { ...turn, read: { ...read, unjudged } })
       : null;
+  const unread = judged ? [] : unjudged.map((message) => message.id);
   if (media.length === 0) {
-    return judged && { ...judged, read };
+    return { turn: judged && { ...judged, read }, unread };
   }
   if (!judged) {
     // Only the media is judged now: the rest waits for the model.
     const judgement = { clinical: true, emergency: false, understood: true, optOut: false };
     const rules = currentCommunicationRules(database);
     const nothingElse = { reply: "", handOff: null, ruleRefused: null, rules };
-    return { ...nothingElse, judgement, read: { ...read, unjudged: media } };
+    return { turn: { ...nothingElse, judgement, read: { ...read, unjudged: media } }, unread };
   }
-  return { ...judged, judgement: { ...judged.judgement, clinical: true }, read };
+  return { turn: { ...judged, judgement: { ...judged.judgement, clinical: true }, read }, unread };
 }
 
 interface JudgedTurn extends TurnToSort {

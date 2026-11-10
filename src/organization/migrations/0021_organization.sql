@@ -1,0 +1,1 @@
+ALTER TABLE `conversation` ADD `failed_turns` integer DEFAULT 0 NOT NULL;

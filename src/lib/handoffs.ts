@@ -30,6 +30,8 @@ export const handoffReasons = [
   "heldReply",
   /** The window closed before the assistant's reply could go, so it was dropped. */
   "windowClosed",
+  /** The model could not read the patient's message before the hand-off time, so it is clinical. */
+  "modelUnavailable",
 ] as const;
 
 export type HandoffReason = (typeof handoffReasons)[number];

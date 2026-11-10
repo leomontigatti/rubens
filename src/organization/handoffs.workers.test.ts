@@ -497,6 +497,28 @@ describe("answering a follow-up", () => {
     ]);
   });
 
+  it("hands an answer the model could not read to the follow-up's practitioner", async () => {
+    await followUpSent();
+    const sentAt = Date.now();
+    await writes("me sigue doliendo");
+    for (let i = 0; i < 100; i += 1) {
+      scriptedModel.script(() => {
+        throw new Error("The model is overloaded");
+      });
+    }
+    await turn();
+
+    const handOffAt = sentAt + 18 * 60 * 60_000;
+    for (let i = 0; i < 100 && (await openHandoffs()).length === 0; i += 1) {
+      vi.setSystemTime(Math.min(Date.now() + 60 * 60_000, handOffAt));
+      await runDurableObjectAlarm(world.organization);
+    }
+
+    expect(await openHandoffs()).toEqual([
+      expect.objectContaining({ reason: "modelUnavailable", recipients: ["Juan Gómez"] }),
+    ]);
+  });
+
   it("answers an opt-out as one, not as the practitioner's", async () => {
     await followUpSent();
     await writes("no me escriban más");
