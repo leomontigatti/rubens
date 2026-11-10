@@ -1,9 +1,9 @@
 # WhatsApp templates
 
-The templates each organization submits to Meta from its own WhatsApp account, one
-for each message underthing starts
-([ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md)). When each
-is sent is in [messages.md](../domain/messages.md#to-patients).
+The templates each organization submits to Meta from its own WhatsApp account
+([ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md)): its own,
+which an admin creates, names and times, and the five fixed event templates. When
+each is sent is in [messages.md](../domain/messages.md#to-patients).
 
 - **Category**: utility, every one. Each is about one patient's appointment, with
   nothing promotional in it. Meta can move a template to marketing after approving
@@ -24,65 +24,74 @@ is sent is in [messages.md](../domain/messages.md#to-patients).
 - **Never a person's reply in a variable**: a reply after the window closed waits
   for the patient to answer `reabrir_conversacion`.
 
-The code refers to a template by its name. An admin submits a template's body
-from the WhatsApp `Plantillas` page, and each submission is a new version, named
-`<name>_v<n>` at Meta, after the highest version stored or already at Meta; the
-check before it refuses `[firma]` left in place. The texts below are drafts in `vos`,
-with `[firma]` standing for the organization's sign-off, fixed text and not a
-variable; the business
-owner adjusts them before the first organization submits them.
+An admin writes and submits every template from the WhatsApp `Plantillas` page
+([messages.md](../domain/messages.md#the-organizations-templates)). Each
+submission of a text is a new version, numbered after the highest version stored
+or already at Meta; the check before it refuses `[firma]` left in place. Meta's name for a version stays
+internal, never shown: for the organization's own templates it is built from the
+template's id and the version, such as `t_<id>_v2`, so renaming one submits
+nothing; an event template's is its name and the version, such as
+`turno_movido_v2`.
 
-| Variable           | Value                                                   |
-| ------------------ | ------------------------------------------------------- |
-| `{{paciente}}`     | The patient's first name, or chosen name                |
-| `{{profesional}}`  | The practitioner, as the practitioner's rules name them |
-| `{{fecha}}`        | The day, such as `jueves 12 de noviembre`               |
-| `{{hora}}`         | The time, in the office's zone, such as `10:30`         |
-| `{{sede}}`         | The office's name                                       |
-| `{{direccion}}`    | The office's address                                    |
-| `{{indicaciones}}` | The medical service's care instructions                 |
+`Plantillas` lists every template, each with its timing (or, for an event
+template, its event) under its name; `Nueva plantilla` creates one of the
+organization's own. A template's page edits its name and timing, which save on
+their own, and its text, which a save submits to Meta when it differs from the
+latest version's. Under `Texto`: `No escribas cuándo se envía (mañana, en 2
+horas): usá {{fecha}} y {{hora}}.` The preview warns when the text says `mañana`,
+`hoy` or `en N horas`.
 
-## `confirmacion_turno`
+Each new organization starts with the four drafts below, unsent, in `vos`, with
+`[firma]` standing for its sign-off, fixed text and not a variable. A draft sends
+nothing until the admin writes in their sign-off, submits it and Meta approves
+it, and a medical service picks it. There is no draft for care instructions: a
+medical service that sends them gets a template of its own, written by an admin.
 
-Sent when an appointment is booked, or a request approved, if its medical service
-asks for it.
+| Variable          | Value                                                   |
+| ----------------- | ------------------------------------------------------- |
+| `{{paciente}}`    | The patient's first name, or chosen name                |
+| `{{profesional}}` | The practitioner, as the practitioner's rules name them |
+| `{{fecha}}`       | The day, such as `jueves 12 de noviembre`               |
+| `{{hora}}`        | The time, in the office's zone, such as `10:30`         |
+| `{{sede}}`        | The office's name                                       |
+| `{{direccion}}`   | The office's address                                    |
+
+Every template may use every variable, except `reabrir_conversacion`, which is
+about a conversation and knows only `{{paciente}}`.
+
+## The organization's drafts
+
+### Confirmación del turno
+
+Sent when the appointment is booked.
 
 > Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si necesitás cambiarlo, respondé este mensaje. [firma]
 
-## `recordatorio_turno`
+### Recordatorio con confirmación
 
-A reminder that asks for confirmation.
+Sent 1 day before the appointment; it asks the patient to confirm.
 
 > Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia? Si necesitás cancelarlo o cambiarlo, respondé este mensaje. [firma]
 
-## `recordatorio_turno_sin_confirmacion`
+### Recordatorio
 
-A reminder that asks nothing, such as one two hours before.
+Sent 2 hours before the appointment; it asks nothing.
 
 > Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}} con {{profesional}} en {{sede}} ({{direccion}}). [firma]
 
-## `indicaciones`
+### Seguimiento
 
-A medical service's care instructions, sent when the appointment is marked
-attended. The medical service's text goes whole, and must fit the body's limit.
-Meta refuses a line break, a tab or a run of spaces in a value (error 132018),
-so care instructions, often a list, go on one line: each line break is joined
-as `; ` and each run of spaces becomes one (decided in #162). The medical
-service's form shows that line under the text.
-
-> Hola {{paciente}}, te dejamos las indicaciones de {{profesional}} para después de tu turno: {{indicaciones}}. Cualquier duda, respondé este mensaje. [firma]
-
-## `seguimiento`
-
-A medical service's follow-up. Of the set, the one most likely to be moved to
-marketing: it names the appointment so it stays about it.
+Sent 1 day after the appointment, once it is marked attended. Of the set, the one
+most likely to be moved to marketing: it names the appointment so it stays about
+it.
 
 > Hola {{paciente}}, ¿cómo te sentís después de tu turno del {{fecha}} con {{profesional}}? Contanos respondiendo este mensaje. [firma]
 
-## Appointments the organization changed
+## Event templates
 
-Each invites a reply, and the assistant offers times in the conversation, except
-as `turno_cancelado` says.
+Fixed, sent on their event, and never picked by a medical service. Each but
+`reabrir_conversacion` invites a reply, and the assistant offers times in the
+conversation, except as `turno_cancelado` says.
 
 ### `turno_movido`
 
@@ -112,7 +121,7 @@ second release.
 
 > Hola {{paciente}}, no pudimos confirmar el turno que pediste con {{profesional}} para el {{fecha}}. Respondé este mensaje y buscamos otro horario. [firma]
 
-## `reabrir_conversacion`
+### `reabrir_conversacion`
 
 Sent when a person replies after the conversation window closed. Their reply is
 delivered once the patient answers this

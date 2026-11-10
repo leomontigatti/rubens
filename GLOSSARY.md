@@ -77,8 +77,8 @@ _Avoid_: free time, open slots, vacancies
 
 **`medicalService`** — ui: "Prestación"
 The kind of visit or practice a `practitioner` offers, such as a first consultation
-or a check-up. It sets the default duration, the price and the patient messages of
-its `appointment`s.
+or a check-up. It sets the default duration and the price of its `appointment`s,
+and picks the `template`s they get.
 _Avoid_: service, visit type, event type, appointment type
 
 **`appointment`** — ui: "Turno"
@@ -147,19 +147,30 @@ _Avoid_: opt-in, subscription
 
 ## Messages
 
+**`template`** — ui: "Plantilla"
+A message the `organization` starts, approved by Meta for its WhatsApp number and
+filled with an `appointment`'s facts. An admin creates and names the organization's
+own, each with its `templateTiming`, and a `medicalService` picks the ones its
+appointments get; the five `eventTemplate`s are fixed.
+_Avoid_: fixed text, canned message, HSM, message type
+
+**`templateTiming`** — ui: "Cuándo se envía"
+When a `template` goes: when its `appointment` is booked, when it is marked
+attended, or a number of hours or days before or after it.
+_Avoid_: schedule, delay, trigger
+
+**`eventTemplate`** — no UI term (the list shows its event as its timing)
+One of the five fixed `template`s sent when something happens to an `appointment`
+or a conversation, such as staff moving the appointment. No `medicalService` picks it.
+_Avoid_: system message, automatic template
+
 **`reminder`** — ui: "Recordatorio"
-A message to a `patient` some time before an `appointment`, as its
-`medicalService` sets. A reminder can ask the patient to confirm.
+A `template` timed before an `appointment`.
 _Avoid_: notification, alert
 
 **`bookingConfirmation`** — ui: "Confirmación de turno"
-The message a `patient` gets when an `appointment` is booked.
+A `template` timed for when an `appointment` is booked.
 _Avoid_: receipt, booking notification
-
-**`template`** — ui: "Plantilla"
-A message the `organization` starts, approved by Meta for its WhatsApp number and
-filled with an `appointment`'s facts, such as a `reminder`.
-_Avoid_: fixed text, canned message, HSM
 
 **`rescheduleLink`** _(retired term)_ — no code identifier
 A personal page to move or cancel one `appointment`, dropped on 2026-11-06: a
@@ -175,12 +186,12 @@ copies of it are extra deliveries of the same notification.
 _Avoid_: alert, message, inbox item
 
 **`careInstructions`** — ui: "Indicaciones"
-The text a `medicalService` sends a `patient` once their `appointment` is attended.
+What a `patient` should do before or after an `appointment`, written into the text
+of the `template` that carries it.
 _Avoid_: aftercare, post-op message
 
 **`followUp`** — ui: "Seguimiento"
-A message asking a `patient` how they feel, some time after an `appointment`, as its
-`medicalService` sets.
+A `template` timed after an `appointment`, asking the `patient` how they feel.
 _Avoid_: check-in, survey
 
 ## Assistant

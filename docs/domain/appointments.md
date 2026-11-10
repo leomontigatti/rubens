@@ -3,9 +3,9 @@
 ## Medical services
 
 Each practitioner offers medical services. A medical service sets the default duration, which
-the booking can change, and the patient messages for its appointments
-([messages.md](./messages.md)): the booking confirmation, the reminders, and how
-late the patient may reschedule.
+the booking can change, which of the organization's templates its appointments
+get ([messages.md](./messages.md#the-organizations-templates)), and how late the
+patient may reschedule.
 
 Admins, and each practitioner for their own, manage medical services. A medical
 service in use is deactivated, never deleted.
