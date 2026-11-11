@@ -128,17 +128,15 @@ export function ScheduleForm(props: {
       <form.AppField name="weekdays">
         {(field) => <field.CheckboxGroupField legend="Días" options={weekdayOptions} row />}
       </form.AppField>
-      <div className="flex flex-wrap gap-4">
-        <form.AppField name="startTime">
-          {(field) => <field.TextField label="Inicio" type="time" inline required />}
-        </form.AppField>
-        <form.AppField name="endTime">
-          {(field) => <field.TextField label="Fin" type="time" inline required />}
-        </form.AppField>
-      </div>
+      <form.AppField name="startTime">
+        {(field) => <field.TextField label="Inicio" type="time" required />}
+      </form.AppField>
+      <form.AppField name="endTime">
+        {(field) => <field.TextField label="Fin" type="time" required />}
+      </form.AppField>
       <form.AppField name="roomId">
         {(field) => (
-          <field.SelectField label="Consultorio" required>
+          <field.SelectField label="Consultorio" size="medium" startsRow required>
             <NativeSelectOption value="" disabled>
               Elegí un consultorio
             </NativeSelectOption>
@@ -150,14 +148,12 @@ export function ScheduleForm(props: {
           </field.SelectField>
         )}
       </form.AppField>
-      <div className="flex flex-wrap gap-4">
-        <form.AppField name="date">
-          {(field) => <field.TextField label={props.dateLabel} type="date" inline required />}
-        </form.AppField>
-        <form.AppField name="lastDate">
-          {(field) => <field.TextField label="Hasta (opcional)" type="date" inline />}
-        </form.AppField>
-      </div>
+      <form.AppField name="date">
+        {(field) => <field.TextField label={props.dateLabel} type="date" startsRow required />}
+      </form.AppField>
+      <form.AppField name="lastDate">
+        {(field) => <field.TextField label="Hasta (opcional)" type="date" />}
+      </form.AppField>
     </ActionFormPage>
   );
 }

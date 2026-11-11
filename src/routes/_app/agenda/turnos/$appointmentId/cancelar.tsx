@@ -91,7 +91,11 @@ function CancelForm({ loaded }: { loaded: LoadedAppointment }) {
       </form.AppField>
       <form.AppField name="reason">
         {(field) => (
-          <field.TextField label="Motivo (opcional)" maxLength={cancellationReasonMaxLength} />
+          <field.TextField
+            label="Motivo (opcional)"
+            maxLength={cancellationReasonMaxLength}
+            startsRow
+          />
         )}
       </form.AppField>
     </ActionFormPage>

@@ -5,9 +5,9 @@ import type { FormEvent } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
-import { FormProblemsContext, useAppForm } from "#/components/app-form.tsx";
+import { FormGrid, FormProblemsContext, useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
-import { FieldDescription, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
+import { FieldDescription, FieldLegend } from "#/components/ui/field.tsx";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, focusProblem, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
@@ -186,24 +186,25 @@ export const documentTypeOptions = (
   </>
 );
 
-/** The registration inputs: the names and the phone always, the rest when `full`. */
+/**
+ * The registration inputs: the names and the phone always, the rest when
+ * `full`. They are rows of a `FormGrid`.
+ */
 export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; full: boolean }) {
   const { form } = props;
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.AppField name="firstName">
-          {(field) => <field.TextField label="Nombre" required />}
-        </form.AppField>
-        <form.AppField name="lastName">
-          {(field) => <field.TextField label="Apellido" required />}
-        </form.AppField>
-      </div>
+    <>
+      <form.AppField name="firstName">
+        {(field) => <field.TextField label="Nombre" required />}
+      </form.AppField>
+      <form.AppField name="lastName">
+        {(field) => <field.TextField label="Apellido" required />}
+      </form.AppField>
       <form.AppField name="phone">
         {(field) => <field.TextField {...phoneFieldProps} />}
       </form.AppField>
       {props.full && (
-        <FieldSet>
+        <FormGrid>
           <div className="flex flex-col gap-1">
             <FieldLegend className="mb-0">Datos para completar</FieldLegend>
             <FieldDescription>
@@ -219,30 +220,28 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
               />
             )}
           </form.AppField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.AppField name="documentType">
-              {(field) => (
-                <field.SelectField label="Tipo de documento">
-                  {documentTypeOptions}
-                </field.SelectField>
-              )}
-            </form.AppField>
-            <form.AppField name="documentNumber">
-              {(field) => <field.TextField label="Número de documento" />}
-            </form.AppField>
-          </div>
+          <form.AppField name="documentType">
+            {(field) => (
+              <field.SelectField label="Tipo de documento" startsRow>
+                {documentTypeOptions}
+              </field.SelectField>
+            )}
+          </form.AppField>
+          <form.AppField name="documentNumber">
+            {(field) => <field.TextField label="Número de documento" />}
+          </form.AppField>
           <form.AppField name="birthDate">
-            {(field) => <field.TextField label="Fecha de nacimiento" type="date" />}
+            {(field) => <field.TextField label="Fecha de nacimiento" type="date" startsRow />}
           </form.AppField>
           <form.AppField name="email">
-            {(field) => <field.TextField label="Correo electrónico" type="email" />}
+            {(field) => <field.TextField label="Correo electrónico" type="email" startsRow />}
           </form.AppField>
           <form.AppField name="address">
             {(field) => <field.TextField label="Dirección" />}
           </form.AppField>
-        </FieldSet>
+        </FormGrid>
       )}
-    </div>
+    </>
   );
 }
 
@@ -320,7 +319,9 @@ export function PatientRegistrationForm(props: {
       )}
       <PatientSaveFeedback save={save} confirmLabel="Registrar igual" onUse={props.onUseExisting} />
       <FormProblemsContext.Provider value={[...problems, ...patientRefusals(save)]}>
-        <RegistrationFields form={form} />
+        <FormGrid>
+          <RegistrationFields form={form} />
+        </FormGrid>
       </FormProblemsContext.Provider>
       <FormActions
         pending={save.pending}

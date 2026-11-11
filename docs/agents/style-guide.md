@@ -128,9 +128,9 @@ beside it.
   the `PageHeader`'s `actions`, on the title's line, and again in the list's `EmptyState`.
 - **A form that holds a form of its own goes in `lead`**, above the form element: booking's patient
   picker, whose quick registration submits apart. Its problems still show under its field.
-- **The fields take the page's width, outside any card.** The actions close the form: `Volver` on
-  the left, `Descartar cambios` and the submit button on the right. On a long form they stick to the
-  bottom of the window.
+- **The fields sit in rows by their size, outside any card** ([Forms](#forms)). The actions
+  close the form: `Volver` on the left, `Descartar cambios` and the submit button on the right. On
+  a long form they stick to the bottom of the window.
 - **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
 - **On an edit, `Descartar cambios` shows once something differs from what the form opened with.**
   A create has none (`FormPage`'s `creates`): with no saved values to go back to, it would only
@@ -176,9 +176,20 @@ carried over from en-escena.
   label.
 - **A rule the user needs while typing is a hint under the field**: a `FieldDescription`, with
   the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/patient-form.tsx`).
-- **Fields sit in a column or a grid**, where they fill their cell. In a `flex` row, each takes
-  `className="w-auto"`, or it takes the whole line. An input narrower than its field takes
-  `max-w-*`: `Field` sets its children's `width`.
+- **A form's fields sit in rows of six columns from `md` up** (`FormGrid`,
+  `src/components/app-form.tsx`, which `FormPage` holds its fields in); on a phone each field takes
+  the whole width. Every field of the form kit takes a `size`: `small` (two columns, three to a
+  row), `medium` (three, two to a row) or `large` (the row). A form names a size only where it
+  differs from its field's default:
+  - `large`: a text area, a combobox, a checkbox, a group of checkboxes;
+  - `medium`: a text field, a date, a date and time;
+  - `small`: a number, a time, a select (`SelectField`'s default, for a few short options); a
+    select whose options are long, such as a practitioner or an office, names `medium`.
+- **A field that starts a new subject starts a new row** (`startsRow`): a document's type after
+  the person's name, a schedule's room after its hours. A child that is no field (a section, an
+  alert, a line of text) takes the whole row; a section is a `FormGrid` of its own, inside the
+  form's: `/dev/patrones`, `Campos por tamaño`.
+
 - **A checkbox is a horizontal `Field` with `className="w-fit"`**, the box before its label:
   without `w-fit` the label fills the row, and a click on the empty space ticks the box.
   A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a

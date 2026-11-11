@@ -151,7 +151,7 @@ function MemberForm({ member }: { member: StaffMember }) {
                 min={5}
                 max={120}
                 required
-                narrow
+                startsRow
                 hint="Los horarios libres empiezan cada tantos minutos, contados desde la medianoche."
               />
             )}

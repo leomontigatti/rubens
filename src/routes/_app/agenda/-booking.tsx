@@ -311,6 +311,7 @@ export function BookingPage(props: BookingPageProps) {
             hint="La información clínica va en la historia clínica, no acá."
             placeholder="Por ejemplo: trae radiografías"
             maxLength={receptionNoteMaxLength}
+            startsRow
           />
         )}
       </form.AppField>
@@ -369,7 +370,7 @@ function PractitionerField(props: {
       }}
     >
       {(field) => (
-        <field.SelectField label="Profesional" required>
+        <field.SelectField label="Profesional" size="medium" required>
           <NativeSelectOption value="" disabled>
             Elegí un profesional
           </NativeSelectOption>
@@ -407,7 +408,7 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
   }
   const options = data ?? [];
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <>
       <form.AppField
         name="medicalServiceId"
         listeners={{
@@ -418,7 +419,7 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
         }}
       >
         {(field) => (
-          <field.SelectField label="Prestación" required>
+          <field.SelectField label="Prestación" size="medium" startsRow required>
             <NativeSelectOption value="" disabled>
               {servicePlaceholder(data)}
             </NativeSelectOption>
@@ -435,7 +436,7 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
           <field.TextField label="Duración (minutos)" type="number" min={1} max={720} required />
         )}
       </form.AppField>
-    </div>
+    </>
   );
 }
 
@@ -459,7 +460,7 @@ function StartField(props: {
         <StartGroup>
           {showsWeek(field.state.value) && (
             <form.AppField name="freeFrom">
-              {(from) => <from.TextField label="Horarios libres desde" type="date" inline />}
+              {(from) => <from.TextField label="Horarios libres desde" type="date" />}
             </form.AppField>
           )}
           {showsWeek(field.state.value) && query && (
@@ -486,18 +487,18 @@ function OverbookingFields(props: { form: BookingForm; rooms: { id: string; name
   const { form } = props;
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.AppField name="date">
-          {(field) => <field.TextField label="Fecha" type="date" required />}
-        </form.AppField>
-        <form.AppField name="time">
-          {(field) => <field.TextField label="Hora" type="time" required />}
-        </form.AppField>
-      </div>
+      <form.AppField name="date">
+        {(field) => <field.TextField label="Fecha" type="date" startsRow required />}
+      </form.AppField>
+      <form.AppField name="time">
+        {(field) => <field.TextField label="Hora" type="time" required />}
+      </form.AppField>
       <form.AppField name="roomId">
         {(field) => (
           <field.SelectField
             label="Consultorio"
+            size="medium"
+            startsRow
             hint="Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora."
           >
             <NativeSelectOption value="">El del horario del profesional</NativeSelectOption>

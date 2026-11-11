@@ -122,7 +122,7 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
       {isActiveStatus(appointment.status) && (
         <form.AppField name="roomId">
           {(field) => (
-            <field.SelectField label="Consultorio" required>
+            <field.SelectField label="Consultorio" size="medium" required>
               {office.rooms.map((room) => (
                 <NativeSelectOption key={room.id} value={room.id}>
                   {room.name}
@@ -139,6 +139,7 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
             hint="La información clínica va en la historia clínica, no acá."
             placeholder="Por ejemplo: trae radiografías"
             maxLength={receptionNoteMaxLength}
+            startsRow
           />
         )}
       </form.AppField>

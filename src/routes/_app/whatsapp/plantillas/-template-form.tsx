@@ -204,54 +204,47 @@ export function TemplateForm(props: {
       lead={props.lead}
     >
       {settings && (
-        <div className="flex flex-col gap-6">
+        <>
           <form.AppField name="name">
             {(field) => <field.TextField label="Nombre" required maxLength={80} />}
           </form.AppField>
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="w-72">
-              <form.AppField name="timing.when">
+          <form.AppField name="timing.when">
+            {(field) => (
+              <field.SelectField label="Cuándo se envía" size="medium" startsRow required>
+                {whenOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </field.SelectField>
+            )}
+          </form.AppField>
+          {(when === "before" || when === "after") && (
+            <>
+              <form.AppField name="timing.amount">
                 {(field) => (
-                  <field.SelectField label="Cuándo se envía" required>
-                    {whenOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                  <field.TextField
+                    label="Cuánto"
+                    type="number"
+                    startsRow
+                    min={1}
+                    max={720}
+                    step={1}
+                    required
+                  />
+                )}
+              </form.AppField>
+              <form.AppField name="timing.unit">
+                {(field) => (
+                  <field.SelectField label="Unidad" required>
+                    <option value="hours">Horas</option>
+                    <option value="days">Días</option>
                   </field.SelectField>
                 )}
               </form.AppField>
-            </div>
-            {(when === "before" || when === "after") && (
-              <>
-                <form.AppField name="timing.amount">
-                  {(field) => (
-                    <field.TextField
-                      label="Cuánto"
-                      type="number"
-                      min={1}
-                      max={720}
-                      step={1}
-                      required
-                      inline
-                      narrow
-                    />
-                  )}
-                </form.AppField>
-                <div className="w-32">
-                  <form.AppField name="timing.unit">
-                    {(field) => (
-                      <field.SelectField label="Unidad" required>
-                        <option value="hours">Horas</option>
-                        <option value="days">Días</option>
-                      </field.SelectField>
-                    )}
-                  </form.AppField>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+            </>
+          )}
+        </>
       )}
       {props.versionNote && <p className="text-muted-foreground text-sm">{props.versionNote}</p>}
       <div className="grid items-start gap-6 lg:grid-cols-5">

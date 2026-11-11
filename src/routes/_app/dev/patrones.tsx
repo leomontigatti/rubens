@@ -7,7 +7,7 @@ import { DataTable, NoMatches, useClientDataTable } from "#/components/data-tabl
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { FormGrid, useAppForm } from "#/components/app-form.tsx";
 import { activeRecord } from "#/components/admin-form.tsx";
 import { CreateButton, FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
@@ -27,7 +27,7 @@ import {
   FieldSet,
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   PatientBubble,
   WhatsappBubble,
@@ -48,9 +48,9 @@ export const Route = createFileRoute("/_app/dev/patrones")({
   component: Patterns,
 });
 
-function Pattern(props: { title: string; children: ReactNode }) {
+function Pattern(props: { title: string; wide?: boolean; children: ReactNode }) {
   return (
-    <section className="flex max-w-xl flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${props.wide ? "" : "max-w-xl"}`}>
       <h2 className="text-lg font-semibold">{props.title}</h2>
       {props.children}
     </section>
@@ -183,6 +183,53 @@ function PatternFormPage(props: { title: string; record?: RecordHeader }) {
   );
 }
 
+function PatternFieldSizes() {
+  const form = useAppForm({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      documentType: "",
+      documentNumber: "",
+      start: "",
+      end: "",
+      capacity: "",
+      note: "",
+    },
+  });
+  return (
+    <FormGrid>
+      <form.AppField name="firstName">
+        {(field) => <field.TextField label="Nombre (mediano)" />}
+      </form.AppField>
+      <form.AppField name="lastName">
+        {(field) => <field.TextField label="Apellido (mediano)" />}
+      </form.AppField>
+      <form.AppField name="documentType">
+        {(field) => (
+          <field.SelectField label="Tipo de documento (chico)" startsRow>
+            <NativeSelectOption value="">Sin documento</NativeSelectOption>
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.AppField name="documentNumber">
+        {(field) => <field.TextField label="Número de documento (mediano)" />}
+      </form.AppField>
+      <form.AppField name="start">
+        {(field) => <field.TextField label="Inicio (chico)" type="time" startsRow />}
+      </form.AppField>
+      <form.AppField name="end">
+        {(field) => <field.TextField label="Fin (chico)" type="time" />}
+      </form.AppField>
+      <form.AppField name="capacity">
+        {(field) => <field.TextField label="Capacidad (chico)" type="number" />}
+      </form.AppField>
+      <form.AppField name="note">
+        {(field) => <field.TextareaField label="Nota (grande)" />}
+      </form.AppField>
+    </FormGrid>
+  );
+}
+
 /** An edit page that is its record's only page: its status and toggle beside the title. */
 function PatternRecordFormPage() {
   const [active, setActive] = useState(true);
@@ -262,19 +309,8 @@ function Patterns() {
           </FieldDescription>
         </Field>
       </Pattern>
-      <Pattern title="Campos en dos columnas">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="pattern-type">Tipo de documento</FieldLabel>
-            <NativeSelect id="pattern-type">
-              <NativeSelectOption value="">Sin documento</NativeSelectOption>
-            </NativeSelect>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="pattern-number">Número de documento</FieldLabel>
-            <Input id="pattern-number" />
-          </Field>
-        </div>
+      <Pattern title="Campos por tamaño" wide>
+        <PatternFieldSizes />
       </Pattern>
       <Pattern title="Filtros">
         <div className="flex flex-wrap items-center gap-2">

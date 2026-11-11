@@ -67,6 +67,7 @@ function StaffForm() {
           <field.TextField
             label="Contraseña inicial"
             autoComplete="off"
+            startsRow
             required
             hint="La persona la usa para ingresar la primera vez y la cambia al entrar."
           />

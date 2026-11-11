@@ -211,31 +211,29 @@ export function GuardianForm(props: GuardianFormProps) {
       creates={props.creates}
       action={action}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.AppField name="name">
-          {(field) => <field.TextField label="Nombre" required />}
-        </form.AppField>
-        <form.AppField name="relationship">
-          {(field) => (
-            <field.TextField label="Relación" required hint="Por ejemplo: madre, padre, tutora." />
-          )}
-        </form.AppField>
-      </div>
+      <form.AppField name="name">
+        {(field) => <field.TextField label="Nombre" required />}
+      </form.AppField>
+      <form.AppField name="relationship">
+        {(field) => (
+          <field.TextField label="Relación" required hint="Por ejemplo: madre, padre, tutora." />
+        )}
+      </form.AppField>
       <form.AppField name="phone">
         {(field) => <field.TextField {...phoneFieldProps} />}
       </form.AppField>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.AppField name="documentType">
-          {(field) => (
-            <field.SelectField label="Tipo de documento">{documentTypeOptions}</field.SelectField>
-          )}
-        </form.AppField>
-        <form.AppField name="documentNumber">
-          {(field) => <field.TextField label="Número de documento" />}
-        </form.AppField>
-      </div>
+      <form.AppField name="documentType">
+        {(field) => (
+          <field.SelectField label="Tipo de documento" startsRow>
+            {documentTypeOptions}
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.AppField name="documentNumber">
+        {(field) => <field.TextField label="Número de documento" />}
+      </form.AppField>
       <form.AppField name="email">
-        {(field) => <field.TextField label="Correo electrónico" type="email" />}
+        {(field) => <field.TextField label="Correo electrónico" type="email" startsRow />}
       </form.AppField>
     </ActionFormPage>
   );
