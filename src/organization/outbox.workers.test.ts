@@ -34,7 +34,7 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
 });
 
 const confirmationBody =
-  "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba";
+  "Hola {{paciente}}, te escribimos de {{consultorio}}: tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
 
 /** Meta's answer to a template message it accepted, for the number `waId`. */
 function metaSent(messageId: string, waId = "5491155550000") {
@@ -228,6 +228,7 @@ describe("sending the booking confirmation", () => {
                 type: "body",
                 parameters: [
                   { type: "text", parameter_name: "paciente", text: "Martina" },
+                  { type: "text", parameter_name: "consultorio", text: "Consultorios Prueba" },
                   { type: "text", parameter_name: "profesional", text: "Juan Gómez" },
                   { type: "text", parameter_name: "fecha", text: "lunes 5 de enero" },
                   { type: "text", parameter_name: "hora", text: "09:00" },
@@ -245,7 +246,7 @@ describe("sending the booking confirmation", () => {
       whatsappId: "wamid.confirmation",
       direction: "outgoing",
       phone: "+5491155550000",
-      text: "Hola Martina, tu turno con Juan Gómez quedó reservado para el lunes 5 de enero a las 09:00 en Sede Centro (Av. Colón 100). Consultorios Prueba",
+      text: "Hola Martina, te escribimos de Consultorios Prueba: tu turno con Juan Gómez quedó reservado para el lunes 5 de enero a las 09:00 en Sede Centro (Av. Colón 100).",
     });
     expect(await outbox()).toEqual([
       expect.objectContaining({ state: "sent", attempts: 1, whatsappMessageId: stored!.id }),

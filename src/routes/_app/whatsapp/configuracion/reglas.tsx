@@ -6,7 +6,6 @@ import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   formsOfAddress,
-  maxSignOffLength,
   maxToneLength,
   parseCommunicationRules,
 } from "#/lib/communication-rules.ts";
@@ -23,7 +22,6 @@ export const Route = createFileRoute("/_app/whatsapp/configuracion/reglas")({
 });
 
 const toneTooLong = `Acortá el tono a ${maxToneLength} caracteres como máximo.`;
-const signOffTooLong = `Acortá la firma a ${maxSignOffLength} caracteres como máximo.`;
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -31,14 +29,12 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   toneTooLong,
-  signOffTooLong,
   invalidPhone: "El teléfono no es válido. Si es del exterior, empezá con + y el código del país.",
   missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.",
 };
 
 const refusalFields: Partial<Record<keyof typeof refusalMessages, string>> = {
   toneTooLong: "tone",
-  signOffTooLong: "signOff",
   invalidPhone: "phone",
   missingAreaCode: "phone",
 };
@@ -59,7 +55,6 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
   const form = useAppForm({
     defaultValues: {
       formOfAddress: initial.formOfAddress as string,
-      signOff: initial.signOff,
       tone: initial.tone,
       phone: initial.phone && formatPhone(initial.phone),
     },
@@ -78,7 +73,7 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
 
   const description = initial.version
     ? `Versión ${initial.version}. Al guardar, se crea la versión ${initial.version + 1}.`
-    : "Todavía nadie las guardó: el asistente trata de vos y no firma.";
+    : "Todavía nadie las guardó: el asistente trata de vos.";
 
   return (
     <ActionFormPage
@@ -98,14 +93,6 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
               </NativeSelectOption>
             ))}
           </field.SelectField>
-        )}
-      </form.AppField>
-      <form.AppField name="signOff">
-        {(field) => (
-          <field.TextField
-            label="Firma"
-            hint={`Cómo firma el asistente, por ejemplo el nombre del consultorio. Hasta ${maxSignOffLength} caracteres.`}
-          />
         )}
       </form.AppField>
       <form.AppField name="tone">

@@ -39,7 +39,7 @@ const bodies: Record<TemplateKey, string> = {
   confirmation:
     "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba",
   reminder:
-    "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia? Consultorios Prueba",
+    "Hola {{paciente}}, te escribimos de {{consultorio}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé para confirmar que venís.",
   careInstructions:
     "Hola {{paciente}}, no comas por 2 horas después de tu turno con {{profesional}}. Consultorios Prueba",
   turno_cancelado:

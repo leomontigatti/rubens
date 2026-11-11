@@ -131,7 +131,7 @@ describe("a sandbox conversation", () => {
       {
         direction: "outgoing",
         text: expect.stringContaining(
-          "Hola Martina, te recordamos tu turno con Juan Gómez el lunes 5 de enero a las 09:00 en Sede Centro.",
+          "Hola Martina, te escribimos de Consultorios Prueba para recordarte tu turno con Juan Gómez del lunes 5 de enero a las 09:00 en Sede Centro.",
         ),
         sentAt: Date.now(),
         judgement: null,

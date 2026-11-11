@@ -1,6 +1,5 @@
 import { and, asc, desc, eq, isNotNull, lte, min } from "drizzle-orm";
 
-import { withSignOff } from "#/lib/assistant.ts";
 import {
   maxReplyLength,
   personalReplySchema,
@@ -247,7 +246,7 @@ async function sayReturned(database: Database, cloud: WhatsappCloud, conversatio
     return;
   }
   const rules = currentCommunicationRules(database);
-  const checked = checkReply(withSignOff(returnedReply(rules.formOfAddress), rules.signOff));
+  const checked = checkReply(returnedReply(rules.formOfAddress));
   if (!checked.ok) {
     return;
   }

@@ -26,6 +26,7 @@ function NewTemplate() {
       settings={{ name: "", timing: { when: "before", hours: 24 } }}
       body=""
       sentBody={null}
+      organizationName={settings.organizationName}
       title="Nueva plantilla"
       description="Un mensaje del consultorio a los pacientes de las prestaciones que la envíen."
       submitLabel={() => "Crear y enviar a Meta"}

@@ -120,7 +120,9 @@ export function problemText(problem: TemplateProblem): string {
       return "Esta plantilla no completa " + variable(problem.variable) + ".";
     case "strayBraces":
       return "Cada variable va entre {{ y }}: revisá las llaves que quedaron abiertas o sueltas.";
-    case "signOffPlaceholder":
-      return "Reemplazá [firma] por la firma del consultorio.";
+    case "openingMark":
+      return "Sacá el ¿ y el ¡ de apertura: el consultorio escribe sin ellos, como el asistente.";
+    case "emoji":
+      return "Sacá los emojis: los mensajes del consultorio no los llevan, como los del asistente.";
   }
 }

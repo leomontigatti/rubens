@@ -19,6 +19,7 @@ import {
 } from "#/organization/schema.ts";
 import { outboxMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 import { reopenToSend } from "#/organization/late-replies.ts";
+import { organizationName } from "#/organization/members.ts";
 import { heldAppointmentIds } from "#/organization/opt-out-holds.ts";
 import { requeueBefore, upcomingStatuses } from "#/organization/template-messages.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
@@ -246,7 +247,11 @@ function recordFailure(database: Database, id: string, attempts: number, error: 
 function toSend(database: Database, id: string, kind: OutboxKind) {
   if (kind === "reopenConversation") {
     const reopen = reopenToSend(database, id);
-    return reopen && (reopen.drop ? reopen : { ...reopen, values: { paciente: reopen.paciente } });
+    const consultorio = organizationName(database);
+    return (
+      reopen &&
+      (reopen.drop ? reopen : { ...reopen, values: { paciente: reopen.paciente, consultorio } })
+    );
   }
   const queued = readQueued(database, id);
   if (!queued) {
@@ -263,6 +268,7 @@ function toSend(database: Database, id: string, kind: OutboxKind) {
     timeZone: queued.timeZone,
     officeName: queued.officeName,
     officeAddress: queued.officeAddress,
+    organizationName: organizationName(database),
   });
   return { drop: null, to: queued.guardianPhone ?? queued.patientPhone, values };
 }

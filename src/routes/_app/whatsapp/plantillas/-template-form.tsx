@@ -57,7 +57,11 @@ const whenOptions = [
 ] as const;
 
 const sendTimeHint =
-  "No escribas cuándo se envía (mañana, en 2 horas): usá {{fecha}} y {{hora}}. Escribí la firma del consultorio en lugar de [firma]. Hasta 1024 caracteres, sin empezar ni terminar con una variable.";
+  "No escribas cuándo se envía (mañana, en 2 horas): usá {{fecha}} y {{hora}}. Sin ¿ ni ¡ de apertura y sin emojis. Hasta 1024 caracteres, sin empezar ni terminar con una variable.";
+
+/** Why a change of `Trato` leaves the text alone (docs/operations/whatsapp-templates.md § Voice). */
+const formOfAddressNote =
+  "Si cambiás el trato (vos o usted) en Reglas de comunicación, este texto no cambia: editalo acá.";
 
 /** The name and timing as the server takes them. */
 const settingsSchema = templateCreateSchema.pick({ name: true, timing: true });
@@ -88,6 +92,8 @@ export function TemplateForm(props: {
   /** The name and timing it starts with; `null` for an event template, which has neither. */
   settings: { name: string; timing: Timing } | null;
   body: string;
+  /** Fills `{{consultorio}}` in the preview. */
+  organizationName: string;
   title: string;
   description?: string;
   submitLabel: (bodyChanged: boolean) => string;
@@ -251,9 +257,14 @@ export function TemplateForm(props: {
             {(field) => <field.TextareaField label="Texto" required hint={sendTimeHint} />}
           </form.AppField>
           <VariableChips variables={templateVariables(templateId)} onPick={insertVariable} />
+          <p className="text-muted-foreground text-sm">{formOfAddressNote}</p>
         </div>
         <div className="lg:col-span-2">
-          <TemplatePreview templateId={templateId} body={body} />
+          <TemplatePreview
+            templateId={templateId}
+            body={body}
+            organizationName={props.organizationName}
+          />
         </div>
       </div>
     </FormPage>

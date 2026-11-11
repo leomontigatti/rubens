@@ -18,6 +18,7 @@ import type { TemplateCategory, TemplateStatus } from "#/lib/whatsapp-templates.
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError, WhatsappCloud } from "#/organization/graph-api.ts";
+import { organizationName } from "#/organization/members.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notifyAdmins } from "#/organization/notifications.ts";
 import { rebuildTemplate } from "#/organization/template-messages.ts";
@@ -119,13 +120,20 @@ export async function submitVersion(
     name: metaTemplateName(templateId, version),
     languageCode: templateLanguage,
     body,
-    examples: templateExamples(body),
+    examples: templateExamples(body, organizationName(database)),
   });
   if (!created.ok) {
     return created;
   }
   database.transaction((tx) => {
     store(tx);
+    // The text it replaces, for the audit entry: the latest version before it.
+    const previous = tx
+      .select({ version: whatsappTemplate.version, body: whatsappTemplate.body })
+      .from(whatsappTemplate)
+      .where(eq(whatsappTemplate.templateId, templateId))
+      .orderBy(desc(whatsappTemplate.version))
+      .get();
     const row = tx
       .insert(whatsappTemplate)
       .values({
@@ -144,7 +152,7 @@ export async function submitVersion(
       entityType: "whatsappTemplate",
       entityId: row.id,
       patientId: null,
-      before: null,
+      before: previous ?? null,
       after: {
         templateId,
         version,

@@ -343,7 +343,6 @@ export const communicationRules = sqliteTable(
     // Always 1: an organization has one set of rules.
     id: integer("id").primaryKey(),
     formOfAddress: text("form_of_address", { enum: formsOfAddress }).notNull(),
-    signOff: text("sign_off").notNull(),
     tone: text("tone").notNull(),
     /** The organization's phone, E.164, which the emergency reply gives the patient; empty for none. */
     phone: text("phone").notNull().default(""),

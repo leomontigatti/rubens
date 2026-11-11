@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
+import {
+  checkTemplateBody,
+  metaTemplateName,
+  templateVariables,
+} from "#/lib/whatsapp-templates.ts";
 import {
   addMember,
   addRefusedAdmin,
@@ -76,6 +80,18 @@ describe("the organization's templates", () => {
       { name: "Solicitud no confirmada", event: true, timing: null, sent: false },
       { name: "Reabrir la conversación", event: true, timing: null, sent: false },
     ]);
+  });
+});
+
+describe("the drafts every organization starts with", () => {
+  it("are worded in `vos`, the rules' starting `Trato`, name the organization, and pass the rules check as they stand", async () => {
+    const drafts = (await listed()).map(({ id, draft }) => ({ id, draft: draft! }));
+
+    expect(drafts).toHaveLength(9);
+    for (const { id, draft } of drafts) {
+      expect(draft).toMatch(/^Hola \{\{paciente\}\}, te escribimos de \{\{consultorio\}\}/);
+      expect(checkTemplateBody(templateVariables(id), draft)).toEqual({ ok: true, body: draft });
+    }
   });
 });
 
@@ -243,9 +259,10 @@ describe("editing a template", () => {
     });
   });
 
-  it("submits a draft on its first save, which refuses the sign-off's placeholder left in place", async () => {
+  it("submits a draft as it stands on its first save, to Meta in the organization's name", async () => {
     const draftId = await templateNamed(world.organization, "Recordatorio");
     const draft = (await listed()).find((one) => one.id === draftId)!.draft!;
+    fakeMeta.answerNextWith(200, { id: "701", status: "PENDING", category: "UTILITY" });
 
     const answer = await world.organization.editTemplate(adminCaller, {
       templateId: draftId,
@@ -253,12 +270,8 @@ describe("editing a template", () => {
       settings: { name: "Recordatorio", timing: { when: "before", hours: 3 } },
     });
 
-    expect(answer).toEqual({
-      ok: false,
-      reason: "invalidTemplate",
-      problems: [{ kind: "signOffPlaceholder" }],
-    });
-    expect(fakeMeta.requests).toEqual([]);
+    expect(answer).toEqual({ ok: true, submitted: true });
+    expect(createdAtMeta()).toEqual([metaTemplateName(draftId, 1)]);
   });
 
   it("takes a name and timing for the organization's own only, never for an event template", async () => {
@@ -274,6 +287,51 @@ describe("editing a template", () => {
     expect(answers).toEqual([
       { ok: false, reason: "invalidInput" },
       { ok: false, reason: "invalidInput" },
+    ]);
+  });
+});
+
+describe("auditing a template", () => {
+  it("records its creation, its new name and timing, and each text sent to Meta with the one before", async () => {
+    fakeMeta.answerNextWith(200, { id: "700", status: "PENDING", category: "UTILITY" });
+    const { templateId } = expectOk(
+      await world.organization.createTemplate(adminCaller, newTemplate),
+    );
+    fakeMeta.answerNextWith(200, { id: "701", status: "PENDING", category: "UTILITY" });
+
+    expectOk(
+      await world.organization.editTemplate(adminCaller, {
+        templateId,
+        body: `${body} Gracias.`,
+        settings: { name: "Estudios previos", timing: { when: "after", hours: 1 } },
+      }),
+    );
+
+    expect(await auditEntriesFor(world.organization, templateId)).toMatchObject([
+      { action: "create", after: { name: "Estudios", timing: "before", timingHours: 72 } },
+      {
+        action: "update",
+        before: { name: "Estudios", timing: "before", timingHours: 72 },
+        after: { name: "Estudios previos", timing: "after", timingHours: 1 },
+      },
+    ]);
+    const [second, first] = (await listed()).find((one) => one.id === templateId)!.versions;
+    expect(await auditEntriesFor(world.organization, first!.id)).toMatchObject([
+      {
+        action: "create",
+        entityType: "whatsappTemplate",
+        before: null,
+        after: { version: 1, body },
+      },
+    ]);
+    expect(await auditEntriesFor(world.organization, second!.id)).toMatchObject([
+      {
+        action: "create",
+        entityType: "whatsappTemplate",
+        userId: adminCaller.userId,
+        before: { version: 1, body },
+        after: { version: 2, body: `${body} Gracias.` },
+      },
     ]);
   });
 });

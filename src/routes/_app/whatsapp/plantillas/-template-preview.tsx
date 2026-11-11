@@ -40,7 +40,12 @@ const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${appointm
  * WhatsApp shows it, what Meta's rules would refuse in it, and a warning when
  * it says when it is sent, which a late message would make wrong.
  */
-export function TemplatePreview(props: { templateId: string | null; body: string }) {
+export function TemplatePreview(props: {
+  templateId: string | null;
+  body: string;
+  /** Fills `{{consultorio}}`, as a sent message would. */
+  organizationName: string;
+}) {
   const checked = checkTemplateBody(templateVariables(props.templateId), props.body);
   return (
     <section aria-labelledby="template-preview" className="flex flex-col gap-3">
@@ -51,7 +56,7 @@ export function TemplatePreview(props: { templateId: string | null; body: string
         <p className="text-muted-foreground text-sm">{sampleNote}</p>
       </div>
       <WhatsappChat label="Así lo lee el paciente">
-        <WhatsappBubble>{fillSample(props.body) || "…"}</WhatsappBubble>
+        <WhatsappBubble>{fillSample(props.body, props.organizationName) || "…"}</WhatsappBubble>
       </WhatsappChat>
       {mentionsSendTime(props.body) && (
         <Alert variant="warning">
@@ -100,7 +105,13 @@ function MetaReview() {
 }
 
 /** Each version submitted to Meta side by side, newest first, with Meta's verdict. */
-export function TemplateVersions({ versions }: { versions: TemplateVersion[] }) {
+export function TemplateVersions({
+  versions,
+  organizationName,
+}: {
+  versions: TemplateVersion[];
+  organizationName: string;
+}) {
   if (versions.length === 0) {
     return null;
   }
@@ -127,7 +138,7 @@ export function TemplateVersions({ versions }: { versions: TemplateVersion[] }) 
               </p>
             )}
             <WhatsappChat label={`Versión ${version.version}, como la lee el paciente`}>
-              <WhatsappBubble>{fillSample(version.body)}</WhatsappBubble>
+              <WhatsappBubble>{fillSample(version.body, organizationName)}</WhatsappBubble>
             </WhatsappChat>
           </li>
         ))}

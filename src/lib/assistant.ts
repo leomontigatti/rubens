@@ -193,12 +193,6 @@ Rules you always keep:
 ${rules.map((rule, index) => `${index + 1}. ${rule}`).join("\n")}`;
 }
 
-/** `reply` with the organization's sign-off on its own line, when it has one. */
-export function withSignOff(reply: string, signOff: string): string {
-  const body = reply.trim();
-  return signOff ? `${body}\n${signOff}` : body;
-}
-
 /**
  * What the patient is told when they ask the practice to stop writing: that
  * the team is told, since a person turns their WhatsApp consent off. Fixed,

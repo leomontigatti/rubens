@@ -329,7 +329,7 @@ export async function templateNamed(organization: OrganizationStub, name: string
 
 /**
  * Submits `body` as the admin, as a new version of template `templateId`
- * (its draft, signed, when not given), keeping its name and timing unless
+ * (its draft when not given), keeping its name and timing unless
  * `timing` is given, and has Meta answer `status` at once with `metaId`.
  */
 export async function submitTemplate(
@@ -341,7 +341,7 @@ export async function submitTemplate(
   fakeMeta.answerNextWith(200, { id: options.metaId, status: options.status, category: "UTILITY" });
   const result = await organization.editTemplate(adminCaller, {
     templateId,
-    body: options.body ?? listed.draft!.replace("[firma]", "Consultorios Prueba"),
+    body: options.body ?? listed.draft!,
     settings: listed.event ? null : { name: listed.name, timing: options.timing ?? listed.timing! },
   });
   if (!result.ok) {

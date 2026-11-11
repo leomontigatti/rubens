@@ -3,8 +3,8 @@ import * as z from "zod";
 import { parsePhone } from "#/lib/phones.ts";
 
 // The organization's communication rules for the assistant, as the first
-// release has them (#167): `vos` or `usted`, the sign-off and a short tone
-// text, set by admins, with the phone the emergency reply gives (#176). Practitioner rules, more written rules and reply
+// release has them (#167): `vos` or `usted` and a short tone text, set by
+// admins, with the phone the emergency reply gives (#176). Practitioner rules, more written rules and reply
 // examples are the second release. The fixed checks every reply passes are
 // not rules anyone sets: they are `src/lib/reply-checks.ts`.
 
@@ -15,12 +15,9 @@ export type FormOfAddress = (typeof formsOfAddress)[number];
 
 export const maxToneLength = 300;
 
-export const maxSignOffLength = 80;
-
 /** The rules' fields, shared by the form and the object. */
 const communicationRulesSchema = z.object({
   formOfAddress: z.enum(formsOfAddress),
-  signOff: z.string().trim().max(maxSignOffLength),
   tone: z.string().trim().max(maxToneLength),
   /** Typed the local way like any phone; empty for none. */
   phone: z.string().trim(),
@@ -31,7 +28,6 @@ export type CommunicationRulesInput = z.input<typeof communicationRulesSchema>;
 /** What a refused save says: the text over its limit, or anything else wrong. */
 export type CommunicationRulesRefusal =
   | "toneTooLong"
-  | "signOffTooLong"
   | "invalidPhone"
   | "missingAreaCode"
   | "invalidInput";
@@ -57,9 +53,6 @@ export function parseCommunicationRules(
     parsed.error.issues.some((issue) => issue.code === "too_big" && issue.path[0] === field);
   if (tooLong("tone")) {
     return { ok: false, reason: "toneTooLong" };
-  }
-  if (tooLong("signOff")) {
-    return { ok: false, reason: "signOffTooLong" };
   }
   return { ok: false, reason: "invalidInput" };
 }

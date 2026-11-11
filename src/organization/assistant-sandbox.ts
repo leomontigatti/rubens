@@ -18,6 +18,7 @@ import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
 import { maxModelCalls } from "#/organization/assistant-model.ts";
 import type { AssistantModel, AssistantTool } from "#/organization/assistant-model.ts";
 import type { Database } from "#/organization/database.ts";
+import { organizationName } from "#/organization/members.ts";
 import { answeredMessage } from "#/organization/handoffs.ts";
 import { upcomingStatuses } from "#/organization/template-messages.ts";
 import { applyChange } from "#/organization/proposals.ts";
@@ -126,7 +127,7 @@ export function listSandboxScenarios(database: Database) {
 
 /** What the sandbox's reminder says when the organization has no template timed before an appointment. */
 const fallbackReminder =
-  "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia?";
+  "Hola {{paciente}}, te escribimos de {{consultorio}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé este mensaje para confirmar que venís.";
 
 /**
  * The template the scenario's reminder is: the furthest before the
@@ -163,6 +164,7 @@ function reminderOf(database: Database, scenario: NonNullable<ReturnType<typeof 
     timeZone: scenario.timeZone,
     officeName: scenario.officeName,
     officeAddress: scenario.officeAddress,
+    organizationName: organizationName(database),
   });
   return { templateId: reminder?.id ?? null, text: fillTemplate(body.trim(), values).text };
 }

@@ -170,7 +170,7 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     return this.as(caller, ["admin"], (acting) => deleteTemplate(this.database, acting, input));
   }
 
-  /** The assistant's `vos` or `usted`, sign-off and tone (#185), which the settings read back. */
+  /** The assistant's `vos` or `usted` and tone (#185), which the settings read back. */
   async saveCommunicationRules(caller: Caller, input: CommunicationRulesInput) {
     return this.as(caller, ["admin"], (acting) =>
       saveCommunicationRules(this.database, acting, input),

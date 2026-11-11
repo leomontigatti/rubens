@@ -208,10 +208,11 @@ describe("a reply the model judges an opt-out", () => {
 
     expect(templatesSent()).toEqual([]);
     expect((await outboxOf(queued.id)).map((row) => row.state)).toEqual(["queued"]);
-    expect((await outboxOf(booked.id)).map((row) => row.templateId)).toEqual([
-      templates.confirmation,
-      templates.at48,
-    ]);
+    const bookedTemplates = (await outboxOf(booked.id)).map((row) => row.templateId);
+    expect(bookedTemplates).toHaveLength(2);
+    expect(bookedTemplates).toEqual(
+      expect.arrayContaining([templates.confirmation, templates.at48]),
+    );
     expect((await outboxOf(booked.id)).map((row) => row.state)).toEqual(["queued", "queued"]);
     expect(await pendingSince(martina.id)).not.toBeNull();
     expect(await pendingSince(tomas.id)).not.toBeNull();

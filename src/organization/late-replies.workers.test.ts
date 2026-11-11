@@ -185,7 +185,7 @@ afterEach(() => {
 });
 
 describe("a person's reply after the window closed", () => {
-  it("is held, and the patient gets the reopen template with only their name in it", async () => {
+  it("is held, and the patient gets the reopen template with only their name and the organization's in it", async () => {
     await handedOffThenClosed();
 
     expect(expectOk(await replyAs(world.receptionist))).toEqual({ ok: true, held: true });
@@ -196,7 +196,10 @@ describe("a person's reply after the window closed", () => {
       {
         to: martinaTo,
         name: "reabrir_conversacion_v1",
-        parameters: [["paciente", "Martina"]],
+        parameters: [
+          ["paciente", "Martina"],
+          ["consultorio", "Consultorios Prueba"],
+        ],
       },
     ]);
     expect((await read()).lateReplies).toEqual([
@@ -222,7 +225,7 @@ describe("a person's reply after the window closed", () => {
     expect((await read(world.receptionist)).queuedReopen).toEqual({
       id: expect.any(String),
       queuedAt: Date.now(),
-      text: "Hola Martina, tenemos una respuesta para vos. Respondé este mensaje para verla. Consultorios Prueba",
+      text: "Hola Martina, te escribimos de Consultorios Prueba: tenemos una respuesta para vos. Respondé este mensaje para verla.",
     });
 
     await runDurableObjectAlarm(world.organization);

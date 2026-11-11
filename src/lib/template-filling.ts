@@ -7,6 +7,7 @@
 /** Each variable underthing fills, in the doc's order. */
 const templateVariableNames = [
   "paciente",
+  "consultorio",
   "profesional",
   "fecha",
   "hora",
@@ -26,10 +27,12 @@ export interface TemplateAppointment {
   timeZone: string;
   officeName: string;
   officeAddress: string;
+  /** The organization's name, which the text names instead of a sign-off. */
+  organizationName: string;
 }
 
 /** The appointment the template preview and Meta's examples are filled from. */
-export const sampleAppointment: TemplateAppointment = {
+export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = {
   patient: { firstName: "Lucía", chosenName: null },
   practitionerName: "la Dra. Sofía Méndez",
   // A Thursday, at 10:30 in Buenos Aires.
@@ -67,6 +70,7 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
   const { patient, start, timeZone } = appointment;
   return {
     paciente: patient.chosenName ?? patient.firstName,
+    consultorio: appointment.organizationName,
     profesional: appointment.practitionerName,
     fecha: appointmentDay(start, timeZone),
     hora: appointmentTime(start, timeZone),
@@ -109,7 +113,10 @@ export function fillTemplate(body: string, values: Partial<Record<TemplateVariab
   };
 }
 
-/** `body` as the template preview shows it: trimmed, as it is submitted, and filled from `sampleAppointment`. */
-export function fillSample(body: string) {
-  return fillTemplate(body.trim(), templateValues(sampleAppointment)).text;
+/**
+ * `body` as the template preview shows it: trimmed, as it is submitted, and
+ * filled from `sampleAppointment` and the name of the organization `organizationName`.
+ */
+export function fillSample(body: string, organizationName: string) {
+  return fillTemplate(body.trim(), templateValues({ ...sampleAppointment, organizationName })).text;
 }

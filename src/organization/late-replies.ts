@@ -8,6 +8,7 @@ import { fillTemplate } from "#/lib/template-filling.ts";
 import type { OutboxDropReason } from "#/lib/outbox.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
+import { organizationName } from "#/organization/members.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -179,7 +180,13 @@ export function queuedReopenShown(database: Database, conversationId: string): Q
   if (!queued || !toSend || toSend.drop || !version) {
     return null;
   }
-  return { ...queued, text: fillTemplate(version.body, { paciente: toSend.paciente }).text };
+  return {
+    ...queued,
+    text: fillTemplate(version.body, {
+      paciente: toSend.paciente,
+      consultorio: organizationName(database),
+    }).text,
+  };
 }
 
 /** Every late reply still waiting, oldest first, with its template's progress. */

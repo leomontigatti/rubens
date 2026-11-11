@@ -11,6 +11,7 @@ import type {
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 import { activeHold } from "#/organization/whatsapp-limits.ts";
+import { organizationName } from "#/organization/members.ts";
 import { listTemplates } from "#/organization/templates.ts";
 
 // The WhatsApp settings: the organization's number
@@ -61,6 +62,7 @@ export function getWhatsappSettings(
     signup: number.launch(),
     templateMissing,
     templates,
+    organizationName: organizationName(database),
     communicationRules: currentCommunicationRules(database),
     handoffContacts: listHandoffContacts(database).members,
     returnAfterHours: returnAfterHours(database),

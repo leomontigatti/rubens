@@ -26,7 +26,7 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
 });
 
 const body =
-  "Hola {{paciente}}, tu turno con {{profesional}} es el {{fecha}} a las {{hora}}. Consultorios Prueba";
+  "Hola {{paciente}}, te escribimos de {{consultorio}}: tu turno con {{profesional}} es el {{fecha}} a las {{hora}}.";
 
 /** An edit of the event template `turno_movido` with `body`, which has no name or timing. */
 const confirmation = { templateId: "turno_movido", body, settings: null } as const;
@@ -88,6 +88,7 @@ describe("submitting an event template's text", () => {
               example: {
                 body_text_named_params: [
                   { param_name: "paciente", example: "Lucía" },
+                  { param_name: "consultorio", example: "Consultorios Prueba" },
                   { param_name: "profesional", example: "la Dra. Sofía Méndez" },
                   { param_name: "fecha", example: "jueves 12 de noviembre" },
                   { param_name: "hora", example: "10:30" },

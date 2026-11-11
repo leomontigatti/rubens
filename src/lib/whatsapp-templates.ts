@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { hasEmoji, hasOpeningMark } from "#/lib/reply-checks.ts";
 import { sampleAppointment, templateValues, variablesIn } from "#/lib/template-filling.ts";
 import type { TemplateVariable } from "#/lib/template-filling.ts";
 import { timingSchema } from "#/lib/template-timing.ts";
@@ -47,15 +48,13 @@ const maxTemplateBodyLength = 1024;
 
 const appointmentVariables = [
   "paciente",
+  "consultorio",
   "profesional",
   "fecha",
   "hora",
   "sede",
   "direccion",
 ] as const satisfies readonly TemplateVariable[];
-
-/** Stands for the organization's sign-off in the drafts: the admin writes theirs in its place. */
-const signOffPlaceholder = "[firma]";
 
 /**
  * The five event templates, fixed and sent on their event, each stored under
@@ -77,12 +76,12 @@ export function isEventTemplate(templateId: string): templateId is EventTemplate
 }
 
 /**
- * The variables template `templateId` may use: every fact of the appointment,
- * except in `reabrir_conversacion`, sent about a conversation, where only the
- * patient is known.
+ * The variables template `templateId` may use: the organization's name and
+ * every fact of the appointment, except in `reabrir_conversacion`, sent about a
+ * conversation, where only the patient and the organization are known.
  */
 export function templateVariables(templateId: string | null): readonly TemplateVariable[] {
-  return templateId === "reabrir_conversacion" ? ["paciente"] : appointmentVariables;
+  return templateId === "reabrir_conversacion" ? ["paciente", "consultorio"] : appointmentVariables;
 }
 
 /** The longest name an admin gives a template. */
@@ -128,7 +127,8 @@ export type TemplateProblem =
   | { kind: "invalidVariable"; variable: string }
   | { kind: "unknownVariable"; variable: string }
   | { kind: "strayBraces" }
-  | { kind: "signOffPlaceholder" };
+  | { kind: "openingMark" }
+  | { kind: "emoji" };
 
 // Across lines too: Meta reads a variable split by a line break as one.
 const variablePattern = /\{\{([\s\S]*?)\}\}/g;
@@ -156,9 +156,9 @@ function variableProblem(
 /**
  * Checks `body` against Meta's rules, with `allowed` the variables its
  * template may use: named variables only, lowercase with underscores, each one
- * the template fills; none at the
- * start or the end; at most 1,024 characters. The body is read trimmed, and
- * passes trimmed.
+ * the template fills; none at the start or the end; at most 1,024
+ * characters; and the assistant's fixed checks (`reply-checks.ts`): no opening
+ * `¿` or `¡`, no emoji. The body is read trimmed, and passes trimmed.
  */
 export function checkTemplateBody(
   allowed: readonly TemplateVariable[],
@@ -188,8 +188,11 @@ export function checkTemplateBody(
   if (outside.includes("{{") || outside.includes("}}")) {
     problems.push({ kind: "strayBraces" });
   }
-  if (trimmed.includes(signOffPlaceholder)) {
-    problems.push({ kind: "signOffPlaceholder" });
+  if (hasOpeningMark(trimmed)) {
+    problems.push({ kind: "openingMark" });
+  }
+  if (hasEmoji(trimmed)) {
+    problems.push({ kind: "emoji" });
   }
   return problems.length > 0 ? { ok: false, problems } : { ok: true, body: trimmed };
 }
@@ -214,8 +217,11 @@ export function versionOf(templateId: string, metaName: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-/** Meta's example for each variable `body` uses, once each, in order, from the sample appointment. */
-export function templateExamples(body: string) {
-  const values = templateValues(sampleAppointment);
+/**
+ * Meta's example for each variable `body` uses, once each, in order, from the
+ * sample appointment and the name of the organization `organizationName`.
+ */
+export function templateExamples(body: string, organizationName: string) {
+  const values = templateValues({ ...sampleAppointment, organizationName });
   return variablesIn(body).map((name) => ({ param_name: name, example: values[name] }));
 }

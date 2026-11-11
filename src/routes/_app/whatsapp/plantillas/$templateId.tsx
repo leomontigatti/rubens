@@ -53,8 +53,8 @@ function EditTemplate() {
   }
   return (
     <div className="flex flex-col gap-6">
-      <EditForm template={template} />
-      <TemplateVersions versions={template.versions} />
+      <EditForm template={template} organizationName={listed.organizationName} />
+      <TemplateVersions versions={template.versions} organizationName={listed.organizationName} />
     </div>
   );
 }
@@ -128,7 +128,8 @@ function DeleteButton(props: { templateId: string; busy: boolean }) {
   );
 }
 
-function EditForm({ template }: { template: ListedTemplate }) {
+function EditForm(props: { template: ListedTemplate; organizationName: string }) {
+  const { template } = props;
   const latest = template.versions[0];
   const deletable = !template.event && !latest && !template.picked;
   const settings =
@@ -144,6 +145,7 @@ function EditForm({ template }: { template: ListedTemplate }) {
       settings={settings}
       body={latest?.body ?? template.draft ?? ""}
       sentBody={latest?.body ?? null}
+      organizationName={props.organizationName}
       title="Editar plantilla"
       description={template.name}
       submitLabel={(bodyChanged) => (bodyChanged ? "Guardar y enviar a Meta" : "Guardar")}

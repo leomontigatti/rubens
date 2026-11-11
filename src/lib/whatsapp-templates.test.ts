@@ -36,14 +36,14 @@ describe("the template rules check", () => {
   });
 
   it("refuses an unnamed variable, an uppercase one, and one the template does not fill", () => {
-    const body = "Hola {{1}}, tu turno con {{Profesional}} en {{consultorio}} está listo.";
+    const body = "Hola {{1}}, tu turno con {{Profesional}} en {{oficina}} está listo.";
 
     expect(checkTemplateBody(own, body)).toEqual({
       ok: false,
       problems: [
         { kind: "unnamedVariable", variable: "1" },
         { kind: "uppercaseVariable", variable: "Profesional" },
-        { kind: "unknownVariable", variable: "consultorio" },
+        { kind: "unknownVariable", variable: "oficina" },
       ],
     });
   });
@@ -71,7 +71,7 @@ describe("the template rules check", () => {
   });
 
   it("refuses a variable the template has no value for, though another template has it", () => {
-    const body = "Hola {{paciente}}, tenemos una respuesta del {{fecha}} para vos.";
+    const body = "Hola {{paciente}}, de {{consultorio}}: una respuesta del {{fecha}} para vos.";
 
     expect(checkTemplateBody(templateVariables("reabrir_conversacion"), body)).toEqual({
       ok: false,
@@ -90,24 +90,43 @@ describe("the template rules check", () => {
     });
   });
 
-  it("refuses an empty body, and one that still holds the sign-off's placeholder", () => {
-    expect(checkTemplateBody(own, "  ")).toEqual({
+  it("refuses an empty body", () => {
+    expect(checkTemplateBody(own, "  ")).toEqual({ ok: false, problems: [{ kind: "empty" }] });
+  });
+
+  it("refuses an opening question or exclamation mark, as the assistant's replies never carry", () => {
+    expect(checkTemplateBody(own, "Hola {{paciente}}, ¿venís el {{fecha}}? Gracias.")).toEqual({
       ok: false,
-      problems: [{ kind: "empty" }],
+      problems: [{ kind: "openingMark" }],
     });
-    expect(checkTemplateBody(own, "Hola {{paciente}}, nos vemos. [firma]")).toEqual({
+    expect(checkTemplateBody(own, "Hola {{paciente}}, ¡te esperamos! Gracias.")).toEqual({
       ok: false,
-      problems: [{ kind: "signOffPlaceholder" }],
+      problems: [{ kind: "openingMark" }],
     });
+    expect(checkTemplateBody(own, "Hola {{paciente}}, venís? Gracias!").ok).toBe(true);
+  });
+
+  it("refuses an emoji, a keycap and a flag included, and passes the text symbols that look like them", () => {
+    for (const emoji of ["😊", "👍🏽", "1️⃣", "🇦🇷"]) {
+      expect(checkTemplateBody(own, `Hola {{paciente}} ${emoji}, te esperamos.`)).toEqual({
+        ok: false,
+        problems: [{ kind: "emoji" }],
+      });
+    }
+    expect(
+      checkTemplateBody(own, "Hola {{paciente}}, Consultorios Prueba® → te esperamos.").ok,
+    ).toBe(true);
   });
 });
 
 describe("a template at Meta", () => {
-  it("carries one example per variable it uses, once each, from the sample appointment", () => {
-    const body = "Hola {{paciente}}, el {{fecha}} a las {{hora}}. Gracias, {{paciente}}.";
+  it("carries one example per variable it uses, once each, from the sample appointment and the organization", () => {
+    const body =
+      "Hola {{paciente}}, te escribimos de {{consultorio}}: el {{fecha}} a las {{hora}}. Gracias, {{paciente}}.";
 
-    expect(templateExamples(body)).toEqual([
+    expect(templateExamples(body, "Consultorios Prueba")).toEqual([
       { param_name: "paciente", example: "Lucía" },
+      { param_name: "consultorio", example: "Consultorios Prueba" },
       { param_name: "fecha", example: "jueves 12 de noviembre" },
       { param_name: "hora", example: "10:30" },
     ]);

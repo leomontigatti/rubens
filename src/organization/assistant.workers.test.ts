@@ -228,30 +228,6 @@ describe("the assistant's pace", () => {
     expect((await storedFlags()).filter((one) => one.direction === "outgoing")).toHaveLength(3);
   });
 
-  it("signs the last message of a split reply only", async () => {
-    expectOk(
-      await world.organization.saveCommunicationRules(adminCaller, {
-        formOfAddress: "vos",
-        signOff: "Consultorio Sur",
-        tone: "",
-        phone: "",
-      }),
-    );
-    await bookPatient("Martina", martinaPhone);
-    await patientWrites("cuándo es mi turno?");
-    scriptedModel.script((turn) => {
-      turn.call("judge_messages", notClinical);
-      return "Hola Martina.\n\nEl lunes a las 09:00.";
-    });
-
-    await afterTheWait();
-
-    expect(textsToMeta().map((one) => one.text)).toEqual([
-      "Hola Martina.",
-      "El lunes a las 09:00.\nConsultorio Sur",
-    ]);
-  });
-
   it("sends a reply holding a proposal whole, in one message", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("quiero confirmar");
@@ -543,11 +519,10 @@ describe("a number that stopped being a patient's contact", () => {
 });
 
 describe("the organization's voice", () => {
-  it("writes under the saved rules, signs off, passes the fixed checks and records the version", async () => {
+  it("writes under the saved rules, unsigned, passes the fixed checks and records the version", async () => {
     expectOk(
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "usted",
-        signOff: "Consultorios Prueba",
         tone: "Cordial y breve.",
         phone: "",
       }),
@@ -564,9 +539,7 @@ describe("the organization's voice", () => {
     const { system } = scriptedModel.turns[0]!;
     expect(system).toContain('addressing the patient as "usted"');
     expect(system).toContain("Cordial y breve.");
-    expect(textsToMeta()).toEqual([
-      { to: "5491155550000", text: "En qué lo puedo ayudar?\nConsultorios Prueba" },
-    ]);
+    expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "En qué lo puedo ayudar?" }]);
     expect((await storedFlags()).at(-1)).toMatchObject({ rulesVersion: 1 });
   });
 });
@@ -1015,15 +988,7 @@ describe("the conversation's wait", () => {
 });
 
 describe("what keeps a reply from going", () => {
-  it("sends nothing when the model wrote no words, though the organization signs off", async () => {
-    expectOk(
-      await world.organization.saveCommunicationRules(adminCaller, {
-        formOfAddress: "vos",
-        signOff: "Consultorios Prueba",
-        tone: "",
-        phone: "",
-      }),
-    );
+  it("sends nothing when the model wrote no words", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
     scriptedModel.script((turn) => {
