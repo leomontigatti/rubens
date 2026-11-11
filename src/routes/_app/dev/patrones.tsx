@@ -3,11 +3,12 @@ import { BuildingIcon, CalendarXIcon, UserRoundIcon, UsersIcon } from "lucide-re
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { ColorSwatch } from "#/components/color-swatch.tsx";
 import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { FormGrid, useAppForm } from "#/components/app-form.tsx";
 import { activeRecord } from "#/components/admin-form.tsx";
 import { CreateButton, FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
@@ -27,7 +28,7 @@ import {
   FieldSet,
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   PatientBubble,
   WhatsappBubble,
@@ -35,6 +36,7 @@ import {
   WhatsappDay,
 } from "#/components/whatsapp-bubble.tsx";
 import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
+import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
 
 // Each pattern of docs/agents/style-guide.md, drawn once, so an agent or a
 // reviewer can compare a screen with it. Only `pnpm dev` serves this page.
@@ -48,9 +50,9 @@ export const Route = createFileRoute("/_app/dev/patrones")({
   component: Patterns,
 });
 
-function Pattern(props: { title: string; children: ReactNode }) {
+function Pattern(props: { title: string; wide?: boolean; children: ReactNode }) {
   return (
-    <section className="flex max-w-xl flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${props.wide ? "" : "max-w-xl"}`}>
       <h2 className="text-lg font-semibold">{props.title}</h2>
       {props.children}
     </section>
@@ -183,6 +185,69 @@ function PatternFormPage(props: { title: string; record?: RecordHeader }) {
   );
 }
 
+function PatternMarkedSelect() {
+  const form = useAppForm({ defaultValues: { color: practitionerColors[0] as string } });
+  const options = practitionerColors.map((color) => ({
+    value: color,
+    label: practitionerColorLabels[color],
+    mark: <ColorSwatch color={color} />,
+  }));
+  return (
+    <FormGrid>
+      <form.AppField name="color">
+        {(field) => <field.MarkedSelectField label="Color en la agenda" options={options} />}
+      </form.AppField>
+    </FormGrid>
+  );
+}
+
+function PatternFieldSizes() {
+  const form = useAppForm({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phone: "",
+      email: "",
+      address: "",
+      documentType: "",
+      documentNumber: "",
+      note: "",
+    },
+  });
+  return (
+    <FormGrid>
+      <form.AppField name="firstName">
+        {(field) => <field.TextField label="Nombre (un cuarto)" />}
+      </form.AppField>
+      <form.AppField name="lastName">
+        {(field) => <field.TextField label="Apellido (un cuarto)" />}
+      </form.AppField>
+      <form.AppField name="phone">
+        {(field) => <field.TextField label="Teléfono (un cuarto)" type="tel" />}
+      </form.AppField>
+      <form.AppField name="email">
+        {(field) => <field.TextField label="Correo electrónico (la mitad)" size="half" startsRow />}
+      </form.AppField>
+      <form.AppField name="address">
+        {(field) => <field.TextField label="Dirección (la mitad)" size="half" />}
+      </form.AppField>
+      <form.AppField name="documentType">
+        {(field) => (
+          <field.SelectField label="Tipo de documento (un cuarto)">
+            <NativeSelectOption value="">Sin documento</NativeSelectOption>
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.AppField name="documentNumber">
+        {(field) => <field.TextField label="Número de documento (un cuarto)" />}
+      </form.AppField>
+      <form.AppField name="note">
+        {(field) => <field.TextareaField label="Nota (todo el ancho)" />}
+      </form.AppField>
+    </FormGrid>
+  );
+}
+
 /** An edit page that is its record's only page: its status and toggle beside the title. */
 function PatternRecordFormPage() {
   const [active, setActive] = useState(true);
@@ -262,19 +327,11 @@ function Patterns() {
           </FieldDescription>
         </Field>
       </Pattern>
-      <Pattern title="Campos en dos columnas">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="pattern-type">Tipo de documento</FieldLabel>
-            <NativeSelect id="pattern-type">
-              <NativeSelectOption value="">Sin documento</NativeSelectOption>
-            </NativeSelect>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="pattern-number">Número de documento</FieldLabel>
-            <Input id="pattern-number" />
-          </Field>
-        </div>
+      <Pattern title="Campos por tamaño" wide>
+        <PatternFieldSizes />
+      </Pattern>
+      <Pattern title="Lista con marcas">
+        <PatternMarkedSelect />
       </Pattern>
       <Pattern title="Filtros">
         <div className="flex flex-wrap items-center gap-2">

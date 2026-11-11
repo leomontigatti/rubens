@@ -73,7 +73,6 @@ function ReturnTimeForm(props: { hours: number }) {
             max={maxReturnAfterHours}
             step={1}
             required
-            narrow
             hint={`De 1 a ${maxReturnAfterHours} horas.`}
           />
         )}

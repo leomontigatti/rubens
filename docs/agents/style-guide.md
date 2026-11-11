@@ -128,9 +128,9 @@ beside it.
   the `PageHeader`'s `actions`, on the title's line, and again in the list's `EmptyState`.
 - **A form that holds a form of its own goes in `lead`**, above the form element: booking's patient
   picker, whose quick registration submits apart. Its problems still show under its field.
-- **The fields take the page's width, outside any card.** The actions close the form: `Volver` on
-  the left, `Descartar cambios` and the submit button on the right. On a long form they stick to the
-  bottom of the window.
+- **The fields sit in rows by their size, outside any card** ([Forms](#forms)). The actions
+  close the form: `Volver` on the left, `Descartar cambios` and the submit button on the right. On
+  a long form they stick to the bottom of the window.
 - **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
 - **On an edit, `Descartar cambios` shows once something differs from what the form opened with.**
   A create has none (`FormPage`'s `creates`): with no saved values to go back to, it would only
@@ -176,9 +176,28 @@ carried over from en-escena.
   label.
 - **A rule the user needs while typing is a hint under the field**: a `FieldDescription`, with
   the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/patient-form.tsx`).
-- **Fields sit in a column or a grid**, where they fill their cell. In a `flex` row, each takes
-  `className="w-auto"`, or it takes the whole line. An input narrower than its field takes
-  `max-w-*`: `Field` sets its children's `width`.
+- **A form's fields sit in rows of up to twelve columns, by the form's own width** (`FormGrid`,
+  `src/components/app-form.tsx`, which `FormPage` holds its fields in, a container query rather
+  than the window's breakpoints): one column below 448px, as on a phone; six from 448px, where a
+  quarter takes half the row and a half the whole row; twelve from 900px, where a quarter holds a
+  date and time (213px). Every field of the form kit takes a `size`: `quarter` (three columns;
+  four to a row at twelve), `half` (six; two to a row at twelve) or `full` (the row). A field is a `quarter` unless what it holds
+  needs more, judged by its content and the form's layout, not by its kind:
+  - `full`: a text area, a group of checkboxes, the patient search, the free times, a block such
+    as a template's text beside its preview (the form kit's text area, checkbox group and combobox
+    default to it);
+  - `half`: an email, an address, a medical service, a template's name, a specialty, and a select
+    whose longest option does not fit a quarter, measured in the browser at 1440 px;
+  - `quarter`: the rest, names, a phone, a document's type and number, dates, times, durations,
+    a checkbox whose label fits.
+- **Related fields share a row; a field that starts a new subject starts a new row**
+  (`startsRow`): `Nombre` · `Apellido` · `Teléfono`, then `Tipo de documento` · `Número de
+  documento` · `Fecha de nacimiento`, then `Correo electrónico` · `Dirección`. A child that is no field (a section, an
+  alert, a line of text) takes the whole row; a section is a `FormGrid` of its own, inside the
+  form's: `/dev/patrones`, `Campos por tamaño`.
+- **An option that needs a mark, such as a colour's swatch, is a `MarkedSelectField`**, which
+  shows the mark beside each option and inside the box; any other choice from a list is a
+  `SelectField`, a native select.
 - **A checkbox is a horizontal `Field` with `className="w-fit"`**, the box before its label:
   without `w-fit` the label fills the row, and a click on the empty space ticks the box.
   A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a

@@ -196,12 +196,10 @@ export function CoverageForm(props: {
           </field.SelectField>
         )}
       </form.AppField>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.AppField name="plan">{(field) => <field.TextField label="Plan" />}</form.AppField>
-        <form.AppField name="memberNumber">
-          {(field) => <field.TextField label="Número de afiliado" required />}
-        </form.AppField>
-      </div>
+      <form.AppField name="plan">{(field) => <field.TextField label="Plan" />}</form.AppField>
+      <form.AppField name="memberNumber">
+        {(field) => <field.TextField label="Número de afiliado" required />}
+      </form.AppField>
     </ActionFormPage>
   );
 }
