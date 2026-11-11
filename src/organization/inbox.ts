@@ -30,8 +30,8 @@ import {
   outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
-import { lateRepliesShown } from "#/organization/late-replies.ts";
-import type { ShownLateReply } from "#/organization/late-replies.ts";
+import { lateRepliesShown, queuedReopenShown } from "#/organization/late-replies.ts";
+import type { QueuedReopen, ShownLateReply } from "#/organization/late-replies.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
@@ -311,6 +311,8 @@ export function readConversation(
       window: ConversationWindow;
       /** The replies written after the window closed that wait for the patient, or never reached them. */
       lateReplies: ShownLateReply[];
+      /** The reopen template those replies wait behind, while it is queued. */
+      queuedReopen: QueuedReopen | null;
     }
   | { ok: false; reason: "invalidInput" | "notFound" } {
   const parsed = conversationReferenceSchema.safeParse(input);
@@ -345,6 +347,7 @@ export function readConversation(
       userId: acting.userId,
       readsClinical: reader.readsClinical,
     }),
+    queuedReopen: queuedReopenShown(database, conversationId),
   };
 }
 

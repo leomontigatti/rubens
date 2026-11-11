@@ -24,9 +24,9 @@ test("takes a conversation over, replies under one's name, and gives it back", a
   await page.getByLabel("Respuesta").fill(reply);
   await page.getByRole("button", { name: "Enviar" }).click();
 
-  const sent = page.getByRole("listitem").filter({ hasText: reply });
-  await expect(sent).toBeVisible();
-  await expect(sent).toContainText(people.receptionist.name);
+  const chat = page.getByRole("group", { name: "Mensajes" });
+  await expect(chat).toContainText(reply);
+  await expect(chat).toContainText(people.receptionist.name);
   await expect(page.getByLabel("Respuesta")).toHaveValue("");
 
   await page.getByRole("button", { name: "Devolver al asistente" }).click();

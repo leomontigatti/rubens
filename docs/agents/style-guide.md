@@ -68,6 +68,8 @@ beside it.
   `description` saying what it is for; a detail or form page uses it for the record (an address,
   an email, a name). A page that is one card holding one form,
   `/ingresar` and `/cambiar-contrasena`, is titled by its `CardTitle` instead.
+- **A refused detail page keeps its header and back link**, above the refusal's `ErrorAlert`, so
+  the way back to its list stays where it always is: `/conversaciones/$conversationId`.
 
 ## Filters
 
@@ -224,9 +226,22 @@ The pages that are only their form show one problem in an `ErrorAlert`: `/ingres
 ## WhatsApp messages
 
 - **A message the patient reads is a `WhatsappBubble` in a `WhatsappChat`**
-  (`src/components/whatsapp-bubble.tsx`), drawn in the app's own tokens rather than WhatsApp's
-  colours, with its line breaks kept: the template preview and its versions. A screen that shows
-  what a patient will get, or got, uses them rather than plain text.
+  (`src/components/whatsapp-bubble.tsx`), with its line breaks kept: the template preview and its
+  versions. A screen that shows what a patient will get, or got, uses them rather than plain
+  text. The bubbles use WhatsApp's own light-theme colours, so the screen looks like the patient's
+  phone: the clinic's in its outgoing green (`whatsapp-outgoing`) with the app's foreground text,
+  the patient's white, on the sidebar's grey.
+- **A conversation reads as the chat**: the patient's messages in `PatientBubble`s on one side, the
+  clinic's (templates, the assistant's, staff replies) in `WhatsappBubble`s on the other, oldest
+  first, under a `WhatsappDay` where the day changes (`Hoy`, `Ayer`, `Martes 10 de noviembre`). A
+  clinic bubble names its `author`; every bubble's `footer` holds its time alone (`17:31`) and its
+  status as WhatsApp's ticks, `WhatsappStatus` (`src/components/whatsapp-status.tsx`), named by
+  its label and in a tooltip. What has not gone yet shows where the patient will get it, `pending`
+  with the clock: a queued template, a reply waiting for the patient. What the patient never
+  reads, such as a late reply's hint, sits beside the bubble, outside it.
+- **Who answers a conversation is a state**: a `Badge` beside the title (`Asistente`,
+  `Tomada por Rita Prueba`), with `Tomar conversación` or `Devolver al asistente` in the header's
+  `actions`.
 
 ## Alerts
 

@@ -4,6 +4,7 @@ import { lateReplyChanceMs, lateReplyReferenceSchema } from "#/lib/conversation-
 import type { LateReplyReference, LateReplyState } from "#/lib/conversation-holds.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { outboxTemplates } from "#/lib/outbox.ts";
+import { fillTemplate } from "#/lib/template-filling.ts";
 import type { OutboxDropReason } from "#/lib/outbox.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
@@ -142,6 +143,38 @@ export function reopenToSend(
   }
   const paciente = greetedAt(database, queued.phone);
   return paciente ? { drop: null, to: queued.phone, paciente } : { drop: "noConsent" };
+}
+
+/** The reopen template of `conversationId` not sent yet, as the patient will read it, for the inbox. */
+export interface QueuedReopen {
+  id: string;
+  queuedAt: number;
+  text: string;
+}
+
+/**
+ * The reopen template `conversationId`'s late replies wait behind while it is
+ * queued, filled as it would go now; `null` once it went, or when it would
+ * be dropped instead (`reopenToSend`). Sent, it is one of the messages.
+ */
+export function queuedReopenShown(database: Database, conversationId: string): QueuedReopen | null {
+  const queued = database
+    .select({ id: outboxMessage.id, queuedAt: outboxMessage.createdAt })
+    .from(outboxMessage)
+    .where(
+      and(
+        eq(outboxMessage.conversationId, conversationId),
+        eq(outboxMessage.kind, "reopenConversation"),
+        eq(outboxMessage.state, "queued"),
+      ),
+    )
+    .get();
+  const toSend = queued && reopenToSend(database, queued.id);
+  const version = approvedVersion(database, outboxTemplates.reopenConversation);
+  if (!queued || !toSend || toSend.drop || !version) {
+    return null;
+  }
+  return { ...queued, text: fillTemplate(version.body, { paciente: toSend.paciente }).text };
 }
 
 /** Every late reply still waiting, oldest first, with its template's progress. */
