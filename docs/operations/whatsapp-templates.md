@@ -37,7 +37,9 @@ nothing; an event template's is its name and the version, such as
 template, its event) under its name; `Nueva plantilla` creates one of the
 organization's own. A template's page edits its name and timing, which save on
 their own, and its text, which a save submits to Meta when it differs from the
-latest version's. Under `Texto`: `No escribas cuándo se envía (mañana, en 2
+latest version's; a template never sent and picked by no medical service can be
+deleted from it. Under `Texto`, the variables it may use, each a chip that writes
+it in at the cursor, and the hint `No escribas cuándo se envía (mañana, en 2
 horas): usá {{fecha}} y {{hora}}.` The preview warns when the text says `mañana`,
 `hoy` or `en N horas`.
 

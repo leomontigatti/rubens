@@ -37,6 +37,9 @@ The text says what the message is about and the appointment's date and time,
 never when it is sent: a message held back by Meta goes late, and `mañana` or
 `en 2 horas` would then be wrong.
 
+An admin can delete a template that was never sent to Meta and that no medical
+service picks; any other stays.
+
 A medical service picks which of the organization's templates its appointments
 get, any number of them, each once; several may share a timing. A template no
 medical service picks is sent to nobody. A medical service also sets **the
@@ -60,7 +63,10 @@ Undoing "attended" drops the last two kinds of message still queued.
 template, or a medical service changes the templates it picks, the messages
 still ahead for that template's, or that medical service's, booked and confirmed
 appointments are dropped and queued again for their times, as a move of the
-appointment does. A message already due and waiting stays as it is. This is also
+appointment does. A timing change or an approval leaves a message already due and
+waiting as it is; a template a medical service stops picking, or one deleted, drops
+its messages, due ones included
+([below](#when-meta-limits-the-number)). This is also
 how an organization that sets up its templates after appointments are booked
 still reaches them: nothing about a booking already made goes, only what is
 still ahead of it.
@@ -107,9 +113,16 @@ Meta can restrict or rate-limit the organization's number, reject a template, or
 move an approved one to another category. The admins are warned at once, in the
 app and on Telegram, with what is affected and how many messages are waiting.
 Nothing goes by another channel instead: the messages wait, and go out once the
-number or the template is usable again, less anything about an appointment that
-has since started, been cancelled or been moved, which gets the message for its
-current state instead, if any.
+number or the template is usable again, less those no longer true, which are
+dropped:
+
+- anything about an appointment that has since started, been cancelled or been
+  moved, which gets the message for its current state instead, if any;
+- anything to a patient whose WhatsApp consent was turned off;
+- a message whose template its medical service no longer picks, or which was
+  deleted: an admin took it away on purpose;
+- a message sent when the appointment is marked attended or after it, once that
+  is undone.
 
 Several late messages of one appointment each go, in the order of their times:
 their texts name the date and time, not how far off it is. Messages sent when the
