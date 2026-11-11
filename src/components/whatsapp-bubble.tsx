@@ -4,17 +4,27 @@ import type { ReactNode } from "react";
 /**
  * A stretch of a WhatsApp chat as the patient's phone shows it: the messages
  * the organization sends, each a `WhatsappBubble`, and the patient's, each a
- * `PatientBubble`, on the chat's background.
+ * `PatientBubble`, on the chat's background, with a `WhatsappDay` where the
+ * day changes.
  */
 export function WhatsappChat(props: { label: string; children: ReactNode }) {
   return (
     <div
       role="group"
       aria-label={props.label}
-      className="bg-muted flex flex-col gap-1 rounded-lg p-3"
+      className="bg-sidebar flex flex-col gap-1 rounded-lg p-3"
     >
       {props.children}
     </div>
+  );
+}
+
+/** The day the messages under it were sent, centred across the chat: `Hoy`, `Ayer`, `Martes 10 de noviembre`. */
+export function WhatsappDay(props: { children: ReactNode }) {
+  return (
+    <p className="bg-card text-muted-foreground my-2 self-center rounded-md px-2 py-1 text-xs shadow-xs">
+      {props.children}
+    </p>
   );
 }
 
@@ -26,19 +36,27 @@ interface BubbleProps {
   children: ReactNode;
 }
 
-/** One message the organization sends, with its line breaks kept as WhatsApp keeps them. */
-export function WhatsappBubble(props: BubbleProps) {
-  return <Bubble {...props} className="bg-card text-card-foreground self-end rounded-tr-none" />;
+/**
+ * One message the organization sends, in WhatsApp's own outgoing green, with
+ * its line breaks kept as WhatsApp keeps them. `pending` is one that has not
+ * gone yet, muted as WhatsApp shows a message waiting to send.
+ */
+export function WhatsappBubble(props: BubbleProps & { pending?: boolean }) {
+  const { pending, ...bubble } = props;
+  return (
+    <Bubble
+      {...bubble}
+      className={cn(
+        "bg-whatsapp-outgoing text-foreground self-end rounded-tr-none",
+        pending && "opacity-70",
+      )}
+    />
+  );
 }
 
 /** One message from the patient, on the other side of the chat. */
 export function PatientBubble(props: BubbleProps) {
-  return (
-    <Bubble
-      {...props}
-      className="bg-secondary text-secondary-foreground self-start rounded-tl-none"
-    />
-  );
+  return <Bubble {...props} className="bg-card text-card-foreground self-start rounded-tl-none" />;
 }
 
 function Bubble(props: BubbleProps & { className: string }) {
@@ -47,7 +65,7 @@ function Bubble(props: BubbleProps & { className: string }) {
       {props.author && <p className="text-xs font-medium">{props.author}</p>}
       <p className="wrap-break-word whitespace-pre-wrap">{props.children}</p>
       {props.footer && (
-        <div className="text-muted-foreground mt-1 flex items-center justify-end gap-2 text-xs">
+        <div className="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-xs">
           {props.footer}
         </div>
       )}

@@ -17,7 +17,7 @@ import type { ConversationSummary } from "#/organization/inbox.ts";
 
 import { messageText, messageTime, registeredName } from "#/routes/_app/conversaciones/-labels.ts";
 import { OpenHandoffList } from "#/routes/_app/conversaciones/-handoffs.tsx";
-import { StatusBadge, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
+import { MessageStatus, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // The inbox (ui: "Conversaciones"): the open handoffs, then the WhatsApp
 // conversations the member reads, latest first, a page at a time. Which ones, and which messages'
@@ -89,7 +89,7 @@ const columns: DataTableColumn<ConversationSummary>[] = [
     cell: ({ lastMessage }) => (
       <span className="flex items-center gap-2">
         <span className="text-muted-foreground max-w-md truncate">{messageText(lastMessage)}</span>
-        <StatusBadge message={lastMessage} />
+        <MessageStatus message={lastMessage} />
       </span>
     ),
   },

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  byDay,
   conversationName,
+  dayLabel,
+  messageClock,
   messageSender,
   messageText,
   registeredName,
@@ -98,5 +101,39 @@ describe("who wrote a message", () => {
     expect(messageSender({ id: "1", direction: "outgoing", sentAt: 0, withheld: "clinical" })).toBe(
       "Profesional",
     );
+  });
+});
+
+describe("the chat's days", () => {
+  // Noon in Buenos Aires, where every office starts.
+  const now = Date.parse("2026-11-10T15:00:00Z");
+
+  it("names today and yesterday, and any other day by its weekday and date", () => {
+    expect(dayLabel(Date.parse("2026-11-10T12:00:00Z"), now)).toBe("Hoy");
+    expect(dayLabel(Date.parse("2026-11-09T12:00:00Z"), now)).toBe("Ayer");
+    expect(dayLabel(Date.parse("2026-11-03T12:00:00Z"), now)).toBe("Martes 3 de noviembre");
+  });
+
+  it("adds the year to a day of another year", () => {
+    expect(dayLabel(Date.parse("2025-11-03T12:00:00Z"), now)).toBe("Lunes 3 de noviembre de 2025");
+  });
+
+  it("counts days in the offices' zone, not in UTC", () => {
+    // 23:00 on the 9th in Buenos Aires, already the 10th in UTC.
+    expect(dayLabel(Date.parse("2026-11-10T02:00:00Z"), now)).toBe("Ayer");
+    expect(messageClock(Date.parse("2026-11-10T02:00:00Z"))).toBe("23:00");
+  });
+
+  it("groups the messages by the day they were sent, keeping their order", () => {
+    const sent = [
+      Date.parse("2026-11-09T12:00:00Z"),
+      Date.parse("2026-11-09T20:00:00Z"),
+      Date.parse("2026-11-10T12:00:00Z"),
+    ];
+
+    expect(byDay(sent, (at) => at, now)).toEqual([
+      { label: "Ayer", items: [sent[0], sent[1]] },
+      { label: "Hoy", items: [sent[2]] },
+    ]);
   });
 });

@@ -16,7 +16,6 @@ import { MorePatientMatches } from "#/components/patient-search-more.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { showSaveFailed } from "#/components/save-failure.ts";
-import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -29,7 +28,13 @@ import {
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { PatientBubble, WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
+import {
+  PatientBubble,
+  WhatsappBubble,
+  WhatsappChat,
+  WhatsappDay,
+} from "#/components/whatsapp-bubble.tsx";
+import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
 
 // Each pattern of docs/agents/style-guide.md, drawn once, so an agent or a
 // reviewer can compare a screen with it. Only `pnpm dev` serves this page.
@@ -363,17 +368,30 @@ function Patterns() {
       </Pattern>
       <Pattern title="Conversación de WhatsApp">
         <WhatsappChat label="Mensajes">
-          <PatientBubble footer="10/11/2026 17:41">¿Puedo pasar el turno al viernes?</PatientBubble>
+          <WhatsappDay>Hoy</WhatsappDay>
+          <PatientBubble footer="17:41">¿Puedo pasar el turno al viernes?</PatientBubble>
           <WhatsappBubble
             author="Rita Prueba"
             footer={
               <>
-                10/11/2026 17:43
-                <Badge variant="secondary">Leído</Badge>
+                17:43
+                <WhatsappStatus status="read" />
               </>
             }
           >
             Sí, te lo pasamos al viernes 13 a las 10:30.
+          </WhatsappBubble>
+          <WhatsappBubble
+            author="Rita Prueba"
+            pending
+            footer={
+              <>
+                17:50
+                <WhatsappStatus status="waiting" />
+              </>
+            }
+          >
+            Te esperamos.
           </WhatsappBubble>
         </WhatsappChat>
       </Pattern>

@@ -223,6 +223,22 @@ describe("a person's reply after the window closed", () => {
     expect(await openHandoffs()).toHaveLength(1);
   });
 
+  it("shows the reopen template as the patient will read it while it is queued, then as its message", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+
+    expect((await read(world.receptionist)).queuedReopen).toEqual({
+      id: expect.any(String),
+      queuedAt: Date.now(),
+      text: "Hola Martina, tenemos una respuesta para vos. Respondé este mensaje para verla. Consultorios Prueba",
+    });
+
+    await runDurableObjectAlarm(world.organization);
+    const after = await read(world.receptionist);
+    expect(after.queuedReopen).toBeNull();
+    expect(after.messages.at(-1)).toMatchObject({ type: "template", text: expect.any(String) });
+  });
+
   it("goes out when the patient answers, closing the open handoff", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist));
