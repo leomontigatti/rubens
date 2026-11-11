@@ -247,7 +247,8 @@ they read. An organization's communication rule can ask for one message instead.
 How the assistant writes is set in three layers, the higher one winning:
 
 1. **Its own rules**, above. Nobody edits them.
-2. **The organization's**, set by admins: tone, `vos` or `usted`, how to sign off.
+2. **The organization's**, set by admins: tone, and `vos` or `usted` (`Trato`). Replies
+   carry no sign-off: the conversation is already the organization's number.
 3. **A practitioner's**, set by that practitioner, for conversations about their
    appointments: how to name them, for example.
 
@@ -263,9 +264,12 @@ or to a practitioner, like rules.
 The number of rules and their length are limited. Every change is audited, and
 each reply records the version of the rules it was written under.
 
-Rules do not reach the templates: those are fixed once Meta approves them, so the
-organization's voice is written into each template when it is submitted
-([whatsapp-templates.md](../operations/whatsapp-templates.md)).
+Rules do not reach the templates: those are fixed once Meta approves them. The
+organization's default drafts are worded in its `Trato` when they are created, and a
+later change of `Trato` leaves every template's text as it is: the template's page
+says so ([whatsapp-templates.md](../operations/whatsapp-templates.md)). The fixed
+checks apply to templates too: a text with an opening `¿` or `¡`, or an emoji, is
+refused before it goes to Meta.
 
 ## Trying it
 

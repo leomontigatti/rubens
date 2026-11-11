@@ -24,9 +24,10 @@ An admin creates, names and edits the organization's templates; no other role
 does. Each has:
 
 - **Its name** (`Nombre`), which the organization's templates do not share.
-- **Its text** (`Texto`), checked against Meta's rules before it is submitted. It
-  may use every fact of the appointment. Care instructions, or what to bring, are
-  written into the text of the template that carries them.
+- **Its text** (`Texto`), checked against Meta's rules and the assistant's fixed
+  checks (no opening `¿` or `¡`, no emojis) before it is submitted. It may use every
+  fact of the appointment and the organization's name. Care instructions, or what
+  to bring, are written into the text of the template that carries them.
 - **When it is sent** (`Cuándo se envía`): when the appointment is booked (or the
   request approved), when it is marked attended, or a number of hours or days
   before or after the appointment, up to 30 days. Before counts from the
@@ -35,10 +36,18 @@ does. Each has:
 
 The text says what the message is about and the appointment's date and time,
 never when it is sent: a message held back by Meta goes late, and `mañana` or
-`en 2 horas` would then be wrong.
+`en 2 horas` would then be wrong. For the same reason it greets with `Hola`, never
+by the time of day. It names the organization instead of signing off.
+
+Every organization starts with four drafts, worded in its `Trato` as the
+communication rules have it when they are created
+([whatsapp-templates.md](../operations/whatsapp-templates.md)). Changing `Trato`
+later changes no template's text.
 
 An admin can delete a template that was never sent to Meta and that no medical
-service picks; any other stays.
+service picks; any other stays. Every change to a template is audited, with what it was
+and what it became: its creation, a new name, text or timing, each text sent to
+Meta, and its deletion.
 
 A medical service picks which of the organization's templates its appointments
 get, any number of them, each once; several may share a timing. A template no
