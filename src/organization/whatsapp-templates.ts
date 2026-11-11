@@ -23,7 +23,7 @@ import type { Acting } from "#/organization/members.ts";
 import { notifyAdmins } from "#/organization/notifications.ts";
 import { rebuildTemplate } from "#/organization/template-messages.ts";
 import { waitingCount } from "#/organization/whatsapp-limits.ts";
-import { whatsappTemplate } from "#/organization/whatsapp-schema.ts";
+import { template, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 
 // The versions of the organization's WhatsApp templates (#154): a checked body
 // goes to Meta as a template's new version (`templates.ts` decides when), and
@@ -97,6 +97,16 @@ function nextVersion(database: Database, templateId: string, namesAtMeta: string
   return Math.max(stored?.version ?? 0, ...atMeta) + 1;
 }
 
+/** The draft template `templateId` started from, as the text its first version replaces; `null` for none. */
+function draftOf(tx: Writer, templateId: string) {
+  const draft = tx
+    .select({ draft: template.draft })
+    .from(template)
+    .where(eq(template.id, templateId))
+    .get()?.draft;
+  return draft ? { version: 0, body: draft } : null;
+}
+
 /**
  * Submits `body`, already checked, to Meta as template `templateId`'s next
  * version. What Meta accepts is written by `store`, in the transaction that
@@ -127,13 +137,14 @@ export async function submitVersion(
   }
   database.transaction((tx) => {
     store(tx);
-    // The text it replaces, for the audit entry: the latest version before it.
-    const previous = tx
-      .select({ version: whatsappTemplate.version, body: whatsappTemplate.body })
-      .from(whatsappTemplate)
-      .where(eq(whatsappTemplate.templateId, templateId))
-      .orderBy(desc(whatsappTemplate.version))
-      .get();
+    // The text it replaces, for the audit entry: the latest version before it, else the draft.
+    const previous =
+      tx
+        .select({ version: whatsappTemplate.version, body: whatsappTemplate.body })
+        .from(whatsappTemplate)
+        .where(eq(whatsappTemplate.templateId, templateId))
+        .orderBy(desc(whatsappTemplate.version))
+        .get() ?? draftOf(tx, templateId);
     const row = tx
       .insert(whatsappTemplate)
       .values({

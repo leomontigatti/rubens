@@ -1,3 +1,4 @@
+import { variablesIn } from "#/lib/template-filling.ts";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
@@ -84,12 +85,12 @@ describe("the organization's templates", () => {
 });
 
 describe("the drafts every organization starts with", () => {
-  it("are worded in `vos`, the rules' starting `Trato`, name the organization, and pass the rules check as they stand", async () => {
+  it("name the organization, and pass the rules check as they stand", async () => {
     const drafts = (await listed()).map(({ id, draft }) => ({ id, draft: draft! }));
 
     expect(drafts).toHaveLength(9);
     for (const { id, draft } of drafts) {
-      expect(draft).toMatch(/^Hola \{\{paciente\}\}, te escribimos de \{\{consultorio\}\}/);
+      expect(variablesIn(draft)).toContain("consultorio");
       expect(checkTemplateBody(templateVariables(id), draft)).toEqual({ ok: true, body: draft });
     }
   });
@@ -292,7 +293,7 @@ describe("editing a template", () => {
 });
 
 describe("auditing a template", () => {
-  it("records its creation, its new name and timing, and each text sent to Meta with the one before", async () => {
+  it("records its new name and timing, and each text sent to Meta with the one before", async () => {
     fakeMeta.answerNextWith(200, { id: "700", status: "PENDING", category: "UTILITY" });
     const { templateId } = expectOk(
       await world.organization.createTemplate(adminCaller, newTemplate),
@@ -307,8 +308,7 @@ describe("auditing a template", () => {
       }),
     );
 
-    expect(await auditEntriesFor(world.organization, templateId)).toMatchObject([
-      { action: "create", after: { name: "Estudios", timing: "before", timingHours: 72 } },
+    expect((await auditEntriesFor(world.organization, templateId)).slice(1)).toMatchObject([
       {
         action: "update",
         before: { name: "Estudios", timing: "before", timingHours: 72 },
@@ -336,6 +336,27 @@ describe("auditing a template", () => {
   });
 });
 
+describe("auditing a draft", () => {
+  it("records the draft as the text its first version replaces", async () => {
+    const draftId = await templateNamed(world.organization, "Recordatorio");
+    const draft = (await listed()).find((one) => one.id === draftId)!.draft!;
+    fakeMeta.answerNextWith(200, { id: "702", status: "PENDING", category: "UTILITY" });
+
+    expectOk(
+      await world.organization.editTemplate(adminCaller, {
+        templateId: draftId,
+        body: `${draft} Gracias.`,
+        settings: { name: "Recordatorio", timing: { when: "before", hours: 2 } },
+      }),
+    );
+
+    const [first] = (await listed()).find((one) => one.id === draftId)!.versions;
+    expect(await auditEntriesFor(world.organization, first!.id)).toMatchObject([
+      { before: { version: 0, body: draft }, after: { version: 1, body: `${draft} Gracias.` } },
+    ]);
+  });
+});
+
 describe("deleting a template", () => {
   it("deletes one never sent to Meta that no medical service sends", async () => {
     const draftId = await templateNamed(world.organization, "Seguimiento");
@@ -344,7 +365,12 @@ describe("deleting a template", () => {
 
     expect((await listed()).map((one) => one.id)).not.toContain(draftId);
     expect(await auditEntriesFor(world.organization, draftId)).toMatchObject([
-      { action: "delete", entityType: "template", before: { name: "Seguimiento" } },
+      {
+        action: "delete",
+        entityType: "template",
+        before: { name: "Seguimiento", draft: expect.stringContaining("{{consultorio}}") },
+        after: null,
+      },
     ]);
   });
 

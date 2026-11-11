@@ -317,7 +317,12 @@ export function deleteTemplate(database: Database, acting: Acting, input: Templa
       entityType: "template",
       entityId: templateId,
       patientId: null,
-      before: { name: found.name, timing: found.timing, timingHours: found.timingHours },
+      before: {
+        name: found.name,
+        timing: found.timing,
+        timingHours: found.timingHours,
+        draft: found.draft,
+      },
       after: null,
     });
     return { ok: true } as const;

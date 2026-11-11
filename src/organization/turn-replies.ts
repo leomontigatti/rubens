@@ -284,7 +284,7 @@ export function replyTexts(turn: {
   if (!words.ok) {
     return null;
   }
-  return { fixed, words: words.text, checked: words.text };
+  return { fixed, text: words.text };
 }
 
 /** The fixed reply to a handoff, as the patient reads it; `null` when the fixed checks fail. */
@@ -322,11 +322,11 @@ export async function deliverReply(
   if (!texts) {
     return;
   }
-  const { fixed, words, checked } = texts;
+  const { fixed, text } = texts;
   const reply = {
     conversationId,
     phone: turn.phone,
-    text: checked,
+    text,
     rulesVersion: rules.version,
     whole: turn.proposed,
     urgent: turn.settled === "emergency",
@@ -343,9 +343,9 @@ export async function deliverReply(
     handOffClosed(database, turn);
     return;
   }
-  const request = { conversationId, reply: checked, patients: turn.patients };
+  const request = { conversationId, reply: text, patients: turn.patients };
   if (await clinicalCheckHolds(database, model, request, false)) {
-    await holdReply(database, cloud, { ...turn, words });
+    await holdReply(database, cloud, { ...turn, words: text });
   } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
     // Read again after each typing pause: a message or a change may have come
     // while the check ran or the reply typed.

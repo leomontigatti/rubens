@@ -523,18 +523,18 @@ async function sandboxReply(
   }
   const whole = { whole: turn.proposed };
   if (texts.fixed) {
-    return { held: null, replies: splitReply(texts.checked, whole) };
+    return { held: null, replies: splitReply(texts.text, whole) };
   }
-  const request = { conversationId, reply: texts.checked, patients: turn.patients };
+  const request = { conversationId, reply: texts.text, patients: turn.patients };
   if (!(await clinicalCheckHolds(run.database, model, request, true))) {
-    return { held: null, replies: splitReply(texts.checked, whole) };
+    return { held: null, replies: splitReply(texts.text, whole) };
   }
   const opened = run.step(() =>
-    openHeldReply(run.database, { conversationId, answered: turn.answered, words: texts.words }),
+    openHeldReply(run.database, { conversationId, answered: turn.answered, words: texts.text }),
   );
   const text = handoffReplyText(turn.rules);
   return {
-    held: texts.words,
+    held: texts.text,
     replies: opened && text ? splitReply(text, { whole: false }) : [],
   };
 }
