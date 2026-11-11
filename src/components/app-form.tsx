@@ -5,6 +5,8 @@ import { createContext, useContext, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { comboboxTextChange } from "#/components/combobox-text.ts";
+import { placeAttributes } from "#/components/field-size.ts";
+import type { FieldPlace } from "#/components/field-size.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 
 import { Checkbox } from "#/components/ui/checkbox.tsx";
@@ -29,12 +31,21 @@ import {
 import { Input } from "#/components/ui/input.tsx";
 import { InputGroupAddon } from "#/components/ui/input-group.tsx";
 import { NativeSelect } from "#/components/ui/native-select.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "#/components/ui/select.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { Textarea } from "#/components/ui/textarea.tsx";
 
 // The form kit: `useAppForm` holds a form's values, and each field below reads
 // and writes its own through `form.AppField`. Number inputs hold their text, as
-// typed: the form's schema decides what it is worth when it submits.
+// typed: the form's schema decides what it is worth when it submits. Each
+// field takes a `size` in its form's `FormGrid` (`field-size.ts`): a quarter
+// of the row, or the whole row for what holds a list or a long text.
 
 const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
 
@@ -70,28 +81,37 @@ type InputProps = Pick<
   "type" | "required" | "autoComplete" | "min" | "max" | "step" | "placeholder" | "maxLength"
 >;
 
-function TextField(
-  props: InputProps & {
-    label: string;
-    hint?: string;
-    /** In a `flex` row of fields, where it takes its own width. */
-    inline?: boolean;
-    /** For a short number, narrower than its field. */
-    narrow?: boolean;
-  },
-) {
-  const { label, hint, inline, narrow, ...input } = props;
+/**
+ * The fields of a form, in rows by their size, as wide as the form is (not the
+ * window): one column below 448px, then six, where a quarter takes half the
+ * row, then twelve from 900px, where a quarter holds a date and time (213px).
+ * A child that is no field (a section, an alert, a line of text) takes the
+ * whole row: the attribute selectors outweigh `&>*`, and the row start
+ * outweighs the span's shorthand, whatever order the stylesheet writes them in.
+ */
+export function FormGrid(props: Omit<ComponentProps<typeof FieldSet>, "className">) {
+  return (
+    <div className="@container">
+      <FieldSet
+        className="grid grid-cols-1 @md:grid-cols-6 @md:[&>*]:col-span-6 @md:[&>[data-size=quarter]]:col-span-3 @md:[&>[data-size][data-starts-row]]:col-start-1 @[56.25rem]:grid-cols-12 @[56.25rem]:[&>*]:col-span-12 @[56.25rem]:[&>[data-size=half]]:col-span-6"
+        {...props}
+      />
+    </div>
+  );
+}
+
+function TextField(props: InputProps & FieldPlace & { label: string; hint?: string }) {
+  const { label, hint, size, startsRow, ...input } = props;
   const field = useFieldContext<string>();
   const { problem, errorId, invalid } = useFieldProblem(field.name);
   const hintId = hint ? `${field.name}-hint` : undefined;
   return (
-    <Field className={inline ? "w-auto" : undefined} data-invalid={invalid}>
+    <Field {...placeAttributes({ size, startsRow }, "quarter")} data-invalid={invalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <Input
         {...input}
         id={field.name}
         name={field.name}
-        className={narrow ? "w-32 max-w-32" : undefined}
         value={field.state.value}
         onChange={(event) => field.handleChange(event.target.value)}
         onBlur={field.handleBlur}
@@ -105,19 +125,21 @@ function TextField(
 }
 
 /** A long text, such as a message body, whose box grows with what it holds. */
-function TextareaField(props: {
-  label: string;
-  hint?: string;
-  required?: boolean;
-  /** What sits under the hint, such as the text as it will be sent. */
-  preview?: ReactNode;
-}) {
+function TextareaField(
+  props: FieldPlace & {
+    label: string;
+    hint?: string;
+    required?: boolean;
+    /** What sits under the hint, such as the text as it will be sent. */
+    preview?: ReactNode;
+  },
+) {
   const { label, hint, required, preview } = props;
   const field = useFieldContext<string>();
   const { problem, errorId, invalid } = useFieldProblem(field.name);
   const hintId = hint ? `${field.name}-hint` : undefined;
   return (
-    <Field data-invalid={invalid}>
+    <Field {...placeAttributes(props, "full")} data-invalid={invalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <Textarea
         id={field.name}
@@ -136,56 +158,99 @@ function TextareaField(props: {
   );
 }
 
-function SelectField(props: {
-  label: string;
-  hint?: string;
-  required?: boolean;
-  /** What sits beside the select, such as a colour's swatch. */
-  beside?: ReactNode;
-  children: ReactNode;
-}) {
+function SelectField(
+  props: FieldPlace & {
+    label: string;
+    hint?: string;
+    required?: boolean;
+    children: ReactNode;
+  },
+) {
   const field = useFieldContext<string>();
   const { problem, errorId, invalid } = useFieldProblem(field.name);
   const hintId = props.hint ? `${field.name}-hint` : undefined;
-  const select = (
-    <NativeSelect
-      id={field.name}
-      name={field.name}
-      required={props.required}
-      value={field.state.value}
-      onChange={(event) => field.handleChange(event.target.value)}
-      onBlur={field.handleBlur}
-      aria-invalid={invalid}
-      aria-describedby={joinIds(hintId, errorId)}
-    >
-      {props.children}
-    </NativeSelect>
-  );
   return (
-    <Field data-invalid={invalid}>
+    <Field {...placeAttributes(props, "quarter")} data-invalid={invalid}>
       <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
-      {props.beside ? (
-        <div className="flex items-center gap-3">
-          {select}
-          {props.beside}
-        </div>
-      ) : (
-        select
-      )}
+      <NativeSelect
+        id={field.name}
+        name={field.name}
+        required={props.required}
+        value={field.state.value}
+        onChange={(event) => field.handleChange(event.target.value)}
+        onBlur={field.handleBlur}
+        aria-invalid={invalid}
+        aria-describedby={joinIds(hintId, errorId)}
+      >
+        {props.children}
+      </NativeSelect>
       <FieldHint id={hintId}>{props.hint}</FieldHint>
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );
 }
 
+interface MarkedOption {
+  value: string;
+  label: string;
+  mark: ReactNode;
+}
+
+/**
+ * A select whose options each show their mark, in the list and in the box: a
+ * native select cannot draw one inside its options.
+ */
+function MarkedSelectField(props: FieldPlace & { label: string; options: MarkedOption[] }) {
+  const field = useFieldContext<string>();
+  const submitting = useSubmitting(field.form);
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
+  const shown = (value: unknown) => props.options.find((option) => option.value === value);
+  return (
+    <Field {...placeAttributes(props, "quarter")} data-invalid={invalid}>
+      <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+      <Select
+        value={field.state.value}
+        onValueChange={(value) => field.handleChange(String(value))}
+        disabled={submitting}
+      >
+        <SelectTrigger
+          id={field.name}
+          onBlur={field.handleBlur}
+          aria-invalid={invalid}
+          aria-describedby={errorId}
+        >
+          <SelectValue>{(value) => <MarkedLabel option={shown(value)} />}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {props.options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <MarkedLabel option={option} />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+    </Field>
+  );
+}
+
+function MarkedLabel({ option }: { option: MarkedOption | undefined }) {
+  return option ? (
+    <>
+      {option.mark}
+      {option.label}
+    </>
+  ) : null;
+}
+
 /** Whether the form is saving: a fieldset disables native inputs, not `Checkbox`. */
 const useSubmitting = (form: AnyFormApi) => useStore(form.store, (state) => state.isSubmitting);
 
-function CheckboxField(props: { label: string }) {
+function CheckboxField(props: FieldPlace & { label: string }) {
   const field = useFieldContext<boolean>();
   const submitting = useSubmitting(field.form);
   return (
-    <Field orientation="horizontal" className="w-fit">
+    <Field {...placeAttributes(props, "quarter")} orientation="horizontal" className="w-fit">
       <Checkbox
         id={field.name}
         checked={field.state.value}
@@ -208,7 +273,9 @@ export function pickedIn(options: Option[], picked: readonly string[]): string[]
 }
 
 /** Several options picked in place; `row` lays short ones side by side. */
-function CheckboxGroupField(props: { legend: string; options: Option[]; row?: boolean }) {
+function CheckboxGroupField(
+  props: FieldPlace & { legend: string; options: Option[]; row?: boolean },
+) {
   const field = useFieldContext<string[]>();
   const submitting = useSubmitting(field.form);
   const { problem, errorId, invalid } = useFieldProblem(field.name);
@@ -220,7 +287,7 @@ function CheckboxGroupField(props: { legend: string; options: Option[]; row?: bo
   }
 
   return (
-    <FieldSet id={field.name} data-invalid={invalid}>
+    <FieldSet {...placeAttributes(props, "full")} id={field.name} data-invalid={invalid}>
       <FieldLegend variant="label">{props.legend}</FieldLegend>
       <FieldGroup
         data-slot="checkbox-group"
@@ -260,7 +327,7 @@ export interface ComboboxSearch<Item> {
   note?: string | null;
 }
 
-export interface ComboboxFieldProps<Item> {
+export interface ComboboxFieldProps<Item> extends FieldPlace {
   label: string;
   placeholder: string;
   /** The clear button's accessible name. */
@@ -290,7 +357,7 @@ function ComboboxField<Item>(props: ComboboxFieldProps<Item>) {
   const anchor = useComboboxAnchor();
 
   return (
-    <Field data-invalid={marked}>
+    <Field {...placeAttributes(props, "full")} data-invalid={marked}>
       <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
       <Combobox
         items={search.items ?? []}
@@ -388,6 +455,7 @@ export const { useAppForm } = createFormHook({
     TextField,
     TextareaField,
     SelectField,
+    MarkedSelectField,
     CheckboxField,
     CheckboxGroupField,
     ComboboxField,

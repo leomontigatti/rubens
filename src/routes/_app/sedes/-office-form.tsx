@@ -57,7 +57,7 @@ export function OfficeForm(props: {
         {(field) => <field.TextField label="Nombre" required />}
       </form.AppField>
       <form.AppField name="address">
-        {(field) => <field.TextField label="Dirección" required />}
+        {(field) => <field.TextField label="Dirección" size="half" required />}
       </form.AppField>
       <form.AppField name="timeZone">
         {(field) => <field.TextField label="Zona horaria" required />}

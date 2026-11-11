@@ -139,6 +139,7 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
             hint="La información clínica va en la historia clínica, no acá."
             placeholder="Por ejemplo: trae radiografías"
             maxLength={receptionNoteMaxLength}
+            startsRow
           />
         )}
       </form.AppField>

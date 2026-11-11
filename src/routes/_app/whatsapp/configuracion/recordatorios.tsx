@@ -102,7 +102,6 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
             max={maxReminderHours}
             step={1}
             required
-            narrow
             hint={hint}
           />
         )}
@@ -116,7 +115,6 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
             max={maxReminderHours}
             step={1}
             required
-            narrow
             hint={hint}
           />
         )}

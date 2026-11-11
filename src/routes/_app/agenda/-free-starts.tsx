@@ -4,7 +4,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
-import { FieldProblemText, useFieldProblem } from "#/components/app-form.tsx";
+import { FieldProblemText, FormGrid, useFieldProblem } from "#/components/app-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { freeStartsByDay } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
@@ -84,10 +84,12 @@ export function StartGroup({ children }: { children: ReactNode }) {
       tabIndex={-1}
       aria-invalid={invalid}
       aria-describedby={errorId}
-      className="flex flex-col gap-3 outline-none"
+      className="outline-none"
     >
-      {children}
-      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+      <FormGrid>
+        {children}
+        <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+      </FormGrid>
     </div>
   );
 }

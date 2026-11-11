@@ -1,8 +1,4 @@
-import { cn } from "cn";
-
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
-import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { roleLabels } from "#/lib/staff.ts";
 
 // The pieces the staff screens share: refusal copy and the role checkboxes.
@@ -38,15 +34,6 @@ export function useAction() {
 
 export function RefusalAlert({ reason }: { reason: RefusalReason }) {
   return <RefusalMessage message={refusalMessages[reason]} />;
-}
-
-export function ColorSwatch({ color }: { color: PractitionerColor }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("size-4 shrink-0 rounded-full", practitionerColorClasses[color])}
-    />
-  );
 }
 
 /** The roles a form's `CheckboxGroupField` offers. */
