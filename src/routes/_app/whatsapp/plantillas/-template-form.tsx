@@ -1,4 +1,5 @@
 import { useStore } from "@tanstack/react-form";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { useFormAction } from "#/components/admin-form.tsx";
@@ -101,12 +102,13 @@ export function TemplateForm(props: {
   const page = useFormPage({ to: "/whatsapp/plantillas" });
   const action = useFormAction(templateFormRefusals, { nameTaken: "name" });
 
+  // The name and timing stored: a refused edit keeps them, and a discard goes back to them.
+  const [stored, setStored] = useState({
+    name: settings?.name ?? "",
+    timing: timingEntry(settings?.timing ?? { when: "before", hours: 24 }),
+  });
   const form = useAppForm({
-    defaultValues: {
-      name: settings?.name ?? "",
-      timing: timingEntry(settings?.timing ?? { when: "before", hours: 24 }),
-      body: props.body,
-    },
+    defaultValues: { ...stored, body: props.body },
     onSubmit: async ({ value }) => {
       const checked = settingsSchema.safeParse({
         name: value.name,
@@ -151,6 +153,7 @@ export function TemplateForm(props: {
         : refused.reason && templateFormRefusals[refused.reason as RefusalReason];
       // An edit stores the name and timing before it sends the text, so only the text is lost.
       if (message && templateId && settings && settingsKept.includes(refused.reason!)) {
+        setStored({ name: value.name, timing: value.timing });
         action.setError(`${message} El nombre y cuándo se envía se guardaron.`);
       } else if (refused.metaMessage) {
         action.setError(message);
