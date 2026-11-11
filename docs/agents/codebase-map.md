@@ -68,7 +68,8 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   (`template-messages.ts` queues and rebuilds those of the organization's own templates,
   each at its timing; `templates.ts` is where an admin creates, edits and deletes them), and
   `src/organization/assistant.ts` runs the patient assistant's turn once a conversation's
-  wait is over (`turn-replies.ts` sends its reply, after the clinical check; `turn-retries.ts`
+  wait is over (`turn-settling.ts` settles it: the judgement, the handoff and what the patient
+  is told; `turn-replies.ts` sends its reply, after the clinical check; `turn-retries.ts`
   retries a turn the model could not read, then hands it off; `assistant-usage.ts` records
   the tokens of each model run, for the WhatsApp settings' month totals;
   `assistant-sandbox.ts` runs the same turn for the settings' sandbox, inside
