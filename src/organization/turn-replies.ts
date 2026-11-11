@@ -5,7 +5,6 @@ import {
   handoffReply,
   optOutReply,
   unintelligibleVoiceReply,
-  withSignOff,
 } from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { formatPhone } from "#/lib/phones.ts";
@@ -271,8 +270,8 @@ async function holdReply(
 }
 
 /**
- * What a settled turn would say: its fixed reply, or the model's words; each
- * signed, once the fixed checks pass, or `null` when they do not.
+ * What a settled turn would say: its fixed reply, or the model's words, once
+ * the fixed checks pass, or `null` when they do not.
  */
 export function replyTexts(turn: {
   settled: Exclude<Settled, "silent">;
@@ -281,18 +280,16 @@ export function replyTexts(turn: {
 }) {
   const { rules } = turn;
   const fixed = fixedReply(rules, turn.settled);
-  // A turn that ended on its tools has no words of its own to sign.
   const words = checkReply(fixed ?? turn.reply);
-  const checked = checkReply(withSignOff(fixed ?? turn.reply, rules.signOff));
-  if (!words.ok || !checked.ok) {
+  if (!words.ok) {
     return null;
   }
-  return { fixed, words: words.text, checked: checked.text };
+  return { fixed, text: words.text };
 }
 
-/** The fixed reply to a handoff, signed, as the patient reads it; `null` when the fixed checks fail. */
+/** The fixed reply to a handoff, as the patient reads it; `null` when the fixed checks fail. */
 export function handoffReplyText(rules: CommunicationRules) {
-  const checked = checkReply(withSignOff(handoffReply(rules.formOfAddress), rules.signOff));
+  const checked = checkReply(handoffReply(rules.formOfAddress));
   return checked.ok ? checked.text : null;
 }
 
@@ -325,11 +322,11 @@ export async function deliverReply(
   if (!texts) {
     return;
   }
-  const { fixed, words, checked } = texts;
+  const { fixed, text } = texts;
   const reply = {
     conversationId,
     phone: turn.phone,
-    text: checked,
+    text,
     rulesVersion: rules.version,
     whole: turn.proposed,
     urgent: turn.settled === "emergency",
@@ -346,10 +343,9 @@ export async function deliverReply(
     handOffClosed(database, turn);
     return;
   }
-  // The whole text that would go, sign-off included; the held reply is the model's words alone.
-  const request = { conversationId, reply: checked, patients: turn.patients };
+  const request = { conversationId, reply: text, patients: turn.patients };
   if (await clinicalCheckHolds(database, model, request, false)) {
-    await holdReply(database, cloud, { ...turn, words });
+    await holdReply(database, cloud, { ...turn, words: text });
   } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
     // Read again after each typing pause: a message or a change may have come
     // while the check ran or the reply typed.

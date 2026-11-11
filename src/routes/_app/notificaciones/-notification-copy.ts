@@ -7,8 +7,7 @@ import type { HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { messagingLimitLabels } from "#/lib/whatsapp.ts";
-import { rejectionText, templateLabels } from "#/lib/whatsapp-template-copy.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
+import { rejectionText } from "#/lib/whatsapp-template-copy.ts";
 
 // What a notification says, from what the object kept of the event
 // (`src/organization/notifications.ts`): its title, what it means and what
@@ -17,7 +16,8 @@ import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
 export interface NotificationFacts {
   kind: NotificationKind;
-  templateName: TemplateName | null;
+  /** The template's name, as it is now. */
+  templateName: string | null;
   templateVersion: number | null;
   detail: string | null;
   until: number | null;
@@ -47,7 +47,7 @@ function day(instant: number) {
 }
 
 function template(facts: NotificationFacts) {
-  const label = facts.templateName ? templateLabels[facts.templateName] : "una plantilla";
+  const label = facts.templateName ?? "una plantilla";
   return `${label} (versión ${facts.templateVersion ?? "?"})`;
 }
 

@@ -6,7 +6,7 @@ import type { ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
-import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
+import type { TemplateCreate, TemplateDelete, TemplateEdit } from "#/lib/whatsapp-templates.ts";
 
 import { withOrganization } from "#/server/with-organization.ts";
 
@@ -17,10 +17,22 @@ export const getWhatsappSettings = createServerFn({ method: "GET" }).handler(() 
   withOrganization((organization, caller) => organization.whatsappSettings(caller)),
 );
 
-export const submitWhatsappTemplate = createServerFn({ method: "POST" })
-  .validator((data: TemplateSubmission) => data)
+export const createTemplate = createServerFn({ method: "POST" })
+  .validator((data: TemplateCreate) => data)
   .handler(({ data }) =>
-    withOrganization((organization, caller) => organization.submitWhatsappTemplate(caller, data)),
+    withOrganization((organization, caller) => organization.createTemplate(caller, data)),
+  );
+
+export const editTemplate = createServerFn({ method: "POST" })
+  .validator((data: TemplateEdit) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.editTemplate(caller, data)),
+  );
+
+export const deleteTemplate = createServerFn({ method: "POST" })
+  .validator((data: TemplateDelete) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.deleteTemplate(caller, data)),
   );
 
 export const refreshWhatsappTemplates = createServerFn({ method: "POST" }).handler(() =>

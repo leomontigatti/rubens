@@ -26,9 +26,10 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
 });
 
 const body =
-  "Hola {{paciente}}, tu turno con {{profesional}} es el {{fecha}} a las {{hora}}. Consultorios Prueba";
+  "Hola {{paciente}}, te escribimos de {{organizacion}}: tu turno con {{profesional}} es el {{fecha}} a las {{hora}}.";
 
-const confirmation = { templateName: "confirmacion_turno", body } as const;
+/** An edit of the event template `turno_movido` with `body`, which has no name or timing. */
+const confirmation = { templateId: "turno_movido", body, settings: null } as const;
 
 let organization: OrganizationStub;
 
@@ -44,10 +45,10 @@ function createdAtMeta() {
     .map((request) => (request.body as { name: string }).name);
 }
 
-/** The versions the settings list for `name`, newest first. */
-async function versionsOf(name: string) {
+/** The versions the settings list for template `templateId`, newest first. */
+async function versionsOf(templateId: string) {
   const listed = expectOk(await organization.whatsappSettings(adminCaller));
-  return listed.templates.find((template) => template.name === name)!.versions;
+  return listed.templates.find((template) => template.id === templateId)!.versions;
 }
 
 /** A template status event, as the webhook hands it over. */
@@ -64,11 +65,11 @@ beforeEach(async () => {
   ({ organization } = await setUpTestOrganization());
 });
 
-describe("submitting a template", () => {
+describe("submitting an event template's text", () => {
   it("creates it at Meta as a utility template in `es_AR`, with named variables and their examples", async () => {
     fakeMeta.answerWith(200, metaCreated("594425479261596"));
 
-    expectOk(await organization.submitWhatsappTemplate(adminCaller, confirmation));
+    expectOk(await organization.editTemplate(adminCaller, confirmation));
 
     expect(fakeMeta.requests.filter((request) => request.method === "POST")).toEqual([
       {
@@ -76,7 +77,7 @@ describe("submitting a template", () => {
         url: `https://graph.facebook.com/v26.0/${metaBusinessAccountId}/message_templates`,
         authorization: `Bearer ${metaAccessToken}`,
         body: {
-          name: "confirmacion_turno_v1",
+          name: "turno_movido_v1",
           language: "es_AR",
           category: "UTILITY",
           parameter_format: "NAMED",
@@ -87,6 +88,7 @@ describe("submitting a template", () => {
               example: {
                 body_text_named_params: [
                   { param_name: "paciente", example: "Lucía" },
+                  { param_name: "organizacion", example: "Consultorios Prueba" },
                   { param_name: "profesional", example: "la Dra. Sofía Méndez" },
                   { param_name: "fecha", example: "jueves 12 de noviembre" },
                   { param_name: "hora", example: "10:30" },
@@ -103,16 +105,16 @@ describe("submitting a template", () => {
     fakeMeta.answerNextWith(200, metaCreated("111"));
     fakeMeta.answerNextWith(200, metaCreated("222"));
 
-    expectOk(await organization.submitWhatsappTemplate(adminCaller, confirmation));
+    expectOk(await organization.editTemplate(adminCaller, confirmation));
     expectOk(
-      await organization.submitWhatsappTemplate(adminCaller, {
+      await organization.editTemplate(adminCaller, {
         ...confirmation,
         body: `${body}. Gracias.`,
       }),
     );
 
-    expect(createdAtMeta()).toEqual(["confirmacion_turno_v1", "confirmacion_turno_v2"]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([
+    expect(createdAtMeta()).toEqual(["turno_movido_v1", "turno_movido_v2"]);
+    expect(await versionsOf("turno_movido")).toMatchObject([
       { version: 2, metaId: "222", status: "pending", body: `${body}. Gracias.` },
       { version: 1, metaId: "111", status: "pending", body, rejectionReason: null },
     ]);
@@ -121,50 +123,51 @@ describe("submitting a template", () => {
   it("submits past a version Meta already has, though nothing here stored it", async () => {
     // A submission whose answer was lost, or another Worker on the same account.
     fakeMeta.templatesAtMeta = [
-      "confirmacion_turno_v1",
-      "confirmacion_turno_v3",
-      "confirmacion_turno_extra_v9",
-      "recordatorio_turno_v7",
+      "turno_movido_v1",
+      "turno_movido_v3",
+      "turno_movido_extra_v9",
+      "turno_cancelado_v7",
     ];
     fakeMeta.answerWith(200, metaCreated("777"));
 
-    expectOk(await organization.submitWhatsappTemplate(adminCaller, confirmation));
+    expectOk(await organization.editTemplate(adminCaller, confirmation));
 
-    expect(createdAtMeta()).toEqual(["confirmacion_turno_v4"]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ version: 4, metaId: "777" }]);
+    expect(createdAtMeta()).toEqual(["turno_movido_v4"]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ version: 4, metaId: "777" }]);
   });
 
   it("reads every page Meta lists before choosing the version", async () => {
     fakeMeta.templatesPerPage = 2;
     fakeMeta.templatesAtMeta = [
-      "recordatorio_turno_v1",
-      "recordatorio_turno_sin_confirmacion_v1",
-      "recordatorio_turno_sin_confirmacion_v2",
-      "recordatorio_turno_v5",
+      "turno_cancelado_v1",
+      "turno_cancelado_extra_v1",
+      "turno_cancelado_extra_v2",
+      "turno_cancelado_v5",
     ];
     fakeMeta.answerWith(200, metaCreated("888"));
 
     expectOk(
-      await organization.submitWhatsappTemplate(adminCaller, {
-        templateName: "recordatorio_turno",
+      await organization.editTemplate(adminCaller, {
+        templateId: "turno_cancelado",
         body,
+        settings: null,
       }),
     );
 
-    expect(createdAtMeta()).toEqual(["recordatorio_turno_v6"]);
+    expect(createdAtMeta()).toEqual(["turno_cancelado_v6"]);
   });
 
   it("keeps the status Meta answers with when it decides at once", async () => {
     fakeMeta.answerWith(200, metaCreated("333", "APPROVED"));
 
-    expectOk(await organization.submitWhatsappTemplate(adminCaller, confirmation));
+    expectOk(await organization.editTemplate(adminCaller, confirmation));
 
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "approved" }]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ status: "approved" }]);
   });
 
   it("refuses a body that fails the rules check with what to fix, and submits nothing", async () => {
-    const answer = await organization.submitWhatsappTemplate(adminCaller, {
-      templateName: "confirmacion_turno",
+    const answer = await organization.editTemplate(adminCaller, {
+      ...confirmation,
       body: "{{paciente}}, tu turno es el {{Fecha}}",
     });
 
@@ -178,22 +181,22 @@ describe("submitting a template", () => {
       ],
     });
     expect(fakeMeta.requests).toEqual([]);
-    expect(await versionsOf("confirmacion_turno")).toEqual([]);
+    expect(await versionsOf("turno_movido")).toEqual([]);
   });
 
   it("refuses a second submission of a template while Meta still answers the first", async () => {
     fakeMeta.answerWith(200, metaCreated("666"));
     const release = fakeMeta.holdNext();
 
-    const first = organization.submitWhatsappTemplate(adminCaller, confirmation);
+    const first = organization.editTemplate(adminCaller, confirmation);
     await fakeMeta.received(1);
-    const second = await organization.submitWhatsappTemplate(adminCaller, confirmation);
+    const second = await organization.editTemplate(adminCaller, confirmation);
     release();
 
     expect(second).toEqual({ ok: false, reason: "alreadySubmitting" });
     expectOk(await first);
-    expect(createdAtMeta()).toEqual(["confirmacion_turno_v1"]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ version: 1, metaId: "666" }]);
+    expect(createdAtMeta()).toEqual(["turno_movido_v1"]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ version: 1, metaId: "666" }]);
   });
 
   it("answers Meta's refusal with Meta's message, and stores nothing", async () => {
@@ -201,20 +204,20 @@ describe("submitting a template", () => {
       error: { message: "Invalid parameter", code: 100, error_subcode: 2388024 },
     });
 
-    const answer = await organization.submitWhatsappTemplate(adminCaller, confirmation);
+    const answer = await organization.editTemplate(adminCaller, confirmation);
 
     expect(answer).toEqual({
       ok: false,
       reason: "metaRefused",
       metaError: { code: 100, message: "Invalid parameter" },
     });
-    expect(await versionsOf("confirmacion_turno")).toEqual([]);
+    expect(await versionsOf("turno_movido")).toEqual([]);
   });
 
   it("is disabled, and says which setting is missing, without the business account id", async () => {
     delete fakeMeta.settings.WHATSAPP_BUSINESS_ACCOUNT_ID;
 
-    const answer = await organization.submitWhatsappTemplate(adminCaller, confirmation);
+    const answer = await organization.editTemplate(adminCaller, confirmation);
     const listed = expectOk(await organization.whatsappSettings(adminCaller));
 
     expect(answer).toEqual({ ok: false, reason: "missingBusinessAccountId" });
@@ -225,17 +228,16 @@ describe("submitting a template", () => {
   it("records each submission in the audit log, with Meta's id and status", async () => {
     fakeMeta.answerWith(200, metaCreated("444"));
 
-    const submitted = expectOk(
-      await organization.submitWhatsappTemplate(adminCaller, confirmation),
-    );
+    expectOk(await organization.editTemplate(adminCaller, confirmation));
+    const [submitted] = await versionsOf("turno_movido");
 
-    expect(await auditEntriesFor(organization, submitted.template.id)).toMatchObject([
+    expect(await auditEntriesFor(organization, submitted!.id)).toMatchObject([
       {
         action: "create",
         entityType: "whatsappTemplate",
         userId: adminCaller.userId,
         after: expect.objectContaining({
-          name: "confirmacion_turno",
+          templateId: "turno_movido",
           version: 1,
           metaId: "444",
           status: "pending",
@@ -255,7 +257,7 @@ describe("submitting a template", () => {
 
     const answers = await Promise.all(
       callers.flatMap((caller) => [
-        organization.submitWhatsappTemplate(caller, confirmation),
+        organization.editTemplate(caller, confirmation),
         organization.whatsappSettings(caller),
         organization.refreshWhatsappTemplates(caller),
       ]),
@@ -275,14 +277,14 @@ describe("submitting a template", () => {
 describe("a template's status", () => {
   beforeEach(async () => {
     fakeMeta.answerWith(200, metaCreated("555"));
-    expectOk(await organization.submitWhatsappTemplate(adminCaller, confirmation));
+    expectOk(await organization.editTemplate(adminCaller, confirmation));
   });
 
   it("moves to approved on Meta's status event for its id", async () => {
     const stored = expectOk(await organization.storeWhatsappEvents(statusEvent("555", "approved")));
 
     expect(stored.templateStatuses).toEqual([{ metaId: "555", updated: true }]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([
+    expect(await versionsOf("turno_movido")).toMatchObject([
       { status: "approved", rejectionReason: null },
     ]);
   });
@@ -290,7 +292,7 @@ describe("a template's status", () => {
   it("moves to rejected with Meta's reason", async () => {
     await organization.storeWhatsappEvents(statusEvent("555", "rejected", "INVALID_FORMAT"));
 
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([
+    expect(await versionsOf("turno_movido")).toMatchObject([
       { status: "rejected", rejectionReason: "INVALID_FORMAT" },
     ]);
   });
@@ -299,7 +301,7 @@ describe("a template's status", () => {
     const stored = expectOk(await organization.storeWhatsappEvents(statusEvent("999", "approved")));
 
     expect(stored.templateStatuses).toEqual([{ metaId: "999", updated: false }]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "pending" }]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ status: "pending" }]);
   });
 
   it("is read again from Meta for every template on a refresh", async () => {
@@ -321,7 +323,7 @@ describe("a template's status", () => {
         body: null,
       },
     ]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([
+    expect(await versionsOf("turno_movido")).toMatchObject([
       { status: "rejected", rejectionReason: "TAG_CONTENT_MISMATCH" },
     ]);
   });
@@ -337,7 +339,7 @@ describe("a template's status", () => {
     release();
     expectOk(await refresh);
 
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "approved" }]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ status: "approved" }]);
   });
 
   it("keeps a status the webhook changed and changed back while a refresh was reading Meta", async () => {
@@ -351,7 +353,7 @@ describe("a template's status", () => {
     release();
     expectOk(await refresh);
 
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "pending" }]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ status: "pending" }]);
   });
 
   it("keeps a template's status, and reports Meta's refusal, when a refresh cannot read it", async () => {
@@ -360,7 +362,7 @@ describe("a template's status", () => {
     const refreshed = expectOk(await organization.refreshWhatsappTemplates(adminCaller));
 
     expect(refreshed.failures).toEqual([{ code: 100, message: "Unsupported get request" }]);
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ status: "pending" }]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ status: "pending" }]);
   });
 });
 
@@ -370,7 +372,7 @@ describe("a template's versions", () => {
     for (let version = 1; version <= count; version += 1) {
       fakeMeta.answerNextWith(200, metaCreated(`v${version}`));
       expectOk(
-        await organization.submitWhatsappTemplate(adminCaller, {
+        await organization.editTemplate(adminCaller, {
           ...confirmation,
           body: `${body} (${version})`,
         }),
@@ -383,7 +385,7 @@ describe("a template's versions", () => {
     await organization.storeWhatsappEvents(statusEvent("v1", "approved"));
     await organization.storeWhatsappEvents(statusEvent("v2", "rejected", "INVALID_FORMAT"));
 
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([
+    expect(await versionsOf("turno_movido")).toMatchObject([
       { version: 3, body: `${body} (3)`, status: "pending", rejectionReason: null },
       { version: 2, body: `${body} (2)`, status: "rejected", rejectionReason: "INVALID_FORMAT" },
       { version: 1, body: `${body} (1)`, status: "approved", rejectionReason: null },
@@ -402,7 +404,7 @@ describe("a template's versions", () => {
       templateCategories: [{ metaId: "v3", category: "MARKETING" }],
     });
 
-    const versions = await versionsOf("confirmacion_turno");
+    const versions = await versionsOf("turno_movido");
 
     expect(versions.map(({ version, inUse }) => ({ version, inUse }))).toEqual([
       { version: 4, inUse: false },
@@ -415,6 +417,6 @@ describe("a template's versions", () => {
   it("have none in use while none is approved", async () => {
     await submitVersions(1);
 
-    expect(await versionsOf("confirmacion_turno")).toMatchObject([{ inUse: false }]);
+    expect(await versionsOf("turno_movido")).toMatchObject([{ inUse: false }]);
   });
 });

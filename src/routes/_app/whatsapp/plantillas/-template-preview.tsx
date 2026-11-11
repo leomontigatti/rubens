@@ -10,8 +10,8 @@ import {
   fillSample,
   sampleAppointment,
 } from "#/lib/template-filling.ts";
-import { checkTemplateBody } from "#/lib/whatsapp-templates.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
+import { mentionsSendTime } from "#/lib/template-timing.ts";
+import { checkTemplateBody, templateVariables } from "#/lib/whatsapp-templates.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
 import {
@@ -35,9 +35,18 @@ const { patient, start, timeZone } = sampleAppointment;
 
 const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${appointmentDay(start, timeZone)} a las ${appointmentTime(start, timeZone)}.`;
 
-/** The body being written, as WhatsApp shows it, and what Meta's rules would refuse in it. */
-export function TemplatePreview(props: { name: TemplateName; body: string }) {
-  const checked = checkTemplateBody(props.name, props.body);
+/**
+ * The body being written for template `templateId` (`null` for a new one), as
+ * WhatsApp shows it, what Meta's rules would refuse in it, and a warning when
+ * it says when it is sent, which a late message would make wrong.
+ */
+export function TemplatePreview(props: {
+  templateId: string | null;
+  body: string;
+  /** Fills `{{organizacion}}`, as a sent message would. */
+  organizationName: string;
+}) {
+  const checked = checkTemplateBody(templateVariables(props.templateId), props.body);
   return (
     <section aria-labelledby="template-preview" className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
@@ -47,8 +56,17 @@ export function TemplatePreview(props: { name: TemplateName; body: string }) {
         <p className="text-muted-foreground text-sm">{sampleNote}</p>
       </div>
       <WhatsappChat label="Así lo lee el paciente">
-        <WhatsappBubble>{fillSample(props.body) || "…"}</WhatsappBubble>
+        <WhatsappBubble>{fillSample(props.body, props.organizationName) || "…"}</WhatsappBubble>
       </WhatsappChat>
+      {mentionsSendTime(props.body) && (
+        <Alert variant="warning">
+          <AlertTitle>El texto dice cuándo se envía</AlertTitle>
+          <AlertDescription>
+            Si el mensaje sale más tarde, &quot;mañana&quot;, &quot;hoy&quot; o &quot;en 2
+            horas&quot; ya no serían ciertos. Usá {"{{fecha}}"} y {"{{hora}}"}.
+          </AlertDescription>
+        </Alert>
+      )}
       {checked.ok ? (
         <p className="text-muted-foreground flex items-center gap-2 text-sm">
           <CircleCheckIcon className="size-4" aria-hidden />
@@ -87,7 +105,13 @@ function MetaReview() {
 }
 
 /** Each version submitted to Meta side by side, newest first, with Meta's verdict. */
-export function TemplateVersions({ versions }: { versions: TemplateVersion[] }) {
+export function TemplateVersions({
+  versions,
+  organizationName,
+}: {
+  versions: TemplateVersion[];
+  organizationName: string;
+}) {
   if (versions.length === 0) {
     return null;
   }
@@ -114,7 +138,7 @@ export function TemplateVersions({ versions }: { versions: TemplateVersion[] }) 
               </p>
             )}
             <WhatsappChat label={`Versión ${version.version}, como la lee el paciente`}>
-              <WhatsappBubble>{fillSample(version.body)}</WhatsappBubble>
+              <WhatsappBubble>{fillSample(version.body, organizationName)}</WhatsappBubble>
             </WhatsappChat>
           </li>
         ))}

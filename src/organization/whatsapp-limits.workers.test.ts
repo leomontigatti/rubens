@@ -2,7 +2,7 @@ import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { WhatsappNumberEvent, WhatsappTemplateStatusUpdate } from "#/lib/whatsapp-messages.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
+import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 
 import {
   addMember,
@@ -13,6 +13,8 @@ import {
   fakeMeta,
   inStorage,
   setUpBookingWorld,
+  submitTemplate,
+  templateNamed,
 } from "#/organization/organization.test-support.ts";
 import { outboxMessage, whatsappConnection } from "#/organization/whatsapp-schema.ts";
 
@@ -31,13 +33,17 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   };
 });
 
-const bodies: Partial<Record<TemplateName, string>> = {
-  confirmacion_turno:
+type TemplateKey = "confirmation" | "reminder" | "careInstructions" | "turno_cancelado";
+
+const bodies: Record<TemplateKey, string> = {
+  confirmation:
     "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba",
-  recordatorio_turno:
-    "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia? Consultorios Prueba",
-  indicaciones:
-    "Hola {{paciente}}, te dejamos las indicaciones de {{profesional}} para después de tu turno: {{indicaciones}}. Cualquier duda, respondé este mensaje. Consultorios Prueba",
+  reminder:
+    "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé para confirmar que venís.",
+  careInstructions:
+    "Hola {{paciente}}, no comas por 2 horas después de tu turno con {{profesional}}. Consultorios Prueba",
+  turno_cancelado:
+    "Hola {{paciente}}, tuvimos que cancelar tu turno del {{fecha}}. Respondé este mensaje. Consultorios Prueba",
 };
 
 const hours = (count: number) => count * 60 * 60_000;
@@ -45,40 +51,45 @@ const nineOnMonday = at("12:00");
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
+/**
+ * The templates the tests submit: the booking confirmation and a reminder 48
+ * hours before, from the drafts; care instructions sent on the attendance,
+ * one of the organization's own; and an event template.
+ */
+let ids: Record<TemplateKey, string>;
+/** How many versions of each the test submitted, so each version's text differs. */
+let submitted: Partial<Record<TemplateKey, number>>;
 
-/** Submits a version of `templateName` as the admin, Meta answering `status` with `metaId`. */
-async function submit(templateName: TemplateName, status: "APPROVED" | "PENDING", metaId: string) {
-  fakeMeta.answerNextWith(200, { id: metaId, status, category: "UTILITY" });
-  expectOk(
-    await world.organization.submitWhatsappTemplate(adminCaller, {
-      templateName,
-      body: bodies[templateName]!,
-    }),
-  );
-  fakeMeta.requests = [];
+/** Submits a version of template `key` as the admin, Meta answering `status` with `metaId`. */
+async function submit(key: TemplateKey, status: "APPROVED" | "PENDING", metaId: string) {
+  const version = (submitted[key] ?? 0) + 1;
+  submitted[key] = version;
+  const body = version === 1 ? bodies[key] : `${bodies[key]} (${version})`;
+  if (key === "careInstructions" && version === 1) {
+    fakeMeta.answerNextWith(200, { id: metaId, status, category: "UTILITY" });
+    ids.careInstructions = expectOk(
+      await world.organization.createTemplate(adminCaller, {
+        name: "Indicaciones",
+        timing: { when: "attended" },
+        body,
+      }),
+    ).templateId;
+    fakeMeta.requests = [];
+    return;
+  }
+  const timing = key === "reminder" ? ({ when: "before", hours: 48 } as const) : undefined;
+  await submitTemplate(world.organization, ids[key], { status, metaId, body, timing });
 }
 
 /** The medical service's messages: none but those given. */
-async function setMessages(
-  messages: Partial<{
-    bookingConfirmation: boolean;
-    reminders: { hoursBefore: number; asksToConfirm: boolean }[];
-    careInstructions: string | null;
-  }>,
+function setMessages(
+  messages: Partial<{ bookingConfirmation: boolean; reminder: boolean; careInstructions: boolean }>,
 ) {
-  expectOk(
-    await world.organization.updateMedicalService(adminCaller, {
-      medicalServiceId,
-      name: "Consulta",
-      durationMinutes: 30,
-      bookingConfirmation: false,
-      reminders: [],
-      careInstructions: null,
-      followUpHours: null,
-      rescheduleCutoffHours: 24,
-      ...messages,
-    }),
-  );
+  return world.pickTemplates(medicalServiceId, [
+    ...(messages.bookingConfirmation ? [ids.confirmation] : []),
+    ...(messages.reminder ? [ids.reminder] : []),
+    ...(messages.careInstructions ? [ids.careInstructions] : []),
+  ]);
 }
 
 /** Books Martina at 09:00 in Buenos Aires on the first Monday. */
@@ -122,7 +133,7 @@ function outbox() {
   return inStorage(world.organization, (database) =>
     database
       .select({
-        kind: outboxMessage.kind,
+        templateId: outboxMessage.templateId,
         state: outboxMessage.state,
         attempts: outboxMessage.attempts,
         dropReason: outboxMessage.dropReason,
@@ -145,6 +156,15 @@ beforeEach(async () => {
   world = await setUpBookingWorld();
   await world.addSchedule({ practitionerId: world.juan.practitionerId });
   medicalServiceId = (await world.addMedicalService(world.juan.practitionerId)).id;
+  submitted = {};
+  ids = {
+    confirmation: await templateNamed(world.organization, "Confirmación del turno"),
+    reminder: await templateNamed(world.organization, "Recordatorio con confirmación"),
+    careInstructions: "",
+    turno_cancelado: "turno_cancelado",
+  };
+  // As a medical service starts in these tests: sending the booking confirmation.
+  await setMessages({ bookingConfirmation: true });
 });
 
 afterEach(() => {
@@ -153,8 +173,16 @@ afterEach(() => {
 
 describe("a template Meta stops", () => {
   it("notifies every active admin when Meta rejects it, with the template and the messages waiting", async () => {
-    await submit("confirmacion_turno", "PENDING", "900000000000001");
-    await bookMartina();
+    // An event template's message queues on its event whatever Meta said of it.
+    await submit("turno_cancelado", "PENDING", "900000000000001");
+    const appointmentId = await bookMartina();
+    expectOk(
+      await world.organization.cancelAppointment(adminCaller, {
+        appointmentId,
+        cancelledBy: "business",
+        reason: null,
+      }),
+    );
     const otherAdmin = await addMember(world.organization, ["admin"]);
     const deactivated = await addRefusedAdmin(world.organization, "deactivated");
 
@@ -169,7 +197,8 @@ describe("a template Meta stops", () => {
     const expected = [
       expect.objectContaining({
         kind: "templateRejected",
-        templateName: "confirmacion_turno",
+        templateId: "turno_cancelado",
+        templateName: "Turno cancelado",
         templateVersion: 1,
         detail: "INVALID_FORMAT",
         waiting: 1,
@@ -187,20 +216,20 @@ describe("a template Meta stops", () => {
   });
 
   it("notifies once when Meta repeats the same status", async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    await submit("confirmation", "APPROVED", "900000000000001");
     const paused = { metaId: "900000000000001", status: "paused", reason: null } as const;
 
     await templateTurns(paused);
     await templateTurns(paused);
 
     expect(await notificationsOf(adminCaller)).toEqual([
-      expect.objectContaining({ kind: "templatePaused", templateName: "confirmacion_turno" }),
+      expect.objectContaining({ kind: "templatePaused", templateId: ids.confirmation }),
     ]);
   });
 
   it("counts no message waiting when another approved version still goes", async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
-    await submit("confirmacion_turno", "APPROVED", "900000000000002");
+    await submit("confirmation", "APPROVED", "900000000000001");
+    await submit("confirmation", "APPROVED", "900000000000002");
     await bookMartina();
 
     await templateTurns({ metaId: "900000000000002", status: "disabled", reason: null });
@@ -211,20 +240,20 @@ describe("a template Meta stops", () => {
   });
 
   it("warns when a refresh from the settings finds a template Meta paused", async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    await submit("confirmation", "APPROVED", "900000000000001");
     fakeMeta.answerWith(200, { id: "900000000000001", status: "PAUSED" });
 
     expectOk(await world.organization.refreshWhatsappTemplates(adminCaller));
     await templateTurns({ metaId: "900000000000001", status: "paused", reason: null });
 
     expect(await notificationsOf(adminCaller)).toEqual([
-      expect.objectContaining({ kind: "templatePaused", templateName: "confirmacion_turno" }),
+      expect.objectContaining({ kind: "templatePaused", templateId: ids.confirmation }),
     ]);
   });
 
   it("counts no message waiting when the same refresh finds another version approved", async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
-    await submit("confirmacion_turno", "PENDING", "900000000000002");
+    await submit("confirmation", "APPROVED", "900000000000001");
+    await submit("confirmation", "PENDING", "900000000000002");
     await bookMartina();
     fakeMeta.answerNextWith(200, { id: "900000000000001", status: "PAUSED" });
     fakeMeta.answerNextWith(200, { id: "900000000000002", status: "APPROVED" });
@@ -237,7 +266,7 @@ describe("a template Meta stops", () => {
   });
 
   it("holds a template's messages once Meta moves it out of utility, until a utility version is approved", async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    await submit("confirmation", "APPROVED", "900000000000001");
     await bookMartina();
 
     expectOk(
@@ -254,7 +283,7 @@ describe("a template Meta stops", () => {
     expect(await notificationsOf(adminCaller)).toEqual([
       expect.objectContaining({
         kind: "templateRecategorized",
-        templateName: "confirmacion_turno",
+        templateId: ids.confirmation,
         templateVersion: 1,
         detail: "MARKETING",
         waiting: 1,
@@ -265,16 +294,16 @@ describe("a template Meta stops", () => {
       expect.objectContaining({ version: 1, status: "approved", category: "marketing" }),
     ]);
 
-    await submit("confirmacion_turno", "APPROVED", "900000000000002");
+    await submit("confirmation", "APPROVED", "900000000000002");
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentTemplates()).toEqual(["confirmacion_turno_v2"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.confirmation, 2)]);
   });
 });
 
 describe("a number Meta restricts", () => {
   beforeEach(async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    await submit("confirmation", "APPROVED", "900000000000001");
   });
 
   it("holds every due message until the restriction expires, then sends them", async () => {
@@ -289,7 +318,7 @@ describe("a number Meta restricts", () => {
     vi.setSystemTime(until);
     expect(await runDurableObjectAlarm(world.organization)).toBe(true);
 
-    expect(sentTemplates()).toEqual(["confirmacion_turno_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.confirmation, 1)]);
   });
 
   it("warns every admin with how long and how many messages wait", async () => {
@@ -312,12 +341,12 @@ describe("a number Meta restricts", () => {
     await numberTurns({ kind: "unrestricted" });
 
     expect(await runDurableObjectAlarm(world.organization)).toBe(true);
-    expect(sentTemplates()).toEqual(["confirmacion_turno_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.confirmation, 1)]);
   });
 
   it("drops a held reminder for an appointment cancelled meanwhile", async () => {
-    await submit("recordatorio_turno", "APPROVED", "900000000000011");
-    await setMessages({ reminders: [{ hoursBefore: 48, asksToConfirm: true }] });
+    await submit("reminder", "APPROVED", "900000000000011");
+    await setMessages({ reminder: true });
     const appointmentId = await bookMartina();
     await numberTurns({ kind: "restricted", until: null });
     vi.setSystemTime(+nineOnMonday - hours(48));
@@ -336,7 +365,7 @@ describe("a number Meta restricts", () => {
     expect(sentTemplates()).toEqual([]);
     expect(await outbox()).toEqual([
       expect.objectContaining({
-        kind: "reminder",
+        templateId: ids.reminder,
         state: "dropped",
         dropReason: "appointmentChanged",
       }),
@@ -344,8 +373,8 @@ describe("a number Meta restricts", () => {
   });
 
   it("replaces a held reminder for an appointment moved meanwhile with the reminder for its new time", async () => {
-    await submit("recordatorio_turno", "APPROVED", "900000000000011");
-    await setMessages({ reminders: [{ hoursBefore: 48, asksToConfirm: true }] });
+    await submit("reminder", "APPROVED", "900000000000011");
+    await setMessages({ reminder: true });
     const appointmentId = await bookMartina();
     await numberTurns({ kind: "restricted", until: null });
     vi.setSystemTime(+nineOnMonday - hours(48));
@@ -366,7 +395,7 @@ describe("a number Meta restricts", () => {
     vi.setSystemTime(+nextMonday - hours(48));
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentTemplates()).toEqual(["recordatorio_turno_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.reminder, 1)]);
     const sent = fakeMeta.requests.find((request) => request.url.endsWith("/messages"))!;
     expect(JSON.stringify(sent.body)).toContain("lunes 12 de enero");
     expect(await outbox()).toEqual(
@@ -378,8 +407,8 @@ describe("a number Meta restricts", () => {
   });
 
   it("still sends care instructions held weeks while the account was disabled, with no attempt spent", async () => {
-    await submit("indicaciones", "APPROVED", "900000000000021");
-    await setMessages({ careInstructions: "No comer por 2 horas." });
+    await submit("careInstructions", "APPROVED", "900000000000021");
+    await setMessages({ careInstructions: true });
     const appointmentId = await bookMartina();
     await numberTurns({ kind: "disabled" });
     expectOk(
@@ -395,7 +424,7 @@ describe("a number Meta restricts", () => {
     await numberTurns({ kind: "reinstated" });
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentTemplates()).toEqual(["indicaciones_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.careInstructions, 1)]);
   });
 
   it("holds the rest when Meta refuses a send for the number's rate limit, keeping its attempts, and warns the admins", async () => {
@@ -412,7 +441,7 @@ describe("a number Meta restricts", () => {
 
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentTemplates()).toEqual(["confirmacion_turno_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.confirmation, 1)]);
     expect(await outbox()).toEqual([
       expect.objectContaining({ state: "queued", attempts: 0 }),
       expect.objectContaining({ state: "queued", attempts: 0 }),
@@ -438,7 +467,7 @@ describe("a number Meta restricts", () => {
 
 describe("a hold on the number and what changes it", () => {
   beforeEach(async () => {
-    await submit("confirmacion_turno", "APPROVED", "900000000000001");
+    await submit("confirmation", "APPROVED", "900000000000001");
   });
 
   it("ends when the organization connects a number on another account, which sends the held messages", async () => {
@@ -456,7 +485,7 @@ describe("a hold on the number and what changes it", () => {
     expect(expectOk(await world.organization.whatsappSettings(adminCaller)).hold).toBeNull();
     fakeMeta.requests = [];
     await runDurableObjectAlarm(world.organization);
-    expect(sentTemplates()).toEqual(["confirmacion_turno_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(ids.confirmation, 1)]);
   });
 
   it("keeps a hold Meta puts on the new account while its signup is still completing", async () => {

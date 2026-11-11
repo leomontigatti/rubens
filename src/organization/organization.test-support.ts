@@ -4,12 +4,14 @@ import { eq, sql } from "drizzle-orm";
 import type { Role } from "#/lib/access.ts";
 import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 import type { ScheduleInput } from "#/lib/schedules.ts";
+import type { Timing } from "#/lib/template-timing.ts";
 
 import type { AccountMetadata, Accounts, CreateUserResult } from "#/organization/accounts.ts";
 import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
 import { auditLog, member } from "#/organization/schema.ts";
+import { fakeMeta } from "#/organization/graph-api.test-support.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
 
@@ -235,6 +237,33 @@ export async function setUpBookingWorld() {
     return result.appointment;
   }
 
+  /** Makes `templateIds` the templates the medical service `medicalServiceId` sends. */
+  async function pickTemplates(medicalServiceId: string, templateIds: string[]) {
+    let service;
+    for (const { practitionerId } of [juan, lucia]) {
+      const listed = await organization.listMedicalServices(adminCaller, {
+        practitionerId,
+        includeInactive: true,
+      });
+      service ??= listed.ok
+        ? listed.medicalServices.find((one) => one.id === medicalServiceId)
+        : undefined;
+    }
+    if (!service) {
+      throw new Error(`no medical service ${medicalServiceId}`);
+    }
+    const result = await organization.updateMedicalService(adminCaller, {
+      medicalServiceId,
+      name: service.name,
+      durationMinutes: service.durationMinutes,
+      rescheduleCutoffHours: service.rescheduleCutoffHours,
+      templateIds,
+    });
+    if (!result.ok) {
+      throw new Error(`updateMedicalService refused: ${result.reason}`);
+    }
+  }
+
   /** The appointment as the object shows it to `caller`, the first admin unless given; throws on a refusal. */
   async function appointmentOf(appointmentId: string, caller = adminCaller) {
     const result = await organization.getAppointment(caller, { appointmentId });
@@ -254,6 +283,7 @@ export async function setUpBookingWorld() {
     receptionist,
     addSchedule,
     addMedicalService,
+    pickTemplates,
     addPatient,
     book,
     overbook,
@@ -277,6 +307,47 @@ export function inObject<T>(
 /** Runs `work` on the object's storage directly: for what no method reads or writes yet. */
 export function inStorage<T>(organization: OrganizationStub, work: (database: Database) => T) {
   return runInDurableObject(organization, (_instance, state) => work(openDatabase(state.storage)));
+}
+
+/** The template the WhatsApp settings list by `match`, as the admin. */
+async function listedTemplate(
+  organization: OrganizationStub,
+  match: (one: { id: string; name: string }) => boolean,
+) {
+  const settings = await organization.whatsappSettings(adminCaller);
+  const found = settings.ok ? settings.templates.find(match) : undefined;
+  if (!found) {
+    throw new Error("no such template");
+  }
+  return found;
+}
+
+/** The id of the template named `name`, such as one of the drafts every organization starts with. */
+export async function templateNamed(organization: OrganizationStub, name: string) {
+  return (await listedTemplate(organization, (one) => one.name === name)).id;
+}
+
+/**
+ * Submits `body` as the admin, as a new version of template `templateId`
+ * (its draft when not given), keeping its name and timing unless
+ * `timing` is given, and has Meta answer `status` at once with `metaId`.
+ */
+export async function submitTemplate(
+  organization: OrganizationStub,
+  templateId: string,
+  options: { status: "APPROVED" | "PENDING"; metaId: string; body?: string; timing?: Timing },
+) {
+  const listed = await listedTemplate(organization, (one) => one.id === templateId);
+  fakeMeta.answerNextWith(200, { id: options.metaId, status: options.status, category: "UTILITY" });
+  const result = await organization.editTemplate(adminCaller, {
+    templateId,
+    body: options.body ?? listed.draft!,
+    settings: listed.event ? null : { name: listed.name, timing: options.timing ?? listed.timing! },
+  });
+  if (!result.ok) {
+    throw new Error(`editTemplate refused: ${result.reason}`);
+  }
+  fakeMeta.requests = [];
 }
 
 /** The audit entries about `entityId`, oldest first, as the log keeps them. */

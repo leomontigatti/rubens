@@ -64,7 +64,9 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
 - **A schema change**: edit `src/organization/schema.ts` (or `whatsapp-schema.ts` for a WhatsApp table), run `pnpm organization:generate`,
   and review the generated SQL. Migrations on `main` are never edited.
 - **A background job**: a row in the organization's object and its one alarm (ADR-0008):
-  `src/organization/outbox.ts` queues messages to patients and sends them when due, and
+  `src/organization/outbox.ts` sends the messages to patients when due
+  (`template-messages.ts` queues and rebuilds those of the organization's own templates,
+  each at its timing; `templates.ts` is where an admin creates, edits and deletes them), and
   `src/organization/assistant.ts` runs the patient assistant's turn once a conversation's
   wait is over (`turn-replies.ts` sends its reply, after the clinical check; `turn-retries.ts`
   retries a turn the model could not read, then hands it off; `assistant-usage.ts` records

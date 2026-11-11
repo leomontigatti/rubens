@@ -8,10 +8,11 @@ import {
   fakeMeta,
   inStorage,
   setUpBookingWorld,
+  submitTemplate,
+  templateNamed,
 } from "#/organization/organization.test-support.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
+import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 
 // The messages for an appointment the organization changed: moved or
 // cancelled by staff, or sent to the "to reschedule" list by time off, a
@@ -242,12 +243,9 @@ describe('telling patients their appointment went to the "to reschedule" list', 
   });
 });
 
-/** Submits `templateName` with its draft, signed, and has Meta approve it at once. */
-async function approveTemplate(templateName: TemplateName, metaId: string) {
-  const body = whatsappTemplates[templateName].draft.replace("[firma]", "Consultorios Prueba");
-  fakeMeta.answerNextWith(200, { id: metaId, status: "APPROVED", category: "UTILITY" });
-  expectOk(await world.organization.submitWhatsappTemplate(adminCaller, { templateName, body }));
-  fakeMeta.requests = [];
+/** Submits template `templateId` with its draft, signed, and has Meta approve it at once. */
+function approveTemplate(templateId: string, metaId: string) {
+  return submitTemplate(world.organization, templateId, { status: "APPROVED", metaId });
 }
 
 /** The date and time Meta was sent to fill in the one message the object sent. */
@@ -334,20 +332,16 @@ describe("sending the message for the latest change", () => {
 describe('reminders for an appointment on the "to reschedule" list', () => {
   const nineOnMonday = at("12:00");
 
+  let reminderId: string;
+
   beforeEach(async () => {
-    expectOk(
-      await world.organization.updateMedicalService(adminCaller, {
-        medicalServiceId,
-        name: "Consulta",
-        durationMinutes: 30,
-        bookingConfirmation: false,
-        reminders: [{ hoursBefore: 48, asksToConfirm: true }],
-        careInstructions: null,
-        followUpHours: null,
-        rescheduleCutoffHours: 24,
-      }),
-    );
-    await approveTemplate("recordatorio_turno", "900000000000024");
+    reminderId = await templateNamed(world.organization, "Recordatorio con confirmación");
+    await submitTemplate(world.organization, reminderId, {
+      status: "APPROVED",
+      metaId: "900000000000024",
+      timing: { when: "before", hours: 48 },
+    });
+    await world.pickTemplates(medicalServiceId, [reminderId]);
     fakeMeta.answerWith(200, {
       messaging_product: "whatsapp",
       contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
@@ -388,6 +382,6 @@ describe('reminders for an appointment on the "to reschedule" list', () => {
 
     await atReminderTime();
 
-    expect(sentTemplates()).toEqual(["recordatorio_turno_v1"]);
+    expect(sentTemplates()).toEqual([metaTemplateName(reminderId, 1)]);
   });
 });

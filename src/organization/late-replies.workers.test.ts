@@ -2,7 +2,6 @@ import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
 
 import {
   addRefusedAdmin,
@@ -15,6 +14,7 @@ import {
   patientWrites,
   scriptedModel,
   setUpBookingWorld,
+  submitTemplate,
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
 
@@ -79,19 +79,11 @@ async function notificationsOf(caller: Caller) {
 }
 
 /** Submits `reabrir_conversacion` with its draft, signed, and has Meta approve it at once. */
-async function approveReopen() {
-  const body = whatsappTemplates.reabrir_conversacion.draft.replace(
-    "[firma]",
-    "Consultorios Prueba",
-  );
-  fakeMeta.answerNextWith(200, { id: "900000000000031", status: "APPROVED", category: "UTILITY" });
-  expectOk(
-    await world.organization.submitWhatsappTemplate(adminCaller, {
-      templateName: "reabrir_conversacion",
-      body,
-    }),
-  );
-  fakeMeta.requests = [];
+function approveReopen() {
+  return submitTemplate(world.organization, "reabrir_conversacion", {
+    status: "APPROVED",
+    metaId: "900000000000031",
+  });
 }
 
 /** Meta reports the reopen template moved to `status`. */
@@ -193,7 +185,7 @@ afterEach(() => {
 });
 
 describe("a person's reply after the window closed", () => {
-  it("is held, and the patient gets the reopen template with only their name in it", async () => {
+  it("is held, and the patient gets the reopen template with only their name and the organization's in it", async () => {
     await handedOffThenClosed();
 
     expect(expectOk(await replyAs(world.receptionist))).toEqual({ ok: true, held: true });
@@ -204,7 +196,10 @@ describe("a person's reply after the window closed", () => {
       {
         to: martinaTo,
         name: "reabrir_conversacion_v1",
-        parameters: [["paciente", "Martina"]],
+        parameters: [
+          ["paciente", "Martina"],
+          ["organizacion", "Consultorios Prueba"],
+        ],
       },
     ]);
     expect((await read()).lateReplies).toEqual([
@@ -230,7 +225,7 @@ describe("a person's reply after the window closed", () => {
     expect((await read(world.receptionist)).queuedReopen).toEqual({
       id: expect.any(String),
       queuedAt: Date.now(),
-      text: "Hola Martina, tenemos una respuesta para vos. Respondé este mensaje para verla. Consultorios Prueba",
+      text: "Hola Martina, te escribimos de Consultorios Prueba: tenemos una respuesta para vos. Respondé este mensaje para verla.",
     });
 
     await runDurableObjectAlarm(world.organization);

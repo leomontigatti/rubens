@@ -14,7 +14,6 @@ import { communicationRules } from "#/organization/whatsapp-schema.ts";
 
 export interface CommunicationRules {
   formOfAddress: FormOfAddress;
-  signOff: string;
   tone: string;
   /** E.164, which the emergency reply gives; empty for none. */
   phone: string;
@@ -25,7 +24,6 @@ export interface CommunicationRules {
 /** What the assistant writes under before any admin saved the rules. */
 const startingRules: CommunicationRules = {
   formOfAddress: "vos",
-  signOff: "",
   tone: "",
   phone: "",
   version: 0,
@@ -36,7 +34,6 @@ export function currentCommunicationRules(database: Writer): CommunicationRules 
   const row = database
     .select({
       formOfAddress: communicationRules.formOfAddress,
-      signOff: communicationRules.signOff,
       tone: communicationRules.tone,
       phone: communicationRules.phone,
       version: communicationRules.version,

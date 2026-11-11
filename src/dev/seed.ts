@@ -54,11 +54,20 @@ export async function seedDevOrganization(
   if (!practitioner) {
     throw new Error("dev seed: no practitioner to give a medical service");
   }
+  // The medical service sends every draft the migration gave the organization.
+  const { templates } = accepted(
+    "listMedicalServices",
+    await organization.listMedicalServices(admin, {
+      practitionerId: practitioner.id,
+      includeInactive: false,
+    }),
+  );
   accepted(
     "createMedicalService",
     await organization.createMedicalService(admin, {
       ...devMedicalService,
       practitionerId: practitioner.id,
+      templateIds: templates.map((one) => one.id),
     }),
   );
   for (const patient of devPatients) {

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   fillSample,
   fillTemplate,
-  flattenCareInstructions,
   sampleAppointment,
   templateValues,
 } from "#/lib/template-filling.ts";
@@ -17,19 +16,19 @@ const appointment: TemplateAppointment = {
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 100",
-  careInstructions: null,
+  organizationName: "Consultorios Prueba",
 };
 
 describe("an appointment's template values", () => {
-  it("names the patient, the practitioner, the day, the time in the office's zone and the office", () => {
+  it("names the patient, the organization, the practitioner, the day, the time in the office's zone and the office", () => {
     expect(templateValues(appointment)).toEqual({
       paciente: "Martina",
+      organizacion: "Consultorios Prueba",
       profesional: "Dr. Juan Gómez",
       fecha: "lunes 5 de enero",
       hora: "09:05",
       sede: "Sede Centro",
       direccion: "Av. Colón 100",
-      indicaciones: "",
     });
   });
 
@@ -68,37 +67,45 @@ describe("filling a template", () => {
     const body =
       "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
 
-    expect(fillTemplate(body, templateValues(sampleAppointment)).text).toBe(
+    expect(
+      fillTemplate(
+        body,
+        templateValues({ ...sampleAppointment, organizationName: "Consultorios Prueba" }),
+      ).text,
+    ).toBe(
       "Tu turno con la Dra. Sofía Méndez es el jueves 12 de noviembre a las 10:30 en Sede Centro (Av. Colón 1234, Córdoba).",
     );
   });
 });
 
 describe("the sample appointment", () => {
+  it("names the organization the preview is of", () => {
+    expect(fillSample("Te escribimos de {{organizacion}}.", "Clínica Sur")).toBe(
+      "Te escribimos de Clínica Sur.",
+    );
+  });
+
   it("gives every variable a value", () => {
-    const values = Object.entries(templateValues(sampleAppointment));
+    const values = Object.entries(
+      templateValues({ ...sampleAppointment, organizationName: "Consultorios Prueba" }),
+    );
 
     expect(values.filter(([, value]) => !value)).toEqual([]);
   });
 
   it("fills a body as the template preview shows it, the time read in the office's zone", () => {
     // 13:30 UTC is 10:30 in Buenos Aires.
-    expect(fillSample("  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n")).toBe(
-      "Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30.",
-    );
+    expect(
+      fillSample(
+        "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n",
+        "Consultorios Prueba",
+      ),
+    ).toBe("Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30.");
   });
 
   it("leaves what is not a variable of any template as written", () => {
-    expect(fillSample("Hola {{nombre}}, en {{sede}}.")).toBe("Hola {{nombre}}, en Sede Centro.");
-  });
-});
-
-describe("flattening care instructions", () => {
-  it("joins lines with `; ` and collapses runs of spaces and tabs, so Meta takes the value", () => {
-    expect(
-      flattenCareInstructions(
-        "No comer  2 horas antes.\n\n\tTraer estudios.\r\nVenir\u00a0 acompañado\u2028Sin perfume",
-      ),
-    ).toBe("No comer 2 horas antes.; Traer estudios.; Venir acompañado; Sin perfume");
+    expect(fillSample("Hola {{nombre}}, en {{sede}}.", "Consultorios Prueba")).toBe(
+      "Hola {{nombre}}, en Sede Centro.",
+    );
   });
 });

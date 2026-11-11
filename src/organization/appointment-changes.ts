@@ -36,7 +36,7 @@ import { dropChangeMessages, queueChangeMessage } from "#/organization/change-me
 import { asRange, meets } from "#/organization/availability.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { queueReminders, requeueOnStatus } from "#/organization/outbox.ts";
+import { requeueBefore, requeueOnStatus } from "#/organization/template-messages.ts";
 import { findPatient } from "#/organization/patients.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import { appointment, office, room } from "#/organization/schema.ts";
@@ -296,7 +296,7 @@ export function rescheduleAppointment(
     }
     const values = { startsAt: +span.start, endsAt: +span.end, roomId: where.roomId, overbooking };
     tx.update(appointment).set(values).where(eq(appointment.id, placed.id)).run();
-    queueReminders(tx, placed.id);
+    requeueBefore(tx, placed.id);
     if (byPatient) {
       dropChangeMessages(tx, placed.id);
     } else if (

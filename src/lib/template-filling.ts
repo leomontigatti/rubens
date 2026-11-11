@@ -7,12 +7,12 @@
 /** Each variable underthing fills, in the doc's order. */
 const templateVariableNames = [
   "paciente",
+  "organizacion",
   "profesional",
   "fecha",
   "hora",
   "sede",
   "direccion",
-  "indicaciones",
 ] as const;
 
 export type TemplateVariable = (typeof templateVariableNames)[number];
@@ -27,12 +27,12 @@ export interface TemplateAppointment {
   timeZone: string;
   officeName: string;
   officeAddress: string;
-  /** The medical service's care instructions, when it has them. */
-  careInstructions: string | null;
+  /** The organization's name, which the text names instead of a sign-off. */
+  organizationName: string;
 }
 
 /** The appointment the template preview and Meta's examples are filled from. */
-export const sampleAppointment: TemplateAppointment = {
+export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = {
   patient: { firstName: "Lucía", chosenName: null },
   practitionerName: "la Dra. Sofía Méndez",
   // A Thursday, at 10:30 in Buenos Aires.
@@ -40,7 +40,6 @@ export const sampleAppointment: TemplateAppointment = {
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 1234, Córdoba",
-  careInstructions: "evitá el sol directo por 48 horas",
 };
 
 /** The day as the templates write it, such as `jueves 12 de noviembre`. */
@@ -71,12 +70,12 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
   const { patient, start, timeZone } = appointment;
   return {
     paciente: patient.chosenName ?? patient.firstName,
+    organizacion: appointment.organizationName,
     profesional: appointment.practitionerName,
     fecha: appointmentDay(start, timeZone),
     hora: appointmentTime(start, timeZone),
     sede: appointment.officeName,
     direccion: appointment.officeAddress,
-    indicaciones: appointment.careInstructions ?? "",
   };
 }
 
@@ -114,20 +113,10 @@ export function fillTemplate(body: string, values: Partial<Record<TemplateVariab
   };
 }
 
-/** `body` as the template preview shows it: trimmed, as it is submitted, and filled from `sampleAppointment`. */
-export function fillSample(body: string) {
-  return fillTemplate(body.trim(), templateValues(sampleAppointment)).text;
-}
-
 /**
- * Care instructions as they go in `{{indicaciones}}` (decided in #162): Meta
- * refuses a value with a line break, a tab or a run of spaces, so each line
- * break is joined as `; ` and each run of other whitespace becomes one space.
+ * `body` as the template preview shows it: trimmed, as it is submitted, and
+ * filled from `sampleAppointment` and the name of the organization `organizationName`.
  */
-export function flattenCareInstructions(text: string) {
-  return text
-    .split(/[\n\r\v\f\u2028\u2029]/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .join("; ");
+export function fillSample(body: string, organizationName: string) {
+  return fillTemplate(body.trim(), templateValues({ ...sampleAppointment, organizationName })).text;
 }

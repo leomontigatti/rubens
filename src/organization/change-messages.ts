@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 
-import { changeKinds } from "#/lib/outbox.ts";
+import { changeKinds, eventKindTemplates } from "#/lib/outbox.ts";
 
 import type { Writer } from "#/organization/database.ts";
 import { appointment, patient } from "#/organization/schema.ts";
@@ -54,7 +54,9 @@ export function queueChangeMessage(tx: Writer, appointmentId: string, kind: Chan
   if (!changed?.whatsappConsent) {
     return;
   }
-  tx.insert(outboxMessage).values({ kind, appointmentId, dueAt: Date.now() }).run();
+  tx.insert(outboxMessage)
+    .values({ kind, templateId: eventKindTemplates[kind], appointmentId, dueAt: Date.now() })
+    .run();
 }
 
 /**

@@ -38,7 +38,8 @@ import {
 } from "#/organization/voice-notes.ts";
 import { deliverReply, maySend } from "#/organization/turn-replies.ts";
 import type { Settled } from "#/organization/turn-replies.ts";
-import { office, organization, patient } from "#/organization/schema.ts";
+import { organizationName } from "#/organization/members.ts";
+import { office, patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { isHeld, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 
@@ -275,7 +276,7 @@ function asTurnMessages(read: Read): TurnMessage[] {
 
 /** The organization's name, and the zone its first office reads time in. */
 function promptSetting(database: Database) {
-  const { name } = database.select({ name: organization.name }).from(organization).get()!;
+  const name = organizationName(database);
   const first = database
     .select({ timeZone: office.timeZone })
     .from(office)

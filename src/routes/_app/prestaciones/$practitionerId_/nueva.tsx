@@ -17,10 +17,7 @@ export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/nueva"
 const newMedicalService: MedicalServiceFields = {
   name: "",
   durationMinutes: 30,
-  bookingConfirmation: true,
-  reminders: [],
-  careInstructions: null,
-  followUpHours: null,
+  templateIds: [],
   rescheduleCutoffHours: 24,
 };
 
@@ -39,7 +36,7 @@ function NewMedicalService() {
       title="Nueva prestación"
       description={practitioner.displayName}
       initial={newMedicalService}
-      careInstructionsMaxLength={result.careInstructionsMaxLength}
+      templates={result.templates}
       submitLabel="Crear"
       creates
       onSubmit={(fields) =>

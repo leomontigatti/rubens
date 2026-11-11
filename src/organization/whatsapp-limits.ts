@@ -1,11 +1,8 @@
-import { and, count, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, count, eq, isNull, lt } from "drizzle-orm";
 
-import { outboxTemplates } from "#/lib/outbox.ts";
-import type { OutboxKind } from "#/lib/outbox.ts";
 import { isLowerLimit } from "#/lib/whatsapp.ts";
 import type { NumberHoldReason } from "#/lib/whatsapp.ts";
 import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError } from "#/organization/graph-api.ts";
@@ -47,17 +44,11 @@ function lift(tx: Writer, reason: NumberHoldReason) {
 }
 
 /**
- * How many queued messages a limit holds: those sent as `template`, or, for
- * the number, those due before its hold ends (`until`, every one while it
- * lasts until Meta lifts it).
+ * How many queued messages a limit holds: those sent as template
+ * `templateId`, or, for the number, those due before its hold ends (`until`,
+ * every one while it lasts until Meta lifts it).
  */
-export function waitingCount(
-  tx: Writer,
-  held: { template: TemplateName } | { until: number | null },
-) {
-  const kinds = (Object.keys(outboxTemplates) as OutboxKind[]).filter(
-    (kind) => !("template" in held) || outboxTemplates[kind] === held.template,
-  );
+export function waitingCount(tx: Writer, held: { templateId: string } | { until: number | null }) {
   const until = "until" in held ? held.until : null;
   const counted = tx
     .select({ count: count() })
@@ -65,7 +56,7 @@ export function waitingCount(
     .where(
       and(
         eq(outboxMessage.state, "queued"),
-        inArray(outboxMessage.kind, kinds),
+        "templateId" in held ? eq(outboxMessage.templateId, held.templateId) : undefined,
         until === null ? undefined : lt(outboxMessage.dueAt, until),
       ),
     )

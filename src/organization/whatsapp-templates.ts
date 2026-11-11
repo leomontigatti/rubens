@@ -6,48 +6,41 @@ import type {
   WhatsappTemplateStatusUpdate,
 } from "#/lib/whatsapp-messages.ts";
 import {
-  checkTemplateBody,
   metaTemplateName,
   templateExamples,
   templateLanguage,
   templateCategoryOf,
-  templateNames,
   templateStatusOf,
-  templateSubmissionSchema,
   versionOf,
 } from "#/lib/whatsapp-templates.ts";
-import type {
-  TemplateCategory,
-  TemplateName,
-  TemplateStatus,
-  TemplateSubmission,
-} from "#/lib/whatsapp-templates.ts";
+import type { TemplateCategory, TemplateStatus } from "#/lib/whatsapp-templates.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError, WhatsappCloud } from "#/organization/graph-api.ts";
+import { organizationName } from "#/organization/members.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notifyAdmins } from "#/organization/notifications.ts";
+import { rebuildTemplate } from "#/organization/template-messages.ts";
 import { waitingCount } from "#/organization/whatsapp-limits.ts";
-import { whatsappTemplate } from "#/organization/whatsapp-schema.ts";
+import { template, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 
-// The organization's WhatsApp templates (#154): an admin writes a body for a
-// template of the set and submits it to Meta as a new version, and Meta's
-// verdict arrives by the webhook or by a refresh from the settings. Until
-// Embedded Signup (#159) they live on the Worker's configured account. A
-// version Meta stops, by either way, warns every admin (`whatsapp-limits.ts`
-// counts what waits). Who may call each is the object's concern: an admin.
-
-const invalidInput = { ok: false, reason: "invalidInput" } as const;
+// The versions of the organization's WhatsApp templates (#154): a checked body
+// goes to Meta as a template's new version (`templates.ts` decides when), and
+// Meta's verdict arrives by the webhook or by a refresh from the settings. A
+// version Meta approves rebuilds its template's messages still ahead
+// (`template-messages.ts`); one Meta stops, by either way, warns every admin
+// (`whatsapp-limits.ts` counts what waits). Who may call each is the object's
+// concern: an admin.
 
 /**
  * The templates each object is submitting to Meta right now. The version is
  * chosen before Meta's call and stored after it, and other events run during
  * that `await`, so a second submission of the same template waits its turn.
  */
-const submittingByObject = new WeakMap<Database, Set<TemplateName>>();
+const submittingByObject = new WeakMap<Database, Set<string>>();
 
-function submittingIn(database: Database) {
+export function submittingIn(database: Database) {
   let submitting = submittingByObject.get(database);
   if (!submitting) {
     submitting = new Set();
@@ -58,7 +51,7 @@ function submittingIn(database: Database) {
 
 const listedColumns = {
   id: whatsappTemplate.id,
-  name: whatsappTemplate.name,
+  templateId: whatsappTemplate.templateId,
   version: whatsappTemplate.version,
   body: whatsappTemplate.body,
   metaId: whatsappTemplate.metaId,
@@ -69,24 +62,24 @@ const listedColumns = {
 };
 
 /**
- * Every template of the set, in the doc's order, each with its submitted
- * versions newest first, the one in use marked (`approvedVersion`'s); and the
- * setting that keeps templates from being submitted, if any.
+ * Every submitted version of the organization's templates, by template, each
+ * newest first with the one in use marked (`approvedVersion`'s).
  */
-export function listWhatsappTemplates(database: Database, cloud: WhatsappCloud) {
+export function versionsByTemplate(database: Database) {
   const rows = database
     .select(listedColumns)
     .from(whatsappTemplate)
     .orderBy(desc(whatsappTemplate.version))
     .all();
-  return {
-    missing: cloud.missingTemplateSetting(),
-    templates: templateNames.map((name) => {
-      const versions = rows.filter((row) => row.name === name);
-      const inUse = versions.find((row) => row.status === "approved" && row.category === "utility");
-      return { name, versions: versions.map((row) => ({ ...row, inUse: row === inUse })) };
-    }),
-  };
+  const byTemplate = new Map<string, ((typeof rows)[number] & { inUse: boolean })[]>();
+  for (const row of rows) {
+    const versions = byTemplate.get(row.templateId) ?? [];
+    const inUse =
+      row.status === "approved" && row.category === "utility" && !versions.some((one) => one.inUse);
+    versions.push({ ...row, inUse });
+    byTemplate.set(row.templateId, versions);
+  }
+  return byTemplate;
 }
 
 /**
@@ -94,80 +87,68 @@ export function listWhatsappTemplates(database: Database, cloud: WhatsappCloud) 
  * this object never stored (a submission whose answer was lost, another
  * Worker on the same account), and refuses a name it already has.
  */
-function nextVersion(database: Database, name: TemplateName, namesAtMeta: string[]) {
+function nextVersion(database: Database, templateId: string, namesAtMeta: string[]) {
   const stored = database
     .select({ version: max(whatsappTemplate.version) })
     .from(whatsappTemplate)
-    .where(eq(whatsappTemplate.name, name))
+    .where(eq(whatsappTemplate.templateId, templateId))
     .get();
-  const atMeta = namesAtMeta.map((metaName) => versionOf(name, metaName) ?? 0);
+  const atMeta = namesAtMeta.map((metaName) => versionOf(templateId, metaName) ?? 0);
   return Math.max(stored?.version ?? 0, ...atMeta) + 1;
 }
 
-/**
- * Checks `input`'s body against Meta's rules and submits it to Meta as the
- * template's next version, as `acting`. What Meta accepts is stored with
- * Meta's id and verdict, and audited; a failing check or Meta's refusal
- * stores nothing.
- */
-export async function submitWhatsappTemplate(
-  database: Database,
-  cloud: WhatsappCloud,
-  acting: Acting,
-  input: TemplateSubmission,
-) {
-  const parsed = templateSubmissionSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidInput;
-  }
-  const { templateName: name } = parsed.data;
-  const checked = checkTemplateBody(name, parsed.data.body);
-  if (!checked.ok) {
-    return { ok: false, reason: "invalidTemplate", problems: checked.problems } as const;
-  }
-  const missing = cloud.missingTemplateSetting();
-  if (missing) {
-    return { ok: false, reason: missing } as const;
-  }
-  const submitting = submittingIn(database);
-  if (submitting.has(name)) {
-    return { ok: false, reason: "alreadySubmitting" } as const;
-  }
-  submitting.add(name);
-  try {
-    return await createVersion(database, cloud, acting, name, checked.body);
-  } finally {
-    submitting.delete(name);
-  }
+/** The draft template `templateId` started from, as the text its first version replaces; `null` for none. */
+function draftOf(tx: Writer, templateId: string) {
+  const draft = tx
+    .select({ draft: template.draft })
+    .from(template)
+    .where(eq(template.id, templateId))
+    .get()?.draft;
+  return draft ? { version: 0, body: draft } : null;
 }
 
-/** Submits `body` to Meta as template `name`'s next version, and stores what Meta accepts. */
-async function createVersion(
+/**
+ * Submits `body`, already checked, to Meta as template `templateId`'s next
+ * version. What Meta accepts is written by `store`, in the transaction that
+ * stores the version and its audit entry; Meta's refusal stores nothing. The
+ * caller holds the template in `submittingIn` meanwhile.
+ */
+export async function submitVersion(
   database: Database,
   cloud: WhatsappCloud,
   acting: Acting,
-  name: TemplateName,
-  body: string,
+  submission: { templateId: string; body: string },
+  store: (tx: Writer) => void,
 ) {
+  const { templateId, body } = submission;
   const atMeta = await cloud.templateNamesAtMeta();
   if (!atMeta.ok) {
     return atMeta;
   }
-  const version = nextVersion(database, name, atMeta.names);
+  const version = nextVersion(database, templateId, atMeta.names);
   const created = await cloud.createTemplate({
-    name: metaTemplateName(name, version),
+    name: metaTemplateName(templateId, version),
     languageCode: templateLanguage,
     body,
-    examples: templateExamples(body),
+    examples: templateExamples(body, organizationName(database)),
   });
   if (!created.ok) {
     return created;
   }
-  const template = database.transaction((tx) => {
+  database.transaction((tx) => {
+    store(tx);
+    // The text it replaces, for the audit entry: the latest version before it, else the draft.
+    const previous =
+      tx
+        .select({ version: whatsappTemplate.version, body: whatsappTemplate.body })
+        .from(whatsappTemplate)
+        .where(eq(whatsappTemplate.templateId, templateId))
+        .orderBy(desc(whatsappTemplate.version))
+        .get() ?? draftOf(tx, templateId);
     const row = tx
       .insert(whatsappTemplate)
       .values({
-        name,
+        templateId,
         version,
         language: templateLanguage,
         body,
@@ -182,9 +163,9 @@ async function createVersion(
       entityType: "whatsappTemplate",
       entityId: row.id,
       patientId: null,
-      before: null,
+      before: previous ?? null,
       after: {
-        name,
+        templateId,
         version,
         language: templateLanguage,
         body: row.body,
@@ -192,17 +173,19 @@ async function createVersion(
         status: row.status,
       },
     });
-    return row;
+    if (row.status === "approved") {
+      rebuildTemplate(tx, templateId);
+    }
   });
-  return { ok: true, template } as const;
+  return { ok: true } as const;
 }
 
 /**
- * The latest approved utility version of template `name`, the one that goes;
+ * The latest approved utility version of template `templateId`, the one that goes;
  * `null` while none is. A version Meta moved to another category waits, like
  * one paused (docs/domain/messages.md § When Meta limits the number).
  */
-export function approvedVersion(database: Writer, name: TemplateName) {
+export function approvedVersion(database: Writer, templateId: string) {
   return (
     database
       .select({
@@ -213,7 +196,7 @@ export function approvedVersion(database: Writer, name: TemplateName) {
       .from(whatsappTemplate)
       .where(
         and(
-          eq(whatsappTemplate.name, name),
+          eq(whatsappTemplate.templateId, templateId),
           eq(whatsappTemplate.status, "approved"),
           eq(whatsappTemplate.category, "utility"),
         ),
@@ -232,11 +215,25 @@ function statusColumns({ status, reason }: Omit<WhatsappTemplateStatusUpdate, "m
   };
 }
 
+/**
+ * Rebuilds the messages still ahead of a template whose version Meta just
+ * approved: its first approval is what lets them queue (`template-messages.ts`).
+ */
+function rebuildOnApproval(
+  tx: Writer,
+  changed: { templateId: string; status: TemplateStatus },
+  status: TemplateStatus,
+) {
+  if (status === "approved" && changed.status !== "approved") {
+    rebuildTemplate(tx, changed.templateId);
+  }
+}
+
 /** The template version with Meta's id `metaId`, as a change to it reports it. */
 function versionWithMetaId(tx: Writer, metaId: string) {
   return tx
     .select({
-      name: whatsappTemplate.name,
+      templateId: whatsappTemplate.templateId,
       version: whatsappTemplate.version,
       status: whatsappTemplate.status,
       category: whatsappTemplate.category,
@@ -259,6 +256,7 @@ export function storeTemplateStatus(tx: Writer, update: WhatsappTemplateStatusUp
     .set(statusColumns(update))
     .where(eq(whatsappTemplate.metaId, update.metaId))
     .run();
+  rebuildOnApproval(tx, before, update.status);
   return { metaId: update.metaId, updated: true, changed: before };
 }
 
@@ -294,7 +292,7 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
     .select({
       metaId: whatsappTemplate.metaId,
       revision: whatsappTemplate.statusRevision,
-      name: whatsappTemplate.name,
+      templateId: whatsappTemplate.templateId,
       version: whatsappTemplate.version,
       status: whatsappTemplate.status,
     })
@@ -333,6 +331,7 @@ export async function refreshWhatsappTemplates(database: Database, cloud: Whatsa
         .get();
       if (changed) {
         written.push({ row, update });
+        rebuildOnApproval(tx, row, status);
       }
     }
     // Once every version is written: what waits depends on the others' verdicts.
@@ -356,7 +355,7 @@ const stoppedKinds: Partial<Record<TemplateStatus, NotificationKind>> = {
  */
 export function warnOfStoppedTemplate(
   tx: Writer,
-  changed: { name: TemplateName; version: number; status: TemplateStatus },
+  changed: { templateId: string; version: number; status: TemplateStatus },
   update: { status: TemplateStatus; reason: string | null },
 ) {
   const kind = stoppedKinds[update.status];
@@ -365,10 +364,12 @@ export function warnOfStoppedTemplate(
   }
   notifyAdmins(tx, {
     kind,
-    templateName: changed.name,
+    templateId: changed.templateId,
     templateVersion: changed.version,
     detail: update.reason,
-    waiting: approvedVersion(tx, changed.name) ? 0 : waitingCount(tx, { template: changed.name }),
+    waiting: approvedVersion(tx, changed.templateId)
+      ? 0
+      : waitingCount(tx, { templateId: changed.templateId }),
   });
 }
 
@@ -376,7 +377,7 @@ export function warnOfStoppedTemplate(
 export function warnOfRecategorizedTemplate(
   tx: Writer,
   changed: {
-    name: TemplateName;
+    templateId: string;
     version: number;
     category: TemplateCategory;
     previousCategory: TemplateCategory;
@@ -387,9 +388,11 @@ export function warnOfRecategorizedTemplate(
   }
   notifyAdmins(tx, {
     kind: "templateRecategorized",
-    templateName: changed.name,
+    templateId: changed.templateId,
     templateVersion: changed.version,
     detail: changed.category.toUpperCase(),
-    waiting: approvedVersion(tx, changed.name) ? 0 : waitingCount(tx, { template: changed.name }),
+    waiting: approvedVersion(tx, changed.templateId)
+      ? 0
+      : waitingCount(tx, { templateId: changed.templateId }),
   });
 }

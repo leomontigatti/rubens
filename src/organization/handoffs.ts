@@ -2,7 +2,8 @@ import { and, desc, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
 
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import type { HandoffReason } from "#/lib/handoffs.ts";
-import type { OutboxKind } from "#/lib/outbox.ts";
+import { attendedTimings } from "#/lib/template-timing.ts";
+import type { TimingKind } from "#/lib/template-timing.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { keepsRecords } from "#/organization/handoff-contacts.ts";
@@ -127,8 +128,20 @@ export function addsToOpen(open: { clinical: boolean }[], wanted: HandoffWanted)
   return wanted.clinical && !clinicalOpen;
 }
 
-/** The kinds of message from the organization whose answer the assistant sorts itself. */
-const answeredKinds = ["followUp", "appointmentCancelled"] as const satisfies OutboxKind[];
+/**
+ * What a message from the organization is, when the assistant sorts its
+ * answer itself: a template timed on or after the appointment's attendance,
+ * which asks how the patient is, or the cancellation of an appointment.
+ */
+function answeredKind(kind: string | null, timing: TimingKind | null) {
+  if (kind === "appointmentCancelled") {
+    return "appointmentCancelled" as const;
+  }
+  if (kind === "timed" && timing && (attendedTimings as readonly TimingKind[]).includes(timing)) {
+    return "followUp" as const;
+  }
+  return null;
+}
 
 /**
  * The message from the organization the patient's new messages answer: the
@@ -141,6 +154,7 @@ export function answeredMessage(database: Database, conversationId: string, befo
   const latest = database
     .select({
       kind: outboxMessage.kind,
+      timing: outboxMessage.timing,
       appointmentId: outboxMessage.appointmentId,
       sentAt: whatsappMessage.sentAt,
     })
@@ -156,8 +170,8 @@ export function answeredMessage(database: Database, conversationId: string, befo
     .orderBy(desc(whatsappMessage.sentAt))
     .limit(1)
     .get();
-  const kind = latest?.kind;
-  if (!kind || !latest.appointmentId || !inArrayOf(answeredKinds, kind)) {
+  const kind = latest ? answeredKind(latest.kind, latest.timing) : null;
+  if (!kind || !latest?.appointmentId) {
     return null;
   }
   const judgedSince = database
@@ -173,10 +187,6 @@ export function answeredMessage(database: Database, conversationId: string, befo
     )
     .get();
   return { kind, appointmentId: latest.appointmentId, firstReply: !judgedSince };
-}
-
-function inArrayOf<T extends string>(list: readonly T[], value: string): value is T {
-  return (list as readonly string[]).includes(value);
 }
 
 /** Every recipient of `handoffIds`, by handoff. */

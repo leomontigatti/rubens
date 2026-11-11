@@ -1,25 +1,45 @@
+import type { Timing } from "#/lib/template-timing.ts";
 import type {
+  EventTemplateId,
   TemplateCategory,
-  TemplateName,
   TemplateProblem,
   TemplateStatus,
 } from "#/lib/whatsapp-templates.ts";
 
-// What the WhatsApp settings say about templates: each template's name as a
-// person reads it, its status at Meta, and what to fix in a body.
+// What the WhatsApp settings say about templates: when each goes, its status
+// at Meta, and what to fix in a body.
 
-export const templateLabels: Record<TemplateName, string> = {
-  confirmacion_turno: "Confirmación del turno",
-  recordatorio_turno: "Recordatorio con confirmación",
-  recordatorio_turno_sin_confirmacion: "Recordatorio sin confirmación",
-  indicaciones: "Indicaciones",
-  seguimiento: "Seguimiento",
-  turno_movido: "Turno movido",
-  turno_cancelado: "Turno cancelado",
-  turno_a_reprogramar: "Turno a reprogramar",
-  solicitud_no_confirmada: "Solicitud no confirmada",
-  reabrir_conversacion: "Reabrir la conversación",
+/** An event template's event, which the list shows where the others show their timing. */
+export const eventLabels: Record<EventTemplateId, string> = {
+  turno_movido: "Cuando el consultorio mueve un turno",
+  turno_cancelado: "Cuando el consultorio cancela un turno",
+  turno_a_reprogramar: "Cuando un turno queda para reprogramar",
+  solicitud_no_confirmada: "Cuando no se confirma un turno pedido",
+  reabrir_conversacion: "Cuando se responde con la conversación cerrada",
 };
+
+function count(amount: number, one: string, many: string) {
+  return `${amount} ${amount === 1 ? one : many}`;
+}
+
+/** A span of hours as the admin set it: in days when it is whole days. */
+function timingSpan(hours: number) {
+  return hours % 24 === 0 ? count(hours / 24, "día", "días") : count(hours, "hora", "horas");
+}
+
+/** When a template goes, as the list and the medical service's form say it. */
+export function timingLabel(timing: Timing): string {
+  switch (timing.when) {
+    case "booking":
+      return "Al dar el turno";
+    case "attended":
+      return "Al marcar el turno como atendido";
+    case "before":
+      return `${timingSpan(timing.hours)} antes del turno`;
+    case "after":
+      return `${timingSpan(timing.hours)} después del turno`;
+  }
+}
 
 export const templateStatusLabels: Record<TemplateStatus, string> = {
   pending: "En revisión",
@@ -100,7 +120,9 @@ export function problemText(problem: TemplateProblem): string {
       return "Esta plantilla no completa " + variable(problem.variable) + ".";
     case "strayBraces":
       return "Cada variable va entre {{ y }}: revisá las llaves que quedaron abiertas o sueltas.";
-    case "signOffPlaceholder":
-      return "Reemplazá [firma] por la firma del consultorio.";
+    case "openingMark":
+      return "Sacá el ¿ y el ¡ de apertura: el consultorio escribe sin ellos, como el asistente.";
+    case "emoji":
+      return "Sacá los emojis: los mensajes del consultorio no los llevan, como los del asistente.";
   }
 }

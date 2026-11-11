@@ -16,12 +16,12 @@ describe("splitting a reply into messages", () => {
     expect(splitReply(reply, { whole: false })).toEqual(["Uno.", "Dos.", "Tres.\n\nCuatro."]);
   });
 
-  it("keeps a paragraph's lines together, the sign-off with the last one", () => {
-    const reply = "Hola.\n\nTu turno es el lunes.\nTe esperamos.\nConsultorio Sur";
+  it("keeps a paragraph's lines together", () => {
+    const reply = "Hola.\n\nTu turno es el lunes.\nTe esperamos.\nHasta pronto.";
 
     expect(splitReply(reply, { whole: false })).toEqual([
       "Hola.",
-      "Tu turno es el lunes.\nTe esperamos.\nConsultorio Sur",
+      "Tu turno es el lunes.\nTe esperamos.\nHasta pronto.",
     ]);
   });
 

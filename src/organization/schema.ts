@@ -7,7 +7,6 @@ import { insurerKinds } from "#/lib/coverages.ts";
 import { notificationKinds } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
-import { templateNames } from "#/lib/whatsapp-templates.ts";
 
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
 
@@ -339,14 +338,8 @@ export const medicalService = sqliteTable(
       .references(() => practitioner.id),
     name: text("name").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
-    // Whether booking one of its appointments sends the patient the booking
-    // confirmation (`docs/domain/messages.md`).
-    bookingConfirmation: flag("booking_confirmation").notNull().default(true),
-    // Its other patient messages (`docs/domain/messages.md`); its reminders are
-    // `medicalServiceReminder` rows. Times are whole hours, bounded by
-    // `src/lib/medical-services.ts`: a check here would rebuild the table.
-    careInstructions: text("care_instructions"),
-    followUpHours: integer("follow_up_hours"),
+    // The templates it sends are `medicalServiceTemplate` rows (`whatsapp-schema.ts`).
+    // Whole hours, bounded by `src/lib/medical-services.ts`: a check here would rebuild the table.
     rescheduleCutoffHours: integer("reschedule_cutoff_hours").notNull().default(24),
     // A medical service in use is deactivated, never deleted: it drops out of
     // booking and stays on its appointments.
@@ -359,31 +352,6 @@ export const medicalService = sqliteTable(
     check(
       "medical_service_duration_minutes_check",
       sql`${table.durationMinutes} between 1 and 720`,
-    ),
-  ],
-);
-
-/** A reminder a medical service sends before each of its appointments (ui: "Recordatorio"). */
-export const medicalServiceReminder = sqliteTable(
-  "medical_service_reminder",
-  {
-    id: id(),
-    medicalServiceId: text("medical_service_id")
-      .notNull()
-      .references(() => medicalService.id),
-    hoursBefore: integer("hours_before").notNull(),
-    asksToConfirm: flag("asks_to_confirm").notNull(),
-    ...timestamps,
-  },
-  (table) => [
-    // One reminder per time before the appointment.
-    uniqueIndex("medical_service_reminder_service_hours_idx").on(
-      table.medicalServiceId,
-      table.hoursBefore,
-    ),
-    check(
-      "medical_service_reminder_hours_before_check",
-      sql`${table.hoursBefore} between 1 and 720`,
     ),
   ],
 );
@@ -454,7 +422,8 @@ export const notification = sqliteTable(
       .notNull()
       .references(() => member.userId),
     kind: text("kind", { enum: notificationKinds }).notNull(),
-    templateName: text("template_name", { enum: templateNames }),
+    // The template it is about (`whatsapp-schema.ts`, which imports this file, so no reference).
+    templateId: text("template_id"),
     templateVersion: integer("template_version"),
     detail: text("detail"),
     until: instant("until"),

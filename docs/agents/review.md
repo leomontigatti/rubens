@@ -68,7 +68,8 @@ deployed, so these actors are expected, not measured. Inside one `organization`:
 a front desk booking, rescheduling and cancelling into the same rooms and hours; `practitioner`s and
 `admin`s editing the `schedule`s, `timeOff` and `closure`s those `appointment`s sit in; and the
 object's alarm sending the outbox (a `reminder`) about the same appointments, which awaits Meta
-mid-send and so lets a booking change in between. A `patient` does not sign in, and organizations
+mid-send and so lets a booking change in between; and `admin`s retiming a `template` or saving a
+`medicalService`'s picks, which rebuild those appointments' queued messages. A `patient` does not sign in, and organizations
 share no rows, so organizations never race each other. Two receptionists taking the same free slot
 is the everyday race, and the object turns it into a refusal the second one sees: it runs one
 event at a time and checks and writes a booking in one synchronous transaction

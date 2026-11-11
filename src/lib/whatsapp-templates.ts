@@ -1,12 +1,15 @@
 import * as z from "zod";
 
+import { hasEmoji, hasOpeningMark } from "#/lib/reply-checks.ts";
 import { sampleAppointment, templateValues, variablesIn } from "#/lib/template-filling.ts";
 import type { TemplateVariable } from "#/lib/template-filling.ts";
+import { timingSchema } from "#/lib/template-timing.ts";
 
-// The templates underthing starts conversations with (`docs/operations/whatsapp-templates.md`),
-// each known by its name, and the rules a body is checked against before it
-// is submitted to Meta (#154). A template is submitted in Spanish (Argentina),
-// in the utility category, with named variables and no buttons.
+// The templates underthing starts conversations with (`docs/operations/whatsapp-templates.md`):
+// the organization's own, which an admin creates, and the five event templates;
+// and the rules a body is checked against before it is submitted to Meta
+// (#154). A template is submitted in Spanish (Argentina), in the utility
+// category, with named variables and no buttons.
 
 /** Meta's code for Spanish (Argentina). */
 export const templateLanguage = "es_AR";
@@ -45,90 +48,75 @@ const maxTemplateBodyLength = 1024;
 
 const appointmentVariables = [
   "paciente",
+  "organizacion",
   "profesional",
   "fecha",
   "hora",
   "sede",
   "direccion",
+] as const satisfies readonly TemplateVariable[];
+
+/**
+ * The five event templates, fixed and sent on their event, each stored under
+ * its event's name as its id (docs/operations/whatsapp-templates.md § Event
+ * templates).
+ */
+export const eventTemplateIds = [
+  "turno_movido",
+  "turno_cancelado",
+  "turno_a_reprogramar",
+  "solicitud_no_confirmada",
+  "reabrir_conversacion",
 ] as const;
 
-/** Stands for the organization's sign-off in the drafts: the admin writes theirs in its place. */
-const signOffPlaceholder = "[firma]";
+export type EventTemplateId = (typeof eventTemplateIds)[number];
 
-interface TemplateDefinition {
-  /** The variables the template may use. */
-  variables: readonly TemplateVariable[];
-  /** The doc's draft, which the admin starts from. */
-  draft: string;
+export function isEventTemplate(templateId: string): templateId is EventTemplateId {
+  return (eventTemplateIds as readonly string[]).includes(templateId);
 }
 
-/** The set, in the doc's order, with the doc's drafts in `vos`. */
-export const whatsappTemplates = {
-  confirmacion_turno: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si necesitás cambiarlo, respondé este mensaje. [firma]",
-  },
-  recordatorio_turno: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia? Si necesitás cancelarlo o cambiarlo, respondé este mensaje. [firma]",
-  },
-  recordatorio_turno_sin_confirmacion: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}} con {{profesional}} en {{sede}} ({{direccion}}). [firma]",
-  },
-  indicaciones: {
-    variables: [...appointmentVariables, "indicaciones"],
-    draft:
-      "Hola {{paciente}}, te dejamos las indicaciones de {{profesional}} para después de tu turno: {{indicaciones}}. Cualquier duda, respondé este mensaje. [firma]",
-  },
-  seguimiento: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, ¿cómo te sentís después de tu turno del {{fecha}} con {{profesional}}? Contanos respondiendo este mensaje. [firma]",
-  },
-  turno_movido: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, tuvimos que mover tu turno con {{profesional}}: ahora es el {{fecha}} a las {{hora}} en {{sede}}. Si no te queda bien, respondé este mensaje y buscamos otro horario. [firma]",
-  },
-  turno_cancelado: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, tuvimos que cancelar tu turno con {{profesional}} del {{fecha}} a las {{hora}}. Disculpá las molestias. Respondé este mensaje y buscamos otro horario. [firma]",
-  },
-  turno_a_reprogramar: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, tuvimos que mover tu turno del {{fecha}} con {{profesional}}. Respondé este mensaje y buscamos otro horario. [firma]",
-  },
-  solicitud_no_confirmada: {
-    variables: appointmentVariables,
-    draft:
-      "Hola {{paciente}}, no pudimos confirmar el turno que pediste con {{profesional}} para el {{fecha}}. Respondé este mensaje y buscamos otro horario. [firma]",
-  },
-  // Sent about a conversation, not an appointment: only the patient is known.
-  reabrir_conversacion: {
-    variables: ["paciente"],
-    draft:
-      "Hola {{paciente}}, tenemos una respuesta para vos. Respondé este mensaje para verla. [firma]",
-  },
-} as const satisfies Record<string, TemplateDefinition>;
+/**
+ * The variables template `templateId` may use: the organization's name and
+ * every fact of the appointment, except in `reabrir_conversacion`, sent about a
+ * conversation, where only the patient and the organization are known.
+ */
+export function templateVariables(templateId: string | null): readonly TemplateVariable[] {
+  return templateId === "reabrir_conversacion"
+    ? ["paciente", "organizacion"]
+    : appointmentVariables;
+}
 
-export type TemplateName = keyof typeof whatsappTemplates;
+/** The longest name an admin gives a template. */
+const maxTemplateNameLength = 80;
 
-export const templateNames = Object.keys(whatsappTemplates) as [TemplateName, ...TemplateName[]];
+const templateNameSchema = z.string().trim().min(1).max(maxTemplateNameLength);
 
-/** What the admin submits: a template of the set, and the body they wrote for it. */
-export const templateSubmissionSchema = z.object({
-  templateName: z.enum(templateNames),
-  // Generous over Meta's limit, so the check, not the schema, names the length.
-  body: z.string().max(maxTemplateBodyLength * 4),
+// Generous over Meta's limit, so the check, not the schema, names the length.
+const bodySchema = z.string().max(maxTemplateBodyLength * 4);
+
+/** A new template of the organization's own, which its creation submits to Meta. */
+export const templateCreateSchema = z.object({
+  name: templateNameSchema,
+  timing: timingSchema,
+  body: bodySchema,
 });
 
-export type TemplateSubmission = z.input<typeof templateSubmissionSchema>;
+/**
+ * An edit of template `templateId`: its text, which goes to Meta when it
+ * changed, and for one of the organization's own its name and timing, which
+ * an event template has neither of.
+ */
+export const templateEditSchema = z.object({
+  templateId: z.string().min(1).max(64),
+  body: bodySchema,
+  settings: z.object({ name: templateNameSchema, timing: timingSchema }).nullable(),
+});
+
+export const templateDeleteSchema = z.object({ templateId: z.uuid() });
+
+export type TemplateCreate = z.input<typeof templateCreateSchema>;
+export type TemplateEdit = z.input<typeof templateEditSchema>;
+export type TemplateDelete = z.input<typeof templateDeleteSchema>;
 
 /** What keeps a body from being submitted, each a code the screen turns into what to fix. */
 export type TemplateProblem =
@@ -141,14 +129,18 @@ export type TemplateProblem =
   | { kind: "invalidVariable"; variable: string }
   | { kind: "unknownVariable"; variable: string }
   | { kind: "strayBraces" }
-  | { kind: "signOffPlaceholder" };
+  | { kind: "openingMark" }
+  | { kind: "emoji" };
 
 // Across lines too: Meta reads a variable split by a line break as one.
 const variablePattern = /\{\{([\s\S]*?)\}\}/g;
 
 const variableName = /^[a-z][a-z_]*$/;
 
-function variableProblem(name: TemplateName, variable: string): TemplateProblem | null {
+function variableProblem(
+  allowed: readonly TemplateVariable[],
+  variable: string,
+): TemplateProblem | null {
   if (/^\d+$/.test(variable)) {
     return { kind: "unnamedVariable", variable };
   }
@@ -158,18 +150,20 @@ function variableProblem(name: TemplateName, variable: string): TemplateProblem 
   if (!variableName.test(variable)) {
     return { kind: "invalidVariable", variable };
   }
-  const allowed: readonly string[] = whatsappTemplates[name].variables;
-  return allowed.includes(variable) ? null : { kind: "unknownVariable", variable };
+  return (allowed as readonly string[]).includes(variable)
+    ? null
+    : { kind: "unknownVariable", variable };
 }
 
 /**
- * Checks `body` against Meta's rules for template `name`: named variables
- * only, lowercase with underscores, each one the template fills; none at the
- * start or the end; at most 1,024 characters. The body is read trimmed, and
- * passes trimmed.
+ * Checks `body` against Meta's rules, with `allowed` the variables its
+ * template may use: named variables only, lowercase with underscores, each one
+ * the template fills; none at the start or the end; at most 1,024
+ * characters; and the assistant's fixed checks (`reply-checks.ts`): no opening
+ * `¿` or `¡`, no emoji. The body is read trimmed, and passes trimmed.
  */
 export function checkTemplateBody(
-  name: TemplateName,
+  allowed: readonly TemplateVariable[],
   body: string,
 ): { ok: true; body: string } | { ok: false; problems: TemplateProblem[] } {
   const trimmed = body.trim();
@@ -187,7 +181,7 @@ export function checkTemplateBody(
     problems.push({ kind: "endsWithVariable" });
   }
   for (const [, variable] of trimmed.matchAll(variablePattern)) {
-    const problem = variableProblem(name, variable!);
+    const problem = variableProblem(allowed, variable!);
     if (problem) {
       problems.push(problem);
     }
@@ -196,37 +190,40 @@ export function checkTemplateBody(
   if (outside.includes("{{") || outside.includes("}}")) {
     problems.push({ kind: "strayBraces" });
   }
-  if (trimmed.includes(signOffPlaceholder)) {
-    problems.push({ kind: "signOffPlaceholder" });
+  if (hasOpeningMark(trimmed)) {
+    problems.push({ kind: "openingMark" });
+  }
+  if (hasEmoji(trimmed)) {
+    problems.push({ kind: "emoji" });
   }
   return problems.length > 0 ? { ok: false, problems } : { ok: true, body: trimmed };
 }
 
 /**
- * The longest care instructions template `indicaciones` with `body` can carry:
- * the body's limit, less the text it keeps outside its variables, shared
- * among each place it repeats `{{indicaciones}}`.
+ * The name template `templateId`'s versions take at Meta, where each version
+ * is its own template: an event template's own name, or for one of the
+ * organization's, `t_` and its id, which renaming it leaves alone.
  */
-export function maxCareInstructionsLength(body: string) {
-  const trimmed = body.trim();
-  const room = maxTemplateBodyLength - trimmed.replace(variablePattern, "").length;
-  const uses = trimmed.split("{{indicaciones}}").length - 1;
-  return Math.floor(room / Math.max(uses, 1));
+function metaBaseName(templateId: string) {
+  return isEventTemplate(templateId) ? templateId : `t_${templateId.replaceAll("-", "")}`;
 }
 
-/** The name a version is submitted under at Meta, where each version is its own template. */
-export function metaTemplateName(name: TemplateName, version: number) {
-  return `${name}_v${version}`;
+/** The name `version` of template `templateId` is submitted under at Meta. */
+export function metaTemplateName(templateId: string, version: number) {
+  return `${metaBaseName(templateId)}_v${version}`;
 }
 
-/** The version `metaName` is of template `name`, or `null` when it is not one of its versions. */
-export function versionOf(name: TemplateName, metaName: string): number | null {
-  const match = new RegExp(`^${name}_v([1-9]\\d*)$`).exec(metaName);
+/** The version `metaName` is of template `templateId`, or `null` when it is not one of its versions. */
+export function versionOf(templateId: string, metaName: string): number | null {
+  const match = new RegExp(`^${metaBaseName(templateId)}_v([1-9]\\d*)$`).exec(metaName);
   return match ? Number(match[1]) : null;
 }
 
-/** Meta's example for each variable `body` uses, once each, in order, from the sample appointment. */
-export function templateExamples(body: string) {
-  const values = templateValues(sampleAppointment);
+/**
+ * Meta's example for each variable `body` uses, once each, in order, from the
+ * sample appointment and the name of the organization `organizationName`.
+ */
+export function templateExamples(body: string, organizationName: string) {
+  const values = templateValues({ ...sampleAppointment, organizationName });
   return variablesIn(body).map((name) => ({ param_name: name, example: values[name] }));
 }

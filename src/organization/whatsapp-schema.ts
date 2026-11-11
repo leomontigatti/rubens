@@ -21,9 +21,10 @@ import {
   whatsappMessageStatuses,
 } from "#/lib/whatsapp-messages.ts";
 import { connectionStates, numberHoldReasons } from "#/lib/whatsapp.ts";
-import { templateCategories, templateNames, templateStatuses } from "#/lib/whatsapp-templates.ts";
+import { timingKinds } from "#/lib/template-timing.ts";
+import { templateCategories, templateStatuses } from "#/lib/whatsapp-templates.ts";
 
-import { appointment, member, patient } from "#/organization/schema.ts";
+import { appointment, medicalService, member, patient } from "#/organization/schema.ts";
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
 
 // The organization object's WhatsApp tables (ADR-0010), beside the rest of its
@@ -131,6 +132,45 @@ export const whatsappMessage = sqliteTable(
 );
 
 /**
+ * A WhatsApp template of the organization (docs/domain/messages.md § To
+ * patients): one of its own, which an admin names and times, or one of the
+ * five event templates, whose id is its event name (`turno_movido`) and which
+ * has no timing. Its text is in its versions; `draft` is the text a template
+ * never sent starts from.
+ */
+export const template = sqliteTable(
+  "template",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    timing: text("timing", { enum: timingKinds }),
+    /** Hours before or after the appointment, for those two timings. */
+    timingHours: integer("timing_hours"),
+    draft: text("draft"),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("template_name_idx").on(table.name)],
+);
+
+/** A template a medical service sends its appointments (ui: "Mensajes por WhatsApp"). */
+export const medicalServiceTemplate = sqliteTable(
+  "medical_service_template",
+  {
+    medicalServiceId: text("medical_service_id")
+      .notNull()
+      .references(() => medicalService.id),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.medicalServiceId, table.templateId] }),
+    index("medical_service_template_template_idx").on(table.templateId),
+  ],
+);
+
+/**
  * One version of a WhatsApp template the organization submitted to Meta
  * (`docs/operations/whatsapp-templates.md`): underthing's name for it, and the
  * body as submitted. Each version is its own template at Meta, named by its
@@ -140,7 +180,9 @@ export const whatsappTemplate = sqliteTable(
   "whatsapp_template",
   {
     id: id(),
-    name: text("name", { enum: templateNames }).notNull(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id),
     version: integer("version").notNull(),
     /** Meta's language code, such as `es_AR`. */
     language: text("language").notNull(),
@@ -159,7 +201,9 @@ export const whatsappTemplate = sqliteTable(
     submittedBy: text("submitted_by").notNull(),
     ...timestamps,
   },
-  (table) => [uniqueIndex("whatsapp_template_name_version_idx").on(table.name, table.version)],
+  (table) => [
+    uniqueIndex("whatsapp_template_template_version_idx").on(table.templateId, table.version),
+  ],
 );
 
 /**
@@ -229,10 +273,13 @@ export const outboxMessage = sqliteTable(
     state: text("state", { enum: outboxStates }).notNull().default("queued"),
     /** When it goes next, while queued. */
     dueAt: instant("due_at").notNull(),
-    // A reminder's hours before the appointment, as its medical service set
-    // them when it was queued; null for other kinds. Not the reminder's id,
-    // which a save of the medical service replaces.
-    hoursBefore: integer("hours_before"),
+    /** The template it goes as. */
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id),
+    // Its template's timing when it was queued, which judges it when it goes:
+    // a later retime of the template leaves a message already due as it was. None for an event's.
+    timing: text("timing", { enum: timingKinds }),
     attempts: integer("attempts").notNull().default(0),
     dropReason: text("drop_reason", { enum: outboxDropReasons }),
     // Meta's error on the latest failed attempt.
@@ -296,7 +343,6 @@ export const communicationRules = sqliteTable(
     // Always 1: an organization has one set of rules.
     id: integer("id").primaryKey(),
     formOfAddress: text("form_of_address", { enum: formsOfAddress }).notNull(),
-    signOff: text("sign_off").notNull(),
     tone: text("tone").notNull(),
     /** The organization's phone, E.164, which the emergency reply gives the patient; empty for none. */
     phone: text("phone").notNull().default(""),

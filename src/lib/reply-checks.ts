@@ -1,6 +1,6 @@
 // The fixed checks every assistant reply passes before it goes out
 // (docs/domain/assistant.md § Communication rules): no opening `¿` or `¡`, no
-// emojis, a maximum length. They always hold and nobody edits them, whatever
+// emojis, a maximum length; the first two hold for the templates too. They always hold and nobody edits them, whatever
 // the organization's communication rules say. The assistant's send path calls
 // `checkReply()`: what it can correct, it corrects; a reply too long, or left
 // empty, it reports for the caller to rewrite or hand off.
@@ -39,6 +39,16 @@ function inPlaceOf(run: string, at: number, text: string) {
 }
 
 const openingMarks = /[¿¡]/g;
+
+/** Whether `text` holds an opening `¿` or `¡`: the templates are refused one (`whatsapp-templates.ts`). */
+export function hasOpeningMark(text: string) {
+  return new RegExp(openingMarks.source, "u").test(text);
+}
+
+/** Whether `text` holds an emoji, as the reply check reads one: the templates are refused one too. */
+export function hasEmoji(text: string) {
+  return new RegExp(emojiPiece, "u").test(text);
+}
 
 export type ReplyCheck =
   | { ok: true; text: string }

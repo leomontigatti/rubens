@@ -60,7 +60,8 @@ import { Route as AppWhatsappConfiguracionPruebaRouteImport } from './routes/_ap
 import { Route as AppWhatsappConfiguracionRecordatoriosRouteImport } from './routes/_app/whatsapp/configuracion/recordatorios'
 import { Route as AppWhatsappConfiguracionReglasRouteImport } from './routes/_app/whatsapp/configuracion/reglas'
 import { Route as AppWhatsappPlantillasIndexRouteImport } from './routes/_app/whatsapp/plantillas/index'
-import { Route as AppWhatsappPlantillasTemplateNameRouteImport } from './routes/_app/whatsapp/plantillas/$templateName'
+import { Route as AppWhatsappPlantillasTemplateIdRouteImport } from './routes/_app/whatsapp/plantillas/$templateId'
+import { Route as AppWhatsappPlantillasNuevaRouteImport } from './routes/_app/whatsapp/plantillas/nueva'
 import { Route as AppAgendaTurnosAppointmentIdCancelarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/cancelar'
 import { Route as AppAgendaTurnosAppointmentIdEditarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/editar'
 import { Route as AppAgendaTurnosAppointmentIdReprogramarRouteImport } from './routes/_app/agenda/turnos/$appointmentId/reprogramar'
@@ -345,10 +346,16 @@ const AppWhatsappPlantillasIndexRoute =
     path: '/whatsapp/plantillas/',
     getParentRoute: () => AppRoute,
   } as any)
-const AppWhatsappPlantillasTemplateNameRoute =
-  AppWhatsappPlantillasTemplateNameRouteImport.update({
-    id: '/whatsapp/plantillas/$templateName',
-    path: '/whatsapp/plantillas/$templateName',
+const AppWhatsappPlantillasTemplateIdRoute =
+  AppWhatsappPlantillasTemplateIdRouteImport.update({
+    id: '/whatsapp/plantillas/$templateId',
+    path: '/whatsapp/plantillas/$templateId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppWhatsappPlantillasNuevaRoute =
+  AppWhatsappPlantillasNuevaRouteImport.update({
+    id: '/whatsapp/plantillas/nueva',
+    path: '/whatsapp/plantillas/nueva',
     getParentRoute: () => AppRoute,
   } as any)
 const AppAgendaTurnosAppointmentIdCancelarRoute =
@@ -467,7 +474,8 @@ export interface FileRoutesByFullPath {
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
   '/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
   '/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
-  '/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
+  '/whatsapp/plantillas/$templateId': typeof AppWhatsappPlantillasTemplateIdRoute
+  '/whatsapp/plantillas/nueva': typeof AppWhatsappPlantillasNuevaRoute
   '/whatsapp/configuracion/': typeof AppWhatsappConfiguracionIndexRoute
   '/whatsapp/plantillas/': typeof AppWhatsappPlantillasIndexRoute
   '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
@@ -531,7 +539,8 @@ export interface FileRoutesByTo {
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
   '/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
   '/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
-  '/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
+  '/whatsapp/plantillas/$templateId': typeof AppWhatsappPlantillasTemplateIdRoute
+  '/whatsapp/plantillas/nueva': typeof AppWhatsappPlantillasNuevaRoute
   '/whatsapp/configuracion': typeof AppWhatsappConfiguracionIndexRoute
   '/whatsapp/plantillas': typeof AppWhatsappPlantillasIndexRoute
   '/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
@@ -597,7 +606,8 @@ export interface FileRoutesById {
   '/_app/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
   '/_app/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
   '/_app/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
-  '/_app/whatsapp/plantillas/$templateName': typeof AppWhatsappPlantillasTemplateNameRoute
+  '/_app/whatsapp/plantillas/$templateId': typeof AppWhatsappPlantillasTemplateIdRoute
+  '/_app/whatsapp/plantillas/nueva': typeof AppWhatsappPlantillasNuevaRoute
   '/_app/whatsapp/configuracion/': typeof AppWhatsappConfiguracionIndexRoute
   '/_app/whatsapp/plantillas/': typeof AppWhatsappPlantillasIndexRoute
   '/_app/agenda/turnos/$appointmentId/cancelar': typeof AppAgendaTurnosAppointmentIdCancelarRoute
@@ -663,7 +673,8 @@ export interface FileRouteTypes {
     | '/whatsapp/configuracion/prueba'
     | '/whatsapp/configuracion/recordatorios'
     | '/whatsapp/configuracion/reglas'
-    | '/whatsapp/plantillas/$templateName'
+    | '/whatsapp/plantillas/$templateId'
+    | '/whatsapp/plantillas/nueva'
     | '/whatsapp/configuracion/'
     | '/whatsapp/plantillas/'
     | '/agenda/turnos/$appointmentId/cancelar'
@@ -727,7 +738,8 @@ export interface FileRouteTypes {
     | '/whatsapp/configuracion/prueba'
     | '/whatsapp/configuracion/recordatorios'
     | '/whatsapp/configuracion/reglas'
-    | '/whatsapp/plantillas/$templateName'
+    | '/whatsapp/plantillas/$templateId'
+    | '/whatsapp/plantillas/nueva'
     | '/whatsapp/configuracion'
     | '/whatsapp/plantillas'
     | '/agenda/turnos/$appointmentId/cancelar'
@@ -792,7 +804,8 @@ export interface FileRouteTypes {
     | '/_app/whatsapp/configuracion/prueba'
     | '/_app/whatsapp/configuracion/recordatorios'
     | '/_app/whatsapp/configuracion/reglas'
-    | '/_app/whatsapp/plantillas/$templateName'
+    | '/_app/whatsapp/plantillas/$templateId'
+    | '/_app/whatsapp/plantillas/nueva'
     | '/_app/whatsapp/configuracion/'
     | '/_app/whatsapp/plantillas/'
     | '/_app/agenda/turnos/$appointmentId/cancelar'
@@ -1174,11 +1187,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWhatsappPlantillasIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/whatsapp/plantillas/$templateName': {
-      id: '/_app/whatsapp/plantillas/$templateName'
-      path: '/whatsapp/plantillas/$templateName'
-      fullPath: '/whatsapp/plantillas/$templateName'
-      preLoaderRoute: typeof AppWhatsappPlantillasTemplateNameRouteImport
+    '/_app/whatsapp/plantillas/$templateId': {
+      id: '/_app/whatsapp/plantillas/$templateId'
+      path: '/whatsapp/plantillas/$templateId'
+      fullPath: '/whatsapp/plantillas/$templateId'
+      preLoaderRoute: typeof AppWhatsappPlantillasTemplateIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp/plantillas/nueva': {
+      id: '/_app/whatsapp/plantillas/nueva'
+      path: '/whatsapp/plantillas/nueva'
+      fullPath: '/whatsapp/plantillas/nueva'
+      preLoaderRoute: typeof AppWhatsappPlantillasNuevaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/agenda/turnos/$appointmentId/cancelar': {
@@ -1307,7 +1327,8 @@ interface AppRouteChildren {
   AppWhatsappConfiguracionPruebaRoute: typeof AppWhatsappConfiguracionPruebaRoute
   AppWhatsappConfiguracionRecordatoriosRoute: typeof AppWhatsappConfiguracionRecordatoriosRoute
   AppWhatsappConfiguracionReglasRoute: typeof AppWhatsappConfiguracionReglasRoute
-  AppWhatsappPlantillasTemplateNameRoute: typeof AppWhatsappPlantillasTemplateNameRoute
+  AppWhatsappPlantillasTemplateIdRoute: typeof AppWhatsappPlantillasTemplateIdRoute
+  AppWhatsappPlantillasNuevaRoute: typeof AppWhatsappPlantillasNuevaRoute
   AppWhatsappConfiguracionIndexRoute: typeof AppWhatsappConfiguracionIndexRoute
   AppWhatsappPlantillasIndexRoute: typeof AppWhatsappPlantillasIndexRoute
   AppAgendaTurnosAppointmentIdCancelarRoute: typeof AppAgendaTurnosAppointmentIdCancelarRoute
@@ -1374,8 +1395,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhatsappConfiguracionRecordatoriosRoute:
     AppWhatsappConfiguracionRecordatoriosRoute,
   AppWhatsappConfiguracionReglasRoute: AppWhatsappConfiguracionReglasRoute,
-  AppWhatsappPlantillasTemplateNameRoute:
-    AppWhatsappPlantillasTemplateNameRoute,
+  AppWhatsappPlantillasTemplateIdRoute: AppWhatsappPlantillasTemplateIdRoute,
+  AppWhatsappPlantillasNuevaRoute: AppWhatsappPlantillasNuevaRoute,
   AppWhatsappConfiguracionIndexRoute: AppWhatsappConfiguracionIndexRoute,
   AppWhatsappPlantillasIndexRoute: AppWhatsappPlantillasIndexRoute,
   AppAgendaTurnosAppointmentIdCancelarRoute:

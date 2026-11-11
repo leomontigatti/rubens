@@ -19,7 +19,7 @@ import type { NewPlacement, PlacementRefusal } from "#/organization/appointment-
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { queueBookingConfirmation, queueReminders } from "#/organization/outbox.ts";
+import { queueOnBooking } from "#/organization/template-messages.ts";
 import { findPatient, patientIdSchema } from "#/organization/patients.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import {
@@ -138,8 +138,7 @@ function placeNew<Kind extends NewPlacement["kind"]>(
       .values({ ...fields, startsAt: +span.start, endsAt: +span.end, createdBy: acting.userId })
       .returning({ id: appointment.id })
       .get();
-    queueBookingConfirmation(tx, created.id);
-    queueReminders(tx, created.id);
+    queueOnBooking(tx, created.id);
     recordAudit(tx, acting.userId, {
       action: "create",
       entityType: "appointment",

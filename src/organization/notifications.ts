@@ -8,7 +8,7 @@ import { patientName } from "#/lib/patients.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { member, notification, patient } from "#/organization/schema.ts";
-import { handoff } from "#/organization/whatsapp-schema.ts";
+import { handoff, template } from "#/organization/whatsapp-schema.ts";
 
 // Notifications to staff (`src/lib/notifications.ts`): written in the
 // transaction of the event they tell of, one row per recipient, each read on
@@ -81,7 +81,8 @@ export function listNotifications(database: Database, acting: Acting) {
     .select({
       id: notification.id,
       kind: notification.kind,
-      templateName: notification.templateName,
+      templateId: notification.templateId,
+      templateName: template.name,
       templateVersion: notification.templateVersion,
       detail: notification.detail,
       until: notification.until,
@@ -99,6 +100,7 @@ export function listNotifications(database: Database, acting: Acting) {
     })
     .from(notification)
     .leftJoin(handoff, eq(handoff.id, notification.handoffId))
+    .leftJoin(template, eq(template.id, notification.templateId))
     .leftJoin(patient, eq(patient.id, notification.patientId))
     .where(eq(notification.recipientId, acting.userId))
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))

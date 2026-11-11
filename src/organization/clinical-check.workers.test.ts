@@ -144,11 +144,10 @@ afterEach(() => {
 });
 
 describe("the clinical check", () => {
-  it("is asked about the whole reply that would go, sign-off included, with the patients the number may hear about", async () => {
+  it("is asked about the whole reply that would go, with the patients the number may hear about", async () => {
     expectOk(
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "vos",
-        signOff: "Consultorios Prueba",
         tone: "",
         phone: "",
       }),
@@ -158,7 +157,7 @@ describe("the clinical check", () => {
       otherPatient: false,
     });
 
-    const sent = "Hola Martina, tu turno es el lunes.\nConsultorios Prueba";
+    const sent = "Hola Martina, tu turno es el lunes.";
     expect(scriptedModel.checks).toEqual([
       expect.objectContaining({ reply: sent, patients: ["Martina"] }),
     ]);
@@ -308,7 +307,6 @@ describe("an emergency", () => {
     expectOk(
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "vos",
-        signOff: "",
         tone: "",
         phone: "0351 15 555-1234",
       }),
@@ -331,7 +329,6 @@ describe("an emergency", () => {
     expectOk(
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "usted",
-        signOff: "Consultorios Prueba",
         tone: "",
         phone: "",
       }),
@@ -343,7 +340,7 @@ describe("an emergency", () => {
     expect(fakeMeta.textsSent()).toEqual([
       {
         to: "5491155550000",
-        text: "Si es una urgencia, llame ahora al 107 (emergencias). Ya le pasamos su mensaje a una persona del equipo.\nConsultorios Prueba",
+        text: "Si es una urgencia, llame ahora al 107 (emergencias). Ya le pasamos su mensaje a una persona del equipo.",
       },
     ]);
   });

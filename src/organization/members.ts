@@ -94,6 +94,11 @@ export interface MemberInput {
   mustChangePassword?: boolean;
 }
 
+/** The organization's name, as its setup wrote it: what its templates name it by (`{{organizacion}}`). */
+export function organizationName(database: Writer) {
+  return database.select({ name: organization.name }).from(organization).get()?.name ?? "";
+}
+
 /** Who is signed in, and for which organization: what the app shell shows. */
 export interface Viewer {
   userId: string;

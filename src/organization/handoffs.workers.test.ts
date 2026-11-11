@@ -3,8 +3,6 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { assistantWaitMs } from "#/lib/assistant.ts";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
-import type { TemplateName } from "#/lib/whatsapp-templates.ts";
 
 import {
   addRefusedAdmin,
@@ -18,6 +16,8 @@ import {
   patientWrites,
   scriptedModel,
   setUpBookingWorld,
+  submitTemplate,
+  templateNamed,
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
 import { practitioner } from "#/organization/schema.ts";
@@ -105,12 +105,9 @@ function juanKeepsNoClinicalRecords() {
   );
 }
 
-/** Submits `templateName` with its draft, signed, and has Meta approve it at once. */
-async function approveTemplate(templateName: TemplateName, metaId: string) {
-  const body = whatsappTemplates[templateName].draft.replace("[firma]", "Consultorios Prueba");
-  fakeMeta.answerNextWith(200, { id: metaId, status: "APPROVED", category: "UTILITY" });
-  expectOk(await world.organization.submitWhatsappTemplate(adminCaller, { templateName, body }));
-  fakeMeta.requests = [];
+/** Submits template `templateId` with its draft, signed, and has Meta approve it at once. */
+function approveTemplate(templateId: string, metaId: string) {
+  return submitTemplate(world.organization, templateId, { status: "APPROVED", metaId });
 }
 
 beforeEach(async () => {
@@ -455,19 +452,13 @@ describe("an appointment the organization cancelled", () => {
 
 describe("answering a follow-up", () => {
   async function followUpSent() {
-    await approveTemplate("seguimiento", "900000000000023");
-    expectOk(
-      await world.organization.updateMedicalService(adminCaller, {
-        medicalServiceId,
-        name: "Consulta",
-        durationMinutes: 30,
-        bookingConfirmation: false,
-        reminders: [],
-        careInstructions: null,
-        followUpHours: 1,
-        rescheduleCutoffHours: 24,
-      }),
-    );
+    const followUpId = await templateNamed(world.organization, "Seguimiento");
+    await submitTemplate(world.organization, followUpId, {
+      status: "APPROVED",
+      metaId: "900000000000023",
+      timing: { when: "after", hours: 1 },
+    });
+    await world.pickTemplates(medicalServiceId, [followUpId]);
     const appointmentId = await bookMartina();
     vi.setSystemTime(at("12:30"));
     expectOk(

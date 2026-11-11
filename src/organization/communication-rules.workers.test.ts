@@ -16,7 +16,6 @@ let organization: OrganizationStub;
 
 const usted = {
   formOfAddress: "usted",
-  signOff: "Consultorios Prueba",
   tone: "Cordial y breve. Tratar a cada paciente por su nombre.",
   phone: "",
 } as const;
@@ -31,10 +30,9 @@ beforeEach(async () => {
 });
 
 describe("the organization's communication rules", () => {
-  it("start as `vos`, with no sign-off and no tone, at version 0", async () => {
+  it("start as `vos`, with no tone, at version 0", async () => {
     expect(await shownRules()).toEqual({
       formOfAddress: "vos",
-      signOff: "",
       tone: "",
       phone: "",
       version: 0,
@@ -55,7 +53,6 @@ describe("the organization's communication rules", () => {
     expectOk(
       await organization.saveCommunicationRules(adminCaller, {
         ...usted,
-        signOff: "  Consultorios Prueba ",
         tone: "\nCordial y breve. Tratar a cada paciente por su nombre.  ",
       }),
     );
@@ -86,8 +83,8 @@ describe("the organization's communication rules", () => {
         entityType: "communicationRules",
         userId: adminCaller.userId,
         patientId: null,
-        before: { formOfAddress: "vos", signOff: "", tone: "", version: 0 },
-        after: { formOfAddress: "usted", signOff: usted.signOff, tone: usted.tone, version: 1 },
+        before: { formOfAddress: "vos", tone: "", version: 0 },
+        after: { formOfAddress: "usted", tone: usted.tone, version: 1 },
       },
       {
         action: "update",
@@ -130,7 +127,6 @@ describe("the organization's communication rules", () => {
     expect(result).toEqual({ ok: false, reason: "toneTooLong" });
     expect(await shownRules()).toEqual({
       formOfAddress: "vos",
-      signOff: "",
       tone: "",
       phone: "",
       version: 0,
