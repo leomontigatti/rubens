@@ -18,7 +18,7 @@ import type {
 } from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import { askingFirst, decision, settlingToReschedule } from "#/organization/change-messages.ts";
+import { askingFirst, settlingToReschedule, storedAnswer } from "#/organization/change-messages.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
@@ -124,7 +124,7 @@ export function createTimeOff(
       if (!owner.canEdit) {
         return forbidden;
       }
-      const values = { practitionerId: owner.id, ...spanOf(entry), ...decision(notice) };
+      const values = { practitionerId: owner.id, ...spanOf(entry), ...storedAnswer(notice) };
       const created = settlingToReschedule(tx, [owner.id], notice, () =>
         tx.insert(timeOff).values(values).returning({ id: timeOff.id }).get(),
       );
@@ -173,7 +173,7 @@ export function updateTimeOff(
       if (!editable.ok) {
         return editable;
       }
-      const values = { ...spanOf(entry), ...decision(notice) };
+      const values = { ...spanOf(entry), ...storedAnswer(notice) };
       settlingToReschedule(tx, [editable.found.practitionerId], notice, () =>
         tx.update(timeOff).set(values).where(eq(timeOff.id, timeOffId)).run(),
       );

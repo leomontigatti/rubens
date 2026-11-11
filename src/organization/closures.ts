@@ -18,7 +18,7 @@ import type {
 } from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import { askingFirst, decision, settlingToReschedule } from "#/organization/change-messages.ts";
+import { askingFirst, settlingToReschedule, storedAnswer } from "#/organization/change-messages.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { closure, office } from "#/organization/schema.ts";
@@ -127,7 +127,7 @@ export function createClosure(
       if (!span) {
         return notFound;
       }
-      const values = { ...span, ...decision(notice) };
+      const values = { ...span, ...storedAnswer(notice) };
       const created = settlingToReschedule(tx, null, notice, () =>
         tx.insert(closure).values(values).returning({ id: closure.id }).get(),
       );
@@ -174,7 +174,7 @@ export function updateClosure(
       if (!current || !span) {
         return notFound;
       }
-      const values = { ...span, ...decision(notice) };
+      const values = { ...span, ...storedAnswer(notice) };
       settlingToReschedule(tx, null, notice, () =>
         tx.update(closure).set(values).where(eq(closure.id, closureId)).run(),
       );

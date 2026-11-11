@@ -7,6 +7,8 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { answering, questionAfter, questionText } from "#/components/range-entry-question.ts";
+import type { NoticeQuestion, QuestionSubject } from "#/components/range-entry-question.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -75,14 +77,6 @@ interface Deletion<R extends string> {
   onDelete: () => Promise<Outcome<R>>;
 }
 
-/** How the question names what is saved. */
-const subjects = { timeOff: "Esta licencia", closure: "Este cierre" };
-
-function affectedNotice(subject: keyof typeof subjects, affected: number): string {
-  const appointments = affected === 1 ? "1 turno" : `${affected} turnos`;
-  return `${subjects[subject]} deja ${appointments} fuera de horario. Pasan a Turnos a reprogramar, se avise o no.`;
-}
-
 /**
  * A time-off or closure form on its page. `owner`, when given, is the field
  * before the range. `onSubmit` returns the server call with `notice`, or the
@@ -95,7 +89,7 @@ export function EntryForm<R extends string>(props: {
   back: NavigateOptions;
   title: string;
   description?: string;
-  subject: keyof typeof subjects;
+  subject: QuestionSubject;
   initial: RangeEntry | null;
   owner?: { label: string; initial: string; required?: boolean; options: ReactNode };
   submitLabel: string;
@@ -106,14 +100,14 @@ export function EntryForm<R extends string>(props: {
   onSubmit: (
     values: EntryValues,
     notice: Notice,
-  ) => Promise<Outcome<R> | AffectsAppointments> | z.ZodError;
+  ) => Promise<Outcome<NoInfer<R>> | AffectsAppointments> | z.ZodError;
 }) {
   const { owner } = props;
   const page = useFormPage(props.back);
   const action = useFormAction(props.messages);
   const record = useDeletion(props.deletion, props.messages, () => page.leave());
   // Kept once the dialog closes, so its copy stays while it fades out.
-  const [asked, setAsked] = useState<{ values: EntryValues; affected: number } | null>(null);
+  const [question, setQuestion] = useState<NoticeQuestion<EntryValues> | null>(null);
   const [asking, setAsking] = useState(false);
 
   async function save(values: EntryValues, notice: Notice) {
@@ -122,17 +116,14 @@ export function EntryForm<R extends string>(props: {
       page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames));
       return;
     }
-    let affected = 0;
+    let asked: NoticeQuestion<EntryValues> | null = null;
     const saved = await action.save(async () => {
       const result = await submitted;
-      if (!result.ok && result.reason === "affectsAppointments") {
-        affected = (result as AffectsAppointments).affected;
-        return { ok: true };
-      }
-      return result as Outcome<R>;
+      asked = questionAfter(values, result);
+      return asked ? { ok: true } : (result as Outcome<R>);
     });
-    if (affected > 0) {
-      setAsked({ values, affected });
+    if (asked) {
+      setQuestion(asked);
       setAsking(true);
     } else if (saved) {
       page.leave();
@@ -140,8 +131,9 @@ export function EntryForm<R extends string>(props: {
   }
 
   const answer = (tellPatients: boolean) => {
-    if (asked) {
-      void save(asked.values, { tellPatients, affected: asked.affected });
+    if (question) {
+      const again = answering(question, tellPatients);
+      void save(again.values, again.notice);
     }
   };
 
@@ -192,7 +184,7 @@ export function EntryForm<R extends string>(props: {
         open={asking}
         onOpenChange={setAsking}
         title="¿Avisar a los pacientes por WhatsApp?"
-        description={asked ? affectedNotice(props.subject, asked.affected) : ""}
+        description={question ? questionText(props.subject, question.affected) : ""}
         confirmLabel="Avisar por WhatsApp"
         onConfirm={() => answer(true)}
         alternative={{ label: "Guardar sin avisar", onSelect: () => answer(false) }}

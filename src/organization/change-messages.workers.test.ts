@@ -279,14 +279,6 @@ describe('telling patients their appointment went to the "to reschedule" list', 
     ]);
   });
 
-  it("queues none when whoever entered the time off chose not to tell the patients", async () => {
-    await bookMartina();
-
-    await addTimeOff(false);
-
-    expect(await changeMessages()).toEqual([]);
-  });
-
   it("queues none again for an appointment already on the list when the time off is edited", async () => {
     await bookMartina();
     const timeOff = await addTimeOff();

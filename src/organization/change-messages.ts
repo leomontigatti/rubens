@@ -72,7 +72,7 @@ class Unasked extends Error {
  * `notice` decided, when it was told this many. Otherwise it throws, for
  * `askingFirst` to roll the save back with the count.
  */
-function decided(notice: Notice, affected: number): boolean {
+function answerFor(notice: Notice, affected: number): boolean {
   const { tellPatients, affected: told = affected } = notice;
   if (tellPatients === undefined || told !== affected) {
     throw new Unasked(affected);
@@ -80,8 +80,8 @@ function decided(notice: Notice, affected: number): boolean {
   return tellPatients;
 }
 
-/** What a time off or a closure keeps of `notice`: the decision, when one was made. */
-export function decision(notice: Notice): { tellPatients?: boolean } {
+/** The column a time off or a closure keeps of `notice`: the answer, when one was given. */
+export function storedAnswer(notice: Notice): { tellPatients?: boolean } {
   return notice.tellPatients === undefined ? {} : { tellPatients: notice.tellPatients };
 }
 
@@ -124,7 +124,7 @@ export function settlingToReschedule<T>(
   const tell =
     typeof tellPatients === "boolean"
       ? tellPatients
-      : listed.length > 0 && decided(tellPatients, listed.length);
+      : listed.length > 0 && answerFor(tellPatients, listed.length);
   for (const appointmentId of listed) {
     if (tell) {
       queueChangeMessage(tx, appointmentId, "appointmentToReschedule");
