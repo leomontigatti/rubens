@@ -136,7 +136,7 @@ function addPendingTemplate(organization: OrganizationStub, metaId: string) {
     database
       .insert(whatsappTemplate)
       .values({
-        name: "confirmacion_turno",
+        templateId: "turno_movido",
         version: 1,
         language: "es_AR",
         body: "Hola {{paciente}}, nos vemos.",

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   fillSample,
   fillTemplate,
-  flattenCareInstructions,
   sampleAppointment,
   templateValues,
 } from "#/lib/template-filling.ts";
@@ -17,7 +16,6 @@ const appointment: TemplateAppointment = {
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 100",
-  careInstructions: null,
 };
 
 describe("an appointment's template values", () => {
@@ -29,7 +27,6 @@ describe("an appointment's template values", () => {
       hora: "09:05",
       sede: "Sede Centro",
       direccion: "Av. Colón 100",
-      indicaciones: "",
     });
   });
 
@@ -90,15 +87,5 @@ describe("the sample appointment", () => {
 
   it("leaves what is not a variable of any template as written", () => {
     expect(fillSample("Hola {{nombre}}, en {{sede}}.")).toBe("Hola {{nombre}}, en Sede Centro.");
-  });
-});
-
-describe("flattening care instructions", () => {
-  it("joins lines with `; ` and collapses runs of spaces and tabs, so Meta takes the value", () => {
-    expect(
-      flattenCareInstructions(
-        "No comer  2 horas antes.\n\n\tTraer estudios.\r\nVenir\u00a0 acompañado\u2028Sin perfume",
-      ),
-    ).toBe("No comer 2 horas antes.; Traer estudios.; Venir acompañado; Sin perfume");
   });
 });

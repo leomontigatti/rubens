@@ -1,6 +1,5 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -15,6 +14,8 @@ import {
   patientWrites,
   scriptedModel,
   setUpBookingWorld,
+  submitTemplate,
+  templateNamed,
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
@@ -52,30 +53,37 @@ const confirmationBody =
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
 
-/** Has Meta approve `templateName` with `body` at once. */
-async function approve(templateName: "confirmacion_turno" | "recordatorio_turno", body: string) {
-  fakeMeta.answerNextWith(200, {
-    id: templateName === "confirmacion_turno" ? "900000000000041" : "900000000000042",
+/** The drafts the medical service sends: the booking confirmation, and the reminders 48 and 2 hours before. */
+let templates: { confirmation: string; at48: string; at2: string };
+
+/** Has Meta approve the booking confirmation at once. */
+function approveConfirmation() {
+  return submitTemplate(world.organization, templates.confirmation, {
     status: "APPROVED",
-    category: "UTILITY",
+    metaId: "900000000000041",
+    body: confirmationBody,
   });
-  expectOk(await world.organization.submitWhatsappTemplate(adminCaller, { templateName, body }));
 }
 
-/** Sets the medical service's booking confirmation and its reminders, `hours` before. */
-async function setMessages(bookingConfirmation: boolean, hours: number[]) {
-  expectOk(
-    await world.organization.updateMedicalService(adminCaller, {
-      medicalServiceId,
-      name: "Consulta",
-      durationMinutes: 30,
-      bookingConfirmation,
-      reminders: hours.map((hoursBefore) => ({ hoursBefore, asksToConfirm: true })),
-      careInstructions: null,
-      followUpHours: null,
-      rescheduleCutoffHours: 24,
-    }),
-  );
+/** Has Meta approve both reminders at once, the first draft retimed to 48 hours before. */
+async function approveReminders() {
+  await submitTemplate(world.organization, templates.at48, {
+    status: "APPROVED",
+    metaId: "900000000000042",
+    timing: { when: "before", hours: 48 },
+  });
+  await submitTemplate(world.organization, templates.at2, {
+    status: "APPROVED",
+    metaId: "900000000000043",
+  });
+}
+
+/** Has the medical service send the booking confirmation or not, and the reminders `hours` before. */
+function setMessages(bookingConfirmation: boolean, hours: (48 | 2)[]) {
+  return world.pickTemplates(medicalServiceId, [
+    ...(bookingConfirmation ? [templates.confirmation] : []),
+    ...hours.map((before) => (before === 48 ? templates.at48 : templates.at2)),
+  ]);
 }
 
 function bookAt(patientId: string, time: string) {
@@ -124,8 +132,7 @@ function outboxOf(appointmentId: string) {
   return inStorage(world.organization, (database) =>
     database
       .select({
-        kind: outboxMessage.kind,
-        hoursBefore: outboxMessage.hoursBefore,
+        templateId: outboxMessage.templateId,
         state: outboxMessage.state,
         dropReason: outboxMessage.dropReason,
       })
@@ -173,6 +180,11 @@ beforeEach(async () => {
   world = await setUpBookingWorld();
   await world.addSchedule({ practitionerId: world.juan.practitionerId });
   medicalServiceId = (await world.addMedicalService(world.juan.practitionerId)).id;
+  templates = {
+    confirmation: await templateNamed(world.organization, "Confirmación del turno"),
+    at48: await templateNamed(world.organization, "Recordatorio con confirmación"),
+    at2: await templateNamed(world.organization, "Recordatorio"),
+  };
 });
 
 afterEach(() => {
@@ -181,11 +193,8 @@ afterEach(() => {
 
 describe("a reply the model judges an opt-out", () => {
   it("holds every queued and new message the organization starts to each patient of the number", async () => {
-    await approve("confirmacion_turno", confirmationBody);
-    await approve(
-      "recordatorio_turno",
-      whatsappTemplates.recordatorio_turno.draft.replace("[firma]", "Consultorios Prueba"),
-    );
+    await approveConfirmation();
+    await approveReminders();
     await setMessages(false, [48]);
     const martina = await world.addPatient("Martina", numberPhone);
     const tomas = await addThroughGuardian("Tomás", "+5493515550002");
@@ -198,11 +207,10 @@ describe("a reply the model judges an opt-out", () => {
     await runDurableObjectAlarm(world.organization);
 
     expect(templatesSent()).toEqual([]);
-    // A save of the medical service queues the reminders afresh: the latest are queued still.
-    expect((await outboxOf(queued.id)).map((row) => row.state)).toContain("queued");
-    expect((await outboxOf(booked.id)).map((row) => row.kind)).toEqual([
-      "bookingConfirmation",
-      "reminder",
+    expect((await outboxOf(queued.id)).map((row) => row.state)).toEqual(["queued"]);
+    expect((await outboxOf(booked.id)).map((row) => row.templateId)).toEqual([
+      templates.confirmation,
+      templates.at48,
     ]);
     expect((await outboxOf(booked.id)).map((row) => row.state)).toEqual(["queued", "queued"]);
     expect(await pendingSince(martina.id)).not.toBeNull();
@@ -236,7 +244,7 @@ describe("a reply the model judges an opt-out", () => {
   });
 
   it("does not wake the object for the messages it holds", async () => {
-    await approve("confirmacion_turno", confirmationBody);
+    await approveConfirmation();
     await setMessages(true, []);
     const martina = await world.addPatient("Martina", numberPhone);
 
@@ -251,10 +259,7 @@ describe("a reply the model judges an opt-out", () => {
 
 describe("reception keeping a patient of a held number", () => {
   it("lets that patient's held messages go, read again as they are now, and keeps the others held", async () => {
-    await approve(
-      "recordatorio_turno",
-      whatsappTemplates.recordatorio_turno.draft.replace("[firma]", "Consultorios Prueba"),
-    );
+    await approveReminders();
     await setMessages(false, [48, 2]);
     const martina = await world.addPatient("Martina", numberPhone);
     const tomas = await addThroughGuardian("Tomás", "+5493515550002");
@@ -271,15 +276,8 @@ describe("reception keeping a patient of a held number", () => {
     );
     await runDurableObjectAlarm(world.organization);
 
-    // The 48-hour reminder was overtaken by the 2-hour one while it waited.
-    const rows = await outboxOf(hers.id);
-    expect(rows).toHaveLength(2);
-    expect(rows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ hoursBefore: 48, state: "dropped", dropReason: "overtaken" }),
-        expect.objectContaining({ hoursBefore: 2, state: "sent" }),
-      ]),
-    );
+    // Both reminders waited, and both go: their texts name the date and time.
+    expect((await outboxOf(hers.id)).map((row) => row.state)).toEqual(["sent", "sent"]);
     expect((await outboxOf(his.id)).map((row) => row.state)).toEqual(["queued", "queued"]);
     expect(await pendingSince(martina.id)).toBeNull();
     expect(await pendingSince(tomas.id)).not.toBeNull();
@@ -308,6 +306,7 @@ describe("reception keeping a patient of a held number", () => {
 
 describe("reception turning a patient of a held number off", () => {
   it("drops their held messages and lifts their hold", async () => {
+    await approveReminders();
     await setMessages(false, [48]);
     const martina = await world.addPatient("Martina", numberPhone);
     const hers = await bookAt(martina.id, "12:00");

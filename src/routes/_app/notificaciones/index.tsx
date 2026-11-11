@@ -175,7 +175,7 @@ function NotificationLink({ notification }: { notification: Notification }) {
       </Button>
     );
   }
-  if (notification.templateName) {
+  if (notification.templateId) {
     return (
       <Button
         variant="outline"
@@ -183,8 +183,8 @@ function NotificationLink({ notification }: { notification: Notification }) {
         nativeButton={false}
         render={
           <Link
-            to="/whatsapp/plantillas/$templateName"
-            params={{ templateName: notification.templateName }}
+            to="/whatsapp/plantillas/$templateId"
+            params={{ templateId: notification.templateId }}
           />
         }
       >

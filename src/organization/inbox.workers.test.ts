@@ -12,6 +12,8 @@ import {
   fakeMeta,
   inStorage,
   setUpBookingWorld,
+  submitTemplate,
+  templateNamed,
 } from "#/organization/organization.test-support.ts";
 import { practitioner } from "#/organization/schema.ts";
 import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
@@ -88,6 +90,14 @@ beforeEach(async () => {
   await world.addSchedule({ practitionerId: world.juan.practitionerId });
   medicalServiceId = (await world.addMedicalService(world.juan.practitionerId)).id;
   martinaId = (await world.addPatient("Martina", martinaPhone)).id;
+  // The booking confirmation, approved and sent by the medical service, queued by the booking.
+  const confirmationId = await templateNamed(world.organization, "Confirmación del turno");
+  await submitTemplate(world.organization, confirmationId, {
+    status: "APPROVED",
+    metaId: "900000000000001",
+    body: "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba",
+  });
+  await world.pickTemplates(medicalServiceId, [confirmationId]);
   await world.book({
     practitionerId: world.juan.practitionerId,
     patientId: martinaId,
@@ -205,17 +215,6 @@ describe("reading a conversation in the inbox", () => {
   });
 
   it("shows the booking confirmation's text and delivery to its practitioner before the patient answers", async () => {
-    fakeMeta.answerNextWith(200, {
-      id: "900000000000001",
-      status: "APPROVED",
-      category: "UTILITY",
-    });
-    expectOk(
-      await world.organization.submitWhatsappTemplate(adminCaller, {
-        templateName: "confirmacion_turno",
-        body: "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba",
-      }),
-    );
     await runDurableObjectAlarm(world.organization);
     expectOk(
       await world.organization.storeWhatsappEvents({

@@ -28,13 +28,8 @@ beforeEach(() => {
   fakeMeta.reset();
 });
 
-/** A medical service's patient messages, all unset: an edit names every one. */
-const noMessages = {
-  reminders: [],
-  careInstructions: null,
-  followUpHours: null,
-  rescheduleCutoffHours: 24,
-};
+/** A medical service's patient messages, none picked: an edit names every one. */
+const noMessages = { templateIds: [], rescheduleCutoffHours: 24 };
 
 async function world() {
   const { organization } = await setUpTestOrganization();
@@ -102,29 +97,6 @@ describe("managing medical services", () => {
     });
     const { medicalServices } = await servicesOf(rita.caller, false);
     expect(medicalServices.map((service) => service.name)).toEqual(["Control", "Primera vez"]);
-  });
-
-  it("sends the booking confirmation unless the medical service is set not to", async () => {
-    const { organization, firstVisit, created, servicesOf } = await world();
-    const first = await created();
-    await created(adminCaller, firstVisit({ name: "Control", bookingConfirmation: false }));
-
-    await organization.updateMedicalService(adminCaller, {
-      medicalServiceId: first.id,
-      ...noMessages,
-      name: "Primera consulta",
-      durationMinutes: 40,
-      bookingConfirmation: false,
-    });
-
-    const { medicalServices } = await servicesOf(adminCaller, false);
-    expect(
-      medicalServices.map(({ name, bookingConfirmation }) => [name, bookingConfirmation]),
-    ).toEqual([
-      ["Control", false],
-      ["Primera consulta", false],
-    ]);
-    expect(first.bookingConfirmation).toBe(true);
   });
 
   it("lets a practitioner manage their own medical services and no one else's", async () => {
@@ -245,7 +217,6 @@ describe("auditing medical services", () => {
       ...noMessages,
       name: "Primera consulta",
       durationMinutes: 60,
-      bookingConfirmation: false,
     });
     await organization.setMedicalServiceActive(adminCaller, { id: service.id, active: false });
 
@@ -256,19 +227,14 @@ describe("auditing medical services", () => {
         action: "create",
         userId: juan.caller.userId,
         before: null,
-        after: {
-          ...firstVisit(),
-          bookingConfirmation: true,
-          reminders: "[]",
-          rescheduleCutoffHours: 24,
-        },
+        after: { ...firstVisit(), templateIds: "[]", rescheduleCutoffHours: 24 },
       },
       {
         ...about,
         action: "update",
         userId: adminCaller.userId,
-        before: { durationMinutes: 40, bookingConfirmation: true },
-        after: { durationMinutes: 60, bookingConfirmation: false },
+        before: { durationMinutes: 40 },
+        after: { durationMinutes: 60 },
       },
       {
         ...about,
@@ -281,218 +247,107 @@ describe("auditing medical services", () => {
   });
 });
 
-describe("a medical service's patient messages", () => {
-  const messages = {
-    reminders: [
-      { hoursBefore: 2, asksToConfirm: false },
-      { hoursBefore: 48, asksToConfirm: true },
-    ],
-    careInstructions: "No comer 2 horas antes.\nTraer estudios previos.",
-    followUpHours: 72,
-    rescheduleCutoffHours: 12,
-  };
+describe("the templates a medical service sends", () => {
+  /** The organization's drafts a medical service can pick, by name. */
+  async function drafts(servicesOf: Awaited<ReturnType<typeof world>>["servicesOf"]) {
+    const { templates } = await servicesOf(adminCaller, false);
+    return Object.fromEntries(templates.map((one) => [one.name, one.id]));
+  }
 
-  it("starts with no reminders, care instructions or follow-up, and a 24-hour cutoff", async () => {
-    const { created } = await world();
+  it("starts with none and a 24-hour cutoff, and offers the organization's own templates in the order they go", async () => {
+    const { created, servicesOf } = await world();
 
-    expect(await created()).toMatchObject({
-      reminders: [],
-      careInstructions: null,
-      followUpHours: null,
-      rescheduleCutoffHours: 24,
-    });
-  });
-
-  it("saves and returns its reminders, latest first, care instructions, follow-up and cutoff", async () => {
-    const { organization, firstVisit, created, servicesOf } = await world();
-    const service = await created(adminCaller, firstVisit(messages));
-
-    const expected = {
-      reminders: [
-        { hoursBefore: 48, asksToConfirm: true },
-        { hoursBefore: 2, asksToConfirm: false },
-      ],
-      careInstructions: messages.careInstructions,
-      followUpHours: 72,
-      rescheduleCutoffHours: 12,
-    };
-    expect(service).toMatchObject(expected);
-    expect((await servicesOf(adminCaller, false)).medicalServices).toMatchObject([expected]);
-
-    const edited = await organization.updateMedicalService(adminCaller, {
-      ...firstVisit(),
-      ...noMessages,
-      medicalServiceId: service.id,
-      reminders: [{ hoursBefore: 24, asksToConfirm: true }],
-      careInstructions: "  ",
-      followUpHours: null,
-      rescheduleCutoffHours: 0,
-    });
-
-    const cleared = {
-      reminders: [{ hoursBefore: 24, asksToConfirm: true }],
-      careInstructions: null,
-      followUpHours: null,
-      rescheduleCutoffHours: 0,
-    };
-    expect(edited).toMatchObject({ ok: true, medicalService: cleared });
-    expect((await servicesOf(adminCaller, false)).medicalServices).toMatchObject([cleared]);
-  });
-
-  it("refuses two reminders at the same time, or one after the appointment", async () => {
-    const { organization, firstVisit } = await world();
-    const refused = { ok: false, reason: "invalidInput" };
-
-    for (const input of [
+    expect(await created()).toMatchObject({ templateIds: [], rescheduleCutoffHours: 24 });
+    expect((await servicesOf(adminCaller, false)).templates).toEqual([
+      { id: expect.any(String), name: "Confirmación del turno", timing: { when: "booking" } },
       {
-        reminders: [
-          { hoursBefore: 24, asksToConfirm: true },
-          { hoursBefore: 24, asksToConfirm: false },
-        ],
+        id: expect.any(String),
+        name: "Recordatorio con confirmación",
+        timing: { when: "before", hours: 24 },
       },
-      { reminders: [{ hoursBefore: -2, asksToConfirm: false }] },
-    ]) {
-      expect(await organization.createMedicalService(adminCaller, firstVisit(input))).toEqual(
-        refused,
-      );
-    }
+      { id: expect.any(String), name: "Recordatorio", timing: { when: "before", hours: 2 } },
+      { id: expect.any(String), name: "Seguimiento", timing: { when: "after", hours: 24 } },
+    ]);
   });
 
-  it("refuses care instructions that would not fit the template's body with its fixed text", async () => {
-    const { organization, firstVisit } = await world();
-    // The draft of `indicaciones` keeps 113 characters outside its variables.
-    const fitting = "a".repeat(1024 - 113);
-
-    expect(
-      (
-        await organization.createMedicalService(
-          adminCaller,
-          firstVisit({ careInstructions: fitting }),
-        )
-      ).ok,
-    ).toBe(true);
-    expect(
-      await organization.createMedicalService(
-        adminCaller,
-        firstVisit({ careInstructions: `${fitting}a` }),
-      ),
-    ).toEqual({ ok: false, reason: "careInstructionsTooLong", maxLength: 1024 - 113 });
-  });
-
-  it("measures care instructions against the approved template, with line breaks as sent", async () => {
-    const { organization, firstVisit, servicesOf } = await world();
-    const body = `Hola {{paciente}}: {{indicaciones}}. ${"x".repeat(950)}`;
-    fakeMeta.answerNextWith(200, {
-      id: "900000000000001",
-      status: "APPROVED",
-      category: "UTILITY",
-    });
-    expectOk(
-      await organization.submitWhatsappTemplate(adminCaller, {
-        templateName: "indicaciones",
-        body,
-      }),
-    );
-    const maxLength = 1024 - (body.length - "{{paciente}}{{indicaciones}}".length);
-    expect((await servicesOf(adminCaller, false)).careInstructionsMaxLength).toBe(maxLength);
-
-    // Each line break goes as `; `, one character longer.
-    expect(
-      await organization.createMedicalService(
-        adminCaller,
-        firstVisit({ careInstructions: `${"a".repeat(maxLength - 2)}\nb` }),
-      ),
-    ).toEqual({ ok: false, reason: "careInstructionsTooLong", maxLength });
-    expect(
-      (
-        await organization.createMedicalService(
-          adminCaller,
-          firstVisit({ careInstructions: `${"a".repeat(maxLength - 3)}\nb` }),
-        )
-      ).ok,
-    ).toBe(true);
-  });
-
-  it("keeps saved care instructions that a later template leaves less room for, until they change", async () => {
-    const { organization, firstVisit, created } = await world();
-    const careInstructions = "a".repeat(900);
-    const service = await created(adminCaller, firstVisit({ careInstructions }));
-    fakeMeta.answerNextWith(200, {
-      id: "900000000000002",
-      status: "APPROVED",
-      category: "UTILITY",
-    });
-    expectOk(
-      await organization.submitWhatsappTemplate(adminCaller, {
-        templateName: "indicaciones",
-        body: `Hola {{paciente}}: {{indicaciones}}. ${"x".repeat(200)}`,
-      }),
-    );
-    const edit = { ...firstVisit(), ...noMessages, medicalServiceId: service.id };
-
-    expect(
-      await organization.updateMedicalService(adminCaller, {
-        ...edit,
-        careInstructions,
-        name: "Otra",
-      }),
-    ).toMatchObject({ ok: true });
-    expect(
-      await organization.updateMedicalService(adminCaller, {
-        ...edit,
-        careInstructions: `${careInstructions}b`,
-      }),
-    ).toMatchObject({ ok: false, reason: "careInstructionsTooLong" });
-  });
-
-  it("refuses an edit that leaves its messages out, rather than clearing them", async () => {
+  it("saves and returns the templates it picks, each once, several sharing a timing", async () => {
     const { organization, firstVisit, created, servicesOf } = await world();
-    const service = await created(adminCaller, firstVisit(messages));
+    const ids = await drafts(servicesOf);
+    const service = await created();
+    const picked = [ids["Recordatorio"]!, ids["Seguimiento"]!, ids["Recordatorio"]!];
 
-    // The shape of an edit form opened before medical services had messages.
+    expectOk(
+      await organization.updateMedicalService(adminCaller, {
+        ...firstVisit(),
+        templateIds: picked,
+        rescheduleCutoffHours: 12,
+        medicalServiceId: service.id,
+      }),
+    );
+
+    const [saved] = (await servicesOf(adminCaller, false)).medicalServices;
+    expect(saved!.templateIds).toHaveLength(2);
+    expect(saved!.templateIds).toEqual(
+      expect.arrayContaining([ids["Recordatorio"], ids["Seguimiento"]]),
+    );
+    expect(saved!.rescheduleCutoffHours).toBe(12);
+  });
+
+  it("refuses an event template, and one no organization template is", async () => {
+    const { organization, firstVisit } = await world();
+
+    const answers = [
+      await organization.createMedicalService(
+        adminCaller,
+        firstVisit({ templateIds: [crypto.randomUUID()] }),
+      ),
+      await organization.createMedicalService(
+        adminCaller,
+        firstVisit({ templateIds: ["turno_movido"] }),
+      ),
+    ];
+
+    expect(answers.map((answer) => (answer.ok ? "saved" : answer.reason))).toEqual([
+      "unknownTemplate",
+      "invalidInput",
+    ]);
+  });
+
+  it("refuses an edit that leaves its templates out, rather than clearing them", async () => {
+    const { organization, firstVisit, created, servicesOf } = await world();
+    const ids = await drafts(servicesOf);
+    const service = await created(adminCaller, firstVisit({ templateIds: [ids["Seguimiento"]!] }));
+
+    // The shape of an edit form opened before medical services picked templates.
     expect(
       await organization.updateMedicalService(adminCaller, {
         name: "Primera vez",
         durationMinutes: 40,
-        bookingConfirmation: true,
         medicalServiceId: service.id,
       } as MedicalServiceUpdate),
     ).toEqual({ ok: false, reason: "invalidInput" });
     expect((await servicesOf(adminCaller, false)).medicalServices).toMatchObject([
-      {
-        name: "Primera consulta",
-        followUpHours: 72,
-        reminders: [{ hoursBefore: 48 }, { hoursBefore: 2 }],
-      },
+      { name: "Primera consulta", templateIds: [ids["Seguimiento"]] },
     ]);
   });
 
-  it("audits a change to its messages", async () => {
-    const { organization, firstVisit, created } = await world();
+  it("audits a change to its templates", async () => {
+    const { organization, firstVisit, created, servicesOf } = await world();
+    const ids = await drafts(servicesOf);
     const service = await created();
 
     await organization.updateMedicalService(adminCaller, {
       ...firstVisit(),
-      ...messages,
+      templateIds: [ids["Seguimiento"]!],
+      rescheduleCutoffHours: 24,
       medicalServiceId: service.id,
     });
 
     const [, update] = await auditEntriesFor(organization, service.id);
     expect(update).toMatchObject({
       action: "update",
-      before: {
-        reminders: "[]",
-        careInstructions: null,
-        followUpHours: null,
-        rescheduleCutoffHours: 24,
-      },
-      after: {
-        reminders:
-          '[{"hoursBefore":48,"asksToConfirm":true},{"hoursBefore":2,"asksToConfirm":false}]',
-        careInstructions: messages.careInstructions,
-        followUpHours: 72,
-        rescheduleCutoffHours: 12,
-      },
+      before: { templateIds: "[]" },
+      after: { templateIds: JSON.stringify([ids["Seguimiento"]]) },
     });
   });
 });

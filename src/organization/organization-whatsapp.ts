@@ -14,7 +14,7 @@ import type {
 import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
 import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
-import type { TemplateSubmission } from "#/lib/whatsapp-templates.ts";
+import type { TemplateCreate, TemplateDelete, TemplateEdit } from "#/lib/whatsapp-templates.ts";
 
 import {
   listSandboxScenarios,
@@ -44,10 +44,8 @@ import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
 import { getWhatsappSettings } from "#/organization/whatsapp.ts";
-import {
-  refreshWhatsappTemplates,
-  submitWhatsappTemplate,
-} from "#/organization/whatsapp-templates.ts";
+import { createTemplate, deleteTemplate, editTemplate } from "#/organization/templates.ts";
+import { refreshWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
 
 /**
  * The organization object's WhatsApp methods (`Organization` extends this):
@@ -155,10 +153,21 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     return this.as(caller, ["admin"], (acting) => this.number.disconnect(acting));
   }
 
-  async submitWhatsappTemplate(caller: Caller, input: TemplateSubmission) {
+  async createTemplate(caller: Caller, input: TemplateCreate) {
     return this.asThenArm(caller, ["admin"], (acting) =>
-      submitWhatsappTemplate(this.database, this.whatsapp, acting, input),
+      createTemplate(this.database, this.whatsapp, acting, input),
     );
+  }
+
+  /** A template's text, and for the organization's own its name and timing, which can queue messages. */
+  async editTemplate(caller: Caller, input: TemplateEdit) {
+    return this.asThenArm(caller, ["admin"], (acting) =>
+      editTemplate(this.database, this.whatsapp, acting, input),
+    );
+  }
+
+  deleteTemplate(caller: Caller, input: TemplateDelete) {
+    return this.as(caller, ["admin"], (acting) => deleteTemplate(this.database, acting, input));
   }
 
   /** The assistant's `vos` or `usted`, sign-off and tone (#185), which the settings read back. */

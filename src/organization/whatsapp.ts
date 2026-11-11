@@ -11,7 +11,7 @@ import type {
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 import { activeHold } from "#/organization/whatsapp-limits.ts";
-import { listWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
+import { listTemplates } from "#/organization/templates.ts";
 
 // The WhatsApp settings: the organization's number
 // (`src/organization/whatsapp-connection.ts`) and its templates
@@ -48,7 +48,7 @@ export function getWhatsappSettings(
   cloud: WhatsappCloud,
   number: WhatsappNumber,
 ) {
-  const { missing: templateMissing, templates } = listWhatsappTemplates(database, cloud);
+  const { missing: templateMissing, templates } = listTemplates(database, cloud);
   logMissingSettings(cloud.missingSetting(), templateMissing);
   const signupMissing = number.missingSignupSetting();
   if (signupMissing) {

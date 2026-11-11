@@ -37,7 +37,7 @@ function EditMedicalService() {
       title="Editar prestación"
       description={medicalService.name}
       initial={medicalService}
-      careInstructionsMaxLength={result.careInstructionsMaxLength}
+      templates={result.templates}
       submitLabel="Guardar"
       record={activeRecord({
         active: medicalService.active,

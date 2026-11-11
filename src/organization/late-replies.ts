@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { lateReplyChanceMs, lateReplyReferenceSchema } from "#/lib/conversation-holds.ts";
 import type { LateReplyReference, LateReplyState } from "#/lib/conversation-holds.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
-import { outboxTemplates } from "#/lib/outbox.ts";
+import { eventKindTemplates } from "#/lib/outbox.ts";
 import { fillTemplate } from "#/lib/template-filling.ts";
 import type { OutboxDropReason } from "#/lib/outbox.ts";
 
@@ -73,7 +73,7 @@ export function queueLateReply(
 ) {
   const { conversationId } = reply;
   return database.transaction((tx) => {
-    if (!approvedVersion(database, outboxTemplates.reopenConversation)) {
+    if (!approvedVersion(database, eventKindTemplates.reopenConversation)) {
       return { ok: false as const, reason: "noReopenTemplate" as const };
     }
     if (!greetedAt(tx, reply.phone)) {
@@ -96,7 +96,12 @@ export function queueLateReply(
       waiting?.reopenId ??
       tx
         .insert(outboxMessage)
-        .values({ kind: "reopenConversation", conversationId, dueAt: Date.now() })
+        .values({
+          kind: "reopenConversation",
+          templateId: eventKindTemplates.reopenConversation,
+          conversationId,
+          dueAt: Date.now(),
+        })
         .returning({ id: outboxMessage.id })
         .get().id;
     tx.insert(lateReply)
@@ -170,7 +175,7 @@ export function queuedReopenShown(database: Database, conversationId: string): Q
     )
     .get();
   const toSend = queued && reopenToSend(database, queued.id);
-  const version = approvedVersion(database, outboxTemplates.reopenConversation);
+  const version = approvedVersion(database, eventKindTemplates.reopenConversation);
   if (!queued || !toSend || toSend.drop || !version) {
     return null;
   }

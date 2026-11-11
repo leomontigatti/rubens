@@ -43,13 +43,14 @@ function completion() {
 }
 
 const confirmation = {
-  templateName: "confirmacion_turno",
+  templateId: "turno_movido",
+  settings: null,
   body: "Hola {{paciente}}, tu turno con {{profesional}} es el {{fecha}} a las {{hora}}. Consultorios Prueba",
 } as const;
 
 /** A call to Meta with the number's token: an admin submitting a template. */
 function callMeta() {
-  return organization.submitWhatsappTemplate(adminCaller, confirmation);
+  return organization.editTemplate(adminCaller, confirmation);
 }
 
 async function connection() {

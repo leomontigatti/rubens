@@ -2,7 +2,6 @@ import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
 
 import {
   addRefusedAdmin,
@@ -15,6 +14,7 @@ import {
   patientWrites,
   scriptedModel,
   setUpBookingWorld,
+  submitTemplate,
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
 
@@ -79,19 +79,11 @@ async function notificationsOf(caller: Caller) {
 }
 
 /** Submits `reabrir_conversacion` with its draft, signed, and has Meta approve it at once. */
-async function approveReopen() {
-  const body = whatsappTemplates.reabrir_conversacion.draft.replace(
-    "[firma]",
-    "Consultorios Prueba",
-  );
-  fakeMeta.answerNextWith(200, { id: "900000000000031", status: "APPROVED", category: "UTILITY" });
-  expectOk(
-    await world.organization.submitWhatsappTemplate(adminCaller, {
-      templateName: "reabrir_conversacion",
-      body,
-    }),
-  );
-  fakeMeta.requests = [];
+function approveReopen() {
+  return submitTemplate(world.organization, "reabrir_conversacion", {
+    status: "APPROVED",
+    metaId: "900000000000031",
+  });
 }
 
 /** Meta reports the reopen template moved to `status`. */

@@ -25,7 +25,7 @@ import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { liftOptOutHold, optOutPendingSince } from "#/organization/opt-out-holds.ts";
-import { dropQueuedForPatient, requeueRemindersForPatient } from "#/organization/outbox.ts";
+import { dropQueuedForPatient, requeueForPatient } from "#/organization/outbox.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import { coverage, insurer, patient } from "#/organization/schema.ts";
 import { relinkPatient } from "#/organization/whatsapp-messages.ts";
@@ -432,7 +432,7 @@ export function setWhatsappConsent(
       .returning(patientColumns)
       .get();
     if (whatsappConsent) {
-      requeueRemindersForPatient(tx, patientId);
+      requeueForPatient(tx, patientId);
     } else {
       dropQueuedForPatient(tx, patientId);
     }

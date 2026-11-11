@@ -1,6 +1,5 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { assistantWaitMs } from "#/lib/assistant.ts";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -14,6 +13,8 @@ import {
   patientWrites,
   scriptedModel,
   setUpBookingWorld,
+  submitTemplate,
+  templateNamed,
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
@@ -95,7 +96,7 @@ function outbox() {
     database
       .select({
         appointmentId: outboxMessage.appointmentId,
-        hoursBefore: outboxMessage.hoursBefore,
+        templateId: outboxMessage.templateId,
         state: outboxMessage.state,
         dropReason: outboxMessage.dropReason,
       })
@@ -283,6 +284,13 @@ describe("a reply the model judges an opt-out", () => {
 
 describe("a patient whose consent a person turned off", () => {
   it("gets none of their queued messages, and none queued after", async () => {
+    // The medical service sends the booking confirmation, approved.
+    const confirmationId = await templateNamed(world.organization, "Confirmación del turno");
+    await submitTemplate(world.organization, confirmationId, {
+      status: "APPROVED",
+      metaId: "900000000000030",
+    });
+    await world.pickTemplates(medicalServiceId, [confirmationId]);
     const martina = await world.addPatient("Martina", martinaPhone);
     const pedro = await world.addPatient("Pedro", "+5491155559999");
     const queued = await bookAt(martina.id, "12:00");
@@ -309,33 +317,13 @@ describe("a patient whose consent a person turned off", () => {
   });
 
   it("gets their upcoming appointments' reminders again once consent is back on, with the alarm set for them", async () => {
-    const body = whatsappTemplates.recordatorio_turno.draft.replace(
-      "[firma]",
-      "Consultorios Prueba",
-    );
-    fakeMeta.answerNextWith(200, {
-      id: "900000000000031",
+    const reminderId = await templateNamed(world.organization, "Recordatorio con confirmación");
+    await submitTemplate(world.organization, reminderId, {
       status: "APPROVED",
-      category: "UTILITY",
+      metaId: "900000000000031",
+      timing: { when: "before", hours: 48 },
     });
-    expectOk(
-      await world.organization.submitWhatsappTemplate(adminCaller, {
-        templateName: "recordatorio_turno",
-        body,
-      }),
-    );
-    expectOk(
-      await world.organization.updateMedicalService(adminCaller, {
-        medicalServiceId,
-        name: "Consulta",
-        durationMinutes: 30,
-        bookingConfirmation: false,
-        reminders: [{ hoursBefore: 48, asksToConfirm: true }],
-        careInstructions: null,
-        followUpHours: null,
-        rescheduleCutoffHours: 24,
-      }),
-    );
+    await world.pickTemplates(medicalServiceId, [reminderId]);
     const martina = await world.addPatient("Martina", martinaPhone);
     expectOk(
       await world.organization.setWhatsappConsent(world.receptionist, {
@@ -355,7 +343,7 @@ describe("a patient whose consent a person turned off", () => {
     const queued = (await outbox()).filter(
       (row) => row.appointmentId === booked.id && row.state === "queued",
     );
-    expect(queued).toEqual([expect.objectContaining({ hoursBefore: 48 })]);
+    expect(queued).toEqual([expect.objectContaining({ templateId: reminderId })]);
     expect(await scheduledAlarm()).toBe(+at("12:00") - 48 * 60 * 60_000);
   });
 });

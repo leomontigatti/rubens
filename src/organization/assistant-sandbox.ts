@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray } from "drizzle-orm";
 
 import {
   isFull,
@@ -10,8 +10,7 @@ import type { SandboxStart, SandboxState, SandboxTurnInput } from "#/lib/assista
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
-import { fillTemplate, flattenCareInstructions, templateValues } from "#/lib/template-filling.ts";
-import { whatsappTemplates } from "#/lib/whatsapp-templates.ts";
+import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
 
 import { judgeTurn, readConversation, settleTurn } from "#/organization/assistant.ts";
 import type { TurnMode } from "#/organization/assistant.ts";
@@ -20,12 +19,11 @@ import { maxModelCalls } from "#/organization/assistant-model.ts";
 import type { AssistantModel, AssistantTool } from "#/organization/assistant-model.ts";
 import type { Database } from "#/organization/database.ts";
 import { answeredMessage } from "#/organization/handoffs.ts";
-import { upcomingStatuses } from "#/organization/outbox.ts";
+import { upcomingStatuses } from "#/organization/template-messages.ts";
 import { applyChange } from "#/organization/proposals.ts";
 import {
   appointment,
   guardian,
-  medicalService,
   office,
   patient,
   practitioner,
@@ -40,9 +38,11 @@ import {
 import {
   conversation,
   handoff,
+  medicalServiceTemplate,
   modelUsage,
   outboxMessage,
   proposal,
+  template,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
 import { approvedVersion } from "#/organization/whatsapp-templates.ts";
@@ -78,12 +78,11 @@ function scenarioRows(database: Database) {
       officeName: office.name,
       officeAddress: office.address,
       timeZone: office.timeZone,
-      careInstructions: medicalService.careInstructions,
+      medicalServiceId: appointment.medicalServiceId,
     })
     .from(appointment)
     .innerJoin(patient, eq(patient.id, appointment.patientId))
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
-    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .innerJoin(room, eq(room.id, appointment.roomId))
     .innerJoin(office, eq(office.id, room.officeId))
     .leftJoin(guardian, and(eq(guardian.patientId, patient.id), eq(guardian.messageContact, true)))
@@ -125,11 +124,38 @@ export function listSandboxScenarios(database: Database) {
   };
 }
 
+/** What the sandbox's reminder says when the organization has no template timed before an appointment. */
+const fallbackReminder =
+  "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}}. ¿Nos confirmás tu asistencia?";
+
+/**
+ * The template the scenario's reminder is: the furthest before the
+ * appointment its medical service picks, else the organization's furthest;
+ * `null` when it has none timed before an appointment.
+ */
+function reminderTemplate(database: Database, medicalServiceId: string) {
+  const timedBefore = database
+    .select({ id: template.id, draft: template.draft, picked: medicalServiceTemplate.templateId })
+    .from(template)
+    .leftJoin(
+      medicalServiceTemplate,
+      and(
+        eq(medicalServiceTemplate.templateId, template.id),
+        eq(medicalServiceTemplate.medicalServiceId, medicalServiceId),
+      ),
+    )
+    .where(eq(template.timing, "before"))
+    .orderBy(desc(template.timingHours))
+    .all();
+  return timedBefore.find((one) => one.picked !== null) ?? timedBefore[0] ?? null;
+}
+
 /** The reminder the scenario starts from, as the patient read it: the approved template, or its draft. */
-function reminderText(database: Database, scenario: NonNullable<ReturnType<typeof scenarioOf>>) {
+function reminderOf(database: Database, scenario: NonNullable<ReturnType<typeof scenarioOf>>) {
+  const reminder = reminderTemplate(database, scenario.medicalServiceId);
   const body =
-    approvedVersion(database, "recordatorio_turno")?.body ??
-    whatsappTemplates.recordatorio_turno.draft;
+    (reminder && (approvedVersion(database, reminder.id)?.body ?? reminder.draft)) ??
+    fallbackReminder;
   const values = templateValues({
     patient: scenario,
     practitionerName: scenario.practitionerName,
@@ -137,9 +163,8 @@ function reminderText(database: Database, scenario: NonNullable<ReturnType<typeo
     timeZone: scenario.timeZone,
     officeName: scenario.officeName,
     officeAddress: scenario.officeAddress,
-    careInstructions: flattenCareInstructions(scenario.careInstructions ?? ""),
   });
-  return fillTemplate(body.trim(), values).text;
+  return { templateId: reminder?.id ?? null, text: fillTemplate(body.trim(), values).text };
 }
 
 /** A sandbox conversation for `appointmentId`, its reminder just sent. */
@@ -158,7 +183,7 @@ export function startSandbox(database: Database, input: SandboxStart) {
     messages: [
       {
         direction: "outgoing",
-        text: reminderText(database, scenario),
+        text: reminderOf(database, scenario).text,
         sentAt: Date.now(),
         judgement: null,
       },
@@ -291,16 +316,25 @@ class SandboxRun {
         })),
       )
       .run();
-    database
-      .insert(outboxMessage)
-      .values({
-        kind: "reminder",
-        appointmentId: state.appointmentId,
-        state: "sent",
-        dueAt: state.messages[0]!.sentAt,
-        whatsappMessageId: this.#messageId(0),
-      })
-      .run();
+    const booked = database
+      .select({ medicalServiceId: appointment.medicalServiceId })
+      .from(appointment)
+      .where(eq(appointment.id, state.appointmentId))
+      .get();
+    const reminder = booked && reminderTemplate(database, booked.medicalServiceId);
+    if (reminder) {
+      database
+        .insert(outboxMessage)
+        .values({
+          kind: "timed",
+          templateId: reminder.id,
+          appointmentId: state.appointmentId,
+          state: "sent",
+          dueAt: state.messages[0]!.sentAt,
+          whatsappMessageId: this.#messageId(0),
+        })
+        .run();
+    }
     // The sandbox's own changes hold in its later steps: made again, by the same
     // functions, whose rules run again. One they refuse now (its new time was
     // booked meanwhile, its cutoff passed, reception confirmed it for real) is

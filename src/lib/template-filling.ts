@@ -12,7 +12,6 @@ const templateVariableNames = [
   "hora",
   "sede",
   "direccion",
-  "indicaciones",
 ] as const;
 
 export type TemplateVariable = (typeof templateVariableNames)[number];
@@ -27,8 +26,6 @@ export interface TemplateAppointment {
   timeZone: string;
   officeName: string;
   officeAddress: string;
-  /** The medical service's care instructions, when it has them. */
-  careInstructions: string | null;
 }
 
 /** The appointment the template preview and Meta's examples are filled from. */
@@ -40,7 +37,6 @@ export const sampleAppointment: TemplateAppointment = {
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 1234, Córdoba",
-  careInstructions: "evitá el sol directo por 48 horas",
 };
 
 /** The day as the templates write it, such as `jueves 12 de noviembre`. */
@@ -76,7 +72,6 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
     hora: appointmentTime(start, timeZone),
     sede: appointment.officeName,
     direccion: appointment.officeAddress,
-    indicaciones: appointment.careInstructions ?? "",
   };
 }
 
@@ -117,17 +112,4 @@ export function fillTemplate(body: string, values: Partial<Record<TemplateVariab
 /** `body` as the template preview shows it: trimmed, as it is submitted, and filled from `sampleAppointment`. */
 export function fillSample(body: string) {
   return fillTemplate(body.trim(), templateValues(sampleAppointment)).text;
-}
-
-/**
- * Care instructions as they go in `{{indicaciones}}` (decided in #162): Meta
- * refuses a value with a line break, a tab or a run of spaces, so each line
- * break is joined as `; ` and each run of other whitespace becomes one space.
- */
-export function flattenCareInstructions(text: string) {
-  return text
-    .split(/[\n\r\v\f\u2028\u2029]/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .join("; ");
 }

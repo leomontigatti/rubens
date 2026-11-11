@@ -3,7 +3,7 @@ import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
 
 import type { Database } from "#/organization/database.ts";
-import { upcomingStatuses } from "#/organization/outbox.ts";
+import { upcomingStatuses } from "#/organization/template-messages.ts";
 import { appointment, medicalService, office, practitioner, room } from "#/organization/schema.ts";
 
 // The appointments a patient assistant's turn may speak of and act on

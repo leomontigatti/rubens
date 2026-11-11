@@ -289,8 +289,9 @@ export class Organization extends OrganizationWhatsapp {
     );
   }
 
+  /** A change to the templates it picks can queue messages. */
   updateMedicalService(caller: Caller, input: MedicalServiceUpdate) {
-    return this.as(caller, medicalServiceEditors, (acting) =>
+    return this.asThenArm(caller, medicalServiceEditors, (acting) =>
       updateMedicalService(this.database, acting, input),
     );
   }

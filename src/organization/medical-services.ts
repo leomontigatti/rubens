@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import {
@@ -10,46 +10,43 @@ import type {
   MedicalServiceActiveChange,
   MedicalServiceInput,
   MedicalServiceUpdate,
-  Reminder,
 } from "#/lib/medical-services.ts";
-import { flattenCareInstructions } from "#/lib/template-filling.ts";
-import { maxCareInstructionsLength, whatsappTemplates } from "#/lib/whatsapp-templates.ts";
+import { timingOf, timingRank } from "#/lib/template-timing.ts";
+import type { Timing } from "#/lib/template-timing.ts";
+import { eventTemplateIds } from "#/lib/whatsapp-templates.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
-import { medicalService, medicalServiceReminder } from "#/organization/schema.ts";
+import { medicalService } from "#/organization/schema.ts";
+import { rebuildPicks } from "#/organization/template-messages.ts";
+import { medicalServiceTemplate, template } from "#/organization/whatsapp-schema.ts";
 
 // Practitioners' medical services. Everyone reads them, since booking picks
 // from them; an admin changes anyone's and a practitioner their own (the
 // object refuses a receptionist first). Nothing is deleted: a deactivated one
 // drops out of the booking list and stays on the medical services screen.
 // Every change is written to the audit log, about no patient. Each one also
-// sets its patient messages (`docs/domain/messages.md` § To patients).
+// picks the organization's templates its appointments get
+// (`docs/domain/messages.md` § The organization's templates).
 
 export interface MedicalService {
   id: string;
   name: string;
   durationMinutes: number;
-  bookingConfirmation: boolean;
-  /** Latest first. */
-  reminders: Reminder[];
-  careInstructions: string | null;
-  followUpHours: number | null;
+  /** The organization's templates it sends. */
+  templateIds: string[];
   rescheduleCutoffHours: number;
   active: boolean;
 }
 
-type Refusal = "forbidden" | "invalidInput" | "notFound" | "practitionerInactive";
-
-/** Care instructions longer than the `indicaciones` template has room for, once flattened. */
-interface CareInstructionsTooLong {
-  ok: false;
-  reason: "careInstructionsTooLong";
-  maxLength: number;
-}
+type Refusal =
+  | "forbidden"
+  | "invalidInput"
+  | "notFound"
+  | "practitionerInactive"
+  | "unknownTemplate";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
@@ -57,83 +54,96 @@ const forbidden = { ok: false, reason: "forbidden" } as const;
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const practitionerInactive = { ok: false, reason: "practitionerInactive" } as const;
+const unknownTemplate = { ok: false, reason: "unknownTemplate" } as const;
 
 const medicalServiceColumns = {
   id: medicalService.id,
   name: medicalService.name,
   durationMinutes: medicalService.durationMinutes,
-  bookingConfirmation: medicalService.bookingConfirmation,
-  careInstructions: medicalService.careInstructions,
-  followUpHours: medicalService.followUpHours,
   rescheduleCutoffHours: medicalService.rescheduleCutoffHours,
   active: medicalService.active,
 };
 
-/** The reminders of each of `ids`, latest first. */
-function remindersOf(database: Database, ids: string[]) {
+/** The templates each of `ids` picks. */
+function picksOf(database: Database, ids: string[]) {
   const rows = database
     .select({
-      medicalServiceId: medicalServiceReminder.medicalServiceId,
-      hoursBefore: medicalServiceReminder.hoursBefore,
-      asksToConfirm: medicalServiceReminder.asksToConfirm,
+      medicalServiceId: medicalServiceTemplate.medicalServiceId,
+      templateId: medicalServiceTemplate.templateId,
     })
-    .from(medicalServiceReminder)
-    .where(inArray(medicalServiceReminder.medicalServiceId, ids))
-    .orderBy(desc(medicalServiceReminder.hoursBefore))
+    .from(medicalServiceTemplate)
+    .where(inArray(medicalServiceTemplate.medicalServiceId, ids))
     .all();
-  const byService = new Map<string, Reminder[]>(ids.map((id) => [id, []]));
-  for (const { medicalServiceId, ...reminder } of rows) {
-    byService.get(medicalServiceId)!.push(reminder);
+  const byService = new Map<string, string[]>(ids.map((id) => [id, []]));
+  for (const { medicalServiceId, templateId } of rows) {
+    byService.get(medicalServiceId)!.push(templateId);
   }
   return byService;
 }
 
-function withReminders<T extends { id: string }>(database: Database, rows: T[]) {
-  const reminders = remindersOf(
+function withPicks<T extends { id: string }>(database: Database, rows: T[]) {
+  const picks = picksOf(
     database,
     rows.map((row) => row.id),
   );
-  return rows.map((row) => ({ ...row, reminders: reminders.get(row.id)! }));
+  return rows.map((row) => ({ ...row, templateIds: picks.get(row.id)! }));
 }
 
-function saveReminders(tx: Database, medicalServiceId: string, reminders: Reminder[]) {
-  tx.delete(medicalServiceReminder)
-    .where(eq(medicalServiceReminder.medicalServiceId, medicalServiceId))
-    .run();
-  if (reminders.length > 0) {
-    tx.insert(medicalServiceReminder)
-      .values(reminders.map((reminder) => ({ ...reminder, medicalServiceId })))
+/** The organization's own templates a medical service can pick, in the order their messages go. */
+function pickableTemplates(database: Database) {
+  return database
+    .select({
+      id: template.id,
+      name: template.name,
+      timing: template.timing,
+      timingHours: template.timingHours,
+    })
+    .from(template)
+    .where(notInArray(template.id, [...eventTemplateIds]))
+    .all()
+    .map(({ id, name, ...stored }) => ({ id, name, timing: timingOf(stored)! }))
+    .sort((a, b) => {
+      const [x, y] = [timingRank(a.timing), timingRank(b.timing)];
+      return x[0] - y[0] || x[1] - y[1] || a.name.localeCompare(b.name, "es");
+    });
+}
+
+/** Whether every one of `templateIds` is one of the organization's own templates. */
+function allPickable(tx: Database, templateIds: string[]) {
+  const known = new Set(pickableTemplates(tx).map((one) => one.id));
+  return templateIds.every((id) => known.has(id));
+}
+
+/** Makes `templateIds` the templates `medicalServiceId` picks, and rebuilds the messages the change affects. */
+function savePicks(
+  tx: Database,
+  medicalServiceId: string,
+  before: string[],
+  templateIds: string[],
+) {
+  const removed = before.filter((id) => !templateIds.includes(id));
+  const added = templateIds.filter((id) => !before.includes(id));
+  if (removed.length > 0) {
+    tx.delete(medicalServiceTemplate)
+      .where(
+        and(
+          eq(medicalServiceTemplate.medicalServiceId, medicalServiceId),
+          inArray(medicalServiceTemplate.templateId, removed),
+        ),
+      )
       .run();
   }
-}
-
-function careInstructionsMaxLength(database: Database) {
-  return maxCareInstructionsLength(
-    approvedVersion(database, "indicaciones")?.body ?? whatsappTemplates.indicaciones.draft,
-  );
-}
-
-/**
- * The refusal for care instructions that would not fit the `indicaciones`
- * template as sent: flattened, in the latest approved version's body, or the
- * doc's draft while none is approved.
- */
-function careInstructionsTooLong(
-  database: Database,
-  careInstructions: string | null,
-): CareInstructionsTooLong | null {
-  if (!careInstructions) {
-    return null;
+  if (added.length > 0) {
+    tx.insert(medicalServiceTemplate)
+      .values(added.map((templateId) => ({ medicalServiceId, templateId })))
+      .run();
   }
-  const maxLength = careInstructionsMaxLength(database);
-  return flattenCareInstructions(careInstructions).length > maxLength
-    ? { ok: false, reason: "careInstructionsTooLong", maxLength }
-    : null;
+  rebuildPicks(tx, medicalServiceId, { removed, added });
 }
 
-/** The fields as the audit log keeps them: the reminders as one value. */
-function audited<T extends { reminders: Reminder[] }>(fields: T) {
-  return { ...fields, reminders: JSON.stringify(fields.reminders) };
+/** The fields as the audit log keeps them: the templates as one value, in a stable order. */
+function audited<T extends { templateIds: string[] }>(fields: T) {
+  return { ...fields, templateIds: JSON.stringify([...fields.templateIds].sort()) };
 }
 
 export interface MedicalServiceListOptions {
@@ -151,8 +161,8 @@ export function listMedicalServices(
   practitioner: { id: string; displayName: string; canEdit: boolean; active: boolean };
   medicalServices: MedicalService[];
   canEdit: boolean;
-  /** The longest care instructions the `indicaciones` template has room for, flattened. */
-  careInstructionsMaxLength: number;
+  /** The organization's own templates its medical services can pick. */
+  templates: { id: string; name: string; timing: Timing }[];
 }> {
   const found = findPractitioner(database, acting, options.practitionerId);
   if (!found) {
@@ -177,9 +187,9 @@ export function listMedicalServices(
       canEdit: found.canEdit,
       active: found.active,
     },
-    medicalServices: withReminders(database, rows),
+    medicalServices: withPicks(database, rows),
     canEdit: found.canEdit && found.active,
-    careInstructionsMaxLength: careInstructionsMaxLength(database),
+    templates: pickableTemplates(database),
   };
 }
 
@@ -187,12 +197,12 @@ export function createMedicalService(
   database: Database,
   acting: Acting,
   input: MedicalServiceInput,
-): Result<{ medicalService: MedicalService }> | CareInstructionsTooLong {
+): Result<{ medicalService: MedicalService }> {
   const parsed = medicalServiceInputSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { reminders, ...fields } = parsed.data;
+  const { templateIds, ...fields } = parsed.data;
   return database.transaction((tx) => {
     const found = findPractitioner(tx, acting, parsed.data.practitionerId);
     if (!found) {
@@ -204,12 +214,11 @@ export function createMedicalService(
     if (!found.active) {
       return practitionerInactive;
     }
-    const tooLong = careInstructionsTooLong(tx, fields.careInstructions);
-    if (tooLong) {
-      return tooLong;
+    if (!allPickable(tx, templateIds)) {
+      return unknownTemplate;
     }
     const created = tx.insert(medicalService).values(fields).returning(medicalServiceColumns).get();
-    saveReminders(tx, created.id, reminders);
+    savePicks(tx, created.id, [], templateIds);
     recordAudit(tx, acting.userId, {
       action: "create",
       entityType: "medicalService",
@@ -218,7 +227,7 @@ export function createMedicalService(
       before: null,
       after: createdFields(audited(parsed.data)),
     });
-    return { ok: true as const, medicalService: { ...created, reminders } };
+    return { ok: true as const, medicalService: { ...created, templateIds } };
   });
 }
 
@@ -226,12 +235,12 @@ export function updateMedicalService(
   database: Database,
   acting: Acting,
   input: MedicalServiceUpdate,
-): Result<{ medicalService: MedicalService }> | CareInstructionsTooLong {
+): Result<{ medicalService: MedicalService }> {
   const parsed = medicalServiceUpdateSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { medicalServiceId, reminders, ...fields } = parsed.data;
+  const { medicalServiceId, templateIds, ...fields } = parsed.data;
   return database.transaction((tx) => {
     const current = tx
       .select({ ...medicalServiceColumns, practitionerId: medicalService.practitionerId })
@@ -244,23 +253,18 @@ export function updateMedicalService(
     if (!findPractitioner(tx, acting, current.practitionerId)?.canEdit) {
       return forbidden;
     }
-    // Checked only when changed: an approved template can leave less room
-    // than saved instructions had, which must not block the service's other edits.
-    const tooLong =
-      fields.careInstructions !== current.careInstructions &&
-      careInstructionsTooLong(tx, fields.careInstructions);
-    if (tooLong) {
-      return tooLong;
+    if (!allPickable(tx, templateIds)) {
+      return unknownTemplate;
     }
-    const [before] = withReminders(tx, [current]);
+    const [before] = withPicks(tx, [current]);
     const updated = tx
       .update(medicalService)
       .set(fields)
       .where(eq(medicalService.id, medicalServiceId))
       .returning(medicalServiceColumns)
       .get();
-    saveReminders(tx, medicalServiceId, reminders);
-    const changed = changedFields(audited(before!), audited({ ...fields, reminders }));
+    savePicks(tx, medicalServiceId, before!.templateIds, templateIds);
+    const changed = changedFields(audited(before!), audited({ ...fields, templateIds }));
     if (changed) {
       recordAudit(tx, acting.userId, {
         action: "update",
@@ -270,7 +274,7 @@ export function updateMedicalService(
         ...changed,
       });
     }
-    return { ok: true as const, medicalService: { ...updated, reminders } };
+    return { ok: true as const, medicalService: { ...updated, templateIds } };
   });
 }
 
