@@ -206,11 +206,11 @@ export function TemplateForm(props: {
       {settings && (
         <>
           <form.AppField name="name">
-            {(field) => <field.TextField label="Nombre" required maxLength={80} />}
+            {(field) => <field.TextField label="Nombre" size="half" required maxLength={80} />}
           </form.AppField>
           <form.AppField name="timing.when">
             {(field) => (
-              <field.SelectField label="Cuándo se envía" size="medium" startsRow required>
+              <field.SelectField label="Cuándo se envía" startsRow required>
                 {whenOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -226,7 +226,6 @@ export function TemplateForm(props: {
                   <field.TextField
                     label="Cuánto"
                     type="number"
-                    startsRow
                     min={1}
                     max={720}
                     step={1}

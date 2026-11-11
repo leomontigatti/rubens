@@ -370,7 +370,7 @@ function PractitionerField(props: {
       }}
     >
       {(field) => (
-        <field.SelectField label="Profesional" size="medium" required>
+        <field.SelectField label="Profesional" required>
           <NativeSelectOption value="" disabled>
             Elegí un profesional
           </NativeSelectOption>
@@ -419,7 +419,7 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
         }}
       >
         {(field) => (
-          <field.SelectField label="Prestación" size="medium" startsRow required>
+          <field.SelectField label="Prestación" size="half" startsRow required>
             <NativeSelectOption value="" disabled>
               {servicePlaceholder(data)}
             </NativeSelectOption>
@@ -497,8 +497,6 @@ function OverbookingFields(props: { form: BookingForm; rooms: { id: string; name
         {(field) => (
           <field.SelectField
             label="Consultorio"
-            size="medium"
-            startsRow
             hint="Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora."
           >
             <NativeSelectOption value="">El del horario del profesional</NativeSelectOption>

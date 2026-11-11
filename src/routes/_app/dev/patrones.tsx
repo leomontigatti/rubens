@@ -3,6 +3,7 @@ import { BuildingIcon, CalendarXIcon, UserRoundIcon, UsersIcon } from "lucide-re
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { ColorSwatch } from "#/components/color-swatch.tsx";
 import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
@@ -35,6 +36,7 @@ import {
   WhatsappDay,
 } from "#/components/whatsapp-bubble.tsx";
 import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
+import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
 
 // Each pattern of docs/agents/style-guide.md, drawn once, so an agent or a
 // reviewer can compare a screen with it. Only `pnpm dev` serves this page.
@@ -183,48 +185,64 @@ function PatternFormPage(props: { title: string; record?: RecordHeader }) {
   );
 }
 
+function PatternMarkedSelect() {
+  const form = useAppForm({ defaultValues: { color: practitionerColors[0] as string } });
+  const options = practitionerColors.map((color) => ({
+    value: color,
+    label: practitionerColorLabels[color],
+    mark: <ColorSwatch color={color} />,
+  }));
+  return (
+    <FormGrid>
+      <form.AppField name="color">
+        {(field) => <field.MarkedSelectField label="Color en la agenda" options={options} />}
+      </form.AppField>
+    </FormGrid>
+  );
+}
+
 function PatternFieldSizes() {
   const form = useAppForm({
     defaultValues: {
       firstName: "",
       lastName: "",
+      phone: "",
+      email: "",
+      address: "",
       documentType: "",
       documentNumber: "",
-      start: "",
-      end: "",
-      capacity: "",
       note: "",
     },
   });
   return (
     <FormGrid>
       <form.AppField name="firstName">
-        {(field) => <field.TextField label="Nombre (mediano)" />}
+        {(field) => <field.TextField label="Nombre (un cuarto)" />}
       </form.AppField>
       <form.AppField name="lastName">
-        {(field) => <field.TextField label="Apellido (mediano)" />}
+        {(field) => <field.TextField label="Apellido (un cuarto)" />}
+      </form.AppField>
+      <form.AppField name="phone">
+        {(field) => <field.TextField label="Teléfono (un cuarto)" type="tel" />}
+      </form.AppField>
+      <form.AppField name="email">
+        {(field) => <field.TextField label="Correo electrónico (la mitad)" size="half" startsRow />}
+      </form.AppField>
+      <form.AppField name="address">
+        {(field) => <field.TextField label="Dirección (la mitad)" size="half" />}
       </form.AppField>
       <form.AppField name="documentType">
         {(field) => (
-          <field.SelectField label="Tipo de documento (chico)" startsRow>
+          <field.SelectField label="Tipo de documento (un cuarto)">
             <NativeSelectOption value="">Sin documento</NativeSelectOption>
           </field.SelectField>
         )}
       </form.AppField>
       <form.AppField name="documentNumber">
-        {(field) => <field.TextField label="Número de documento (mediano)" />}
-      </form.AppField>
-      <form.AppField name="start">
-        {(field) => <field.TextField label="Inicio (chico)" type="time" startsRow />}
-      </form.AppField>
-      <form.AppField name="end">
-        {(field) => <field.TextField label="Fin (chico)" type="time" />}
-      </form.AppField>
-      <form.AppField name="capacity">
-        {(field) => <field.TextField label="Capacidad (chico)" type="number" />}
+        {(field) => <field.TextField label="Número de documento (un cuarto)" />}
       </form.AppField>
       <form.AppField name="note">
-        {(field) => <field.TextareaField label="Nota (grande)" />}
+        {(field) => <field.TextareaField label="Nota (todo el ancho)" />}
       </form.AppField>
     </FormGrid>
   );
@@ -311,6 +329,9 @@ function Patterns() {
       </Pattern>
       <Pattern title="Campos por tamaño" wide>
         <PatternFieldSizes />
+      </Pattern>
+      <Pattern title="Lista con marcas">
+        <PatternMarkedSelect />
       </Pattern>
       <Pattern title="Filtros">
         <div className="flex flex-wrap items-center gap-2">

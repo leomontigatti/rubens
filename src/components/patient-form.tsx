@@ -231,13 +231,15 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
             {(field) => <field.TextField label="Número de documento" />}
           </form.AppField>
           <form.AppField name="birthDate">
-            {(field) => <field.TextField label="Fecha de nacimiento" type="date" startsRow />}
+            {(field) => <field.TextField label="Fecha de nacimiento" type="date" />}
           </form.AppField>
           <form.AppField name="email">
-            {(field) => <field.TextField label="Correo electrónico" type="email" startsRow />}
+            {(field) => (
+              <field.TextField label="Correo electrónico" type="email" size="half" startsRow />
+            )}
           </form.AppField>
           <form.AppField name="address">
-            {(field) => <field.TextField label="Dirección" />}
+            {(field) => <field.TextField label="Dirección" size="half" />}
           </form.AppField>
         </FormGrid>
       )}

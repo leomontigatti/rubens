@@ -60,14 +60,13 @@ function StaffForm() {
         {(field) => <field.TextField label="Nombre" required />}
       </form.AppField>
       <form.AppField name="email">
-        {(field) => <field.TextField label="Correo" type="email" required />}
+        {(field) => <field.TextField label="Correo" type="email" size="half" required />}
       </form.AppField>
       <form.AppField name="password">
         {(field) => (
           <field.TextField
             label="Contraseña inicial"
             autoComplete="off"
-            startsRow
             required
             hint="La persona la usa para ingresar la primera vez y la cambia al entrar."
           />

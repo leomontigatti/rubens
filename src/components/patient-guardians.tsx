@@ -233,7 +233,9 @@ export function GuardianForm(props: GuardianFormProps) {
         {(field) => <field.TextField label="Número de documento" />}
       </form.AppField>
       <form.AppField name="email">
-        {(field) => <field.TextField label="Correo electrónico" type="email" startsRow />}
+        {(field) => (
+          <field.TextField label="Correo electrónico" type="email" size="half" startsRow />
+        )}
       </form.AppField>
     </ActionFormPage>
   );

@@ -122,7 +122,7 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
       {isActiveStatus(appointment.status) && (
         <form.AppField name="roomId">
           {(field) => (
-            <field.SelectField label="Consultorio" size="medium" required>
+            <field.SelectField label="Consultorio" required>
               {office.rooms.map((room) => (
                 <NativeSelectOption key={room.id} value={room.id}>
                   {room.name}

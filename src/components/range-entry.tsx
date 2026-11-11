@@ -131,7 +131,7 @@ export function EntryForm<R extends string>(props: {
       {owner && (
         <form.AppField name="owner">
           {(field) => (
-            <field.SelectField label={owner.label} size="medium" required={owner.required}>
+            <field.SelectField label={owner.label} required={owner.required}>
               {owner.options}
             </field.SelectField>
           )}
@@ -148,17 +148,21 @@ export function EntryForm<R extends string>(props: {
       <form.Subscribe selector={(state) => state.values.kind}>
         {(kind) => {
           const { type, fields } = kindFields[kind];
-          return fields.map(([name, label], index) => (
+          return fields.map(([name, label]) => (
             <form.AppField key={name} name={name}>
-              {(field) => (
-                <field.TextField label={label} type={type} startsRow={index === 0} required />
-              )}
+              {(field) => <field.TextField label={label} type={type} required />}
             </form.AppField>
           ));
         }}
       </form.Subscribe>
       <form.AppField name="tellPatients">
-        {(field) => <field.CheckboxField label="Avisar por WhatsApp a los pacientes afectados" />}
+        {(field) => (
+          <field.CheckboxField
+            label="Avisar por WhatsApp a los pacientes afectados"
+            size="half"
+            startsRow
+          />
+        )}
       </form.AppField>
     </ActionFormPage>
   );

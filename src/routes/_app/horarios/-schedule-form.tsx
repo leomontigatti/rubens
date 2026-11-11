@@ -136,7 +136,7 @@ export function ScheduleForm(props: {
       </form.AppField>
       <form.AppField name="roomId">
         {(field) => (
-          <field.SelectField label="Consultorio" size="medium" startsRow required>
+          <field.SelectField label="Consultorio" startsRow required>
             <NativeSelectOption value="" disabled>
               Elegí un consultorio
             </NativeSelectOption>

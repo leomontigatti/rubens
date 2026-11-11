@@ -184,7 +184,7 @@ export function CoverageForm(props: {
     >
       <form.AppField name="insurerId">
         {(field) => (
-          <field.SelectField label="Obra social / prepaga" size="medium" required>
+          <field.SelectField label="Obra social / prepaga" required>
             <NativeSelectOption value="" disabled>
               Elegí una
             </NativeSelectOption>
@@ -196,9 +196,7 @@ export function CoverageForm(props: {
           </field.SelectField>
         )}
       </form.AppField>
-      <form.AppField name="plan">
-        {(field) => <field.TextField label="Plan" startsRow />}
-      </form.AppField>
+      <form.AppField name="plan">{(field) => <field.TextField label="Plan" />}</form.AppField>
       <form.AppField name="memberNumber">
         {(field) => <field.TextField label="Número de afiliado" required />}
       </form.AppField>

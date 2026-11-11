@@ -1,20 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { pickedIn, useAppForm } from "#/components/app-form.tsx";
+import { ColorSwatch } from "#/components/color-swatch.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { memberUpdateSchema } from "#/lib/staff.ts";
 import { editMember, getMember } from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
-import {
-  ColorSwatch,
-  RefusalAlert,
-  roleOptions,
-  useAction,
-} from "#/routes/_app/personal/-shared.tsx";
+import { RefusalAlert, roleOptions, useAction } from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId_/editar")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
@@ -53,6 +48,12 @@ function settingsValues(saved: PractitionerSettings | null): SettingsValues {
 }
 
 type MemberValues = SettingsValues & { roles: string[] };
+
+const colorOptions = practitionerColors.map((color) => ({
+  value: color,
+  label: practitionerColorLabels[color],
+  mark: <ColorSwatch color={color} />,
+}));
 
 const sameRoles = (roles: string[], saved: readonly string[]) =>
   roles.length === saved.length && roles.every((role) => saved.includes(role));
@@ -141,7 +142,7 @@ function MemberForm({ member }: { member: StaffMember }) {
             {(field) => <field.TextField label="Nombre a mostrar" required />}
           </form.AppField>
           <form.AppField name="specialty">
-            {(field) => <field.TextField label="Especialidad" />}
+            {(field) => <field.TextField label="Especialidad" size="half" />}
           </form.AppField>
           <form.AppField name="gridMinutes">
             {(field) => (
@@ -158,20 +159,11 @@ function MemberForm({ member }: { member: StaffMember }) {
           </form.AppField>
           <form.AppField name="color">
             {(field) => (
-              <field.SelectField
-                label="Color en la agenda"
-                beside={<ColorSwatch color={field.state.value as PractitionerColor} />}
-              >
-                {practitionerColors.map((option) => (
-                  <NativeSelectOption key={option} value={option}>
-                    {practitionerColorLabels[option]}
-                  </NativeSelectOption>
-                ))}
-              </field.SelectField>
+              <field.MarkedSelectField label="Color en la agenda" options={colorOptions} />
             )}
           </form.AppField>
           <form.AppField name="keepsClinicalRecords">
-            {(field) => <field.CheckboxField label="Lleva historia clínica" />}
+            {(field) => <field.CheckboxField label="Lleva historia clínica" startsRow />}
           </form.AppField>
         </>
       )}
