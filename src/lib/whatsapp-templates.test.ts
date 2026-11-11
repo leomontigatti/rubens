@@ -71,7 +71,7 @@ describe("the template rules check", () => {
   });
 
   it("refuses a variable the template has no value for, though another template has it", () => {
-    const body = "Hola {{paciente}}, de {{consultorio}}: una respuesta del {{fecha}} para vos.";
+    const body = "Hola {{paciente}}, de {{organizacion}}: una respuesta del {{fecha}} para vos.";
 
     expect(checkTemplateBody(templateVariables("reabrir_conversacion"), body)).toEqual({
       ok: false,
@@ -122,11 +122,11 @@ describe("the template rules check", () => {
 describe("a template at Meta", () => {
   it("carries one example per variable it uses, once each, from the sample appointment and the organization", () => {
     const body =
-      "Hola {{paciente}}, te escribimos de {{consultorio}}: el {{fecha}} a las {{hora}}. Gracias, {{paciente}}.";
+      "Hola {{paciente}}, te escribimos de {{organizacion}}: el {{fecha}} a las {{hora}}. Gracias, {{paciente}}.";
 
     expect(templateExamples(body, "Consultorios Prueba")).toEqual([
       { param_name: "paciente", example: "Lucía" },
-      { param_name: "consultorio", example: "Consultorios Prueba" },
+      { param_name: "organizacion", example: "Consultorios Prueba" },
       { param_name: "fecha", example: "jueves 12 de noviembre" },
       { param_name: "hora", example: "10:30" },
     ]);

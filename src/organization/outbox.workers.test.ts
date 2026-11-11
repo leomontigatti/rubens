@@ -34,7 +34,7 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
 });
 
 const confirmationBody =
-  "Hola {{paciente}}, te escribimos de {{consultorio}}: tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
+  "Hola {{paciente}}, te escribimos de {{organizacion}}: tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
 
 /** Meta's answer to a template message it accepted, for the number `waId`. */
 function metaSent(messageId: string, waId = "5491155550000") {
@@ -228,7 +228,7 @@ describe("sending the booking confirmation", () => {
                 type: "body",
                 parameters: [
                   { type: "text", parameter_name: "paciente", text: "Martina" },
-                  { type: "text", parameter_name: "consultorio", text: "Consultorios Prueba" },
+                  { type: "text", parameter_name: "organizacion", text: "Consultorios Prueba" },
                   { type: "text", parameter_name: "profesional", text: "Juan Gómez" },
                   { type: "text", parameter_name: "fecha", text: "lunes 5 de enero" },
                   { type: "text", parameter_name: "hora", text: "09:00" },

@@ -92,7 +92,7 @@ export function TemplateForm(props: {
   /** The name and timing it starts with; `null` for an event template, which has neither. */
   settings: { name: string; timing: Timing } | null;
   body: string;
-  /** Fills `{{consultorio}}` in the preview. */
+  /** Fills `{{organizacion}}` in the preview. */
   organizationName: string;
   title: string;
   description?: string;
@@ -158,8 +158,11 @@ export function TemplateForm(props: {
         ? `${templateFormRefusals.metaRefused} ${refused.metaMessage}`
         : refused.reason && templateFormRefusals[refused.reason as RefusalReason];
       // An edit stores the name and timing before it sends the text, so only the text is lost.
-      if (message && templateId && settings && settingsKept.includes(refused.reason!)) {
-        setStored({ name: value.name, timing: value.timing });
+      const kept =
+        templateId && settings && checked.success && settingsKept.includes(refused.reason!);
+      if (message && kept) {
+        // As the server stored them: the schema's output, trimmed and in hours.
+        setStored({ name: checked.data.name, timing: timingEntry(checked.data.timing) });
         action.setError(`${message} El nombre y cuándo se envía se guardaron.`);
       } else if (refused.metaMessage) {
         action.setError(message);

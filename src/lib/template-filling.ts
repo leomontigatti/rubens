@@ -7,7 +7,7 @@
 /** Each variable underthing fills, in the doc's order. */
 const templateVariableNames = [
   "paciente",
-  "consultorio",
+  "organizacion",
   "profesional",
   "fecha",
   "hora",
@@ -70,7 +70,7 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
   const { patient, start, timeZone } = appointment;
   return {
     paciente: patient.chosenName ?? patient.firstName,
-    consultorio: appointment.organizationName,
+    organizacion: appointment.organizationName,
     profesional: appointment.practitionerName,
     fecha: appointmentDay(start, timeZone),
     hora: appointmentTime(start, timeZone),

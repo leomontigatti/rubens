@@ -127,7 +127,7 @@ export function listSandboxScenarios(database: Database) {
 
 /** What the sandbox's reminder says when the organization has no template timed before an appointment. */
 const fallbackReminder =
-  "Hola {{paciente}}, te escribimos de {{consultorio}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé este mensaje para confirmar que venís.";
+  "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé este mensaje para confirmar que venís.";
 
 /**
  * The template the scenario's reminder is: the furthest before the

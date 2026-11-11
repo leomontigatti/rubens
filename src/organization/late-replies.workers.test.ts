@@ -198,7 +198,7 @@ describe("a person's reply after the window closed", () => {
         name: "reabrir_conversacion_v1",
         parameters: [
           ["paciente", "Martina"],
-          ["consultorio", "Consultorios Prueba"],
+          ["organizacion", "Consultorios Prueba"],
         ],
       },
     ]);

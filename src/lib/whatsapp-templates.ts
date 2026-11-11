@@ -48,7 +48,7 @@ const maxTemplateBodyLength = 1024;
 
 const appointmentVariables = [
   "paciente",
-  "consultorio",
+  "organizacion",
   "profesional",
   "fecha",
   "hora",
@@ -81,7 +81,9 @@ export function isEventTemplate(templateId: string): templateId is EventTemplate
  * conversation, where only the patient and the organization are known.
  */
 export function templateVariables(templateId: string | null): readonly TemplateVariable[] {
-  return templateId === "reabrir_conversacion" ? ["paciente", "consultorio"] : appointmentVariables;
+  return templateId === "reabrir_conversacion"
+    ? ["paciente", "organizacion"]
+    : appointmentVariables;
 }
 
 /** The longest name an admin gives a template. */

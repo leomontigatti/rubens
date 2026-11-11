@@ -247,10 +247,10 @@ function recordFailure(database: Database, id: string, attempts: number, error: 
 function toSend(database: Database, id: string, kind: OutboxKind) {
   if (kind === "reopenConversation") {
     const reopen = reopenToSend(database, id);
-    const consultorio = organizationName(database);
+    const organizacion = organizationName(database);
     return (
       reopen &&
-      (reopen.drop ? reopen : { ...reopen, values: { paciente: reopen.paciente, consultorio } })
+      (reopen.drop ? reopen : { ...reopen, values: { paciente: reopen.paciente, organizacion } })
     );
   }
   const queued = readQueued(database, id);

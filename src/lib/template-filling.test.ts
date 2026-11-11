@@ -23,7 +23,7 @@ describe("an appointment's template values", () => {
   it("names the patient, the organization, the practitioner, the day, the time in the office's zone and the office", () => {
     expect(templateValues(appointment)).toEqual({
       paciente: "Martina",
-      consultorio: "Consultorios Prueba",
+      organizacion: "Consultorios Prueba",
       profesional: "Dr. Juan Gómez",
       fecha: "lunes 5 de enero",
       hora: "09:05",
@@ -80,7 +80,7 @@ describe("filling a template", () => {
 
 describe("the sample appointment", () => {
   it("names the organization the preview is of", () => {
-    expect(fillSample("Te escribimos de {{consultorio}}.", "Clínica Sur")).toBe(
+    expect(fillSample("Te escribimos de {{organizacion}}.", "Clínica Sur")).toBe(
       "Te escribimos de Clínica Sur.",
     );
   });

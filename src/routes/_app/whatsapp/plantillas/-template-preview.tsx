@@ -43,7 +43,7 @@ const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${appointm
 export function TemplatePreview(props: {
   templateId: string | null;
   body: string;
-  /** Fills `{{consultorio}}`, as a sent message would. */
+  /** Fills `{{organizacion}}`, as a sent message would. */
   organizationName: string;
 }) {
   const checked = checkTemplateBody(templateVariables(props.templateId), props.body);

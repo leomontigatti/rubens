@@ -90,7 +90,7 @@ describe("the drafts every organization starts with", () => {
 
     expect(drafts).toHaveLength(9);
     for (const { id, draft } of drafts) {
-      expect(variablesIn(draft)).toContain("consultorio");
+      expect(variablesIn(draft)).toContain("organizacion");
       expect(checkTemplateBody(templateVariables(id), draft)).toEqual({ ok: true, body: draft });
     }
   });
@@ -368,7 +368,7 @@ describe("deleting a template", () => {
       {
         action: "delete",
         entityType: "template",
-        before: { name: "Seguimiento", draft: expect.stringContaining("{{consultorio}}") },
+        before: { name: "Seguimiento", draft: expect.stringContaining("{{organizacion}}") },
         after: null,
       },
     ]);

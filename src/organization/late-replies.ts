@@ -184,7 +184,7 @@ export function queuedReopenShown(database: Database, conversationId: string): Q
     ...queued,
     text: fillTemplate(version.body, {
       paciente: toSend.paciente,
-      consultorio: organizationName(database),
+      organizacion: organizationName(database),
     }).text,
   };
 }
