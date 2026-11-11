@@ -136,11 +136,15 @@ export function EntryForm<R extends string>(props: {
     }
   }
 
-  const asked = question?.page === page.shown ? question : null;
+  // Leaving the page drops its question: coming back by history must not answer it.
+  if (question && question.page !== page.shown) {
+    setQuestion(null);
+    setAsking(false);
+  }
 
   const answer = (tellPatients: boolean) => {
-    if (asked) {
-      const again = answering(asked, tellPatients);
+    if (question) {
+      const again = answering(question, tellPatients);
       void save(again.values, again.notice);
     }
   };
@@ -189,10 +193,10 @@ export function EntryForm<R extends string>(props: {
         }}
       </form.Subscribe>
       <ConfirmDialog
-        open={asking && asked !== null}
+        open={asking}
         onOpenChange={setAsking}
         title="¿Avisar a los pacientes por WhatsApp?"
-        description={asked ? questionText(props.subject, asked.affected) : ""}
+        description={question ? questionText(props.subject, question.affected) : ""}
         confirmLabel="Avisar por WhatsApp"
         onConfirm={() => answer(true)}
         alternative={{ label: "Guardar sin avisar", onSelect: () => answer(false) }}
