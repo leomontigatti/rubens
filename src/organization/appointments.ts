@@ -330,8 +330,8 @@ export interface PatientAppointment {
 /**
  * A patient's appointments (docs/domain/appointments.md § Patient history),
  * cancellations and no-shows included: upcoming ones soonest first, then past
- * ones latest first; one is past once it ends. Reception and admins see all of
- * them, a practitioner only those with themselves.
+ * ones latest first; one is past once it ends or is cancelled. Reception and
+ * admins see all of them, a practitioner only those with themselves.
  */
 export function listPatientAppointments(
   writer: Writer,
@@ -378,9 +378,10 @@ export function listPatientAppointments(
     start: new Date(startsAt),
     end: new Date(endsAt),
   }));
+  const isPast = (row: PatientAppointment) => row.status === "cancelled" || +row.end <= now;
   return {
     ok: true,
-    upcoming: appointments.filter((row) => +row.end > now),
-    past: appointments.filter((row) => +row.end <= now).reverse(),
+    upcoming: appointments.filter((row) => !isPast(row)),
+    past: appointments.filter(isPast).reverse(),
   };
 }

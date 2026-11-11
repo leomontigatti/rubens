@@ -188,5 +188,7 @@ server sends no others. A block covers its cells, white ones included.
 
 A patient's page lists their past and upcoming appointments with statuses,
 cancellations and no-shows included: "missed the last three" is what reception
-needs to know when booking. A practitioner sees only the appointments with
-themselves.
+needs to know when booking. A cancelled appointment is listed as past even
+before its date, with its badge and who cancelled, the patient or the business,
+whether staff or the assistant recorded it: it no longer holds a time for the
+patient. A practitioner sees only the appointments with themselves.
