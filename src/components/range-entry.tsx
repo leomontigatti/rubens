@@ -106,8 +106,11 @@ export function EntryForm<R extends string>(props: {
   const page = useFormPage(props.back);
   const action = useFormAction(props.messages);
   const record = useDeletion(props.deletion, props.messages, () => page.leave());
-  // Kept once the dialog closes, so its copy stays while it fades out.
-  const [question, setQuestion] = useState<NoticeQuestion<EntryValues> | null>(null);
+  // Kept once the dialog closes, so its copy stays while it fades out. It
+  // belongs to the page that asked: the route renders other records too.
+  const [question, setQuestion] = useState<(NoticeQuestion<EntryValues> & { page: string }) | null>(
+    null,
+  );
   const [asking, setAsking] = useState(false);
 
   async function save(values: EntryValues, notice: Notice) {
@@ -116,23 +119,28 @@ export function EntryForm<R extends string>(props: {
       page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames));
       return;
     }
-    let asked: NoticeQuestion<EntryValues> | null = null;
+    let refused: NoticeQuestion<EntryValues> | null = null;
     const saved = await action.save(async () => {
       const result = await submitted;
-      asked = questionAfter(values, result);
-      return asked ? { ok: true } : (result as Outcome<R>);
+      refused = questionAfter(values, result);
+      return refused ? { ok: true } : (result as Outcome<R>);
     });
-    if (asked) {
-      setQuestion(asked);
-      setAsking(true);
+    if (refused) {
+      // A save that ends after the user left asks nothing: nothing was saved.
+      if (!page.left()) {
+        setQuestion({ ...(refused as NoticeQuestion<EntryValues>), page: page.shown });
+        setAsking(true);
+      }
     } else if (saved) {
       page.leave();
     }
   }
 
+  const asked = question?.page === page.shown ? question : null;
+
   const answer = (tellPatients: boolean) => {
-    if (question) {
-      const again = answering(question, tellPatients);
+    if (asked) {
+      const again = answering(asked, tellPatients);
       void save(again.values, again.notice);
     }
   };
@@ -181,10 +189,10 @@ export function EntryForm<R extends string>(props: {
         }}
       </form.Subscribe>
       <ConfirmDialog
-        open={asking}
+        open={asking && asked !== null}
         onOpenChange={setAsking}
         title="¿Avisar a los pacientes por WhatsApp?"
-        description={question ? questionText(props.subject, question.affected) : ""}
+        description={asked ? questionText(props.subject, asked.affected) : ""}
         confirmLabel="Avisar por WhatsApp"
         onConfirm={() => answer(true)}
         alternative={{ label: "Guardar sin avisar", onSelect: () => answer(false) }}
