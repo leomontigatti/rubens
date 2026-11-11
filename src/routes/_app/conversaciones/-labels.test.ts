@@ -124,6 +124,19 @@ describe("the chat's days", () => {
     expect(messageClock(Date.parse("2026-11-10T02:00:00Z"))).toBe("23:00");
   });
 
+  it("finds yesterday in the offices' zone when the browser's zone changes its clocks", () => {
+    const browserZone = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      // 23:30 on March 8 in Buenos Aires, hours after New York moved its clocks forward.
+      const lateOnTheEighth = Date.parse("2026-03-09T02:30:00Z");
+
+      expect(dayLabel(Date.parse("2026-03-07T15:00:00Z"), lateOnTheEighth)).toBe("Ayer");
+    } finally {
+      process.env.TZ = browserZone;
+    }
+  });
+
   it("groups the messages by the day they were sent, keeping their order", () => {
     const sent = [
       Date.parse("2026-11-09T12:00:00Z"),

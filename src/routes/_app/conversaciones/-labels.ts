@@ -38,7 +38,7 @@ export function dayLabel(at: number, now: number) {
   if (day === dayOf(now)) {
     return "Hoy";
   }
-  if (day === dayOf(subDays(now, 1).getTime())) {
+  if (day === dayOf(subDays(now, 1, inOffices).getTime())) {
     return "Ayer";
   }
   const sameYear = day.slice(0, 4) === dayOf(now).slice(0, 4);
