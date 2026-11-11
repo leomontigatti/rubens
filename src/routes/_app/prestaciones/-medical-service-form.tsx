@@ -1,9 +1,9 @@
 import { useFormAction } from "#/components/admin-form.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { FormGrid, useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
-import { FieldDescription, FieldGroup, FieldLegend, FieldSet } from "#/components/ui/field.tsx";
+import { FieldDescription, FieldLegend } from "#/components/ui/field.tsx";
 import { medicalServiceInputSchema } from "#/lib/medical-services.ts";
 import type { MedicalServiceFields } from "#/lib/medical-services.ts";
 import type { Timing } from "#/lib/template-timing.ts";
@@ -104,36 +104,33 @@ export function MedicalServiceForm(props: {
           />
         )}
       </form.AppField>
-      <FieldSet>
+      <FormGrid>
         <FieldLegend>Mensajes por WhatsApp</FieldLegend>
         <FieldDescription>
           Las plantillas que reciben sus pacientes, si aceptan WhatsApp. Se crean en WhatsApp,
           Plantillas.
         </FieldDescription>
-        <FieldGroup>
-          {options.length > 0 ? (
-            <form.AppField name="templateIds">
-              {(field) => <field.CheckboxGroupField legend="Plantillas" options={options} />}
-            </form.AppField>
-          ) : (
-            <FieldDescription>Todavía no hay plantillas.</FieldDescription>
-          )}
-          <form.AppField name="rescheduleCutoffHours">
-            {(field) => (
-              <field.TextField
-                label="Reprogramar hasta (horas antes del turno)"
-                hint="Hasta cuándo el paciente puede mover su turno con el asistente."
-                type="number"
-                min={0}
-                max={720}
-                step={1}
-                required
-                narrow
-              />
-            )}
+        {options.length > 0 ? (
+          <form.AppField name="templateIds">
+            {(field) => <field.CheckboxGroupField legend="Plantillas" options={options} />}
           </form.AppField>
-        </FieldGroup>
-      </FieldSet>
+        ) : (
+          <FieldDescription>Todavía no hay plantillas.</FieldDescription>
+        )}
+        <form.AppField name="rescheduleCutoffHours">
+          {(field) => (
+            <field.TextField
+              label="Reprogramar hasta (horas antes del turno)"
+              hint="Hasta cuándo el paciente puede mover su turno con el asistente."
+              type="number"
+              min={0}
+              max={720}
+              step={1}
+              required
+            />
+          )}
+        </form.AppField>
+      </FormGrid>
     </ActionFormPage>
   );
 }

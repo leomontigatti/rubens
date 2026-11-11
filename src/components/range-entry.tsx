@@ -137,32 +137,32 @@ export function EntryForm<R extends string>(props: {
           )}
         </form.AppField>
       )}
-      <div className="flex flex-col gap-4">
-        <form.AppField name="kind">
-          {(field) => (
-            <field.SelectField label="Duración">
-              <NativeSelectOption value="days">Días completos</NativeSelectOption>
-              <NativeSelectOption value="hours">Por horas</NativeSelectOption>
-            </field.SelectField>
-          )}
-        </form.AppField>
-        <form.Subscribe selector={(state) => state.values.kind}>
-          {(kind) => {
-            const { type, fields } = kindFields[kind];
-            return (
-              <div className="flex flex-wrap gap-4">
-                {fields.map(([name, label]) => (
-                  <form.AppField key={name} name={name}>
-                    {(field) => <field.TextField label={label} type={type} inline required />}
-                  </form.AppField>
-                ))}
-              </div>
-            );
-          }}
-        </form.Subscribe>
-      </div>
+      <form.AppField name="kind">
+        {(field) => (
+          <field.SelectField label="Duración" startsRow>
+            <NativeSelectOption value="days">Días completos</NativeSelectOption>
+            <NativeSelectOption value="hours">Por horas</NativeSelectOption>
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.Subscribe selector={(state) => state.values.kind}>
+        {(kind) => {
+          const { type, fields } = kindFields[kind];
+          return fields.map(([name, label]) => (
+            <form.AppField key={name} name={name}>
+              {(field) => <field.TextField label={label} type={type} required />}
+            </form.AppField>
+          ));
+        }}
+      </form.Subscribe>
       <form.AppField name="tellPatients">
-        {(field) => <field.CheckboxField label="Avisar por WhatsApp a los pacientes afectados" />}
+        {(field) => (
+          <field.CheckboxField
+            label="Avisar por WhatsApp a los pacientes afectados"
+            size="half"
+            startsRow
+          />
+        )}
       </form.AppField>
     </ActionFormPage>
   );

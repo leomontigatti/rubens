@@ -13,13 +13,12 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
-import { FormProblemsContext } from "#/components/app-form.tsx";
+import { FormGrid, FormProblemsContext } from "#/components/app-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { isStillOn } from "#/components/form-page-location.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { FieldSet } from "#/components/ui/field.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { isSessionChanging } from "#/lib/session-change.ts";
 
@@ -179,8 +178,8 @@ const refusalText = (refusals: FieldProblem[]) => refusals.map((refusal) => refu
 type PageForm = Pick<AnyFormApi, "store" | "handleSubmit" | "reset">;
 
 /**
- * A create or an edit on a page of its own: the fields take the page's width,
- * and the actions close the form, sticking to the bottom of the window on a long one. On an edit,
+ * A create or an edit on a page of its own: the fields sit in rows by their
+ * size, and the actions close the form, sticking to the bottom of the window on a long one. On an edit,
  * `Descartar cambios` shows once something differs from what the form opened with; a create has none,
  * since `Volver` already drops what it holds, and leaving still asks first. While `pending`, the
  * spinner is on the submit button, and the fields and other buttons wait: what
@@ -241,9 +240,9 @@ export function FormPage(props: {
         {/* A discard remounts the form: what its fields keep of their own goes too. */}
         <div key={page.version} ref={content} className="flex flex-col gap-4">
           <RefusalAlert focusRef={alert} problems={problems} />
-          {props.lead && <FieldSet disabled={pending}>{props.lead}</FieldSet>}
+          {props.lead && <FormGrid disabled={pending}>{props.lead}</FormGrid>}
           <form method="post" noValidate className="flex flex-col gap-4" onSubmit={submit}>
-            <FieldSet disabled={pending}>{props.children}</FieldSet>
+            <FormGrid disabled={pending}>{props.children}</FormGrid>
             <FormPageActions
               page={page}
               pending={pending}

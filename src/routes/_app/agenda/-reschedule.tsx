@@ -162,19 +162,17 @@ export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
       refusals={answer.refusal ? [answer.refusal] : undefined}
       onClear={() => setAnswer(noAnswer)}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.AppField
-          name="durationMinutes"
-          listeners={{ onChange: () => form.setFieldValue("start", null) }}
-        >
-          {(field) => (
-            <field.TextField label="Duración (minutos)" type="number" min={1} max={720} required />
-          )}
-        </form.AppField>
-        <form.AppField name="freeFrom">
-          {(field) => <field.TextField label="Horarios libres desde" type="date" />}
-        </form.AppField>
-      </div>
+      <form.AppField
+        name="durationMinutes"
+        listeners={{ onChange: () => form.setFieldValue("start", null) }}
+      >
+        {(field) => (
+          <field.TextField label="Duración (minutos)" type="number" min={1} max={720} required />
+        )}
+      </form.AppField>
+      <form.AppField name="freeFrom">
+        {(field) => <field.TextField label="Horarios libres desde" type="date" />}
+      </form.AppField>
       <form.Field name="start">
         {(field) => (
           <StartGroup>

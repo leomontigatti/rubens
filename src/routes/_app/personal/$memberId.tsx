@@ -11,7 +11,8 @@ import { rolesLabel } from "#/lib/staff.ts";
 import { changeMemberActive, getMember, getMemberUpcomingCount } from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
-import { ColorSwatch, RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
+import { ColorSwatch } from "#/components/color-swatch.tsx";
+import { RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
