@@ -133,7 +133,12 @@ describe("the chat's days", () => {
 
       expect(dayLabel(Date.parse("2026-03-07T15:00:00Z"), lateOnTheEighth)).toBe("Ayer");
     } finally {
-      process.env.TZ = browserZone;
+      // Assigning `undefined` would store the string "undefined".
+      if (browserZone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = browserZone;
+      }
     }
   });
 
