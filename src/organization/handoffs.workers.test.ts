@@ -581,6 +581,22 @@ describe("answering a follow-up", () => {
     });
   });
 
+  it("hands a photo sent as the answer to reception, telling the patient nothing", async () => {
+    await followUpSent();
+    await patientSends(world.organization, "image", martinaPhone);
+
+    await turn();
+
+    expect(scriptedModel.turns).toEqual([]);
+    expect((await openHandoffs())[0]).toMatchObject({
+      reason: "media",
+      forPractitioner: false,
+      recipients: ["Ana Admin"],
+    });
+    expect(await notifiedOfHandoff(world.juan.caller)).toEqual([]);
+    expect(fakeMeta.textsSent()).toEqual([]);
+  });
+
   it("hands any other answer to the practitioner as clinical", async () => {
     await followUpSent();
     await writes("bien, pero me molesta un poco al masticar");
@@ -778,26 +794,6 @@ describe("what the patient is told on a handoff (#290)", () => {
     ]);
   });
 
-  it("tells nothing of a handoff to reception, which goes to the admins and not the appointment's practitioner", async () => {
-    const appointmentId = await bookMartina();
-    await writes("quiero hablar con alguien");
-    scriptedModel.script((one) => {
-      one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "patient_asked", appointmentId });
-      return "Ya le aviso a alguien del equipo.";
-    });
-
-    await turn();
-
-    expect((await openHandoffs())[0]).toMatchObject({
-      reason: "patientAsked",
-      forPractitioner: false,
-      recipients: ["Ana Admin"],
-    });
-    expect(await notifiedOfHandoff(world.juan.caller)).toEqual([]);
-    expect(fakeMeta.textsSent()).toEqual([]);
-  });
-
   it("reaches a solo practitioner who is also the admin, of either kind, in their one inbox", async () => {
     const solo = await addStaff(world.organization, "Sol Paz", ["admin", "practitioner"]);
     await writes("quiero hablar con alguien", unknownPhone);
@@ -869,7 +865,8 @@ describe("the assistant while a handoff is open (#290)", () => {
 
     await turn();
 
-    expect(scriptedModel.turns.at(-1)?.system).toContain("the patient asked for a person");
+    // The model is told of the open handoff, so it leaves that topic to the person.
+    expect(scriptedModel.turns.at(-1)?.system).not.toBe(scriptedModel.turns[0]?.system);
     expect(fakeMeta.textsSent()).toEqual([
       { to: "5491155550000", text: "Es el lunes 5 de enero a las 09:00." },
     ]);

@@ -499,13 +499,10 @@ export const cases: Case[] = [
   {
     id: "confirm-and-toothache",
     description:
-      "A mixed burst: the confirmation is done and said, the toothache goes to the practitioner",
+      "A mixed burst: the confirmation is done and said, the ongoing toothache goes to the practitioner",
     number: "onePatient",
     history: [reminder],
-    patient: [
-      "Hola, quería confirmar el turno del jueves",
-      "Me sigue doliendo la rodilla, es normal?",
-    ],
+    patient: ["Hola, quería confirmar el turno del jueves", "Me sigue doliendo la muela de abajo"],
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },

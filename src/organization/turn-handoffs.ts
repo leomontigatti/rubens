@@ -46,17 +46,20 @@ const modelReasons = {
 
 /**
  * A follow-up's answer: only a plainly good one, or an opt-out that needs
- * no practitioner, is the assistant's; any other, a photo included, is the
- * practitioner's. So is an opt-out from a number that reaches no patient
- * now, its contact moved while the model ran: there is no consent to turn off.
+ * no practitioner, is the assistant's; a photo or a file is reception's, as
+ * anywhere; any other answer is the practitioner's. So is an opt-out from a
+ * number that reaches no patient now, its contact moved while the model ran:
+ * there is no consent to turn off.
  */
 function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted | null {
   const { judgement } = turn;
+  if (turn.media && !judgement.needsPractitioner && !judgement.emergency) {
+    return { reason: "media", forPractitioner: false, appointmentId };
+  }
   const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.needsPractitioner;
   const optOutOnly = judgement.optOut && !judgement.needsPractitioner;
   const nobodyToTurnOff = judgement.optOut && turn.reachedNow.length === 0;
-  const answeredByAssistant = (plainlyGood || optOutOnly) && !turn.media;
-  if (answeredByAssistant && !nobodyToTurnOff && !judgement.emergency && !turn.handOff) {
+  if ((plainlyGood || optOutOnly) && !nobodyToTurnOff && !judgement.emergency && !turn.handOff) {
     return null;
   }
   const reason = judgement.emergency ? "emergency" : "followUpAnswer";

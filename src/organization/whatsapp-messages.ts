@@ -18,6 +18,7 @@ import {
   conversationPatient,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { settleFailedReplies } from "#/organization/failed-replies.ts";
 import { storeNumberEvent } from "#/organization/whatsapp-limits.ts";
 import {
   storeTemplateCategory,
@@ -304,6 +305,13 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
       statuses: events.statuses.map((update) => storeStatus(database, tx, update)),
       templateStatuses: events.templateStatuses.map((update) => storeTemplateUpdate(tx, update)),
     };
+    // A reply whose status just turned failed reopens the handoff it closed.
+    settleFailedReplies(
+      tx,
+      events.statuses
+        .filter((update, index) => update.status === "failed" && stored.statuses[index]!.updated)
+        .map((update) => update.whatsappId),
+    );
     for (const update of events.templateCategories ?? []) {
       const changed = storeTemplateCategory(tx, update);
       if (changed) {

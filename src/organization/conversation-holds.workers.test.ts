@@ -284,6 +284,32 @@ describe("a person's reply", () => {
     ]);
   });
 
+  it("that Meta reports failed reopens nothing beside a handoff of its kind opened since", async () => {
+    await handedOff(false);
+    expectOk(await takeOver(world.receptionist));
+    expectOk(await reply(world.receptionist, "Hola Martina, te llamo en un rato."));
+    await handedOff(false);
+    const [sent] = await inStorage(world.organization, (database) =>
+      database
+        .select({ whatsappId: whatsappMessage.whatsappId })
+        .from(whatsappMessage)
+        .where(eq(whatsappMessage.text, "*Rita Paz*\nHola Martina, te llamo en un rato."))
+        .all(),
+    );
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: [{ whatsappId: sent!.whatsappId, status: "failed", at: Date.now() }],
+        templateStatuses: [],
+      }),
+    );
+
+    expect(await openHandoffs()).toHaveLength(1);
+    const told = expectOk(await world.organization.listNotifications(world.receptionist));
+    expect(told.notifications.filter((one) => one.kind === "replyFailed")).toHaveLength(1);
+  });
+
   it("refuses a reply too long for Meta once signed with the name, sending nothing", async () => {
     expectOk(await takeOver(world.receptionist));
 
