@@ -81,6 +81,7 @@ async function world() {
     const result = await booking.organization.createTimeOff(adminCaller, {
       practitionerId: juan.practitionerId,
       entry,
+      tellPatients: true,
     });
     if (!result.ok) {
       throw new Error(`createTimeOff refused: ${result.reason}`);
@@ -481,6 +482,7 @@ describe("an overbooking on top of another appointment", () => {
     await w.organization.createClosure(adminCaller, {
       officeId: w.office.id,
       entry: { kind: "hours", start: "2099-01-05T10:00", end: "2099-01-05T10:30" },
+      tellPatients: true,
     });
     expect(await w.tryOverbook(w.overbookingOf({ start: at("13:00") }))).toEqual({
       ok: false,

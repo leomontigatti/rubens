@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 
 import { changeKinds, eventKindTemplates } from "#/lib/outbox.ts";
+import type { AffectsAppointments, Notice } from "#/lib/time-ranges.ts";
 
 import type { Writer } from "#/organization/database.ts";
 import { appointment, patient } from "#/organization/schema.ts";
@@ -59,11 +60,53 @@ export function queueChangeMessage(tx: Writer, appointmentId: string, kind: Chan
     .run();
 }
 
+/** Thrown to roll back a save whose patients nobody has decided about yet. */
+class Unasked extends Error {
+  constructor(readonly affected: number) {
+    super("affectsAppointments");
+  }
+}
+
+/**
+ * Whether to tell the `affected` patients a save sends to the list: what
+ * `notice` decided, when it was told this many. Otherwise it throws, for
+ * `askingFirst` to roll the save back with the count.
+ */
+function decided(notice: Notice, affected: number): boolean {
+  const { tellPatients, affected: told = affected } = notice;
+  if (tellPatients === undefined || told !== affected) {
+    throw new Unasked(affected);
+  }
+  return tellPatients;
+}
+
+/** What a time off or a closure keeps of `notice`: the decision, when one was made. */
+export function decision(notice: Notice): { tellPatients?: boolean } {
+  return notice.tellPatients === undefined ? {} : { tellPatients: notice.tellPatients };
+}
+
+/**
+ * Runs `save`, a transaction that settles a time off or a closure with a
+ * `Notice`: its result, or the count to ask about when it sent appointments
+ * to the list that nobody decided about. The transaction is rolled back then.
+ */
+export function askingFirst<T>(save: () => T): T | AffectsAppointments {
+  try {
+    return save();
+  } catch (error) {
+    if (error instanceof Unasked) {
+      return { ok: false, reason: "affectsAppointments", affected: error.affected };
+    }
+    throw error;
+  }
+}
+
 /**
  * Runs `change`, a write to working time (time off, a closure, a schedule),
  * and settles the change messages of the appointments of `practitionerIds`
  * (everyone's when `null`) it moved on or off the "to reschedule" list. One
- * sent to the list is told, unless `tellPatients` is off, and either way an
+ * sent to the list is told when `tellPatients` says so (a `Notice` must have
+ * decided, inside `askingFirst`, when it sends any), and either way an
  * earlier change message about it no longer goes; one back in working time is
  * no longer told it was sent there. Its reminders are the outbox's: none goes
  * while it is on the list.
@@ -71,17 +114,19 @@ export function queueChangeMessage(tx: Writer, appointmentId: string, kind: Chan
 export function settlingToReschedule<T>(
   tx: Writer,
   practitionerIds: string[] | null,
-  tellPatients: boolean,
+  tellPatients: boolean | Notice,
   change: () => T,
 ): T {
   const before = listedIds(tx, practitionerIds);
   const result = change();
   const after = listedIds(tx, practitionerIds);
-  for (const appointmentId of after) {
-    if (before.has(appointmentId)) {
-      continue;
-    }
-    if (tellPatients) {
+  const listed = [...after].filter((appointmentId) => !before.has(appointmentId));
+  const tell =
+    typeof tellPatients === "boolean"
+      ? tellPatients
+      : listed.length > 0 && decided(tellPatients, listed.length);
+  for (const appointmentId of listed) {
+    if (tell) {
       queueChangeMessage(tx, appointmentId, "appointmentToReschedule");
     } else {
       dropQueued(tx, appointmentId, changeKinds);

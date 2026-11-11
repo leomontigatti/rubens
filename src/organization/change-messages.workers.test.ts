@@ -138,16 +138,128 @@ describe("telling the patient their appointment was cancelled", () => {
   });
 });
 
+const firstMondayMorning = {
+  kind: "hours",
+  start: "2099-01-05T09:00",
+  end: "2099-01-05T10:00",
+} as const;
+
 /** Juan's time off on the first Monday from 09:00 to 10:00, telling the patients unless asked not to. */
-async function addTimeOff(tellPatients?: boolean) {
+async function addTimeOff(tellPatients = true) {
   return expectOk(
     await world.organization.createTimeOff(adminCaller, {
       practitionerId: world.juan.practitionerId,
-      entry: { kind: "hours", start: "2099-01-05T09:00", end: "2099-01-05T10:00" },
+      entry: firstMondayMorning,
       tellPatients,
     }),
   ).timeOff;
 }
+
+describe("asking whether to tell the patients a time off or a closure sends to the list", () => {
+  const createTimeOff = (notice: { tellPatients?: boolean; affected?: number } = {}) =>
+    world.organization.createTimeOff(adminCaller, {
+      practitionerId: world.juan.practitionerId,
+      entry: firstMondayMorning,
+      ...notice,
+    });
+
+  const listedCount = async () =>
+    expectOk(await world.organization.countToReschedule(adminCaller)).count;
+
+  it("saves at once, asking nothing, when it sends no appointment to the list", async () => {
+    await bookPatient("Martina", "+5491155550000", at("13:30"));
+
+    expect(await createTimeOff()).toMatchObject({ ok: true });
+    expect(await changeMessages()).toEqual([]);
+  });
+
+  it("saves nothing and says how many it sends, while nobody has decided", async () => {
+    await bookMartina();
+    await bookPatient("Pedro", "+5491155550001", at("12:30"));
+
+    expect(await createTimeOff()).toEqual({
+      ok: false,
+      reason: "affectsAppointments",
+      affected: 2,
+    });
+    expect(expectOk(await world.organization.listTimeOff(adminCaller)).timeOff).toEqual([]);
+    expect(await listedCount()).toBe(0);
+  });
+
+  it("saves and tells them once told how many and asked to", async () => {
+    const martina = await bookMartina();
+
+    expectOk(await createTimeOff({ tellPatients: true, affected: 1 }));
+
+    expect(await changeMessages()).toEqual([
+      expect.objectContaining({ kind: "appointmentToReschedule", appointmentId: martina }),
+    ]);
+  });
+
+  it("saves without telling them, and still lists their appointments, when asked not to", async () => {
+    await bookMartina();
+
+    expectOk(await createTimeOff({ tellPatients: false, affected: 1 }));
+
+    expect(await changeMessages()).toEqual([]);
+    expect(await listedCount()).toBe(1);
+  });
+
+  it("asks again with the new count when it changed since they were told", async () => {
+    await bookMartina();
+    await bookPatient("Pedro", "+5491155550001", at("12:30"));
+
+    expect(await createTimeOff({ tellPatients: true, affected: 1 })).toEqual({
+      ok: false,
+      reason: "affectsAppointments",
+      affected: 2,
+    });
+    expect(await changeMessages()).toEqual([]);
+    expect(await listedCount()).toBe(0);
+  });
+
+  it("counts only the appointments an edit newly sends to the list", async () => {
+    await bookMartina();
+    const timeOff = expectOk(await createTimeOff({ tellPatients: true, affected: 1 })).timeOff;
+    await bookPatient("Pedro", "+5491155550001", at("13:30"));
+
+    const widened = (notice: { tellPatients?: boolean; affected?: number } = {}) =>
+      world.organization.updateTimeOff(adminCaller, {
+        timeOffId: timeOff.id,
+        entry: { kind: "hours", start: "2099-01-05T08:00", end: "2099-01-05T11:00" },
+        ...notice,
+      });
+
+    expect(await widened()).toEqual({ ok: false, reason: "affectsAppointments", affected: 1 });
+    expectOk(await widened({ tellPatients: false, affected: 1 }));
+    expect(await listedCount()).toBe(2);
+  });
+
+  it("asks the same of a closure, and of its edit", async () => {
+    await bookMartina();
+    const createClosure = (notice: { tellPatients?: boolean; affected?: number } = {}) =>
+      world.organization.createClosure(adminCaller, {
+        officeId: null,
+        entry: { kind: "days", firstDate: "2099-01-04", lastDate: "2099-01-04" },
+        ...notice,
+      });
+    const closure = expectOk(await createClosure()).closure;
+
+    const moved = (notice: { tellPatients?: boolean; affected?: number } = {}) =>
+      world.organization.updateClosure(adminCaller, {
+        closureId: closure.id,
+        officeId: null,
+        entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
+        ...notice,
+      });
+
+    expect(await moved()).toEqual({ ok: false, reason: "affectsAppointments", affected: 1 });
+    expectOk(await moved({ tellPatients: true, affected: 1 }));
+    expect(await changeMessages()).toEqual([
+      expect.objectContaining({ kind: "appointmentToReschedule", state: "queued" }),
+    ]);
+  });
+});
 
 describe('telling patients their appointment went to the "to reschedule" list', () => {
   it("queues `turno_a_reprogramar` for each appointment time off sends to the list", async () => {
@@ -219,6 +331,7 @@ describe('telling patients their appointment went to the "to reschedule" list', 
       await world.organization.createClosure(adminCaller, {
         officeId: null,
         entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
+        tellPatients: true,
       }),
     );
 

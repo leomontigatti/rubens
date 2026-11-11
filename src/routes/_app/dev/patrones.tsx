@@ -270,6 +270,7 @@ function PatternDeletionFormPage() {
     <EntryForm
       back={{ to: "/dev/patrones" }}
       title="Editar cierre"
+      subject="closure"
       initial={{ kind: "days", firstDate: "2026-12-24", lastDate: "2026-12-25" }}
       submitLabel="Guardar"
       messages={{ example: "Es un ejemplo: no se elimina nada." }}

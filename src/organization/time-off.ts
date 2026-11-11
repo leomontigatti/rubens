@@ -9,10 +9,16 @@ import {
   toRangeEntry,
   toTimeRange,
 } from "#/lib/time-ranges.ts";
-import type { RangeEntry, TimeOffDelete, TimeOffInput, TimeOffUpdate } from "#/lib/time-ranges.ts";
+import type {
+  AffectsAppointments,
+  RangeEntry,
+  TimeOffDelete,
+  TimeOffInput,
+  TimeOffUpdate,
+} from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import { settlingToReschedule } from "#/organization/change-messages.ts";
+import { askingFirst, decision, settlingToReschedule } from "#/organization/change-messages.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
@@ -31,8 +37,6 @@ export interface TimeOff {
   practitionerId: string;
   practitionerName: string;
   entry: RangeEntry;
-  /** Whether the patients it sends to the "to reschedule" list are told. */
-  tellPatients: boolean;
   canEdit: boolean;
 }
 
@@ -91,7 +95,6 @@ export function listTimeOff(
           { start: new Date(row.startsAt), end: new Date(row.endsAt) },
           defaultTimeZone,
         ),
-        tellPatients: row.tellPatients,
         canEdit: mayEdit(acting, owner.userId),
       };
     }),
@@ -106,34 +109,36 @@ export function createTimeOff(
   database: Database,
   acting: Acting,
   input: TimeOffInput,
-): Result<{ timeOff: { id: string } }> {
+): Result<{ timeOff: { id: string } }> | AffectsAppointments {
   const parsed = timeOffInputSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { practitionerId, entry, tellPatients } = parsed.data;
-  return database.transaction((tx) => {
-    const owner = findPractitioner(tx, acting, practitionerId);
-    if (!owner) {
-      return notFound;
-    }
-    if (!owner.canEdit) {
-      return forbidden;
-    }
-    const values = { practitionerId: owner.id, ...spanOf(entry), tellPatients };
-    const created = settlingToReschedule(tx, [owner.id], tellPatients, () =>
-      tx.insert(timeOff).values(values).returning({ id: timeOff.id }).get(),
-    );
-    recordAudit(tx, acting.userId, {
-      action: "create",
-      entityType: "timeOff",
-      entityId: created.id,
-      patientId: null,
-      before: null,
-      after: createdFields(values),
-    });
-    return { ok: true as const, timeOff: created };
-  });
+  const { practitionerId, entry, ...notice } = parsed.data;
+  return askingFirst(() =>
+    database.transaction((tx) => {
+      const owner = findPractitioner(tx, acting, practitionerId);
+      if (!owner) {
+        return notFound;
+      }
+      if (!owner.canEdit) {
+        return forbidden;
+      }
+      const values = { practitionerId: owner.id, ...spanOf(entry), ...decision(notice) };
+      const created = settlingToReschedule(tx, [owner.id], notice, () =>
+        tx.insert(timeOff).values(values).returning({ id: timeOff.id }).get(),
+      );
+      recordAudit(tx, acting.userId, {
+        action: "create",
+        entityType: "timeOff",
+        entityId: created.id,
+        patientId: null,
+        before: null,
+        after: createdFields(values),
+      });
+      return { ok: true as const, timeOff: created };
+    }),
+  );
 }
 
 /** The time off, when `acting` may change it. */
@@ -156,33 +161,35 @@ export function updateTimeOff(
   database: Database,
   acting: Acting,
   input: TimeOffUpdate,
-): Result<object> {
+): Result<object> | AffectsAppointments {
   const parsed = timeOffUpdateSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { timeOffId, entry, tellPatients } = parsed.data;
-  return database.transaction((tx) => {
-    const editable = findEditable(tx, acting, timeOffId);
-    if (!editable.ok) {
-      return editable;
-    }
-    const values = { ...spanOf(entry), tellPatients };
-    settlingToReschedule(tx, [editable.found.practitionerId], tellPatients, () =>
-      tx.update(timeOff).set(values).where(eq(timeOff.id, timeOffId)).run(),
-    );
-    const changed = changedFields(editable.found, values);
-    if (changed) {
-      recordAudit(tx, acting.userId, {
-        action: "update",
-        entityType: "timeOff",
-        entityId: timeOffId,
-        patientId: null,
-        ...changed,
-      });
-    }
-    return { ok: true as const };
-  });
+  const { timeOffId, entry, ...notice } = parsed.data;
+  return askingFirst(() =>
+    database.transaction((tx) => {
+      const editable = findEditable(tx, acting, timeOffId);
+      if (!editable.ok) {
+        return editable;
+      }
+      const values = { ...spanOf(entry), ...decision(notice) };
+      settlingToReschedule(tx, [editable.found.practitionerId], notice, () =>
+        tx.update(timeOff).set(values).where(eq(timeOff.id, timeOffId)).run(),
+      );
+      const changed = changedFields(editable.found, values);
+      if (changed) {
+        recordAudit(tx, acting.userId, {
+          action: "update",
+          entityType: "timeOff",
+          entityId: timeOffId,
+          patientId: null,
+          ...changed,
+        });
+      }
+      return { ok: true as const };
+    }),
+  );
 }
 
 export function deleteTimeOff(

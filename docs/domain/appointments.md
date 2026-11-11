@@ -115,6 +115,13 @@ practitioner's schedules or inside their time off or a closure. An appointment
 leaves it when it is moved or cancelled. Overbookings are left out, being outside
 working time on purpose. Reception sees the list with a count in the menu.
 
+Saving a time off or a closure, new or edited, that sends appointments to the list
+asks first how many it sends, leaving out those on the list already, and whether to
+tell their patients by WhatsApp: the appointments go to the list either way. One
+that sends none saves without asking. The count is taken again on saving: when it
+changed meanwhile, because someone booked or moved an appointment, the question
+comes back with the new number instead of saving.
+
 Deactivating a practitioner or a patient sends every future requested, booked or
 confirmed appointment of theirs to the list, overbookings included, and the admin is told first
 how many that adds. Rescheduling keeps the practitioner and the patient, so such
