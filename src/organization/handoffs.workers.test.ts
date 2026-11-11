@@ -597,6 +597,24 @@ describe("answering a follow-up", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
+  it("still sorts the words after a photo as the answer, to the practitioner when not plainly good", async () => {
+    await followUpSent();
+    await patientSends(world.organization, "image", martinaPhone);
+    await turn();
+    await writes("me molesta un poco al masticar");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, followUpAnswer: "other" });
+      return "";
+    });
+
+    await turn();
+
+    expect((await openHandoffs()).map((one) => [one.reason, one.forPractitioner])).toEqual([
+      ["followUpAnswer", true],
+      ["media", false],
+    ]);
+  });
+
   it("hands any other answer to the practitioner as clinical", async () => {
     await followUpSent();
     await writes("bien, pero me molesta un poco al masticar");

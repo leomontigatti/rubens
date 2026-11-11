@@ -22,6 +22,12 @@ export const messageJudgements = ["forPractitioner", "notForPractitioner"] as co
 
 export type MessageJudgement = (typeof messageJudgements)[number];
 
+/**
+ * Meta's types of what a patient sends as media (a photo, a study, a
+ * receipt): never passed to the model, but handed to reception.
+ */
+export const mediaTypes = ["image", "document", "video"] as const;
+
 /** A message a patient's number sent the organization's number. */
 export interface IncomingWhatsappMessage {
   /** Meta's message id (`wamid.…`). */

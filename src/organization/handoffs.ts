@@ -1,6 +1,7 @@
-import { and, desc, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lt, notInArray } from "drizzle-orm";
 
 import { isWindowOpen } from "#/lib/conversation-window.ts";
+import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import { attendedTimings } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
@@ -211,6 +212,8 @@ export function answeredMessage(database: Database, conversationId: string, befo
         eq(whatsappMessage.direction, "incoming"),
         isNotNull(whatsappMessage.judgement),
         gte(whatsappMessage.sentAt, latest.sentAt),
+        // A photo is reception's: the words that come after it are still the answer.
+        notInArray(whatsappMessage.type, [...mediaTypes]),
       ),
     )
     .get();

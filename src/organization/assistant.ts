@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "dr
 
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
+import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import {
   assistantSystemPrompt,
   assistantToolSchemas,
@@ -51,12 +52,6 @@ import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 
 /** The conversation history a turn reads, newest messages last. */
 const historyLength = 30;
-
-/**
- * Meta's types of what a patient sends as media (a photo, a study, a
- * receipt): never passed to the model, but handed to reception.
- */
-const mediaTypes = new Set(["image", "document", "video"]);
 
 /** When the next turn is due, or `null` when none waits or the model cannot run. */
 export function nextTurnAlarm(database: Database, model: AssistantModel): number | null {
@@ -426,7 +421,9 @@ async function runTurn(
   // reply is checked against the state its own change left.
   const view = [...appointments];
   const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
-  const media = read.unjudged.filter((message) => mediaTypes.has(message.type));
+  const media = read.unjudged.filter((message) =>
+    (mediaTypes as readonly string[]).includes(message.type),
+  );
   const startedAt = Date.now();
   const { turn, unread } = await judgeWithoutMedia(database, model, {
     conversationId,
