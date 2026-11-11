@@ -761,6 +761,23 @@ describe("a patient's appointments", () => {
     });
   });
 
+  it("lists a cancelled appointment as past before it starts", async () => {
+    const w = await patientWorld();
+    const kept = await w.bookFor("juan", at("12:00", "2099-01-12"));
+    const cancelled = await w.bookFor("lucia", at("13:00", "2099-01-19"));
+    await w.organization.cancelAppointment(w.receptionist, {
+      appointmentId: cancelled,
+      cancelledBy: "patient",
+    });
+
+    const listed = await w.listOf(w.receptionist);
+
+    expect({ upcoming: ids(listed.upcoming), past: ids(listed.past) }).toEqual({
+      upcoming: [kept],
+      past: [cancelled],
+    });
+  });
+
   it("shows a practitioner only the appointments with themselves", async () => {
     const w = await patientWorld();
     const withJuan = await w.bookFor("juan", at("12:00"));
