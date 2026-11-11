@@ -56,6 +56,11 @@ function moveFacts(writer: Writer, appointmentId: string) {
 
 type MoveFacts = ReturnType<typeof moveFacts>;
 
+/** The hours before the appointment its medical service stops a patient's move. */
+export function cutoffHoursOf(writer: Writer, appointmentId: string) {
+  return moveFacts(writer, appointmentId).cutoffHours;
+}
+
 /** The patient's own moves of the appointment: its accepted move proposals. */
 function patientMoves(writer: Writer, appointmentId: string): number {
   const counted = writer

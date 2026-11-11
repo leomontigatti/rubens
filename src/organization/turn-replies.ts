@@ -2,8 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 
 import {
   emergencyReply,
-  handoffReply,
   optOutReply,
+  practitionerHandoffReply,
   unintelligibleVoiceReply,
 } from "#/lib/assistant.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
@@ -30,23 +30,42 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // How a settled turn of the patient assistant (`assistant.ts`) answers the
 // patient (docs/domain/assistant.md § Rules it always keeps): a fixed reply
-// for a handoff, an opt-out, an emergency or a voice note nobody understood; otherwise the model's own,
-// which goes out only once the fixed checks pass and the clinical check
-// finds nothing clinical in it and nothing about a patient the number may not
-// hear about. A reply the check flags is held on a clinical handoff, for its
-// recipients to send, fix or drop. A reply whose window closed before it could
+// for a handoff to the practitioner, an opt-out, an emergency or a voice note
+// nobody understood, and nothing for a handoff to reception; otherwise the
+// model's own, which goes out only once the fixed checks pass and the
+// clinical check finds nothing clinical in it and nothing about a patient the
+// number may not hear about. A reply the check flags is held on a handoff to
+// the practitioner, who sends or fixes it. A reply whose window closed before it could
 // go is dropped and the conversation handed off (docs/domain/messages.md §
 // When Meta limits the number). Nothing here logs a patient's words.
 
 /** What a settled turn tells the patient: nothing, a fixed reply, or the model's. */
 export type Settled =
+  /** A member holds the conversation. */
   | "silent"
   | "emergency"
+  /** Handed to reception, which tells the patient nothing. */
   | "handedOff"
+  /** Handed to the practitioner, whose name the patient is told when it went to the appointment's. */
+  | "toPractitioner"
   | "optOutAsked"
   /** Voice notes nobody could understand: the patient is asked to write. */
   | "unintelligible"
   | "answered";
+
+/** A settled turn: what it tells the patient, and the practitioner a handoff went to, by the name patients read. */
+export interface SettledTurn {
+  settled: Settled;
+  practitioner: string | null;
+}
+
+/** What a settled turn says something with: none for a member's hold or a handoff to reception. */
+export type Saying = Exclude<Settled, "silent" | "handedOff">;
+
+/** Whether the settled turn says anything to the patient. */
+export function says(settled: Settled): settled is Saying {
+  return settled !== "silent" && settled !== "handedOff";
+}
 
 /**
  * Whether the assistant's free-form message may go now: no member holds the
@@ -171,23 +190,23 @@ function handOffClosed(
     }
     openHandoff(tx, conversationId, {
       reason: "windowClosed",
-      clinical: false,
+      forPractitioner: false,
       appointmentId: turn.answered?.appointmentId ?? null,
     });
   });
 }
 
 /** The fixed reply a settled turn gets, or `null` for the model's own. */
-function fixedReply(rules: CommunicationRules, settled: Exclude<Settled, "silent">) {
-  if (settled === "emergency") {
+function fixedReply(rules: CommunicationRules, turn: { settled: Saying; practitioner: string | null }) {
+  if (turn.settled === "emergency") {
     return emergencyReply(rules.formOfAddress, rules.phone && formatPhone(rules.phone));
   }
   return {
-    handedOff: handoffReply(rules.formOfAddress),
+    toPractitioner: practitionerHandoffReply(rules.formOfAddress, turn.practitioner),
     optOutAsked: optOutReply(rules.formOfAddress),
     unintelligible: unintelligibleVoiceReply(rules.formOfAddress),
     answered: null,
-  }[settled];
+  }[turn.settled];
 }
 
 /**
@@ -215,9 +234,9 @@ export async function clinicalCheckHolds(
 }
 
 /**
- * Opens the clinical handoff that holds `held.words`, unless a clinical one is
- * open already; says whether it is the conversation's only open handoff, whose
- * reply the patient then gets.
+ * Opens the handoff to the practitioner that holds `held.words`, unless one
+ * is open already; says the handoff opened, with the practitioner it went to
+ * by the name patients read, or `null` when none did.
  */
 export function openHeldReply(
   database: Database,
@@ -227,23 +246,19 @@ export function openHeldReply(
     const open = openHandoffsOf(tx, held.conversationId);
     const wanted = {
       reason: "heldReply" as const,
-      clinical: true,
+      forPractitioner: true,
       appointmentId: held.answered?.appointmentId ?? null,
       heldReply: held.words,
     };
-    if (!addsToOpen(open, wanted)) {
-      return false;
-    }
-    openHandoff(tx, held.conversationId, wanted);
-    return open.length === 0;
+    return addsToOpen(open, wanted) ? openHandoff(tx, held.conversationId, wanted) : null;
   });
 }
 
 /**
- * Holds the reply the clinical check flagged: a clinical handoff with it, for
- * its recipients to send, fix or drop, and the handoff's reply to the
- * patient. A clinical handoff opened meanwhile has the conversation already,
- * and the reply is dropped.
+ * Holds the reply the clinical check flagged: a handoff to the practitioner
+ * with it, for them to send or fix, and the handoff's reply to the patient.
+ * A handoff to the practitioner opened meanwhile has the conversation
+ * already, and the reply is dropped.
  */
 async function holdReply(
   database: Database,
@@ -258,8 +273,8 @@ async function holdReply(
 ) {
   const { conversationId, rules } = held;
   const opened = openHeldReply(database, held);
-  const text = handoffReplyText(rules);
-  if (opened && text && maySend(database, cloud, conversationId)) {
+  const text = opened && handoffReplyText(rules, opened.practitioner);
+  if (text && maySend(database, cloud, conversationId)) {
     await sendReply(database, cloud, {
       conversationId,
       phone: held.phone,
@@ -274,12 +289,13 @@ async function holdReply(
  * the fixed checks pass, or `null` when they do not.
  */
 export function replyTexts(turn: {
-  settled: Exclude<Settled, "silent">;
+  settled: Saying;
+  practitioner: string | null;
   reply: string;
   rules: CommunicationRules;
 }) {
   const { rules } = turn;
-  const fixed = fixedReply(rules, turn.settled);
+  const fixed = fixedReply(rules, turn);
   const words = checkReply(fixed ?? turn.reply);
   if (!words.ok) {
     return null;
@@ -287,9 +303,9 @@ export function replyTexts(turn: {
   return { fixed, text: words.text };
 }
 
-/** The fixed reply to a handoff, as the patient reads it; `null` when the fixed checks fail. */
-export function handoffReplyText(rules: CommunicationRules) {
-  const checked = checkReply(handoffReply(rules.formOfAddress));
+/** The fixed reply to a handoff to the practitioner, as the patient reads it; `null` when the fixed checks fail. */
+export function handoffReplyText(rules: CommunicationRules, practitioner: string | null) {
+  const checked = checkReply(practitionerHandoffReply(rules.formOfAddress, practitioner));
   return checked.ok ? checked.text : null;
 }
 
@@ -308,7 +324,8 @@ export async function deliverReply(
     /** The first names of the patients the number may hear about. */
     patients: string[];
     answered: TurnToSort["answered"];
-    settled: Exclude<Settled, "silent">;
+    settled: Saying;
+    practitioner: string | null;
     reply: string;
     rules: CommunicationRules;
     /** The turn proposed a change, which its reply states: it goes out whole. */
@@ -333,7 +350,7 @@ export async function deliverReply(
   };
   if (fixed) {
     // The fixed replies say nothing the turn read, so a newer message or a
-    // changed appointment does not hold them: the next turn is silent after a handoff.
+    // changed appointment does not hold them.
     if (!maySend(database, cloud, conversationId) || !(await sendReply(database, cloud, reply))) {
       handOffClosed(database, turn);
     }

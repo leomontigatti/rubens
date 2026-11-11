@@ -6,13 +6,14 @@ import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import type { ConversationSummary, InboxMessage } from "#/organization/inbox.ts";
 
-// How the inbox writes a message, in the list and in the conversation. A
-// withheld message arrives with no words: it shows only why.
+// How the inbox writes a message, in the list and in the conversation.
 
-const withheldLabels = {
-  notJudged: "Mensaje sin revisar. Se muestra cuando el asistente lo revise.",
-  clinical: "Hay un mensaje clínico. Solo lo leen los profesionales.",
-} as const;
+/** What a photo, a video or a file is called, which the inbox names but does not show yet. */
+const mediaLabels: Record<string, string> = {
+  image: "Foto",
+  video: "Video",
+  document: "Archivo",
+};
 
 const inOffices = { in: tz(defaultTimeZone) };
 
@@ -66,9 +67,6 @@ export function byDay<Item>(items: Item[], at: (item: Item) => number, now: numb
 
 /** The message's words, or what stands in their place: a voice note's are its transcript. */
 export function messageText(message: InboxMessage) {
-  if (message.withheld !== null) {
-    return withheldLabels[message.withheld];
-  }
   if (message.type === "audio") {
     if (message.text === null) {
       return "Nota de voz sin transcribir";
@@ -77,7 +75,7 @@ export function messageText(message: InboxMessage) {
       ? "Nota de voz que no se pudo entender"
       : `Nota de voz: ${message.text}`;
   }
-  return message.text ?? `Mensaje sin texto (${message.type})`;
+  return message.text ?? mediaLabels[message.type] ?? `Mensaje sin texto (${message.type})`;
 }
 
 /**
@@ -87,9 +85,6 @@ export function messageText(message: InboxMessage) {
 export function messageSender(message: InboxMessage) {
   if (message.direction === "incoming") {
     return null;
-  }
-  if (message.withheld !== null) {
-    return "Profesional";
   }
   if (message.type === "template") {
     return "Plantilla";

@@ -21,7 +21,8 @@ _Avoid_: owner, manager, superuser
 
 **`receptionist`** — ui: "Recepcionista"
 A member who books and moves `appointment`s and keeps the `patient` registry for
-every `practitioner`. A receptionist never reads clinical content.
+every `practitioner`. A receptionist reads every WhatsApp conversation, and never a
+`clinicalRecord`.
 _Avoid_: secretary, front desk, staff
 
 **`practitioner`** — ui: "Profesional"
@@ -224,14 +225,18 @@ such as a new time for an `appointment`.
 _Avoid_: suggestion, draft, pending action
 
 **`handoff`** — ui: "Derivación"
-A conversation the `assistant` passes to a person, and stays silent in until it
-gets it back. It is open until a person's reply reaches the patient or a person closes it.
+A conversation the `assistant` passes to a person: to the `practitioner` when it
+needs one (ui: "Para el profesional"), otherwise to reception, which can pass it to
+the practitioner (ui: "Pasar al profesional"). The assistant leaves its topic to that
+person and keeps answering the rest. It is open until a person's reply reaches the
+patient or a person closes it.
 _Avoid_: escalation, transfer, takeover
 
 **`heldReply`** — ui: "Respuesta retenida"
 A reply of the `assistant` that the clinical check kept from the patient, because it
-says something clinical or about another `patient`. It waits on a clinical `handoff`,
-read only by its recipients, who send it, fix it or drop it.
+says something clinical or about another `patient`. It waits on a `handoff` to the
+`practitioner`: a practitioner sends it or fixes it, and anyone who reads the
+conversation drops it.
 _Avoid_: draft, blocked message, pending reply
 
 **`lateReply`** — ui: "Respuesta en espera"

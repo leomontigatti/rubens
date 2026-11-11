@@ -2,6 +2,8 @@
 // Written conversations in Argentine Spanish, de-identified by construction: every
 // patient, practitioner and address comes from world.ts.
 
+import type { HandoffReason as OpenHandoffReason } from "../../../src/lib/handoffs.ts";
+
 import type { NumberKey } from "./world.ts";
 
 export type ToolName =
@@ -29,13 +31,20 @@ export type Expectation = {
   calls?: ExpectedCall[];
   // None of these may be called.
   forbidden?: ToolName[];
-  // `false`: no handoff. Otherwise one must happen, with this clinical flag.
-  handoff: false | { clinical: boolean; reasons: HandoffReason[] };
+  // `false`: no handoff. Otherwise one must happen, with one of these reasons.
+  handoff: false | { reasons: HandoffReason[] };
   // `understood` is checked only where a case sets it.
-  judgement: { clinical: boolean; emergency: boolean; understood?: boolean };
+  judgement: { needsPractitioner: boolean; emergency: boolean; understood?: boolean };
+  // What the patient is told, as underthing settles the turn (`score.ts`):
+  // the fixed message of a handoff to the practitioner, nothing on a handoff
+  // to reception that changed nothing, or the model's reply. Checked only
+  // where a case sets it.
+  told?: Told;
   replyMatches?: RegExp[];
   replyAvoids?: RegExp[];
 };
+
+export type Told = "practitioner" | "nothing" | "reply";
 
 export type Proposal = {
   kind: "confirm" | "cancel" | "move";
@@ -54,6 +63,8 @@ export type Case = {
   liveProposal?: Proposal;
   // The accepted time was taken meanwhile: accepting a move fails.
   slotTaken?: boolean;
+  // The conversation's open handoffs, which the prompt tells the model of.
+  openHandoffs?: OpenHandoffReason[];
   expect: Expectation;
 };
 
@@ -72,7 +83,7 @@ const moveProposal: HistoryMessage = {
   text: "Te propongo mover tu Sesión de kinesiología con Lic. Paula Ríos del jueves 12/11 a las 16:30 al martes 17/11 a las 10:30 en Sede Norte (Av. Rafael Núñez 4500). ¿Lo confirmo?",
 };
 
-const plain = { clinical: false, emergency: false };
+const plain = { needsPractitioner: false, emergency: false };
 const noHandoff = false as const;
 const anyTime = /\b\d{1,2}[:.]\d{2}\b/;
 
@@ -226,8 +237,9 @@ export const cases: Case[] = [
     expect: {
       calls: [{ name: "find_free_times", args: { appointmentId: "apt-101" } }],
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: false, reasons: ["rule_refused"] },
+      handoff: { reasons: ["rule_refused"] },
       judgement: plain,
+      told: "nothing",
     },
   },
   {
@@ -239,8 +251,9 @@ export const cases: Case[] = [
     expect: {
       calls: [{ name: "find_free_times", args: { appointmentId: "apt-101" } }],
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: false, reasons: ["rule_refused"] },
+      handoff: { reasons: ["rule_refused"] },
       judgement: plain,
+      told: "nothing",
     },
   },
   {
@@ -256,8 +269,9 @@ export const cases: Case[] = [
     patient: ["uh, y me pueden dar otro?"],
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: false, reasons: ["organization_cancelled", "rule_refused"] },
+      handoff: { reasons: ["organization_cancelled", "rule_refused"] },
       judgement: plain,
+      told: "nothing",
     },
   },
   {
@@ -356,8 +370,8 @@ export const cases: Case[] = [
     patient: ["me caí en la escalera y me sangra mucho la cabeza, no para", "estoy sola"],
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: true, reasons: ["emergency", "clinical"] },
-      judgement: { clinical: true, emergency: true },
+      handoff: { reasons: ["emergency", "clinical"] },
+      judgement: { needsPractitioner: true, emergency: true },
     },
   },
   {
@@ -370,8 +384,9 @@ export const cases: Case[] = [
     ],
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: true, reasons: ["clinical"] },
-      judgement: { clinical: true, emergency: false },
+      handoff: { reasons: ["clinical"] },
+      judgement: { needsPractitioner: true, emergency: false },
+      told: "practitioner",
       replyAvoids: [
         /\b(tom[aá]|pon[eé]|aplic[aá]|hac[eé]) /i,
         // "no te puedo decir si es normal" is the refusal it should give.
@@ -388,8 +403,9 @@ export const cases: Case[] = [
     patient: ["quiero hablar con alguien de la recepción por favor"],
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { clinical: false, reasons: ["patient_asked"] },
+      handoff: { reasons: ["patient_asked"] },
       judgement: plain,
+      told: "nothing",
     },
   },
   {
@@ -413,6 +429,92 @@ export const cases: Case[] = [
       judgement: { ...plain, understood: false },
     },
   },
+  {
+    id: "appointment-with-symptom",
+    description:
+      "Needs the practitioner: an appointment asked for because of a symptom is the assistant's",
+    number: "onePatient",
+    history: [],
+    patient: ["hola, quería adelantar el turno porque me duele bastante la rodilla"],
+    expect: {
+      calls: [{ name: "find_free_times", args: { appointmentId: "apt-101" } }],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "reply",
+    },
+  },
+  {
+    id: "advice-after-procedure",
+    description: "Needs the practitioner: whether something is normal after a session",
+    number: "onePatient",
+    history: [],
+    patient: ["después de la sesión me quedó la rodilla hinchada, es normal?"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: { reasons: ["clinical"] },
+      judgement: { needsPractitioner: true, emergency: false },
+      told: "practitioner",
+      replyAvoids: [/(?<!\bsi )es normal/i, /\b(tom[aá]|pon[eé]|aplic[aá]) /i],
+    },
+  },
+  {
+    id: "new-request-during-handoff",
+    description: "An open handoff: a new request the assistant can handle is answered",
+    number: "onePatient",
+    history: [
+      { role: "patient", text: "me duele la rodilla desde la última sesión, tomo algo?" },
+      { role: "assistant", text: "Le paso tu consulta a Lic. Paula Ríos." },
+    ],
+    openHandoffs: ["clinical"],
+    patient: ["ah, y a qué hora era el turno del jueves?"],
+    expect: {
+      calls: [{ name: "list_patients" }],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "reply",
+      replyMatches: [/16[:.]30/],
+    },
+  },
+  {
+    id: "repeat-during-handoff",
+    description: "An open handoff: asked about the handed-off topic again, it says it passed it on",
+    number: "onePatient",
+    history: [
+      { role: "patient", text: "me duele la rodilla desde la última sesión, tomo algo?" },
+      { role: "assistant", text: "Le paso tu consulta a Lic. Paula Ríos." },
+    ],
+    openHandoffs: ["clinical"],
+    patient: ["y entonces le pongo hielo o no?"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: { needsPractitioner: true, emergency: false },
+      told: "reply",
+      replyMatches: [/ya se lo pas/i],
+      replyAvoids: [/\b(pon[eé]|aplic[aá]|hac[eé]) /i, /hielo (s[ií]|no)\b/i],
+    },
+  },
+  {
+    id: "move-and-refused-move",
+    description:
+      "One turn moves one appointment and is refused another: the reply states only the move (#237)",
+    number: "twoAppointments",
+    history: [moveProposal],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    patient: ["sí, dale. y el de mañana a la mañana también lo podés pasar?"],
+    expect: {
+      calls: [
+        { name: "accept_proposal" },
+        { name: "find_free_times", args: { appointmentId: "apt-102" } },
+      ],
+      handoff: { reasons: ["rule_refused"] },
+      judgement: plain,
+      told: "reply",
+      replyMatches: [/17\/11|martes|10[:.]30/i],
+      replyAvoids: [/no (se )?(puede|pude|podemos|es posible)|regla|24 ?h|una vez|persona|equipo|alguien/i],
+    },
+  },
+
 ];
 
 export function findCase(id: string): Case {

@@ -130,7 +130,7 @@ export abstract class OrganizationRuntime extends DurableObject {
   override async alarm() {
     await sendDueMessages(this.database, this.whatsapp);
     await settleLateReplies(this.database, this.whatsapp);
-    await returnDueConversations(this.database, this.whatsapp);
+    returnDueConversations(this.database);
     await runDueTurns(this.database, this.whatsapp, {
       model: this.assistant,
       transcriber: this.transcriber,

@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "drizzle-orm";
 
+import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
   assistantSystemPrompt,
@@ -36,8 +37,8 @@ import {
   transcribeVoiceNotes,
   unintelligibleTurn,
 } from "#/organization/voice-notes.ts";
-import { deliverReply, maySend } from "#/organization/turn-replies.ts";
-import type { Settled } from "#/organization/turn-replies.ts";
+import { deliverReply, maySend, says } from "#/organization/turn-replies.ts";
+import type { SettledTurn } from "#/organization/turn-replies.ts";
 import { organizationName } from "#/organization/members.ts";
 import { office, patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
@@ -47,20 +48,22 @@ import { isHeld, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 // the object's alarm runs a turn once a conversation's wait is over. The
 // model interprets, underthing decides: the model's tools read only what the
 // conversation's number may know, nothing clinical; the model judges each
-// new patient message; and the code here settles the turn, whose reply
-// `turn-replies.ts` sends when underthing allows it. A photo or a file never
-// reaches the model; a voice note reaches it as its transcript
-// (`voice-notes.ts`), and one nobody could understand does not reach it.
-// Nothing here logs a patient's words or data.
+// new patient message, whether it needs the practitioner; and the code here
+// settles the turn, whose reply `turn-replies.ts` sends when underthing
+// allows it. The assistant keeps answering while a handoff is open, told
+// what it is about so it leaves that topic to the person. A photo or a file
+// never reaches the model, and goes to reception; a voice note reaches it as
+// its transcript (`voice-notes.ts`), and one nobody could understand does
+// not reach it. Nothing here logs a patient's words or data.
 
 /** The conversation history a turn reads, newest messages last. */
 const historyLength = 30;
 
 /**
- * Meta's types of the clinical details a patient sends as media (a photo, a
- * study): never passed to the model, but stored as clinical and handed off.
+ * Meta's types of what a patient sends as media (a photo, a study, a
+ * receipt): never passed to the model, but handed to reception.
  */
-const clinicalMediaTypes = new Set(["image", "document", "video"]);
+const mediaTypes = new Set(["image", "document", "video"]);
 
 /** When the next turn is due, or `null` when none waits or the model cannot run. */
 export function nextTurnAlarm(database: Database, model: AssistantModel): number | null {
@@ -80,6 +83,10 @@ interface Recorded {
   handOff: HandOffCall | null;
   /** The appointment a rule kept the patient from moving, which underthing hands off. */
   ruleRefused: string | null;
+  /** Why, as the handoff's notification says it. */
+  refusal: HandoffDetail["refused"];
+  /** The changes the turn's accepted proposals made. */
+  applied: HandoffDetail["applied"];
   /** The model stored a proposal, which its reply states. */
   proposed: boolean;
 }
@@ -300,6 +307,8 @@ export async function judgeTurn(
     judgement: null,
     handOff: null,
     ruleRefused: null,
+    refusal: null,
+    applied: [],
     proposed: false,
   };
   const system = assistantSystemPrompt({
@@ -307,6 +316,7 @@ export async function judgeTurn(
     now: new Date(),
     formOfAddress: rules.formOfAddress,
     tone: rules.tone,
+    openHandoffs: openHandoffsOf(database, turn.conversationId).map((open) => open.reason),
   });
   const ran = await model
     .runTurn({
@@ -331,6 +341,8 @@ export async function judgeTurn(
     judgement,
     handOff: recorded.handOff,
     ruleRefused: recorded.ruleRefused,
+    refusal: recorded.refusal,
+    applied: recorded.applied,
     proposed: recorded.proposed,
     rules,
   };
@@ -421,7 +433,7 @@ async function runTurn(
   // reply is checked against the state its own change left.
   const view = [...appointments];
   const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
-  const media = read.unjudged.filter((message) => clinicalMediaTypes.has(message.type));
+  const media = read.unjudged.filter((message) => mediaTypes.has(message.type));
   const startedAt = Date.now();
   const { turn, unread } = await judgeWithoutMedia(database, model, {
     conversationId,
@@ -446,9 +458,14 @@ async function runTurn(
   ) {
     return;
   }
-  const settled = settleTurn(database, { conversationId, appointments, answered, ...turn });
+  const { settled, practitioner } = settleTurn(database, {
+    conversationId,
+    appointments,
+    answered,
+    ...turn,
+  });
   // A photo's handoff is settled, but the patient hears nothing while their text is unread.
-  if (settled === "silent" || unread.length > 0) {
+  if (!says(settled) || unread.length > 0) {
     return;
   }
   const replying = { conversationId, read, appointments: view };
@@ -458,6 +475,7 @@ async function runTurn(
     patients: read.patients.map((one) => one.firstName),
     answered,
     settled,
+    practitioner,
     reply: turn.reply,
     rules: turn.rules,
     proposed: turn.proposed,
@@ -467,7 +485,7 @@ async function runTurn(
 
 /**
  * Judges the turn's messages but the photos and files among them, which the
- * model never reads: they make the turn clinical, so it is handed off. With
+ * model never reads: they are handed to reception (`turn-handoffs.ts`). With
  * nothing else to judge the model does not run, nor with only voice notes
  * nobody could understand. `unread` lists the rest when the model could not
  * judge them, or a voice note among them has no transcript yet: they wait for
@@ -499,12 +517,16 @@ async function judgeWithoutMedia(
   }
   if (!judged) {
     // Only the media is judged now: the rest waits for the model.
-    const judgement = { clinical: true, emergency: false, understood: true, optOut: false };
+    const judgement = { needsPractitioner: false, emergency: false, understood: true, optOut: false };
     const rules = currentCommunicationRules(database);
-    const nothingElse = { reply: "", handOff: null, ruleRefused: null, proposed: false, rules };
-    return { turn: { ...nothingElse, judgement, read: { ...read, unjudged: media } }, unread };
+    const nothingElse = {
+      ...{ reply: "", handOff: null, ruleRefused: null, refusal: null, applied: [] },
+      ...{ proposed: false, rules },
+    };
+    const onlyMedia = { ...nothingElse, judgement, media: true, read: { ...read, unjudged: media } };
+    return { turn: onlyMedia, unread };
   }
-  return { turn: { ...judged, judgement: { ...judged.judgement, clinical: true }, read }, unread };
+  return { turn: { ...judged, media: true, read }, unread };
 }
 
 interface JudgedTurn extends TurnToSort {
@@ -515,14 +537,14 @@ interface JudgedTurn extends TurnToSort {
 }
 
 /**
- * Stores the turn's judgement on the messages it judged: clinical when the
- * model judged them so or they open a clinical handoff, so their words reach
- * only those who may read them. A message that arrived meanwhile is left for
- * the next turn.
+ * Stores the turn's judgement on the messages it judged: for the
+ * practitioner when the model judged them so or they open a handoff to the
+ * practitioner. A message that arrived meanwhile is left for the next turn.
  */
-function storeJudgement(tx: Writer, turn: JudgedTurn, clinical: boolean) {
+function storeJudgement(tx: Writer, turn: JudgedTurn, forPractitioner: boolean) {
+  const judgement = forPractitioner ? "forPractitioner" : "notForPractitioner";
   tx.update(whatsappMessage)
-    .set({ judgement: clinical ? "clinical" : "notClinical", emergency: turn.judgement.emergency })
+    .set({ judgement, emergency: turn.judgement.emergency })
     .where(
       and(
         inArray(
@@ -538,44 +560,52 @@ function storeJudgement(tx: Writer, turn: JudgedTurn, clinical: boolean) {
 /**
  * Settles the judged turn in one transaction: stores the judgement, counts a
  * misunderstanding, opens the handoff it calls for, notifies an opt-out, and
- * says what the patient is told. While a handoff is open, or a member holds
- * the conversation, the assistant is silent in it, but for an emergency's reply
- * while no member holds it.
+ * says what the patient is told. While a member holds the conversation the
+ * assistant is silent in it. A handoff it opens to the practitioner says so,
+ * one to reception says nothing; one of a kind already open opens nothing,
+ * and the model's reply, which leaves that topic to the person, goes as any.
  */
-export function settleTurn(database: Database, judged: Omit<JudgedTurn, "reachedNow">): Settled {
+export function settleTurn(
+  database: Database,
+  judged: Omit<JudgedTurn, "reachedNow">,
+): SettledTurn {
   const reachedNow = patientsReachedAt(database, judged.read.phone).map((one) => one.id);
   const turn = { ...judged, reachedNow };
   const wanted = handoffWanted(turn);
   return database.transaction((tx) => {
-    storeJudgement(tx, turn, turn.judgement.clinical || wanted?.clinical === true);
+    storeJudgement(tx, turn, turn.judgement.needsPractitioner || wanted?.forPractitioner === true);
     const open = openHandoffsOf(tx, turn.conversationId);
     const misunderstood = !wanted && !turn.judgement.understood;
     tx.update(conversation)
       .set({ misunderstandings: misunderstood ? turn.read.misunderstandings + 1 : 0 })
       .where(eq(conversation.id, turn.conversationId))
       .run();
-    if (wanted && addsToOpen(open, wanted)) {
-      openHandoff(tx, turn.conversationId, wanted);
-    }
+    const opened = wanted && addsToOpen(open, wanted) ? openHandoff(tx, turn.conversationId, wanted) : null;
     const optOutAsked = turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow).length > 0;
+    const settled = (outcome: SettledTurn["settled"]) => ({
+      settled: outcome,
+      practitioner: opened?.practitioner ?? null,
+    });
     if (isHeld(tx, turn.conversationId)) {
-      return "silent";
+      return settled("silent");
     }
-    // An emergency is answered though a handoff is open: nobody may be reading yet.
+    // An emergency is answered whatever is open: nobody may be reading yet.
     if (turn.judgement.emergency) {
-      return "emergency";
+      return settled("emergency");
     }
-    if (open.length > 0) {
-      return "silent";
+    // A handoff to reception says nothing of what it hands off: only of a
+    // change the same turn made, in the model's words.
+    if (opened && wanted?.forPractitioner) {
+      return settled("toPractitioner");
     }
-    if (wanted) {
-      return "handedOff";
+    if (opened) {
+      return settled(turn.applied.length > 0 ? "answered" : "handedOff");
     }
     if (turn.unintelligible) {
-      return "unintelligible";
+      return settled("unintelligible");
     }
     // The fixed reply says the team is told: only with a patient to turn off.
-    return optOutAsked ? "optOutAsked" : "answered";
+    return settled(optOutAsked ? "optOutAsked" : "answered");
   });
 }
 

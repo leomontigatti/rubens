@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 import { handoffReasonLabels } from "#/lib/handoff-copy.ts";
-import type { HandoffReason } from "#/lib/handoffs.ts";
+import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { messagingLimitLabels } from "#/lib/whatsapp.ts";
@@ -23,7 +23,17 @@ export interface NotificationFacts {
   until: number | null;
   waiting: number | null;
   /** The handoff a `handoff` or `handoffReminder` notification tells of. */
-  handoff: { conversationId: string; reason: HandoffReason; clinical: boolean } | null;
+  handoff: {
+    conversationId: string;
+    reason: HandoffReason;
+    forPractitioner: boolean;
+    /** It needs the practitioner, and reached the reader since nobody active keeps clinical records. */
+    noPractitioner: boolean;
+    /** The patient it is about, by name; `null` for a number of no patient. */
+    patient: string | null;
+    /** What the turn that made it knew of a refused move and its own changes. */
+    detail: HandoffDetail | null;
+  } | null;
   /** The patient an `optOut` or `optOutReminder` notification is about. */
   patient: { id: string; name: string } | null;
 }
@@ -114,13 +124,42 @@ export function notificationText(facts: NotificationFacts): string {
   }
 }
 
+type HandoffFacts = NonNullable<NotificationFacts["handoff"]>;
+
+const appliedVerbs = { confirm: "confirmó", cancel: "canceló", move: "pasó" } as const;
+
+/** Why the conversation was handed off, so its reader answers without reading it back. */
+function handoffWhy(handoff: HandoffFacts) {
+  const refused = handoff.reason === "ruleRefused" ? handoff.detail?.refused : null;
+  const who = handoff.patient ?? "El paciente";
+  if (refused) {
+    const appointment = `el turno del ${refused.date} ${refused.time}`;
+    return refused.why === "pastCutoff"
+      ? `${who} quiere pasar ${appointment} y falta menos de ${refused.cutoffHours} h.`
+      : `${who} quiere pasar ${appointment}, que ya movió una vez.`;
+  }
+  const label = handoffReasonLabels[handoff.reason];
+  return handoff.patient ? `${label}: ${handoff.patient}.` : `${label}.`;
+}
+
+/** What the turn that handed it off did anyway, so the reader does not undo or repeat it. */
+function appliedText(applied: HandoffDetail["applied"]) {
+  return applied.map((change) => {
+    const from = `el turno del ${change.date} ${change.time}`;
+    const to = change.newDate ? ` al ${change.newDate} ${change.newTime}` : "";
+    return ` El asistente ya le ${appliedVerbs[change.kind]} ${from}${to}.`;
+  });
+}
+
 function handoffText(handoff: NotificationFacts["handoff"]) {
   if (!handoff) {
     return "La derivación ya no está disponible.";
   }
-  const answer =
-    "El asistente no responde en esa conversación mientras la derivación siga abierta.";
-  return `${handoffReasonLabels[handoff.reason]}. ${answer}`;
+  const why = `${handoffWhy(handoff)}${appliedText(handoff.detail?.applied ?? []).join("")}`;
+  if (handoff.noPractitioner) {
+    return `${why} Te llegó porque ningún profesional activo lleva historias clínicas: elegí los contactos de derivación para que la reciba uno.`;
+  }
+  return why;
 }
 
 function reminderText(facts: NotificationFacts) {
@@ -131,7 +170,7 @@ function reminderText(facts: NotificationFacts) {
     facts.until === null
       ? "La ventana de WhatsApp cierra pronto"
       : `La ventana de WhatsApp cierra el ${day(facts.until)}`;
-  return `${handoffReasonLabels[facts.handoff.reason]}. ${closes}. Respondé antes para que tu respuesta le llegue enseguida.`;
+  return `${handoffWhy(facts.handoff)} ${closes}. Respondé antes para que tu respuesta le llegue enseguida.`;
 }
 
 /** How many messages waited when it happened, and what becomes of them; nothing for a kind that holds none. */

@@ -1,11 +1,17 @@
-import { and, desc, eq, exists, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
 import type { HandoffReason, HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
-import { recipientsByHandoff } from "#/organization/handoffs.ts";
+import {
+  addsToOpen,
+  mayAnswer,
+  openHandoffsOf,
+  recipientsByHandoff,
+  sendHandoff,
+} from "#/organization/handoffs.ts";
 import { asRead, messageColumns, patientsOf, readerOf } from "#/organization/inbox.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -19,12 +25,11 @@ import {
 
 // The open handoffs in the inbox (docs/domain/assistant.md § Handoff), read by
 // the inbox's rules (`inbox.ts`): a member sees the handoffs of the
-// conversations they read, a clinical one included, never words they may not
-// read. Closing one without a reply is for whoever may answer it: for a
-// clinical one, a practitioner who keeps clinical records. A reply the
-// clinical check held is read, and dropped, only by the handoff's recipients.
-// An opt-out among a clinical handoff's words is reported to reception by
-// whoever reads them (`handoff-opt-outs.ts`).
+// conversations they read, with every word in them. Closing one without a
+// reply is for whoever may answer it (`handoffs.ts`). Only a practitioner who
+// keeps clinical records sends or fixes the reply the clinical check held;
+// anyone who reads it drops that reply. Whoever reads a handoff to reception
+// may pass it to the practitioner instead.
 
 export interface OpenHandoff {
   id: string;
@@ -32,27 +37,21 @@ export interface OpenHandoff {
   phone: string;
   patients: { id: string; name: string }[];
   reason: HandoffReason;
-  clinical: boolean;
+  /** Whether it needs the practitioner, rather than reception. */
+  forPractitioner: boolean;
   createdAt: number;
   /** Who it went to, by name. */
   recipients: string[];
-  /** The patient's latest message, as the reader may see it. */
+  /** The patient's latest message. */
   lastPatientMessage: InboxMessage | null;
-  /** Whether the reader may close it without a reply. */
-  mayClose: boolean;
-  /** The assistant's reply the clinical check held, for its recipients only; `null` for anyone else. */
+  /** Whether the reader may answer it, and so close it without a reply. */
+  mayAnswer: boolean;
+  /** Whether the reader may send or fix its held reply: a practitioner who keeps clinical records. */
+  mayUseHeldReply: boolean;
+  /** Whether the reader may pass it to the practitioner: one to reception, with none to the practitioner open beside it. */
+  mayPass: boolean;
+  /** The assistant's reply the clinical check held; `null` when it holds none. */
   heldReply: string | null;
-  /**
-   * On a clinical handoff, for a reader of its words: whether they may
-   * report an opt-out among them to reception, which cannot read them, or
-   * did already for every message the patient sent; `null` for anyone else.
-   */
-  optOut: "mayReport" | "reported" | null;
-}
-
-/** Whether `memberId` is one of the handoff's recipients. */
-function isRecipient(memberId: string) {
-  return and(eq(handoffRecipient.handoffId, handoff.id), eq(handoffRecipient.memberId, memberId));
 }
 
 /** The latest message from the patient in each of `conversationIds`. */
@@ -80,72 +79,6 @@ function lastPatientMessages(database: Database, conversationIds: string[]) {
   return latest;
 }
 
-/**
- * Messages after `messageId` in the order the inbox shows them, by when
- * the patient sent them, then by when they were stored: as
- * `lastPatientMessages` picks the latest.
- */
-function laterThan(messageId: string) {
-  return sql`(${whatsappMessage.sentAt}, ${whatsappMessage}.rowid) > (
-    select seen.sent_at, seen.rowid from whatsapp_message as seen where seen.id = ${messageId}
-  )`;
-}
-
-/**
- * Whether `messageId`, a message of the patient in `conversationId`, comes
- * after `throughId` in the inbox's order; any comes after none.
- */
-export function shownAfter(
-  database: Writer,
-  conversationId: string,
-  messageId: string,
-  throughId: string | null,
-) {
-  const found = database
-    .select({ id: whatsappMessage.id })
-    .from(whatsappMessage)
-    .where(
-      and(
-        eq(whatsappMessage.id, messageId),
-        eq(whatsappMessage.conversationId, conversationId),
-        eq(whatsappMessage.direction, "incoming"),
-        throughId === null ? undefined : laterThan(throughId),
-      ),
-    )
-    .get();
-  return found !== undefined;
-}
-
-/**
- * Whether an opt-out reported on a handoff of `conversationId`, through
- * the patient's message `throughId`, covers every message the patient sent:
- * one shown after it may ask to stop again, after reception decided.
- */
-function optOutReportCovers(database: Writer, conversationId: string, throughId: string | null) {
-  if (throughId === null) {
-    return false;
-  }
-  const later = database
-    .select({ id: whatsappMessage.id })
-    .from(whatsappMessage)
-    .where(
-      and(
-        eq(whatsappMessage.conversationId, conversationId),
-        eq(whatsappMessage.direction, "incoming"),
-        laterThan(throughId),
-      ),
-    )
-    .get();
-  return later === undefined;
-}
-
-function optOutOf(clinical: boolean, readsClinical: boolean, covered: () => boolean) {
-  if (!clinical || !readsClinical) {
-    return null;
-  }
-  return covered() ? ("reported" as const) : ("mayReport" as const);
-}
-
 /** The open handoffs `acting` sees, newest first, of one conversation when `conversationId` says. */
 export function listOpenHandoffs(
   database: Database,
@@ -164,16 +97,9 @@ export function listOpenHandoffs(
       conversationId: handoff.conversationId,
       phone: conversation.phone,
       reason: handoff.reason,
-      clinical: handoff.clinical,
+      forPractitioner: handoff.forPractitioner,
       createdAt: handoff.createdAt,
       heldReply: handoff.heldReply,
-      optOutReportedThrough: handoff.optOutReportedThrough,
-      toReader: exists(
-        database
-          .select({ one: handoffRecipient.memberId })
-          .from(handoffRecipient)
-          .where(isRecipient(acting.userId)),
-      ).mapWith(Boolean),
     })
     .from(handoff)
     .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
@@ -193,23 +119,22 @@ export function listOpenHandoffs(
     rows.map((row) => row.id),
   );
   const lastMessages = lastPatientMessages(database, conversationIds);
-  const handoffs: OpenHandoff[] = rows.map(
-    ({ heldReply, toReader, optOutReportedThrough, ...row }) => {
-      const last = lastMessages.get(row.conversationId);
-      return {
-        ...row,
-        // A recipient of a clinical handoff keeps clinical records (`handoffs.ts`).
-        heldReply: toReader && reader.readsClinical ? heldReply : null,
-        patients: patients.get(row.conversationId) ?? [],
-        recipients: recipients.get(row.id) ?? [],
-        lastPatientMessage: last ? asRead(last, reader.readsClinical) : null,
-        mayClose: !row.clinical || reader.readsClinical,
-        optOut: optOutOf(row.clinical, reader.readsClinical, () =>
-          optOutReportCovers(database, row.conversationId, optOutReportedThrough),
-        ),
-      };
-    },
+  const withPractitioner = new Set(
+    rows.filter((row) => row.forPractitioner).map((row) => row.conversationId),
   );
+  const member = { memberId: acting.userId, keepsRecords: reader.keepsRecords };
+  const handoffs: OpenHandoff[] = rows.map((row) => {
+    const last = lastMessages.get(row.conversationId);
+    return {
+      ...row,
+      patients: patients.get(row.conversationId) ?? [],
+      recipients: recipients.get(row.id) ?? [],
+      lastPatientMessage: last ? asRead(last) : null,
+      mayAnswer: mayAnswer(database, row, member),
+      mayUseHeldReply: reader.keepsRecords,
+      mayPass: !row.forPractitioner && !withPractitioner.has(row.conversationId),
+    };
+  });
   return { ok: true as const, handoffs };
 }
 
@@ -235,10 +160,9 @@ export function openHandoffSeen(
   return tx
     .select({
       id: handoff.id,
-      clinical: handoff.clinical,
+      forPractitioner: handoff.forPractitioner,
+      appointmentId: handoff.appointmentId,
       conversationId: handoff.conversationId,
-      phone: conversation.phone,
-      optOutReportedThrough: handoff.optOutReportedThrough,
     })
     .from(handoff)
     .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
@@ -247,9 +171,8 @@ export function openHandoffSeen(
 }
 
 /**
- * Closes one of the open handoffs `acting` sees without a reply, recording
- * who closed it. A clinical one is closed only by a practitioner who keeps
- * clinical records; one closed already, or not seen, is not found.
+ * Closes one of the open handoffs `acting` sees and may answer without a
+ * reply, recording who closed it; one closed already, or not seen, is not found.
  */
 export function closeHandoffWithoutReply(
   database: Database,
@@ -266,7 +189,7 @@ export function closeHandoffWithoutReply(
     if (!found) {
       return { ok: false as const, reason: "notFound" as const };
     }
-    if (found.clinical && !reader.readsClinical) {
+    if (!mayAnswer(tx, found, { memberId: acting.userId, keepsRecords: reader.keepsRecords })) {
       return { ok: false as const, reason: "forbidden" as const };
     }
     tx.update(handoff)
@@ -274,9 +197,7 @@ export function closeHandoffWithoutReply(
       .where(eq(handoff.id, found.id))
       .run();
     // Closed with nothing left to answer: the words it saw are answered.
-    if (reader.readsClinical) {
-      answeredByPerson(tx, found.conversationId, Date.now());
-    }
+    answeredByPerson(tx, found.conversationId, Date.now());
     recordAudit(tx, acting.userId, {
       action: "update",
       entityType: "handoff",
@@ -290,37 +211,68 @@ export function closeHandoffWithoutReply(
 }
 
 /**
+ * Passes one of the open handoffs to reception `acting` sees to the
+ * practitioner: it goes where a handoff to the practitioner goes, whose
+ * recipients are notified and reminded in its place. Refused while one to the
+ * practitioner is open in its conversation; one closed already, or not seen,
+ * is not found. The patient is told nothing.
+ */
+export function passHandoffToPractitioner(
+  database: Database,
+  acting: Acting,
+  input: HandoffReference,
+) {
+  const named = handoffInputOf(database, acting, input);
+  if (!named.ok) {
+    return named;
+  }
+  return database.transaction((tx) => {
+    const found = openHandoffSeen(tx, named.reader, named.handoffId);
+    if (!found || found.forPractitioner) {
+      return { ok: false as const, reason: "notFound" as const };
+    }
+    const wanted = { forPractitioner: true, appointmentId: found.appointmentId };
+    if (!addsToOpen(openHandoffsOf(tx, found.conversationId), wanted)) {
+      return { ok: false as const, reason: "withPractitioner" as const };
+    }
+    tx.update(handoff)
+      .set({ forPractitioner: true, remindedFor: null, widelyRemindedFor: null })
+      .where(eq(handoff.id, found.id))
+      .run();
+    tx.delete(handoffRecipient).where(eq(handoffRecipient.handoffId, found.id)).run();
+    sendHandoff(tx, found.id, wanted);
+    recordAudit(tx, acting.userId, {
+      action: "update",
+      entityType: "handoff",
+      entityId: found.id,
+      patientId: null,
+      before: { forPractitioner: false },
+      after: { forPractitioner: true },
+    });
+    return { ok: true as const };
+  });
+}
+
+/**
  * Drops the reply the clinical check held on one of the open handoffs
- * `acting` is a recipient of, leaving the handoff open; a handoff with none,
- * or not theirs, is not found. The audit records the drop, never the words.
+ * `acting` sees, leaving the handoff open; a handoff with none, or not seen,
+ * is not found. The audit records the drop, never the words.
  */
 export function dropHandoffHeldReply(database: Database, acting: Acting, input: HandoffReference) {
   const named = handoffInputOf(database, acting, input);
   if (!named.ok) {
     return named;
   }
-  if (!named.reader.readsClinical) {
-    return { ok: false as const, reason: "notFound" as const };
-  }
   return database.transaction((tx) => {
-    const dropped = tx
-      .update(handoff)
-      .set({ heldReply: null })
-      .where(
-        and(
-          eq(handoff.id, named.handoffId),
-          eq(handoff.state, "open"),
-          isNotNull(handoff.heldReply),
-          exists(
-            tx
-              .select({ one: handoffRecipient.memberId })
-              .from(handoffRecipient)
-              .where(isRecipient(acting.userId)),
-          ),
-        ),
-      )
-      .returning({ id: handoff.id })
-      .get();
+    const found = openHandoffSeen(tx, named.reader, named.handoffId);
+    const dropped =
+      found &&
+      tx
+        .update(handoff)
+        .set({ heldReply: null })
+        .where(and(eq(handoff.id, found.id), isNotNull(handoff.heldReply)))
+        .returning({ id: handoff.id })
+        .get();
     if (!dropped) {
       return { ok: false as const, reason: "notFound" as const };
     }

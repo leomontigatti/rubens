@@ -98,7 +98,10 @@ export function fakeObject(evaluationCase: Case): FakeObject {
     hand_off: (args) => ({
       ok: true,
       reason: args.reason as HandoffReason,
-      recipient: args.clinical ? "the appointment's practitioner" : "the handoff contacts",
+      recipient:
+        args.reason === "clinical" || args.reason === "emergency"
+          ? "the appointment's practitioner"
+          : "the handoff contacts",
     }),
     judge_messages: () => ({ ok: true }),
   };

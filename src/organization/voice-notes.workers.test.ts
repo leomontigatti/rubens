@@ -46,7 +46,7 @@ vi.mock(import("#/organization/transcription.ts"), async (original) => ({
 const martinaPhone = "+5491155550000";
 const lucasPhone = "+5491155550001";
 
-const notClinical = { clinical: false, emergency: false };
+const notClinical = { needsPractitioner: false, emergency: false };
 
 /** What the patient is told on a handoff, as `vos`. */
 const handedOffText =
@@ -274,7 +274,7 @@ describe("a voice note nobody can understand", () => {
     expect(scriptedModel.turns).toEqual([]);
     expect((await openHandoffs())[0]).toMatchObject({
       reason: "voiceUnintelligible",
-      clinical: false,
+      forPractitioner: false,
     });
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([writeItText, handedOffText]);
   });

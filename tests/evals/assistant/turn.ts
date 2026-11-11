@@ -78,7 +78,7 @@ async function attemptTurn(
   const { text } = await chat({
     adapter: textAdapter(candidate),
     threadId: `eval-${evaluationCase.id}`,
-    systemPrompts: [systemPrompt()],
+    systemPrompts: [systemPrompt(evaluationCase)],
     messages: conversation(evaluationCase, patientMessages),
     tools: assistantTools(object),
     agentLoopStrategy: maxIterations(8),

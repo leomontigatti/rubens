@@ -23,6 +23,8 @@ export const notificationKinds = [
   "handoff",
   "handoffReminder",
   "replyNotDelivered",
+  /** Meta reported a person's reply failed: the handoff it closed is open again. */
+  "replyFailed",
   "optOut",
   "optOutReminder",
 ] as const;

@@ -9,7 +9,6 @@ import type {
   HandoffReference,
   HandoffRemindersInput,
   OpenHandoffListOptions,
-  OptOutReport,
 } from "#/lib/handoffs.ts";
 import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
@@ -35,8 +34,8 @@ import {
   closeHandoffWithoutReply,
   dropHandoffHeldReply,
   listOpenHandoffs,
+  passHandoffToPractitioner,
 } from "#/organization/handoff-inbox.ts";
-import { reportUnreadOptOut } from "#/organization/handoff-opt-outs.ts";
 import { withdrawOwnLateReply } from "#/organization/late-replies.ts";
 import { patientEditors } from "#/organization/members.ts";
 import type { Caller } from "#/organization/members.ts";
@@ -83,17 +82,17 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     );
   }
 
-  /** Drops the reply the clinical check held on a handoff the member is a recipient of. */
+  /** Drops the reply the clinical check held on a handoff the member sees. */
   dropHeldReply(caller: Caller, input: HandoffReference) {
     return this.as(caller, patientEditors, (acting) =>
       dropHandoffHeldReply(this.database, acting, input),
     );
   }
 
-  /** Reports an opt-out among words the model could not read: its hold's reminders wake the alarm. */
-  reportOptOut(caller: Caller, input: OptOutReport) {
+  /** Passes a handoff to reception to the practitioner: its new recipients' reminders wake the alarm. */
+  passToPractitioner(caller: Caller, input: HandoffReference) {
     return this.asThenArm(caller, patientEditors, (acting) =>
-      reportUnreadOptOut(this.database, acting, input),
+      passHandoffToPractitioner(this.database, acting, input),
     );
   }
 
@@ -111,9 +110,9 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     );
   }
 
-  async returnConversation(caller: Caller, input: ConversationReference) {
+  returnConversation(caller: Caller, input: ConversationReference) {
     return this.asThenArm(caller, patientEditors, (acting) =>
-      returnConversation(this.database, this.whatsapp, acting, input),
+      returnConversation(this.database, acting, input),
     );
   }
 

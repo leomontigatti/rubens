@@ -135,13 +135,13 @@ describe("taking a conversation over", () => {
 
     expect(scriptedModel.turns).toHaveLength(1);
     expect(fakeMeta.textsSent()).toEqual([]);
-    expect((await read()).messages.at(-1)).toMatchObject({ judgement: "notClinical" });
+    expect((await read()).messages.at(-1)).toMatchObject({ judgement: "notForPractitioner" });
   });
 
   it("keeps the assistant from proposing or accepting a change while a member holds it", async () => {
     await writes("cancelame el turno");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: false, emergency: false });
+      one.call("judge_messages", { needsPractitioner: false, emergency: false });
       one.call("propose_change", { appointmentId, kind: "cancel" });
       return "¿Te lo cancelo?";
     });
@@ -150,7 +150,7 @@ describe("taking a conversation over", () => {
 
     await writes("sí");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: false, emergency: false });
+      one.call("judge_messages", { needsPractitioner: false, emergency: false });
       one.call("propose_change", { appointmentId, kind: "confirm" });
       one.call("accept_proposal");
       return "Listo.";

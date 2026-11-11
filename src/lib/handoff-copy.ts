@@ -8,7 +8,7 @@ export const handoffReasonLabels: Record<HandoffReason, string> = {
   patientAsked: "Pidió hablar con una persona",
   ruleRefused: "Pidió un cambio que las reglas no permiten",
   organizationCancelled: "Pide otro horario para un turno que cancelamos",
-  clinical: "Consulta clínica",
+  clinical: "Consulta para el profesional",
   emergency: "Posible urgencia",
   followUpAnswer: "Respuesta al seguimiento",
   misunderstoodTwice: "El asistente no lo entendió dos veces seguidas",
@@ -18,4 +18,5 @@ export const handoffReasonLabels: Record<HandoffReason, string> = {
   heldReply: "Respuesta retenida",
   windowClosed: "La ventana se cerró antes de la respuesta del asistente",
   modelUnavailable: "El asistente no pudo leer el mensaje",
+  media: "Mandó una foto, un video o un archivo",
 };

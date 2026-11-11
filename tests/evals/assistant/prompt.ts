@@ -3,14 +3,16 @@
 
 import { assistantSystemPrompt } from "../../../src/lib/assistant.ts";
 
+import type { Case } from "./cases.ts";
 import { now, organization, timeZone } from "./world.ts";
 
-export function systemPrompt(): string {
+export function systemPrompt(evaluationCase: Case): string {
   return assistantSystemPrompt({
     organizationName: organization.name,
     now: new Date(now),
     timeZone,
     formOfAddress: "vos",
     tone: "",
+    openHandoffs: evaluationCase.openHandoffs ?? [],
   });
 }

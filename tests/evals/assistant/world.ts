@@ -63,6 +63,21 @@ export const numbers = {
   onePatient: [lucia()],
   pastCutoff: [lucia({ date: "2026-11-10", time: "08:30", moveRefusal: "past_cutoff" })],
   moveUsed: [lucia({ moveRefusal: "move_already_used" })],
+  twoAppointments: [
+    {
+      ...lucia(),
+      appointments: [
+        ...lucia().appointments,
+        {
+          ...lucia().appointments[0]!,
+          appointmentId: "apt-102",
+          date: "2026-11-10",
+          time: "08:30",
+          moveRefusal: "past_cutoff",
+        },
+      ],
+    },
+  ],
   cancelledByOrganization: [lucia({ status: "cancelled_by_organization", freeSlots: [] })],
   guardian: [
     {

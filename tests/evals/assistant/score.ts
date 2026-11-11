@@ -2,7 +2,7 @@
 // order the model is chosen by: tool choice and no invented availability first,
 // then handoff when due.
 
-import type { Case, ExpectedCall } from "./cases.ts";
+import type { Case, ExpectedCall, Told } from "./cases.ts";
 import type { ToolCall } from "./fake-object.ts";
 
 export type Turn = { reply: string; calls: ToolCall[]; knownTimes: Set<string> };
@@ -83,6 +83,45 @@ function scoreAvailability(evaluationCase: Case, turn: Turn): Check {
   return { pass: false, reason: `times no tool returned: ${shown.join(", ")}` };
 }
 
+// The open handoffs that went to the practitioner (`src/organization/turn-handoffs.ts`).
+const practitionerReasons = new Set(["clinical", "emergency", "followUpAnswer", "heldReply"]);
+const ruleRefusals = new Set(["past_cutoff", "move_already_used"]);
+
+const failedWith = (call: ToolCall, reasons: Set<string>) =>
+  (call.result as { ok?: boolean; reason?: string }).ok === false &&
+  reasons.has(String((call.result as { reason?: string }).reason));
+
+// What underthing tells the patient after the turn, as `settleTurn`
+// (`src/organization/assistant.ts`) decides it: a handoff to the practitioner
+// gets its fixed message; one to reception, the model's hand_off or a move a
+// rule refused, gets nothing unless the turn changed something, whose reply
+// goes; and one of a kind already open opens nothing, so the reply goes.
+export function toldOf(evaluationCase: Case, turn: Turn): Told {
+  const judged = turn.calls.filter((call) => call.name === "judge_messages").at(-1)?.args;
+  const handOff = turn.calls.find((call) => call.name === "hand_off")?.args;
+  const open = evaluationCase.openHandoffs ?? [];
+  const practitionerOpen = open.some((reason) => practitionerReasons.has(reason));
+  const receptionOpen = open.some((reason) => !practitionerReasons.has(reason));
+  const forPractitioner =
+    judged?.needsPractitioner === true ||
+    judged?.emergency === true ||
+    handOff?.reason === "clinical" ||
+    handOff?.reason === "emergency";
+  if (forPractitioner) {
+    return practitionerOpen ? "reply" : "practitioner";
+  }
+  const refused = turn.calls.some(
+    (call) =>
+      (call.name === "find_free_times" || call.name === "propose_change") &&
+      failedWith(call, ruleRefusals),
+  );
+  const applied = turn.calls.some(
+    (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
+  );
+  if ((handOff || refused) && !receptionOpen) return applied ? "reply" : "nothing";
+  return "reply";
+}
+
 function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   const { handoff, judgement } = evaluationCase.expect;
   const handoffs = turn.calls.filter((call) => call.name === "hand_off");
@@ -92,16 +131,12 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   if (handoff !== false) {
     const made = handoffs[0]?.args;
     if (!made) problems.push("no handoff");
-    else {
-      if (made.clinical !== handoff.clinical)
-        problems.push(`handoff clinical=${String(made.clinical)}`);
-      if (!handoff.reasons.includes(made.reason as never))
-        problems.push(`handoff reason ${String(made.reason)}`);
-    }
+    else if (!handoff.reasons.includes(made.reason as never))
+      problems.push(`handoff reason ${String(made.reason)}`);
   }
   if (judged) {
-    if (judged.clinical !== judgement.clinical)
-      problems.push(`judged clinical=${String(judged.clinical)}`);
+    if (judged.needsPractitioner !== judgement.needsPractitioner)
+      problems.push(`judged needsPractitioner=${String(judged.needsPractitioner)}`);
     if (judged.emergency !== judgement.emergency)
       problems.push(`judged emergency=${String(judged.emergency)}`);
     // An unset `understood` is the schema's default, true.
@@ -109,13 +144,18 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
     if (judgement.understood !== undefined && understood !== judgement.understood)
       problems.push(`judged understood=${String(understood)}`);
   } else problems.push("not judged");
+  const { told } = evaluationCase.expect;
+  const toldNow = toldOf(evaluationCase, turn);
+  if (told !== undefined && toldNow !== told) problems.push(`told ${toldNow}`);
   return { pass: problems.length === 0, reason: problems.join("; ") || "ok" };
 }
 
 function scoreReply(evaluationCase: Case, turn: Turn): Check {
   const { replyMatches = [], replyAvoids = [] } = evaluationCase.expect;
+  // A reply nobody sends may be empty.
+  const sent = toldOf(evaluationCase, turn) === "reply";
   const problems = [
-    ...(turn.reply.trim() === "" ? ["empty reply"] : []),
+    ...(sent && turn.reply.trim() === "" ? ["empty reply"] : []),
     ...replyMatches
       .filter((pattern) => !pattern.test(turn.reply))
       .map((pattern) => `lacks ${pattern}`),

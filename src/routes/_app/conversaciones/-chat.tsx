@@ -1,4 +1,3 @@
-import { cn } from "cn";
 import { Fragment, useState } from "react";
 
 import {
@@ -98,11 +97,7 @@ function ChatBubble({ item }: { item: ChatItem }) {
 }
 
 function MessageBubble({ message }: { message: InboxMessage }) {
-  const text = (
-    <span className={cn(message.withheld !== null && "text-muted-foreground italic")}>
-      {messageText(message)}
-    </span>
-  );
+  const text = <span>{messageText(message)}</span>;
   const footer = (
     <>
       {messageClock(message.sentAt)}

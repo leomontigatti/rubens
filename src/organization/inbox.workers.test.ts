@@ -129,7 +129,7 @@ describe("reading a conversation in the inbox", () => {
 
   it("shows reception a message judged not clinical, and only that a clinical one exists", async () => {
     await patientWrites(symptoms).then((id) => judge(id, "clinical"));
-    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notClinical"));
+    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notForPractitioner"));
 
     const read = await readOnlyConversation(world.receptionist);
 
@@ -148,7 +148,7 @@ describe("reading a conversation in the inbox", () => {
 
     expect(read.messages).toEqual([
       expect.objectContaining({ withheld: null, text: "Gracias, ahí estaré", judgement: null }),
-      expect.objectContaining({ withheld: null, text: symptoms, judgement: "clinical" }),
+      expect.objectContaining({ withheld: null, text: symptoms, judgement: "forPractitioner" }),
     ]);
   });
 
@@ -197,7 +197,7 @@ describe("reading a conversation in the inbox", () => {
     await patientWrites(symptoms);
     await world.addPatient("Bruno", "+5491155550001");
     await patientWrites(symptoms, "+5491155550001");
-    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notClinical"));
+    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notForPractitioner"));
 
     const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
 

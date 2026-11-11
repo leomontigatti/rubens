@@ -90,6 +90,8 @@ export function ReplyBox(props: {
   hold: ConversationHold | null;
   window: ConversationWindow;
   draft: ReplyDraft | null;
+  /** The member answers a handoff to the practitioner in a conversation reception reads too. */
+  readByReception: boolean;
 }) {
   if (!props.hold?.mine) {
     return null;
@@ -101,6 +103,7 @@ export function ReplyBox(props: {
       window={props.window}
       heldUntil={props.hold.heldUntil}
       initialText={props.draft?.text ?? ""}
+      readByReception={props.readByReception}
     />
   );
 }
@@ -110,6 +113,7 @@ function ReplyForm(props: {
   window: ConversationWindow;
   heldUntil: number;
   initialText: string;
+  readByReception: boolean;
 }) {
   const { running, run } = useHoldAction();
   const [text, setText] = useState(props.initialText);
@@ -129,7 +133,9 @@ function ReplyForm(props: {
     open && closesAt !== null
       ? `Le llega al paciente por WhatsApp con tu nombre. La ventana de conversación se cierra el ${messageTime(closesAt)}.`
       : "La ventana de conversación está cerrada: le enviamos al paciente una plantilla para reabrirla, y tu respuesta le llega con tu nombre cuando conteste.";
-  const hint = `${sending} La conversación vuelve al asistente el ${messageTime(props.heldUntil)}.`;
+  const returns = `La conversación vuelve al asistente el ${messageTime(props.heldUntil)}.`;
+  const readers = props.readByReception ? " Recepción también lee esta conversación." : "";
+  const hint = `${sending} ${returns}${readers}`;
 
   return (
     <form

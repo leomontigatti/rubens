@@ -13,7 +13,7 @@ import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notify } from "#/organization/notifications.ts";
-import { clinicalHandoffOpenSince, settleReply } from "#/organization/personal-replies.ts";
+import { settleReply } from "#/organization/personal-replies.ts";
 import { member, patient } from "#/organization/schema.ts";
 import {
   conversation,
@@ -69,7 +69,7 @@ function greetedAt(tx: Writer, phone: string) {
  */
 export function queueLateReply(
   database: Database,
-  writer: { userId: string; readsClinical: boolean },
+  writer: { userId: string; keepsRecords: boolean },
   reply: { conversationId: string; phone: string; text: string },
 ) {
   const { conversationId } = reply;
@@ -110,8 +110,7 @@ export function queueLateReply(
         conversationId,
         writtenBy: writer.userId,
         text: reply.text,
-        readsClinical: writer.readsClinical,
-        clinical: writer.readsClinical && clinicalHandoffOpenSince(tx, conversationId, Date.now()),
+        keepsRecords: writer.keepsRecords,
         patientIds: reachedIds(tx, reply.phone),
         reopenId,
       })
@@ -198,7 +197,7 @@ function waitingReplies(database: Database) {
       phone: conversation.phone,
       writtenBy: lateReply.writtenBy,
       text: lateReply.text,
-      readsClinical: lateReply.readsClinical,
+      keepsRecords: lateReply.keepsRecords,
       patientIds: lateReply.patientIds,
       createdAt: lateReply.createdAt,
       reopenId: lateReply.reopenId,
@@ -333,7 +332,7 @@ export function withdrawOwnLateReply(
     }
     dropUnneededReopen(tx, found, "replyWithdrawn");
     tx.update(lateReply).set({ state: "withdrawn" }).where(eq(lateReply.id, found.id)).run();
-    // Its words stay out of the log: they may answer a clinical handoff.
+    // Its words stay out of the log, as every patient's conversation does.
     recordAudit(tx, acting.userId, {
       action: "update",
       entityType: "lateReply",
@@ -432,18 +431,19 @@ export interface ShownLateReply {
   state: Exclude<LateReplyState, "delivered" | "withdrawn">;
   /** Whether the reader wrote it, so may withdraw it while it waits. */
   mine: boolean;
-  /** Its words, under its writer's name; `null` when it answers a clinical handoff and the reader may not read clinical words. */
-  text: string | null;
+  /** Its words, under its writer's name. */
+  text: string;
 }
 
 /**
  * The late replies of `conversationId` not delivered, oldest first, as
- * `reader` reads them: a delivered one is a message, a withdrawn one is gone.
+ * the member `readerId` reads them: a delivered one is a message, a
+ * withdrawn one is gone.
  */
 export function lateRepliesShown(
   database: Database,
   conversationId: string,
-  reader: { userId: string; readsClinical: boolean },
+  readerId: string,
 ): ShownLateReply[] {
   return database
     .select({
@@ -453,7 +453,6 @@ export function lateRepliesShown(
       writtenAt: lateReply.createdAt,
       state: lateReply.state,
       text: lateReply.text,
-      clinical: lateReply.clinical,
     })
     .from(lateReply)
     .innerJoin(member, eq(member.userId, lateReply.writtenBy))
@@ -465,10 +464,9 @@ export function lateRepliesShown(
     )
     .orderBy(asc(lateReply.createdAt), asc(sql`${lateReply}.rowid`))
     .all()
-    .map(({ clinical, text, state, writtenBy, ...one }) => ({
+    .map(({ state, writtenBy, ...one }) => ({
       ...one,
       state: state === "waiting" ? "waiting" : "notDelivered",
-      mine: writtenBy === reader.userId,
-      text: clinical && !reader.readsClinical ? null : text,
+      mine: writtenBy === readerId,
     }));
 }

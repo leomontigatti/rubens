@@ -20,11 +20,12 @@ export const sandboxRefusalMessages = {
 /** What the assistant did with the patient's message. */
 export const sandboxOutcomeLabels = {
   answered: "Respondió.",
-  handedOff: "Derivó la conversación a una persona.",
+  handedOff: "Derivó la conversación a recepción: al paciente no le dice nada de eso.",
+  toPractitioner: "Le pasó la consulta al profesional.",
   emergency: "Lo trató como una urgencia.",
   optOutAsked: "Entendió que el paciente no quiere más mensajes: avisaría al equipo.",
   unintelligible: "No entendió la nota de voz: pediría que la escriba.",
-  silent: "No respondió: la conversación ya está derivada.",
+  silent: "No respondió: una persona tomó la conversación.",
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;
 

@@ -41,10 +41,8 @@ vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
 
 const martinaPhone = "+5491155550000";
 
-const notClinical = { clinical: false, emergency: false };
+const notClinical = { needsPractitioner: false, emergency: false };
 
-const handedOffText =
-  "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
@@ -102,6 +100,12 @@ async function patientMoves(slotId: string) {
   });
   await turn();
   return accepted as { ok: boolean; reason?: string };
+}
+
+/** What the handoff notifications an admin got say of why, without the conversation read back. */
+async function handoffNotices() {
+  const listed = expectOk(await world.organization.listNotifications(adminCaller));
+  return listed.notifications.filter((one) => one.kind === "handoff").map((one) => one.handoff);
 }
 
 /** The open handoffs an admin sees in the inbox. */
@@ -369,12 +373,24 @@ describe("moving on the patient's yes", () => {
 describe("the move's rules", () => {
   it("refuses the patient's second move of the appointment and hands it off", async () => {
     expect(await patientMoves(slot(12, "10:00").slotId)).toMatchObject({ ok: true });
+    const sentBefore = fakeMeta.textsSent().length;
 
     const found = await freeTimesAsked("perdón, lo puedo cambiar otra vez?");
 
     expect(found).toEqual({ ok: false, reason: "moveUsed" });
-    expect(await openHandoffs()).toMatchObject([{ reason: "ruleRefused", clinical: false }]);
-    expect(fakeMeta.textsSent().at(-1)).toEqual({ to: "5491155550000", text: handedOffText });
+    expect(await openHandoffs()).toMatchObject([{ reason: "ruleRefused", forPractitioner: false }]);
+    // The refusal is a person's to explain: the patient hears nothing of it.
+    expect(fakeMeta.textsSent()).toHaveLength(sentBefore);
+    expect(await handoffNotices()).toMatchObject([
+      {
+        reason: "ruleRefused",
+        patient: expect.stringContaining("Martina"),
+        detail: {
+          refused: { why: "moveUsed", date: "lunes 12 de enero", time: "10:00" },
+          applied: [],
+        },
+      },
+    ]);
   });
 
   it("still allows the patient's one move after staff moved the appointment", async () => {
@@ -408,11 +424,15 @@ describe("the move's rules", () => {
     const found = await freeTimesAsked("mañana no llego, lo podemos pasar?");
 
     expect(found).toEqual({ ok: false, reason: "pastCutoff" });
-    expect(await openHandoffs()).toMatchObject([{ reason: "ruleRefused", clinical: false }]);
+    expect(await openHandoffs()).toMatchObject([{ reason: "ruleRefused", forPractitioner: false }]);
     expect(+(await world.appointmentOf(appointmentId)).start).toBe(+at("12:00"));
+    expect(fakeMeta.textsSent()).toEqual([]);
+    expect(await handoffNotices()).toMatchObject([
+      { detail: { refused: { why: "pastCutoff", cutoffHours: 24, date: "lunes 5 de enero" } } },
+    ]);
   });
 
-  it("moves the appointment the patient said yes to, and hands off the one a rule refused in the same turn", async () => {
+  it("moves the appointment the patient said yes to, says only that, and hands off the one a rule refused in the same turn", async () => {
     const later = await world.book({
       practitionerId: world.juan.practitionerId,
       patientId: martinaId,
@@ -447,7 +467,24 @@ describe("the move's rules", () => {
     expect(accepted).toMatchObject({ ok: true });
     expect(+(await world.appointmentOf(later.id)).start).toBe(+at("13:00", "2099-01-12"));
     expect(await openHandoffs()).toMatchObject([{ reason: "ruleRefused" }]);
-    expect(fakeMeta.textsSent().at(-1)).toEqual({ to: "5491155550000", text: handedOffText });
+    // The reply covers what the turn did, after the clinical check, and nothing of the refusal.
+    expect(scriptedModel.checks.at(-1)?.reply).toBe(
+      "Listo, el del 19 quedó el lunes 12 a las 10:00.",
+    );
+    expect(fakeMeta.textsSent().at(-1)).toEqual({
+      to: "5491155550000",
+      text: "Listo, el del 19 quedó el lunes 12 a las 10:00.",
+    });
+    expect(await handoffNotices()).toMatchObject([
+      {
+        detail: {
+          refused: { why: "pastCutoff", date: "lunes 5 de enero" },
+          applied: [
+            { kind: "move", date: "lunes 19 de enero", newDate: "lunes 12 de enero", newTime: "10:00" },
+          ],
+        },
+      },
+    ]);
   });
 
   it("refuses the yes to a move once the cutoff passed since the proposal", async () => {

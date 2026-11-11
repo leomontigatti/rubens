@@ -1,10 +1,13 @@
 import * as z from "zod";
 
+import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
+
 // Handoffs (ui: "Derivación", docs/domain/assistant.md § Handoff): a
-// conversation the assistant passes to a person. It is open until a person's
-// reply reaches the patient, or a person closes it without a reply. One made
-// inside the conversation window counts back from its close: its recipients
-// are reminded, then every other member who may answer it.
+// conversation the assistant passes to a person, the practitioner when it
+// needs one, otherwise reception. It is open until a person's reply reaches
+// the patient, or a person closes it without a reply. One made inside the
+// conversation window counts back from its close: its recipients are
+// reminded, then every other member who may answer it.
 
 /** Why the conversation was handed off. */
 export const handoffReasons = [
@@ -14,7 +17,7 @@ export const handoffReasons = [
   "ruleRefused",
   /** The patient wants a new time for an appointment the organization cancelled. */
   "organizationCancelled",
-  /** A clinical question or detail. */
+  /** A question only the practitioner can answer: advice, a medicine or a treatment. */
   "clinical",
   /** A message judged an emergency. */
   "emergency",
@@ -32,11 +35,23 @@ export const handoffReasons = [
   "heldReply",
   /** The window closed before the assistant's reply could go, so it was dropped. */
   "windowClosed",
-  /** The model could not read the patient's message before the hand-off time, so it is clinical. */
+  /** The model could not read the patient's message before the hand-off time. */
   "modelUnavailable",
+  /** A photo, a video or a file, which never reaches the model. */
+  "media",
 ] as const;
 
 export type HandoffReason = (typeof handoffReasons)[number];
+
+/**
+ * What the turn that made a handoff to reception knew, for its notification
+ * to say why without the conversation read back: the move a rule refused,
+ * and the changes the same turn made, each as the patient was told it.
+ */
+export interface HandoffDetail {
+  refused: { why: MoveRefusal; cutoffHours: number; date: string; time: string } | null;
+  applied: { kind: ProposalKind; date: string; time: string; newDate?: string; newTime?: string }[];
+}
 
 export const handoffStates = ["open", "closed"] as const;
 
@@ -46,11 +61,6 @@ export const maxReminderHours = 23;
 export const handoffReferenceSchema = z.object({ handoffId: z.uuid() });
 
 export type HandoffReference = z.input<typeof handoffReferenceSchema>;
-
-/** An opt-out reported on a clinical handoff, through the newest patient message its reader saw. */
-export const optOutReportSchema = handoffReferenceSchema.extend({ throughMessageId: z.uuid() });
-
-export type OptOutReport = z.input<typeof optOutReportSchema>;
 
 /** Which open handoffs to list: all the reader sees, or one conversation's. */
 export const openHandoffListSchema = z.object({ conversationId: z.uuid().optional() });

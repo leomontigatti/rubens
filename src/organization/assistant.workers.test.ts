@@ -127,7 +127,7 @@ const handedOffText =
   "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
 
 /** The judgement every turn of these tests makes unless it says otherwise. */
-const notClinical = { clinical: false, emergency: false };
+const notClinical = { needsPractitioner: false, emergency: false };
 
 beforeEach(async () => {
   // The object's clock, a month before the appointments: the alarm it sets
@@ -310,7 +310,7 @@ describe("the assistant's pace", () => {
 
     expect(textsToMeta()).toEqual([]);
     expect(expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs).toEqual([
-      expect.objectContaining({ reason: "windowClosed", clinical: false }),
+      expect.objectContaining({ reason: "windowClosed", forPractitioner: false }),
     ]);
   });
 
@@ -550,7 +550,7 @@ describe("judging every patient message", () => {
     await patientWrites("hola");
     await patientWrites("me duele mucho la muela");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: false });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
       return "Le paso tu consulta a la profesional.";
     });
 
@@ -574,7 +574,7 @@ describe("judging every patient message", () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("no puedo respirar");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: true });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: true });
       return "Llamá al 107.";
     });
 
@@ -598,7 +598,7 @@ describe("judging every patient message", () => {
     await bookPatient("Martina", martinaPhone);
     const messageId = await patientWrites("no puedo respirar");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: true });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: true });
       return "Llamá al 107.";
     });
 
@@ -617,13 +617,13 @@ describe("judging every patient message", () => {
     await afterTheWait();
     await patientWrites("cuándo es mi turno?");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: false });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
       return "Te paso con la profesional.";
     });
 
     await afterTheWait();
 
-    expect(await judgementsShown()).toEqual(["notClinical", "clinical"]);
+    expect(await judgementsShown()).toEqual(["notForPractitioner", "clinical"]);
   });
 
   it("leaves a message unjudged and unanswered when the model judged nothing", async () => {
@@ -655,7 +655,7 @@ describe("judging every patient message", () => {
     expect(scriptedModel.turns[1]!.messages.at(-1)!.content).toBe(
       "[new messages]\nme duele mucho el pecho\n(New  Messages)\ncuándo es mi turno?",
     );
-    expect(await judgementsShown()).toEqual(["notClinical", "clinical"]);
+    expect(await judgementsShown()).toEqual(["notForPractitioner", "clinical"]);
     expect(textsToMeta().map((sent) => sent.text)).toEqual([
       "Hola, en qué te puedo ayudar?",
       handedOffText,
@@ -673,7 +673,7 @@ describe("judging every patient message", () => {
     await afterTheWait();
     await patientWrites("gracias");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: false });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
       return "Le paso tu consulta a la profesional.";
     });
 
@@ -737,7 +737,7 @@ describe("a message the model could not read", () => {
     await runAlarmsUntil(Date.now() + minuteMs);
 
     expect(scriptedModel.turns).toHaveLength(2);
-    expect(await judgementsShown()).toEqual(["notClinical"]);
+    expect(await judgementsShown()).toEqual(["notForPractitioner"]);
     expect(textsToMeta().map((sent) => sent.text)).toEqual(["Hola, en qué te puedo ayudar?"]);
     expect(await scheduledAlarm()).toBeNull();
   });
@@ -784,7 +784,7 @@ describe("a message the model could not read", () => {
       status: "cancelled",
     });
     expect(await openHandoffs()).toEqual([
-      expect.objectContaining({ reason: "modelUnavailable", clinical: true }),
+      expect.objectContaining({ reason: "modelUnavailable", forPractitioner: true }),
     ]);
     expect(textsToMeta()).toEqual([]);
   });
@@ -911,7 +911,7 @@ describe("a message the model could not read", () => {
     expect(await openHandoffs()).toEqual([
       expect.objectContaining({
         reason: "modelUnavailable",
-        clinical: true,
+        forPractitioner: true,
         recipients: ["Juan Gómez", "Lucía Díaz"],
       }),
     ]);
@@ -931,7 +931,7 @@ describe("the window", () => {
     await afterTheWait();
 
     expect(scriptedModel.turns).toHaveLength(1);
-    expect(await judgementsShown()).toEqual(["notClinical"]);
+    expect(await judgementsShown()).toEqual(["notForPractitioner"]);
     expect(textsToMeta()).toEqual([]);
   });
 });
@@ -983,7 +983,7 @@ describe("the conversation's wait", () => {
 
     await afterTheWait();
 
-    expect(await judgementsShown()).toEqual(Array.from({ length: 35 }, () => "notClinical"));
+    expect(await judgementsShown()).toEqual(Array.from({ length: 35 }, () => "notForPractitioner"));
   });
 });
 
@@ -1031,7 +1031,7 @@ describe("what keeps a reply from going", () => {
     await patientWrites("me duele la muela");
     const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: false });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
       await released;
       return "";
     });
@@ -1050,7 +1050,7 @@ describe("what keeps a reply from going", () => {
     await patientWrites("me duele la muela", martinaPhone, Date.now() - 24 * 60 * 60_000 + 10_000);
     const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
-      turn.call("judge_messages", { clinical: true, emergency: false });
+      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
       await released;
       return "";
     });
@@ -1331,7 +1331,7 @@ describe("confirming and cancelling through proposals", () => {
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
       turn.call("propose_change", { appointmentId, kind: "cancel" });
-      turn.call("hand_off", { reason: "patient_asked", clinical: false });
+      turn.call("hand_off", { reason: "patient_asked", });
       return "";
     });
     await afterTheWait();

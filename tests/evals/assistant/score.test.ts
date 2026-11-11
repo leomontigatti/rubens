@@ -54,7 +54,7 @@ describe("score", () => {
       "move-request",
       "Tengo el lunes 16/11 a las 9:00, el martes 17/11 a las 10:30 o el jueves 19/11 a las 17:00.",
       (tools) => {
-        tools.run("judge_messages", { clinical: false, emergency: false });
+        tools.run("judge_messages", { needsPractitioner: false, emergency: false });
         tools.run("find_free_times", { appointmentId: "apt-101" });
       },
     );
@@ -66,7 +66,7 @@ describe("score", () => {
 
   it("fails a reply that offers a time no tool returned", () => {
     const result = turn("move-request", "Te puedo dar el viernes a las 11:15.", (tools) => {
-      tools.run("judge_messages", { clinical: false, emergency: false });
+      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
       tools.run("find_free_times", { appointmentId: "apt-101" });
     });
 
@@ -87,7 +87,7 @@ describe("score", () => {
 
   it("fails a change that was accepted before it was proposed", () => {
     const result = turn("confirm-after-reminder", "Listo, confirmado.", (tools) => {
-      tools.run("judge_messages", { clinical: false, emergency: false });
+      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
       tools.run("accept_proposal", {});
       tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
     });
@@ -100,22 +100,47 @@ describe("score", () => {
       "is-it-a-bot",
       "Soy el asistente automático. Tu turno es a las 16:30.",
       (tools) => {
-        tools.run("judge_messages", { clinical: false, emergency: false });
+        tools.run("judge_messages", { needsPractitioner: false, emergency: false });
       },
     );
 
     expect(result.availability).toEqual({ pass: false, reason: "times no tool returned: 16:30" });
   });
 
-  it("fails a clinical message that was not handed off as clinical", () => {
+  it("fails a question for the practitioner that was handed to reception", () => {
     const result = turn("symptoms", "Te paso con recepción.", (tools) => {
-      tools.run("judge_messages", { clinical: false, emergency: false });
-      tools.run("hand_off", { reason: "patient_asked", clinical: false });
+      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("hand_off", { reason: "patient_asked" });
     });
 
     expect(result.handoff.reason).toBe(
-      "handoff clinical=false; handoff reason patient_asked; judged clinical=false",
+      "handoff reason patient_asked; judged needsPractitioner=false; told nothing",
     );
+  });
+
+  it("tells the patient nothing of a refused move, but sends a reply about a change the turn made", () => {
+    const refusedOnly = turn("move-past-cutoff", "", (tools) => {
+      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("find_free_times", { appointmentId: "apt-101" });
+    });
+    const movedToo = turn("move-and-refused-move", "Listo, te pasé el turno al martes 17/11.", (tools) => {
+      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("accept_proposal", {});
+      tools.run("find_free_times", { appointmentId: "apt-102" });
+      tools.run("hand_off", { reason: "rule_refused" });
+    });
+
+    expect(refusedOnly.reply.pass).toBe(true);
+    expect(movedToo.handoff).toEqual({ pass: true, reason: "ok" });
+  });
+
+  it("answers again while a handoff to the practitioner is open", () => {
+    const result = turn("repeat-during-handoff", "Ya se lo pasé, te va a responder por acá.", (tools) => {
+      tools.run("judge_messages", { needsPractitioner: true, emergency: false });
+    });
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(result.reply).toEqual({ pass: true, reason: "ok" });
   });
 
   it("refuses a move past the cutoff in the fake object", () => {

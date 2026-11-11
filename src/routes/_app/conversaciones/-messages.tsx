@@ -14,9 +14,9 @@ export const refusalMessages = {
   notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
 };
 
-/** An outgoing message's delivery, as its icon; none for the patient's, or a message the reader may not read. */
+/** An outgoing message's delivery, as its icon; none for the patient's. */
 export function MessageStatus({ message }: { message: InboxMessage }) {
-  if (message.withheld !== null || message.status === null) {
+  if (message.status === null) {
     return null;
   }
   return <WhatsappStatus status={message.status} />;

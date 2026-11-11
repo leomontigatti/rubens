@@ -14,10 +14,11 @@ export const whatsappMessageStatuses = ["sent", "delivered", "read", "failed"] a
 export type WhatsappMessageStatus = (typeof whatsappMessageStatuses)[number];
 
 /**
- * The assistant's judgement of a patient's message (docs/domain/assistant.md
- * § Inbox); a message it has not judged yet has none.
+ * The assistant's judgement of a patient's message, whether it needs the
+ * practitioner (docs/domain/assistant.md § Handoff); a message it has not
+ * judged yet has none.
  */
-export const messageJudgements = ["clinical", "notClinical"] as const;
+export const messageJudgements = ["forPractitioner", "notForPractitioner"] as const;
 
 export type MessageJudgement = (typeof messageJudgements)[number];
 

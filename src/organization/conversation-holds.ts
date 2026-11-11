@@ -1,30 +1,25 @@
-import { and, asc, desc, eq, isNotNull, lte, min } from "drizzle-orm";
+import { and, eq, isNotNull, lte, min } from "drizzle-orm";
 
 import {
   maxReplyLength,
   personalReplySchema,
-  returnedReply,
   returnTimeSchema,
   withSenderName,
 } from "#/lib/conversation-holds.ts";
 import type { PersonalReply, ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
-import { checkReply } from "#/lib/reply-checks.ts";
 import { conversationReferenceSchema } from "#/lib/whatsapp-messages.ts";
 import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
 
-import { maySend, sendReply } from "#/organization/turn-replies.ts";
 import { recordAudit } from "#/organization/audit.ts";
-import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { openHandoffsOf } from "#/organization/handoffs.ts";
 import { readerOf } from "#/organization/inbox.ts";
 import { queueLateReply } from "#/organization/late-replies.ts";
 import { returnAfterHours, settleReply } from "#/organization/personal-replies.ts";
 import type { Acting } from "#/organization/members.ts";
 import { member } from "#/organization/schema.ts";
-import { conversation, inboxSettings, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { conversation, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import { lastIncomingAt, whileSending } from "#/organization/whatsapp-messages.ts";
 
@@ -35,7 +30,8 @@ import { lastIncomingAt, whileSending } from "#/organization/whatsapp-messages.t
 // the window it goes at once, after it the reply waits behind the reopen
 // template (`late-replies.ts`); a reply that reaches the patient closes the
 // open handoffs its writer may answer (`personal-replies.ts`). The conversation goes back to the assistant when the
-// holder returns it, or by the object's alarm after the admin's return time.
+// holder returns it, or by the object's alarm after the admin's return time,
+// with no message: the assistant answers the patient's next one.
 
 const hourMs = 60 * 60_000;
 
@@ -74,7 +70,7 @@ function readable(database: Writer, acting: Acting, conversationId: string) {
     .from(conversation)
     .where(and(eq(conversation.id, conversationId), reader.visible))
     .get();
-  return found ? { ...found, readsClinical: reader.readsClinical } : null;
+  return found ? { ...found, keepsRecords: reader.keepsRecords } : null;
 }
 
 /** Makes `acting` the holder of a conversation they read, taking it from whoever held it. */
@@ -103,9 +99,9 @@ export function takeOverConversation(
 
 /**
  * Sends `acting`'s reply to the patient under their name, when they hold the
- * conversation; the open handoffs they may answer close with it (a clinical
- * one only for a practitioner who keeps clinical records, whose reply is then
- * withheld like clinical words), and their hold runs the return time again
+ * conversation; the open handoffs they may answer close with it (one to the
+ * practitioner only for a practitioner who keeps clinical records), and
+ * their hold runs the return time again
  * from it. After the window closed the reply is held instead, behind the
  * reopen template (`late-replies.ts`), and goes when the patient answers.
  */
@@ -142,7 +138,7 @@ export async function replyToConversation(
   const now = Date.now();
   if (!isWindowOpen(lastIncomingAt(database, conversationId), now)) {
     // Held behind the reopen template, which waits out a hold of Meta's like any other.
-    const writer = { userId: acting.userId, readsClinical: found.readsClinical };
+    const writer = { userId: acting.userId, keepsRecords: found.keepsRecords };
     const queued = queueLateReply(database, writer, { conversationId, phone: found.phone, text });
     return queued.ok ? { ok: true as const, held: true } : queued;
   }
@@ -173,7 +169,7 @@ export async function replyToConversation(
       writtenBy: acting.userId,
       conversationId,
       phone: found.phone,
-      readsClinical: found.readsClinical,
+      keepsRecords: found.keepsRecords,
       since: sendingFrom,
       whatsappId: sent.messageId,
       text,
@@ -182,10 +178,12 @@ export async function replyToConversation(
   return { ok: true as const, held: false };
 }
 
-/** Gives a conversation `acting` holds back to the assistant. */
-export async function returnConversation(
+/**
+ * Gives a conversation `acting` holds back to the assistant, which says
+ * nothing until the patient writes again.
+ */
+export function returnConversation(
   database: Database,
-  cloud: WhatsappCloud,
   acting: Acting,
   input: ConversationReference,
 ) {
@@ -202,7 +200,6 @@ export async function returnConversation(
     return { ok: false as const, reason: "notHolding" as const };
   }
   release(database, conversationId);
-  await sayReturned(database, cloud, conversationId);
   return { ok: true as const };
 }
 
@@ -212,55 +209,6 @@ function release(database: Database, conversationId: string) {
     .set({ heldBy: null, heldUntil: null })
     .where(eq(conversation.id, conversationId))
     .run();
-}
-
-/** Whether the conversation's latest outgoing message is a member's reply. */
-function personAnsweredLast(database: Database, conversationId: string) {
-  const latest = database
-    .select({ sentBy: whatsappMessage.sentBy })
-    .from(whatsappMessage)
-    .where(
-      and(
-        eq(whatsappMessage.conversationId, conversationId),
-        eq(whatsappMessage.direction, "outgoing"),
-      ),
-    )
-    .orderBy(desc(whatsappMessage.sentAt), desc(whatsappMessage.createdAt))
-    .limit(1)
-    .get();
-  return latest?.sentBy != null;
-}
-
-/**
- * The assistant's message on taking the conversation back: only when a
- * person was the last to answer the patient, no handoff is still open (the
- * assistant stays silent while one is), and the assistant may send now,
- * the window open among it; otherwise it takes it back without a word.
- */
-async function sayReturned(database: Database, cloud: WhatsappCloud, conversationId: string) {
-  if (
-    openHandoffsOf(database, conversationId).length > 0 ||
-    !personAnsweredLast(database, conversationId) ||
-    !maySend(database, cloud, conversationId)
-  ) {
-    return;
-  }
-  const rules = currentCommunicationRules(database);
-  const checked = checkReply(returnedReply(rules.formOfAddress));
-  if (!checked.ok) {
-    return;
-  }
-  const { phone } = database
-    .select({ phone: conversation.phone })
-    .from(conversation)
-    .where(eq(conversation.id, conversationId))
-    .get()!;
-  await sendReply(database, cloud, {
-    conversationId,
-    phone,
-    text: checked.text,
-    rulesVersion: rules.version,
-  });
 }
 
 /** When the next hold ends, or `null` when nobody holds a conversation. */
@@ -273,24 +221,14 @@ export function nextReturnAlarm(database: Database): number | null {
   return next?.at ?? null;
 }
 
-/** Gives every conversation whose hold ended back to the assistant, earliest first: the object's alarm. */
-export async function returnDueConversations(database: Database, cloud: WhatsappCloud) {
-  const due = database
-    .select({ id: conversation.id })
-    .from(conversation)
+/**
+ * Gives every conversation whose hold ended back to the assistant: the
+ * object's alarm. Nothing is sent; the assistant answers the patient's next message.
+ */
+export function returnDueConversations(database: Database) {
+  database
+    .update(conversation)
+    .set({ heldBy: null, heldUntil: null })
     .where(and(isNotNull(conversation.heldBy), lte(conversation.heldUntil, Date.now())))
-    .orderBy(asc(conversation.heldUntil))
-    .all();
-  for (const { id } of due) {
-    // Claimed only while still due: the holder may have replied or taken it again meanwhile.
-    const claimed = database
-      .update(conversation)
-      .set({ heldBy: null, heldUntil: null })
-      .where(and(eq(conversation.id, id), lte(conversation.heldUntil, Date.now())))
-      .returning({ id: conversation.id })
-      .get();
-    if (claimed) {
-      await sayReturned(database, cloud, id);
-    }
-  }
+    .run();
 }

@@ -3,6 +3,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { assistantToolSchemas } from "#/lib/assistant.ts";
 import { assistantUserId } from "#/lib/audit-fields.ts";
 import { proposalExpiresAt } from "#/lib/proposals.ts";
+import type { HandoffDetail } from "#/lib/handoffs.ts";
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 
 import type { AssistantTool } from "#/organization/assistant-model.ts";
@@ -10,9 +11,8 @@ import { upcomingAppointments, whenOf } from "#/organization/assistant-appointme
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/organization/appointment-changes.ts";
 import type { Database } from "#/organization/database.ts";
-import { openHandoffsOf } from "#/organization/handoffs.ts";
 import type { Acting } from "#/organization/members.ts";
-import { freeTimesFor, movePatientAppointment, slotFor } from "#/organization/moves.ts";
+import { cutoffHoursOf, freeTimesFor, movePatientAppointment, slotFor } from "#/organization/moves.ts";
 import type { Slot } from "#/organization/moves.ts";
 import { answeredMeanwhile } from "#/organization/turn-retries.ts";
 import { isHeld, lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
@@ -87,21 +87,34 @@ export function applyChange(
 /**
  * The turn a proposal tool runs in: its conversation, its view of the
  * number's upcoming appointments, and where it records the appointment of a
- * move a rule refused, which underthing hands off.
+ * move a rule refused, which underthing hands off, why, and the changes it
+ * made, which that handoff's notification states.
  */
 interface ProposalTurn {
   conversationId: string;
   /** The patient's messages the turn reads as new. */
   read: { unjudged: { id: string }[] };
   appointments: Upcoming[];
-  recorded: { ruleRefused: string | null; proposed: boolean };
+  recorded: {
+    ruleRefused: string | null;
+    refusal: HandoffDetail["refused"];
+    applied: HandoffDetail["applied"];
+    proposed: boolean;
+  };
 }
 
-/** Returns a refusal, noting a move a rule refused for the turn's handoff. */
-function refused(turn: ProposalTurn, appointmentId: string, reason: string) {
-  const rules: string[] = ["pastCutoff", "moveUsed"] satisfies MoveRefusal[];
-  if (rules.includes(reason)) {
+const moveRefusals: string[] = ["pastCutoff", "moveUsed"] satisfies MoveRefusal[];
+
+/** Returns a refusal, noting a move a rule refused, and why, for the turn's handoff. */
+function refused(database: Database, turn: ProposalTurn, appointmentId: string, reason: string) {
+  const upcoming = turn.appointments.find((one) => one.id === appointmentId);
+  if (moveRefusals.includes(reason) && upcoming) {
     turn.recorded.ruleRefused = appointmentId;
+    turn.recorded.refusal = {
+      why: reason as MoveRefusal,
+      cutoffHours: cutoffHoursOf(database, appointmentId),
+      ...whenOf(upcoming),
+    };
   }
   return { ok: false, reason };
 }
@@ -119,7 +132,7 @@ function findFreeTimes(database: Database, turn: ProposalTurn, args: unknown) {
   }
   const found = freeTimesFor(database, appointmentId, from);
   if (!found.ok) {
-    return refused(turn, appointmentId, found.reason);
+    return refused(database, turn, appointmentId, found.reason);
   }
   return {
     ok: true,
@@ -148,7 +161,7 @@ function proposeChange(database: Database, turn: ProposalTurn, args: unknown) {
       return { ok: false, reason: "invalidInput" };
     }
     if (!found.ok) {
-      return refused(turn, appointmentId, found.reason);
+      return refused(database, turn, appointmentId, found.reason);
     }
     move = found.slot;
   }
@@ -224,9 +237,11 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
     }
     const changed = applyChange(database, latest);
     if (!changed.ok) {
-      return refused(turn, current.id, changed.reason);
+      return refused(database, turn, current.id, changed.reason);
     }
     database.update(proposal).set({ acceptedAt: now }).where(eq(proposal.id, latest.id)).run();
+    const { date, time, newDate, newTime } = latest.statement;
+    turn.recorded.applied.push({ kind: latest.kind, date: date!, time: time!, newDate, newTime });
     // Only the turn's own change: anything else changed meanwhile still holds its reply.
     if (latest.kind === "confirm") {
       appointments[index] = { ...appointments[index]!, status: "confirmed" };
@@ -246,13 +261,13 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
  * number's upcoming appointments, which they act on only, and which an
  * accepted change updates in place, so the turn's reply is checked against
  * the state its own change left. Nothing is proposed or accepted while a
- * person holds the conversation.
+ * person holds the conversation; an open handoff does not stop them, since a
+ * person has only the topic it is about.
  */
 export function proposalTools(database: Database, turn: ProposalTurn): AssistantTool[] {
-  // A person answers while a handoff is open or a member holds the
-  // conversation, or answered the turn's words since it read them.
+  // A person answers while a member holds the conversation, or answered the
+  // turn's words since it read them.
   const unlessHandedOff = (run: () => unknown) =>
-    openHandoffsOf(database, turn.conversationId).length > 0 ||
     isHeld(database, turn.conversationId) ||
     answeredMeanwhile(
       database,

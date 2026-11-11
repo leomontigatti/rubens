@@ -36,13 +36,12 @@ import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
 // only. Reception and admins read every conversation; a practitioner those
-// about their own appointments and those handed to them. A patient's message judged clinical, or not
-// judged yet, is withheld from anyone who is not a practitioner who keeps
-// clinical records: its words never leave the object for them, only that it
-// exists.
+// about their own appointments and those handed to them. Whoever reads a
+// conversation reads every message in it: the clinical record is what stays
+// with the practitioners (ADR-0013).
 
-/** A message whose words the reader may see. */
-interface ShownMessage {
+/** A message of a conversation, as the inbox shows it. */
+export interface InboxMessage {
   id: string;
   direction: "incoming" | "outgoing";
   sentAt: number;
@@ -54,22 +53,7 @@ interface ShownMessage {
   judgement: MessageJudgement | null;
   /** The member who wrote an outgoing reply from the inbox, by name; `null` for the assistant's and the templates. */
   sentBy: string | null;
-  withheld: null;
 }
-
-/**
- * A message the reader may not see, in its place: a patient's, or a
- * practitioner's reply to a clinical handoff.
- */
-interface WithheldMessage {
-  id: string;
-  direction: "incoming" | "outgoing";
-  sentAt: number;
-  /** Why: it waits to be judged, or it was judged clinical. */
-  withheld: "notJudged" | "clinical";
-}
-
-export type InboxMessage = ShownMessage | WithheldMessage;
 
 export interface ConversationSummary {
   id: string;
@@ -90,7 +74,10 @@ function ownPractitioner(database: Database, acting: Acting) {
     .get();
 }
 
-/** How `acting` reads the inbox: which conversations, and whether clinical words. */
+/**
+ * How `acting` reads the inbox: which conversations, and whether they keep
+ * clinical records, so answer a handoff to the practitioner.
+ */
 export function readerOf(database: Database, acting: Acting) {
   const own = ownPractitioner(database, acting);
   let visible: SQL | undefined = undefined;
@@ -99,7 +86,7 @@ export function readerOf(database: Database, acting: Acting) {
       ? or(aboutAppointmentsOf(database, own.id), handedTo(database, acting.userId))
       : sql`false`;
   }
-  return { readsClinical: own?.keepsClinicalRecords === true, visible };
+  return { keepsRecords: own?.keepsClinicalRecords === true, visible };
 }
 
 /** The conversations a handoff went to `memberId` in. */
@@ -151,29 +138,9 @@ type MessageRow = Pick<typeof whatsappMessage.$inferSelect, keyof typeof message
   senderName?: string | null;
 };
 
-/**
- * Why the reader may not see the message's words, when they do not read
- * clinical content: a patient's message judged clinical, or not judged yet,
- * and an outgoing one judged clinical (a reply to a clinical handoff).
- */
-function withheldBecause(row: MessageRow, readsClinical: boolean) {
-  if (readsClinical || row.judgement === "notClinical") {
-    return null;
-  }
-  if (row.direction === "outgoing") {
-    return row.judgement === "clinical" ? "clinical" : null;
-  }
-  return row.judgement === "clinical" ? "clinical" : "notJudged";
-}
-
-export function asRead(row: MessageRow, readsClinical: boolean): InboxMessage {
-  const withheld = withheldBecause(row, readsClinical);
-  if (withheld !== null) {
-    return { id: row.id, direction: row.direction, sentAt: row.sentAt, withheld };
-  }
+export function asRead(row: MessageRow): InboxMessage {
   const { id, direction, sentAt, type, text, status, judgement } = row;
-  const sentBy = row.senderName ?? null;
-  return { id, direction, sentAt, type, text, status, judgement, sentBy, withheld: null };
+  return { id, direction, sentAt, type, text, status, judgement, sentBy: row.senderName ?? null };
 }
 
 export function patientsOf(database: Database, conversationIds: string[]) {
@@ -288,7 +255,7 @@ export function listConversations(
       id: row.conversationId,
       phone: row.phone,
       patients: patients.get(row.conversationId) ?? [],
-      lastMessage: asRead(row, reader.readsClinical),
+      lastMessage: asRead(row),
     })),
   };
 }
@@ -340,13 +307,10 @@ export function readConversation(
   return {
     ok: true,
     conversation: { ...found, patients: patientsOf(database, [found.id]).get(found.id) ?? [] },
-    messages: messages.map((row) => asRead(row, reader.readsClinical)),
+    messages: messages.map(asRead),
     hold: holdOf(database, acting, conversationId),
     window: windowOf(lastIncomingAt(database, conversationId)),
-    lateReplies: lateRepliesShown(database, conversationId, {
-      userId: acting.userId,
-      readsClinical: reader.readsClinical,
-    }),
+    lateReplies: lateRepliesShown(database, conversationId, acting.userId),
     queuedReopen: queuedReopenShown(database, conversationId),
   };
 }

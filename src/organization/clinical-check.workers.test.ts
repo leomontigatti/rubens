@@ -44,7 +44,7 @@ const martinaPhone = "+5491155550000";
 const handedOffText =
   "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
 
-const notClinical = { clinical: false, emergency: false };
+const notClinical = { needsPractitioner: false, emergency: false };
 
 /** What the model wrote, which the check finds clinical. */
 const clinicalReply = "Tranquila, ese dolor es normal después de una extracción.";
@@ -169,7 +169,7 @@ describe("the clinical check", () => {
 
     expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: handedOffText }]);
     const [held] = await openHandoffs(world.juan.caller);
-    expect(held).toMatchObject({ reason: "heldReply", clinical: true, heldReply: clinicalReply });
+    expect(held).toMatchObject({ reason: "heldReply", forPractitioner: true, heldReply: clinicalReply });
     expect(held!.recipients).toEqual(["Juan Gómez"]);
   });
 
@@ -200,7 +200,7 @@ describe("the clinical check", () => {
     await writes("quiero hablar con alguien");
     scriptedModel.script((one) => {
       one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "patient_asked", clinical: false });
+      one.call("hand_off", { reason: "patient_asked", });
       return "Ya te paso con alguien.";
     });
     await turn();
@@ -298,7 +298,7 @@ describe("an emergency", () => {
 
   function judgedAnEmergency() {
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: true, emergency: true });
+      one.call("judge_messages", { needsPractitioner: true, emergency: true });
       return "Respirá hondo, seguro no es nada.";
     });
   }
@@ -321,7 +321,7 @@ describe("an emergency", () => {
     expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: emergencyText }]);
     expect(scriptedModel.checks).toEqual([]);
     expect(await openHandoffs(world.juan.caller)).toMatchObject([
-      { reason: "emergency", clinical: true },
+      { reason: "emergency", forPractitioner: true },
     ]);
   });
 
@@ -349,7 +349,7 @@ describe("an emergency", () => {
     await writes("quiero hablar con alguien");
     scriptedModel.script((one) => {
       one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "patient_asked", clinical: false });
+      one.call("hand_off", { reason: "patient_asked", });
       return "";
     });
     await turn();
@@ -372,7 +372,7 @@ describe("a photo or a file from the patient", () => {
     expect(scriptedModel.turns).toEqual([]);
     expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: handedOffText }]);
     expect(await openHandoffs(world.juan.caller)).toMatchObject([
-      { reason: "clinical", clinical: true },
+      { reason: "clinical", forPractitioner: true },
     ]);
     const read = await conversationOf(world.receptionist);
     expect(read.messages.filter((one) => one.direction === "incoming")).toMatchObject([
@@ -389,7 +389,7 @@ describe("a photo or a file from the patient", () => {
     expect(judged).toContain("te mando el estudio");
     expect(judged).not.toContain("document");
     expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: handedOffText }]);
-    expect(await openHandoffs(world.juan.caller)).toMatchObject([{ clinical: true }]);
+    expect(await openHandoffs(world.juan.caller)).toMatchObject([{ forPractitioner: true }]);
     const read = await conversationOf(world.receptionist);
     expect(read.messages.filter((one) => one.direction === "incoming")).toMatchObject([
       { withheld: "clinical" },
@@ -406,6 +406,6 @@ describe("a photo or a file from the patient", () => {
     await turn();
 
     expect(fakeMeta.textsSent()).toEqual([]);
-    expect(await openHandoffs(world.juan.caller)).toMatchObject([{ clinical: true }]);
+    expect(await openHandoffs(world.juan.caller)).toMatchObject([{ forPractitioner: true }]);
   });
 });

@@ -3,7 +3,6 @@ import { and, eq, exists, inArray, max, not, or } from "drizzle-orm";
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
   IncomingWhatsappMessage,
-  MessageJudgement,
   WhatsappEvents,
   WhatsappMessageStatus,
   WhatsappStatusUpdate,
@@ -219,9 +218,8 @@ export function storeOutgoing(
     payload: string;
     /** For an assistant reply: the communication rules' version it was written under. */
     rulesVersion?: number;
-    /** For a member's reply from the inbox: who wrote it, and whether it answered a clinical handoff. */
+    /** For a member's reply from the inbox: who wrote it. */
     sentBy?: string;
-    judgement?: MessageJudgement;
   },
 ) {
   const stored = tx
@@ -236,7 +234,6 @@ export function storeOutgoing(
       sentAt: Date.now(),
       rulesVersion: message.rulesVersion,
       sentBy: message.sentBy,
-      judgement: message.judgement,
     })
     .returning({ id: whatsappMessage.id })
     .get();
