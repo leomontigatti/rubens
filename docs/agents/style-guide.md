@@ -176,10 +176,12 @@ carried over from en-escena.
   label.
 - **A rule the user needs while typing is a hint under the field**: a `FieldDescription`, with
   the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/patient-form.tsx`).
-- **A form's fields sit in rows of twelve columns from `md` up** (`FormGrid`,
-  `src/components/app-form.tsx`, which `FormPage` holds its fields in); on a phone each field takes
-  the whole width. Every field of the form kit takes a `size`: `quarter` (three columns, four to a
-  row), `half` (six, two to a row) or `full` (the row). A field is a `quarter` unless what it holds
+- **A form's fields sit in rows of up to twelve columns, by the form's own width** (`FormGrid`,
+  `src/components/app-form.tsx`, which `FormPage` holds its fields in, a container query rather
+  than the window's breakpoints): one column below 448px, as on a phone; six from 448px, where a
+  quarter takes half the row and a half the whole row; twelve from 900px, where a quarter holds a
+  date and time (213px). Every field of the form kit takes a `size`: `quarter` (three columns;
+  four to a row at twelve), `half` (six; two to a row at twelve) or `full` (the row). A field is a `quarter` unless what it holds
   needs more, judged by its content and the form's layout, not by its kind:
   - `full`: a text area, a group of checkboxes, the patient search, the free times, a block such
     as a template's text beside its preview (the form kit's text area, checkbox group and combobox

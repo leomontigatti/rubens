@@ -1,7 +1,7 @@
-// How wide a form's field is: rows of twelve columns from `md` up, the whole
-// width on a phone (docs/agents/style-guide.md § Forms).
+// How wide a form's field is: rows of up to twelve columns, by the form's own
+// width (`FormGrid`, docs/agents/style-guide.md § Forms).
 
-/** `quarter` takes three columns, four to a row; `half` six, two to a row; `full` the row. */
+/** Of twelve columns, `quarter` takes three, `half` six, `full` the row; below, see `FormGrid`. */
 export type FieldSize = "quarter" | "half" | "full";
 
 /** Where a field sits in its form's grid; a form names only what differs from the default. */

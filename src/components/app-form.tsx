@@ -82,17 +82,21 @@ type InputProps = Pick<
 >;
 
 /**
- * The fields of a form, in rows by their size. A child that is no field (a
- * section, an alert, a line of text) takes the whole row: the attribute
- * selectors outweigh `&>*`, and the row start outweighs the span's shorthand,
- * whatever order the stylesheet writes them in.
+ * The fields of a form, in rows by their size, as wide as the form is (not the
+ * window): one column below 448px, then six, where a quarter takes half the
+ * row, then twelve from 900px, where a quarter holds a date and time (213px).
+ * A child that is no field (a section, an alert, a line of text) takes the
+ * whole row: the attribute selectors outweigh `&>*`, and the row start
+ * outweighs the span's shorthand, whatever order the stylesheet writes them in.
  */
 export function FormGrid(props: Omit<ComponentProps<typeof FieldSet>, "className">) {
   return (
-    <FieldSet
-      className="grid grid-cols-1 md:grid-cols-12 md:[&>*]:col-span-12 md:[&>[data-size=half]]:col-span-6 md:[&>[data-size=quarter]]:col-span-3 md:[&>[data-size][data-starts-row]]:col-start-1"
-      {...props}
-    />
+    <div className="@container">
+      <FieldSet
+        className="grid grid-cols-1 @md:grid-cols-6 @md:[&>*]:col-span-6 @md:[&>[data-size=quarter]]:col-span-3 @md:[&>[data-size][data-starts-row]]:col-start-1 @[56.25rem]:grid-cols-12 @[56.25rem]:[&>*]:col-span-12 @[56.25rem]:[&>[data-size=half]]:col-span-6"
+        {...props}
+      />
+    </div>
   );
 }
 
