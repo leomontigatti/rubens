@@ -41,6 +41,7 @@ import { patientEditors } from "#/organization/members.ts";
 import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
+import { settleFailedReplies } from "#/organization/failed-replies.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
 import { getWhatsappSettings } from "#/organization/whatsapp.ts";
 import { createTemplate, deleteTemplate, editTemplate } from "#/organization/templates.ts";
@@ -66,7 +67,15 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
       return { ok: false, reason: "notSetUp" } as const;
     }
     // A template's approval lets the messages waiting on it go.
-    return this.thenArm(() => storeWhatsappEvents(this.database, events));
+    return this.thenArm(() => {
+      const stored = storeWhatsappEvents(this.database, events);
+      // A reply whose status just turned failed reopens the handoff it closed.
+      const failed = events.statuses
+        .filter((update, index) => update.status === "failed" && stored.statuses[index]!.updated)
+        .map((update) => update.whatsappId);
+      settleFailedReplies(this.database, failed);
+      return stored;
+    });
   }
 
   /** The open handoffs the member sees in the inbox (`src/organization/handoff-inbox.ts`). */

@@ -124,8 +124,8 @@ No organization can edit or override these:
 - It never gives clinical advice. A message that reads as an emergency gets a
   fixed reply with the emergency number (107) and the organization's phone, which
   an admin sets with the communication rules, and a handoff to the practitioner.
-  That reply goes even while a handoff is open, though not while a person holds
-  the conversation.
+  That reply always goes, while a handoff is open or a person holds the
+  conversation too; the holder then gets an urgent notification.
 - It changes things only through accepted proposals.
 - It says it is a bot when asked.
 - It reads nothing clinical: its tools return no clinical record, note or
@@ -164,7 +164,8 @@ Every conversation is in the app's inbox. Reception and admins read all of them,
 every message included: the patient's, one not judged yet, a held reply and a
 practitioner's reply, in the app and on Telegram
 ([ADR-0013](../adr/0013-reception-reads-every-conversation.md)). A practitioner
-reads those about their own appointments and those handed to them. What stays
+reads only the conversations handed to them, not every conversation of their
+patients; the number's link to its patients still routes a handoff. What stays
 with the practitioners is the clinical record ([access.md](./access.md)). The
 assistant judges every message a patient sends, also while a person holds the
 conversation.
@@ -230,6 +231,10 @@ What the patient is told:
   for office hours. When the same turn also made a change, its reply states only
   that change (`Listo, te pasé el turno del jueves al viernes 10:00`), after the
   clinical check.
+- **A burst that mixes both**, such as `quería confirmar el turno del jueves` and
+  `me sigue doliendo la muela`: the assistant does its part, and its reply about
+  it goes after the clinical check, followed by the handoff's fixed reply
+  (`Listo, confirmado el jueves.` then `Le paso tu consulta a {profesional}.`).
 - **An emergency**: the emergency reply above.
 
 While a handoff is open the assistant stays in the conversation. It answers the
@@ -248,7 +253,10 @@ go out in time, has no countdown and tells the patient nothing: its recipient is
 told at once, and their reply goes through the reopen template.
 
 A handoff is open until a person's reply reaches the patient, or a person closes it
-without a reply when nothing is left to answer. Whether its notification was read
+without a reply when nothing is left to answer. A reply Meta reports as failed
+never reached the patient: the handoff it closed opens again, the reply keeps
+`No entregado` in the conversation, and its writer is told (`Tu respuesta a
+{paciente} no se entregó`), with a link to the conversation. Whether its notification was read
 does not matter, and going back to the assistant does not close it. The inbox lists
 open handoffs.
 

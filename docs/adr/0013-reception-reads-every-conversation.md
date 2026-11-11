@@ -21,8 +21,11 @@ We decided:
 
 - **Reception and admins read every conversation**, in the app and on Telegram: the
   patient's messages whatever the model judged, a message not judged yet, a held reply
-  and a practitioner's reply. A practitioner still reads only the conversations about
-  their own appointments and those handed to them.
+  and a practitioner's reply.
+- **A practitioner reads only the conversations handed to them**, no longer every
+  conversation of their patients (#156, #201): reception answers the rest, and a
+  practitioner sees what someone sent them. The number's link to its patients still
+  routes a handoff to the appointment's practitioner.
 - **The clinical record stays practitioner-only.** It is what Ley 26.529 protects, and
   nothing about who reads it changes ([access.md](../domain/access.md)). Staff who read
   a conversation are bound by professional secrecy.
@@ -30,6 +33,11 @@ We decided:
   something is normal, a medicine or a treatment, how the patient is after a procedure.
   A symptom beside another request does not. That judgement now routes a handoff and
   hides nothing; the check on the assistant's own replies is unchanged.
+- **Handoffs split by who answers**: what needs the practitioner goes to them, and the
+  patient is told so; everything else, a photo and a message the model could not read
+  included, goes to reception and tells the patient nothing about it. The assistant
+  keeps answering while a handoff is open, the emergency reply always goes, and taking
+  a conversation back sends nothing.
 
 ## Considered
 

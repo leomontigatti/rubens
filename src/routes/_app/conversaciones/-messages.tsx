@@ -11,7 +11,7 @@ export const refusalMessages = {
   forbidden: "Solo el personal puede leer las conversaciones.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "No encontramos esa conversación.",
-  notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
+  notFound: "No encontramos esa conversación, o no te la derivaron.",
 };
 
 /** An outgoing message's delivery, as its icon; none for the patient's. */

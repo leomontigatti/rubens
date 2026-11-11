@@ -33,6 +33,10 @@ and practitioner.
   audited, and void a note or file whose author left, or delete what was voided,
   seeing its date, author, file names and reason but not its text
   ([clinical-records.md](./clinical-records.md#voiding)). A practitioner who is also the admin reads records as a practitioner.
+- **A practitioner reads only the WhatsApp conversations handed to them**, not
+  every conversation of their patients; the link between a number and its
+  patients still routes a handoff to the appointment's practitioner
+  ([assistant.md](./assistant.md#inbox)).
 - **A practitioner sees only their own appointments.** An appointment already says
   something about a patient's health, so the schedule shows no more than the work
   needs. On the calendar, other practitioners' appointments in the room show only

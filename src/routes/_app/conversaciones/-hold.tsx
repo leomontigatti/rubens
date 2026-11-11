@@ -29,7 +29,7 @@ const refusals = {
   forbidden: "Solo el personal puede responder conversaciones.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Escribí la respuesta.",
-  notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
+  notFound: "No encontramos esa conversación, o no te la derivaron.",
   notHolding: "Otra persona tomó la conversación, o volvió al asistente. Recargá la página.",
   noReopenTemplate:
     "La ventana de conversación está cerrada y la plantilla Reabrir la conversación no está aprobada: un administrador la envía desde las plantillas de WhatsApp.",

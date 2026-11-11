@@ -49,8 +49,6 @@ const lucasPhone = "+5491155550001";
 const notClinical = { needsPractitioner: false, emergency: false };
 
 /** What the patient is told on a handoff, as `vos`. */
-const handedOffText =
-  "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
 
 /** What the patient is told of a voice note nobody could understand, as `vos`. */
 const writeItText =
@@ -146,7 +144,7 @@ describe("a voice note", () => {
     await turn();
 
     expect(await inboxOf(martinaPhone)).toMatchObject([
-      { direction: "incoming", type: "audio", text: "a qué hora es mi turno", withheld: null },
+      { direction: "incoming", type: "audio", text: "a qué hora es mi turno" },
       { direction: "outgoing" },
     ]);
   });
@@ -276,7 +274,7 @@ describe("a voice note nobody can understand", () => {
       reason: "voiceUnintelligible",
       forPractitioner: false,
     });
-    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([writeItText, handedOffText]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([writeItText]);
   });
 
   it("counts again from an understood message in between", async () => {

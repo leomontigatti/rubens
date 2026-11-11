@@ -4,6 +4,7 @@ import { defaultReturnAfterHours } from "#/lib/conversation-holds.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { mayAnswer, openHandoffsOf } from "#/organization/handoffs.ts";
+import { settleFailedReplies } from "#/organization/failed-replies.ts";
 import { answeredByPerson } from "#/organization/turn-retries.ts";
 import { conversation, handoff, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { storeOutgoing } from "#/organization/whatsapp-messages.ts";
@@ -76,7 +77,7 @@ export function settleReply(
   answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
   if (answered.length > 0) {
     tx.update(handoff)
-      .set({ state: "closed", closedAt: Date.now(), heldReply: null })
+      .set({ state: "closed", closedAt: Date.now(), heldReply: null, answeredBy: stored.id })
       .where(
         inArray(
           handoff.id,
@@ -85,6 +86,8 @@ export function settleReply(
       )
       .run();
   }
+  // Meta may have reported the reply failed before its send returned.
+  settleFailedReplies(tx, [reply.whatsappId]);
   // Still theirs unless someone took it over while Meta answered.
   const theirs = eq(conversation.heldBy, writtenBy);
   tx.update(conversation)

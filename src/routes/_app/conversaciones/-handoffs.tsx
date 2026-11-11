@@ -146,7 +146,7 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="text-muted-foreground">
-            Derivación abierta: el asistente no responde hasta que se cierre.
+            Derivación abierta: una persona responde lo derivado, y el asistente sigue con lo demás.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">
@@ -157,38 +157,38 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {handoff.mayPass && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pass.running}
-              onClick={() => setPassing(true)}
-            >
-              {pass.running && <Spinner data-icon="inline-start" aria-hidden />}
-              Pasar al profesional
-            </Button>
-          )}
-          {handoff.mayAnswer && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={close.running}
-              onClick={() => setConfirming(true)}
-            >
-              {close.running && <Spinner data-icon="inline-start" aria-hidden />}
-              Cerrar sin responder
-            </Button>
-          )}
-        </div>
+        {(handoff.mayPass || handoff.mayAnswer) && (
+          <div className="flex flex-wrap gap-2">
+            {handoff.mayPass && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pass.running}
+                onClick={() => setPassing(true)}
+              >
+                {pass.running && <Spinner data-icon="inline-start" aria-hidden />}
+                Pasar al profesional
+              </Button>
+            )}
+            {handoff.mayAnswer && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={close.running}
+                onClick={() => setConfirming(true)}
+              >
+                {close.running && <Spinner data-icon="inline-start" aria-hidden />}
+                Cerrar sin responder
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       {handoff.heldReply !== null && (
         <HeldReply
           handoffId={handoff.id}
           text={handoff.heldReply}
-          onUse={
-            handoff.mayUseHeldReply ? () => props.onUseReply(handoff.heldReply ?? "") : null
-          }
+          onUse={handoff.mayUseHeldReply ? () => props.onUseReply(handoff.heldReply ?? "") : null}
         />
       )}
       <ConfirmDialog
@@ -203,7 +203,7 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
         open={confirming}
         onOpenChange={setConfirming}
         title="¿Cerrar la derivación sin responder?"
-        description="Usalo cuando no queda nada que contestarle al paciente. El asistente vuelve a responder en esta conversación."
+        description="Usalo cuando no queda nada que contestarle al paciente. La derivación deja de figurar como abierta."
         confirmLabel="Cerrar derivación"
         onConfirm={() => void close.run("close-handoff", () => closeHandoff({ data }))}
       />

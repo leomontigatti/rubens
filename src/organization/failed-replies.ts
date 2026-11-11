@@ -6,12 +6,12 @@ import { conversationPatient, handoff, whatsappMessage } from "#/organization/wh
 
 // A person's reply that Meta reports as failed (docs/domain/assistant.md §
 // Handoff): it never reached the patient, so the handoffs it closed open
-// again, and its writer is told once, with a link to the conversation. The
+// again, and its writer is told, with a link to the conversation. The
 // message keeps its `failed` status, which the inbox shows.
 
 /**
  * Reopens the handoffs each failed person's reply among `whatsappIds` closed,
- * and notifies its writer, once per reply.
+ * and notifies its writer: called once a reply's status turns `failed`.
  */
 export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
   const failed =
@@ -34,23 +34,9 @@ export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
           )
           .all();
   for (const reply of failed) {
-    const reopened = tx
-      .update(handoff)
+    tx.update(handoff)
       .set({ state: "open", closedAt: null, answeredBy: null })
       .where(and(eq(handoff.answeredBy, reply.id), eq(handoff.state, "closed")))
-      .returning({ id: handoff.id })
-      .all();
-    const told = tx
-      .select({ id: whatsappMessage.id })
-      .from(whatsappMessage)
-      .where(and(eq(whatsappMessage.id, reply.id), isNotNull(whatsappMessage.failureToldAt)))
-      .get();
-    if (told) {
-      continue;
-    }
-    tx.update(whatsappMessage)
-      .set({ failureToldAt: Date.now() })
-      .where(eq(whatsappMessage.id, reply.id))
       .run();
     const first = tx
       .select({ patientId: conversationPatient.patientId })
@@ -60,8 +46,7 @@ export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
     notify(tx, [reply.sentBy!], {
       kind: "replyFailed",
       conversationId: reply.conversationId,
-      patientId: first?.patientId,
+      patientId: first?.patientId ?? null,
     });
-    void reopened;
   }
 }

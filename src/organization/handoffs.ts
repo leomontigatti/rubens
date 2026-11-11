@@ -103,11 +103,7 @@ function recipientsOf(tx: Writer, wanted: Omit<HandoffWanted, "reason">) {
  * notifies each at once; says the appointment's practitioner by the name
  * patients read when it went to them.
  */
-export function sendHandoff(
-  tx: Writer,
-  handoffId: string,
-  wanted: Omit<HandoffWanted, "reason">,
-) {
+export function sendHandoff(tx: Writer, handoffId: string, wanted: Omit<HandoffWanted, "reason">) {
   const recipients = recipientsOf(tx, wanted);
   if (recipients.memberIds.length > 0) {
     tx.insert(handoffRecipient)

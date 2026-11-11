@@ -388,14 +388,12 @@ describe("a person's reply after the window closed", () => {
 
   it("closes only the handoffs opened before it was written", async () => {
     await handedOffThenClosed();
-    // Juan keeps clinical records, so his reply may answer a clinical handoff.
-    expectOk(await world.organization.takeOverConversation(world.juan.caller, { conversationId }));
-    expectOk(await replyAs(world.juan.caller));
+    expectOk(await replyAs(world.receptionist));
     await runDurableObjectAlarm(world.organization);
     vi.setSystemTime(Date.now() + day);
     await runDurableObjectAlarm(world.organization);
     await numberTurns({ kind: "restricted", until: null });
-    // The patient answers while Meta holds the number, with something new and clinical.
+    // The patient answers while Meta holds the number, with something new for the practitioner.
     await writes("y además me duele la muela");
     scriptedModel.script((one) => {
       one.call("judge_messages", { needsPractitioner: true, emergency: false });
@@ -407,7 +405,7 @@ describe("a person's reply after the window closed", () => {
     await numberTurns({ kind: "unrestricted" });
     await runDurableObjectAlarm(world.organization);
 
-    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Juan Gómez*\n${reply}` }]);
+    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Rita Paz*\n${reply}` }]);
     expect(await openHandoffs()).toEqual([expect.objectContaining({ reason: "clinical" })]);
   });
 
@@ -426,7 +424,7 @@ describe("a person's reply after the window closed", () => {
     expect((await read()).lateReplies).toEqual([]);
   });
 
-  it("withholds a practitioner's reply to a clinical handoff from reception while it waits", async () => {
+  it("shows reception a practitioner's reply to a handoff to them while it waits", async () => {
     await writes("me duele mucho la muela");
     scriptedModel.script((one) => {
       one.call("judge_messages", { needsPractitioner: true, emergency: false });
@@ -439,7 +437,7 @@ describe("a person's reply after the window closed", () => {
     expectOk(await replyAs(world.juan.caller, "Tomá un ibuprofeno"));
 
     expect((await read(world.receptionist)).lateReplies).toEqual([
-      expect.objectContaining({ writer: "Juan Gómez", text: null }),
+      expect.objectContaining({ writer: "Juan Gómez", text: "*Juan Gómez*\nTomá un ibuprofeno" }),
     ]);
     expect((await read(world.juan.caller)).lateReplies).toEqual([
       expect.objectContaining({ text: "*Juan Gómez*\nTomá un ibuprofeno" }),

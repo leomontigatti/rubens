@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "454c4c71-f3f1-45b6-b983-bc70898d505c",
+  "id": "7ffa12c6-1c6d-4087-b6f7-50329dbb8459",
   "prevId": "104b7c46-ba65-4aba-aa9a-8a16bb2e15ce",
   "tables": {
     "appointment": {
@@ -1959,6 +1959,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "answered_by": {
+          "name": "answered_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "held_reply": {
           "name": "held_reply",
           "type": "text",
@@ -2056,6 +2063,19 @@
           ],
           "columnsTo": [
             "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "handoff_answered_by_whatsapp_message_id_fk": {
+          "name": "handoff_answered_by_whatsapp_message_id_fk",
+          "tableFrom": "handoff",
+          "tableTo": "whatsapp_message",
+          "columnsFrom": [
+            "answered_by"
+          ],
+          "columnsTo": [
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"

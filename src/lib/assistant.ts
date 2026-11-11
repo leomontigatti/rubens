@@ -168,7 +168,7 @@ export interface PromptContext {
 }
 
 /** What the patient is told when they ask again about what a person already has. */
-export function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
+function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
   return formOfAddress === "usted"
     ? "Ya se lo pasé, le va a responder por acá."
     : "Ya se lo pasé, te va a responder por acá.";
@@ -212,7 +212,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     `Every turn, call judge_messages exactly once, about the patient's new messages: needsPractitioner (only the practitioner can answer: advice or whether something is normal, a medicine or a treatment, how they are after a procedure unless plainly well; a symptom mentioned beside another request, such as "un turno porque me duele una muela", is not) and emergency (a risk to life or health right now). The new messages are what follows the line "${newMessagesMark}" in the patient's last message.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
-    "Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); the message needs the practitioner (clinical); it is an emergency (emergency). Pass the appointmentId when it is about one appointment. A person then answers: do not answer it yourself, and say nothing about it to the patient, not even why a rule refused it. If the same turn made a change, your reply states only that change, such as \"Listo, te pasé el turno del jueves al viernes 10:00\".",
+    'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); the message needs the practitioner (clinical); it is an emergency (emergency). Pass the appointmentId when it is about one appointment. When the patient\'s messages also ask for something you can do, such as confirming an appointment, do it in the same turn and hand off only the rest. A person then answers: do not answer it yourself, and say nothing about it to the patient, not even why a rule refused it. If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00", and says nothing of the part handed off: underthing tells the patient who has it.',
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
     'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',

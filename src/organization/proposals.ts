@@ -12,7 +12,12 @@ import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/organization/appointment-changes.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { cutoffHoursOf, freeTimesFor, movePatientAppointment, slotFor } from "#/organization/moves.ts";
+import {
+  cutoffHoursOf,
+  freeTimesFor,
+  movePatientAppointment,
+  slotFor,
+} from "#/organization/moves.ts";
 import type { Slot } from "#/organization/moves.ts";
 import { answeredMeanwhile } from "#/organization/turn-retries.ts";
 import { isHeld, lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
@@ -267,20 +272,20 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
 export function proposalTools(database: Database, turn: ProposalTurn): AssistantTool[] {
   // A person answers while a member holds the conversation, or answered the
   // turn's words since it read them.
-  const unlessHandedOff = (run: () => unknown) =>
+  const unlessHeld = (run: () => unknown) =>
     isHeld(database, turn.conversationId) ||
     answeredMeanwhile(
       database,
       turn.read.unjudged.map((message) => message.id),
     )
-      ? { ok: false, reason: "handedOff" }
+      ? { ok: false, reason: "held" }
       : run();
   return [
     { name: "find_free_times", run: (args) => findFreeTimes(database, turn, args) },
     {
       name: "propose_change",
-      run: (args) => unlessHandedOff(() => proposeChange(database, turn, args)),
+      run: (args) => unlessHeld(() => proposeChange(database, turn, args)),
     },
-    { name: "accept_proposal", run: () => unlessHandedOff(() => acceptLatest(database, turn)) },
+    { name: "accept_proposal", run: () => unlessHeld(() => acceptLatest(database, turn)) },
   ];
 }

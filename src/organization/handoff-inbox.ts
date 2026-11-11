@@ -139,7 +139,7 @@ export function listOpenHandoffs(
 }
 
 /** The handoff `input` names, with what `acting` reads, or why the input is refused. */
-export function handoffInputOf(database: Database, acting: Acting, input: HandoffReference) {
+function handoffInputOf(database: Database, acting: Acting, input: HandoffReference) {
   const parsed = handoffReferenceSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, reason: "invalidInput" as const };
@@ -152,11 +152,7 @@ export function handoffInputOf(database: Database, acting: Acting, input: Handof
 }
 
 /** The open handoff `handoffId`, if `reader` sees it. */
-export function openHandoffSeen(
-  tx: Writer,
-  reader: ReturnType<typeof readerOf>,
-  handoffId: string,
-) {
+function openHandoffSeen(tx: Writer, reader: ReturnType<typeof readerOf>, handoffId: string) {
   return tx
     .select({
       id: handoff.id,

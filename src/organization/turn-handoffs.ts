@@ -134,7 +134,10 @@ export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
   if (!wanted) {
     return null;
   }
-  const detail = turn.refusal || turn.applied.length > 0 ? { refused: turn.refusal, applied: turn.applied } : null;
+  const detail =
+    turn.refusal || turn.applied.length > 0
+      ? { refused: turn.refusal, applied: turn.applied }
+      : null;
   // A handoff about nothing in particular, right after a message about an
   // appointment, concerns that appointment.
   return {

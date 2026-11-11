@@ -12,7 +12,8 @@ import { phoneSpellings } from "#/lib/phones.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
 import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
 
-import { judgeTurn, readConversation, settleTurn } from "#/organization/assistant.ts";
+import { judgeTurn, readConversation } from "#/organization/assistant.ts";
+import { settleTurn } from "#/organization/turn-settling.ts";
 import type { TurnMode } from "#/organization/assistant.ts";
 import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
 import { maxModelCalls } from "#/organization/assistant-model.ts";

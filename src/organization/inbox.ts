@@ -21,13 +21,12 @@ import type {
 
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { appointment, member, patient, practitioner } from "#/organization/schema.ts";
+import { member, patient, practitioner } from "#/organization/schema.ts";
 import {
   conversation,
   conversationPatient,
   handoffRecipient,
   handoff,
-  outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
 import { lateRepliesShown, queuedReopenShown } from "#/organization/late-replies.ts";
@@ -35,8 +34,8 @@ import type { QueuedReopen, ShownLateReply } from "#/organization/late-replies.t
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
-// only. Reception and admins read every conversation; a practitioner those
-// about their own appointments and those handed to them. Whoever reads a
+// only. Reception and admins read every conversation; a practitioner only
+// those handed to them, not every conversation of their patients. Whoever reads a
 // conversation reads every message in it: the clinical record is what stays
 // with the practitioners (ADR-0013).
 
@@ -82,9 +81,7 @@ export function readerOf(database: Database, acting: Acting) {
   const own = ownPractitioner(database, acting);
   let visible: SQL | undefined = undefined;
   if (!actsForEveryone(acting)) {
-    visible = own
-      ? or(aboutAppointmentsOf(database, own.id), handedTo(database, acting.userId))
-      : sql`false`;
+    visible = own ? handedTo(database, acting.userId) : sql`false`;
   }
   return { keepsRecords: own?.keepsClinicalRecords === true, visible };
 }
@@ -100,27 +97,6 @@ function handedTo(database: Database, memberId: string): SQL {
         and(eq(handoff.conversationId, conversation.id), eq(handoffRecipient.memberId, memberId)),
       ),
   );
-}
-
-/**
- * The conversations about `practitionerId`'s appointments: with a number
- * that stands for one of their patients, or that a message about one of
- * their appointments went to.
- */
-function aboutAppointmentsOf(database: Database, practitionerId: string): SQL {
-  const theirs = eq(appointment.practitionerId, practitionerId);
-  const throughPatient = database
-    .select({ one: conversationPatient.patientId })
-    .from(conversationPatient)
-    .innerJoin(appointment, eq(appointment.patientId, conversationPatient.patientId))
-    .where(and(eq(conversationPatient.conversationId, conversation.id), theirs));
-  const throughOutbox = database
-    .select({ one: outboxMessage.id })
-    .from(outboxMessage)
-    .innerJoin(whatsappMessage, eq(whatsappMessage.id, outboxMessage.whatsappMessageId))
-    .innerJoin(appointment, eq(appointment.id, outboxMessage.appointmentId))
-    .where(and(eq(whatsappMessage.conversationId, conversation.id), theirs));
-  return or(exists(throughPatient), exists(throughOutbox))!;
 }
 
 export const messageColumns = {

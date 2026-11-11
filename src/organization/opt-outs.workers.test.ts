@@ -276,7 +276,7 @@ describe("a reply the model judges an opt-out", () => {
     expect(fakeMeta.textsSent()).toEqual([
       {
         to: "5491155550000",
-        text: "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.",
+        text: "Le paso tu consulta al profesional.",
       },
     ]);
   });

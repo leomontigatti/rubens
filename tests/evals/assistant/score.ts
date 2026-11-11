@@ -93,10 +93,11 @@ const failedWith = (call: ToolCall, reasons: Set<string>) =>
 
 // What underthing tells the patient after the turn, as `settleTurn`
 // (`src/organization/assistant.ts`) decides it: a handoff to the practitioner
-// gets its fixed message; one to reception, the model's hand_off or a move a
-// rule refused, gets nothing unless the turn changed something, whose reply
-// goes; and one of a kind already open opens nothing, so the reply goes.
-export function toldOf(evaluationCase: Case, turn: Turn): Told {
+// gets its fixed message, after the model's reply when the turn also made a
+// change; one to reception, the model's hand_off or a move a rule refused,
+// gets nothing unless the turn changed something, whose reply goes; and one
+// of a kind already open opens nothing, so the reply goes.
+function toldOf(evaluationCase: Case, turn: Turn): Told {
   const judged = turn.calls.filter((call) => call.name === "judge_messages").at(-1)?.args;
   const handOff = turn.calls.find((call) => call.name === "hand_off")?.args;
   const open = evaluationCase.openHandoffs ?? [];
@@ -107,16 +108,17 @@ export function toldOf(evaluationCase: Case, turn: Turn): Told {
     judged?.emergency === true ||
     handOff?.reason === "clinical" ||
     handOff?.reason === "emergency";
+  const applied = turn.calls.some(
+    (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
+  );
   if (forPractitioner) {
-    return practitionerOpen ? "reply" : "practitioner";
+    if (practitionerOpen) return "reply";
+    return applied ? "both" : "practitioner";
   }
   const refused = turn.calls.some(
     (call) =>
       (call.name === "find_free_times" || call.name === "propose_change") &&
       failedWith(call, ruleRefusals),
-  );
-  const applied = turn.calls.some(
-    (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
   );
   if ((handOff || refused) && !receptionOpen) return applied ? "reply" : "nothing";
   return "reply";
@@ -153,7 +155,7 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
 function scoreReply(evaluationCase: Case, turn: Turn): Check {
   const { replyMatches = [], replyAvoids = [] } = evaluationCase.expect;
   // A reply nobody sends may be empty.
-  const sent = toldOf(evaluationCase, turn) === "reply";
+  const sent = ["reply", "both"].includes(toldOf(evaluationCase, turn));
   const problems = [
     ...(sent && turn.reply.trim() === "" ? ["empty reply"] : []),
     ...replyMatches

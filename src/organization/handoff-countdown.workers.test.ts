@@ -72,6 +72,12 @@ async function handedToJuan(options: { hoursAgo: number; forPractitioner: boolea
   const sentAt = Date.now() - options.hoursAgo * hourMs;
   await patientWrites(world.organization, "quiero hablar con alguien", martinaPhone, sentAt);
   const { forPractitioner } = options;
+  // A handoff to reception goes to the handoff contacts: Juan is the one.
+  expectOk(
+    await world.organization.saveHandoffContacts(adminCaller, {
+      memberIds: [world.juan.caller.userId],
+    }),
+  );
   scriptedModel.script((one) => {
     one.call("judge_messages", { needsPractitioner: forPractitioner, emergency: false });
     one.call("hand_off", {
@@ -124,7 +130,8 @@ describe("a handoff made 20 hours before the window closes", () => {
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt, closesAt]);
     expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
     expect(await remindersOf(adminCaller)).toEqual([closesAt]);
-    expect(await remindersOf(world.lucia.caller)).toEqual([closesAt]);
+    // A practitioner it was not handed to does not read the conversation.
+    expect(await remindersOf(world.lucia.caller)).toEqual([]);
 
     await alarmAt(closesAt + hourMs);
     expect(await remindersOf(world.juan.caller)).toHaveLength(2);
@@ -179,13 +186,13 @@ describe("a patient's later message", () => {
 });
 
 describe("a clinical handoff", () => {
-  it("reminds at 2 hours before the close only the practitioners who keep clinical records", async () => {
+  it("reminds at 2 hours before the close only the practitioners who keep clinical records and read it", async () => {
     const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: true });
 
     await alarmAt(closesAt - 2 * hourMs);
 
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
-    expect(await remindersOf(world.lucia.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.lucia.caller)).toEqual([]);
     expect(await remindersOf(world.receptionist)).toEqual([]);
     expect(await remindersOf(adminCaller)).toEqual([]);
   });

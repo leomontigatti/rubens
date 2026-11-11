@@ -43,7 +43,6 @@ const martinaPhone = "+5491155550000";
 
 const notClinical = { needsPractitioner: false, emergency: false };
 
-
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
 let martinaId: string;
@@ -480,7 +479,12 @@ describe("the move's rules", () => {
         detail: {
           refused: { why: "pastCutoff", date: "lunes 5 de enero" },
           applied: [
-            { kind: "move", date: "lunes 19 de enero", newDate: "lunes 12 de enero", newTime: "10:00" },
+            {
+              kind: "move",
+              date: "lunes 19 de enero",
+              newDate: "lunes 12 de enero",
+              newTime: "10:00",
+            },
           ],
         },
       },

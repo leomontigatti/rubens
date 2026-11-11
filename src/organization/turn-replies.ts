@@ -57,6 +57,11 @@ export type Settled =
 export interface SettledTurn {
   settled: Settled;
   practitioner: string | null;
+  /**
+   * A handoff to the practitioner in a turn that also made a change: the
+   * model's reply about the change goes first, then the fixed one.
+   */
+  changed: boolean;
 }
 
 /** What a settled turn says something with: none for a member's hold or a handoff to reception. */
@@ -74,9 +79,17 @@ export function says(settled: Settled): settled is Saying {
  * (`whatsapp-limits.ts`) keeps the number from sending.
  */
 export function maySend(database: Database, cloud: WhatsappCloud, conversationId: string) {
+  return !isHeld(database, conversationId) && mayReach(database, cloud, conversationId);
+}
+
+/**
+ * Whether a message may reach the patient now, whoever holds the
+ * conversation: the window is open and no hold of Meta's keeps the number
+ * from sending. The emergency reply needs no more.
+ */
+function mayReach(database: Database, cloud: WhatsappCloud, conversationId: string) {
   const now = Date.now();
   return (
-    !isHeld(database, conversationId) &&
     isWindowOpen(lastIncomingAt(database, conversationId), now) &&
     !cloud.missingSetting() &&
     !activeHold(database, now)
@@ -144,7 +157,7 @@ async function showTyping(database: Database, cloud: WhatsappCloud, conversation
  * after each pause, `maySend` unless the caller checks more: once it fails,
  * the rest does not go. Says whether every message went.
  */
-export async function sendReply(
+async function sendReply(
   database: Database,
   cloud: WhatsappCloud,
   reply: {
@@ -197,7 +210,10 @@ function handOffClosed(
 }
 
 /** The fixed reply a settled turn gets, or `null` for the model's own. */
-function fixedReply(rules: CommunicationRules, turn: { settled: Saying; practitioner: string | null }) {
+function fixedReply(
+  rules: CommunicationRules,
+  turn: { settled: Saying; practitioner: string | null },
+) {
   if (turn.settled === "emergency") {
     return emergencyReply(rules.formOfAddress, rules.phone && formatPhone(rules.phone));
   }
@@ -310,6 +326,46 @@ export function handoffReplyText(rules: CommunicationRules, practitioner: string
 }
 
 /**
+ * Sends the model's `text` once the fixed checks and the clinical check pass
+ * it and `mayReply` still holds; says whether it went.
+ */
+async function sendCheckedReply(
+  database: Database,
+  cloud: WhatsappCloud,
+  model: AssistantModel,
+  turn: {
+    conversationId: string;
+    phone: string;
+    patients: string[];
+    text: string;
+    rules: CommunicationRules;
+    proposed: boolean;
+    mayReply: () => boolean;
+  },
+) {
+  const checked = checkReply(turn.text);
+  if (!checked.ok || !turn.mayReply()) {
+    return false;
+  }
+  const request = {
+    conversationId: turn.conversationId,
+    reply: checked.text,
+    patients: turn.patients,
+  };
+  if (await clinicalCheckHolds(database, model, request, false)) {
+    return false;
+  }
+  const reply = {
+    conversationId: turn.conversationId,
+    phone: turn.phone,
+    text: checked.text,
+    rulesVersion: turn.rules.version,
+    whole: turn.proposed,
+  };
+  return sendReply(database, cloud, reply, turn.mayReply);
+}
+
+/**
  * Answers the settled turn: its fixed reply when the number may send, or the
  * model's reply once the fixed checks and the clinical check pass and
  * `mayReply` still holds, read again after the check.
@@ -326,6 +382,8 @@ export async function deliverReply(
     answered: TurnToSort["answered"];
     settled: Saying;
     practitioner: string | null;
+    /** The turn also made a change, which the model's reply states before a handoff's fixed reply. */
+    changed?: boolean;
     reply: string;
     rules: CommunicationRules;
     /** The turn proposed a change, which its reply states: it goes out whole. */
@@ -348,10 +406,21 @@ export async function deliverReply(
     whole: turn.proposed,
     urgent: turn.settled === "emergency",
   };
+  if (fixed && turn.settled === "toPractitioner" && turn.changed) {
+    // The easy part of a mixed burst is answered before the part handed off:
+    // the model's words about it, checked, and a reply the check holds is
+    // dropped, since the practitioner has the conversation already.
+    await sendCheckedReply(database, cloud, model, { ...turn, text: turn.reply });
+  }
   if (fixed) {
     // The fixed replies say nothing the turn read, so a newer message or a
-    // changed appointment does not hold them.
-    if (!maySend(database, cloud, conversationId) || !(await sendReply(database, cloud, reply))) {
+    // changed appointment does not hold them. The emergency reply goes though
+    // a member holds the conversation.
+    const mayGo =
+      turn.settled === "emergency"
+        ? () => mayReach(database, cloud, conversationId)
+        : () => maySend(database, cloud, conversationId);
+    if (!mayGo() || !(await sendReply(database, cloud, reply, mayGo))) {
       handOffClosed(database, turn);
     }
     return;

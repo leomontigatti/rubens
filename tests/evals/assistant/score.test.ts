@@ -123,21 +123,29 @@ describe("score", () => {
       tools.run("judge_messages", { needsPractitioner: false, emergency: false });
       tools.run("find_free_times", { appointmentId: "apt-101" });
     });
-    const movedToo = turn("move-and-refused-move", "Listo, te pasé el turno al martes 17/11.", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
-      tools.run("accept_proposal", {});
-      tools.run("find_free_times", { appointmentId: "apt-102" });
-      tools.run("hand_off", { reason: "rule_refused" });
-    });
+    const movedToo = turn(
+      "move-and-refused-move",
+      "Listo, te pasé el turno al martes 17/11.",
+      (tools) => {
+        tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+        tools.run("accept_proposal", {});
+        tools.run("find_free_times", { appointmentId: "apt-102" });
+        tools.run("hand_off", { reason: "rule_refused" });
+      },
+    );
 
     expect(refusedOnly.reply.pass).toBe(true);
     expect(movedToo.handoff).toEqual({ pass: true, reason: "ok" });
   });
 
   it("answers again while a handoff to the practitioner is open", () => {
-    const result = turn("repeat-during-handoff", "Ya se lo pasé, te va a responder por acá.", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: true, emergency: false });
-    });
+    const result = turn(
+      "repeat-during-handoff",
+      "Ya se lo pasé, te va a responder por acá.",
+      (tools) => {
+        tools.run("judge_messages", { needsPractitioner: true, emergency: false });
+      },
+    );
 
     expect(result.handoff).toEqual({ pass: true, reason: "ok" });
     expect(result.reply).toEqual({ pass: true, reason: "ok" });

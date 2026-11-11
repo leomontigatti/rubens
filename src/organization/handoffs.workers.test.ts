@@ -48,9 +48,6 @@ vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
 const martinaPhone = "+5491155550000";
 const unknownPhone = "+5493515550123";
 
-const handedOffText =
-  "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
-
 const notClinical = { needsPractitioner: false, emergency: false };
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
@@ -85,7 +82,9 @@ async function openHandoffs(caller: Caller = adminCaller) {
 /** Who has a handoff notification, by caller. */
 async function notifiedOfHandoff(caller: Caller) {
   const listed = expectOk(await world.organization.listNotifications(caller));
-  return listed.notifications.filter((one) => one.kind === "handoff").map((one) => one.handoff);
+  return listed.notifications
+    .filter((one) => one.kind === "handoff")
+    .map((one) => one.handoff && { ...one.handoff, patient: undefined, detail: undefined });
 }
 
 /** Makes `members` the handoff contacts. */
@@ -127,7 +126,7 @@ afterEach(() => {
 });
 
 describe("a patient asking for a person", () => {
-  it("hands the conversation to the appointment's practitioner, who alone is notified", async () => {
+  it("hands the conversation to the admins while no handoff contact is picked, not to the appointment's practitioner, and tells the patient nothing", async () => {
     const appointmentId = await bookMartina();
     await writes("quiero hablar con alguien");
     scriptedModel.script((one) => {
@@ -142,14 +141,14 @@ describe("a patient asking for a person", () => {
     expect(opened).toMatchObject({
       reason: "patientAsked",
       forPractitioner: false,
-      recipients: ["Juan Gómez"],
+      recipients: ["Ana Admin"],
     });
-    expect(await notifiedOfHandoff(world.juan.caller)).toEqual([
+    expect(await notifiedOfHandoff(adminCaller)).toMatchObject([
       { conversationId: opened!.conversationId, reason: "patientAsked", forPractitioner: false },
     ]);
-    expect(await notifiedOfHandoff(world.lucia.caller)).toEqual([]);
+    expect(await notifiedOfHandoff(world.juan.caller)).toEqual([]);
     expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
-    expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: handedOffText }]);
+    expect(fakeMeta.textsSent()).toEqual([]);
   });
 
   it("ignores an appointment id the number may not speak of", async () => {
@@ -207,22 +206,7 @@ describe("a clinical question", () => {
     expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
   });
 
-  it("withholds the words of a message the model handed off as clinical though it judged it not clinical", async () => {
-    const appointmentId = await bookMartina();
-    await writes("me sangra la encía");
-    scriptedModel.script((one) => {
-      one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "clinical", appointmentId });
-      return "";
-    });
-
-    await turn();
-
-    const [seen] = await openHandoffs(world.receptionist);
-    expect(seen!.lastPatientMessage).toMatchObject({ withheld: "clinical" });
-  });
-
-  it("is handed off as clinical though the model did not hand it off", async () => {
+  it("is handed to the practitioner though the model did not hand it off", async () => {
     await bookMartina();
     await writes("me sangra la encía");
     scriptedModel.script((one) => {
@@ -233,10 +217,12 @@ describe("a clinical question", () => {
     await turn();
 
     expect((await openHandoffs())[0]).toMatchObject({ reason: "clinical", forPractitioner: true });
-    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([handedOffText]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Le paso tu consulta al profesional.",
+    ]);
   });
 
-  it("shows a receptionist that it is open, without its words, and lets only a practitioner who keeps records close it", async () => {
+  it("shows a receptionist it with its words, and lets only a practitioner who keeps records close it", async () => {
     const appointmentId = await bookMartina();
     await writes("me duele la muela");
     scriptedModel.script((one) => {
@@ -248,8 +234,7 @@ describe("a clinical question", () => {
 
     const [seen] = await openHandoffs(world.receptionist);
     expect(seen).toMatchObject({ forPractitioner: true, mayAnswer: false });
-    expect(seen!.lastPatientMessage).toMatchObject({ withheld: "clinical" });
-    expect(seen!.lastPatientMessage).not.toHaveProperty("text");
+    expect(seen!.lastPatientMessage).toMatchObject({ text: "me duele la muela" });
     const [juans] = await openHandoffs(world.juan.caller);
     expect(juans!.lastPatientMessage).toMatchObject({ text: "me duele la muela" });
 
@@ -290,7 +275,6 @@ describe("misunderstanding the patient", () => {
     });
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
       "Perdón, no te entendí. Me lo decís de otra forma?",
-      handedOffText,
     ]);
   });
 
@@ -310,7 +294,7 @@ describe("misunderstanding the patient", () => {
 });
 
 describe("a number with nothing booked to talk about", () => {
-  it("gets the short reply from an unknown number, and a handoff to the handoff contacts", async () => {
+  it("hands an unknown number to the handoff contacts, telling it nothing", async () => {
     await contactsAre(world.lucia.caller, world.receptionist);
     await writes("hola, quiero un turno", unknownPhone);
 
@@ -322,7 +306,7 @@ describe("a number with nothing booked to talk about", () => {
       recipients: ["Lucía Díaz", "Rita Paz"],
     });
     expect(await notifiedOfHandoff(world.receptionist)).toHaveLength(1);
-    expect(fakeMeta.textsSent()).toEqual([{ to: "5493515550123", text: handedOffText }]);
+    expect(fakeMeta.textsSent()).toEqual([]);
   });
 
   it("hands a clinical message from an unknown number only to the contacts who keep clinical records", async () => {
@@ -335,7 +319,10 @@ describe("a number with nothing booked to talk about", () => {
 
     await turn();
 
-    expect((await openHandoffs())[0]).toMatchObject({ forPractitioner: true, recipients: ["Lucía Díaz"] });
+    expect((await openHandoffs())[0]).toMatchObject({
+      forPractitioner: true,
+      recipients: ["Lucía Díaz"],
+    });
     expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
   });
 
@@ -360,7 +347,7 @@ describe("a number with nothing booked to talk about", () => {
 });
 
 describe("an appointment the organization cancelled", () => {
-  it("hands a request for another time to the cancelled appointment's practitioner", async () => {
+  it("hands a request for another time to reception, not to the cancelled appointment's practitioner", async () => {
     await approveTemplate("turno_cancelado", "900000000000022");
     const appointmentId = await bookMartina();
     expectOk(
@@ -374,7 +361,7 @@ describe("an appointment the organization cancelled", () => {
     await writes("uh, me das otro horario?");
     scriptedModel.script((one) => {
       one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "organization_cancelled", });
+      one.call("hand_off", { reason: "organization_cancelled" });
       return "";
     });
 
@@ -382,11 +369,11 @@ describe("an appointment the organization cancelled", () => {
 
     expect((await openHandoffs())[0]).toMatchObject({
       reason: "organizationCancelled",
-      recipients: ["Juan Gómez"],
+      recipients: ["Ana Admin"],
     });
   });
 
-  it("reaches the cancelled appointment's practitioner though the patient answered the cancellation before", async () => {
+  it("reaches the handoff contacts though the patient answered the cancellation before", async () => {
     await approveTemplate("turno_cancelado", "900000000000022");
     const martina = await world.addPatient("Martina", martinaPhone);
     const booking = {
@@ -412,42 +399,15 @@ describe("an appointment the organization cancelled", () => {
     await writes("me das otro horario?");
     scriptedModel.script((one) => {
       one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "organization_cancelled", });
+      one.call("hand_off", { reason: "organization_cancelled" });
       return "";
     });
 
     await turn();
 
     expect(await openHandoffs()).toEqual([
-      expect.objectContaining({ reason: "organizationCancelled", recipients: ["Juan Gómez"] }),
+      expect.objectContaining({ reason: "organizationCancelled", recipients: ["Lucía Díaz"] }),
     ]);
-  });
-
-  it("is not clinical, so it reaches a practitioner who keeps no clinical records", async () => {
-    await approveTemplate("turno_cancelado", "900000000000022");
-    const appointmentId = await bookMartina();
-    await juanKeepsNoClinicalRecords();
-    expectOk(
-      await world.organization.cancelAppointment(adminCaller, {
-        appointmentId,
-        cancelledBy: "business",
-      }),
-    );
-    await runDurableObjectAlarm(world.organization);
-    vi.setSystemTime(Date.now() + 60_000);
-    await writes("me das otro horario?");
-    scriptedModel.script((one) => {
-      one.call("judge_messages", notClinical);
-      one.call("hand_off", { reason: "organization_cancelled", });
-      return "";
-    });
-
-    await turn();
-
-    expect((await openHandoffs())[0]).toMatchObject({
-      forPractitioner: false,
-      recipients: ["Juan Gómez"],
-    });
   });
 });
 
@@ -491,7 +451,7 @@ describe("answering a follow-up", () => {
     ]);
   });
 
-  it("hands an answer the model could not read to the follow-up's practitioner", async () => {
+  it("hands an answer the model could not read to reception, not to the follow-up's practitioner", async () => {
     await followUpSent();
     const sentAt = Date.now();
     await writes("me sigue doliendo");
@@ -509,7 +469,11 @@ describe("answering a follow-up", () => {
     }
 
     expect(await openHandoffs()).toEqual([
-      expect.objectContaining({ reason: "modelUnavailable", recipients: ["Juan Gómez"] }),
+      expect.objectContaining({
+        reason: "modelUnavailable",
+        forPractitioner: false,
+        recipients: ["Ana Admin"],
+      }),
     ]);
   });
 
@@ -611,7 +575,10 @@ describe("answering a follow-up", () => {
 
     await turn();
 
-    expect((await openHandoffs())[0]).toMatchObject({ forPractitioner: true, recipients: ["Juan Gómez"] });
+    expect((await openHandoffs())[0]).toMatchObject({
+      forPractitioner: true,
+      recipients: ["Juan Gómez"],
+    });
   });
 
   it("hands any other answer to the practitioner as clinical", async () => {
@@ -631,9 +598,11 @@ describe("answering a follow-up", () => {
       recipients: ["Juan Gómez"],
     });
     expect((await openHandoffs(world.receptionist))[0]!.lastPatientMessage).toMatchObject({
-      withheld: "clinical",
+      text: "bien, pero me molesta un poco al masticar",
     });
-    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([handedOffText]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Le paso tu consulta a Juan Gómez.",
+    ]);
   });
 });
 
@@ -650,18 +619,7 @@ describe("an open handoff", () => {
     fakeMeta.requests = [];
   }
 
-  it("keeps the assistant silent in the conversation, though it still judges", async () => {
-    await handedOff();
-    await writes("hola? cuándo es mi turno?");
-
-    await turn();
-
-    expect(scriptedModel.turns).toHaveLength(2);
-    expect(fakeMeta.textsSent()).toEqual([]);
-    expect(await openHandoffs()).toHaveLength(1);
-  });
-
-  it("gets a clinical handoff beside it for a clinical message, and no other", async () => {
+  it("gets a handoff to the practitioner beside it for what needs one, and no second", async () => {
     await handedOff();
     await writes("y me duele la muela");
     scriptedModel.script((one) => {
@@ -676,15 +634,17 @@ describe("an open handoff", () => {
     });
     await turn();
 
-    expect((await openHandoffs()).map((one) => one.clinical)).toEqual([true, false]);
-    expect(fakeMeta.textsSent()).toEqual([]);
+    expect((await openHandoffs()).map((one) => one.forPractitioner)).toEqual([true, false]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Le paso tu consulta al profesional.",
+    ]);
   });
 
   it("stays open once its notification is read", async () => {
     await handedOff();
-    const listed = expectOk(await world.organization.listNotifications(world.juan.caller));
+    const listed = expectOk(await world.organization.listNotifications(adminCaller));
     expectOk(
-      await world.organization.markNotificationRead(world.juan.caller, {
+      await world.organization.markNotificationRead(adminCaller, {
         notificationId: listed.notifications[0]!.id,
       }),
     );
@@ -754,11 +714,12 @@ describe("an open handoff", () => {
     expect(await openHandoffs()).toHaveLength(1);
   });
 
-  it("is not listed to a practitioner it does not concern", async () => {
+  it("is not listed to a practitioner it was not handed to, the appointment's included", async () => {
     await handedOff();
 
     expect(await openHandoffs(world.lucia.caller)).toEqual([]);
-    expect(await openHandoffs(world.juan.caller)).toHaveLength(1);
+    expect(await openHandoffs(world.juan.caller)).toEqual([]);
+    expect(await openHandoffs(world.receptionist)).toHaveLength(1);
   });
 });
 
@@ -854,7 +815,8 @@ describe("what the patient is told on a handoff (#290)", () => {
     await turn();
 
     const reasons = (await notifiedOfHandoff(solo.caller)).map((one) => one?.reason);
-    expect(reasons.sort()).toEqual(["clinical", "patientAsked"]);
+    expect(reasons).toEqual(expect.arrayContaining(["clinical", "patientAsked"]));
+    expect(reasons).toHaveLength(2);
     expect((await openHandoffs(solo.caller)).map((one) => one.mayAnswer)).toEqual([true, true]);
   });
 });
@@ -948,5 +910,34 @@ describe("a photo from the patient (#290)", () => {
     expect(
       await world.organization.passToPractitioner(world.receptionist, { handoffId: opened!.id }),
     ).toEqual({ ok: false, reason: "notFound" });
+  });
+});
+
+describe("a burst that mixes an easy request with one for the practitioner (#290)", () => {
+  it("does the easy part, says it after the clinical check, then hands the rest to the practitioner", async () => {
+    const appointmentId = await bookMartina();
+    await writes("Hola, quería confirmar el turno del lunes");
+    await writes("Me sigue doliendo la muela de abajo, es normal?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { needsPractitioner: true, emergency: false });
+      one.call("propose_change", { appointmentId, kind: "confirm" });
+      one.call("accept_proposal");
+      one.call("hand_off", { reason: "clinical", appointmentId });
+      return "Listo, confirmado el lunes.";
+    });
+
+    await turn();
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(scriptedModel.checks.map((check) => check.reply)).toEqual([
+      "Listo, confirmado el lunes.",
+    ]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Listo, confirmado el lunes.",
+      "Le paso tu consulta a Juan Gómez.",
+    ]);
+    expect(await openHandoffs()).toMatchObject([
+      { forPractitioner: true, recipients: ["Juan Gómez"] },
+    ]);
   });
 });
