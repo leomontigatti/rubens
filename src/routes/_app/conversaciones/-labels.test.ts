@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  byDay,
   conversationName,
+  dayLabel,
+  messageClock,
   messageSender,
   messageText,
+  registeredName,
 } from "#/routes/_app/conversaciones/-labels.ts";
 
 describe("who a conversation is with", () => {
@@ -19,9 +23,22 @@ describe("who a conversation is with", () => {
   it("falls back to the number, written the local way, when it stands for no patient", () => {
     expect(conversationName({ phone: "+5493515551234", patients: [] })).toBe("0351 15-555-1234");
   });
+
+  it("names no one in the list's contact when the number stands for no patient", () => {
+    expect(registeredName({ patients: [] })).toBeNull();
+    expect(registeredName({ patients: [{ id: "1", name: "Martina Paz" }] })).toBe("Martina Paz");
+  });
 });
 
 describe("a message's text", () => {
+  it("says a message the assistant has not checked yet shows once it does", () => {
+    const unchecked = { id: "1", direction: "incoming", sentAt: 0, withheld: "notJudged" } as const;
+
+    expect(messageText(unchecked)).toBe(
+      "Mensaje sin revisar. Se muestra cuando el asistente lo revise.",
+    );
+  });
+
   it("names the type of a message with no words, such as a photo", () => {
     const photo = {
       id: "1",
@@ -70,6 +87,10 @@ describe("who wrote a message", () => {
     withheld: null,
   } as const;
 
+  it("names no one for the patient's own messages, which sit on their side of the chat", () => {
+    expect(messageSender({ ...reply, direction: "incoming", status: null })).toBeNull();
+  });
+
   it("names the member who replied from the inbox, and the assistant otherwise", () => {
     expect(messageSender({ ...reply, sentBy: "Rita Paz" })).toBe("Rita Paz");
     expect(messageSender(reply)).toBe("Asistente");
@@ -80,5 +101,57 @@ describe("who wrote a message", () => {
     expect(messageSender({ id: "1", direction: "outgoing", sentAt: 0, withheld: "clinical" })).toBe(
       "Profesional",
     );
+  });
+});
+
+describe("the chat's days", () => {
+  // Noon in Buenos Aires, where every office starts.
+  const now = Date.parse("2026-11-10T15:00:00Z");
+
+  it("names today and yesterday, and any other day by its weekday and date", () => {
+    expect(dayLabel(Date.parse("2026-11-10T12:00:00Z"), now)).toBe("Hoy");
+    expect(dayLabel(Date.parse("2026-11-09T12:00:00Z"), now)).toBe("Ayer");
+    expect(dayLabel(Date.parse("2026-11-03T12:00:00Z"), now)).toBe("Martes 3 de noviembre");
+  });
+
+  it("adds the year to a day of another year", () => {
+    expect(dayLabel(Date.parse("2025-11-03T12:00:00Z"), now)).toBe("Lunes 3 de noviembre de 2025");
+  });
+
+  it("counts days in the offices' zone, not in UTC", () => {
+    // 23:00 on the 9th in Buenos Aires, already the 10th in UTC.
+    expect(dayLabel(Date.parse("2026-11-10T02:00:00Z"), now)).toBe("Ayer");
+    expect(messageClock(Date.parse("2026-11-10T02:00:00Z"))).toBe("23:00");
+  });
+
+  it("finds yesterday in the offices' zone when the browser's zone changes its clocks", () => {
+    const browserZone = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      // 23:30 on March 8 in Buenos Aires, hours after New York moved its clocks forward.
+      const lateOnTheEighth = Date.parse("2026-03-09T02:30:00Z");
+
+      expect(dayLabel(Date.parse("2026-03-07T15:00:00Z"), lateOnTheEighth)).toBe("Ayer");
+    } finally {
+      // Assigning `undefined` would store the string "undefined".
+      if (browserZone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = browserZone;
+      }
+    }
+  });
+
+  it("groups the messages by the day they were sent, keeping their order", () => {
+    const sent = [
+      Date.parse("2026-11-09T12:00:00Z"),
+      Date.parse("2026-11-09T20:00:00Z"),
+      Date.parse("2026-11-10T12:00:00Z"),
+    ];
+
+    expect(byDay(sent, (at) => at, now)).toEqual([
+      { label: "Ayer", items: [sent[0], sent[1]] },
+      { label: "Hoy", items: [sent[2]] },
+    ]);
   });
 });

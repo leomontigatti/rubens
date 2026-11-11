@@ -28,7 +28,13 @@ import {
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
-import { WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
+import {
+  PatientBubble,
+  WhatsappBubble,
+  WhatsappChat,
+  WhatsappDay,
+} from "#/components/whatsapp-bubble.tsx";
+import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
 
 // Each pattern of docs/agents/style-guide.md, drawn once, so an agent or a
 // reviewer can compare a screen with it. Only `pnpm dev` serves this page.
@@ -357,6 +363,35 @@ function Patterns() {
             {
               "Hola Lucía, tu turno es el jueves 12 de noviembre a las 10:30.\n\nConsultorios Prueba"
             }
+          </WhatsappBubble>
+        </WhatsappChat>
+      </Pattern>
+      <Pattern title="Conversación de WhatsApp">
+        <WhatsappChat label="Mensajes">
+          <WhatsappDay>Hoy</WhatsappDay>
+          <PatientBubble footer="17:41">¿Puedo pasar el turno al viernes?</PatientBubble>
+          <WhatsappBubble
+            author="Rita Prueba"
+            footer={
+              <>
+                17:43
+                <WhatsappStatus status="read" />
+              </>
+            }
+          >
+            Sí, te lo pasamos al viernes 13 a las 10:30.
+          </WhatsappBubble>
+          <WhatsappBubble
+            author="Rita Prueba"
+            pending
+            footer={
+              <>
+                17:50
+                <WhatsappStatus status="waiting" />
+              </>
+            }
+          >
+            Te esperamos.
           </WhatsappBubble>
         </WhatsappChat>
       </Pattern>

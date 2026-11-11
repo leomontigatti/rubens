@@ -2,11 +2,9 @@ import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
-import { Badge } from "#/components/ui/badge.tsx";
 import { toast } from "#/components/ui/toast.tsx";
+import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
 import type { InboxMessage } from "#/organization/inbox.ts";
-
-import { statusLabels } from "#/routes/_app/conversaciones/-labels.ts";
 
 export const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -16,16 +14,12 @@ export const refusalMessages = {
   notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
 };
 
-/** An outgoing message's delivery, as a badge; failed is the one to act on. */
-export function StatusBadge({ message }: { message: InboxMessage }) {
+/** An outgoing message's delivery, as its icon; none for the patient's, or a message the reader may not read. */
+export function MessageStatus({ message }: { message: InboxMessage }) {
   if (message.withheld !== null || message.status === null) {
     return null;
   }
-  return (
-    <Badge variant={message.status === "failed" ? "destructive" : "secondary"}>
-      {statusLabels[message.status]}
-    </Badge>
-  );
+  return <WhatsappStatus status={message.status} />;
 }
 
 /**

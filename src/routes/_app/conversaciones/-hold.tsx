@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
+import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Field, FieldDescription, FieldLabel } from "#/components/ui/field.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
@@ -17,9 +18,11 @@ import { messageTime } from "#/routes/_app/conversaciones/-labels.ts";
 import { useInboxAction } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // Who answers the conversation: the assistant, or the member who took it
-// over. Anyone who reads it takes it over at any time; its holder replies to
-// the patient under their name, and gives it back. After the window closed
-// the reply waits behind the reopen template until the patient answers.
+// over, as a badge beside the page's title, with taking it over or giving it
+// back among the page's actions. Anyone who reads it takes it over at any
+// time; its holder replies to the patient under their name, and gives it
+// back. After the window closed the reply waits behind the reopen template
+// until the patient answers.
 
 const refusals = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -51,63 +54,61 @@ export interface ReplyDraft {
   text: string;
 }
 
-export function ConversationHolder(props: {
+/** Who answers the conversation, as the badge beside its title. */
+export function HoldBadge({ hold }: { hold: ConversationHold | null }) {
+  return <Badge variant="secondary">{hold ? `Tomada por ${hold.holder}` : "Asistente"}</Badge>;
+}
+
+/** The page header's action on the hold: take the conversation over, or give it back once held. */
+export function HoldActions(props: { conversationId: string; hold: ConversationHold | null }) {
+  const action = useHoldAction();
+  const data = { conversationId: props.conversationId };
+  return props.hold?.mine ? (
+    <Button
+      variant="outline"
+      disabled={action.running}
+      onClick={() => void action.run("return-conversation", () => returnConversation({ data }))}
+    >
+      Devolver al asistente
+    </Button>
+  ) : (
+    <Button
+      variant="outline"
+      disabled={action.running}
+      onClick={() =>
+        void action.run("take-over-conversation", () => takeOverConversation({ data }))
+      }
+    >
+      Tomar conversación
+    </Button>
+  );
+}
+
+/** The reply's box, for the member who holds the conversation; nothing for anyone else. */
+export function ReplyBox(props: {
   conversationId: string;
   hold: ConversationHold | null;
   window: ConversationWindow;
   draft: ReplyDraft | null;
 }) {
-  const { conversationId, hold } = props;
-  const action = useHoldAction();
-  const data = { conversationId };
-
-  const status = hold
-    ? `${hold.mine ? "La estás respondiendo vos" : `La está respondiendo ${hold.holder}`}. Vuelve al asistente el ${messageTime(hold.heldUntil)}.`
-    : "La responde el asistente.";
-
+  if (!props.hold?.mine) {
+    return null;
+  }
   return (
-    <section aria-label="Quién responde" className="flex flex-col gap-4 rounded-xl border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <p>{status}</p>
-        {hold?.mine ? (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={action.running}
-            onClick={() =>
-              void action.run("return-conversation", () => returnConversation({ data }))
-            }
-          >
-            Devolver al asistente
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={action.running}
-            onClick={() =>
-              void action.run("take-over-conversation", () => takeOverConversation({ data }))
-            }
-          >
-            Tomar conversación
-          </Button>
-        )}
-      </div>
-      {hold?.mine && (
-        <ReplyForm
-          key={props.draft?.id}
-          conversationId={conversationId}
-          window={props.window}
-          initialText={props.draft?.text ?? ""}
-        />
-      )}
-    </section>
+    <ReplyForm
+      key={props.draft?.id}
+      conversationId={props.conversationId}
+      window={props.window}
+      heldUntil={props.hold.heldUntil}
+      initialText={props.draft?.text ?? ""}
+    />
   );
 }
 
 function ReplyForm(props: {
   conversationId: string;
   window: ConversationWindow;
+  heldUntil: number;
   initialText: string;
 }) {
   const { running, run } = useHoldAction();
@@ -124,10 +125,11 @@ function ReplyForm(props: {
   }
 
   const { open, closesAt } = props.window;
-  const hint =
+  const sending =
     open && closesAt !== null
       ? `Le llega al paciente por WhatsApp con tu nombre. La ventana de conversación se cierra el ${messageTime(closesAt)}.`
       : "La ventana de conversación está cerrada: le enviamos al paciente una plantilla para reabrirla, y tu respuesta le llega con tu nombre cuando conteste.";
+  const hint = `${sending} La conversación vuelve al asistente el ${messageTime(props.heldUntil)}.`;
 
   return (
     <form
