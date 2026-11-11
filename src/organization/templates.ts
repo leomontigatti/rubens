@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { changedFields } from "#/lib/audit-fields.ts";
 import { timingColumns, timingOf, timingRank } from "#/lib/template-timing.ts";
@@ -62,20 +62,15 @@ function nameKey(name: string) {
  * case, or a new one by it is waiting for Meta to take its text.
  */
 function nameInUse(database: Database, name: string, exceptId: string | null) {
+  // Compared here, not by SQLite's `lower()`, which folds only ASCII letters (`Ñ`).
+  const folded = name.toLowerCase();
   return (
     submittingIn(database).has(nameKey(name)) ||
-    Boolean(
-      database
-        .select({ id: template.id })
-        .from(template)
-        .where(
-          and(
-            sql`lower(${template.name}) = lower(${name})`,
-            exceptId ? ne(template.id, exceptId) : undefined,
-          ),
-        )
-        .get(),
-    )
+    database
+      .select({ id: template.id, name: template.name })
+      .from(template)
+      .all()
+      .some((one) => one.id !== exceptId && one.name.toLowerCase() === folded)
   );
 }
 

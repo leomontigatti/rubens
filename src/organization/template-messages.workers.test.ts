@@ -374,6 +374,19 @@ describe("templates on and after the appointment's attendance", () => {
     expect(sentTemplates()).toEqual([metaTemplateName(drafts.followUp, 1)]);
   });
 
+  it("does not send it a second time when the appointment is marked attended again", async () => {
+    const { appointmentId } = await bookMartina();
+    vi.setSystemTime(endsAt + hours(30));
+    await markAttended(appointmentId);
+    await runDurableObjectAlarm(world.organization);
+
+    expectOk(await world.organization.undoAppointmentStatus(adminCaller, { appointmentId }));
+    await markAttended(appointmentId);
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual([metaTemplateName(drafts.followUp, 1)]);
+  });
+
   it("drops it when marking the appointment attended is undone", async () => {
     const { appointmentId } = await bookMartina();
     await markAttended(appointmentId);

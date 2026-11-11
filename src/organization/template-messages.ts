@@ -165,12 +165,42 @@ export function requeueOnStatus(
   if (nextStatus === "attended" && placed.status !== "attended") {
     const attended = readAppointment(tx, placed.id);
     if (attended) {
-      queueTimed(tx, attended, attendedTimings);
+      queueTimed(tx, attended, attendedTimings, notSentFor(tx, placed.id));
     }
   }
   if (placed.status === "attended" && nextStatus !== "attended") {
     dropQueued(tx, placed.id, attendedTimings);
   }
+}
+
+/**
+ * The templates its medical service picks that went to the appointment
+ * `appointmentId` on or after its attendance none of: marking it attended
+ * again, after an undo, does not send them twice.
+ */
+function notSentFor(tx: Writer, appointmentId: string) {
+  const sent = new Set(
+    tx
+      .select({ templateId: outboxMessage.templateId })
+      .from(outboxMessage)
+      .where(
+        and(
+          eq(outboxMessage.appointmentId, appointmentId),
+          eq(outboxMessage.state, "sent"),
+          inArray(outboxMessage.timing, [...attendedTimings]),
+        ),
+      )
+      .all()
+      .map((row) => row.templateId),
+  );
+  const booked = readAppointment(tx, appointmentId)!;
+  return tx
+    .select({ id: medicalServiceTemplate.templateId })
+    .from(medicalServiceTemplate)
+    .where(eq(medicalServiceTemplate.medicalServiceId, booked.medicalServiceId))
+    .all()
+    .map((row) => row.id)
+    .filter((id) => !sent.has(id));
 }
 
 /** The booked and confirmed appointments still ahead, of `medicalServiceIds`. */

@@ -116,6 +116,20 @@ describe("creating a template", () => {
     expect(fakeMeta.requests).toEqual([]);
   });
 
+  it("reads a name without case beyond ASCII letters too", async () => {
+    fakeMeta.answerNextWith(200, { id: "700", status: "PENDING", category: "UTILITY" });
+    expectOk(
+      await world.organization.createTemplate(adminCaller, { ...newTemplate, name: "Señal" }),
+    );
+
+    const answer = await world.organization.createTemplate(adminCaller, {
+      ...newTemplate,
+      name: "SEÑAL",
+    });
+
+    expect(answer).toEqual({ ok: false, reason: "nameTaken" });
+  });
+
   it("refuses a second template by a name a first one still waits for Meta with", async () => {
     fakeMeta.answerWith(200, { id: "700", status: "PENDING", category: "UTILITY" });
     const release = fakeMeta.holdNext();
