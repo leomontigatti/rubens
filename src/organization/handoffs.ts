@@ -13,7 +13,6 @@ import {
   handoff,
   handoffRecipient,
   outboxMessage,
-  template,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
@@ -155,13 +154,12 @@ export function answeredMessage(database: Database, conversationId: string, befo
   const latest = database
     .select({
       kind: outboxMessage.kind,
-      timing: template.timing,
+      timing: outboxMessage.timing,
       appointmentId: outboxMessage.appointmentId,
       sentAt: whatsappMessage.sentAt,
     })
     .from(whatsappMessage)
     .leftJoin(outboxMessage, eq(outboxMessage.whatsappMessageId, whatsappMessage.id))
-    .leftJoin(template, eq(template.id, outboxMessage.templateId))
     .where(
       and(
         eq(whatsappMessage.conversationId, conversationId),

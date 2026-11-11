@@ -328,6 +328,7 @@ class SandboxRun {
         .values({
           kind: "timed",
           templateId: reminder.id,
+          timing: "before",
           appointmentId: state.appointmentId,
           state: "sent",
           dueAt: state.messages[0]!.sentAt,

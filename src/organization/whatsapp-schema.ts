@@ -277,6 +277,9 @@ export const outboxMessage = sqliteTable(
     templateId: text("template_id")
       .notNull()
       .references(() => template.id),
+    // Its template's timing when it was queued, which judges it when it goes:
+    // a later retime of the template leaves a message already due as it was. None for an event's.
+    timing: text("timing", { enum: timingKinds }),
     attempts: integer("attempts").notNull().default(0),
     dropReason: text("drop_reason", { enum: outboxDropReasons }),
     // Meta's error on the latest failed attempt.

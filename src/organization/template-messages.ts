@@ -75,8 +75,8 @@ type Appointment = NonNullable<ReturnType<typeof readAppointment>>;
 
 /**
  * Queues the messages of `kinds` the appointment's medical service picks,
- * each for its time: one already past is skipped, not sent late. With
- * `only`, only those templates.
+ * each for its time: one before the appointment whose time has passed is
+ * skipped, not sent late. With `only`, only those templates.
  */
 function queueTimed(
   tx: Writer,
@@ -90,25 +90,29 @@ function queueTimed(
   const now = Date.now();
   const rows = pickedTemplates(tx, booked.medicalServiceId, kinds, only).flatMap((picked) => {
     const timing = timingOf(picked);
-    const dueAt = timing && timingDueAt(timing, booked, now);
-    return dueAt !== null && dueAt >= now
-      ? [{ kind: "timed" as const, appointmentId: booked.id, templateId: picked.id, dueAt }]
-      : [];
+    if (!timing) {
+      return [];
+    }
+    const dueAt = timingDueAt(timing, booked, now);
+    // Only what goes before the appointment is skipped once past; the rest is about a visit that took place.
+    return timing.when === "before" && dueAt < now
+      ? []
+      : [
+          {
+            kind: "timed" as const,
+            appointmentId: booked.id,
+            templateId: picked.id,
+            timing: timing.when,
+            dueAt,
+          },
+        ];
   });
   if (rows.length > 0) {
     tx.insert(outboxMessage).values(rows).run();
   }
 }
 
-/** The templates of the timings `kinds`. */
-function templatesTimed(tx: Writer, kinds: readonly TimingKind[]) {
-  return tx
-    .select({ id: template.id })
-    .from(template)
-    .where(inArray(template.timing, [...kinds]));
-}
-
-/** Drops the queued messages of `appointmentId` whose templates are timed `kinds`. */
+/** Drops the queued messages of `appointmentId` queued for the timings `kinds`. */
 function dropQueued(tx: Writer, appointmentId: string, kinds: readonly TimingKind[]) {
   tx.update(outboxMessage)
     .set({ state: "dropped", dropReason: "appointmentChanged" })
@@ -116,8 +120,7 @@ function dropQueued(tx: Writer, appointmentId: string, kinds: readonly TimingKin
       and(
         eq(outboxMessage.appointmentId, appointmentId),
         eq(outboxMessage.state, "queued"),
-        eq(outboxMessage.kind, "timed"),
-        inArray(outboxMessage.templateId, templatesTimed(tx, kinds)),
+        inArray(outboxMessage.timing, [...kinds]),
       ),
     )
     .run();

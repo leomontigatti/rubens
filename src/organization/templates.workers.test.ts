@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 import {
   addMember,
+  addRefusedAdmin,
   adminCaller,
   auditEntriesFor,
   expectOk,
@@ -115,6 +116,22 @@ describe("creating a template", () => {
     expect(fakeMeta.requests).toEqual([]);
   });
 
+  it("refuses a second template by a name a first one still waits for Meta with", async () => {
+    fakeMeta.answerWith(200, { id: "700", status: "PENDING", category: "UTILITY" });
+    const release = fakeMeta.holdNext();
+    const first = world.organization.createTemplate(adminCaller, newTemplate);
+    await fakeMeta.received(1);
+
+    const second = await world.organization.createTemplate(adminCaller, {
+      ...newTemplate,
+      name: "ESTUDIOS",
+    });
+    release();
+
+    expect(second).toEqual({ ok: false, reason: "nameTaken" });
+    expectOk(await first);
+  });
+
   it("creates nothing when Meta refuses the text", async () => {
     fakeMeta.answerWith(400, { error: { message: "Invalid parameter", code: 100 } });
 
@@ -182,12 +199,27 @@ describe("editing a template", () => {
     });
   });
 
-  it("saves nothing, name and timing included, when Meta refuses the changed text", async () => {
+  it("keeps the new name and timing when Meta refuses the changed text, and stores no version", async () => {
     fakeMeta.answerNextWith(400, { error: { message: "Invalid parameter", code: 100 } });
 
-    await world.organization.editTemplate(adminCaller, {
+    const answer = await world.organization.editTemplate(adminCaller, {
       templateId,
       body: `${body} Gracias.`,
+      settings: { name: "Estudios previos", timing: { when: "after", hours: 1 } },
+    });
+
+    expect(answer).toMatchObject({ ok: false, reason: "metaRefused" });
+    expect((await listed()).find((one) => one.id === templateId)).toMatchObject({
+      name: "Estudios previos",
+      timing: { when: "after", hours: 1 },
+      versions: [{ version: 1 }],
+    });
+  });
+
+  it("saves nothing when the changed text fails the rules check", async () => {
+    await world.organization.editTemplate(adminCaller, {
+      templateId,
+      body: "{{paciente}}, nos vemos",
       settings: { name: "Estudios previos", timing: { when: "after", hours: 1 } },
     });
 
@@ -266,11 +298,14 @@ describe("deleting a template", () => {
 });
 
 describe("who manages templates", () => {
-  it("is an admin only: reception and practitioners are refused creating, editing and deleting", async () => {
+  it("is a signed-in admin only: anyone else is refused creating, editing and deleting", async () => {
     const draftId = await templateNamed(world.organization, "Seguimiento");
     const callers = [
       await addMember(world.organization, ["receptionist"]),
       await addMember(world.organization, ["practitioner"]),
+      { userId: "user-stranger" },
+      await addRefusedAdmin(world.organization, "deactivated"),
+      await addRefusedAdmin(world.organization, "mustChangePassword"),
     ];
 
     const answers = await Promise.all(
@@ -285,9 +320,11 @@ describe("who manages templates", () => {
       ]),
     );
 
-    expect(answers.map((answer) => (answer.ok ? "done" : answer.reason))).toEqual(
-      Array(6).fill("forbidden"),
-    );
+    expect(answers.map((answer) => (answer.ok ? "done" : answer.reason))).toEqual([
+      ...Array(6).fill("forbidden"),
+      ...Array(6).fill("unauthenticated"),
+      ...Array(3).fill("mustChangePassword"),
+    ]);
     expect(fakeMeta.requests).toEqual([]);
   });
 });

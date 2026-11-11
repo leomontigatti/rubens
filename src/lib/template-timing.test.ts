@@ -24,13 +24,6 @@ describe("when a template goes", () => {
     expect(timingDueAt({ when: "attended" }, appointment, 7)).toBe(7);
   });
 
-  it("takes from 1 hour up to 30 days before or after, and nothing in between", () => {
-    expect(timingSchema.safeParse({ when: "before", hours: 720 }).success).toBe(true);
-    expect(timingSchema.safeParse({ when: "after", hours: 721 }).success).toBe(false);
-    expect(timingSchema.safeParse({ when: "before", hours: 0 }).success).toBe(false);
-    expect(timingSchema.safeParse({ when: "before", hours: 1.5 }).success).toBe(false);
-  });
-
   it("sorts in the order its messages go around one appointment", () => {
     const timings = [
       { when: "after", hours: 48 },

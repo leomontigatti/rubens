@@ -222,6 +222,30 @@ describe("a change of a template's timing", () => {
     expect(fakeMeta.requests).toEqual([]);
   });
 
+  it("queues for the timing stored last, when another admin retimes it while Meta reads a new text", async () => {
+    await bookMartina();
+    fakeMeta.answerWith(200, { id: "900000000000019", status: "PENDING", category: "UTILITY" });
+    const release = fakeMeta.holdNext();
+    const textSave = world.organization.editTemplate(adminCaller, {
+      templateId: drafts.dayBefore,
+      body: "Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}. Consultorios Prueba",
+      settings: { name: "Recordatorio del día", timing: { when: "before", hours: 24 } },
+    });
+    await fakeMeta.received(1);
+
+    await retime(drafts.dayBefore, { when: "before", hours: 48 });
+    release();
+    expectOk(await textSave);
+
+    const saved = expectOk(await world.organization.whatsappSettings(adminCaller)).templates.find(
+      (one) => one.id === drafts.dayBefore,
+    )!;
+    expect(saved.timing).toEqual({ when: "before", hours: 48 });
+    expect(await queued()).toEqual([
+      { templateId: drafts.dayBefore, dueAt: +nineOnMonday - hours(48) },
+    ]);
+  });
+
   it("leaves a message already due and waiting as it is, with no second one for its appointment", async () => {
     await bookMartina();
     await metaTurns("900000000000011", "paused");
@@ -233,6 +257,19 @@ describe("a change of a template's timing", () => {
     expect(await queued()).toEqual([
       { templateId: drafts.dayBefore, dueAt: +nineOnMonday - hours(24) },
     ]);
+  });
+
+  it("still sends a message already due and waiting as it was queued, once retimed to go after the appointment", async () => {
+    await bookMartina();
+    await metaTurns("900000000000011", "paused");
+    vi.setSystemTime(+nineOnMonday - hours(20));
+    await runDurableObjectAlarm(world.organization);
+
+    await retime(drafts.dayBefore, { when: "after", hours: 24 });
+    await metaTurns("900000000000011", "approved");
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual([metaTemplateName(drafts.dayBefore, 1)]);
   });
 
   it("queues nothing ahead once the template goes after the appointment, until it is attended", async () => {
@@ -325,6 +362,16 @@ describe("templates on and after the appointment's attendance", () => {
     await markAttended(appointmentId);
 
     expect(await queued()).toEqual([{ templateId: drafts.followUp, dueAt: endsAt + hours(24) }]);
+  });
+
+  it("still queues one marked attended after its time has passed, due at once", async () => {
+    const { appointmentId } = await bookMartina();
+    vi.setSystemTime(endsAt + hours(30));
+
+    await markAttended(appointmentId);
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentTemplates()).toEqual([metaTemplateName(drafts.followUp, 1)]);
   });
 
   it("drops it when marking the appointment attended is undone", async () => {

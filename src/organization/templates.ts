@@ -52,19 +52,30 @@ const templateColumns = {
   draft: template.draft,
 };
 
-/** Whether another template than `exceptId` is named `name`, read without case. */
-function nameInUse(tx: Writer, name: string, exceptId: string | null) {
-  return Boolean(
-    tx
-      .select({ id: template.id })
-      .from(template)
-      .where(
-        and(
-          sql`lower(${template.name}) = lower(${name})`,
-          exceptId ? ne(template.id, exceptId) : undefined,
-        ),
-      )
-      .get(),
+/** What holds name `name` while a new template by it waits for Meta (`submittingIn`). */
+function nameKey(name: string) {
+  return `name:${name.toLowerCase()}`;
+}
+
+/**
+ * Whether another template than `exceptId` is named `name`, read without
+ * case, or a new one by it is waiting for Meta to take its text.
+ */
+function nameInUse(database: Database, name: string, exceptId: string | null) {
+  return (
+    submittingIn(database).has(nameKey(name)) ||
+    Boolean(
+      database
+        .select({ id: template.id })
+        .from(template)
+        .where(
+          and(
+            sql`lower(${template.name}) = lower(${name})`,
+            exceptId ? ne(template.id, exceptId) : undefined,
+          ),
+        )
+        .get(),
+    )
   );
 }
 
@@ -122,21 +133,21 @@ function latestBody(database: Writer, templateId: string) {
     .get()?.body;
 }
 
-/** Runs `submit` while template `templateId` is held against a second submission of it. */
+/** Runs `submit` while `key`, a template's id or a new one's name, is held against a second submission. */
 async function holding<T>(
   database: Database,
-  templateId: string,
+  key: string,
   submit: () => Promise<T>,
 ): Promise<T | typeof alreadySubmitting> {
   const submitting = submittingIn(database);
-  if (submitting.has(templateId)) {
+  if (submitting.has(key)) {
     return alreadySubmitting;
   }
-  submitting.add(templateId);
+  submitting.add(key);
   try {
     return await submit();
   } finally {
-    submitting.delete(templateId);
+    submitting.delete(key);
   }
 }
 
@@ -167,7 +178,7 @@ export async function createTemplate(
     return { ok: false, reason: missing } as const;
   }
   const templateId = crypto.randomUUID();
-  const created = await holding(database, templateId, () =>
+  const created = await holding(database, nameKey(name), () =>
     submitVersion(database, cloud, acting, { templateId, body: checked.body }, (tx) => {
       tx.insert(template)
         .values({ id: templateId, name, ...timingColumns(timing) })
@@ -188,17 +199,22 @@ export async function createTemplate(
   return { ok: true, templateId } as const;
 }
 
-/** Writes `settings` on the organization's template `current`, audited, rebuilding its messages when its timing changed. */
+/** Writes `settings` on the organization's template `templateId`, audited, rebuilding its messages when its timing changed. */
 function saveSettings(
   tx: Writer,
   acting: Acting,
-  current: { id: string; name: string; timing: Timing | null },
+  templateId: string,
   settings: { name: string; timing: Timing } | null,
 ) {
-  if (!settings) {
+  const current = tx
+    .select(templateColumns)
+    .from(template)
+    .where(eq(template.id, templateId))
+    .get();
+  if (!settings || !current) {
     return;
   }
-  const before = { name: current.name, ...timingColumns(current.timing ?? settings.timing) };
+  const before = { name: current.name, timing: current.timing, timingHours: current.timingHours };
   const after = { name: settings.name, ...timingColumns(settings.timing) };
   const changed = changedFields(before, after);
   if (!changed) {
@@ -219,9 +235,9 @@ function saveSettings(
 
 /**
  * Saves template `input.templateId` as `acting`: its name and timing, for one
- * of the organization's own, at once; its text by submitting it to Meta when
- * it differs from the latest version's, and then nothing is saved unless
- * Meta takes it.
+ * of the organization's own, at once, though Meta then refuses the text; its
+ * text by submitting it to Meta when it differs from the latest version's.
+ * A text that fails the rules check saves nothing.
  */
 export async function editTemplate(
   database: Database,
@@ -235,7 +251,7 @@ export async function editTemplate(
   }
   const { templateId, settings } = parsed.data;
   const found = database
-    .select(templateColumns)
+    .select({ id: template.id })
     .from(template)
     .where(eq(template.id, templateId))
     .get();
@@ -249,24 +265,22 @@ export async function editTemplate(
   if (settings && nameInUse(database, settings.name, templateId)) {
     return nameTaken;
   }
-  const current = { ...found, timing: timingOf(found) };
   const body = parsed.data.body.trim();
-  if (body === latestBody(database, templateId)) {
-    database.transaction((tx) => saveSettings(tx, acting, current, settings));
-    return { ok: true, submitted: false } as const;
-  }
+  const changed = body !== latestBody(database, templateId);
   const checked = checkTemplateBody(templateVariables(templateId), body);
-  if (!checked.ok) {
+  if (changed && !checked.ok) {
     return { ok: false, reason: "invalidTemplate", problems: checked.problems } as const;
+  }
+  database.transaction((tx) => saveSettings(tx, acting, templateId, settings));
+  if (!changed || !checked.ok) {
+    return { ok: true, submitted: false } as const;
   }
   const missing = cloud.missingTemplateSetting();
   if (missing) {
     return { ok: false, reason: missing } as const;
   }
   const submitted = await holding(database, templateId, () =>
-    submitVersion(database, cloud, acting, { templateId, body: checked.body }, (tx) =>
-      saveSettings(tx, acting, current, settings),
-    ),
+    submitVersion(database, cloud, acting, { templateId, body: checked.body }, () => undefined),
   );
   return submitted.ok ? ({ ok: true, submitted: true } as const) : submitted;
 }

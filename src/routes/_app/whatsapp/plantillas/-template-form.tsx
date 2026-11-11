@@ -5,12 +5,13 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { timingEntry, timingFromEntry, timingSchema } from "#/lib/template-timing.ts";
+import { timingEntry, timingFromEntry } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
 import type { TemplateVariable } from "#/lib/template-filling.ts";
-import { templateVariables } from "#/lib/whatsapp-templates.ts";
+import { templateCreateSchema, templateVariables } from "#/lib/whatsapp-templates.ts";
 import type { TemplateProblem } from "#/lib/whatsapp-templates.ts";
 
 import { problemText, templateRefusalMessages } from "#/lib/whatsapp-template-copy.ts";
@@ -57,6 +58,24 @@ const whenOptions = [
 const sendTimeHint =
   "No escribas cuándo se envía (mañana, en 2 horas): usá {{fecha}} y {{hora}}. Escribí la firma del consultorio en lugar de [firma]. Hasta 1024 caracteres, sin empezar ni terminar con una variable.";
 
+/** The name and timing as the server takes them. */
+const settingsSchema = templateCreateSchema.pick({ name: true, timing: true });
+
+const settingsMessages = {
+  name: "Ingresá un nombre de hasta 80 caracteres.",
+  hours: "Ingresá de 1 hora a 30 días, en números enteros.",
+  when: "Elegí cuándo se envía.",
+};
+
+/** The refusals that come after an edit stored its name and timing: Meta's, and its settings'. */
+const settingsKept: string[] = [
+  "metaRefused",
+  "alreadySubmitting",
+  "connectionFailed",
+  "missingAccessToken",
+  "missingBusinessAccountId",
+];
+
 /** The body's problems, as the one problem under its field. */
 function bodyProblem(problems: TemplateProblem[]): FieldProblem[] {
   return [{ field: "body", message: problems.map(problemText).join(" ") }];
@@ -89,37 +108,52 @@ export function TemplateForm(props: {
       body: props.body,
     },
     onSubmit: async ({ value }) => {
-      const timing = timingSchema.safeParse(timingFromEntry(value.timing));
-      const name = value.name.trim();
-      if (settings && !name) {
-        page.showProblems([{ field: "name", message: "Ingresá el nombre." }]);
+      const checked = settingsSchema.safeParse({
+        name: value.name,
+        timing: timingFromEntry(value.timing),
+      });
+      if (settings && !checked.success) {
+        page.showProblems(
+          fieldProblems(checked.error.issues, messageIn(settingsMessages), {
+            hours: "timing.amount",
+            when: "timing.when",
+          }),
+        );
         return;
       }
-      if (settings && !timing.success) {
-        page.showProblems([
-          { field: "timing.amount", message: "Ingresá de 1 hora a 30 días, en números enteros." },
-        ]);
-        return;
-      }
-      // Meta's own words for a refusal, read inside the action.
-      const meta: { message: string | null } = { message: null };
+      // What a refusal said beyond its reason, read inside the action.
+      const refused: { reason: string | null; metaMessage: string | null } = {
+        reason: null,
+        metaMessage: null,
+      };
       const saved = await action.save(async () => {
         const result = await save({
           body: value.body,
-          settings: settings && timing.success ? { name, timing: timing.data } : null,
+          settings: settings && checked.success ? checked.data : null,
         });
         if (!result.ok && result.reason === "invalidTemplate") {
           page.showProblems(bodyProblem(result.problems));
         }
+        if (!result.ok) {
+          refused.reason = result.reason;
+        }
         if (!result.ok && result.reason === "metaRefused") {
-          meta.message = result.metaError.message;
+          refused.metaMessage = result.metaError.message;
         }
         return result.ok ? { ok: true } : { ok: false, reason: result.reason };
       });
       if (saved) {
         page.leave();
-      } else if (meta.message) {
-        action.setError(`${templateFormRefusals.metaRefused} ${meta.message}`);
+        return;
+      }
+      const message = refused.metaMessage
+        ? `${templateFormRefusals.metaRefused} ${refused.metaMessage}`
+        : refused.reason && templateFormRefusals[refused.reason as RefusalReason];
+      // An edit stores the name and timing before it sends the text, so only the text is lost.
+      if (message && templateId && settings && settingsKept.includes(refused.reason!)) {
+        action.setError(`${message} El nombre y cuándo se envía se guardaron.`);
+      } else if (refused.metaMessage) {
+        action.setError(message);
       }
     },
   });

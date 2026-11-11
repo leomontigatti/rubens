@@ -17,7 +17,7 @@ import {
   practitioner,
   room,
 } from "#/organization/schema.ts";
-import { outboxMessage, template, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
+import { outboxMessage, whatsappTemplate } from "#/organization/whatsapp-schema.ts";
 import { reopenToSend } from "#/organization/late-replies.ts";
 import { heldAppointmentIds } from "#/organization/opt-out-holds.ts";
 import { requeueBefore, upcomingStatuses } from "#/organization/template-messages.ts";
@@ -149,7 +149,7 @@ function readQueued(database: Database, id: string) {
       id: outboxMessage.id,
       kind: outboxMessage.kind,
       templateId: outboxMessage.templateId,
-      timing: template.timing,
+      timing: outboxMessage.timing,
       appointmentId: appointment.id,
       status: appointment.status,
       cancelledBy: appointment.cancelledBy,
@@ -165,7 +165,6 @@ function readQueued(database: Database, id: string) {
       timeZone: office.timeZone,
     })
     .from(outboxMessage)
-    .innerJoin(template, eq(template.id, outboxMessage.templateId))
     .innerJoin(appointment, eq(appointment.id, outboxMessage.appointmentId))
     .innerJoin(patient, eq(patient.id, appointment.patientId))
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
@@ -184,8 +183,8 @@ function isAttendedTiming(timing: TimingKind | null) {
 
 /**
  * Whether the appointment of `queued` is still what its message is about at
- * `now`: one that has not started or been cancelled; for a template timed on
- * or after its attendance, one still attended, however long ago
+ * `now`: one that has not started or been cancelled; for one queued on or
+ * after its attendance, one still attended, however long ago
  * (docs/domain/messages.md § When Meta limits the number); for
  * `turno_cancelado`, one the business cancelled that has not started. A
  * message timed before the appointment goes only while it is off the "to
