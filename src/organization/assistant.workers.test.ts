@@ -913,6 +913,64 @@ describe("a message the model could not read", () => {
     expect(await openHandoffs()).toEqual([]);
   });
 
+  it("gives a message newer than a person's reply its own turn when the reply lands during a retry", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("me duele la muela");
+    modelFails();
+    await afterTheWait();
+    const [listed] = expectOk(
+      await world.organization.listConversations(adminCaller, {}),
+    ).conversations;
+    expectOk(
+      await world.organization.takeOverConversation(world.receptionist, {
+        conversationId: listed!.id,
+      }),
+    );
+    const metaAnswers = fakeMeta.holdNext();
+    const replied = world.organization.replyToConversation(world.receptionist, {
+      conversationId: listed!.id,
+      text: "Martina, ya le aviso a Juan.",
+    });
+    while (textsToMeta().length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    wait(1_000);
+    await patientWrites("también se me hinchó la cara");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      await released;
+      turn.call("judge_messages", { healthQuestion: true, emergency: false });
+      return "";
+    });
+    wait(8_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    while (scriptedModel.turns.length < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    metaAnswers();
+    expectOk(await replied);
+    release();
+    await alarm;
+
+    expect(await judgementsShown()).toEqual(["notForPractitioner", "notJudged"]);
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", {
+        healthQuestion: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
+      return "";
+    });
+    await runAlarmsUntil(Date.now());
+    expect(scriptedModel.turns).toHaveLength(3);
+    expect(scriptedModel.turns[2]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: "[new messages]\ntambién se me hinchó la cara",
+    });
+    expect(await judgementsShown()).toEqual(["notForPractitioner", "forPractitioner"]);
+  });
+
   it("is handed to reception 6 hours before the window closes, with no reply to the patient", async () => {
     await bookPatient("Martina", martinaPhone);
     const sentAt = Date.now();

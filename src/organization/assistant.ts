@@ -26,6 +26,7 @@ import {
   answeredMeanwhile,
   clearFailedTurns,
   retryOrHandOff,
+  turnForTheRest,
 } from "#/organization/turn-retries.ts";
 import type { HandOffCall, Judgement } from "#/organization/turn-handoffs.ts";
 import type { Transcriber } from "#/organization/transcription.ts";
@@ -456,14 +457,17 @@ async function runTurn(
   } else {
     clearFailedTurns(database, conversationId);
   }
+  if (!turn) {
+    return;
+  }
   // A person answered the turn's words while the model read them: theirs is the answer.
   if (
-    !turn ||
     answeredMeanwhile(
       database,
       turn.read.unjudged.map((message) => message.id),
     )
   ) {
+    turnForTheRest(database, conversationId);
     return;
   }
   const { settled, practitioner, changed } = settleTurn(database, {
