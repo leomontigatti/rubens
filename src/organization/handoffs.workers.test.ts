@@ -1,5 +1,5 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { assistantWaitMs } from "#/lib/assistant.ts";
@@ -15,6 +15,7 @@ import {
   expectOk,
   fakeMeta,
   inStorage,
+  patientReacts,
   patientSends,
   patientWrites,
   scriptedModel,
@@ -24,7 +25,7 @@ import {
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
 import { practitioner } from "#/organization/schema.ts";
-import { handoff } from "#/organization/whatsapp-schema.ts";
+import { handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // Handoffs (docs/domain/assistant.md § Handoff), through the object's
 // methods: the assistant's turn opens one, its recipients are notified, the
@@ -632,6 +633,32 @@ describe("answering a follow-up", () => {
       forPractitioner: true,
       recipients: ["Juan Gómez"],
     });
+  });
+
+  it("still sorts the written answer as the first reply after a 😮 on the follow-up the patient took back", async () => {
+    await followUpSent();
+    const followUp = await inStorage(world.organization, (database) =>
+      database
+        .select({ whatsappId: whatsappMessage.whatsappId })
+        .from(whatsappMessage)
+        .where(eq(whatsappMessage.direction, "outgoing"))
+        .orderBy(desc(whatsappMessage.sentAt))
+        .get(),
+    );
+    const reaction = { from: martinaPhone, reactsTo: followUp!.whatsappId };
+    await patientReacts(world.organization, { ...reaction, emoji: "😮" });
+    await patientReacts(world.organization, { ...reaction, emoji: "" });
+    await writes("me molesta un poco al masticar");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, followUpAnswer: "other" });
+      return "";
+    });
+
+    await turn();
+
+    expect(await openHandoffs()).toMatchObject([
+      { reason: "followUpAnswer", forPractitioner: true, recipients: ["Juan Gómez"] },
+    ]);
   });
 
   it("hands a photo sent as the answer to reception, telling the patient nothing", async () => {
