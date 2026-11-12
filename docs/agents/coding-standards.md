@@ -139,6 +139,11 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   per-object in-flight set refuses a second call for the same key until the first
   settles, as `emailsInFlight` does for `createStaffMember` in
   `src/organization/staff.ts`.
+- **A query binds at most 100 parameters** in the object's SQLite, and throws past
+  that. A list that grows with the organization's data (members, patients, messages,
+  templates) is inserted a row per statement, as `notify()` in
+  `src/organization/notifications.ts` does, and reaches an `inArray` as a subquery,
+  never as an array of ids.
 - **Instants are integers**, Unix milliseconds in UTC; a span is `[start, end)`.
   Local times are derived from the office's IANA time zone, never stored bare.
 - **Clinical note versions are append-only** (ADR-0005). Editing a note adds a

@@ -91,10 +91,9 @@ function linkPatients(tx: Writer, conversationId: string, phone: string) {
   tx.delete(conversationPatient)
     .where(eq(conversationPatient.conversationId, conversationId))
     .run();
-  if (patients.length > 0) {
-    tx.insert(conversationPatient)
-      .values(patients.map(({ id }) => ({ conversationId, patientId: id })))
-      .run();
+  // A row per insert, as `notify` inserts: the object's SQLite binds at most 100 parameters a query.
+  for (const { id } of patients) {
+    tx.insert(conversationPatient).values({ conversationId, patientId: id }).run();
   }
 }
 

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { assistantWaitMs } from "#/lib/assistant.ts";
 
 import {
+  addMember,
   addRefusedAdmin,
   addStaff,
   adminCaller,
@@ -361,6 +362,21 @@ describe("a number with nothing booked to talk about", () => {
 
     expect(await notifiedOfHandoff(adminCaller)).toHaveLength(1);
     expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
+  });
+
+  it("opens for more admins than one statement binds, and notifies each", async () => {
+    const admins = [adminCaller];
+    for (let added = 0; added < 60; added++) {
+      admins.push(await addMember(world.organization, ["admin"]));
+    }
+    await writes("hola", unknownPhone);
+
+    await turn();
+
+    expect(await openHandoffs()).toHaveLength(1);
+    for (const admin of admins) {
+      expect(await notifiedOfHandoff(admin)).toHaveLength(1);
+    }
   });
 });
 

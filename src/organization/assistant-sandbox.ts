@@ -307,19 +307,20 @@ class SandboxRun {
         misunderstandings: state.misunderstandings,
       })
       .run();
-    database
-      .insert(whatsappMessage)
-      .values(
-        state.messages.map((message, index) => ({
+    // A row per insert, as `notify` inserts: the object's SQLite binds at most 100 parameters a query.
+    for (const [index, message] of state.messages.entries()) {
+      database
+        .insert(whatsappMessage)
+        .values({
           ...message,
           id: this.#messageId(index),
           conversationId,
           whatsappId: `sandbox.${this.#messageId(index)}`,
           type: "text",
           payload: "{}",
-        })),
-      )
-      .run();
+        })
+        .run();
+    }
     const booked = database
       .select({ medicalServiceId: appointment.medicalServiceId })
       .from(appointment)
