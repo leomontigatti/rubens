@@ -1,7 +1,7 @@
 import { createFormHook, createFormHookContexts, useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { comboboxTextChange } from "#/components/combobox-text.ts";
@@ -9,6 +9,8 @@ import { DateInput, TimeInput } from "#/components/date-time-input.tsx";
 import { placeAttributes } from "#/components/field-size.ts";
 import type { FieldPlace } from "#/components/field-size.ts";
 import { FieldProblemText, useFieldProblem } from "#/components/field-problem.tsx";
+import { InsertChips } from "#/components/insert-chips.tsx";
+import type { TextInserts } from "#/components/insert-chips.tsx";
 
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -153,16 +155,29 @@ function TextareaField(
     required?: boolean;
     /** What sits under the hint, such as the text as it will be sent. */
     preview?: ReactNode;
+    /** The chips above the box, each writing its text in at the cursor, and what the row is called. */
+    inserts?: TextInserts;
   },
 ) {
-  const { label, hint, required, preview } = props;
+  const { label, hint, required, preview, inserts } = props;
   const field = useFieldContext<string>();
   const { problem, errorId, invalid } = useFieldProblem(field.name);
   const hintId = hint ? `${field.name}-hint` : undefined;
+  const box = useRef<HTMLTextAreaElement>(null);
+
   return (
     <Field {...placeAttributes(props, "full")} data-invalid={invalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      {inserts && (
+        <InsertChips
+          {...inserts}
+          box={box}
+          value={field.state.value}
+          onChange={field.handleChange}
+        />
+      )}
       <Textarea
+        ref={box}
         id={field.name}
         name={field.name}
         required={required}

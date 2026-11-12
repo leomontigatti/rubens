@@ -233,6 +233,25 @@ function PatternMultiCombobox() {
   );
 }
 
+/** A text with chips above it, each writing its piece of text in at the cursor. */
+function PatternTextInserts() {
+  const form = useAppForm({ defaultValues: { body: "Hola , te esperamos." } });
+  const inserts = {
+    label: "Insertar variable",
+    options: [
+      { label: "Paciente", text: "{{paciente}}" },
+      { label: "Fecha", text: "{{fecha}}" },
+    ],
+  };
+  return (
+    <FormGrid>
+      <form.AppField name="body">
+        {(field) => <field.TextareaField label="Texto" inserts={inserts} />}
+      </form.AppField>
+    </FormGrid>
+  );
+}
+
 function PatternFieldSizes() {
   const form = useAppForm({
     defaultValues: {
@@ -393,6 +412,9 @@ function Patterns() {
       </Pattern>
       <Pattern title="Varios registros de una lista">
         <PatternMultiCombobox />
+      </Pattern>
+      <Pattern title="Texto con variables para insertar">
+        <PatternTextInserts />
       </Pattern>
       <Pattern title="Filtros">
         <div className="flex flex-wrap items-center gap-2">

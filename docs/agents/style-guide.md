@@ -238,6 +238,12 @@ carried over from en-escena.
   chip that removes it, the list searched by name, each option with a line that tells it apart,
   and its own lines for nothing to pick and for a search that finds nothing: a medical service's
   `Mensajes por WhatsApp`.
+- **A piece of text the user may write in, such as a template's variable, is a chip above the
+  text area** (`TextareaField`'s `inserts`): a row of `outline` `xs` buttons, each with a plus and
+  the variable's name in the user's terms (`Paciente`), between the label and the box. A press
+  writes it in at the cursor, over what is selected, and the focus goes back to the box after it.
+  The text stays plain: no chips inside it and no dragging. The template form's chips are the
+  variables its check allows (`templateVariables`): `/whatsapp/plantillas/$templateId`.
 - **A `Checkbox` for a boolean submitted with the form**; a switch, once there is one, for a
   setting that takes effect on its own and reads as on or off.
 - **A long form splits into titled sections**, never cards nested in cards.

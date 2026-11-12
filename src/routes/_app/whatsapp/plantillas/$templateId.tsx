@@ -52,14 +52,10 @@ function EditTemplate() {
     return <RefusalMessage message={notFound} />;
   }
   return (
-    <div className="flex flex-col gap-6">
-      {/* Keyed: another template's page starts afresh, not from this one's state. */}
-      <EditForm key={template.id} template={template} organizationName={listed.organizationName} />
-      <TemplateVersions
-        key={template.id}
-        versions={template.versions}
-        organizationName={listed.organizationName}
-      />
+    // Keyed: another template's page starts afresh, not from this one's state.
+    <div key={template.id} className="flex flex-col gap-6">
+      <EditForm template={template} organizationName={listed.organizationName} />
+      <TemplateVersions versions={template.versions} organizationName={listed.organizationName} />
     </div>
   );
 }
