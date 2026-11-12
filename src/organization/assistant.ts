@@ -8,6 +8,7 @@ import {
   assistantSystemPrompt,
   assistantToolSchemas,
   newMessagesMark,
+  withdrawnReplyNote,
   withoutMark,
 } from "#/lib/assistant.ts";
 
@@ -19,6 +20,7 @@ import { currentCommunicationRules } from "#/organization/communication-rules.ts
 import type { Database } from "#/organization/database.ts";
 import { answeredMessage, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import { reopensWithdrawn } from "#/organization/late-replies.ts";
 import { proposalTools } from "#/organization/proposals.ts";
 import {
   answeredMeanwhile,
@@ -230,6 +232,10 @@ export function readConversation(database: Database, conversationId: string) {
     patients: patientsOf(database, phone),
     unjudged,
     history,
+    withdrawn: reopensWithdrawn(
+      database,
+      history.map((message) => message.id),
+    ),
   };
 }
 
@@ -258,7 +264,10 @@ function asTurnMessages(read: Read): TurnMessage[] {
   const contentOf = (message: Read["history"][number]) => {
     // A voice note nobody could understand has no words.
     const content = message.text || `[${message.type}]`;
-    return message.direction === "incoming" ? withoutMark(content) : content;
+    if (message.direction === "incoming") {
+      return withoutMark(content);
+    }
+    return read.withdrawn.has(message.id) ? `${content}\n${withdrawnReplyNote}` : content;
   };
   const messages: TurnMessage[] = [];
   for (const message of read.history) {

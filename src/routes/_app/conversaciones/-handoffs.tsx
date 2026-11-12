@@ -1,28 +1,21 @@
-import { ArrowRightLeftIcon } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
-import type { DataTableColumn } from "#/components/data-table.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
-import { formatPhone } from "#/lib/phones.ts";
 import { closeHandoff, dropHeldReply, passToPractitioner } from "#/server/inbox.functions.ts";
 import type { OpenHandoff } from "#/organization/handoff-inbox.ts";
+import type { ListedHandoff } from "#/organization/inbox.ts";
 
-import {
-  conversationName,
-  messageText,
-  messageTime,
-} from "#/routes/_app/conversaciones/-labels.ts";
 import { useInboxAction } from "#/routes/_app/conversaciones/-messages.tsx";
 
-// The open handoffs (ui: "Derivaciones") in the inbox: above the
-// conversations, and on the conversation each belongs to, where whoever may
-// answer it closes it without a reply, and whoever reads one to reception
-// passes it to the practitioner. A reply the clinical check held shows to
+// The open handoffs (ui: "Derivaciones") in the inbox: in the list's
+// `Derivación` column, and in the header of the conversation each belongs
+// to, where whoever may answer it closes it without a reply, and whoever
+// reads one to reception passes it to the practitioner. One to the
+// practitioner is marked `Clínica`. A reply the clinical check held shows to
 // every reader: a practitioner who keeps clinical records sends it or fixes
 // it in the reply's box, and anyone drops it.
 
@@ -40,176 +33,156 @@ const passRefusals = {
   withPractitioner: "Ya hay una derivación al profesional abierta en esta conversación.",
 };
 
-function recipientsText(recipients: string[]) {
-  return recipients.length > 0 ? recipients.join(", ") : "Sin destinatarios";
+const names = new Intl.ListFormat("es", { type: "conjunction" });
+
+/** Who the handoff went to: `Derivada a Rita Paz y Juan Gómez`. */
+function sentTo(handoff: Pick<ListedHandoff, "recipients">) {
+  return handoff.recipients.length > 0
+    ? `Derivada a ${names.format(handoff.recipients)}`
+    : "Derivada sin destinatarios";
 }
 
-function Reason({ handoff }: { handoff: OpenHandoff }) {
-  return (
-    <span className="flex items-center gap-2">
-      {handoffReasonLabel(handoff.reason, handoff.media)}
-      {handoff.forPractitioner && <Badge variant="info">Para el profesional</Badge>}
-    </span>
-  );
+function reasonOf(handoff: Pick<ListedHandoff, "reason" | "media">) {
+  return handoffReasonLabel(handoff.reason, handoff.media);
 }
 
-type HandoffRow = OpenHandoff & { name: string };
-
-const columns: DataTableColumn<HandoffRow>[] = [
-  {
-    id: "name",
-    header: "Contacto",
-    cell: (handoff) => (
-      <RowLink
-        to="/conversaciones/$conversationId"
-        params={{ conversationId: handoff.conversationId }}
-      >
-        {handoff.name}
-      </RowLink>
-    ),
-  },
-  { id: "reason", header: "Motivo", cell: (handoff) => <Reason handoff={handoff} /> },
-  { id: "to", header: "Derivada a", cell: (handoff) => recipientsText(handoff.recipients) },
-  {
-    id: "last",
-    header: "Último mensaje",
-    cell: ({ lastPatientMessage }) => (
-      <span className="text-muted-foreground block max-w-sm truncate">
-        {lastPatientMessage ? messageText(lastPatientMessage) : ""}
-      </span>
-    ),
-  },
-  { id: "at", header: "Fecha", cell: (handoff) => messageTime(handoff.createdAt) },
-];
-
-/** Every open handoff the member sees, newest first; nothing when there is none. */
-export function OpenHandoffList({ handoffs }: { handoffs: OpenHandoff[] }) {
-  const { table, pager, query, setQuery } = useClientDataTable({
-    rows: handoffs.map((handoff) => ({ ...handoff, name: conversationName(handoff) })),
-    columns,
-    getRowId: (handoff) => handoff.id,
-    searchText: (handoff) => `${handoff.name} ${formatPhone(handoff.phone)} ${handoff.phone}`,
-  });
-  if (handoffs.length === 0) {
-    return null;
-  }
-  return (
-    <section aria-labelledby="open-handoffs" className="flex flex-col gap-3">
-      <h2 id="open-handoffs" className="text-base font-semibold">
-        Derivaciones abiertas
-      </h2>
-      <DataTable
-        table={table}
-        pager={pager}
-        search={{
-          value: query,
-          onChange: setQuery,
-          label: "Buscar derivación",
-          placeholder: "Buscar por paciente o teléfono",
-        }}
-        empty={<NoMatches icon={ArrowRightLeftIcon} />}
-      />
-    </section>
-  );
+function ClinicalBadge() {
+  return <Badge variant="info">Clínica</Badge>;
 }
 
-/**
- * The conversation's open handoffs, each with `Cerrar sin responder` for
- * whoever may answer it, and a held reply for its recipients.
- */
-export function ConversationHandoffs(props: {
-  handoffs: OpenHandoff[];
-  /** Puts a held reply in the reply's box. */
-  onUseReply: (text: string) => void;
-}) {
-  if (props.handoffs.length === 0) {
-    return null;
-  }
+/** A conversation's open handoffs in the list's `Derivación` column: why, to whom, and whether clinical. */
+export function HandoffSummary({ handoffs }: { handoffs: ListedHandoff[] }) {
   return (
-    <section aria-label="Derivaciones abiertas" className="flex flex-col gap-2">
-      {props.handoffs.map((handoff) => (
-        <HandoffNotice key={handoff.id} handoff={handoff} onUseReply={props.onUseReply} />
+    <div className="flex flex-col gap-1">
+      {handoffs.map((handoff) => (
+        <div key={handoff.id} className="flex flex-col">
+          <span className="flex items-center gap-2">
+            {reasonOf(handoff)}
+            {handoff.forPractitioner && <ClinicalBadge />}
+          </span>
+          <span className="text-muted-foreground">{sentTo(handoff)}</span>
+        </div>
       ))}
-    </section>
+    </div>
   );
 }
 
-function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string) => void }) {
-  const { handoff } = props;
-  const data = { handoffId: handoff.id };
-  const close = useInboxAction(closeRefusals);
+/** The header's badge for each open handoff, beside who answers the conversation. */
+export function HandoffBadges({ handoffs }: { handoffs: OpenHandoff[] }) {
+  return handoffs.map((handoff) => (
+    <Badge key={handoff.id} variant={handoff.forPractitioner ? "info" : "outline"}>
+      {sentTo(handoff)}
+      {handoff.forPractitioner && " · Clínica"}
+    </Badge>
+  ));
+}
+
+/** The header's description: the number, then why each handoff was made and what the assistant leaves to it. */
+export function HandoffDescription(props: { phone: string; handoffs: OpenHandoff[] }) {
+  return (
+    <div className="text-muted-foreground flex flex-col gap-0.5 text-sm">
+      <p>{props.phone}</p>
+      {props.handoffs.map((handoff) => (
+        <p key={handoff.id}>
+          {reasonOf(handoff)} · el asistente no responde sobre esto hasta que se cierre
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** The header's actions on the open handoffs: `Pasar al profesional`, and `Cerrar sin responder` for whoever may answer. */
+export function HandoffActions({ handoffs }: { handoffs: OpenHandoff[] }) {
+  const closable = handoffs.filter((handoff) => handoff.mayAnswer);
+  return (
+    <>
+      {handoffs
+        .filter((handoff) => handoff.mayPass)
+        .map((handoff) => (
+          <PassButton key={handoff.id} handoffId={handoff.id} />
+        ))}
+      {closable.map((handoff) => (
+        <CloseButton
+          key={handoff.id}
+          handoff={handoff}
+          label={
+            closable.length > 1 && handoff.forPractitioner
+              ? "Cerrar sin responder · Clínica"
+              : "Cerrar sin responder"
+          }
+        />
+      ))}
+    </>
+  );
+}
+
+function PassButton({ handoffId }: { handoffId: string }) {
   const pass = useInboxAction(passRefusals);
   const [confirming, setConfirming] = useState(false);
-  const [passing, setPassing] = useState(false);
   return (
-    <div className="flex flex-col gap-4 rounded-xl border p-4 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-muted-foreground">
-            Derivación abierta: una persona responde lo derivado, y el asistente sigue con lo demás.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">
-              <Reason handoff={handoff} />
-            </span>
-            <span className="text-muted-foreground">
-              Derivada a {recipientsText(handoff.recipients)} · {messageTime(handoff.createdAt)}
-            </span>
-          </div>
-        </div>
-        {(handoff.mayPass || handoff.mayAnswer) && (
-          <div className="flex flex-wrap gap-2">
-            {handoff.mayPass && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pass.running}
-                onClick={() => setPassing(true)}
-              >
-                {pass.running && <Spinner data-icon="inline-start" aria-hidden />}
-                Pasar al profesional
-              </Button>
-            )}
-            {handoff.mayAnswer && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={close.running}
-                onClick={() => setConfirming(true)}
-              >
-                {close.running && <Spinner data-icon="inline-start" aria-hidden />}
-                Cerrar sin responder
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-      {handoff.heldReply !== null && (
-        <HeldReply
-          handoffId={handoff.id}
-          text={handoff.heldReply}
-          onUse={handoff.mayUseHeldReply ? () => props.onUseReply(handoff.heldReply ?? "") : null}
-        />
-      )}
+    <>
+      <Button variant="outline" disabled={pass.running} onClick={() => setConfirming(true)}>
+        {pass.running && <Spinner data-icon="inline-start" aria-hidden />}
+        Pasar al profesional
+      </Button>
       <ConfirmDialog
-        open={passing}
-        onOpenChange={setPassing}
+        open={confirming}
+        onOpenChange={setConfirming}
         title="¿Pasar la derivación al profesional?"
         description="Le llega al profesional del turno, o a los contactos de derivación que llevan historias clínicas, y la responde él. Al paciente no le enviamos nada."
         confirmLabel="Pasar al profesional"
         destructive={false}
-        onConfirm={() => void pass.run("pass-to-practitioner", () => passToPractitioner({ data }))}
+        onConfirm={() =>
+          void pass.run("pass-to-practitioner", () => passToPractitioner({ data: { handoffId } }))
+        }
       />
+    </>
+  );
+}
+
+function CloseButton(props: { handoff: OpenHandoff; label: string }) {
+  const close = useInboxAction(closeRefusals);
+  const [confirming, setConfirming] = useState(false);
+  const data = { handoffId: props.handoff.id };
+  return (
+    <>
+      <Button variant="outline" disabled={close.running} onClick={() => setConfirming(true)}>
+        {close.running && <Spinner data-icon="inline-start" aria-hidden />}
+        {props.label}
+      </Button>
+      {/* Closing loses nothing: a reply can still follow, so it is not a destructive action. */}
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
         title="¿Cerrar la derivación sin responder?"
-        description="Usalo cuando no queda nada que contestarle al paciente. La derivación deja de figurar como abierta."
+        description={`Usalo cuando no queda nada que contestarle al paciente. La derivación «${reasonOf(props.handoff)}» deja de figurar como abierta.`}
         confirmLabel="Cerrar derivación"
+        destructive={false}
         onConfirm={() => void close.run("close-handoff", () => closeHandoff({ data }))}
       />
-    </div>
+    </>
   );
+}
+
+/** The replies the clinical check held on the conversation's open handoffs. */
+export function HeldReplies(props: {
+  handoffs: OpenHandoff[];
+  /** Puts a held reply in the reply's box. */
+  onUseReply: (text: string) => void;
+}) {
+  return props.handoffs.flatMap((handoff) => {
+    const text = handoff.heldReply;
+    return text === null
+      ? []
+      : [
+          <HeldReply
+            key={handoff.id}
+            handoffId={handoff.id}
+            text={text}
+            onUse={handoff.mayUseHeldReply ? () => props.onUseReply(text) : null}
+          />,
+        ];
+  });
 }
 
 /**
@@ -221,7 +194,10 @@ function HeldReply(props: { handoffId: string; text: string; onUse: (() => void)
   const drop = useInboxAction(closeRefusals);
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="bg-muted/50 flex flex-col gap-3 rounded-lg p-3">
+    <section
+      aria-label="Respuesta retenida del asistente"
+      className="bg-muted/50 flex flex-col gap-3 rounded-lg p-3 text-sm"
+    >
       <div className="flex flex-col gap-1">
         <p className="font-medium">Respuesta retenida del asistente</p>
         <p className="text-muted-foreground">
@@ -258,6 +234,6 @@ function HeldReply(props: { handoffId: string; text: string; onUse: (() => void)
           )
         }
       />
-    </div>
+    </section>
   );
 }

@@ -88,6 +88,8 @@ export const conversationPageSize = 25;
 export const conversationListSchema = z.object({
   page: z.number().int().positive().default(1),
   query: z.string().trim().max(200).default(""),
+  /** Only the conversations with an open handoff. */
+  withHandoff: z.boolean().default(false),
 });
 
 export type ConversationListOptions = z.input<typeof conversationListSchema>;

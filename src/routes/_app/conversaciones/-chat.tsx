@@ -7,8 +7,10 @@ import {
   WhatsappDay,
 } from "#/components/whatsapp-bubble.tsx";
 import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
+import { formatDateTime } from "#/lib/dates.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
-import type { QueuedReopen, ShownLateReply } from "#/organization/late-replies.ts";
+import type { QueuedReopen, ShownLateReply, WithdrawnReply } from "#/organization/late-replies.ts";
 
 import {
   byDay,
@@ -22,18 +24,21 @@ import { MessageStatus } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // The conversation as the patient's phone shows it, by day, oldest first:
 // the messages, and what has not gone yet where it was written, the reopen
-// template before the replies that wait behind it.
+// template before the replies that wait behind it; and where a waiting reply
+// was withdrawn, a muted line saying who withdrew it, without its words.
 
 type ChatItem =
   | { kind: "message"; at: number; message: InboxMessage }
   | { kind: "reopen"; at: number; reopen: QueuedReopen }
-  | { kind: "lateReply"; at: number; reply: ShownLateReply };
+  | { kind: "lateReply"; at: number; reply: ShownLateReply }
+  | { kind: "withdrawn"; at: number; reply: WithdrawnReply };
 
 export function ConversationChat(props: {
   conversationId: string;
   messages: InboxMessage[];
   queuedReopen: QueuedReopen | null;
   lateReplies: ShownLateReply[];
+  withdrawnReplies: WithdrawnReply[];
 }) {
   // The day `Hoy` names, read once: a page left open past midnight keeps its labels until it reloads.
   const [now] = useState(() => Date.now());
@@ -49,6 +54,11 @@ export function ConversationChat(props: {
     ...props.lateReplies.map((reply) => ({
       kind: "lateReply" as const,
       at: reply.writtenAt,
+      reply,
+    })),
+    ...props.withdrawnReplies.map((reply) => ({
+      kind: "withdrawn" as const,
+      at: reply.withdrawnAt,
       reply,
     })),
   ];
@@ -91,6 +101,14 @@ function ChatBubble({
 }) {
   if (item.kind === "lateReply") {
     return <LateReplyBubble reply={item.reply} />;
+  }
+  if (item.kind === "withdrawn") {
+    return (
+      <p className="text-muted-foreground my-1 self-center text-xs">
+        {item.reply.writer} retiró una respuesta ·{" "}
+        {formatDateTime(item.reply.withdrawnAt, defaultTimeZone)}
+      </p>
+    );
   }
   if (item.kind === "reopen") {
     return (
