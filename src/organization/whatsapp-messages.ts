@@ -1,4 +1,4 @@
-import { and, eq, exists, gt, inArray, isNull, lte, max, ne, not, or } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, isNull, lte, max, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -147,13 +147,9 @@ function reactionsTo(conversationId: string, reactsTo: string) {
  */
 function replaceReactions(
   tx: Writer,
-  reaction: { conversationId: string; whatsappId: string; reactsTo: string; sentAt: number },
+  reaction: { conversationId: string; reactsTo: string; sentAt: number },
 ) {
-  // Not the reaction itself, which Meta may deliver again.
-  const to = and(
-    reactionsTo(reaction.conversationId, reaction.reactsTo),
-    ne(whatsappMessage.whatsappId, reaction.whatsappId),
-  );
+  const to = reactionsTo(reaction.conversationId, reaction.reactsTo);
   tx.update(whatsappMessage)
     .set({ judgement: "notForPractitioner" })
     .where(and(to, isNull(whatsappMessage.judgement), lte(whatsappMessage.sentAt, reaction.sentAt)))
@@ -167,14 +163,23 @@ function replaceReactions(
 }
 
 function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
+  // Meta delivers a message again: it replaces nothing a second time, as a later reaction
+  // sent in the same second, which Meta stamps alike.
+  const again = tx
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(eq(whatsappMessage.whatsappId, message.whatsappId))
+    .get();
+  if (again) {
+    return { whatsappId: message.whatsappId, alreadyStored: true };
+  }
   const conversationId = conversationWith(tx, message.from);
   const replaced =
     message.reactsTo !== undefined &&
     replaceReactions(tx, { conversationId, ...message, reactsTo: message.reactsTo });
   // A reaction taken back or replaced is ignored: no turn reads it, and one taken back opens no window (`lastIncomingAt`).
   const ignored = takesBack(message) || replaced;
-  const stored = tx
-    .insert(whatsappMessage)
+  tx.insert(whatsappMessage)
     .values({
       conversationId,
       whatsappId: message.whatsappId,
@@ -186,12 +191,7 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
       sentAt: message.sentAt,
       judgement: ignored ? "notForPractitioner" : undefined,
     })
-    .onConflictDoNothing({ target: whatsappMessage.whatsappId })
-    .returning({ id: whatsappMessage.id })
-    .get();
-  if (!stored) {
-    return { whatsappId: message.whatsappId, alreadyStored: true };
-  }
+    .run();
   linkPatients(tx, conversationId, message.from);
   if (ignored) {
     return { whatsappId: message.whatsappId, alreadyStored: false };

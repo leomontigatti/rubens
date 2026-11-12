@@ -349,6 +349,33 @@ describe("the patient's reactions", () => {
     expect(lastTurnRead().at(-1)).toBe(`[new messages]\n[reaccionó 👍 al mensaje: «${proposal}»]`);
   });
 
+  it("keeps the reaction the patient changed to in the same second when Meta delivers the first one again", async () => {
+    const address = await assistantAnswers("dónde queda?", "Av. Siempre Viva 123.");
+    const thumbsUp = {
+      whatsappId: "wamid.the-thumbs-up",
+      from: martinaPhone,
+      sentAt: Date.now(),
+      type: "reaction",
+      text: "👍",
+      reactsTo: address,
+      payload: "{}",
+    };
+    const call = { messages: [thumbsUp], statuses: [], templateStatuses: [] };
+    expectOk(await world.organization.storeWhatsappEvents(call));
+    await reacts(address, "❤️", thumbsUp.sentAt);
+
+    expectOk(await world.organization.storeWhatsappEvents(call));
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Gracias!";
+    });
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(
+      "[new messages]\n[reaccionó ❤️ al mensaje: «Av. Siempre Viva 123.»]",
+    );
+  });
+
   it("counts no failed turn once the only message a failed turn left is taken back", async () => {
     const reply = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
     await reacts(reply, "👍");
