@@ -275,6 +275,52 @@ describe("the patient's reactions", () => {
     expect(scriptedModel.turns).toHaveLength(turns);
   });
 
+  it("keeps a fresh 👍 that Meta delivers before the older take-back", async () => {
+    const proposal = "Confirmo tu Consulta con Juan Gómez del lunes 5 de enero a las 09:00?";
+    await writes("lo puedo confirmar?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return proposal;
+    });
+    await afterTheWait();
+    const proposed = await sentId(proposal);
+
+    await reacts(proposed, "👍", Date.now());
+    await reacts(proposed, "", Date.now() - 2_000);
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(`[new messages]\n[reaccionó 👍 al mensaje: «${proposal}»]`);
+  });
+
+  it("still tells the patient of a change accepted before they took the 👍 back", async () => {
+    const proposal = "Confirmo tu Consulta con Juan Gómez del lunes 5 de enero a las 09:00?";
+    await writes("lo puedo confirmar?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return proposal;
+    });
+    await afterTheWait();
+    const proposed = await sentId(proposal);
+    await reacts(proposed, "👍");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("accept_proposal");
+      await released;
+      return "Listo, quedó confirmado.";
+    });
+    const { alarm } = await alarmUntilTurn();
+
+    await reacts(proposed, "");
+    release();
+    await alarm;
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(fakeMeta.textsSent().map((one) => one.text)).toContain("Listo, quedó confirmado.");
+  });
+
   it("counts no failed turn once the only message a failed turn left is taken back", async () => {
     const reply = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
     await reacts(reply, "👍");
