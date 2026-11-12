@@ -7,7 +7,7 @@ import { es } from "date-fns/locale";
 // process's or the browser's, so the caller decides which zone a screen
 // shows. Formats a person, or the assistant, reads are written here only; the
 // `ui/no-raw-date-format` lint rule keeps them out of the other files. The
-// office hours a message waits for are read on the same clock.
+// hours a message waits for are read on the same clock.
 
 type Instant = Date | number;
 
@@ -69,8 +69,8 @@ export function formatPromptNow(instant: Instant, timeZone: string): string {
 
 /**
  * `instant` when its hour in the zone is from `hours.opens` up to `hours.closes`,
- * else the next `hours.opens` o'clock there: a message outside office hours waits
- * for the morning.
+ * else the next `hours.opens` o'clock there: a message outside the hours waits for
+ * the morning.
  */
 export function withinHours(
   instant: Instant,

@@ -28,11 +28,11 @@ import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 // for one to the practitioner only practitioners who keep clinical records. Each
 // reminder goes once per close, by the object's alarm, and none after the
 // close. The admin sets both times in the WhatsApp settings. A reminder that
-// falls outside office hours, fixed for now, waits for 08:00 in the
-// organization's zone, and does not go when the window closes first.
+// falls between 21:00 and 08:00 in the organization's zone, hours fixed for
+// now, waits for 08:00, and does not go when the window closes first.
 
 const hourMs = 60 * 60_000;
-const officeHours = { opens: 8, closes: 21 };
+const reminderHours = { opens: 8, closes: 21 };
 
 /** How many hours before the close each reminder goes, as the admin set them. */
 export function handoffReminders(database: Writer) {
@@ -107,9 +107,9 @@ interface Timing {
   timeZone: string;
 }
 
-/** When a reminder planned at `at` goes, held to office hours; `null` when that is not before the close. */
-function inOfficeHours(at: number, closesAt: number, timeZone: string) {
-  const held = withinHours(at, timeZone, officeHours);
+/** When a reminder planned at `at` goes, held to 08:00–21:00; `null` when that is not before the close. */
+function duringReminderHours(at: number, closesAt: number, timeZone: string) {
+  const held = withinHours(at, timeZone, reminderHours);
   return held < closesAt ? held : null;
 }
 
@@ -125,10 +125,10 @@ function countdownOf(one: CountingHandoff, closesAt: number, timing: Timing): Co
     conversationId: one.conversationId,
     forPractitioner: one.forPractitioner,
     closesAt,
-    recipientsAt: recipientsDone ? null : inOfficeHours(recipientsAt, closesAt, timeZone),
+    recipientsAt: recipientsDone ? null : duringReminderHours(recipientsAt, closesAt, timeZone),
     othersAt: othersDone
       ? null
-      : inOfficeHours(Math.max(othersAt, one.createdAt), closesAt, timeZone),
+      : duringReminderHours(Math.max(othersAt, one.createdAt), closesAt, timeZone),
     othersOnly: othersAt <= one.createdAt,
   };
 }
