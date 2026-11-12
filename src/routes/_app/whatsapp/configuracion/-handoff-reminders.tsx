@@ -11,7 +11,7 @@ import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 type Settings = Extract<Awaited<ReturnType<typeof getWhatsappSettings>>, { ok: true }>;
 
 export const handoffRemindersHint =
-  "Una derivación tiene que responderse antes de que cierre la ventana de WhatsApp, 24 horas después del último mensaje del paciente. A quien la recibe se le recuerda unas horas antes, y más cerca del cierre también a los demás que pueden responderla; si es clínica, solo a los profesionales que llevan historias clínicas.";
+  "Una derivación tiene que responderse antes de que cierre la ventana de WhatsApp, 24 horas después del último mensaje del paciente. A quien la recibe se le recuerda unas horas antes, y más cerca del cierre también a los demás que pueden responderla; si es clínica, solo a los profesionales que llevan historias clínicas. Un recordatorio que cae entre las 21 y las 8 espera hasta las 8, y no se envía si la ventana cierra antes.";
 
 function hoursBeforeText(hours: number) {
   return hours === 1 ? "1 hora antes del cierre" : `${hours} horas antes del cierre`;
