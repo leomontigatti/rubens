@@ -15,7 +15,9 @@
     ],
   },
   // Workers AI, which transcribes patients' voice notes (src/organization/transcription.ts).
-  "ai": { "binding": "AI" },
+  // It has no local simulator: `remote` says so, which quiets Wrangler's warning;
+  // the dev server and the tests still turn remote bindings off (vite.config.ts).
+  "ai": { "binding": "AI", "remote": true },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Organization"] },
     { "tag": "v2", "new_sqlite_classes": ["WhatsappDirectory"] },

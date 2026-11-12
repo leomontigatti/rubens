@@ -26,3 +26,18 @@ audit:
 overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@1.4.0
   vitest@*: 5.0.5
+
+# The agent skills these packages ship stay unlinked: a package's skills are
+# approved all or none, most are of no use here, and the ones that are get
+# installed one by one (docs/agents/agent-configuration.md).
+permissions:
+  "@tanstack/ai":
+    skills: false
+  "@tanstack/react-router":
+    skills: false
+  "@tanstack/react-start":
+    skills: false
+  "@tanstack/react-table":
+    skills: false
+  fallow:
+    skills: false

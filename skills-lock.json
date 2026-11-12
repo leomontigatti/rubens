@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "skills": {
+    "fallow": {
+      "source": "./node_modules/fallow",
+      "sourceType": "local",
+      "computedHash": "c5febaa190d26b9e84e00b45c30ee535131271018aa59fd06606ca10baa48be5"
+    },
+    "react-router": {
+      "source": "./node_modules/@tanstack/react-router",
+      "sourceType": "local",
+      "computedHash": "f4db2ec87b86dd83ea5c8922d5d1b566f5d68627b49e7dec77d2d5d5f822cb24"
+    },
+    "react-start": {
+      "source": "./node_modules/@tanstack/react-start",
+      "sourceType": "local",
+      "computedHash": "757c0b3d44f3ab6d5f7c7e3143d4ed9ad2b478efbb587d2d9225518f530af8d5"
+    },
+    "router-query": {
+      "source": "./node_modules/@tanstack/react-router",
+      "sourceType": "local",
+      "computedHash": "b02168c6d8af487b6e0965401514de4c09ee08e829b5329fb998d3538f374cf6"
+    }
+  }
+}
