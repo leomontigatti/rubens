@@ -332,7 +332,9 @@ function RefusalAlert({
 
 /**
  * `Volver` on the left; `Descartar cambios`, once it applies, and the submit
- * button on the right, after the note on what it does, if any.
+ * button on the right, after the note on what it does, if any. Below `sm` the
+ * submit takes a row of its own, full width, under the other two: three
+ * buttons and a long submit label do not fit a phone's width.
  */
 function FormPageActions(props: {
   page: FormPageControl;
@@ -345,8 +347,8 @@ function FormPageActions(props: {
   return (
     <div
       className={cn(
-        "bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4",
-        props.submitNote && "flex-wrap",
+        "bg-background sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t py-4",
+        !props.submitNote && "sm:flex-nowrap",
       )}
     >
       <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
@@ -359,14 +361,21 @@ function FormPageActions(props: {
           {props.submitNote}
         </p>
       )}
-      <div className="flex items-center gap-3">
+      {/* Below `sm`, its buttons sit in the bar's own rows. */}
+      <div className="contents sm:flex sm:items-center sm:gap-3">
         {props.discardable && page.dirty && (
-          <Button type="button" variant="outline" disabled={pending} onClick={page.askToDiscard}>
+          <Button
+            type="button"
+            variant="outline"
+            className="ml-auto sm:ml-0"
+            disabled={pending}
+            onClick={page.askToDiscard}
+          >
             <Undo2Icon data-icon="inline-start" aria-hidden />
             Descartar cambios
           </Button>
         )}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" className="basis-full sm:basis-auto" disabled={pending}>
           {pending ? (
             <Spinner data-icon="inline-start" aria-hidden />
           ) : (
