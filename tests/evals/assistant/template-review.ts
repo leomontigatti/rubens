@@ -4,6 +4,7 @@
 // the review on a scripted model only. On demand, never in CI:
 // `pnpm eval:template-review`. Exits 1 when either text gets the wrong answer.
 
+import { assistantModelId } from "../../../src/lib/assistant.ts";
 import { assistantModelFor } from "../../../src/organization/assistant-model.ts";
 
 import { findCandidate } from "./candidates.ts";
@@ -25,7 +26,8 @@ const texts = [
 const model = assistantModelFor({ ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY });
 if (model.missingSetting()) throw new Error("Set ANTHROPIC_API_KEY to run the template review");
 
-const haiku = findCandidate("claude-haiku-5-5");
+// Priced as the candidate of the model the app runs, by its label.
+const priced = findCandidate(assistantModelId);
 let failed = false;
 for (const text of texts) {
   const usage = { input: 0, cachedInput: 0, output: 0 };
@@ -44,7 +46,7 @@ for (const text of texts) {
   failed ||= !pass;
   console.log(
     JSON.stringify(
-      { text: text.name, pass, notes, latencyMs, usage, costUsd: costOf(haiku, usage) },
+      { text: text.name, pass, notes, latencyMs, usage, costUsd: costOf(priced, usage) },
       null,
       2,
     ),
