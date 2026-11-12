@@ -85,12 +85,18 @@ function knownAppointment(turn: TurnToSort, appointmentId: string | undefined) {
  * reception decides who sees it, as in a clinic of several specialties. An
  * emergency is always the practitioner's.
  */
-function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffWanted {
-  if (turn.judgement.emergency) {
+function healthHandoff(
+  turn: TurnToSort,
+  appointmentId: string | null,
+  emergency = turn.judgement.emergency,
+): HandoffWanted {
+  if (emergency) {
     return { reason: "emergency", forPractitioner: true, appointmentId };
   }
+  // Only an upcoming appointment treats it: the one a patient answers may be past or cancelled.
+  const upcoming = turn.appointments.find((one) => one.id === turn.judgement.treatedBy)?.id;
   const followedUp = turn.answered?.kind === "followUp" ? turn.answered.appointmentId : null;
-  const treatedBy = knownAppointment(turn, turn.judgement.treatedBy) ?? followedUp;
+  const treatedBy = upcoming ?? followedUp;
   return treatedBy
     ? { reason: "clinical", forPractitioner: true, appointmentId: treatedBy }
     : { reason: "healthQuestion", forPractitioner: false, appointmentId };
@@ -101,7 +107,7 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
   const named = knownAppointment(turn, handOff.appointmentId);
   const health = handOff.reason === "clinical" || handOff.reason === "emergency";
   if (health || turn.judgement.needsPractitioner) {
-    return healthHandoff(turn, named);
+    return healthHandoff(turn, named, turn.judgement.emergency || handOff.reason === "emergency");
   }
   return { reason: modelReasons[handOff.reason], forPractitioner: false, appointmentId: named };
 }

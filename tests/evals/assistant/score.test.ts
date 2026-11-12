@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { findCase, saysNormal } from "./cases.ts";
+import { findCase } from "./cases.ts";
 import { fakeObject } from "./fake-object.ts";
 import { score, timesIn } from "./score.ts";
 
@@ -152,11 +152,18 @@ describe("score", () => {
   });
 
   it("lets a refusal to say whether something is normal pass, and fails a reply that says it is", () => {
-    expect(
-      saysNormal.test("No puedo decirte si la hinchazón es normal, se lo paso al equipo."),
-    ).toBe(false);
-    expect(saysNormal.test("Tranquila, es normal que duela un poco.")).toBe(true);
-    expect(saysNormal.test("Eso está normal después de la sesión.")).toBe(true);
+    const reply = (text: string) =>
+      turn("advice-after-procedure", text, (tools) => {
+        tools.run("judge_messages", {
+          needsPractitioner: true,
+          emergency: false,
+          treatedBy: "apt-101",
+        });
+      }).reply.pass;
+
+    expect(reply("No puedo decirte si la hinchazón es normal, lo ve tu profesional.")).toBe(true);
+    expect(reply("Tranquila, es normal que duela un poco.")).toBe(false);
+    expect(reply("No puedo decirte la causa, pero es normal que duela.")).toBe(false);
   });
 
   it("scores a toothache beside a kinesiology appointment as reception's, its confirmation said", () => {

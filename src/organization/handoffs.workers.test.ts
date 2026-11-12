@@ -1055,3 +1055,18 @@ describe("a health question while a handoff to the practitioner is open (#290)",
     ]);
   });
 });
+
+describe("an emergency the model handed off", () => {
+  it("goes to the practitioner though the judgement did not call it one", async () => {
+    await writes("me caí y me sangra mucho la boca", unknownPhone);
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      one.call("hand_off", { reason: "emergency" });
+      return "";
+    });
+
+    await turn();
+
+    expect(await openHandoffs()).toMatchObject([{ reason: "emergency", forPractitioner: true }]);
+  });
+});
