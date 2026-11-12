@@ -82,9 +82,13 @@ reception, and that change is audited. A reply that looks like such a request
 holds every message the organization starts to that number at once, for every
 patient whose messages go to it, since someone who keeps getting them may block or
 report the organization's number. Replies to the patient's own messages are not
-held. It reaches reception as a notification, where each of those patients is
-turned off or kept, and reception is reminded of each undecided one daily. The
-hold lifts for each patient as they are decided: a kept patient's held messages
+held. It reaches reception and the admins as one notification per patient, which
+links to the reply. Under that reply in the conversation, whoever reads it turns
+each of those patients off or keeps them, as on the patient's record, and the
+reply then shows who decided what, and when. A patient already held stays held
+under the first reply. Each undecided patient's notification comes back unread
+daily, and a decision resolves it for everyone. The hold lifts for each patient
+as they are decided: a kept patient's held messages
 go out, less those no longer true
 ([messages.md](./messages.md#when-meta-limits-the-number)), and a turned-off
 patient's are dropped.

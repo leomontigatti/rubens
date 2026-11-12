@@ -176,7 +176,7 @@ describe("a reply the model judges an opt-out", () => {
     expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: optedOutText }]);
   });
 
-  it("notifies no one again while their earlier notification is unread, and those who read it again", async () => {
+  it("notifies no one again while the patient's decision is pending, read or not", async () => {
     const martina = await world.addPatient("Martina", martinaPhone);
     await bookAt(martina.id, "12:00");
     const optsOut = async (text: string) => {
@@ -201,7 +201,7 @@ describe("a reply the model judges an opt-out", () => {
 
     const patient = { id: martina.id, name: "Martina Paz" };
     expect(await optOutsNotified(adminCaller)).toEqual([patient]);
-    expect(await optOutsNotified(world.receptionist)).toEqual([patient, patient]);
+    expect(await optOutsNotified(world.receptionist)).toEqual([patient]);
     expect(fakeMeta.textsSent().map((one) => one.text)).toEqual([optedOutText, optedOutText]);
   });
 

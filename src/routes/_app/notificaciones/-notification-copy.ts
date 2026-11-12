@@ -33,6 +33,10 @@ export interface NotificationFacts {
   } | null;
   /** The patient an `optOut` or `optOutReminder` notification is about. */
   patient: { id: string; name: string } | null;
+  /** The patient's message an opt-out's notification links to; `null` for one from before they did. */
+  messageId: string | null;
+  /** Whether what it asked for was done: an opt-out decided. */
+  resolved: boolean;
   /** The appointment an `appointmentCancelled` notification is about, by its patient's and practitioner's names. */
   appointment: {
     patient: string;
@@ -86,10 +90,6 @@ const fixedTexts: Partial<Record<NotificationKind, string>> = {
     "El asistente le envió al paciente el mensaje de urgencia, con el 107 y el teléfono del consultorio. Respondele cuanto antes.",
   replyFailed:
     "WhatsApp no pudo entregarla, y queda como No entregado en la conversación. Si respondía una derivación, la derivación volvió a quedar abierta.",
-  optOut:
-    "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.",
-  optOutReminder:
-    "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.",
   appointmentCancelled:
     "Lo canceló por WhatsApp con el asistente. Mirá en la agenda si podés darle el horario a otro paciente.",
 };
@@ -148,10 +148,25 @@ export function notificationText(facts: NotificationFacts): string {
       return handoffText(facts.handoff);
     case "handoffReminder":
       return reminderText(facts);
+    case "optOut":
+    case "optOutReminder":
+      return optOutText(facts);
     default:
       // Every other kind's text is fixed, above.
       return "";
   }
+}
+
+/** Where an opt-out is decided: under the patient's message, or on the record for one that links to none. */
+function optOutText(facts: NotificationFacts) {
+  if (facts.messageId === null) {
+    return facts.resolved
+      ? "Ya se decidió en su ficha."
+      : "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.";
+  }
+  return facts.resolved
+    ? "Ya se decidió: lo ves debajo de su mensaje en la conversación."
+    : "Sus recordatorios y avisos quedan en espera hasta que alguien decida, debajo de su mensaje en la conversación: Dejar de enviar o Seguir enviando.";
 }
 
 function cancelledTitle(appointment: NotificationFacts["appointment"]) {

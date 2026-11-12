@@ -57,6 +57,7 @@ import type {
   PatientReference,
   PatientUpdate,
   WhatsappConsentChange,
+  OptOutDecision,
 } from "#/lib/patients.ts";
 import type { ConversationListOptions, ConversationReference } from "#/lib/whatsapp-messages.ts";
 import type { NotificationReference } from "#/lib/notifications.ts";
@@ -150,6 +151,7 @@ import {
   registerPatient,
   setPatientActive,
   setWhatsappConsent,
+  decideOptOut,
   updatePatient,
 } from "#/organization/patients.ts";
 import type { PatientListOptions } from "#/organization/patients.ts";
@@ -391,6 +393,12 @@ export class Organization extends OrganizationWhatsapp {
   setWhatsappConsent(caller: Caller, input: WhatsappConsentChange) {
     return this.asThenArm(caller, patientEditors, (acting) =>
       setWhatsappConsent(this.database, acting, input),
+    );
+  }
+
+  decideOptOut(caller: Caller, input: OptOutDecision) {
+    return this.asThenArm(caller, patientEditors, (acting) =>
+      decideOptOut(this.database, acting, input),
     );
   }
 

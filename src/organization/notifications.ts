@@ -18,7 +18,12 @@ import {
   practitioner,
   room,
 } from "#/organization/schema.ts";
-import { conversationPatient, handoff, template } from "#/organization/whatsapp-schema.ts";
+import {
+  conversationPatient,
+  handoff,
+  template,
+  whatsappMessage,
+} from "#/organization/whatsapp-schema.ts";
 
 // Notifications to staff (`src/lib/notifications.ts`): written in the
 // transaction of the event they tell of, one row per recipient, each read on
@@ -57,29 +62,63 @@ export function notifyAdmins(tx: Writer, content: NotificationContent) {
   notify(tx, activeWith(tx, ["admin"]), content);
 }
 
+const optOutKinds = ["optOut", "optOutReminder"] as const;
+
+/** `patientId`'s opt-out notifications not resolved yet, the reminders' included. */
+function unresolvedOptOut(patientId: string) {
+  return and(
+    inArray(notification.kind, optOutKinds),
+    eq(notification.patientId, patientId),
+    isNull(notification.resolvedAt),
+  );
+}
+
 /**
  * Notifies reception and the admins that `patientId`'s number asked to stop
- * getting messages, or, as `optOutReminder`, that nobody decided on them yet,
- * so a person turns their WhatsApp consent off or keeps it: each member once,
- * while their earlier notification of that kind about the patient is unread.
+ * getting messages in `messageId`, so a person turns their WhatsApp consent
+ * off or keeps it there: one notification each per pending decision.
  */
-export function notifyOptOut(tx: Writer, patientId: string, kind: "optOut" | "optOutReminder") {
-  const unread = new Set(
-    tx
-      .select({ recipientId: notification.recipientId })
-      .from(notification)
-      .where(
-        and(
-          eq(notification.kind, kind),
-          eq(notification.patientId, patientId),
-          isNull(notification.readAt),
-        ),
-      )
-      .all()
-      .map((row) => row.recipientId),
+export function notifyOptOut(tx: Writer, patientId: string, messageId: string) {
+  notify(tx, activeWith(tx, ["admin", "receptionist"]), { kind: "optOut", patientId, messageId });
+}
+
+/**
+ * Reminds reception and the admins that nobody decided on `patientId` yet:
+ * each one's notification of them is unread again and new, and one who has
+ * none, such as a member who joined since, gets one. A member who is no longer
+ * either keeps theirs as it is.
+ */
+export function remindOptOut(tx: Writer, patientId: string, messageId: string | null) {
+  const now = Date.now();
+  const active = activeWith(tx, ["admin", "receptionist"]);
+  const theirs = tx
+    .select({ id: notification.id, recipientId: notification.recipientId })
+    .from(notification)
+    .where(unresolvedOptOut(patientId))
+    .all()
+    .filter((row) => active.includes(row.recipientId));
+  // A row per update, as `notify` inserts: the object's SQLite binds at most 100 parameters a query.
+  for (const { id } of theirs) {
+    tx.update(notification)
+      .set({ kind: "optOutReminder", readAt: null, createdAt: now })
+      .where(eq(notification.id, id))
+      .run();
+  }
+  const reminded = new Set(theirs.map((row) => row.recipientId));
+  notify(
+    tx,
+    active.filter((id) => !reminded.has(id)),
+    { kind: "optOutReminder", patientId, messageId },
   );
-  const recipients = activeWith(tx, ["admin", "receptionist"]).filter((id) => !unread.has(id));
-  notify(tx, recipients, { kind, patientId });
+}
+
+/** Resolves everyone's notification of `patientId`'s opt-out, once a person decided on them. */
+export function resolveOptOut(tx: Writer, patientId: string) {
+  const now = Date.now();
+  tx.update(notification)
+    .set({ resolvedAt: now, readAt: sql`coalesce(${notification.readAt}, ${now})` })
+    .where(unresolvedOptOut(patientId))
+    .run();
 }
 
 /** Notifies reception and the admins that a patient cancelled `appointmentId` through the assistant. */
@@ -199,7 +238,10 @@ export function listNotifications(database: Database, acting: Acting) {
       until: notification.until,
       waiting: notification.waiting,
       notDeliveredIn: notification.conversationId,
+      messageId: notification.messageId,
+      optOutIn: whatsappMessage.conversationId,
       readAt: notification.readAt,
+      resolvedAt: notification.resolvedAt,
       createdAt: notification.createdAt,
       conversationId: handoff.conversationId,
       handoffReason: handoff.reason,
@@ -226,6 +268,7 @@ export function listNotifications(database: Database, acting: Acting) {
     .leftJoin(handedOffAppointment, eq(handedOffAppointment.id, handoff.appointmentId))
     .leftJoin(handedOffPatient, eq(handedOffPatient.id, handedOffAppointment.patientId))
     .leftJoin(template, eq(template.id, notification.templateId))
+    .leftJoin(whatsappMessage, eq(whatsappMessage.id, notification.messageId))
     .leftJoin(patient, eq(patient.id, notification.patientId))
     .leftJoin(appointment, eq(appointment.id, notification.appointmentId))
     .leftJoin(cancelledPatient, eq(cancelledPatient.id, appointment.patientId))
@@ -245,7 +288,9 @@ export function listNotifications(database: Database, acting: Acting) {
     notifications: rows.map(
       ({
         readAt,
+        resolvedAt,
         notDeliveredIn,
+        optOutIn,
         conversationId,
         handoffReason,
         handoffForPractitioner,
@@ -269,8 +314,9 @@ export function listNotifications(database: Database, acting: Acting) {
       }) => ({
         ...row,
         read: readAt !== null,
-        // The conversation of a handoff, or of a reply that was not delivered.
-        conversationId: notDeliveredIn ?? conversationId,
+        resolved: resolvedAt !== null,
+        // The conversation of a handoff, of a reply that was not delivered, or of an opt-out's message.
+        conversationId: notDeliveredIn ?? conversationId ?? optOutIn,
         // A handoff's notification says what it was about and where, never the patient's words.
         handoff:
           conversationId !== null && handoffReason !== null

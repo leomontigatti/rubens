@@ -15,6 +15,8 @@ const facts: NotificationFacts = {
   waiting: null,
   patient: null,
   appointment: null,
+  messageId: null,
+  resolved: false,
   handoff: {
     conversationId: "conversation-1",
     reason: "ruleRefused",
@@ -113,6 +115,37 @@ describe("a cancellation's notification", () => {
 
     expect(notificationTitle(cancelled)).toBe(
       "Marta Quiroga canceló su turno del jueves 12/11 10:00 con Juan Prueba",
+    );
+  });
+});
+
+describe("an opt-out's notification", () => {
+  const optOut: NotificationFacts = {
+    ...facts,
+    kind: "optOut",
+    handoff: null,
+    patient: { id: "patient-1", name: "Marta Quiroga" },
+    messageId: "message-1",
+  };
+
+  it("sends the reader to decide under the patient's message", () => {
+    expect(notificationText(optOut)).toBe(
+      "Sus recordatorios y avisos quedan en espera hasta que alguien decida, debajo de su mensaje en la conversación: Dejar de enviar o Seguir enviando.",
+    );
+  });
+
+  it("says it was decided, once someone did", () => {
+    expect(notificationText({ ...optOut, kind: "optOutReminder", resolved: true })).toBe(
+      "Ya se decidió: lo ves debajo de su mensaje en la conversación.",
+    );
+  });
+
+  it("sends the reader to the record for an opt-out no message is kept for", () => {
+    expect(notificationText({ ...optOut, messageId: null })).toBe(
+      "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.",
+    );
+    expect(notificationText({ ...optOut, messageId: null, resolved: true })).toBe(
+      "Ya se decidió en su ficha.",
     );
   });
 });
