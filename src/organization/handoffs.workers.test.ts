@@ -1102,3 +1102,31 @@ describe("a hand_off of a kind already open (#290)", () => {
     ]);
   });
 });
+
+describe("a request for reception beside a health question (#290)", () => {
+  it("opens reception's handoff beside an open one to the practitioner", async () => {
+    const appointmentId = await bookMartina();
+    await writes("me duele la muela desde ayer, es normal?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", {
+        healthQuestion: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
+      return "";
+    });
+    await turn();
+    await writes("y quiero hablar con alguien, me duele el oído también");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: true, emergency: false });
+      one.call("hand_off", { reason: "patient_asked" });
+      return "";
+    });
+
+    await turn();
+
+    const reasons = (await openHandoffs()).map((one) => one.reason);
+    expect(reasons).toEqual(expect.arrayContaining(["clinical", "patientAsked"]));
+    expect(reasons).toHaveLength(2);
+  });
+});

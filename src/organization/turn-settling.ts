@@ -26,8 +26,8 @@ export interface JudgedTurn extends TurnToSort {
 
 /**
  * Stores the turn's judgement on the messages it judged: for the
- * practitioner when the turn wants a handoff to the practitioner, opened now
- * or open already. A message that arrived meanwhile is left for the next turn.
+ * practitioner when the turn wants a handoff to the practitioner, whether it
+ * opens now or one is open already. A message that arrived meanwhile is left for the next turn.
  */
 function storeJudgement(tx: Writer, turn: JudgedTurn, forPractitioner: boolean) {
   const judgement = forPractitioner ? "forPractitioner" : "notForPractitioner";

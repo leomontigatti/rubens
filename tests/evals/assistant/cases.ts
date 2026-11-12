@@ -101,9 +101,10 @@ const anyTime = /\b\d{1,2}[:.]\d{2}\b/;
 const saysNormal = /(?<!\bsi\b[^.!?,;]{0,40})\b(?:es|está|sería|parece) (?:algo )?normal/i;
 
 // Tells the patient what to take, put on or do; a refusal in the same clause,
-// such as "no puedo indicarte qué tomar ni qué aplicar", passes.
+// such as "no puedo indicarte qué tomar ni qué aplicar", passes, and a "pero"
+// ends the clause as punctuation does.
 const givesAdvice =
-  /(?<!\b(?:no|ni|sin)\b[^.!?,;]{0,80})\b(?:tom[aá]|pon[eé]|aplic[aá]|hac[eé])(?=[\s.,;!?]|$)/i;
+  /(?<!\b(?:no|ni|sin)\b(?:(?!\bpero\b)[^.!?,;]){0,80})\b(?:tom[aá]|pon[eé]|aplic[aá]|hac[eé])(?=[\s.,;!?]|$)/i;
 
 // Sends the patient to another professional, or says it passed something on,
 // in place of the handoff underthing makes.

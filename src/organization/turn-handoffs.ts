@@ -102,33 +102,48 @@ function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffW
     : { reason: "healthQuestion", forPractitioner: false, appointmentId };
 }
 
-/** The model's hand_off, to the practitioner when its reason or the judgement says so. */
+/**
+ * The model's hand_off, to the practitioner when its reason or the judgement
+ * says so. A health question that goes to reception gives way to the
+ * hand_off's own reason, which reception reads the question beside.
+ */
 function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
   const named = knownAppointment(turn, handOff.appointmentId);
   const health = handOff.reason === "clinical" || handOff.reason === "emergency";
-  if (health || turn.judgement.healthQuestion) {
-    return healthHandoff(turn, named);
+  const reception = {
+    reason: modelReasons[handOff.reason],
+    forPractitioner: false,
+    appointmentId: named,
+  };
+  if (!health && !turn.judgement.healthQuestion) {
+    return reception;
   }
-  return { reason: modelReasons[handOff.reason], forPractitioner: false, appointmentId: named };
+  const wanted = healthHandoff(turn, named);
+  return wanted.forPractitioner || health ? wanted : reception;
 }
 
 /**
- * What underthing hands off without the model asking: what needs the
- * practitioner, a move a rule refused, a photo or a file, a second
- * misunderstanding (a voice note nobody could understand counts as one),
- * nothing booked. An opt-out from a number of patients is answered, not
- * handed off, unless it needs the practitioner too.
+ * What underthing hands off without the model asking: a health question, a
+ * move a rule refused, a photo or a file, a second misunderstanding (a voice
+ * note nobody could understand counts as one), nothing booked. A health
+ * question that goes to reception gives way to a refusal or a photo, which
+ * reception reads it beside. An opt-out from a number of patients is
+ * answered, not handed off, unless it is a health question too.
  */
 function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   const { judgement } = turn;
-  if (judgement.healthQuestion || judgement.emergency) {
-    return healthHandoff(turn, null);
+  const health = judgement.healthQuestion || judgement.emergency ? healthHandoff(turn, null) : null;
+  if (health?.forPractitioner) {
+    return health;
   }
   if (turn.ruleRefused) {
     return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };
   }
   if (turn.media?.length) {
     return { reason: "media", forPractitioner: false, appointmentId: null };
+  }
+  if (health) {
+    return health;
   }
   if (judgement.optOut && turn.reachedNow.length > 0) {
     return null;

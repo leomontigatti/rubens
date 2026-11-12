@@ -96,10 +96,15 @@ const failedWith = (call: ToolCall, reasons: Set<string>) =>
 // decides it: an emergency, or a health question with the appointment that
 // treats it (`treatedBy`), to the practitioner; any other health question,
 // hand_off or move a rule refused, to reception. None of a kind already open,
-// and no health question beside an open handoff to the practitioner.
+// and no health question alone beside an open handoff to the practitioner.
+// The turn keeps the last hand_off and the last judgement, as the code does.
+function lastArgs(turn: Turn, name: ToolCall["name"]) {
+  return turn.calls.filter((call) => call.name === name).at(-1)?.args;
+}
+
 function opensHandoff(evaluationCase: Case, turn: Turn): "practitioner" | "reception" | null {
-  const judged = turn.calls.filter((call) => call.name === "judge_messages").at(-1)?.args;
-  const handOff = turn.calls.find((call) => call.name === "hand_off")?.args;
+  const judged = lastArgs(turn, "judge_messages");
+  const handOff = lastArgs(turn, "hand_off");
   const open = evaluationCase.openHandoffs ?? [];
   const practitionerOpen = open.some((reason) => practitionerReasons.has(reason));
   const receptionOpen = open.some((reason) => !practitionerReasons.has(reason));
@@ -109,12 +114,14 @@ function opensHandoff(evaluationCase: Case, turn: Turn): "practitioner" | "recep
     .some((appointment) => appointment.appointmentId === judged?.treatedBy);
   const emergency = judged?.emergency === true || handOff?.reason === "emergency";
   if (emergency || (health && treated)) return practitionerOpen ? null : "practitioner";
-  if (health && practitionerOpen) return null;
   const refused = turn.calls.some(
     (call) =>
       (call.name === "find_free_times" || call.name === "propose_change") &&
       failedWith(call, ruleRefusals),
   );
+  // A health question alone beside a practitioner's handoff is theirs already.
+  const otherReason = refused || (handOff !== undefined && handOff.reason !== "clinical");
+  if (health && !otherReason && practitionerOpen) return null;
   return (health || handOff || refused) && !receptionOpen ? "reception" : null;
 }
 
@@ -127,23 +134,30 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
     (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
   );
   const opened = opensHandoff(evaluationCase, turn);
-  if (opened === "practitioner") return applied ? "both" : "practitioner";
+  // The emergency reply goes whatever is open; scored as the practitioner's message.
+  const emergency =
+    lastArgs(turn, "judge_messages")?.emergency === true ||
+    lastArgs(turn, "hand_off")?.reason === "emergency";
+  if (opened === "practitioner" || emergency) return applied ? "both" : "practitioner";
   if (opened === "reception") return applied ? "reply" : "nothing";
   return "reply";
 }
 
 function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   const { handoff, judgement } = evaluationCase.expect;
-  const made = turn.calls.find((call) => call.name === "hand_off")?.args;
-  const judged = turn.calls.filter((call) => call.name === "judge_messages").at(-1)?.args;
+  const made = lastArgs(turn, "hand_off");
+  const judged = lastArgs(turn, "judge_messages");
   // A hand_off of a kind already open opens nothing: the code ignores it.
   const opened = opensHandoff(evaluationCase, turn);
   const problems: string[] = [];
   if (handoff === false && opened !== null) problems.push("handed off when not due");
   if (handoff !== false) {
+    // With no hand_off, the judgement opens one for a health question or an emergency.
+    const judgedReason = judged?.emergency === true ? "emergency" : "clinical";
+    const reason = made?.reason ?? judgedReason;
     if (opened === null) problems.push("no handoff");
-    else if (made && !handoff.reasons.includes(made.reason as never))
-      problems.push(`handoff reason ${String(made.reason)}`);
+    else if (!handoff.reasons.includes(reason as never))
+      problems.push(`handoff reason ${String(reason)}`);
   }
   if (judged) {
     // An emergency is a health question whatever the model said (`assistant.ts`).
