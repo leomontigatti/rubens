@@ -845,4 +845,36 @@ describe("an appointment in the patient's change history", () => {
       [w.room.id]: "Consultorio 1",
     });
   });
+
+  it("comes for a patient whose history names more appointments than one statement binds", async () => {
+    const w = await world();
+    // Juan's Mondays hold four half hours: 26 of them book 104 appointments.
+    const monday = new Date("2099-01-05T00:00:00Z").getTime();
+    for (let week = 0; week < 26; week++) {
+      const date = new Date(monday + week * 7 * 86_400_000).toISOString().slice(0, 10);
+      for (const time of ["12:00", "12:30", "13:00", "13:30"]) {
+        await w.book({ ...w.bookingOf({ start: at(time, date) }), confirmWarnings: true });
+      }
+    }
+
+    const result = await w.organization.getPatientHistory(adminCaller, { patientId: w.maria.id });
+    if (!result.ok) {
+      throw new Error(`getPatientHistory refused: ${result.reason}`);
+    }
+
+    const appointmentEntries = result.entries.filter((entry) => entry.entityType === "appointment");
+    expect(appointmentEntries).toHaveLength(104);
+    for (const entry of appointmentEntries) {
+      expect(entry.appointment).toEqual({
+        startsAt: new Date(String(entry.after?.start)).getTime(),
+        practitioner: "Juan Gómez",
+        timeZone: "America/Argentina/Buenos_Aires",
+      });
+      expect(entry.timeZones).toEqual({
+        before: "America/Argentina/Buenos_Aires",
+        after: "America/Argentina/Buenos_Aires",
+      });
+    }
+    // About a hundred bookings, past the default 5 seconds on a loaded run.
+  }, 20_000);
 });
