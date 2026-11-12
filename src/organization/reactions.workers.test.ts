@@ -439,3 +439,95 @@ describe("the patient's reactions", () => {
     ]);
   });
 });
+
+describe("the patient's reactions to a reminder", () => {
+  const asking =
+    "Hola Martina, te recordamos tu turno con Juan Gómez del lunes 5 de enero a las 09:00 en Sede Centro. Respondé este mensaje para confirmar que venís.";
+  const notAsking =
+    "Hola Martina, tu turno con Juan Gómez quedó reservado para el lunes 5 de enero a las 09:00 en Sede Centro.";
+
+  /** A reminder the practice sent Martina, as the outbox stores it; returns its Meta id. */
+  function reminderSent(text: string) {
+    const whatsappId = `wamid.${crypto.randomUUID()}`;
+    return inStorage(world.organization, (database) => {
+      const { id } = database
+        .insert(conversation)
+        .values({ phone: martinaPhone })
+        .returning({ id: conversation.id })
+        .get();
+      database
+        .insert(whatsappMessage)
+        .values({
+          conversationId: id,
+          whatsappId,
+          direction: "outgoing",
+          type: "template",
+          text,
+          payload: "{}",
+          sentAt: Date.now(),
+          status: "delivered",
+        })
+        .run();
+      return whatsappId;
+    });
+  }
+
+  /** The model confirms the appointment in the turn, as for a `sí, voy` to the reminder. */
+  function confirmsInTheTurn() {
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      turn.call("accept_proposal");
+      return "Listo, tu turno quedó confirmado.";
+    });
+  }
+
+  it("reads a 👍 on a reminder that asks to confirm with its words, and confirms on it in the same turn", async () => {
+    const reminder = await reminderSent(asking);
+
+    await reacts(reminder, "👍");
+    confirmsInTheTurn();
+    await afterTheWait();
+
+    expect(lastTurnRead()).toEqual([
+      asking,
+      `[new messages]\n[reaccionó 👍 al mensaje: «${asking}»]`,
+    ]);
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(fakeMeta.textsSent().map((one) => one.text)).toEqual([
+      "Listo, tu turno quedó confirmado.",
+    ]);
+  });
+
+  it("reads a message holding only 👍 after a reminder that asks to confirm, and confirms on it", async () => {
+    await reminderSent(asking);
+
+    await writes("👍");
+    confirmsInTheTurn();
+    await afterTheWait();
+
+    expect(lastTurnRead()).toEqual([asking, "[new messages]\n👍"]);
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+  });
+
+  it("shows the model the words of a reminder that does not ask to confirm, which a 👍 on it leaves as it was", async () => {
+    const reminder = await reminderSent(notAsking);
+
+    await reacts(reminder, "👍");
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(`[new messages]\n[reaccionó 👍 al mensaje: «${notAsking}»]`);
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+
+  it("runs no turn for a 👍 on a reminder that asks to confirm, taken back during the wait", async () => {
+    const reminder = await reminderSent(asking);
+
+    await reacts(reminder, "👍");
+    await reacts(reminder, "");
+    await afterTheWait();
+
+    expect(scriptedModel.turns).toHaveLength(0);
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+  });
+});

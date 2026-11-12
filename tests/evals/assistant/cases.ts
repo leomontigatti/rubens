@@ -83,6 +83,12 @@ const reminder: HistoryMessage = {
   text: "Hola Lucía, te recordamos tu turno de Sesión de kinesiología con Lic. Paula Ríos el jueves 12/11 a las 16:30 en Sede Centro (Av. Colón 1234). ¿Confirmás tu asistencia? Respondé este mensaje.",
 };
 
+// Asks nothing: it says the appointment was booked.
+const bookingConfirmation: HistoryMessage = {
+  role: "assistant",
+  text: "Hola Lucía, tu turno de Sesión de kinesiología con Lic. Paula Ríos quedó reservado para el jueves 12/11 a las 16:30 en Sede Centro (Av. Colón 1234).",
+};
+
 const offeredSlots: HistoryMessage = {
   role: "assistant",
   text: "Tengo estos horarios con Lic. Paula Ríos: lunes 16/11 a las 9:00 en Sede Centro, martes 17/11 a las 10:30 en Sede Norte o jueves 19/11 a las 17:00 en Sede Centro. ¿Cuál te queda mejor?",
@@ -627,6 +633,51 @@ export const cases: Case[] = [
     history: movingToTuesday,
     patient: ["esperá, lo consulto y te aviso"],
     liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "thumbs-up-reaction-on-reminder",
+    description:
+      "Reactions: a 👍 on a reminder that asks to confirm confirms, proposed and accepted in the turn (#292)",
+    number: "onePatient",
+    history: [reminder],
+    patient: [reactionLine("👍", reminder.text)],
+    expect: {
+      calls: [
+        { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
+        { name: "accept_proposal" },
+      ],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "thumbs-up-after-reminder",
+    description:
+      "Reactions: a message holding only 👍 after a reminder that asks to confirm confirms (#292)",
+    number: "onePatient",
+    history: [reminder],
+    patient: ["👍"],
+    expect: {
+      calls: [
+        { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
+        { name: "accept_proposal" },
+      ],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "thumbs-up-on-booking-confirmation",
+    description:
+      "Reactions: a 👍 on a message that does not ask to confirm, the booking's, confirms nothing (#292)",
+    number: "onePatient",
+    history: [bookingConfirmation],
+    patient: [reactionLine("👍", bookingConfirmation.text)],
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
       handoff: noHandoff,

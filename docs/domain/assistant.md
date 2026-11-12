@@ -92,9 +92,9 @@ patient's yes, freeing the old time.
 - A move past the cutoff, after the one move, or a patient who asks to be
   contacted, is handed off, and the patient is told nothing about it
   ([Handoff](#handoff)).
-- **A 👍 or ✅** is the patient's yes to the conversation's latest proposal, the
-  same as `sí`, as a reaction to the message that states it or as a message holding
-  only that emoji after it ([Proposals](#proposals)).
+- **A 👍 or ✅** is the patient's yes, the same as `sí`, to the conversation's latest
+  proposal or to a reminder that asks them to confirm, as a reaction to that message
+  or as a message holding only that emoji right after it ([Proposals](#proposals)).
 
 ## For practitioners
 
@@ -128,8 +128,12 @@ A patient can also react to a message, as WhatsApp lets them. The model reads a
 reaction with the words of the message it reacts to. A 👍 or ✅ on the message that
 states the latest proposal, or a message holding only that emoji after it, accepts
 the proposal under the same rules as `sí`: in a later message, before it expires,
-and while the appointment is as stated. A reaction to any other message, or with
-another emoji, is not a request: it changes nothing. A reaction the patient
+and while the appointment is as stated. On a reminder that asks the patient to
+confirm, or right after it, it confirms the appointment the way `sí, voy` to that
+reminder does: proposed and accepted in the same turn. The model tells a reminder
+that asks to confirm by its words, as it does for `sí`. A reaction to any other
+message, a reminder that does not ask included, or with another emoji, is not a
+request: it changes nothing. A reaction the patient
 replaces is read no more, and one they take back is ignored: it starts no turn,
 and the model does not read the reaction it removed, nor accepts on it while a
 turn that read it is still running.

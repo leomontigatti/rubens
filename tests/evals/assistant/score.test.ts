@@ -101,6 +101,38 @@ describe("score", () => {
     }
   });
 
+  it("passes a 👍 to a reminder that asks to confirm, as text or as a reaction, only when it confirms", () => {
+    for (const caseId of ["thumbs-up-reaction-on-reminder", "thumbs-up-after-reminder"]) {
+      const confirmed = turn(caseId, "Listo, tu turno quedó confirmado.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+        tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+        tools.run("accept_proposal", {});
+      });
+      const asked = turn(caseId, "Querés que confirme tu turno?", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      });
+
+      expect(confirmed.toolChoice.pass).toBe(true);
+      expect(asked.toolChoice.reason).toBe(
+        'missing propose_change({"kind":"confirm","appointmentId":"apt-101"}); missing accept_proposal',
+      );
+    }
+  });
+
+  it("fails confirming on a 👍 to a message that does not ask to confirm", () => {
+    const confirmed = turn(
+      "thumbs-up-on-booking-confirmation",
+      "Listo, tu turno quedó confirmado.",
+      (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+        tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+        tools.run("accept_proposal", {});
+      },
+    );
+
+    expect(confirmed.toolChoice.reason).toBe("forbidden propose_change; forbidden accept_proposal");
+  });
+
   it("fails accepting the proposal on a 👍 to an older message, or after one taken back", () => {
     for (const caseId of ["thumbs-up-on-older-message", "hesitation-after-reaction-taken-back"]) {
       const accepted = turn(caseId, "Listo, quedó el martes 17/11 a las 10:30.", (tools) => {
