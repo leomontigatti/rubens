@@ -10,6 +10,7 @@ import {
   patientPageSize,
   patientUpdateSchema,
   whatsappConsentChangeSchema,
+  optOutDecisionSchema,
 } from "#/lib/patients.ts";
 import { today } from "#/lib/schedules.ts";
 import type {
@@ -19,12 +20,13 @@ import type {
   PatientInput,
   PatientUpdate,
   WhatsappConsentChange,
+  OptOutDecision,
 } from "#/lib/patients.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { liftOptOutHold, optOutPendingSince } from "#/organization/opt-out-holds.ts";
+import { isHeldUnder, liftOptOutHold, optOutPendingSince } from "#/organization/opt-out-holds.ts";
 import { dropQueuedForPatient, requeueForPatient } from "#/organization/outbox.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import { coverage, insurer, patient } from "#/organization/schema.ts";
@@ -402,43 +404,79 @@ export function setWhatsappConsent(
     return invalidInput;
   }
   const { patientId, whatsappConsent } = parsed.data;
+  return database.transaction((tx) => changeConsent(tx, acting, patientId, whatsappConsent));
+}
+
+/**
+ * Decides on a patient the reply `messageId` held, under it in the
+ * conversation: as `setWhatsappConsent`, refused once someone decided, so a
+ * page loaded before that changes nothing.
+ */
+export function decideOptOut(
+  database: Database,
+  acting: Acting,
+  input: OptOutDecision,
+): Result<object> | { ok: false; reason: "decided" } {
+  const parsed = optOutDecisionSchema.safeParse(input);
+  if (!parsed.success) {
+    return invalidInput;
+  }
+  const { patientId, messageId, whatsappConsent } = parsed.data;
   return database.transaction((tx) => {
-    const current = findPatient(tx, patientId);
-    if (!current) {
-      return notFound;
+    if (!isHeldUnder(tx, patientId, messageId)) {
+      return { ok: false as const, reason: "decided" as const };
     }
-    const held = liftOptOutHold(tx, patientId);
-    if (current.whatsappConsent === whatsappConsent) {
-      if (held) {
-        recordAudit(tx, acting.userId, {
-          action: "update",
-          entityType: "patient",
-          entityId: patientId,
-          patientId,
-          before: { optOutPending: true },
-          after: { optOutPending: false },
-        });
-      }
-      return { ok: true as const, patient: toPatient(current) };
-    }
-    const updated = tx
-      .update(patient)
-      .set(
-        whatsappConsent
-          ? { whatsappConsent, whatsappConsentAt: Date.now(), whatsappConsentBy: acting.userId }
-          : { whatsappConsent },
-      )
-      .where(eq(patient.id, patientId))
-      .returning(patientColumns)
-      .get();
-    if (whatsappConsent) {
-      requeueForPatient(tx, patientId);
-    } else {
-      dropQueuedForPatient(tx, patientId);
-    }
-    auditUpdate(tx, acting, current, updated);
-    return { ok: true as const, patient: toPatient(updated) };
+    const changed = changeConsent(tx, acting, patientId, whatsappConsent);
+    return changed.ok ? { ok: true as const } : changed;
   });
+}
+
+function changeConsent(
+  tx: Writer,
+  acting: Acting,
+  patientId: string,
+  whatsappConsent: boolean,
+): Result<{ patient: Patient }> {
+  const current = findPatient(tx, patientId);
+  if (!current) {
+    return notFound;
+  }
+  const held = liftOptOutHold(tx, acting, patientId, whatsappConsent);
+  if (current.whatsappConsent === whatsappConsent) {
+    if (held) {
+      recordAudit(tx, acting.userId, {
+        action: "update",
+        entityType: "patient",
+        entityId: patientId,
+        patientId,
+        before: { optOutPending: true },
+        after: { optOutPending: false },
+      });
+    }
+    return { ok: true as const, patient: toPatient(current) };
+  }
+  return { ok: true as const, patient: applyConsent(tx, acting, current, whatsappConsent) };
+}
+
+/** Turns `current`'s consent to `whatsappConsent`, which differs: their queued messages go or are dropped. */
+function applyConsent(tx: Writer, acting: Acting, current: PatientRow, whatsappConsent: boolean) {
+  const updated = tx
+    .update(patient)
+    .set(
+      whatsappConsent
+        ? { whatsappConsent, whatsappConsentAt: Date.now(), whatsappConsentBy: acting.userId }
+        : { whatsappConsent },
+    )
+    .where(eq(patient.id, current.id))
+    .returning(patientColumns)
+    .get();
+  if (whatsappConsent) {
+    requeueForPatient(tx, current.id);
+  } else {
+    dropQueuedForPatient(tx, current.id);
+  }
+  auditUpdate(tx, acting, current, updated);
+  return toPatient(updated);
 }
 
 // Deactivating a patient sends their future appointments to the

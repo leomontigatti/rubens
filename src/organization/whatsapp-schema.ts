@@ -514,12 +514,14 @@ export const transcriptionUsage = sqliteTable(
  * A patient held by an opt-out-looking reply (docs/domain/patients.md §
  * WhatsApp consent): while the row exists, nothing the organization starts
  * goes to them, and reception is reminded daily to turn them off or keep
- * them. Deciding either way deletes it (`src/organization/opt-out-holds.ts`).
+ * them, under `messageId`, the reply that asked. Deciding either way deletes it
+ * (`src/organization/opt-out-holds.ts`).
  */
 export const optOutHold = sqliteTable("opt_out_hold", {
   patientId: text("patient_id")
     .primaryKey()
     .references(() => patient.id),
+  messageId: text("message_id").references(() => whatsappMessage.id),
   /** When reception and the admins are next reminded. */
   remindAt: instant("remind_at").notNull(),
   createdAt: timestamps.createdAt,

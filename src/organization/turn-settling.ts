@@ -20,7 +20,7 @@ import { isHeld, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 /** A turn the model judged, with the conversation as it read it. */
 export interface JudgedTurn extends TurnToSort {
   conversationId: string;
-  read: TurnToSort["read"] & { phone: string; unjudged: { id: string }[] };
+  read: TurnToSort["read"] & { phone: string; unjudged: { id: string; text: string | null }[] };
   judgement: Judgement;
 }
 
@@ -110,7 +110,12 @@ export function settleTurn(
     if (wanted && !opened) {
       addMediaToOpen(tx, turn.conversationId, wanted.detail?.media ?? []);
     }
-    const optOutAsked = turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow).length > 0;
+    // The turn judges its burst as one: the opt-out is decided under its newest words.
+    // As the model reads them: a voice note nobody could make out holds no words.
+    const words = turn.read.unjudged.filter((message) => message.text);
+    const optOutMessageId = (words.at(-1) ?? turn.read.unjudged.at(-1)!).id;
+    const optOutAsked =
+      turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow, optOutMessageId).length > 0;
     return {
       settled: outcomeOf(tx, turn, { opened, wanted, optOutAsked }),
       practitioner: opened?.practitioner ?? null,

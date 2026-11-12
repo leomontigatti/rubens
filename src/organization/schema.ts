@@ -437,8 +437,35 @@ export const notification = sqliteTable(
     conversationId: text("conversation_id"),
     /** The appointment an `appointmentCancelled` is about. */
     appointmentId: text("appointment_id").references(() => appointment.id),
+    // The patient's message an `optOut` links to (`whatsapp-schema.ts`, so no reference, as `handoffId`).
+    messageId: text("message_id"),
     readAt: instant("read_at"),
+    /** When what it asked for was done: an opt-out decided. */
+    resolvedAt: instant("resolved_at"),
     ...timestamps,
   },
   (table) => [index("notification_recipient_idx").on(table.recipientId, table.createdAt)],
+);
+
+/**
+ * How a person decided on a patient an opt-out-looking reply held
+ * (`src/organization/opt-out-holds.ts`): kept, or turned off, shown under that
+ * reply in the conversation once the hold is gone.
+ */
+export const optOutDecision = sqliteTable(
+  "opt_out_decision",
+  {
+    id: id(),
+    // The reply that held them (`whatsapp-schema.ts`, so no reference, as `notification.handoffId`).
+    messageId: text("message_id").notNull(),
+    patientId: text("patient_id")
+      .notNull()
+      .references(() => patient.id),
+    kept: flag("kept").notNull(),
+    decidedBy: text("decided_by")
+      .notNull()
+      .references(() => member.userId),
+    decidedAt: instant("decided_at").notNull(),
+  },
+  (table) => [index("opt_out_decision_message_idx").on(table.messageId)],
 );

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import * as z from "zod";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -31,11 +32,13 @@ import { refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 // answers it and its open handoffs beside its title, where a member takes it
 // over, closes a handoff and replies. A reply the clinical check held goes to
 // the reply's box to be sent or fixed, by a practitioner who keeps clinical
-// records.
+// records. `mensaje` marks out the message a notification links to, as an
+// opt-out's, whose decision is under it.
 
 const backToInbox = { to: "/conversaciones", label: "Conversaciones" } as const;
 
 export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
+  validateSearch: z.object({ mensaje: z.uuid().optional().catch(undefined) }),
   loader: async ({ params }) => {
     const data = { conversationId: params.conversationId };
     const [conversation, handoffs] = await Promise.all([
@@ -50,6 +53,7 @@ export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
 
 function ConversationPage() {
   const { conversation: result, handoffs } = Route.useLoaderData();
+  const { mensaje } = Route.useSearch();
   const [draft, setDraft] = useState<ReplyDraft | null>(null);
   const action = useHoldAction();
 
@@ -61,8 +65,16 @@ function ConversationPage() {
       </div>
     );
   }
-  const { conversation, messages, hold, window, lateReplies, queuedReopen, withdrawnReplies } =
-    result;
+  const {
+    conversation,
+    messages,
+    hold,
+    window,
+    lateReplies,
+    queuedReopen,
+    withdrawnReplies,
+    optOuts,
+  } = result;
   const open = handoffs.ok ? handoffs.handoffs : [];
   // Offered only while an open handoff of this conversation still holds the
   // reply: once sent, dropped or its handoff closed, it never comes back.
@@ -107,6 +119,8 @@ function ConversationPage() {
         queuedReopen={queuedReopen}
         lateReplies={lateReplies}
         withdrawnReplies={withdrawnReplies}
+        optOuts={optOuts}
+        highlighted={mensaje}
       />
       {/* Keyed, so a draft never follows a navigation to another conversation. */}
       <ReplyBox

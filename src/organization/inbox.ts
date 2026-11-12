@@ -41,6 +41,8 @@ import {
 } from "#/organization/late-replies.ts";
 import type { QueuedReopen, ShownLateReply, WithdrawnReply } from "#/organization/late-replies.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
+import { optOutsShown } from "#/organization/opt-out-holds.ts";
+import type { ShownOptOut } from "#/organization/opt-out-holds.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
 // only. Reception and admins read every conversation; a practitioner only
@@ -343,6 +345,8 @@ export function readConversation(
       queuedReopen: QueuedReopen | null;
       /** The late replies their writers withdrew, shown as a trace without their words. */
       withdrawnReplies: WithdrawnReply[];
+      /** The patients each opt-out-looking reply held, decided or not, under that reply. */
+      optOuts: ShownOptOut[];
     }
   | { ok: false; reason: "invalidInput" | "notFound" } {
   const parsed = conversationReferenceSchema.safeParse(input);
@@ -376,6 +380,7 @@ export function readConversation(
     lateReplies: lateRepliesShown(database, conversationId, acting.userId),
     queuedReopen: queuedReopenShown(database, conversationId),
     withdrawnReplies: withdrawnRepliesShown(database, conversationId),
+    optOuts: optOutsShown(database, conversationId),
   };
 }
 

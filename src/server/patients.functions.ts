@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type {
   DuplicateConfirmation,
+  OptOutDecision,
   PatientActiveChange,
   PatientReference,
   PatientInput,
@@ -57,6 +58,12 @@ export const changeWhatsappConsent = createServerFn({ method: "POST" })
   .validator((data: WhatsappConsentChange) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.setWhatsappConsent(caller, data)),
+  );
+
+export const submitOptOutDecision = createServerFn({ method: "POST" })
+  .validator((data: OptOutDecision) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.decideOptOut(caller, data)),
   );
 
 export const getPatientUpcomingCount = createServerFn({ method: "GET" })

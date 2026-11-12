@@ -1,14 +1,19 @@
 import { and, asc, eq, inArray, lte, min } from "drizzle-orm";
 
+import { patientName } from "#/lib/patients.ts";
+
 import type { Database, Writer } from "#/organization/database.ts";
-import { notifyOptOut } from "#/organization/notifications.ts";
-import { appointment, patient } from "#/organization/schema.ts";
-import { optOutHold } from "#/organization/whatsapp-schema.ts";
+import type { Acting } from "#/organization/members.ts";
+import { notifyOptOut, remindOptOut, resolveOptOut } from "#/organization/notifications.ts";
+import { appointment, member, optOutDecision, patient } from "#/organization/schema.ts";
+import { optOutHold, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // The hold an opt-out-looking reply puts on the number (docs/domain/patients.md
 // § WhatsApp consent): every patient whose messages go to it gets nothing the
 // organization starts until reception turns them off or keeps them, and
-// reception and the admins are reminded of each of them daily meanwhile.
+// reception and the admins are reminded of each of them daily meanwhile, on
+// the one notification of each. It is decided under the reply in the
+// conversation, or on the patient's record, either acting on the same hold.
 // Replies to the patient's own messages are not held. The outbox leaves a held
 // patient's messages queued (`outbox.ts`), so keeping them sends what is still
 // true then.
@@ -17,13 +22,13 @@ const dayMs = 24 * 60 * 60_000;
 
 /**
  * Holds each of `patientIds`, the patients the number reaches now, who still
- * accepts WhatsApp, and notifies reception and the admins of each, for a
- * person to turn their consent off or keep it: in the transaction of the turn
- * that judged the opt-out, or of the person who reported one among words the
- * model could not read. Returns those patients, whose notification the team
- * has then had or gets now.
+ * accepts WhatsApp, under `messageId`, the reply that asked, and notifies
+ * reception and the admins of each newly held, for a person to turn their
+ * consent off or keep it: in the transaction of the turn that judged the
+ * opt-out. A patient held already keeps their hold and its notification.
+ * Returns those patients, whose notification the team has then had or gets now.
  */
-export function holdForOptOut(tx: Writer, patientIds: string[]) {
+export function holdForOptOut(tx: Writer, patientIds: string[], messageId: string) {
   if (patientIds.length === 0) {
     return [];
   }
@@ -35,20 +40,106 @@ export function holdForOptOut(tx: Writer, patientIds: string[]) {
     .all();
   const remindAt = Date.now() + dayMs;
   for (const { id } of consenting) {
-    notifyOptOut(tx, id, "optOut");
-    tx.insert(optOutHold).values({ patientId: id, remindAt }).onConflictDoNothing().run();
+    const held = tx
+      .insert(optOutHold)
+      .values({ patientId: id, messageId, remindAt })
+      .onConflictDoNothing()
+      .returning({ patientId: optOutHold.patientId })
+      .get();
+    if (held) {
+      notifyOptOut(tx, id, messageId);
+    }
   }
   return consenting.map(({ id }) => id);
 }
 
-/** Lifts `patientId`'s hold, once a person decided on them; says whether there was one. */
-export function liftOptOutHold(tx: Writer, patientId: string) {
+/**
+ * Lifts `patientId`'s hold, once `acting` decided to keep them or turn them
+ * off, which resolves everyone's notification and is shown under the reply
+ * that held them; says whether there was one.
+ */
+export function liftOptOutHold(tx: Writer, acting: Acting, patientId: string, kept: boolean) {
   const lifted = tx
     .delete(optOutHold)
     .where(eq(optOutHold.patientId, patientId))
-    .returning({ patientId: optOutHold.patientId })
+    .returning({ messageId: optOutHold.messageId })
     .get();
-  return lifted !== undefined;
+  if (!lifted) {
+    return false;
+  }
+  resolveOptOut(tx, patientId);
+  if (lifted.messageId !== null) {
+    tx.insert(optOutDecision)
+      .values({
+        messageId: lifted.messageId,
+        patientId,
+        kept,
+        decidedBy: acting.userId,
+        decidedAt: Date.now(),
+      })
+      .run();
+  }
+  return true;
+}
+
+/** Whether `patientId` is held under `messageId`, so a decision there still answers it. */
+export function isHeldUnder(tx: Writer, patientId: string, messageId: string) {
+  const held = tx
+    .select({ patientId: optOutHold.patientId })
+    .from(optOutHold)
+    .where(and(eq(optOutHold.patientId, patientId), eq(optOutHold.messageId, messageId)))
+    .get();
+  return held !== undefined;
+}
+
+/** An opt-out under its reply in the conversation: a patient it held, and how a person decided, if they did. */
+export interface ShownOptOut {
+  messageId: string;
+  patient: { id: string; name: string };
+  /** `null` while the patient is held. */
+  decision: { kept: boolean; by: string; at: number } | null;
+}
+
+const patientColumns = {
+  patientId: patient.id,
+  firstName: patient.firstName,
+  lastName: patient.lastName,
+  chosenName: patient.chosenName,
+};
+
+/** The opt-outs under `conversationId`'s replies, held or decided, by patient name. */
+export function optOutsShown(database: Database, conversationId: string): ShownOptOut[] {
+  const inConversation = eq(whatsappMessage.conversationId, conversationId);
+  const held = database
+    .select({ messageId: whatsappMessage.id, ...patientColumns })
+    .from(optOutHold)
+    .innerJoin(whatsappMessage, eq(whatsappMessage.id, optOutHold.messageId))
+    .innerJoin(patient, eq(patient.id, optOutHold.patientId))
+    .where(inConversation)
+    .all()
+    .map(({ messageId, ...row }) => ({ messageId, row, decision: null }));
+  const decided = database
+    .select({
+      messageId: optOutDecision.messageId,
+      kept: optOutDecision.kept,
+      by: member.name,
+      at: optOutDecision.decidedAt,
+      ...patientColumns,
+    })
+    .from(optOutDecision)
+    .innerJoin(whatsappMessage, eq(whatsappMessage.id, optOutDecision.messageId))
+    .innerJoin(patient, eq(patient.id, optOutDecision.patientId))
+    .innerJoin(member, eq(member.userId, optOutDecision.decidedBy))
+    .where(inConversation)
+    .all()
+    .map(({ messageId, kept, by, at, ...row }) => ({ messageId, row, decision: { kept, by, at } }));
+  return [...held, ...decided]
+    .map(({ messageId, row, decision }) => ({
+      messageId,
+      patient: { id: row.patientId, name: patientName(row) },
+      decision,
+    }))
+    .sort((first, second) => first.patient.name.localeCompare(second.patient.name, "es"));
 }
 
 /** When `patientId` was held, or `null` while nobody waits on a decision about them. */
@@ -84,17 +175,20 @@ export function nextOptOutReminderAlarm(database: Database) {
   );
 }
 
-/** Reminds reception and the admins of every held patient whose day has passed: the object's alarm. */
+/**
+ * Reminds reception and the admins of every held patient whose day has
+ * passed, on each one's notification of them: the object's alarm.
+ */
 export function remindHeldOptOuts(database: Database) {
   const now = Date.now();
   database.transaction((tx) => {
     const due = tx
-      .select({ patientId: optOutHold.patientId })
+      .select({ patientId: optOutHold.patientId, messageId: optOutHold.messageId })
       .from(optOutHold)
       .where(lte(optOutHold.remindAt, now))
       .all();
-    for (const { patientId } of due) {
-      notifyOptOut(tx, patientId, "optOutReminder");
+    for (const { patientId, messageId } of due) {
+      remindOptOut(tx, patientId, messageId);
       tx.update(optOutHold)
         .set({ remindAt: now + dayMs })
         .where(eq(optOutHold.patientId, patientId))

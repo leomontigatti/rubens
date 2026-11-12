@@ -26,7 +26,9 @@ import {
 // and link to the WhatsApp settings, where they are fixed; and handoffs, which
 // go to their recipients and link to the conversation, as do their reminders; and replies that look
 // like opt-outs, which go to reception and the admins and link to the
-// patient, whose WhatsApp consent is turned off there; and cancellations a
+// patient's message, marked out, where whoever reads it decides on their
+// WhatsApp consent, so they carry no buttons of their own and show as
+// resolved once someone decided; and cancellations a
 // patient made through the assistant, which go to reception and the admins
 // and link to the appointment's week on the agenda, cancelled ones shown,
 // where its free time is given to another patient.
@@ -129,6 +131,7 @@ function NotificationRow(props: {
             {notificationTitle(notification)}
           </p>
           {!notification.read && <Badge variant="info">Sin leer</Badge>}
+          {notification.resolved && <Badge variant="secondary">Resuelta</Badge>}
         </div>
         <p className="text-muted-foreground">{notificationText(notification)}</p>
         {waiting && <p className="text-muted-foreground">{waiting}</p>}
@@ -150,10 +153,29 @@ function NotificationRow(props: {
 /**
  * Where a notification is acted on: the conversation handed off or not
  * delivered to, with the handoff contacts when no practitioner could take
- * it, the cancelled appointment's week, the patient to turn off, the
- * template, or the WhatsApp settings.
+ * it, the cancelled appointment's week, the opt-out's message, or for one
+ * kept from before, the patient to turn off, the template, or the WhatsApp
+ * settings.
  */
 function NotificationLink({ notification }: { notification: Notification }) {
+  if (notification.messageId && notification.conversationId) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+        render={
+          <Link
+            to="/conversaciones/$conversationId"
+            params={{ conversationId: notification.conversationId }}
+            search={{ mensaje: notification.messageId }}
+          />
+        }
+      >
+        Ver mensaje
+      </Button>
+    );
+  }
   if (notification.appointment) {
     const { roomId, date } = notification.appointment;
     return (
