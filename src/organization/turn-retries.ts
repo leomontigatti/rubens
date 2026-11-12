@@ -151,7 +151,8 @@ export function answeredByPerson(tx: Writer, conversationId: string, upTo: numbe
 /**
  * Whether a person answered any of `messageIds` while a turn reading them
  * ran (`answeredByPerson`): the turn then acts on nothing and says nothing,
- * since its words were answered after it read them.
+ * since its words were answered after it read them. A message among them
+ * newer than the answer waits for a turn of its own (`turnForTheRest`).
  */
 export function answeredMeanwhile(database: Writer, messageIds: string[]) {
   const judged = database
@@ -160,4 +161,32 @@ export function answeredMeanwhile(database: Writer, messageIds: string[]) {
     .where(and(inArray(whatsappMessage.id, messageIds), isNotNull(whatsappMessage.judgement)))
     .get();
   return judged !== undefined;
+}
+
+/**
+ * Sets a turn for the messages of `conversationId` still unjudged when a
+ * turn that read them stopped because a person answered older words
+ * meanwhile: the running turn had claimed the wait. A wait a newer message
+ * set is kept.
+ */
+export function turnForTheRest(database: Writer, conversationId: string) {
+  const unjudged = database
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(
+      and(
+        eq(whatsappMessage.conversationId, conversationId),
+        eq(whatsappMessage.direction, "incoming"),
+        isNull(whatsappMessage.judgement),
+      ),
+    )
+    .get();
+  if (!unjudged) {
+    return;
+  }
+  database
+    .update(conversation)
+    .set({ assistantDueAt: sql`coalesce(${conversation.assistantDueAt}, ${Date.now()})` })
+    .where(eq(conversation.id, conversationId))
+    .run();
 }
