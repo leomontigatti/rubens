@@ -14,6 +14,7 @@ import {
   fakeMeta,
   inStorage,
   patientReacts,
+  patientSends,
   patientWrites,
   scriptedModel,
   setUpBookingWorld,
@@ -348,6 +349,33 @@ describe("the patient's reactions", () => {
     expect(lastTurnRead().at(-1)).toBe(`[new messages]\n[reaccionó 👍 al mensaje: «${proposal}»]`);
   });
 
+  it("keeps the reaction the patient changed to in the same second when Meta delivers the first one again", async () => {
+    const address = await assistantAnswers("dónde queda?", "Av. Siempre Viva 123.");
+    const thumbsUp = {
+      whatsappId: "wamid.the-thumbs-up",
+      from: martinaPhone,
+      sentAt: Date.now(),
+      type: "reaction",
+      text: "👍",
+      reactsTo: address,
+      payload: "{}",
+    };
+    const call = { messages: [thumbsUp], statuses: [], templateStatuses: [] };
+    expectOk(await world.organization.storeWhatsappEvents(call));
+    await reacts(address, "❤️", thumbsUp.sentAt);
+
+    expectOk(await world.organization.storeWhatsappEvents(call));
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Gracias!";
+    });
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(
+      "[new messages]\n[reaccionó ❤️ al mensaje: «Av. Siempre Viva 123.»]",
+    );
+  });
+
   it("counts no failed turn once the only message a failed turn left is taken back", async () => {
     const reply = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
     await reacts(reply, "👍");
@@ -364,6 +392,38 @@ describe("the patient's reactions", () => {
       database.select({ failedTurns: conversation.failedTurns }).from(conversation).get(),
     );
     expect(failed?.failedTurns).toBe(0);
+  });
+
+  it("says nothing in a retry of a lone 👍 once a member closed a handoff of the conversation meanwhile", async () => {
+    const reply = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
+    await patientSends(world.organization, "document", martinaPhone);
+    await afterTheWait();
+    const [handoff] = expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs;
+    await reacts(reply, "👍");
+    scriptedModel.script(() => {
+      throw new Error("The model is overloaded");
+    });
+    await afterTheWait();
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      await released;
+      return "De nada!";
+    });
+    const turns = scriptedModel.turns.length;
+    vi.setSystemTime(Date.now() + 60_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    while (scriptedModel.turns.length === turns) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    expectOk(await world.organization.closeHandoff(world.receptionist, { handoffId: handoff!.id }));
+    release();
+    await alarm;
+
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Hola, en qué te puedo ayudar?",
+    ]);
   });
 
   it("reads only the reaction the patient left on a message: none once taken back, the last once replaced", async () => {

@@ -464,13 +464,17 @@ async function runTurn(
   if (!turn) {
     return null;
   }
-  // A person answered the turn's words while the model read them: theirs is the answer.
-  // A reaction the patient replaced meanwhile is no answer (`whatsapp-messages.ts`).
-  const words = turn.read.unjudged.filter((message) => message.type !== reactionType);
+  // A person answered the turn's messages while the model read them: theirs is the answer.
+  // A reaction the patient replaced or took back meanwhile was judged by that, not by a
+  // person (`whatsapp-messages.ts`); one still shown was judged by a person.
+  const { live } = reactionsOf(database, conversationId);
+  const answerable = turn.read.unjudged.filter(
+    (message) => message.type !== reactionType || live.has(message.id),
+  );
   if (
     answeredMeanwhile(
       database,
-      words.map((message) => message.id),
+      answerable.map((message) => message.id),
     )
   ) {
     turnForTheRest(database, conversationId);
