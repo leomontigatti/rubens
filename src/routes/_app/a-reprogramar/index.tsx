@@ -1,8 +1,6 @@
 import { CalendarSyncIcon } from "lucide-react";
-import { tz } from "@date-fns/tz";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { cn } from "cn";
-import { format } from "date-fns";
 
 import { EmptyState } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
@@ -11,6 +9,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
 import type { ToRescheduleEntry, ToRescheduleReason } from "#/organization/to-reschedule.ts";
+import { formatDateTime } from "#/lib/dates.ts";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
 // that time off, a closure or a schedule change left outside working time, of
@@ -51,10 +50,6 @@ const placeRemedies: Partial<Record<ToRescheduleReason, string>> = {
   officeInactive: "reactivar la sede",
   roomInactive: "reactivar el consultorio",
 };
-
-function localDateTime(instant: Date, timeZone: string) {
-  return format(instant, "dd/MM/yyyy HH:mm", { in: tz(timeZone) });
-}
 
 function ToRescheduleList() {
   const result = Route.useLoaderData();
@@ -106,7 +101,7 @@ function EntryRow({ entry }: { entry: ToRescheduleEntry }) {
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
         <p className="font-medium">
-          {localDateTime(entry.start, entry.timeZone)} · {entry.patientName}
+          {formatDateTime(entry.start, entry.timeZone)} · {entry.patientName}
         </p>
         <p className="text-muted-foreground">
           {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.officeName},{" "}

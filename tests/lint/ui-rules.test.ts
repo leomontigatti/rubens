@@ -266,6 +266,58 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(codes(alertCompleteProbe)).toEqual([]);
   });
 
+  const dateFormat = (found: string[]) =>
+    found.filter((code) => code.includes("no-raw-date-format"));
+
+  const displayPatternsProbe = probe(
+    "display-patterns.ts",
+    `import { tz } from "@date-fns/tz";\nimport { format, format as write } from "date-fns";\n\nconst zone = { in: tz("UTC") };\nexport const stamp = (at: Date) => format(at, "dd/MM/yyyy HH:mm", zone);\nexport const clock = (at: Date) => write(at, "HH:mm", zone);\nexport const day = (at: Date, long: boolean) => format(at, long ? "EEEE d 'de' MMMM" : \`d/M\`, zone);\n`,
+  );
+
+  it("reject a date-fns format a person reads, renamed or in a branch, and point at dates.ts", () => {
+    const found = lint(displayPatternsProbe).filter((d) => d.code.includes("no-raw-date-format"));
+
+    expect(found).toHaveLength(4);
+    expect(found.map(text).join()).toContain("src/lib/dates.ts");
+  });
+
+  const machinePatternsProbe = probe(
+    "machine-patterns.ts",
+    `import { tz } from "@date-fns/tz";\nimport { format } from "date-fns";\n\nconst zone = { in: tz("UTC") };\nexport const key = (at: Date) => format(at, "yyyy-MM-dd", zone);\nexport const local = (at: Date) => format(at, "yyyy-MM-dd'T'HH:mm", zone);\nexport const minute = (at: Date) => Number(format(at, "m", zone));\nconst own = { format: (at: Date, pattern: string) => pattern + at.getTime() };\nexport const other = (at: Date) => own.format(at, "dd/MM/yyyy");\n`,
+  );
+
+  it("allow the machine formats a date is stored or compared in", () => {
+    expect(dateFormat(codes(machinePatternsProbe))).toEqual([]);
+  });
+
+  const intlProbe = probe(
+    "intl-dates.ts",
+    `export const short = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeZone: "UTC" });\nexport const plain = Intl.DateTimeFormat("es-AR");\nexport const day = (at: Date) => at.toLocaleDateString("es-AR");\nexport const time = (at: Date) => at.toLocaleTimeString("es-AR");\nexport const both = (at: Date) => at.toLocaleString("en-US", { dateStyle: "short" });\nexport const quoted = (at: Date) => at.toLocaleString("en-US", { "timeStyle": "short" });\nexport const count = (n: number) => n.toLocaleString("es-AR", { maximumFractionDigits: 1 });\n`,
+  );
+
+  it("reject Intl's date formats and a date's own locale strings, not a number's", () => {
+    expect(dateFormat(codes(intlProbe))).toHaveLength(6);
+  });
+
+  const zoneCheckProbe = probe(
+    "zone-check.ts",
+    `export function isZone(value: string) {\n  try {\n    new Intl.DateTimeFormat("en", { timeZone: value });\n    return true;\n  } catch {\n    return false;\n  }\n}\n`,
+  );
+
+  it("allow Intl asked only whether a time zone exists", () => {
+    expect(dateFormat(codes(zoneCheckProbe))).toEqual([]);
+  });
+
+  const dateFiles = [
+    existing("src/lib/dates.ts"),
+    existing("src/routes/_app/conversaciones/-labels.ts"),
+    existing("src/routes/_app/notificaciones/-notification-copy.ts"),
+  ];
+
+  it("leave dates.ts its formats, and skip the files PR #300 changes until it merges", () => {
+    expect(dateFormat(codes(...dateFiles))).toEqual([]);
+  });
+
   const uiComponents = [
     existing("src/components/ui/input.tsx"),
     existing("src/components/ui/native-select.tsx"),

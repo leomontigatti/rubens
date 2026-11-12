@@ -1,10 +1,9 @@
-import { tz } from "@date-fns/tz";
-import { format } from "date-fns";
 import type { ReactNode } from "react";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import type { getAppointmentRecord } from "#/server/appointments.functions.ts";
 import type { AppointmentRecord } from "#/organization/appointment-changes.ts";
+import { formatDateTime } from "#/lib/dates.ts";
 
 // What an appointment's pages share: `Editar turno`, `Reprogramar turno` and
 // `Cancelar turno`, each opened from its dialog on the calendar or from
@@ -37,6 +36,6 @@ export function AppointmentPage(props: {
 
 /** Who and when, under each page's title: `María Fernández, 02/11/2026 09:00 con Laura Gómez`. */
 export function appointmentSummary({ appointment, office }: LoadedAppointment): string {
-  const when = format(appointment.start, "dd/MM/yyyy HH:mm", { in: tz(office.timeZone) });
+  const when = formatDateTime(appointment.start, office.timeZone);
   return `${appointment.patientName}, ${when} con ${appointment.practitionerName} · ${appointment.medicalServiceName}`;
 }

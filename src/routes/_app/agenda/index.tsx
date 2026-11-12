@@ -6,12 +6,14 @@ import * as z from "zod";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { DateInput } from "#/components/date-time-input.tsx";
+import { isLocalDate } from "#/components/date-time-text.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { Input } from "#/components/ui/input.tsx";
 import { mondayOf } from "#/lib/appointments.ts";
 import { visibleWeekHours } from "#/lib/calendar-layout.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { formatLocalDate, shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
+import { formatLocalDate } from "#/lib/dates.ts";
+import { shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import { getCalendarWeekView } from "#/server/appointments.functions.ts";
 import type { CalendarAppointment, CalendarWeek } from "#/organization/calendar-week.ts";
 
@@ -223,18 +225,19 @@ function WeekNavigation(props: { search: DatedSearch }) {
 function DateJump(props: { date: string; onJump: (date: string) => void }) {
   const [typed, setTyped] = useState(props.date);
   return (
-    <Input
-      aria-label="Ir a la fecha"
-      type="date"
-      className="w-auto"
-      value={typed}
-      onChange={(event) => {
-        setTyped(event.target.value);
-        if (event.target.value) {
-          props.onJump(event.target.value);
-        }
-      }}
-    />
+    <div className="w-40">
+      <DateInput
+        id="ir-a-la-fecha"
+        aria-label="Ir a la fecha"
+        value={typed}
+        onChange={(value) => {
+          setTyped(value);
+          if (isLocalDate(value)) {
+            props.onJump(value);
+          }
+        }}
+      />
+    </div>
   );
 }
 

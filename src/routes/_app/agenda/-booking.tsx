@@ -1,9 +1,7 @@
-import { tz } from "@date-fns/tz";
 import { useQuery } from "@tanstack/react-query";
 import { useRouteContext, useRouter } from "@tanstack/react-router";
 import type { NavigateOptions } from "@tanstack/react-router";
 import { useStore } from "@tanstack/react-form";
-import { format } from "date-fns";
 import { useState } from "react";
 
 import { useAppForm } from "#/components/app-form.tsx";
@@ -38,6 +36,7 @@ import type { RoomOccupant } from "#/organization/appointment-placement.ts";
 import { addAppointment, addOverbooking } from "#/server/appointments.functions.ts";
 import { FreeStartList, FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
 import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
+import { formatDateTime, formatTime } from "#/lib/dates.ts";
 
 // Booking a patient on a page of its own, from either entry: a free cell
 // clicked on the calendar, which fixes the time and the room, and the
@@ -101,17 +100,9 @@ export function roomFullMessage(occupants: readonly RoomOccupant[], timeZone: st
   }
   const held = occupants.map(
     (occupant) =>
-      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${localTime(occupant.start, timeZone)} a ${localTime(occupant.end, timeZone)})`,
+      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${formatTime(occupant.start, timeZone)} a ${formatTime(occupant.end, timeZone)})`,
   );
   return `Ese consultorio no tiene lugar a esa hora. Lo ocupan: ${held.join(", ")}.`;
-}
-
-function localTime(instant: Date, timeZone: string) {
-  return format(instant, "HH:mm", { in: tz(timeZone) });
-}
-
-function localDateTime(instant: Date, timeZone: string) {
-  return format(instant, "dd/MM/yyyy HH:mm", { in: tz(timeZone) });
 }
 
 /** Where an overbooking can go: the office's rooms, its local times read in its zone. */
@@ -460,7 +451,7 @@ function StartField(props: {
         <StartGroup>
           {showsWeek(field.state.value) && (
             <form.AppField name="freeFrom">
-              {(from) => <from.TextField label="Horarios libres desde" type="date" />}
+              {(from) => <from.DateField label="Horarios libres desde" />}
             </form.AppField>
           )}
           {showsWeek(field.state.value) && query && (
@@ -488,10 +479,10 @@ function OverbookingFields(props: { form: BookingForm; rooms: { id: string; name
   return (
     <>
       <form.AppField name="date">
-        {(field) => <field.TextField label="Fecha" type="date" startsRow required />}
+        {(field) => <field.DateField label="Fecha" startsRow required />}
       </form.AppField>
       <form.AppField name="time">
-        {(field) => <field.TextField label="Hora" type="time" required />}
+        {(field) => <field.TimeField label="Hora" required />}
       </form.AppField>
       <form.AppField name="roomId">
         {(field) => (
@@ -519,7 +510,7 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
   return (
     <p className="text-sm">
       <span className="text-muted-foreground">Turno:</span>{" "}
-      <span className="font-medium">{localDateTime(start.start, start.timeZone)}</span>,{" "}
+      <span className="font-medium">{formatDateTime(start.start, start.timeZone)}</span>,{" "}
       {start.roomName}
     </p>
   );
@@ -563,8 +554,8 @@ export function PatientWarnings(props: {
           <ul className="list-disc pl-5">
             {props.warnings.map((warning) => (
               <li key={+warning.start}>
-                {localTime(warning.start, warning.timeZone)} a{" "}
-                {localTime(warning.end, warning.timeZone)} con {warning.practitionerName}
+                {formatTime(warning.start, warning.timeZone)} a{" "}
+                {formatTime(warning.end, warning.timeZone)} con {warning.practitionerName}
                 {warning.kind === "overlap" && ", a la misma hora"}
               </li>
             ))}

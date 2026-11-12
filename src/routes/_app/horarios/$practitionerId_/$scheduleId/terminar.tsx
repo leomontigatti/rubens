@@ -54,7 +54,7 @@ function EndForm(props: { schedule: Schedule; initial: string }) {
       action={action}
     >
       <form.AppField name="lastDate">
-        {(field) => <field.TextField label="Último día" type="date" required />}
+        {(field) => <field.DateField label="Último día" required />}
       </form.AppField>
     </ActionFormPage>
   );
