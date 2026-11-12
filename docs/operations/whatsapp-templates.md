@@ -46,8 +46,9 @@ template, its event) under its name; `Nueva plantilla` creates one of the
 organization's own. A template's page edits its name and timing, which save on
 their own, and its text, which a save submits to Meta when it differs from the
 latest version's; a template never sent and picked by no medical service can be
-deleted from it. Under `Texto`, the variables it may use, each a chip that writes
-it in at the cursor, and the hint `No escribas cuándo se envía (mañana, en 2
+deleted from it. Between `Texto` and its box, the variables it may use, each a
+chip named in Spanish (`Paciente`, `Organización`) that writes it in at the
+cursor; under the box, the hint `No escribas cuándo se envía (mañana, en 2
 horas): usá {{fecha}} y {{hora}}. Sin ¿ ni ¡ de apertura y sin emojis.` The page
 also says whether changing `Trato` in the communication rules changes the text:
 it does for a default draft never sent, and not once it is sent. The preview warns when the text says `mañana`, `hoy` or `en N horas`, and
