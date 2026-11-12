@@ -269,6 +269,41 @@ describe("the assistant's pace", () => {
     expect(textsToMeta().map((one) => one.text)).toEqual(["Hola Martina."]);
   });
 
+  it("answers a conversation due behind another while the other's reply types, each after its own pause", async () => {
+    const lucasPhone = "+5491155551111";
+    await bookPatient("Martina", martinaPhone);
+    await bookPatient("Lucas", lucasPhone, at("13:00"));
+    await patientWrites("cuándo es mi turno?");
+    wait(1_000);
+    await patientWrites("a qué hora es?", lucasPhone);
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Hola Martina.\n\nEl lunes a las 09:00.";
+    });
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "A las 10:00.";
+    });
+    const release = fakeMeta.holdTypingPause(0);
+    wait(8_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    while (textsToMeta().length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    // Martina's first message still types; Lucas's turn ran and its reply went.
+    expect(textsToMeta()).toEqual([{ to: "5491155551111", text: "A las 10:00." }]);
+    release();
+    await alarm;
+
+    expect(textsToMeta()).toEqual([
+      { to: "5491155551111", text: "A las 10:00." },
+      { to: "5491155550000", text: "Hola Martina." },
+      { to: "5491155550000", text: "El lunes a las 09:00." },
+    ]);
+    expect(fakeMeta.typingPauses).toEqual([1_825, 1_800, 2_025]);
+  });
+
   it("sends none of the reply once the patient writes again while it types", async () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("cuándo es mi turno?");
