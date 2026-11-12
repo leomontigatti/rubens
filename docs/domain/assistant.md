@@ -291,7 +291,11 @@ A handoff counts back from the window's close. Its recipient is told at once,
 reminded about 6 hours before the close, and about 2 hours before it the reminder
 also goes to every other member who may answer it (for one to the practitioner,
 only practitioners who keep clinical records). An admin can move these times, but none
-can fall after the close. A handoff made after the close, for a reply that could not
+can fall after the close. A reminder that falls between 21:00 and 08:00 in the
+organization's time zone (its first office's) waits until 08:00, in the app and on
+Telegram, and does not go when the window closes first: a reply after the close goes
+through the reopen template. These hours are fixed; offices have no opening hours.
+The notification when a handoff opens always goes at once. A handoff made after the close, for a reply that could not
 go out in time, has no countdown and tells the patient nothing: its recipient is
 told at once, and their reply goes through the reopen template.
 
