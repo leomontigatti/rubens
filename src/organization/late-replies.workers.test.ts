@@ -494,6 +494,26 @@ describe("a person's reply after the window closed", () => {
     expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Rita Paz*\n${reply}` }]);
   });
 
+  it("sends one template when Meta holds the number from before the first could go until after the window", async () => {
+    await handedOffThenClosed();
+    await numberTurns({ kind: "restricted", until: null });
+    expectOk(await replyAs(world.receptionist));
+    vi.setSystemTime(Date.now() + hour);
+    await writes("sí, decime");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
+      return "";
+    });
+    await afterTheWait(world.organization);
+    vi.setSystemTime(Date.now() + 25 * hour);
+    await runDurableObjectAlarm(world.organization);
+
+    await numberTurns({ kind: "unrestricted" });
+    await runDurableObjectAlarm(world.organization);
+
+    expect(templatesSent()).toHaveLength(1);
+  });
+
   it("closes only the handoffs opened before it was written", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist));

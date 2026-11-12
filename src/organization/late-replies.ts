@@ -379,7 +379,7 @@ export function withdrawOwnLateReply(
 }
 
 /** Whether late reply `id` still waits: its writer may have withdrawn it while the alarm sent earlier ones. */
-function stillWaiting(database: Database, id: string) {
+function stillWaiting(database: Writer, id: string) {
   const current = database
     .select({ state: lateReply.state })
     .from(lateReply)
@@ -443,14 +443,20 @@ function missedWindow(waiting: Waiting, lastIncoming: number | null) {
   return lastIncoming !== null && lastIncoming > waiting.reopenQueuedAt;
 }
 
-/** Puts `waiting`, whose window closed unused, behind a reopen template queued since. */
+/**
+ * Puts `waiting`, whose window closed unused, behind a reopen template queued
+ * since; the one it leaves is dropped if it has not gone and no other reply
+ * waits behind it.
+ */
 function reopenAgain(database: Database, waiting: Waiting) {
   database.transaction((tx) => {
+    // Its writer may have withdrawn it while the alarm sent earlier ones.
+    if (!stillWaiting(tx, waiting.id)) {
+      return;
+    }
+    dropUnneededReopen(tx, waiting, "answered");
     const reopenId = reopenFor(tx, waiting.conversationId);
-    tx.update(lateReply)
-      .set({ reopenId })
-      .where(and(eq(lateReply.id, waiting.id), eq(lateReply.state, "waiting")))
-      .run();
+    tx.update(lateReply).set({ reopenId }).where(eq(lateReply.id, waiting.id)).run();
   });
 }
 
