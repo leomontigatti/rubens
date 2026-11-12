@@ -105,7 +105,6 @@ export function HandoffActions({ handoffs }: { handoffs: OpenHandoff[] }) {
         <CloseButton
           key={handoff.id}
           handoff={handoff}
-          // Two to close: the button says which.
           label={
             closable.length > 1 && handoff.forPractitioner
               ? "Cerrar sin responder · Clínica"
