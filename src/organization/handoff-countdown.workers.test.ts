@@ -337,3 +337,35 @@ describe("the admin's reminder times", () => {
     }
   });
 });
+
+describe("a handoff about no appointment on a number siblings share", () => {
+  it("reminds its recipient without naming a patient, since it cannot tell whose", async () => {
+    await world.addPatient("Martina", martinaPhone);
+    // A sibling on the same number, first by name.
+    expectOk(
+      await world.organization.registerPatient(adminCaller, {
+        firstName: "Ana",
+        lastName: "Paz",
+        phone: martinaPhone,
+        confirmDuplicates: true,
+      }),
+    );
+    expectOk(
+      await world.organization.saveHandoffContacts(adminCaller, {
+        memberIds: [world.juan.caller.userId],
+      }),
+    );
+    await patientWrites(world.organization, "quiero sacar un turno", martinaPhone);
+    const closesAt = Date.now() + 24 * hourMs;
+    await afterTheWait(world.organization);
+
+    await alarmAt(closesAt - 6 * hourMs);
+
+    const listed = expectOk(await world.organization.listNotifications(world.juan.caller));
+    expect(
+      listed.notifications
+        .filter((one) => one.kind === "handoffReminder")
+        .map((one) => ({ reason: one.handoff?.reason, patient: one.handoff?.patient })),
+    ).toEqual([{ reason: "noUpcomingAppointment", patient: null }]);
+  });
+});

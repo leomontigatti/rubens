@@ -89,6 +89,26 @@ async function notifiedOfHandoff(caller: Caller) {
     .map((one) => one.handoff && { ...one.handoff, patient: undefined, detail: undefined });
 }
 
+/** The patient each of `caller`'s handoff notifications names. */
+async function handoffPatients(caller: Caller) {
+  const listed = expectOk(await world.organization.listNotifications(caller));
+  return listed.notifications
+    .filter((one) => one.kind === "handoff")
+    .map((one) => one.handoff?.patient);
+}
+
+/** Registers Ana Paz on Martina's number: a sibling, first by name. */
+async function siblingOfMartina() {
+  expectOk(
+    await world.organization.registerPatient(adminCaller, {
+      firstName: "Ana",
+      lastName: "Paz",
+      phone: martinaPhone,
+      confirmDuplicates: true,
+    }),
+  );
+}
+
 /** Makes `members` the handoff contacts. */
 async function contactsAre(...members: Caller[]) {
   expectOk(
@@ -151,6 +171,21 @@ describe("a patient asking for a person", () => {
     expect(await notifiedOfHandoff(world.juan.caller)).toEqual([]);
     expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
     expect(fakeMeta.textsSent()).toEqual([]);
+  });
+
+  it("names the appointment's patient in its notification, on a number siblings share too", async () => {
+    const appointmentId = await bookMartina();
+    await siblingOfMartina();
+    await writes("quiero hablar con alguien");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      one.call("hand_off", { reason: "patient_asked", appointmentId });
+      return "";
+    });
+
+    await turn();
+
+    expect(await handoffPatients(adminCaller)).toEqual(["Martina Paz"]);
   });
 
   it("ignores an appointment id the number may not speak of", async () => {
@@ -346,7 +381,7 @@ describe("a number with nothing booked to talk about", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
-  it("hands off a patient with no upcoming appointment", async () => {
+  it("hands off a patient with no upcoming appointment, named in its notification", async () => {
     await contactsAre(world.lucia.caller);
     await world.addPatient("Martina", martinaPhone);
     await writes("quiero sacar un turno");
@@ -354,6 +389,18 @@ describe("a number with nothing booked to talk about", () => {
     await turn();
 
     expect((await openHandoffs())[0]).toMatchObject({ reason: "noUpcomingAppointment" });
+    expect(await handoffPatients(world.lucia.caller)).toEqual(["Martina Paz"]);
+  });
+
+  it("names no patient in its notification when the number stands for several, since it cannot tell whose", async () => {
+    await contactsAre(world.lucia.caller);
+    await world.addPatient("Martina", martinaPhone);
+    await siblingOfMartina();
+    await writes("quiero sacar un turno");
+
+    await turn();
+
+    expect(await handoffPatients(world.lucia.caller)).toEqual([null]);
   });
 
   it("goes to every admin while no handoff contact is picked", async () => {

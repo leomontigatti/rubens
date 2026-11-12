@@ -160,8 +160,8 @@ number, and replies that look like opt-outs. Reception sees all of them; a
 practitioner sees those about their own appointments and the handoffs sent to
 them. A handoff's notification says why, so its reader can answer without
 reading the conversation back ([assistant.md](./assistant.md#handoff)). A notification of a
-reply not delivered or failed, and of an emergency, names the number's patient only when the
-number has one: on a number siblings share, it cannot tell whose. The app holds the full
+handoff about no appointment, of a reply not delivered or failed, and of an emergency, names the
+number's patient only when the number has one: on a number siblings share, it cannot tell whose. The app holds the full
 record, so a failed external delivery loses nothing.
 
 A cancellation the patient makes through the assistant notifies reception and the admins,

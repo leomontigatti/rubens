@@ -305,8 +305,8 @@ export function listNotifications(database: Database, acting: Acting) {
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
     .all();
-  // A handoff about no appointment names the first patient its number stands
-  // for; a notification of a conversation that stores none, its only one.
+  // A handoff about no appointment, and a notification of a conversation that
+  // stores no patient, name the number's only one.
   const firstPatients = firstPatientOf(database, [
     ...new Set(
       rows.flatMap((row) => [row.conversationId, row.notDeliveredIn].filter((id) => id !== null)),
@@ -362,7 +362,7 @@ export function listNotifications(database: Database, acting: Acting) {
                         lastName: handedOffLastName,
                         chosenName: handedOffChosenName,
                       })
-                    : (firstPatients.get(conversationId)?.name ?? null),
+                    : (onlyPatient(firstPatients.get(conversationId))?.name ?? null),
                 detail: handoffDetail,
               }
             : null,

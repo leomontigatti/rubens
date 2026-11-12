@@ -27,7 +27,7 @@ export interface NotificationFacts {
     forPractitioner: boolean;
     /** It needs the practitioner, and reached the reader since nobody active keeps clinical records. */
     noPractitioner: boolean;
-    /** The patient it is about, by name; `null` for a number of no patient. */
+    /** The patient it is about, by name; `null` for a number of no patient, or of several. */
     patient: string | null;
     /** What the turn that made it knew of a refused move and its own changes. */
     detail: HandoffDetail | null;
