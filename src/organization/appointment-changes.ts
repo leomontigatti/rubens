@@ -36,6 +36,7 @@ import { dropChangeMessages, queueChangeMessage } from "#/organization/change-me
 import { asRange, meets } from "#/organization/availability.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { withdrawCancellation } from "#/organization/notifications.ts";
 import { requeueBefore, requeueOnStatus } from "#/organization/template-messages.ts";
 import { findPatient } from "#/organization/patients.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
@@ -492,11 +493,15 @@ export function undoAppointmentStatus(
     if (!decided.ok) {
       return decided;
     }
-    return setStatus(tx, acting, placed, {
+    const undone = setStatus(tx, acting, placed, {
       status: decided.status,
       previousStatus: null,
       cancelledBy: null,
       cancellationReason: null,
     });
+    if (undone.ok && placed.status === "cancelled") {
+      withdrawCancellation(tx, placed.id);
+    }
+    return undone;
   });
 }

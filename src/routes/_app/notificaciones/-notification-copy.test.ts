@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { NotificationFacts } from "#/routes/_app/notificaciones/-notification-copy.ts";
-import { notificationText } from "#/routes/_app/notificaciones/-notification-copy.ts";
+import {
+  notificationText,
+  notificationTitle,
+} from "#/routes/_app/notificaciones/-notification-copy.ts";
 
 const facts: NotificationFacts = {
   kind: "handoff",
@@ -11,6 +14,7 @@ const facts: NotificationFacts = {
   until: null,
   waiting: null,
   patient: null,
+  appointment: null,
   handoff: {
     conversationId: "conversation-1",
     reason: "ruleRefused",
@@ -88,6 +92,27 @@ describe("a handoff's notification", () => {
       ),
     ).toBe(
       "Consulta para el profesional: Marta Quiroga. Te llegó porque ningún profesional activo lleva historias clínicas: elegí los contactos de derivación para que la reciba uno.",
+    );
+  });
+});
+
+describe("a cancellation's notification", () => {
+  it("names the patient, the day and time in the office's zone, and the practitioner", () => {
+    const cancelled: NotificationFacts = {
+      ...facts,
+      kind: "appointmentCancelled",
+      handoff: null,
+      appointment: {
+        patient: "Marta Quiroga",
+        practitioner: "Juan Prueba",
+        // Thursday 12 November 2026, 13:00 UTC: 10:00 in Buenos Aires.
+        startsAt: Date.UTC(2026, 10, 12, 13, 0),
+        timeZone: "America/Argentina/Buenos_Aires",
+      },
+    };
+
+    expect(notificationTitle(cancelled)).toBe(
+      "Marta Quiroga canceló su turno del jueves 12/11 10:00 con Juan Prueba",
     );
   });
 });

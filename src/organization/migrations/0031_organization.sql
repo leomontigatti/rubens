@@ -1,0 +1,1 @@
+ALTER TABLE `notification` ADD `appointment_id` text REFERENCES appointment(id);

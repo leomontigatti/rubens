@@ -12,6 +12,7 @@ import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/organization/appointment-changes.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { notifyCancellation } from "#/organization/notifications.ts";
 import {
   cutoffHoursOf,
   freeTimesFor,
@@ -256,6 +257,7 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
       appointments.sort((a, b) => a.startsAt - b.startsAt || a.id.localeCompare(b.id));
     } else {
       appointments.splice(index, 1);
+      notifyCancellation(database, current.id);
     }
     return { ok: true, applied: latest.statement };
   });

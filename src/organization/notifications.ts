@@ -5,10 +5,19 @@ import type { Role } from "#/lib/access.ts";
 import { notificationListSize, notificationReferenceSchema } from "#/lib/notifications.ts";
 import type { NotificationReference } from "#/lib/notifications.ts";
 import { patientName } from "#/lib/patients.ts";
+import { today } from "#/lib/schedules.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { appointment, member, notification, patient, practitioner } from "#/organization/schema.ts";
+import {
+  appointment,
+  member,
+  notification,
+  office,
+  patient,
+  practitioner,
+  room,
+} from "#/organization/schema.ts";
 import { conversationPatient, handoff, template } from "#/organization/whatsapp-schema.ts";
 
 // Notifications to staff (`src/lib/notifications.ts`): written in the
@@ -73,8 +82,29 @@ export function notifyOptOut(tx: Writer, patientId: string, kind: "optOut" | "op
   notify(tx, recipients, { kind, patientId });
 }
 
+/** Notifies reception and the admins that a patient cancelled `appointmentId` through the assistant. */
+export function notifyCancellation(tx: Writer, appointmentId: string) {
+  notify(tx, activeWith(tx, ["admin", "receptionist"]), {
+    kind: "appointmentCancelled",
+    appointmentId,
+  });
+}
+
+/** Deletes the notifications of `appointmentId`'s cancellation, once it is undone and they no longer hold. */
+export function withdrawCancellation(tx: Writer, appointmentId: string) {
+  tx.delete(notification)
+    .where(
+      and(
+        eq(notification.kind, "appointmentCancelled"),
+        eq(notification.appointmentId, appointmentId),
+      ),
+    )
+    .run();
+}
+
 const handedOffAppointment = alias(appointment, "handed_off_appointment");
 const handedOffPatient = alias(patient, "handed_off_patient");
+const cancelledPatient = alias(patient, "cancelled_patient");
 
 /** The first patient, by name, each of `conversationIds`' number stands for. */
 function firstPatientOf(database: Database, conversationIds: string[]) {
@@ -115,6 +145,42 @@ function keepsRecords(database: Database, acting: Acting) {
 }
 
 /**
+ * A cancellation's notification as it reads: who cancelled, with whom and
+ * when, and where its time is on the agenda; `null` for another kind.
+ */
+function cancelledAppointment(row: {
+  cancelledId: string | null;
+  cancelledStartsAt: number | null;
+  cancelledRoomId: string | null;
+  cancelledTimeZone: string | null;
+  cancelledPractitioner: string | null;
+  cancelledFirstName: string | null;
+  cancelledLastName: string | null;
+  cancelledChosenName: string | null;
+}) {
+  if (
+    row.cancelledId === null ||
+    row.cancelledStartsAt === null ||
+    row.cancelledTimeZone === null
+  ) {
+    return null;
+  }
+  return {
+    id: row.cancelledId,
+    patient: patientName({
+      firstName: row.cancelledFirstName!,
+      lastName: row.cancelledLastName!,
+      chosenName: row.cancelledChosenName,
+    }),
+    practitioner: row.cancelledPractitioner!,
+    startsAt: row.cancelledStartsAt,
+    timeZone: row.cancelledTimeZone,
+    roomId: row.cancelledRoomId!,
+    date: today(row.cancelledTimeZone, new Date(row.cancelledStartsAt)),
+  };
+}
+
+/**
  * `acting`'s notifications, unread first, each part newest first: an unread
  * one stays in the list however many came after it.
  */
@@ -146,6 +212,14 @@ export function listNotifications(database: Database, acting: Acting) {
       firstName: patient.firstName,
       chosenName: patient.chosenName,
       lastName: patient.lastName,
+      cancelledId: appointment.id,
+      cancelledStartsAt: appointment.startsAt,
+      cancelledRoomId: appointment.roomId,
+      cancelledTimeZone: office.timeZone,
+      cancelledPractitioner: practitioner.displayName,
+      cancelledFirstName: cancelledPatient.firstName,
+      cancelledLastName: cancelledPatient.lastName,
+      cancelledChosenName: cancelledPatient.chosenName,
     })
     .from(notification)
     .leftJoin(handoff, eq(handoff.id, notification.handoffId))
@@ -153,6 +227,11 @@ export function listNotifications(database: Database, acting: Acting) {
     .leftJoin(handedOffPatient, eq(handedOffPatient.id, handedOffAppointment.patientId))
     .leftJoin(template, eq(template.id, notification.templateId))
     .leftJoin(patient, eq(patient.id, notification.patientId))
+    .leftJoin(appointment, eq(appointment.id, notification.appointmentId))
+    .leftJoin(cancelledPatient, eq(cancelledPatient.id, appointment.patientId))
+    .leftJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
+    .leftJoin(room, eq(room.id, appointment.roomId))
+    .leftJoin(office, eq(office.id, room.officeId))
     .where(eq(notification.recipientId, acting.userId))
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
@@ -178,6 +257,14 @@ export function listNotifications(database: Database, acting: Acting) {
         firstName,
         chosenName,
         lastName,
+        cancelledId,
+        cancelledStartsAt,
+        cancelledRoomId,
+        cancelledTimeZone,
+        cancelledPractitioner,
+        cancelledFirstName,
+        cancelledLastName,
+        cancelledChosenName,
         ...row
       }) => ({
         ...row,
@@ -208,6 +295,16 @@ export function listNotifications(database: Database, acting: Acting) {
           patientId !== null && firstName !== null && lastName !== null
             ? { id: patientId, name: patientName({ firstName, lastName, chosenName }) }
             : null,
+        appointment: cancelledAppointment({
+          cancelledId,
+          cancelledStartsAt,
+          cancelledRoomId,
+          cancelledTimeZone,
+          cancelledPractitioner,
+          cancelledFirstName,
+          cancelledLastName,
+          cancelledChosenName,
+        }),
       }),
     ),
   } as const;
