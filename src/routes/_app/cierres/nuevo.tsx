@@ -29,16 +29,17 @@ function NewClosure() {
     <EntryForm
       back={{ to: "/cierres" }}
       title="Nuevo cierre"
+      subject="closure"
       initial={null}
       submitLabel="Crear cierre"
       creates
       owner={officeField(result.offices, null)}
       messages={refusalMessages}
-      onSubmit={(values) => {
+      onSubmit={(values, notice) => {
         const input = closureInputSchema.safeParse({
           officeId: readOfficeId(values.owner),
           entry: readRangeEntry(values),
-          tellPatients: values.tellPatients,
+          ...notice,
         });
         return input.success ? addClosure({ data: input.data }) : input.error;
       }}

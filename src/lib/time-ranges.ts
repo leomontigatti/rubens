@@ -88,22 +88,36 @@ export function rangeEntryLabel(entry: RangeEntry): string {
 const id = z.uuid();
 
 /**
- * Whether the patients a time off or a closure sends to the "to reschedule"
- * list are told by WhatsApp (docs/domain/scheduling.md § Time off and closures).
+ * Whether to tell by WhatsApp the patients a time off or a closure sends to
+ * the "to reschedule" list, and how many they were told it sends
+ * (docs/domain/scheduling.md § Time off and closures). A save that sends
+ * some is refused with the count until both are given and the count holds.
  */
-const tellPatients = z.boolean().default(true);
+const notice = {
+  tellPatients: z.boolean().optional(),
+  affected: z.int().positive().optional(),
+};
+
+/** A save refused until whoever saves decides whether to tell the `affected` patients. */
+export interface AffectsAppointments {
+  ok: false;
+  reason: "affectsAppointments";
+  affected: number;
+}
+
+export type Notice = Partial<{ tellPatients: boolean; affected: number }>;
 
 /** Time off for a practitioner, shared by the form and the services. */
 export const timeOffInputSchema = z.object({
   practitionerId: id,
   entry: rangeEntrySchema,
-  tellPatients,
+  ...notice,
 });
 
 export const timeOffUpdateSchema = z.object({
   timeOffId: id,
   entry: rangeEntrySchema,
-  tellPatients,
+  ...notice,
 });
 
 export const timeOffDeleteSchema = z.object({ timeOffId: id });
@@ -112,7 +126,7 @@ export const timeOffDeleteSchema = z.object({ timeOffId: id });
 export const closureInputSchema = z.object({
   officeId: id.nullable(),
   entry: rangeEntrySchema,
-  tellPatients,
+  ...notice,
 });
 
 export const closureUpdateSchema = closureInputSchema.extend({ closureId: id });

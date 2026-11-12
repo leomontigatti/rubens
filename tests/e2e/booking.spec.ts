@@ -109,7 +109,7 @@ test("moves an appointment a time off left outside working time", async ({ page,
   await page.getByRole("button", { name: "Dar turno" }).click();
   await expect(appointmentCard(page, "10:00", patient)).toBeVisible();
 
-  // The admin adds a time off over the practitioner's whole day.
+  // The admin adds a time off over the practitioner's whole day, telling nobody.
   const admin = await pageAs(browser, "admin");
   await admin.goto("/licencias/nueva");
   await admin
@@ -118,6 +118,10 @@ test("moves an appointment a time off left outside working time", async ({ page,
   await admin.getByLabel("Desde").fill(date);
   await admin.getByLabel("Hasta (inclusive)").fill(date);
   await admin.getByRole("button", { name: "Crear licencia" }).click();
+  // It asks first, counting the appointment it leaves outside working time.
+  const question = admin.getByRole("alertdialog");
+  await expect(question).toContainText("deja 1 turno fuera de horario");
+  await question.getByRole("button", { name: "Guardar sin avisar" }).click();
   await expect(admin).toHaveURL(/\/licencias$/);
   await admin.context().close();
 

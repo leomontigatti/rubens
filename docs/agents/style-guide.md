@@ -331,8 +331,9 @@ repeating the action's name. It carries no `destructive` `Alert`: the dialog is 
 warning, and `destructive` means something went wrong. A `warning` `Alert` joins it only when
 the loss goes beyond the record being deleted.
 
-| Action                              | Treatment                                                                                           |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `Eliminar`                          | Always confirmed: `¿Eliminar este horario?`. A record that must stay is deactivated, never deleted. |
-| `Desactivar` with consequences      | Confirmed, saying what happens: `DeactivateButton` gives the count of future appointments.          |
-| `Desactivar` with none, `Reactivar` | At once: it can be reversed the same way.                                                           |
+| Action                                     | Treatment                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Eliminar`                                 | Always confirmed: `¿Eliminar este horario?`. A record that must stay is deactivated, never deleted.                                                                       |
+| `Desactivar` with consequences             | Confirmed, saying what happens: `DeactivateButton` gives the count of future appointments.                                                                                |
+| `Desactivar` with none, `Reactivar`        | At once: it can be reversed the same way.                                                                                                                                 |
+| A save that sends appointments to the list | Asked with the count, two answers and no destructive button: a time off's or a closure's `Avisar por WhatsApp` or `Guardar sin avisar` (`ConfirmDialog`'s `alternative`). |

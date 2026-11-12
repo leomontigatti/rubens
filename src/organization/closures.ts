@@ -9,10 +9,16 @@ import {
   toRangeEntry,
   toTimeRange,
 } from "#/lib/time-ranges.ts";
-import type { ClosureDelete, ClosureInput, ClosureUpdate, RangeEntry } from "#/lib/time-ranges.ts";
+import type {
+  AffectsAppointments,
+  ClosureDelete,
+  ClosureInput,
+  ClosureUpdate,
+  RangeEntry,
+} from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import { settlingToReschedule } from "#/organization/change-messages.ts";
+import { askingFirst, settlingToReschedule, storedAnswer } from "#/organization/change-messages.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { closure, office } from "#/organization/schema.ts";
@@ -29,8 +35,6 @@ export interface Closure {
   officeId: string | null;
   officeName: string | null;
   entry: RangeEntry;
-  /** Whether the patients it sends to the "to reschedule" list are told. */
-  tellPatients: boolean;
 }
 
 /** An active office a closure can be recorded for. */
@@ -59,7 +63,6 @@ export function listClosures(
       timeZone: office.timeZone,
       startsAt: closure.startsAt,
       endsAt: closure.endsAt,
-      tellPatients: closure.tellPatients,
     })
     .from(closure)
     .leftJoin(office, eq(office.id, closure.officeId))
@@ -81,7 +84,6 @@ export function listClosures(
         { start: new Date(row.startsAt), end: new Date(row.endsAt) },
         row.timeZone ?? defaultTimeZone,
       ),
-      tellPatients: row.tellPatients,
     })),
     offices,
     canEdit: acting.roles.includes("admin"),
@@ -113,31 +115,33 @@ export function createClosure(
   database: Database,
   acting: Acting,
   input: ClosureInput,
-): Result<{ closure: { id: string } }> {
+): Result<{ closure: { id: string } }> | AffectsAppointments {
   const parsed = closureInputSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { officeId, entry, tellPatients } = parsed.data;
-  return database.transaction((tx) => {
-    const span = closureOf(tx, officeId, entry);
-    if (!span) {
-      return notFound;
-    }
-    const values = { ...span, tellPatients };
-    const created = settlingToReschedule(tx, null, tellPatients, () =>
-      tx.insert(closure).values(values).returning({ id: closure.id }).get(),
-    );
-    recordAudit(tx, acting.userId, {
-      action: "create",
-      entityType: "closure",
-      entityId: created.id,
-      patientId: null,
-      before: null,
-      after: createdFields(values),
-    });
-    return { ok: true as const, closure: created };
-  });
+  const { officeId, entry, ...notice } = parsed.data;
+  return askingFirst(() =>
+    database.transaction((tx) => {
+      const span = closureOf(tx, officeId, entry);
+      if (!span) {
+        return notFound;
+      }
+      const values = { ...span, ...storedAnswer(notice) };
+      const created = settlingToReschedule(tx, null, notice, () =>
+        tx.insert(closure).values(values).returning({ id: closure.id }).get(),
+      );
+      recordAudit(tx, acting.userId, {
+        action: "create",
+        entityType: "closure",
+        entityId: created.id,
+        patientId: null,
+        before: null,
+        after: createdFields(values),
+      });
+      return { ok: true as const, closure: created };
+    }),
+  );
 }
 
 function findClosure(writer: Writer, closureId: string) {
@@ -157,34 +161,36 @@ export function updateClosure(
   database: Database,
   acting: Acting,
   input: ClosureUpdate,
-): Result<object> {
+): Result<object> | AffectsAppointments {
   const parsed = closureUpdateSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
-  const { closureId, officeId, entry, tellPatients } = parsed.data;
-  return database.transaction((tx) => {
-    const current = findClosure(tx, closureId);
-    const span = closureOf(tx, officeId, entry);
-    if (!current || !span) {
-      return notFound;
-    }
-    const values = { ...span, tellPatients };
-    settlingToReschedule(tx, null, tellPatients, () =>
-      tx.update(closure).set(values).where(eq(closure.id, closureId)).run(),
-    );
-    const changed = changedFields(current, values);
-    if (changed) {
-      recordAudit(tx, acting.userId, {
-        action: "update",
-        entityType: "closure",
-        entityId: closureId,
-        patientId: null,
-        ...changed,
-      });
-    }
-    return { ok: true as const };
-  });
+  const { closureId, officeId, entry, ...notice } = parsed.data;
+  return askingFirst(() =>
+    database.transaction((tx) => {
+      const current = findClosure(tx, closureId);
+      const span = closureOf(tx, officeId, entry);
+      if (!current || !span) {
+        return notFound;
+      }
+      const values = { ...span, ...storedAnswer(notice) };
+      settlingToReschedule(tx, null, notice, () =>
+        tx.update(closure).set(values).where(eq(closure.id, closureId)).run(),
+      );
+      const changed = changedFields(current, values);
+      if (changed) {
+        recordAudit(tx, acting.userId, {
+          action: "update",
+          entityType: "closure",
+          entityId: closureId,
+          patientId: null,
+          ...changed,
+        });
+      }
+      return { ok: true as const };
+    }),
+  );
 }
 
 export function deleteClosure(

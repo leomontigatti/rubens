@@ -122,6 +122,9 @@ export function useFormPage(back: NavigateOptions) {
     clearProblems: () => setProblems([]),
     goBack,
     leave,
+    /** The page this render shows, and whether the user has left it since. */
+    shown,
+    left: userLeft,
     /** The question before discarding or leaving, open for either. */
     asking: discarding || blocker.status === "blocked",
     askToDiscard: () => setDiscarding(true),

@@ -149,7 +149,7 @@ export const timeOff = sqliteTable(
       .references(() => practitioner.id),
     startsAt: instant("starts_at").notNull(),
     endsAt: instant("ends_at").notNull(),
-    /** Whether the patients it sends to the "to reschedule" list are told by WhatsApp. */
+    /** The last answer, on saving, to whether the patients it sent to the "to reschedule" list were told by WhatsApp; true while nobody was asked. */
     tellPatients: flag("tell_patients").notNull().default(true),
     ...timestamps,
   },
@@ -167,7 +167,7 @@ export const closure = sqliteTable(
     officeId: text("office_id").references(() => office.id),
     startsAt: instant("starts_at").notNull(),
     endsAt: instant("ends_at").notNull(),
-    /** Whether the patients it sends to the "to reschedule" list are told by WhatsApp. */
+    /** The last answer, on saving, to whether the patients it sent to the "to reschedule" list were told by WhatsApp; true while nobody was asked. */
     tellPatients: flag("tell_patients").notNull().default(true),
     ...timestamps,
   },

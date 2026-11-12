@@ -270,6 +270,7 @@ function PatternDeletionFormPage() {
     <EntryForm
       back={{ to: "/dev/patrones" }}
       title="Editar cierre"
+      subject="closure"
       initial={{ kind: "days", firstDate: "2026-12-24", lastDate: "2026-12-25" }}
       submitLabel="Guardar"
       messages={{ example: "Es un ejemplo: no se elimina nada." }}
@@ -279,6 +280,28 @@ function PatternDeletionFormPage() {
         onDelete: () => Promise.resolve({ ok: false, reason: "example" as const }),
       }}
       onSubmit={() => Promise.resolve({ ok: false, reason: "example" as const })}
+    />
+  );
+}
+
+/** A save that sends appointments to the list asks first, with two answers; here each is refused. */
+function PatternQuestionFormPage() {
+  return (
+    <EntryForm
+      back={{ to: "/dev/patrones" }}
+      title="Nuevo cierre"
+      subject="closure"
+      initial={{ kind: "days", firstDate: "2026-12-24", lastDate: "2026-12-25" }}
+      submitLabel="Crear cierre"
+      creates
+      messages={{ example: "Es un ejemplo: no se guarda nada." }}
+      onSubmit={(_, notice) =>
+        Promise.resolve(
+          notice.tellPatients === undefined
+            ? ({ ok: false, reason: "affectsAppointments", affected: 2 } as const)
+            : ({ ok: false, reason: "example" } as const),
+        )
+      }
     />
   );
 }
@@ -293,6 +316,9 @@ function Patterns() {
       <Pattern title="Edición de un registro sin página propia">
         <PatternRecordFormPage />
         <PatternDeletionFormPage />
+      </Pattern>
+      <Pattern title="Guardado que pregunta, con dos respuestas">
+        <PatternQuestionFormPage />
       </Pattern>
       <Pattern title="Sección de un registro">
         <RecordSection

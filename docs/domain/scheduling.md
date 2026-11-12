@@ -43,7 +43,8 @@ working time, those appointments go on reception's "to reschedule" list. Nothing
 is cancelled on its own. Each affected patient is told, by a message inviting a
 reply, unless whoever enters the time off or the closure chooses not to
 ([messages.md](./messages.md#to-patients)); an appointment nobody moves stays on
-the list for reception.
+the list for reception. They choose on saving, once told how many appointments the
+save sends to the list ([appointments.md](./appointments.md#rescheduling)).
 
 ## Availability
 
