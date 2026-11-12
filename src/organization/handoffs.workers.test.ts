@@ -1057,16 +1057,20 @@ describe("a health question while a handoff to the practitioner is open (#290)",
 });
 
 describe("an emergency the model handed off", () => {
-  it("goes to the practitioner though the judgement did not call it one", async () => {
-    await writes("me caí y me sangra mucho la boca", unknownPhone);
+  it("is one though the judgement did not call it so: the practitioner who treats it has it, and the emergency reply goes", async () => {
+    const appointmentId = await bookMartina();
+    await writes("me caí y me sangra mucho la boca");
     scriptedModel.script((one) => {
-      one.call("judge_messages", notClinical);
+      one.call("judge_messages", { ...notClinical, treatedBy: appointmentId });
       one.call("hand_off", { reason: "emergency" });
       return "";
     });
 
     await turn();
 
-    expect(await openHandoffs()).toMatchObject([{ reason: "emergency", forPractitioner: true }]);
+    expect(await openHandoffs()).toMatchObject([
+      { reason: "emergency", forPractitioner: true, recipients: ["Juan Gómez"] },
+    ]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([expect.stringContaining("107")]);
   });
 });

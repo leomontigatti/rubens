@@ -330,9 +330,13 @@ export async function judgeTurn(
   if (!ran || !judgement) {
     return null;
   }
+  // An emergency the model handed off is one, whatever it judged: its reply and alert go.
+  const handedOffEmergency = recorded.handOff?.reason === "emergency";
   return {
     reply: ran.reply,
-    judgement,
+    judgement: handedOffEmergency
+      ? { ...judgement, emergency: true, needsPractitioner: true }
+      : judgement,
     handOff: recorded.handOff,
     ruleRefused: recorded.ruleRefused,
     refusal: recorded.refusal,
