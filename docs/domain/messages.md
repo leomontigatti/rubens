@@ -106,8 +106,8 @@ An admin writes and submits their text as for the others.
 
 The organization also writes when it changes an appointment itself: when staff
 move or cancel it, and when time off, a closure or a schedule change sends their
-appointments to the "to reschedule" list, unless whoever entered the time off or
-the closure chose not to tell them. Only the message for the latest change goes.
+appointments to the "to reschedule" list, unless whoever saved the time off or
+the closure, asked on saving, chose not to tell them. Only the message for the latest change goes.
 No message timed before the appointment goes while it is on the list, told or
 not. The message
 says what happened and, where the appointment still needs a time, invites

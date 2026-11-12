@@ -84,6 +84,7 @@ async function world() {
       await organization.createTimeOff(adminCaller, {
         practitionerId: juan.practitionerId,
         entry: { kind: "hours", start, end },
+        tellPatients: true,
       }),
     );
   }
@@ -93,6 +94,7 @@ async function world() {
       await organization.createClosure(adminCaller, {
         officeId,
         entry: { kind: "days", firstDate: date, lastDate: date },
+        tellPatients: true,
       }),
     );
   }
@@ -179,6 +181,7 @@ describe("the to-reschedule list", () => {
       await w.organization.createClosure(adminCaller, {
         officeId: w.office.id,
         entry: { kind: "hours", start: `${tuesday}T11:00`, end: `${tuesday}T12:00` },
+        tellPatients: true,
       }),
     );
 

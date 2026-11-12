@@ -27,16 +27,17 @@ function NewTimeOff() {
     <EntryForm
       back={{ to: "/licencias" }}
       title="Nueva licencia"
+      subject="timeOff"
       initial={null}
       submitLabel="Crear licencia"
       creates
       owner={practitionerField(result.practitioners)}
       messages={refusalMessages}
-      onSubmit={(values) => {
+      onSubmit={(values, notice) => {
         const input = timeOffInputSchema.safeParse({
           practitionerId: values.owner,
           entry: readRangeEntry(values),
-          tellPatients: values.tellPatients,
+          ...notice,
         });
         return input.success ? addTimeOff({ data: input.data }) : input.error;
       }}

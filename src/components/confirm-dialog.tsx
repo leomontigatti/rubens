@@ -13,7 +13,11 @@ import {
 import { Button } from "#/components/ui/button.tsx";
 import { upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
-/** Asks before a destructive action; `confirmLabel` repeats the action's name. */
+/**
+ * Asks before a destructive action; `confirmLabel` repeats the action's name.
+ * A question with two answers (`alternative`) shows neither as destructive,
+ * since neither loses anything, and leaves `Cancelar` the quietest.
+ */
 export function ConfirmDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,23 +26,36 @@ export function ConfirmDialog(props: {
   cancelLabel?: string;
   confirmLabel: string;
   onConfirm: () => void;
+  alternative?: { label: string; onSelect: () => void };
 }) {
+  const { alternative } = props;
   // In this order: closing first would read as a dismissal, and undo what confirming does.
-  function confirm() {
-    props.onConfirm();
+  function answer(choose: () => void) {
+    choose();
     props.onOpenChange(false);
   }
 
   return (
     <AlertDialog open={props.open} onOpenChange={props.onOpenChange}>
-      <AlertDialogContent>
+      {/* Wide enough at the design width for three buttons in a row. */}
+      <AlertDialogContent className={alternative && "data-[size=default]:sm:max-w-md"}>
         <AlertDialogHeader>
           <AlertDialogTitle>{props.title}</AlertDialogTitle>
           <AlertDialogDescription>{props.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{props.cancelLabel ?? "Cancelar"}</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={confirm}>
+          <AlertDialogCancel variant={alternative ? "ghost" : "outline"}>
+            {props.cancelLabel ?? "Cancelar"}
+          </AlertDialogCancel>
+          {alternative && (
+            <AlertDialogAction variant="outline" onClick={() => answer(alternative.onSelect)}>
+              {alternative.label}
+            </AlertDialogAction>
+          )}
+          <AlertDialogAction
+            variant={alternative ? "default" : "destructive"}
+            onClick={() => answer(props.onConfirm)}
+          >
             {props.confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

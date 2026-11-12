@@ -36,8 +36,8 @@ function EditClosure() {
       back={{ to: "/cierres" }}
       title="Editar cierre"
       description={closurePlace(closure)}
+      subject="closure"
       initial={closure.entry}
-      tellPatients={closure.tellPatients}
       submitLabel="Guardar"
       owner={officeField(closureOfficeOptions(result.offices, closure), closure.officeId)}
       messages={refusalMessages}
@@ -46,12 +46,12 @@ function EditClosure() {
         notice: "El cierre se borra y no se puede recuperar.",
         onDelete: () => removeClosure({ data: { closureId } }),
       }}
-      onSubmit={(values) => {
+      onSubmit={(values, notice) => {
         const input = closureUpdateSchema.safeParse({
           closureId,
           officeId: readOfficeId(values.owner),
           entry: readRangeEntry(values),
-          tellPatients: values.tellPatients,
+          ...notice,
         });
         return input.success ? editClosure({ data: input.data }) : input.error;
       }}

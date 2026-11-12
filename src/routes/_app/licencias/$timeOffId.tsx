@@ -31,8 +31,8 @@ function EditTimeOff() {
       back={{ to: "/licencias" }}
       title="Editar licencia"
       description={item.practitionerName}
+      subject="timeOff"
       initial={item.entry}
-      tellPatients={item.tellPatients}
       submitLabel="Guardar"
       messages={refusalMessages}
       deletion={{
@@ -40,11 +40,11 @@ function EditTimeOff() {
         notice: "La licencia se borra y no se puede recuperar.",
         onDelete: () => removeTimeOff({ data: { timeOffId } }),
       }}
-      onSubmit={(values) => {
+      onSubmit={(values, notice) => {
         const input = timeOffUpdateSchema.safeParse({
           timeOffId,
           entry: readRangeEntry(values),
-          tellPatients: values.tellPatients,
+          ...notice,
         });
         return input.success ? editTimeOff({ data: input.data }) : input.error;
       }}

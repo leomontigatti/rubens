@@ -7,15 +7,18 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { answering, questionAfter, questionText } from "#/components/range-entry-question.ts";
+import type { NoticeQuestion, QuestionSubject } from "#/components/range-entry-question.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
-import type { RangeEntry } from "#/lib/time-ranges.ts";
+import type { AffectsAppointments, Notice, RangeEntry } from "#/lib/time-ranges.ts";
 
 // The pieces the time-off and closure screens share: a form whose fields say
-// when (whole days or a range of hours) and whether the patients it sends to
-// the "to reschedule" list are told, and the delete on its edit page.
+// when (whole days or a range of hours), the question a save asks when it
+// sends appointments to the "to reschedule" list, and the delete on its edit
+// page.
 
 type Kind = RangeEntry["kind"];
 
@@ -29,7 +32,6 @@ interface EntryValues {
   lastDate: string;
   start: string;
   end: string;
-  tellPatients: boolean;
 }
 
 /** The entry the fields hold, unchecked: the schema decides whether it is one. */
@@ -64,12 +66,8 @@ const entryMessage = (issue: z.core.$ZodIssue) =>
 const entryFieldNames = { practitionerId: "owner", officeId: "owner" };
 
 /** What the form opens with: the entry's fields, and none for the other kind. */
-function entryValues(
-  initial: RangeEntry | null,
-  owner: string,
-  tellPatients: boolean,
-): EntryValues {
-  const empty = { owner, firstDate: "", lastDate: "", start: "", end: "", tellPatients };
+function entryValues(initial: RangeEntry | null, owner: string): EntryValues {
+  const empty = { owner, firstDate: "", lastDate: "", start: "", end: "" };
   return initial ? { ...empty, ...initial } : { ...empty, kind: "days" };
 }
 
@@ -81,40 +79,79 @@ interface Deletion<R extends string> {
 
 /**
  * A time-off or closure form on its page. `owner`, when given, is the field
- * before the range. `onSubmit` returns the server call, or the validation error
- * that stopped it.
+ * before the range. `onSubmit` returns the server call with `notice`, or the
+ * validation error that stopped it. A save the server refuses for the
+ * appointments it sends to the list asks whether to tell the patients, with
+ * the count, and submits again with the answer: asking again when the count
+ * changed meanwhile.
  */
 export function EntryForm<R extends string>(props: {
   back: NavigateOptions;
   title: string;
   description?: string;
+  subject: QuestionSubject;
   initial: RangeEntry | null;
-  /** Whether the patients are told, as saved; a new entry tells them. */
-  tellPatients?: boolean;
   owner?: { label: string; initial: string; required?: boolean; options: ReactNode };
   submitLabel: string;
   creates?: boolean;
   messages: Record<R, string>;
   /** On an edit: the entry's delete, its only page being this one. */
   deletion?: Deletion<R>;
-  onSubmit: (values: EntryValues) => Promise<Outcome<R>> | z.ZodError;
+  onSubmit: (
+    values: EntryValues,
+    notice: Notice,
+  ) => Promise<Outcome<NoInfer<R>> | AffectsAppointments> | z.ZodError;
 }) {
   const { owner } = props;
   const page = useFormPage(props.back);
   const action = useFormAction(props.messages);
   const record = useDeletion(props.deletion, props.messages, () => page.leave());
+  // Kept once the dialog closes, so its copy stays while it fades out. It
+  // belongs to the page that asked: the route renders other records too.
+  const [question, setQuestion] = useState<(NoticeQuestion<EntryValues> & { page: string }) | null>(
+    null,
+  );
+  const [asking, setAsking] = useState(false);
+
+  async function save(values: EntryValues, notice: Notice) {
+    const submitted = props.onSubmit(values, notice);
+    if (!(submitted instanceof Promise)) {
+      page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames));
+      return;
+    }
+    let refused: NoticeQuestion<EntryValues> | null = null;
+    const saved = await action.save(async () => {
+      const result = await submitted;
+      refused = questionAfter(values, result);
+      return refused ? { ok: true } : (result as Outcome<R>);
+    });
+    if (refused) {
+      // A save that ends after the user left asks nothing: nothing was saved.
+      if (!page.left()) {
+        setQuestion({ ...(refused as NoticeQuestion<EntryValues>), page: page.shown });
+        setAsking(true);
+      }
+    } else if (saved) {
+      page.leave();
+    }
+  }
+
+  // Leaving the page drops its question: coming back by history must not answer it.
+  if (question && question.page !== page.shown) {
+    setQuestion(null);
+    setAsking(false);
+  }
+
+  const answer = (tellPatients: boolean) => {
+    if (question) {
+      const again = answering(question, tellPatients);
+      void save(again.values, again.notice);
+    }
+  };
+
   const form = useAppForm({
-    defaultValues: entryValues(props.initial, owner?.initial ?? "", props.tellPatients ?? true),
-    onSubmit: async ({ value }) => {
-      const submitted = props.onSubmit(value);
-      if (!(submitted instanceof Promise)) {
-        page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames));
-        return;
-      }
-      if (await action.save(() => submitted)) {
-        page.leave();
-      }
-    },
+    defaultValues: entryValues(props.initial, owner?.initial ?? ""),
+    onSubmit: ({ value }) => save(value, {}),
   });
 
   return (
@@ -155,15 +192,15 @@ export function EntryForm<R extends string>(props: {
           ));
         }}
       </form.Subscribe>
-      <form.AppField name="tellPatients">
-        {(field) => (
-          <field.CheckboxField
-            label="Avisar por WhatsApp a los pacientes afectados"
-            size="half"
-            startsRow
-          />
-        )}
-      </form.AppField>
+      <ConfirmDialog
+        open={asking}
+        onOpenChange={setAsking}
+        title="¿Avisar a los pacientes por WhatsApp?"
+        description={question ? questionText(props.subject, question.affected) : ""}
+        confirmLabel="Avisar por WhatsApp"
+        onConfirm={() => answer(true)}
+        alternative={{ label: "Guardar sin avisar", onSelect: () => answer(false) }}
+      />
     </ActionFormPage>
   );
 }
