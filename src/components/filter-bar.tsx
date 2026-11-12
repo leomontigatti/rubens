@@ -106,16 +106,20 @@ function AppliedFilter(props: {
 }
 
 /** The picker that applies one more filter: a group, then one of its values. */
-function AddFilter(props: {
+function AddFilter({
+  ref,
+  groups,
+  onPick,
+}: {
   ref: RefObject<HTMLButtonElement | null>;
   groups: FilterGroup[];
   onPick: (groupId: string, value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [groupId, setGroupId] = useState<string | null>(null);
-  const group = props.groups.find((one) => one.id === groupId);
+  const group = groups.find((one) => one.id === groupId);
 
-  if (props.groups.length === 0) {
+  if (groups.length === 0) {
     return null;
   }
 
@@ -128,7 +132,7 @@ function AddFilter(props: {
 
   return (
     <Popover open={open} onOpenChange={changeOpen}>
-      <PopoverTrigger ref={props.ref} render={<Button variant="outline" />}>
+      <PopoverTrigger ref={ref} render={<Button variant="outline" />}>
         <ListFilterPlusIcon data-icon="inline-start" />
         Agregar filtro
       </PopoverTrigger>
@@ -147,7 +151,7 @@ function AddFilter(props: {
             <FilterOptionList
               group={group}
               onPick={(value) => {
-                props.onPick(group.id, value);
+                onPick(group.id, value);
                 changeOpen(false);
               }}
             />
@@ -155,7 +159,7 @@ function AddFilter(props: {
         ) : (
           <div className="flex flex-col">
             <p className="text-muted-foreground px-2 py-1.5 text-xs">Filtrar por</p>
-            {props.groups.map((one) => (
+            {groups.map((one) => (
               <Button
                 key={one.id}
                 variant="ghost"
