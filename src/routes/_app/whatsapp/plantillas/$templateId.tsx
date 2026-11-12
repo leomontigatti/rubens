@@ -53,9 +53,13 @@ function EditTemplate() {
   }
   return (
     <div className="flex flex-col gap-6">
-      {/* Keyed: another template's page starts its form afresh, not from this one's state. */}
+      {/* Keyed: another template's page starts afresh, not from this one's state. */}
       <EditForm key={template.id} template={template} organizationName={listed.organizationName} />
-      <TemplateVersions versions={template.versions} organizationName={listed.organizationName} />
+      <TemplateVersions
+        key={template.id}
+        versions={template.versions}
+        organizationName={listed.organizationName}
+      />
     </div>
   );
 }

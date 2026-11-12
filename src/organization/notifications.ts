@@ -155,7 +155,10 @@ const handedOffAppointment = alias(appointment, "handed_off_appointment");
 const handedOffPatient = alias(patient, "handed_off_patient");
 const cancelledPatient = alias(patient, "cancelled_patient");
 
-/** The first patient, by name, each of `conversationIds`' number stands for. */
+/**
+ * The first patient, by name, each of `conversationIds`' number stands for,
+ * and whether they are its only one.
+ */
 function firstPatientOf(database: Database, conversationIds: string[]) {
   const rows =
     conversationIds.length === 0
@@ -174,13 +177,24 @@ function firstPatientOf(database: Database, conversationIds: string[]) {
           .where(inArray(conversationPatient.conversationId, conversationIds))
           .orderBy(asc(patient.lastName), asc(patient.firstName))
           .all();
-  const first = new Map<string, { id: string; name: string; phone: string }>();
+  const first = new Map<string, { id: string; name: string; phone: string; only: boolean }>();
   for (const row of rows) {
-    if (!first.has(row.conversationId)) {
-      first.set(row.conversationId, { id: row.id, name: patientName(row), phone: row.phone });
+    const found = first.get(row.conversationId);
+    if (found) {
+      found.only = false;
+    } else {
+      const patient = { id: row.id, name: patientName(row), phone: row.phone, only: true };
+      first.set(row.conversationId, patient);
     }
   }
   return first;
+}
+
+/** The number's patient, for a notification that stores none (an emergency): only when it has one, since it cannot tell whose. */
+function onlyPatient(
+  first: { id: string; name: string; phone: string; only: boolean } | undefined,
+) {
+  return first?.only ? { id: first.id, name: first.name, phone: first.phone } : null;
 }
 
 /** Whether `acting` is a practitioner who keeps clinical records. */
@@ -357,7 +371,7 @@ export function listNotifications(database: Database, acting: Acting) {
         patient:
           patientId !== null && firstName !== null && lastName !== null && phone !== null
             ? { id: patientId, name: patientName({ firstName, lastName, chosenName }), phone }
-            : (firstPatients.get(notDeliveredIn ?? "") ?? null),
+            : onlyPatient(firstPatients.get(notDeliveredIn ?? "")),
         appointment: cancelledAppointment({
           cancelledId,
           cancelledStartsAt,
