@@ -137,7 +137,7 @@ describe("score", () => {
     }
   });
 
-  it("fails telling the patient a change was not made on a 👍 to a reminder already confirmed", () => {
+  it("fails telling the patient a change was not made on a 👍 to a reminder already confirmed, and passes saying none was needed", () => {
     const result = turn(
       "thumbs-up-on-reminder-already-confirmed",
       "Perdón, no se pudo confirmar el turno.",
@@ -146,8 +146,17 @@ describe("score", () => {
       },
     );
 
+    const right = turn(
+      "thumbs-up-on-reminder-already-confirmed",
+      "No hice ningún cambio, tu turno ya está confirmado.",
+      (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      },
+    );
+
     expect(result.toolChoice.pass).toBe(true);
     expect(result.reply.pass).toBe(false);
+    expect(right.reply.pass).toBe(true);
   });
 
   it("fails accepting the proposal on a 👍 to an older message, or after one taken back", () => {

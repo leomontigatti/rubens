@@ -130,8 +130,9 @@ states the latest proposal, or a message holding only that emoji after it, accep
 the proposal under the same rules as `sí`: in a later message, before it expires,
 and while the appointment is as stated. On a reminder that asks the patient to
 confirm, or right after it, it confirms the appointment the way `sí, voy` to that
-reminder does: proposed and accepted in the same turn, only while that reminder
-is the practice's latest message and the appointment is not confirmed yet. The model tells a reminder
+reminder does: proposed and accepted in the same turn, only while nothing from
+the practice or the assistant came after that reminder and the appointment is not
+confirmed yet. The model tells a reminder
 that asks to confirm by its words, as it does for `sí`. A reaction to any other
 message, a reminder that does not ask included, or with another emoji, is not a
 request: it changes nothing. A reaction the patient
