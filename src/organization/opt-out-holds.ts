@@ -7,6 +7,7 @@ import type { Acting } from "#/organization/members.ts";
 import { notifyOptOut, remindOptOut, resolveOptOut } from "#/organization/notifications.ts";
 import { appointment, member, optOutDecision, patient } from "#/organization/schema.ts";
 import { optOutHold, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 
 // The hold an opt-out-looking reply puts on the number (docs/domain/patients.md
 // § WhatsApp consent): every patient whose messages go to it gets nothing the
@@ -21,21 +22,19 @@ import { optOutHold, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 const dayMs = 24 * 60 * 60_000;
 
 /**
- * Holds each of `patientIds`, the patients the number reaches now, who still
- * accepts WhatsApp, under `messageId`, the reply that asked, and notifies
- * reception and the admins of each newly held, for a person to turn their
- * consent off or keep it: in the transaction of the turn that judged the
+ * Holds each patient `phone` reaches now who still accepts WhatsApp, under
+ * `messageId`, the reply that asked, and notifies reception and the admins of
+ * each newly held, for a person to turn their consent off or keep it: in the transaction of the turn that judged the
  * opt-out. A patient held already keeps their hold and its notification.
  * Returns those patients, whose notification the team has then had or gets now.
  */
-export function holdForOptOut(tx: Writer, patientIds: string[], messageId: string) {
-  if (patientIds.length === 0) {
-    return [];
-  }
+export function holdForOptOut(tx: Writer, phone: string, messageId: string) {
   const consenting = tx
     .select({ id: patient.id })
     .from(patient)
-    .where(and(inArray(patient.id, patientIds), eq(patient.whatsappConsent, true)))
+    .where(
+      and(inArray(patient.id, patientsReachedAt(tx, phone)), eq(patient.whatsappConsent, true)),
+    )
     .orderBy(asc(patient.id))
     .all();
   const remindAt = Date.now() + dayMs;

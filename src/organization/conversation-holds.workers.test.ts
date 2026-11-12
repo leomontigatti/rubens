@@ -288,6 +288,36 @@ describe("a person's reply", () => {
     ]);
   });
 
+  it("reopens the handoff it closed when Meta reports more replies failed in one call than one statement binds", async () => {
+    await handedOff(false);
+    expectOk(await takeOver(world.receptionist));
+    for (let written = 0; written < 110; written++) {
+      expectOk(await reply(world.receptionist, `Respuesta ${written}`));
+    }
+    expect(await openHandoffs()).toEqual([]);
+    const sent = await inStorage(world.organization, (database) =>
+      database
+        .select({ whatsappId: whatsappMessage.whatsappId })
+        .from(whatsappMessage)
+        .where(eq(whatsappMessage.direction, "outgoing"))
+        .all(),
+    );
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: sent.map((one) => ({
+          whatsappId: one.whatsappId!,
+          status: "failed" as const,
+          at: Date.now(),
+        })),
+        templateStatuses: [],
+      }),
+    );
+
+    expect(await openHandoffs()).toMatchObject([{ reason: "patientAsked" }]);
+  });
+
   it("that Meta reports failed reopens nothing beside a handoff of its kind opened since", async () => {
     await handedOff(false);
     expectOk(await takeOver(world.receptionist));

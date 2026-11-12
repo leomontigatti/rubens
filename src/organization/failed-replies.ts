@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
+import { boundAsOne } from "#/organization/database.ts";
 import type { Writer } from "#/organization/database.ts";
 import { notifiedPatientOf, notify } from "#/organization/notifications.ts";
 import { handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
@@ -31,27 +32,24 @@ function kindOpen(tx: Writer, conversationId: string, forPractitioner: boolean) 
  * and notifies its writer: called once a reply's status turns `failed`.
  */
 export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
-  const failed =
-    whatsappIds.length === 0
-      ? []
-      : tx
-          .select({
-            id: whatsappMessage.id,
-            conversationId: whatsappMessage.conversationId,
-            sentBy: whatsappMessage.sentBy,
-          })
-          .from(whatsappMessage)
-          .where(
-            and(
-              inArray(whatsappMessage.whatsappId, whatsappIds),
-              eq(whatsappMessage.direction, "outgoing"),
-              eq(whatsappMessage.status, "failed"),
-              isNotNull(whatsappMessage.sentBy),
-            ),
-          )
-          // The newest first: its handoff is the one a later handoff of its kind would have replaced.
-          .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
-          .all();
+  const failed = tx
+    .select({
+      id: whatsappMessage.id,
+      conversationId: whatsappMessage.conversationId,
+      sentBy: whatsappMessage.sentBy,
+    })
+    .from(whatsappMessage)
+    .where(
+      and(
+        inArray(whatsappMessage.whatsappId, boundAsOne(whatsappIds)),
+        eq(whatsappMessage.direction, "outgoing"),
+        eq(whatsappMessage.status, "failed"),
+        isNotNull(whatsappMessage.sentBy),
+      ),
+    )
+    // The newest first: its handoff is the one a later handoff of its kind would have replaced.
+    .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
+    .all();
   for (const reply of failed) {
     const closed = tx
       .select({ id: handoff.id, forPractitioner: handoff.forPractitioner })

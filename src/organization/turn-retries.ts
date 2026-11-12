@@ -2,6 +2,7 @@ import { and, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-
 
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 
+import { boundAsOne } from "#/organization/database.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { HandoffWanted } from "#/organization/handoffs.ts";
@@ -91,7 +92,12 @@ export function retryOrHandOff(
     }
     tx.update(whatsappMessage)
       .set({ judgement: "notForPractitioner" })
-      .where(and(inArray(whatsappMessage.id, turn.messageIds), isNull(whatsappMessage.judgement)))
+      .where(
+        and(
+          inArray(whatsappMessage.id, boundAsOne(turn.messageIds)),
+          isNull(whatsappMessage.judgement),
+        ),
+      )
       .run();
     tx.update(conversation)
       .set({ failedTurns: 0 })
@@ -158,7 +164,12 @@ export function answeredMeanwhile(database: Writer, messageIds: string[]) {
   const judged = database
     .select({ id: whatsappMessage.id })
     .from(whatsappMessage)
-    .where(and(inArray(whatsappMessage.id, messageIds), isNotNull(whatsappMessage.judgement)))
+    .where(
+      and(
+        inArray(whatsappMessage.id, boundAsOne(messageIds)),
+        isNotNull(whatsappMessage.judgement),
+      ),
+    )
     .get();
   return judged !== undefined;
 }

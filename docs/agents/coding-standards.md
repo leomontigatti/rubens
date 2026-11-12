@@ -143,7 +143,9 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   that. A list that grows with the organization's data (members, patients, messages,
   templates) is inserted a row per statement, as `notify()` in
   `src/organization/notifications.ts` does, and reaches an `inArray` as a subquery,
-  never as an array of ids.
+  never as an array of ids: the query that reads it, as `patientsReachedAt` in
+  `src/organization/whatsapp-messages.ts` is, or, for a list only held in memory (a
+  turn's messages, a webhook's statuses), `boundAsOne` in `src/organization/database.ts`.
 - **Instants are integers**, Unix milliseconds in UTC; a span is `[start, end)`.
   Local times are derived from the office's IANA time zone, never stored bare.
 - **Clinical note versions are append-only** (ADR-0005). Editing a note adds a

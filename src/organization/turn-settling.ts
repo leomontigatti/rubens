@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
+import { boundAsOne } from "#/organization/database.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { HandoffWanted } from "#/organization/handoffs.ts";
@@ -35,10 +36,7 @@ function storeJudgement(tx: Writer, turn: JudgedTurn, forPractitioner: boolean) 
     .set({ judgement, emergency: turn.judgement.emergency })
     .where(
       and(
-        inArray(
-          whatsappMessage.id,
-          turn.read.unjudged.map((message) => message.id),
-        ),
+        inArray(whatsappMessage.id, boundAsOne(turn.read.unjudged.map((message) => message.id))),
         isNull(whatsappMessage.judgement),
       ),
     )
@@ -89,7 +87,9 @@ export function settleTurn(
   database: Database,
   judged: Omit<JudgedTurn, "reachedNow">,
 ): SettledTurn {
-  const reachedNow = patientsReachedAt(database, judged.read.phone).map((one) => one.id);
+  const reachedNow = patientsReachedAt(database, judged.read.phone)
+    .all()
+    .map((one) => one.id);
   const turn = { ...judged, reachedNow };
   const wanted = handoffWanted(turn);
   return database.transaction((tx) => {
@@ -115,7 +115,7 @@ export function settleTurn(
     const words = turn.read.unjudged.filter((message) => message.text);
     const optOutMessageId = (words.at(-1) ?? turn.read.unjudged.at(-1)!).id;
     const optOutAsked =
-      turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow, optOutMessageId).length > 0;
+      turn.judgement.optOut && holdForOptOut(tx, turn.read.phone, optOutMessageId).length > 0;
     return {
       settled: outcomeOf(tx, turn, { opened, wanted, optOutAsked }),
       practitioner: opened?.practitioner ?? null,

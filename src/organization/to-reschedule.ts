@@ -16,6 +16,7 @@ import type { MemberReference } from "#/lib/staff.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { asRange, meets } from "#/organization/availability.ts";
+import { boundAsOne } from "#/organization/database.ts";
 import type { Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import {
@@ -145,7 +146,7 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
     .innerJoin(office, and(eq(office.id, room.officeId), eq(office.active, true)))
     .where(
       and(
-        inArray(schedule.practitionerId, practitionerIds),
+        inArray(schedule.practitionerId, boundAsOne(practitionerIds)),
         // An office in another zone than the default one may still be on yesterday.
         or(
           isNull(schedule.lastDate),
@@ -161,7 +162,7 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
       endsAt: timeOff.endsAt,
     })
     .from(timeOff)
-    .where(and(inArray(timeOff.practitionerId, practitionerIds), meets(timeOff, reach)))
+    .where(and(inArray(timeOff.practitionerId, boundAsOne(practitionerIds)), meets(timeOff, reach)))
     .all();
   const closures = writer
     .select({ officeId: closure.officeId, startsAt: closure.startsAt, endsAt: closure.endsAt })
@@ -347,12 +348,7 @@ export function countToReschedule(writer: Writer, acting: Acting): { ok: true; c
   const practitionerIds = writer
     .select({ id: practitioner.id })
     .from(practitioner)
-    .where(actsForEveryone(acting) ? undefined : eq(practitioner.memberId, acting.userId))
-    .all()
-    .map((row) => row.id);
-  if (practitionerIds.length === 0) {
-    return { ok: true, count: 0 };
-  }
+    .where(actsForEveryone(acting) ? undefined : eq(practitioner.memberId, acting.userId));
   const listed = listedAmong(writer, inArray(appointment.practitionerId, practitionerIds));
   return { ok: true, count: listed.length };
 }

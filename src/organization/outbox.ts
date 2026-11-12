@@ -83,18 +83,17 @@ export function requeueForPatient(tx: Writer, patientId: string) {
 /**
  * The templates whose messages can go now: Meta's settings are complete, the
  * number is not held (`whatsapp-limits.ts`), and the template has an approved
- * utility version.
+ * utility version: a subquery, since an organization may have more of them
+ * than one statement binds; `null` when none can go.
  */
-function sendableTemplates(database: Database, cloud: WhatsappCloud): string[] {
+function sendableTemplates(database: Database, cloud: WhatsappCloud) {
   if (cloud.missingSetting() || activeHold(database, Date.now())) {
-    return [];
+    return null;
   }
   return database
-    .selectDistinct({ id: whatsappTemplate.templateId })
+    .select({ id: whatsappTemplate.templateId })
     .from(whatsappTemplate)
-    .where(and(eq(whatsappTemplate.status, "approved"), eq(whatsappTemplate.category, "utility")))
-    .all()
-    .map((row) => row.id);
+    .where(and(eq(whatsappTemplate.status, "approved"), eq(whatsappTemplate.category, "utility")));
 }
 
 /**
@@ -126,7 +125,7 @@ export function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): numbe
     return anyQueued ? hold.until : null;
   }
   const templates = sendableTemplates(database, cloud);
-  if (templates.length === 0) {
+  if (!templates) {
     return null;
   }
   const next = database
@@ -360,7 +359,7 @@ function recordSent(
  */
 export async function sendDueMessages(database: Database, cloud: WhatsappCloud) {
   const templates = sendableTemplates(database, cloud);
-  if (templates.length === 0) {
+  if (!templates) {
     return;
   }
   const due = database

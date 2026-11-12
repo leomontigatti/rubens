@@ -17,6 +17,7 @@ import type { Timing } from "#/lib/template-timing.ts";
 import { eventTemplateIds } from "#/lib/whatsapp-templates.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
+import { boundAsOne } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
@@ -79,7 +80,7 @@ function picksOf(database: Database, ids: string[]) {
       templateId: medicalServiceTemplate.templateId,
     })
     .from(medicalServiceTemplate)
-    .where(inArray(medicalServiceTemplate.medicalServiceId, ids))
+    .where(inArray(medicalServiceTemplate.medicalServiceId, boundAsOne(ids)))
     .all();
   const byService = new Map<string, string[]>(ids.map((id) => [id, []]));
   for (const { medicalServiceId, templateId } of rows) {

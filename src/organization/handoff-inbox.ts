@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 
 import { reactionType } from "#/lib/reactions.ts";
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
@@ -58,24 +59,21 @@ export interface OpenHandoff {
   heldReply: string | null;
 }
 
-/** The latest message from the patient in each of `conversationIds`. */
-function lastPatientMessages(database: Database, conversationIds: string[]) {
-  const rows =
-    conversationIds.length === 0
-      ? []
-      : database
-          .select(messageColumns)
-          .from(whatsappMessage)
-          .where(
-            and(
-              inArray(whatsappMessage.conversationId, conversationIds),
-              eq(whatsappMessage.direction, "incoming"),
-              // A reaction says nothing of what the handoff is about.
-              ne(whatsappMessage.type, reactionType),
-            ),
-          )
-          .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
-          .all();
+/** The latest message from the patient in each of `conversationIds`, a subquery. */
+function lastPatientMessages(database: Database, conversationIds: SQLWrapper) {
+  const rows = database
+    .select(messageColumns)
+    .from(whatsappMessage)
+    .where(
+      and(
+        inArray(whatsappMessage.conversationId, conversationIds),
+        eq(whatsappMessage.direction, "incoming"),
+        // A reaction says nothing of what the handoff is about.
+        ne(whatsappMessage.type, reactionType),
+      ),
+    )
+    .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
+    .all();
   const latest = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
     if (!latest.has(row.conversationId)) {
@@ -97,6 +95,19 @@ export function listOpenHandoffs(
   }
   const { conversationId } = parsed.data;
   const reader = readerOf(database, acting);
+  const listed = and(
+    eq(handoff.state, "open"),
+    reader.visible,
+    conversationId === undefined ? undefined : eq(handoff.conversationId, conversationId),
+  );
+  // The handoffs and their conversations reach the reads below as subqueries:
+  // there may be more of them than one statement binds.
+  const listedOf = (column: typeof handoff.id | typeof handoff.conversationId) =>
+    database
+      .select({ id: column })
+      .from(handoff)
+      .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
+      .where(listed);
   const rows = database
     .select({
       id: handoff.id,
@@ -110,21 +121,12 @@ export function listOpenHandoffs(
     })
     .from(handoff)
     .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
-    .where(
-      and(
-        eq(handoff.state, "open"),
-        reader.visible,
-        conversationId === undefined ? undefined : eq(handoff.conversationId, conversationId),
-      ),
-    )
+    .where(listed)
     .orderBy(desc(handoff.createdAt), desc(sql`${handoff}.rowid`))
     .all();
-  const conversationIds = [...new Set(rows.map((row) => row.conversationId))];
+  const conversationIds = listedOf(handoff.conversationId);
   const patients = patientsOf(database, conversationIds);
-  const recipients = recipientsByHandoff(
-    database,
-    rows.map((row) => row.id),
-  );
+  const recipients = recipientsByHandoff(database, listedOf(handoff.id));
   const lastMessages = lastPatientMessages(database, conversationIds);
   const withPractitioner = new Set(
     rows.filter((row) => row.forPractitioner).map((row) => row.conversationId),

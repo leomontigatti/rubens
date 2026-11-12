@@ -364,6 +364,24 @@ describe("a number with nothing booked to talk about", () => {
     expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
   });
 
+  it("lists open handoffs of more conversations than one statement binds", async () => {
+    for (let number = 0; number < 110; number++) {
+      await writes("hola", `+54935155${String(number).padStart(5, "0")}`);
+    }
+
+    await turn();
+
+    const listed = await openHandoffs();
+    expect(listed).toHaveLength(110);
+    for (const one of listed) {
+      expect(one).toMatchObject({
+        reason: "unknownNumber",
+        recipients: ["Ana Admin"],
+        lastPatientMessage: expect.objectContaining({ text: "hola" }),
+      });
+    }
+  });
+
   it("opens for more admins than one statement binds, and notifies each", async () => {
     const admins = [adminCaller];
     for (let added = 0; added < 60; added++) {

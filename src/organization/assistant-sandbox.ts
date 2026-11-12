@@ -476,8 +476,7 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
   const { conversationId } = run.state;
   const { read, appointments, answered } = run.step(() => {
     const read = readConversation(database, conversationId);
-    const patientIds = read.patients.map((one) => one.id);
-    const appointments = upcomingAppointments(database, patientIds, Date.now());
+    const appointments = upcomingAppointments(database, read.phone, Date.now());
     const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
     return { read, appointments, answered };
   });

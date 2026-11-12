@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, exists, inArray, like, or, sql } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import type { SQL, SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { actsForEveryone } from "#/lib/access.ts";
@@ -202,23 +202,20 @@ export function asRead(row: MessageRow, reaction: string | null = null): InboxMe
   };
 }
 
-export function patientsOf(database: Database, conversationIds: string[]) {
-  const rows =
-    conversationIds.length === 0
-      ? []
-      : database
-          .select({
-            conversationId: conversationPatient.conversationId,
-            id: patient.id,
-            firstName: patient.firstName,
-            lastName: patient.lastName,
-            chosenName: patient.chosenName,
-          })
-          .from(conversationPatient)
-          .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
-          .where(inArray(conversationPatient.conversationId, conversationIds))
-          .orderBy(asc(patient.lastName), asc(patient.firstName))
-          .all();
+export function patientsOf(database: Database, conversationIds: string[] | SQLWrapper) {
+  const rows = database
+    .select({
+      conversationId: conversationPatient.conversationId,
+      id: patient.id,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      chosenName: patient.chosenName,
+    })
+    .from(conversationPatient)
+    .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
+    .where(inArray(conversationPatient.conversationId, conversationIds))
+    .orderBy(asc(patient.lastName), asc(patient.firstName))
+    .all();
   const byConversation = new Map<string, { id: string; name: string }[]>();
   for (const row of rows) {
     const list = byConversation.get(row.conversationId) ?? [];
