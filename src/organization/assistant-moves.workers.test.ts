@@ -5,6 +5,7 @@ import {
   addOffice,
   addRoom,
   adminCaller,
+  answeringNotice,
   afterTheWait,
   auditEntriesFor,
   at,
@@ -406,11 +407,13 @@ describe("the move's rules", () => {
 
   it("still allows the patient's one move after time off put it on the to-reschedule list", async () => {
     expectOk(
-      await world.organization.createTimeOff(adminCaller, {
-        practitionerId: world.juan.practitionerId,
-        entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
-        tellPatients: true,
-      }),
+      await answeringNotice(true, (notice) =>
+        world.organization.createTimeOff(adminCaller, {
+          practitionerId: world.juan.practitionerId,
+          entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
+          ...notice,
+        }),
+      ),
     );
 
     expect(await patientMoves(slot(12, "10:00").slotId)).toMatchObject({ ok: true });

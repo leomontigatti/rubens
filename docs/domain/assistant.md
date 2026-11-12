@@ -335,9 +335,10 @@ The number of rules and their length are limited. Every change is audited, and
 each reply records the version of the rules it was written under.
 
 Rules do not reach the templates: those are fixed once Meta approves them. The
-organization's default drafts are worded in its `Trato` when they are created, and a
-later change of `Trato` leaves every template's text as it is: the template's page
-says so ([whatsapp-templates.md](../operations/whatsapp-templates.md)). The fixed
+organization's default drafts are worded in its `Trato` when they are created, and
+one never sent to Meta follows the `Trato` an admin later saves, audited; a template
+sent to Meta, or a text the organization wrote, keeps its text whatever the `Trato`.
+The template's page says which ([whatsapp-templates.md](../operations/whatsapp-templates.md)). The fixed
 checks apply to templates too: a text with an opening `¿` or `¡`, or an emoji, is
 refused before it goes to Meta.
 

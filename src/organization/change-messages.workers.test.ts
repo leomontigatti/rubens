@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   adminCaller,
+  answeringNotice,
   at,
   expectOk,
   fakeMeta,
@@ -147,11 +148,13 @@ const firstMondayMorning = {
 /** Juan's time off on the first Monday from 09:00 to 10:00, telling the patients unless asked not to. */
 async function addTimeOff(tellPatients = true) {
   return expectOk(
-    await world.organization.createTimeOff(adminCaller, {
-      practitionerId: world.juan.practitionerId,
-      entry: firstMondayMorning,
-      tellPatients,
-    }),
+    await answeringNotice(tellPatients, (notice) =>
+      world.organization.createTimeOff(adminCaller, {
+        practitionerId: world.juan.practitionerId,
+        entry: firstMondayMorning,
+        ...notice,
+      }),
+    ),
   ).timeOff;
 }
 
@@ -213,6 +216,18 @@ describe("asking whether to tell the patients a time off or a closure sends to t
       ok: false,
       reason: "affectsAppointments",
       affected: 2,
+    });
+    expect(await changeMessages()).toEqual([]);
+    expect(await listedCount()).toBe(0);
+  });
+
+  it("asks with the count when told what to do but not how many", async () => {
+    await bookMartina();
+
+    expect(await createTimeOff({ tellPatients: true })).toEqual({
+      ok: false,
+      reason: "affectsAppointments",
+      affected: 1,
     });
     expect(await changeMessages()).toEqual([]);
     expect(await listedCount()).toBe(0);
@@ -284,11 +299,13 @@ describe('telling patients their appointment went to the "to reschedule" list', 
     const timeOff = await addTimeOff();
 
     expectOk(
-      await world.organization.updateTimeOff(adminCaller, {
-        timeOffId: timeOff.id,
-        entry: { kind: "hours", start: "2099-01-05T08:00", end: "2099-01-05T10:00" },
-        tellPatients: true,
-      }),
+      await answeringNotice(true, (notice) =>
+        world.organization.updateTimeOff(adminCaller, {
+          timeOffId: timeOff.id,
+          entry: { kind: "hours", start: "2099-01-05T08:00", end: "2099-01-05T10:00" },
+          ...notice,
+        }),
+      ),
     );
 
     expect(await changeMessages()).toHaveLength(1);
@@ -320,11 +337,13 @@ describe('telling patients their appointment went to the "to reschedule" list', 
     const appointmentId = await bookMartina();
 
     expectOk(
-      await world.organization.createClosure(adminCaller, {
-        officeId: null,
-        entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
-        tellPatients: true,
-      }),
+      await answeringNotice(true, (notice) =>
+        world.organization.createClosure(adminCaller, {
+          officeId: null,
+          entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
+          ...notice,
+        }),
+      ),
     );
 
     expect(await changeMessages()).toEqual([

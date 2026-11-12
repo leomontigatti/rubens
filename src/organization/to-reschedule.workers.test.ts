@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   addRoom,
   adminCaller,
+  answeringNotice,
   at,
   expectOk,
   fakeAccounts,
@@ -81,21 +82,25 @@ async function world() {
 
   async function addTimeOff(start: string, end: string) {
     expectOk(
-      await organization.createTimeOff(adminCaller, {
-        practitionerId: juan.practitionerId,
-        entry: { kind: "hours", start, end },
-        tellPatients: true,
-      }),
+      await answeringNotice(true, (notice) =>
+        organization.createTimeOff(adminCaller, {
+          practitionerId: juan.practitionerId,
+          entry: { kind: "hours", start, end },
+          ...notice,
+        }),
+      ),
     );
   }
 
   async function addClosure(officeId: string | null, date: string) {
     expectOk(
-      await organization.createClosure(adminCaller, {
-        officeId,
-        entry: { kind: "days", firstDate: date, lastDate: date },
-        tellPatients: true,
-      }),
+      await answeringNotice(true, (notice) =>
+        organization.createClosure(adminCaller, {
+          officeId,
+          entry: { kind: "days", firstDate: date, lastDate: date },
+          ...notice,
+        }),
+      ),
     );
   }
 
@@ -178,11 +183,13 @@ describe("the to-reschedule list", () => {
     await w.book(at("13:00", tuesday), w.pedro.id, "lucia");
 
     expectOk(
-      await w.organization.createClosure(adminCaller, {
-        officeId: w.office.id,
-        entry: { kind: "hours", start: `${tuesday}T11:00`, end: `${tuesday}T12:00` },
-        tellPatients: true,
-      }),
+      await answeringNotice(true, (notice) =>
+        w.organization.createClosure(adminCaller, {
+          officeId: w.office.id,
+          entry: { kind: "hours", start: `${tuesday}T11:00`, end: `${tuesday}T12:00` },
+          ...notice,
+        }),
+      ),
     );
 
     expect(await w.listed()).toEqual([{ id: long, reason: "closure" }]);

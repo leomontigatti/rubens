@@ -9,6 +9,7 @@ import {
   addRoom,
   addStaff,
   adminCaller,
+  answeringNotice,
   at,
   auditEntriesFor,
   expectOk,
@@ -78,11 +79,13 @@ async function world() {
   }
 
   async function addTimeOff(entry: RangeEntry) {
-    const result = await booking.organization.createTimeOff(adminCaller, {
-      practitionerId: juan.practitionerId,
-      entry,
-      tellPatients: true,
-    });
+    const result = await answeringNotice(true, (notice) =>
+      booking.organization.createTimeOff(adminCaller, {
+        practitionerId: juan.practitionerId,
+        entry,
+        ...notice,
+      }),
+    );
     if (!result.ok) {
       throw new Error(`createTimeOff refused: ${result.reason}`);
     }
@@ -479,11 +482,13 @@ describe("an overbooking on top of another appointment", () => {
 
     expect(await w.tryOverbook()).toEqual({ ok: false, reason: "timeOff" });
 
-    await w.organization.createClosure(adminCaller, {
-      officeId: w.office.id,
-      entry: { kind: "hours", start: "2099-01-05T10:00", end: "2099-01-05T10:30" },
-      tellPatients: true,
-    });
+    await answeringNotice(true, (notice) =>
+      w.organization.createClosure(adminCaller, {
+        officeId: w.office.id,
+        entry: { kind: "hours", start: "2099-01-05T10:00", end: "2099-01-05T10:30" },
+        ...notice,
+      }),
+    );
     expect(await w.tryOverbook(w.overbookingOf({ start: at("13:00") }))).toEqual({
       ok: false,
       reason: "closed",
