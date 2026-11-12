@@ -2,6 +2,7 @@ import type * as z from "zod";
 
 import type { assistantToolSchemas } from "#/lib/assistant.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
+import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 import type { answeredMessage, HandoffWanted } from "#/organization/handoffs.ts";
 
@@ -32,8 +33,8 @@ export interface TurnToSort {
   reachedNow: string[];
   /** The turn's messages are voice notes nobody could understand (`assistant.ts`). */
   unintelligible?: boolean;
-  /** The turn's messages hold a photo, a video or a file, which the model never reads. */
-  media?: boolean;
+  /** The photos, videos and files among the turn's messages, which the model never reads. */
+  media?: MediaType[];
 }
 
 const modelReasons = {
@@ -53,7 +54,9 @@ const modelReasons = {
  */
 function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted | null {
   const { judgement } = turn;
-  if (turn.media && !judgement.needsPractitioner && !judgement.emergency) {
+  // Words beside the photo that answer it otherwise make the whole answer the practitioner's.
+  const otherAnswer = judgement.followUpAnswer === "other";
+  if (turn.media?.length && !otherAnswer && !judgement.needsPractitioner && !judgement.emergency) {
     return { reason: "media", forPractitioner: false, appointmentId };
   }
   const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.needsPractitioner;
@@ -96,7 +99,7 @@ function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   if (turn.ruleRefused) {
     return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };
   }
-  if (turn.media) {
+  if (turn.media?.length) {
     return { reason: "media", forPractitioner: false, appointmentId: null };
   }
   if (judgement.optOut && turn.reachedNow.length > 0) {
@@ -130,22 +133,30 @@ function unansweredReason(turn: TurnToSort): HandoffWanted["reason"] | null {
  */
 export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
   const { answered } = turn;
-  if (answered?.kind === "followUp" && answered.firstReply) {
-    return followUpHandoff(turn, answered.appointmentId);
-  }
-  const wanted = turn.handOff ? modelHandoff(turn, turn.handOff) : judgedHandoff(turn);
-  if (!wanted) {
-    return null;
-  }
-  const detail =
-    turn.refusal || turn.applied.length > 0
-      ? { refused: turn.refusal, applied: turn.applied }
-      : null;
+  const wanted =
+    answered?.kind === "followUp" && answered.firstReply
+      ? followUpHandoff(turn, answered.appointmentId)
+      : modelOrJudgedHandoff(turn);
   // A handoff about nothing in particular, right after a message about an
   // appointment, concerns that appointment.
-  return {
-    ...wanted,
-    appointmentId: wanted.appointmentId ?? answered?.appointmentId ?? null,
-    detail,
-  };
+  return (
+    wanted && {
+      ...wanted,
+      appointmentId: wanted.appointmentId ?? answered?.appointmentId ?? null,
+      detail: detailOf(turn, wanted),
+    }
+  );
+}
+
+function modelOrJudgedHandoff(turn: TurnToSort) {
+  return turn.handOff ? modelHandoff(turn, turn.handOff) : judgedHandoff(turn);
+}
+
+/** What the handoff's notification and label say of the turn: a refused move, its own changes, the media sent. */
+function detailOf(turn: TurnToSort, wanted: HandoffWanted): HandoffDetail | null {
+  const media = wanted.reason === "media" ? [...new Set(turn.media)] : [];
+  if (!turn.refusal && turn.applied.length === 0 && media.length === 0) {
+    return null;
+  }
+  return { refused: turn.refusal, applied: turn.applied, ...(media.length > 0 && { media }) };
 }

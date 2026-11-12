@@ -69,8 +69,10 @@ describe("a handoff's notification", () => {
   });
 
   it("names the reason and the patient for any other handoff", () => {
-    expect(notificationText(withHandoff({ reason: "media", detail: null }))).toBe(
-      "Mandó una foto, un video o un archivo: Marta Quiroga.",
+    const media = { refused: null, applied: [], media: ["image" as const] };
+
+    expect(notificationText(withHandoff({ reason: "media", detail: media }))).toBe(
+      "Mandó una foto: Marta Quiroga.",
     );
   });
 

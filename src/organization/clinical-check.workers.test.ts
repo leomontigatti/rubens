@@ -371,7 +371,7 @@ describe("a photo or a file from the patient", () => {
     expect(scriptedModel.turns).toEqual([]);
     expect(fakeMeta.textsSent()).toEqual([]);
     expect(await openHandoffs(adminCaller)).toMatchObject([
-      { reason: "media", forPractitioner: false },
+      { reason: "media", forPractitioner: false, media: ["image"] },
     ]);
     const read = await conversationOf(world.receptionist);
     expect(read.messages.filter((one) => one.direction === "incoming")).toMatchObject([

@@ -310,6 +310,40 @@ describe("a person's reply", () => {
     expect(told.notifications.filter((one) => one.kind === "replyFailed")).toHaveLength(1);
   });
 
+  it("that fail together with the same time reopen the newer handoff, the one a later reply answered", async () => {
+    const sentWhatsappId = (text: string) =>
+      inStorage(world.organization, (database) =>
+        database
+          .select({ whatsappId: whatsappMessage.whatsappId })
+          .from(whatsappMessage)
+          .where(eq(whatsappMessage.text, text))
+          .get(),
+      );
+    await handedOff(false);
+    expectOk(await takeOver(world.receptionist));
+    expectOk(await reply(world.receptionist, "Primera respuesta."));
+    await handedOff(false);
+    const [newer] = await openHandoffs();
+    expectOk(await reply(world.receptionist, "Segunda respuesta."));
+    // The object's clock is frozen: both replies carry the same time.
+    const first = await sentWhatsappId("*Rita Paz*\nPrimera respuesta.");
+    const second = await sentWhatsappId("*Rita Paz*\nSegunda respuesta.");
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: [first!, second!].map(({ whatsappId }) => ({
+          whatsappId,
+          status: "failed" as const,
+          at: Date.now(),
+        })),
+        templateStatuses: [],
+      }),
+    );
+
+    expect((await openHandoffs()).map((one) => one.id)).toEqual([newer!.id]);
+  });
+
   it("refuses a reply too long for Meta once signed with the name, sending nothing", async () => {
     expectOk(await takeOver(world.receptionist));
 

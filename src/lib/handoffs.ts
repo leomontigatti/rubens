@@ -1,6 +1,7 @@
 import * as z from "zod";
 
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
+import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 // Handoffs (ui: "Derivación", docs/domain/assistant.md § Handoff): a
 // conversation the assistant passes to a person, the practitioner when it
@@ -51,6 +52,8 @@ export type HandoffReason = (typeof handoffReasons)[number];
 export interface HandoffDetail {
   refused: { why: MoveRefusal; cutoffHours: number; date: string; time: string } | null;
   applied: { kind: ProposalKind; date: string; time: string; newDate?: string; newTime?: string }[];
+  /** For a `media` handoff, what the patient sent, so its reason names only that. */
+  media?: MediaType[];
 }
 
 export const handoffStates = ["open", "closed"] as const;

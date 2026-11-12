@@ -7,7 +7,7 @@ import type { DataTableColumn } from "#/components/data-table.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
-import { handoffReasonLabels } from "#/lib/handoff-copy.ts";
+import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { closeHandoff, dropHeldReply, passToPractitioner } from "#/server/inbox.functions.ts";
 import type { OpenHandoff } from "#/organization/handoff-inbox.ts";
@@ -47,7 +47,7 @@ function recipientsText(recipients: string[]) {
 function Reason({ handoff }: { handoff: OpenHandoff }) {
   return (
     <span className="flex items-center gap-2">
-      {handoffReasonLabels[handoff.reason]}
+      {handoffReasonLabel(handoff.reason, handoff.media)}
       {handoff.forPractitioner && <Badge variant="info">Para el profesional</Badge>}
     </span>
   );
@@ -197,6 +197,7 @@ function HandoffNotice(props: { handoff: OpenHandoff; onUseReply: (text: string)
         title="¿Pasar la derivación al profesional?"
         description="Le llega al profesional del turno, o a los contactos de derivación que llevan historias clínicas, y la responde él. Al paciente no le enviamos nada."
         confirmLabel="Pasar al profesional"
+        destructive={false}
         onConfirm={() => void pass.run("pass-to-practitioner", () => passToPractitioner({ data }))}
       />
       <ConfirmDialog

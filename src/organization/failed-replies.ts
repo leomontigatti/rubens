@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import type { Writer } from "#/organization/database.ts";
 import { notify } from "#/organization/notifications.ts";
@@ -50,7 +50,7 @@ export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
             ),
           )
           // The newest first: its handoff is the one a later handoff of its kind would have replaced.
-          .orderBy(desc(whatsappMessage.sentAt))
+          .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
           .all();
   for (const reply of failed) {
     const closed = tx

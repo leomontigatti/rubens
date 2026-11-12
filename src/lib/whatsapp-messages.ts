@@ -28,6 +28,8 @@ export type MessageJudgement = (typeof messageJudgements)[number];
  */
 export const mediaTypes = ["image", "document", "video"] as const;
 
+export type MediaType = (typeof mediaTypes)[number];
+
 /** A message a patient's number sent the organization's number. */
 export interface IncomingWhatsappMessage {
   /** Meta's message id (`wamid.…`). */

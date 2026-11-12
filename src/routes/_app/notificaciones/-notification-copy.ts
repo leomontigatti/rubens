@@ -2,7 +2,7 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-import { handoffReasonLabels } from "#/lib/handoff-copy.ts";
+import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
@@ -162,7 +162,7 @@ function handoffWhy(handoff: HandoffFacts) {
       ? `${who} quiere pasar ${appointment} y falta menos de ${refused.cutoffHours} h.`
       : `${who} quiere pasar ${appointment}, que ya movió una vez.`;
   }
-  const label = handoffReasonLabels[handoff.reason];
+  const label = handoffReasonLabel(handoff.reason, handoff.detail?.media);
   return handoff.patient ? `${label}: ${handoff.patient}.` : `${label}.`;
 }
 

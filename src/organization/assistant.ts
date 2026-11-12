@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "dr
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
+import type { MediaType } from "#/lib/whatsapp-messages.ts";
 import {
   assistantSystemPrompt,
   assistantToolSchemas,
@@ -474,6 +475,11 @@ async function runTurn(
   });
 }
 
+/** The kinds of media among `messages`, each once. */
+function kindsOf(messages: { type: string }[]): MediaType[] {
+  return [...new Set(messages.map((message) => message.type as MediaType))];
+}
+
 /**
  * Judges the turn's messages but the photos and files among them, which the
  * model never reads: they are handed to reception (`turn-handoffs.ts`). With
@@ -522,12 +528,12 @@ async function judgeWithoutMedia(
     const onlyMedia = {
       ...nothingElse,
       judgement,
-      media: true,
+      media: kindsOf(media),
       read: { ...read, unjudged: media },
     };
     return { turn: onlyMedia, unread };
   }
-  return { turn: { ...judged, media: true, read }, unread };
+  return { turn: { ...judged, media: kindsOf(media), read }, unread };
 }
 
 /** Runs every turn whose wait is over, earliest first: the object's alarm. */

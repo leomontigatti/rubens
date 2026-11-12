@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
 import type { HandoffReason, HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
+import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -39,6 +40,8 @@ export interface OpenHandoff {
   reason: HandoffReason;
   /** Whether it needs the practitioner, rather than reception. */
   forPractitioner: boolean;
+  /** For a `media` handoff, what the patient sent. */
+  media: MediaType[];
   createdAt: number;
   /** Who it went to, by name. */
   recipients: string[];
@@ -100,6 +103,7 @@ export function listOpenHandoffs(
       forPractitioner: handoff.forPractitioner,
       createdAt: handoff.createdAt,
       heldReply: handoff.heldReply,
+      detail: handoff.detail,
     })
     .from(handoff)
     .innerJoin(conversation, eq(conversation.id, handoff.conversationId))
@@ -123,10 +127,11 @@ export function listOpenHandoffs(
     rows.filter((row) => row.forPractitioner).map((row) => row.conversationId),
   );
   const member = { memberId: acting.userId, keepsRecords: reader.keepsRecords };
-  const handoffs: OpenHandoff[] = rows.map((row) => {
+  const handoffs: OpenHandoff[] = rows.map(({ detail, ...row }) => {
     const last = lastMessages.get(row.conversationId);
     return {
       ...row,
+      media: detail?.media ?? [],
       patients: patients.get(row.conversationId) ?? [],
       recipients: recipients.get(row.id) ?? [],
       lastPatientMessage: last ? asRead(last) : null,

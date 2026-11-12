@@ -597,6 +597,22 @@ describe("answering a follow-up", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
+  it("hands a photo and words that answer it otherwise, sent together, to the practitioner", async () => {
+    await followUpSent();
+    await patientSends(world.organization, "image", martinaPhone);
+    await writes("me molesta un poco al masticar");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, followUpAnswer: "other" });
+      return "";
+    });
+
+    await turn();
+
+    expect(await openHandoffs()).toMatchObject([
+      { reason: "followUpAnswer", forPractitioner: true, recipients: ["Juan Gómez"] },
+    ]);
+  });
+
   it("still sorts the words after a photo as the answer, to the practitioner when not plainly good", async () => {
     await followUpSent();
     await patientSends(world.organization, "image", martinaPhone);
