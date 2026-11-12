@@ -14,6 +14,9 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 // each template by its category, and each other message the organization
 // sends, a service message, past the number's free ones of the month. A
 // patient's message costs nothing, nor does a message Meta never delivered.
+// A message counts in the month it was sent: Meta bills it in the month it was
+// delivered, so one delivered after the month's last midnight is a month early
+// here, and Meta's free service messages reset in its account's zone, not ours.
 //
 // A template counts as utility: the outbox sends only a version that is
 // approved and utility (`approvedVersion`), so every one went out as utility,
