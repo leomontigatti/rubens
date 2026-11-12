@@ -15,6 +15,7 @@ import type { TemplateVariable } from "#/lib/template-filling.ts";
 import { templateCreateSchema, templateVariables } from "#/lib/whatsapp-templates.ts";
 import type { TemplateProblem } from "#/lib/whatsapp-templates.ts";
 
+import { maxReminders } from "#/lib/medical-services.ts";
 import { problemText, templateRefusalMessages } from "#/lib/whatsapp-template-copy.ts";
 
 import { TemplatePreview } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
@@ -30,8 +31,7 @@ const templateFormRefusals = {
   metaRefused: "Meta rechazó la plantilla.",
   notFound: "No encontramos esa plantilla.",
   nameTaken: "Ya hay una plantilla con ese nombre.",
-  tooManyReminders:
-    "Una prestación que la envía ya tiene 5 recordatorios: quitásela en Prestaciones o elegí otro momento.",
+  tooManyReminders: `Una prestación que la envía ya tiene ${maxReminders} recordatorios: quitásela en Prestaciones o elegí otro momento.`,
   alreadySubmitting:
     "Esta plantilla ya se está enviando a Meta. Esperá a que termine y volvé a intentar.",
 };
@@ -209,7 +209,7 @@ export function TemplateForm(props: {
       submitLabel={props.submitLabel(bodyChanged)}
       creates={templateId === null}
       pending={action.pending}
-      refusals={action.error ? [{ field: "", message: action.error }] : undefined}
+      refusals={action.error ? [{ field: action.errorField, message: action.error }] : undefined}
       onClear={() => action.setError(null)}
       record={props.record}
       lead={props.lead}
