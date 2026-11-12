@@ -2,6 +2,7 @@ import { and, desc, eq, gte, inArray, isNotNull, lt, notInArray } from "drizzle-
 import type { SQLWrapper } from "drizzle-orm";
 
 import { isWindowOpen } from "#/lib/conversation-window.ts";
+import { reactionType } from "#/lib/reactions.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import { attendedTimings } from "#/lib/template-timing.ts";
@@ -212,8 +213,8 @@ export function answeredMessage(database: Database, conversationId: string, befo
         eq(whatsappMessage.direction, "incoming"),
         isNotNull(whatsappMessage.judgement),
         gte(whatsappMessage.sentAt, latest.sentAt),
-        // A photo is reception's: the words that come after it are still the answer.
-        notInArray(whatsappMessage.type, [...mediaTypes]),
+        // A photo is reception's and a reaction no answer: the words after either are still the answer.
+        notInArray(whatsappMessage.type, [...mediaTypes, reactionType]),
       ),
     )
     .get();
