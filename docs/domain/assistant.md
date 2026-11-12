@@ -92,6 +92,9 @@ patient's yes, freeing the old time.
 - A move past the cutoff, after the one move, or a patient who asks to be
   contacted, is handed off, and the patient is told nothing about it
   ([Handoff](#handoff)).
+- **A 👍 or ✅** is the patient's yes, the same as `sí`, to the conversation's latest
+  proposal or to a reminder that asks them to confirm, as a reaction to that message
+  or as a message holding only that emoji right after it ([Proposals](#proposals)).
 
 ## For practitioners
 
@@ -120,6 +123,22 @@ assistant then says so and offers others.
 An explicit request is its own acceptance: `cancelalo`, `sí, voy`. An ambiguous
 one gets one plain question back: `no voy a poder` is asked whether to cancel or
 to move the appointment.
+
+A patient can also react to a message, as WhatsApp lets them. The model reads a
+reaction with the words of the message it reacts to. A 👍 or ✅ on the message that
+states the latest proposal, or a message holding only that emoji after it, accepts
+the proposal under the same rules as `sí`: in a later message, before it expires,
+and while the appointment is as stated. On a reminder that asks the patient to
+confirm, or right after it, it confirms the appointment the way `sí, voy` to that
+reminder does: proposed and accepted in the same turn, only while nothing from
+the practice or the assistant came after that reminder and the appointment is not
+confirmed yet. The model tells a reminder
+that asks to confirm by its words, as it does for `sí`. A reaction to any other
+message, a reminder that does not ask included, or with another emoji, is not a
+request: it changes nothing. A reaction the patient
+replaces is read no more, and one they take back is ignored: it starts no turn,
+and the model does not read the reaction it removed, nor accepts on it while a
+turn that read it is still running.
 
 ## Rules it always keeps
 
@@ -153,7 +172,8 @@ No organization can edit or override these:
 ## The conversation window
 
 The patient's message opens the customer service window, for 24 hours, and each
-later message from the patient restarts it. A template the organization sends does
+later message from the patient restarts it, a reaction included; a reaction
+taken back does not. A template the organization sends does
 not open it. Inside the window the assistant and staff write freely; outside it,
 underthing can send only an approved template ([messages.md](./messages.md#to-patients)).
 
@@ -176,6 +196,10 @@ patients; the number's link to its patients still routes a handoff. What stays
 with the practitioners is the clinical record ([access.md](./access.md)). The
 assistant judges every message a patient sends, also while a person holds the
 conversation.
+
+A patient's reaction shows under the message it reacts to, as WhatsApp shows
+it, and goes once they take it back; the list of conversations does not show it as
+the latest message.
 
 A patient's voice note, photo, video or file stays at Meta: underthing keeps the
 message, and a voice note's transcript as its words, never the media. Whoever reads

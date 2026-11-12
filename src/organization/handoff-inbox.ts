@@ -1,5 +1,6 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 
+import { reactionType } from "#/lib/reactions.ts";
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
 import type { HandoffReason, HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
@@ -69,6 +70,8 @@ function lastPatientMessages(database: Database, conversationIds: string[]) {
             and(
               inArray(whatsappMessage.conversationId, conversationIds),
               eq(whatsappMessage.direction, "incoming"),
+              // A reaction says nothing of what the handoff is about.
+              ne(whatsappMessage.type, reactionType),
             ),
           )
           .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))

@@ -78,7 +78,10 @@ Scripts that call `scripts/*.ts` run under `tsx`.
 - `eval:assistant`: the patient assistant's evaluation (#157), each booking conversation in
   `tests/evals/assistant/` on the named model candidates, under plain Node. Calls the
   providers' APIs and costs money, so it runs on demand with their keys, never in CI
-  ([tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)).
+  ([tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)). Each eval
+  script loads `tests/evals/src-imports.ts`, which resolves the app's `#/` imports that
+  Node 22 refuses; the unit test `tests/evals/loads.test.ts` loads every eval module that
+  way in CI, so one that stops loading fails before a paid run.
 - `eval:voice`: the voice notes through each transcription option, then the transcript
   through one candidate. On demand, like `eval:assistant`.
 - `eval:report`: re-scores saved `eval:assistant` runs with today's checks and folds them

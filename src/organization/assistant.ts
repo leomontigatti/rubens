@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "dr
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
+import { reactionType } from "#/lib/reactions.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 import {
   assistantSystemPrompt,
@@ -22,6 +23,7 @@ import { answeredMessage, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { reopensWithdrawn } from "#/organization/late-replies.ts";
 import { proposalTools } from "#/organization/proposals.ts";
+import { reactionsOf } from "#/organization/reactions.ts";
 import {
   answeredMeanwhile,
   clearFailedTurns,
@@ -190,6 +192,7 @@ const messageColumns = {
   direction: whatsappMessage.direction,
   type: whatsappMessage.type,
   text: whatsappMessage.text,
+  reactsTo: whatsappMessage.reactsTo,
 };
 
 /**
@@ -237,6 +240,7 @@ export function readConversation(database: Database, conversationId: string) {
       database,
       history.map((message) => message.id),
     ),
+    reactions: reactionsOf(database, conversationId),
   };
 }
 
@@ -263,6 +267,10 @@ const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run
  */
 function asTurnMessages(read: Read): TurnMessage[] {
   const contentOf = (message: Read["history"][number]) => {
+    const reaction = read.reactions.lines.get(message.id);
+    if (reaction) {
+      return reaction;
+    }
     // A voice note nobody could understand has no words.
     const content = message.text || `[${message.type}]`;
     if (message.direction === "incoming") {
@@ -271,7 +279,10 @@ function asTurnMessages(read: Read): TurnMessage[] {
     return read.withdrawn.has(message.id) ? `${content}\n${withdrawnReplyNote}` : content;
   };
   const messages: TurnMessage[] = [];
-  for (const message of read.history) {
+  const shown = read.history.filter(
+    (message) => message.type !== reactionType || read.reactions.live.has(message.id),
+  );
+  for (const message of shown) {
     const role = message.direction === "incoming" ? "user" : "assistant";
     const last = messages.at(-1);
     if (last?.role === role) {
@@ -432,6 +443,8 @@ async function runTurn(
   }
   const read = await readTranscribed(database, cloud, ports.transcriber, conversationId);
   if (!read) {
+    // Nothing waits, as once the patient took back the only reaction a failed turn left.
+    clearFailedTurns(database, conversationId);
     return null;
   }
   const { transcribed } = read;
@@ -462,10 +475,12 @@ async function runTurn(
     return null;
   }
   // A person answered the turn's words while the model read them: theirs is the answer.
+  // A reaction the patient replaced meanwhile is no answer (`whatsapp-messages.ts`).
+  const words = turn.read.unjudged.filter((message) => message.type !== reactionType);
   if (
     answeredMeanwhile(
       database,
-      turn.read.unjudged.map((message) => message.id),
+      words.map((message) => message.id),
     )
   ) {
     turnForTheRest(database, conversationId);

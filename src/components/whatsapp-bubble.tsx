@@ -35,6 +35,8 @@ interface BubbleProps {
   footer?: ReactNode;
   /** What opens the message's media, between its words and its footer. */
   media?: ReactNode;
+  /** The patient's reaction to it, an emoji on its lower edge. */
+  reaction?: string | null;
   children: ReactNode;
 }
 
@@ -72,7 +74,13 @@ export function PatientBubble(props: BubbleProps & { highlighted?: boolean }) {
 
 function Bubble(props: BubbleProps & { className: string }) {
   return (
-    <div className={cn("max-w-md rounded-lg px-3 py-2 text-sm shadow-xs", props.className)}>
+    <div
+      className={cn(
+        "relative max-w-md rounded-lg px-3 py-2 text-sm shadow-xs",
+        props.reaction && "mb-3",
+        props.className,
+      )}
+    >
       {props.author && <p className="text-xs font-medium">{props.author}</p>}
       <p className="wrap-break-word whitespace-pre-wrap">{props.children}</p>
       {props.media && <div className="mt-2">{props.media}</div>}
@@ -80,6 +88,15 @@ function Bubble(props: BubbleProps & { className: string }) {
         <div className="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-xs">
           {props.footer}
         </div>
+      )}
+      {props.reaction && (
+        <span
+          role="img"
+          aria-label={`Reacción del paciente: ${props.reaction}`}
+          className="bg-card absolute -bottom-3 left-3 rounded-full px-1.5 text-sm leading-6 shadow-xs"
+        >
+          {props.reaction}
+        </span>
       )}
     </div>
   );

@@ -172,6 +172,21 @@ function storedMessages(organization: OrganizationStub) {
   );
 }
 
+function storedReactions(organization: OrganizationStub) {
+  return inStorage(organization, (database) =>
+    database
+      .select({
+        whatsappId: whatsappMessage.whatsappId,
+        text: whatsappMessage.text,
+        reactsTo: whatsappMessage.reactsTo,
+      })
+      .from(whatsappMessage)
+      .orderBy(whatsappMessage.whatsappId)
+      .all()
+      .reverse(),
+  );
+}
+
 /** A call with one change for the business account `accountId`, as Meta sends it. */
 function accountChange(field: string, value: unknown, accountId = businessAccountId) {
   return JSON.stringify({
@@ -211,6 +226,29 @@ describe("Meta's WhatsApp webhook", () => {
         whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE",
         text: "Hola, quería confirmar el turno",
       },
+    ]);
+  });
+
+  it("stores a reaction's emoji and the message it reacts to, and a removed one with no emoji", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    const reaction = (id: string, emoji?: string) => ({
+      from: "5493514440000",
+      id,
+      timestamp: "4071240000",
+      type: "reaction",
+      reaction: { message_id: "wamid.the-proposal", ...(emoji === undefined ? {} : { emoji }) },
+    });
+    payload.entry[0]!.changes[0]!.value.messages = [
+      reaction("wamid.thumbs-up", "👍"),
+      reaction("wamid.removed"),
+    ] as never;
+
+    await handleWhatsappWebhook(post(JSON.stringify(payload)), bindingsFor(organizationId));
+
+    expect(await storedReactions(organization)).toEqual([
+      { whatsappId: "wamid.thumbs-up", text: "👍", reactsTo: "wamid.the-proposal" },
+      { whatsappId: "wamid.removed", text: "", reactsTo: "wamid.the-proposal" },
     ]);
   });
 
