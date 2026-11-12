@@ -402,6 +402,7 @@ describe("a photo or a file from the patient", () => {
       return "";
     });
     await turn();
+    expect((await openHandoffs(adminCaller)).map((one) => one.reason)).toContain("patientAsked");
     await patientSends(world.organization, "document", martinaPhone);
     await turn();
 
