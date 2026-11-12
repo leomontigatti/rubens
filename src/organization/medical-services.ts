@@ -161,10 +161,9 @@ function savePicks(
       )
       .run();
   }
-  if (added.length > 0) {
-    tx.insert(medicalServiceTemplate)
-      .values(added.map((templateId) => ({ medicalServiceId, templateId })))
-      .run();
+  // A row per insert, as `notify` inserts: the object's SQLite binds at most 100 parameters a query.
+  for (const templateId of added) {
+    tx.insert(medicalServiceTemplate).values({ medicalServiceId, templateId }).run();
   }
   rebuildPicks(tx, medicalServiceId, { removed, added });
 }
