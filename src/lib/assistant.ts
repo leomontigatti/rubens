@@ -196,7 +196,7 @@ function openHandoffRule(context: PromptContext) {
   }
   const topics = [...new Set(context.openHandoffs.map((reason) => handoffTopics[reason]))];
   return [
-    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, when and where). Judge only the new messages: what the patient wrote about that topic before them is not judged again. Do not answer that topic yourself and do not hand it off again: if the patient asks about it, reply with exactly "${alreadyHandedOffReply(context.formOfAddress)}"`,
+    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, when and where). Judge only the new messages: what the patient wrote about that topic before them is not judged again. Do not answer that topic yourself and do not hand it off again: if the patient asks about it, say "${alreadyHandedOffReply(context.formOfAddress)}"`,
   ];
 }
 
