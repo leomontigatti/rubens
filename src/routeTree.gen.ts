@@ -73,6 +73,7 @@ import { Route as AppPacientesPatientIdResponsablesGuardianIdRouteImport } from 
 import { Route as AppPacientesPatientIdResponsablesNuevoRouteImport } from './routes/_app/pacientes/$patientId_/responsables/nuevo'
 import { Route as AppSedesOfficeIdConsultoriosRoomIdRouteImport } from './routes/_app/sedes/$officeId_/consultorios/$roomId'
 import { Route as AppSedesOfficeIdConsultoriosNuevoRouteImport } from './routes/_app/sedes/$officeId_/consultorios/nuevo'
+import { Route as ApiConversacionesConversationIdMensajesMessageIdRouteImport } from './routes/api/conversaciones/$conversationId/mensajes/$messageId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -424,6 +425,12 @@ const AppSedesOfficeIdConsultoriosNuevoRoute =
     path: '/sedes/$officeId/consultorios/nuevo',
     getParentRoute: () => AppRoute,
   } as any)
+const ApiConversacionesConversationIdMensajesMessageIdRoute =
+  ApiConversacionesConversationIdMensajesMessageIdRouteImport.update({
+    id: '/api/conversaciones/$conversationId/mensajes/$messageId',
+    path: '/api/conversaciones/$conversationId/mensajes/$messageId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -489,6 +496,7 @@ export interface FileRoutesByFullPath {
   '/pacientes/$patientId/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
   '/sedes/$officeId/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
   '/sedes/$officeId/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
+  '/api/conversaciones/$conversationId/mensajes/$messageId': typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 export interface FileRoutesByTo {
   '/ingresar': typeof IngresarRoute
@@ -554,6 +562,7 @@ export interface FileRoutesByTo {
   '/pacientes/$patientId/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
   '/sedes/$officeId/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
   '/sedes/$officeId/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
+  '/api/conversaciones/$conversationId/mensajes/$messageId': typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -621,6 +630,7 @@ export interface FileRoutesById {
   '/_app/pacientes/$patientId_/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
   '/_app/sedes/$officeId_/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
   '/_app/sedes/$officeId_/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
+  '/api/conversaciones/$conversationId/mensajes/$messageId': typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -688,6 +698,7 @@ export interface FileRouteTypes {
     | '/pacientes/$patientId/responsables/nuevo'
     | '/sedes/$officeId/consultorios/$roomId'
     | '/sedes/$officeId/consultorios/nuevo'
+    | '/api/conversaciones/$conversationId/mensajes/$messageId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/ingresar'
@@ -753,6 +764,7 @@ export interface FileRouteTypes {
     | '/pacientes/$patientId/responsables/nuevo'
     | '/sedes/$officeId/consultorios/$roomId'
     | '/sedes/$officeId/consultorios/nuevo'
+    | '/api/conversaciones/$conversationId/mensajes/$messageId'
   id:
     | '__root__'
     | '/_app'
@@ -819,6 +831,7 @@ export interface FileRouteTypes {
     | '/_app/pacientes/$patientId_/responsables/nuevo'
     | '/_app/sedes/$officeId_/consultorios/$roomId'
     | '/_app/sedes/$officeId_/consultorios/nuevo'
+    | '/api/conversaciones/$conversationId/mensajes/$messageId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -826,6 +839,7 @@ export interface RootRouteChildren {
   IngresarRoute: typeof IngresarRoute
   ApiSetupRoute: typeof ApiSetupRoute
   ApiWhatsappRoute: typeof ApiWhatsappRoute
+  ApiConversacionesConversationIdMensajesMessageIdRoute: typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1278,6 +1292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSedesOfficeIdConsultoriosNuevoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/conversaciones/$conversationId/mensajes/$messageId': {
+      id: '/api/conversaciones/$conversationId/mensajes/$messageId'
+      path: '/api/conversaciones/$conversationId/mensajes/$messageId'
+      fullPath: '/api/conversaciones/$conversationId/mensajes/$messageId'
+      preLoaderRoute: typeof ApiConversacionesConversationIdMensajesMessageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1430,6 +1451,8 @@ const rootRouteChildren: RootRouteChildren = {
   IngresarRoute: IngresarRoute,
   ApiSetupRoute: ApiSetupRoute,
   ApiWhatsappRoute: ApiWhatsappRoute,
+  ApiConversacionesConversationIdMensajesMessageIdRoute:
+    ApiConversacionesConversationIdMensajesMessageIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -15,6 +15,10 @@ buttons: the patient answers in their own words, and the assistant reads the
 answer ([assistant.md](./assistant.md)). The patient's answer opens the
 conversation window ([assistant.md](./assistant.md#the-conversation-window)).
 
+Messages to patients are text, never media. What a patient sends as media, a voice
+note, a photo or a file, stays at Meta and is opened from the inbox while Meta keeps
+it, seven days ([assistant.md](./assistant.md#inbox)).
+
 Messages the organization starts go only to patients who booked with it, and stop
 for a patient who asks to stop.
 

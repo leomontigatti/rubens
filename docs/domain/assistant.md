@@ -176,6 +176,16 @@ with the practitioners is the clinical record ([access.md](./access.md)). The
 assistant judges every message a patient sends, also while a person holds the
 conversation.
 
+A patient's voice note, photo, video or file stays at Meta: underthing keeps the
+message, and a voice note's transcript as its words, never the media. Whoever reads
+the conversation opens it on demand, with `Escuchar`, `Ver foto`, `Ver video` or
+`Abrir archivo`. Each press goes through underthing, which checks the same reading
+rules, fetches the media from Meta by the id in the message and streams it to the
+browser, never storing, caching or linking it at a public URL. Meta deletes a
+patient's media seven days after it was sent: the button then gives way to
+`Ya no está disponible en WhatsApp (pasaron más de 7 días)`, and the transcript
+stays.
+
 Anyone allowed to read a conversation can take it over at any time, not only on a
 handoff, from whoever held it. While a person holds a conversation, the assistant
 stays silent in it. The person's reply goes to the patient under their name, inside

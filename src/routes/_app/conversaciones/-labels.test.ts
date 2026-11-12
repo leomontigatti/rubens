@@ -4,6 +4,7 @@ import {
   byDay,
   conversationName,
   dayLabel,
+  mediaAction,
   messageClock,
   messageSender,
   messageText,
@@ -41,6 +42,7 @@ describe("a message's text", () => {
       status: null,
       judgement: null,
       sentBy: null,
+      media: null,
     } as const;
 
     expect(messageText(unjudged)).toBe("me duele la muela");
@@ -56,11 +58,29 @@ describe("a message's text", () => {
       status: null,
       judgement: "notForPractitioner",
       sentBy: null,
+      media: null,
     } as const;
 
     expect(messageText(photo)).toBe("Foto");
     expect(messageText({ ...photo, type: "document" })).toBe("Archivo");
     expect(messageText({ ...photo, type: "sticker" })).toBe("Mensaje sin texto (sticker)");
+  });
+
+  it("names a file by the name the patient gave it", () => {
+    const file = {
+      id: "1",
+      direction: "incoming",
+      sentAt: 0,
+      type: "document",
+      text: null,
+      status: null,
+      judgement: "notForPractitioner",
+      sentBy: null,
+      media: { kind: "document", filename: "Radiografía.pdf", availableUntil: 1 },
+    } as const;
+
+    expect(messageText(file)).toBe("Archivo: Radiografía.pdf");
+    expect(messageText({ ...file, media: { ...file.media, filename: null } })).toBe("Archivo");
   });
 
   it("marks a voice note's transcript, and says when it has none", () => {
@@ -73,11 +93,35 @@ describe("a message's text", () => {
       status: null,
       judgement: "notForPractitioner",
       sentBy: null,
+      media: null,
     } as const;
 
     expect(messageText(voiceNote)).toBe("Nota de voz: quiero cancelar el turno");
     expect(messageText({ ...voiceNote, text: "" })).toBe("Nota de voz que no se pudo entender");
     expect(messageText({ ...voiceNote, text: null })).toBe("Nota de voz sin transcribir");
+  });
+});
+
+describe("opening a patient's media", () => {
+  const availableUntil = Date.parse("2026-11-17T15:00:00Z");
+
+  it("offers each kind of media its own button while Meta has it", () => {
+    const before = availableUntil - 1;
+
+    expect(mediaAction({ kind: "audio", filename: null, availableUntil }, before)).toBe("Escuchar");
+    expect(mediaAction({ kind: "image", filename: null, availableUntil }, before)).toBe("Ver foto");
+    expect(mediaAction({ kind: "video", filename: null, availableUntil }, before)).toBe(
+      "Ver video",
+    );
+    expect(mediaAction({ kind: "document", filename: null, availableUntil }, before)).toBe(
+      "Abrir archivo",
+    );
+  });
+
+  it("offers none once Meta deleted it", () => {
+    expect(
+      mediaAction({ kind: "image", filename: null, availableUntil }, availableUntil),
+    ).toBeNull();
   });
 });
 
@@ -91,6 +135,7 @@ describe("who wrote a message", () => {
     status: "sent",
     judgement: null,
     sentBy: null,
+    media: null,
   } as const;
 
   it("names no one for the patient's own messages, which sit on their side of the chat", () => {

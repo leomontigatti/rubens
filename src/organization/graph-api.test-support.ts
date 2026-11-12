@@ -54,6 +54,8 @@ interface MetaRequest {
   method: string;
   url: string;
   authorization: string | null;
+  /** The byte range a media download asked for; absent when it asked for none. */
+  range?: string;
   body: unknown;
 }
 
@@ -80,8 +82,14 @@ class FakeMeta {
   #heldPause: { index: number; until: Promise<void> } | null = null;
   /** How many templates Meta lists per page. */
   templatesPerPage = 100;
-  /** The voice notes Meta holds, by media id: the bytes of each, which the object downloads. */
+  /** The media Meta holds, by media id: the bytes of each, which the object downloads. */
   media = new Map<string, Uint8Array>();
+  /** The media type Meta gives a media id in `media`; a voice note's when none is set. */
+  mediaTypes = new Map<string, string>();
+  /** Whether Meta's media host fails, after the Graph API linked the media. */
+  mediaHostFails = false;
+  /** Whether Meta's media host takes byte ranges; when it does not, it sends the whole file. */
+  mediaHostTakesRanges = true;
   /** The Worker's Embedded Signup settings. */
   signupSettings: SignupSettings = {};
   /** The number Embedded Signup connects, as Meta lists it in its account. */
@@ -105,6 +113,9 @@ class FakeMeta {
     this.#heldStep = null;
     this.templatesAtMeta = [];
     this.media = new Map();
+    this.mediaTypes = new Map();
+    this.mediaHostFails = false;
+    this.mediaHostTakesRanges = true;
     this.templatesPerPage = 100;
     this.signupSettings = {
       META_APP_ID: "1234567890",
@@ -236,6 +247,7 @@ class FakeMeta {
       method: request.method,
       url: request.url,
       authorization: request.headers.get("authorization"),
+      range: request.headers.get("range") ?? undefined,
       body,
     });
     const held = this.#hold;
@@ -278,16 +290,20 @@ class FakeMeta {
   };
 
   /**
-   * A voice note's media, as Meta serves it: its id answers with a link on
+   * A message's media, as Meta serves it: its id answers with a link on
    * Meta's media host, and the link with the bytes; an id Meta does not hold
    * answers Meta's error. `null` for a request that is not about media.
    */
   #mediaAnswer(request: Request) {
     const url = new URL(request.url);
     if (url.hostname === mediaHost) {
-      const bytes = this.media.get(url.searchParams.get("mid") ?? "");
+      const mid = url.searchParams.get("mid") ?? "";
+      const bytes = this.media.get(mid);
+      if (this.mediaHostFails) {
+        return new Response("Service unavailable", { status: 503 });
+      }
       return bytes
-        ? new Response(bytes.slice().buffer, { headers: { "content-type": "audio/ogg" } })
+        ? this.#mediaBytes(bytes, this.#mediaTypeOf(mid), request.headers.get("range"))
         : new Response("Not found", { status: 404 });
     }
     const mediaId = /^\/v[\d.]+\/(media-[\w-]+)$/.exec(url.pathname)?.[1];
@@ -303,9 +319,39 @@ class FakeMeta {
     return Response.json({
       messaging_product: "whatsapp",
       url: `https://${mediaHost}/whatsapp_business/attachments/?mid=${mediaId}`,
-      mime_type: "audio/ogg; codecs=opus",
+      mime_type: this.#mediaTypeOf(mediaId),
       id: mediaId,
     });
+  }
+
+  /** A media's bytes as Meta's media host serves them: whole, or the one range `bytes=a-b` asks for. */
+  #mediaBytes(bytes: Uint8Array, mimeType: string, range: string | null) {
+    const asked = /^bytes=(\d+)-(\d*)$/.exec(range ?? "");
+    if (!asked || !this.mediaHostTakesRanges) {
+      return new Response(bytes.slice().buffer, {
+        headers: {
+          "content-type": mimeType,
+          "content-length": String(bytes.byteLength),
+          ...(this.mediaHostTakesRanges && { "accept-ranges": "bytes" }),
+        },
+      });
+    }
+    const start = Number(asked[1]);
+    const end = asked[2] ? Number(asked[2]) : bytes.byteLength - 1;
+    const part = bytes.slice(start, end + 1);
+    return new Response(part.buffer, {
+      status: 206,
+      headers: {
+        "content-type": mimeType,
+        "content-length": String(part.byteLength),
+        "accept-ranges": "bytes",
+        "content-range": `bytes ${start}-${end}/${bytes.byteLength}`,
+      },
+    });
+  }
+
+  #mediaTypeOf(mediaId: string) {
+    return this.mediaTypes.get(mediaId) ?? "audio/ogg; codecs=opus";
   }
 
   #signupAnswer(step: SignupStep) {

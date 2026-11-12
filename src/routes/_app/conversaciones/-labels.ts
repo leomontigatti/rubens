@@ -2,13 +2,14 @@ import { tz } from "@date-fns/tz";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 
+import type { MediaKind, MessageMedia } from "#/lib/message-media.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import type { ConversationSummary, InboxMessage } from "#/organization/inbox.ts";
 
 // How the inbox writes a message, in the list and in the conversation.
 
-/** What a photo, a video or a file is called, which the inbox names but does not show yet. */
+/** What a photo, a video or a file is called, in place of words. */
 const mediaLabels: Record<string, string> = {
   image: "Foto",
   video: "Video",
@@ -75,7 +76,23 @@ export function messageText(message: InboxMessage) {
       ? "Nota de voz que no se pudo entender"
       : `Nota de voz: ${message.text}`;
   }
+  if (message.media?.filename) {
+    return `${mediaLabels[message.type] ?? "Archivo"}: ${message.media.filename}`;
+  }
   return message.text ?? mediaLabels[message.type] ?? `Mensaje sin texto (${message.type})`;
+}
+
+/** The button that opens each kind of media from Meta. */
+const mediaActions: Record<MediaKind, string> = {
+  audio: "Escuchar",
+  image: "Ver foto",
+  video: "Ver video",
+  document: "Abrir archivo",
+};
+
+/** The button that opens `media` at `now`, or `null` once Meta deleted it. */
+export function mediaAction(media: MessageMedia, now: number) {
+  return now < media.availableUntil ? mediaActions[media.kind] : null;
 }
 
 /**

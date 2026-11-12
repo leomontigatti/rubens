@@ -4,6 +4,9 @@
 // never leaves this module: no result, error or log line carries it, the
 // business token Embedded Signup returns included.
 
+import { fromMediaHost } from "#/organization/graph-api-media.ts";
+import type { MediaHostAnswer } from "#/organization/graph-api-media.ts";
+
 const graphApiVersion = "v26.0";
 
 /**
@@ -94,8 +97,8 @@ export type TemplateReadResult = ({ ok: true } & TemplateReview) | MetaRefusal;
 
 export type TemplateNamesResult = { ok: true; names: string[] } | MetaRefusal;
 
-/** A message's media as Meta serves it: its bytes and its media type. */
-export type MediaResult = { ok: true; bytes: ArrayBuffer; mimeType: string } | MetaRefusal;
+/** A message's media as Meta streams it, all of it or the byte range asked for. */
+export type MediaStreamResult = ({ ok: true; mimeType: string } & MediaHostAnswer) | MetaRefusal;
 
 export interface WhatsappCloud {
   /** The setting that keeps a send from being made, or `null` when none is missing. */
@@ -113,10 +116,12 @@ export interface WhatsappCloud {
    */
   showTyping(messageId: string): Promise<{ ok: true } | MetaRefusal>;
   /**
-   * Downloads the media `mediaId` of a patient's message, such as a voice
-   * note, which Meta serves only with the number's token; requires every setting.
+   * Streams the media `mediaId` of a patient's message, such as a voice note,
+   * which Meta serves only with the number's token: the bytes pass through as
+   * Meta sends them, all of them or the byte `range` (`bytes=0-1023`) a player
+   * asks for. Requires every setting.
    */
-  downloadMedia(mediaId: string): Promise<MediaResult>;
+  openMedia(mediaId: string, range: string | null): Promise<MediaStreamResult>;
   /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
   missingTemplateSetting(): MissingTemplateSetting | null;
   /** Submits a utility template, with named variables and no buttons, for Meta's review. */
@@ -166,6 +171,31 @@ export function whatsappCloudFor(
       connection.tokenRefused(answer.metaError, token);
     }
     return answer;
+  }
+
+  async function openMedia(mediaId: string, range: string | null): Promise<MediaStreamResult> {
+    const token = connection.settings().WHATSAPP_ACCESS_TOKEN;
+    if (!token) {
+      throw new Error("The WhatsApp settings are incomplete: check missingSetting() first");
+    }
+    const authorization = `Bearer ${token}`;
+    const described = await answerOf(
+      await fetcher(
+        `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(mediaId)}`,
+        {
+          headers: { authorization },
+        },
+      ),
+      token,
+    );
+    if (!described.ok) {
+      return described;
+    }
+    const { url, mime_type: mimeType } = described.body as MediaAnswer;
+    if (typeof url !== "string" || typeof mimeType !== "string") {
+      throw new Error("The Graph API described a media without its link and type");
+    }
+    return { ok: true, mimeType, ...(await fromMediaHost(fetcher, url, authorization, range)) };
   }
 
   function missingSetting(): MissingSetting | null {
@@ -279,34 +309,7 @@ export function whatsappCloudFor(
       });
       return answer.ok ? { ok: true } : answer;
     },
-    async downloadMedia(mediaId) {
-      const token = connection.settings().WHATSAPP_ACCESS_TOKEN;
-      if (!token) {
-        throw new Error("The WhatsApp settings are incomplete: check missingSetting() first");
-      }
-      const headers = { authorization: `Bearer ${token}` };
-      const described = await answerOf(
-        await fetcher(
-          `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(mediaId)}`,
-          {
-            headers,
-          },
-        ),
-        token,
-      );
-      if (!described.ok) {
-        return described;
-      }
-      const { url, mime_type: mimeType } = described.body as MediaAnswer;
-      if (typeof url !== "string" || typeof mimeType !== "string") {
-        throw new Error("The Graph API described a media without its link and type");
-      }
-      const response = await fetcher(mediaUrl(url), { headers });
-      if (!response.ok) {
-        throw new Error(`Meta's media host answered ${response.status}`);
-      }
-      return { ok: true, bytes: await response.arrayBuffer(), mimeType };
-    },
+    openMedia,
     missingTemplateSetting,
     async createTemplate({ name, languageCode, body, examples }) {
       const { token, accountId } = templateSettings();
@@ -521,18 +524,6 @@ export function metaSignupFor(
       return post(`${graph}/${encodeURIComponent(businessAccountId)}/subscribed_apps`, token, {});
     },
   };
-}
-
-/** Meta's link to a media's bytes; the token goes only to Meta's own hosts. */
-function mediaUrl(url: string) {
-  const { protocol, hostname } = new URL(url);
-  const metaHost = [".fbsbx.com", ".facebook.com", ".whatsapp.net"].some((domain) =>
-    hostname.endsWith(domain),
-  );
-  if (protocol !== "https:" || !metaHost) {
-    throw new Error("The Graph API linked a media on another host");
-  }
-  return url;
 }
 
 /** Meta's link to a list's next page; the token goes only to the Graph API's own host. */

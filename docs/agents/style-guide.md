@@ -264,6 +264,11 @@ The pages that are only their form show one problem in an `ErrorAlert`: `/ingres
   its label and in a tooltip. What has not gone yet shows where the patient will get it, `pending`
   with the clock: a queued template, a reply waiting for the patient. What the patient never
   reads, such as a late reply's hint, sits beside the bubble, outside it.
+- **A patient's media opens from its bubble**: under the words (`Foto`, `Archivo: estudio.pdf`,
+  a voice note's transcript), an `outline` `sm` button names what it does: `Ver foto` and
+  `Ver video` open a dialog over the chat, `Abrir archivo` a new tab, `Escuchar` a player in
+  place. Nothing loads before the press. Once Meta deleted it, a muted line says so in the
+  button's place.
 - **Who answers a conversation is a state**: a `Badge` beside the title (`Asistente`,
   `Tomada por Rita Prueba`), with `Tomar conversación` or `Devolver al asistente` in the header's
   `actions`.

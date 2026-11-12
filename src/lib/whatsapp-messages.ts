@@ -77,6 +77,11 @@ export const conversationReferenceSchema = z.object({ conversationId: z.uuid() }
 
 export type ConversationReference = z.input<typeof conversationReferenceSchema>;
 
+/** A message of a conversation, as the inbox opens its media by. */
+export const messageReferenceSchema = conversationReferenceSchema.extend({ messageId: z.uuid() });
+
+export type MessageReference = z.input<typeof messageReferenceSchema>;
+
 export const conversationPageSize = 25;
 
 /** A page of the inbox, and what the search box holds; the search text stays out of the URL. */
