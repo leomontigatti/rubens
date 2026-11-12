@@ -1205,6 +1205,24 @@ describe("confirming and cancelling through proposals", () => {
     expect(await cancellationNotices(world.juan.caller)).toEqual([]);
   });
 
+  it("withdraws the cancellation's notifications once reception undoes it", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelalo por favor");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("accept_proposal");
+      return "Listo, cancelamos tu turno.";
+    });
+    await afterTheWait();
+
+    expectOk(await world.organization.undoAppointmentStatus(world.receptionist, { appointmentId }));
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+    expect(await cancellationNotices(world.receptionist)).toEqual([]);
+    expect(await cancellationNotices(adminCaller)).toEqual([]);
+  });
+
   it("notifies nobody of a confirmation, nor of a cancellation made in the app", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     const other = await bookPatient("Tomás", "+5493515550002", at("13:00"));

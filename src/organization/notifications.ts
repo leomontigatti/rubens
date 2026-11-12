@@ -90,6 +90,18 @@ export function notifyCancellation(tx: Writer, appointmentId: string) {
   });
 }
 
+/** Deletes the notifications of `appointmentId`'s cancellation, once it is undone and they no longer hold. */
+export function withdrawCancellation(tx: Writer, appointmentId: string) {
+  tx.delete(notification)
+    .where(
+      and(
+        eq(notification.kind, "appointmentCancelled"),
+        eq(notification.appointmentId, appointmentId),
+      ),
+    )
+    .run();
+}
+
 const handedOffAppointment = alias(appointment, "handed_off_appointment");
 const handedOffPatient = alias(patient, "handed_off_patient");
 const cancelledPatient = alias(patient, "cancelled_patient");
@@ -130,6 +142,42 @@ function keepsRecords(database: Database, acting: Acting) {
         .get()
     : undefined;
   return own?.keeps === true;
+}
+
+/**
+ * A cancellation's notification as it reads: who cancelled, with whom and
+ * when, and where its time is on the agenda; `null` for another kind.
+ */
+function cancelledAppointment(row: {
+  cancelledId: string | null;
+  cancelledStartsAt: number | null;
+  cancelledRoomId: string | null;
+  cancelledTimeZone: string | null;
+  cancelledPractitioner: string | null;
+  cancelledFirstName: string | null;
+  cancelledLastName: string | null;
+  cancelledChosenName: string | null;
+}) {
+  if (
+    row.cancelledId === null ||
+    row.cancelledStartsAt === null ||
+    row.cancelledTimeZone === null
+  ) {
+    return null;
+  }
+  return {
+    id: row.cancelledId,
+    patient: patientName({
+      firstName: row.cancelledFirstName!,
+      lastName: row.cancelledLastName!,
+      chosenName: row.cancelledChosenName,
+    }),
+    practitioner: row.cancelledPractitioner!,
+    startsAt: row.cancelledStartsAt,
+    timeZone: row.cancelledTimeZone,
+    roomId: row.cancelledRoomId!,
+    date: today(row.cancelledTimeZone, new Date(row.cancelledStartsAt)),
+  };
 }
 
 /**
@@ -247,23 +295,16 @@ export function listNotifications(database: Database, acting: Acting) {
           patientId !== null && firstName !== null && lastName !== null
             ? { id: patientId, name: patientName({ firstName, lastName, chosenName }) }
             : null,
-        // A cancellation's names who cancelled, with whom and when, and where its time is on the agenda.
-        appointment:
-          cancelledId !== null && cancelledStartsAt !== null && cancelledTimeZone !== null
-            ? {
-                id: cancelledId,
-                patient: patientName({
-                  firstName: cancelledFirstName!,
-                  lastName: cancelledLastName!,
-                  chosenName: cancelledChosenName,
-                }),
-                practitioner: cancelledPractitioner!,
-                startsAt: cancelledStartsAt,
-                timeZone: cancelledTimeZone,
-                roomId: cancelledRoomId!,
-                date: today(cancelledTimeZone, new Date(cancelledStartsAt)),
-              }
-            : null,
+        appointment: cancelledAppointment({
+          cancelledId,
+          cancelledStartsAt,
+          cancelledRoomId,
+          cancelledTimeZone,
+          cancelledPractitioner,
+          cancelledFirstName,
+          cancelledLastName,
+          cancelledChosenName,
+        }),
       }),
     ),
   } as const;

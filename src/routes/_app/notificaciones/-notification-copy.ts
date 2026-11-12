@@ -98,7 +98,7 @@ const fixedTexts: Partial<Record<NotificationKind, string>> = {
   optOutReminder:
     "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.",
   appointmentCancelled:
-    "Lo canceló por WhatsApp con el asistente, y el horario quedó libre para otro paciente.",
+    "Lo canceló por WhatsApp con el asistente. Mirá en la agenda si podés darle el horario a otro paciente.",
 };
 
 export function notificationTitle(facts: NotificationFacts): string {

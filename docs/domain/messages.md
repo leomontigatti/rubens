@@ -160,8 +160,8 @@ record, so a failed external delivery loses nothing.
 
 A cancellation the patient makes through the assistant notifies reception and the admins,
 so they can give the freed time to another patient: it names the patient, the appointment's
-day and time and its practitioner, and links to the appointment's week on the agenda. A
-patient's confirmation notifies nobody, since nobody acts on it.
+day and time and its practitioner, and links to the appointment's week on the agenda. Undoing
+the cancellation withdraws it. A patient's confirmation notifies nobody, since nobody acts on it.
 
 A practitioner can link Telegram from their profile, through the bot's start link.
 They then get a Telegram copy of every cancellation and reschedule of their
