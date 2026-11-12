@@ -45,8 +45,10 @@ by the time of day. It names the organization instead of signing off.
 
 Every organization starts with four drafts, worded in its `Trato` as the
 communication rules have it when they are created
-([whatsapp-templates.md](../operations/whatsapp-templates.md)). Changing `Trato`
-later changes no template's text.
+([whatsapp-templates.md](../operations/whatsapp-templates.md)). A default draft
+never sent to Meta follows the `Trato` an admin later saves, and the rewording is
+audited as a change of the template; a template sent to Meta, or a text the
+organization wrote, keeps its text. The template's page says which.
 
 An admin can delete a template that was never sent to Meta and that no medical
 service picks; any other stays. Every change to a template is audited, with what it was

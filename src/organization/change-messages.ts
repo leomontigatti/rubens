@@ -73,7 +73,7 @@ class Unasked extends Error {
  * `askingFirst` to roll the save back with the count.
  */
 function answerFor(notice: Notice, affected: number): boolean {
-  const { tellPatients, affected: told = affected } = notice;
+  const { tellPatients, affected: told } = notice;
   if (tellPatients === undefined || told !== affected) {
     throw new Unasked(affected);
   }

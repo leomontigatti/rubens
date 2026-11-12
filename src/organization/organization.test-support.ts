@@ -5,6 +5,7 @@ import type { Role } from "#/lib/access.ts";
 import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 import type { ScheduleInput } from "#/lib/schedules.ts";
 import type { Timing } from "#/lib/template-timing.ts";
+import type { AffectsAppointments, Notice } from "#/lib/time-ranges.ts";
 
 import type { AccountMetadata, Accounts, CreateUserResult } from "#/organization/accounts.ts";
 import { openDatabase } from "#/organization/database.ts";
@@ -61,6 +62,23 @@ export function expectOk<T extends { ok: boolean }>(result: T): Extract<T, { ok:
     throw new Error(`refused: ${JSON.stringify(result)}`);
   }
   return result as Extract<T, { ok: true }>;
+}
+
+/**
+ * Saves a time off or a closure the way its form does: as is, then, when the
+ * save asks about the appointments it sends to the "to reschedule" list, again
+ * with `tellPatients` and the count it asked about.
+ */
+export async function answeringNotice<
+  Save extends (notice: Notice) => PromiseLike<{ ok: boolean }>,
+>(tellPatients: boolean, save: Save): Promise<Awaited<ReturnType<Save>>> {
+  type T = Awaited<ReturnType<Save>>;
+  const first = (await save({})) as T;
+  const asked = first as Partial<AffectsAppointments>;
+  if (first.ok || asked.reason !== "affectsAppointments") {
+    return first;
+  }
+  return (await save({ tellPatients, affected: asked.affected })) as T;
 }
 
 /** A fresh organization, set up with `adminCaller` as its first admin. */
