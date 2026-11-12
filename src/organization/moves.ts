@@ -5,7 +5,7 @@ import { and, count, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { moveRefusal } from "#/lib/proposals.ts";
 import type { MoveRefusal } from "#/lib/proposals.ts";
-import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
+import { formatDay, formatTime } from "#/lib/dates.ts";
 
 import { rescheduleAppointment } from "#/organization/appointment-changes.ts";
 import { asRange, findFreeTimes, meets } from "#/organization/availability.ts";
@@ -124,8 +124,8 @@ function allSlots(writer: Writer, moving: MoveFacts, now: number) {
       const where = rooms.get(roomId)!;
       const slot: Slot = {
         slotId: start.toISOString(),
-        date: appointmentDay(start, where.timeZone),
-        time: appointmentTime(start, where.timeZone),
+        date: formatDay(start, where.timeZone),
+        time: formatTime(start, where.timeZone),
         office: where.officeName,
       };
       return { slot, localStart: format(start, "yyyy-MM-dd'T'HH:mm", { in: tz(where.timeZone) }) };

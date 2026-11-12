@@ -15,6 +15,7 @@ src/
 │                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature),
 │                      `conversaciones/…/mensajes/$messageId.ts` (a patient's media, streamed from Meta)
 ├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),
+│   │                  `date-time-input.tsx` and `date-time-text.ts` (a date typed as `dd/mm/aaaa`, a time as `HH:mm`),
 │   │                  `form-page.tsx` (a create or an edit on its own page),
 │   │                  `admin-form.tsx` (the admin screens' submit step and controls), `confirm-dialog.tsx` (the question before a destructive
 │   │                  action), `range-entry.tsx` (the time-off and closure forms and rows),
@@ -36,7 +37,8 @@ src/
 │                      `fake-meta.ts` (Meta answered inside the Worker, for the browser suite),
 │                      `fake-meta-media.ts` (the made-up media it serves)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
-├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules
+├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules;
+│                      `dates.ts` (every date and time a person or the assistant reads)
 ├── server/            server-only modules that are not routes: `*.functions.ts` (server functions),
 │                      `whatsapp-directory.ts` (the one object shared across organizations,
 │                      mapping each WhatsApp number to its organization, ADR-0012),

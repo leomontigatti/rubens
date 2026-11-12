@@ -7,6 +7,7 @@ import {
   formatDayHeading,
   formatLocalDate,
   formatMonth,
+  formatPromptNow,
   formatTime,
 } from "#/lib/dates.ts";
 
@@ -60,5 +61,11 @@ describe("formatMonth", () => {
   it("names a calendar month in Spanish, with its year", () => {
     expect(formatMonth("2098-12")).toBe("diciembre de 2098");
     expect(formatMonth("2026-01")).toBe("enero de 2026");
+  });
+});
+
+describe("formatPromptNow", () => {
+  it("writes the English weekday and the ISO date and time in the zone passed", () => {
+    expect(formatPromptNow(lateSunday, buenosAires)).toBe("Sunday 2026-11-08 23:30");
   });
 });

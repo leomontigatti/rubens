@@ -5,7 +5,7 @@ import { es } from "date-fns/locale";
 // How the app writes a date or a time a user reads: day first, a 24-hour
 // clock, Spanish names. An instant is written in the zone passed, never the
 // process's or the browser's, so the caller decides which zone a screen
-// shows. Formats a person reads are written here only; the
+// shows. Formats a person, or the assistant, reads are written here only; the
 // `ui/no-raw-date-format` lint rule keeps them out of the other files.
 
 type Instant = Date | number;
@@ -53,4 +53,9 @@ export function formatLocalDate(date: string): string {
 export function formatMonth(month: string): string {
   // Noon UTC of the first, so no zone moves it to another month.
   return format(new Date(`${month}-01T12:00:00Z`), "MMMM 'de' yyyy", inZone("UTC"));
+}
+
+/** `Sunday 2026-11-08 23:30`, as the assistant's prompt states the time: in English, the date as ISO. */
+export function formatPromptNow(instant: Instant, timeZone: string): string {
+  return format(instant, "EEEE yyyy-MM-dd HH:mm", { in: tz(timeZone) });
 }

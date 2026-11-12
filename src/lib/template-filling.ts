@@ -44,16 +44,6 @@ export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = 
   officeAddress: "Av. Colón 1234, Córdoba",
 };
 
-/** The day as the templates write it, such as `jueves 12 de noviembre`. */
-export function appointmentDay(start: Date, timeZone: string) {
-  return formatDay(start, timeZone);
-}
-
-/** The time on a 24-hour clock, such as `09:05`. */
-export function appointmentTime(start: Date, timeZone: string) {
-  return formatTime(start, timeZone);
-}
-
 /** The value of each variable for `appointment`. */
 export function templateValues(appointment: TemplateAppointment): Record<TemplateVariable, string> {
   const { patient, start, timeZone } = appointment;
@@ -61,8 +51,8 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
     paciente: patient.chosenName ?? patient.firstName,
     organizacion: appointment.organizationName,
     profesional: appointment.practitionerName,
-    fecha: appointmentDay(start, timeZone),
-    hora: appointmentTime(start, timeZone),
+    fecha: formatDay(start, timeZone),
+    hora: formatTime(start, timeZone),
     sede: appointment.officeName,
     direccion: appointment.officeAddress,
   };

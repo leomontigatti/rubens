@@ -4,12 +4,8 @@ import { RecordSection } from "#/components/record-section.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
-import {
-  appointmentDay,
-  appointmentTime,
-  fillSample,
-  sampleAppointment,
-} from "#/lib/template-filling.ts";
+import { formatDay, formatTime } from "#/lib/dates.ts";
+import { fillSample, sampleAppointment } from "#/lib/template-filling.ts";
 import { mentionsSendTime } from "#/lib/template-timing.ts";
 import { checkTemplateBody, templateVariables } from "#/lib/whatsapp-templates.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
@@ -33,7 +29,7 @@ export type TemplateVersion = Extract<
 
 const { patient, start, timeZone } = sampleAppointment;
 
-const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${appointmentDay(start, timeZone)} a las ${appointmentTime(start, timeZone)}.`;
+const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${formatDay(start, timeZone)} a las ${formatTime(start, timeZone)}.`;
 
 /**
  * The body being written for template `templateId` (`null` for a new one), as

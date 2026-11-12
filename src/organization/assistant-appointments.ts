@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 
-import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
+import { formatDay, formatTime } from "#/lib/dates.ts";
 
 import type { Database } from "#/organization/database.ts";
 import { upcomingStatuses } from "#/organization/template-messages.ts";
@@ -52,7 +52,7 @@ export type Upcoming = ReturnType<typeof upcomingAppointments>[number];
 export function whenOf(upcoming: Upcoming) {
   const start = new Date(upcoming.startsAt);
   return {
-    date: appointmentDay(start, upcoming.timeZone),
-    time: appointmentTime(start, upcoming.timeZone),
+    date: formatDay(start, upcoming.timeZone),
+    time: formatTime(start, upcoming.timeZone),
   };
 }

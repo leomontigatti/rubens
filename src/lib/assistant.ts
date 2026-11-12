@@ -1,6 +1,7 @@
 import * as z from "zod";
 
 import type { FormOfAddress } from "#/lib/communication-rules.ts";
+import { formatPromptNow } from "#/lib/dates.ts";
 import type { HandoffReason } from "#/lib/handoffs.ts";
 
 // The patient assistant's words to the model (docs/domain/assistant.md § For
@@ -192,23 +193,6 @@ function openHandoffRule(context: PromptContext) {
   ];
 }
 
-/** `now` as the prompt states it, such as `2099-01-05 09:00 (America/Argentina/Buenos_Aires)`. */
-function localNow(now: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone,
-  }).formatToParts(now);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((one) => one.type === type)?.value;
-  return `${part("weekday")} ${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")} (${timeZone})`;
-}
-
 export function assistantSystemPrompt(context: PromptContext): string {
   const capabilities = [
     "- Say when, where and with whom an appointment is.",
@@ -238,7 +222,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
   const tone = context.tone ? `\nThe practice describes its tone as: ${context.tone}\n` : "";
   return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina. You answer patients about appointments they already have.
 
-Now: ${localNow(context.now, context.timeZone)}. Write in Argentine Spanish, addressing the patient as "${context.formOfAddress}", short and warm, as the practice's receptionist would. No emojis, no opening "¿" or "¡". At most three short paragraphs. Do not sign off.
+Now: ${formatPromptNow(context.now, context.timeZone)} (${context.timeZone}). Write in Argentine Spanish, addressing the patient as "${context.formOfAddress}", short and warm, as the practice's receptionist would. No emojis, no opening "¿" or "¡". At most three short paragraphs. Do not sign off.
 ${tone}
 What you can do, only through your tools:
 ${capabilities.join("\n")}
