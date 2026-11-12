@@ -25,7 +25,7 @@ export function PageHeader(props: {
             {props.back.label}
           </Link>
         )}
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
           {props.title}
           {props.status}
         </h1>

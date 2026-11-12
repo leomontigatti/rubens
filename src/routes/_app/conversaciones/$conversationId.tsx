@@ -12,7 +12,12 @@ import {
 
 import { ConversationChat } from "#/routes/_app/conversaciones/-chat.tsx";
 import { registeredName } from "#/routes/_app/conversaciones/-labels.ts";
-import { ConversationHandoffs } from "#/routes/_app/conversaciones/-handoffs.tsx";
+import {
+  HandoffActions,
+  HandoffBadges,
+  HandoffDescription,
+  HeldReplies,
+} from "#/routes/_app/conversaciones/-handoffs.tsx";
 import {
   HoldActions,
   HoldBadge,
@@ -22,10 +27,11 @@ import {
 import type { ReplyDraft } from "#/routes/_app/conversaciones/-hold.tsx";
 import { refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
-// One conversation in the inbox as a WhatsApp chat (`-chat.tsx`), under its
-// open handoffs, with who answers it beside its title, where a member takes it
-// over and replies. A reply the clinical check held goes to the reply's box to
-// be sent or fixed, by a practitioner who keeps clinical records.
+// One conversation in the inbox as a WhatsApp chat (`-chat.tsx`), with who
+// answers it and its open handoffs beside its title, where a member takes it
+// over, closes a handoff and replies. A reply the clinical check held goes to
+// the reply's box to be sent or fixed, by a practitioner who keeps clinical
+// records.
 
 const backToInbox = { to: "/conversaciones", label: "Conversaciones" } as const;
 
@@ -55,11 +61,12 @@ function ConversationPage() {
       </div>
     );
   }
-  const { conversation, messages, hold, window, lateReplies, queuedReopen } = result;
+  const { conversation, messages, hold, window, lateReplies, queuedReopen, withdrawnReplies } =
+    result;
+  const open = handoffs.ok ? handoffs.handoffs : [];
   // Offered only while an open handoff of this conversation still holds the
   // reply: once sent, dropped or its handoff closed, it never comes back.
-  const stillHeld =
-    handoffs.ok && handoffs.handoffs.some((handoff) => handoff.heldReply === draft?.text);
+  const stillHeld = open.some((handoff) => handoff.heldReply === draft?.text);
   const liveDraft = draft?.conversationId === conversation.id && stillHeld ? draft : null;
 
   /** Takes the conversation over when the member does not hold it, then puts `text` in the reply's box. */
@@ -79,21 +86,27 @@ function ConversationPage() {
       <PageHeader
         back={backToInbox}
         title={registeredName(conversation) ?? "Sin registrar"}
-        status={<HoldBadge hold={hold} />}
-        description={formatPhone(conversation.phone)}
-        actions={<HoldActions conversationId={conversation.id} hold={hold} />}
+        status={
+          <>
+            <HoldBadge hold={hold} />
+            <HandoffBadges handoffs={open} />
+          </>
+        }
+        description={<HandoffDescription phone={formatPhone(conversation.phone)} handoffs={open} />}
+        actions={
+          <>
+            <HandoffActions handoffs={open} />
+            <HoldActions conversationId={conversation.id} hold={hold} />
+          </>
+        }
       />
-      {handoffs.ok && (
-        <ConversationHandoffs
-          handoffs={handoffs.handoffs}
-          onUseReply={(text) => void putInReply(text)}
-        />
-      )}
+      <HeldReplies handoffs={open} onUseReply={(text) => void putInReply(text)} />
       <ConversationChat
         conversationId={conversation.id}
         messages={messages}
         queuedReopen={queuedReopen}
         lateReplies={lateReplies}
+        withdrawnReplies={withdrawnReplies}
       />
       {/* Keyed, so a draft never follows a navigation to another conversation. */}
       <ReplyBox
@@ -103,10 +116,7 @@ function ConversationPage() {
         window={window}
         draft={liveDraft}
         // A practitioner answering what was handed to them is told reception reads it too.
-        readByReception={
-          handoffs.ok &&
-          handoffs.handoffs.some((handoff) => handoff.forPractitioner && handoff.mayAnswer)
-        }
+        readByReception={open.some((handoff) => handoff.forPractitioner && handoff.mayAnswer)}
       />
     </div>
   );

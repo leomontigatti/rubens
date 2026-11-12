@@ -435,6 +435,52 @@ export interface ShownLateReply {
   text: string;
 }
 
+/** A late reply its writer withdrew, as the inbox shows it: who and when, never its words. */
+export interface WithdrawnReply {
+  id: string;
+  /** Its writer, by name. */
+  writer: string;
+  withdrawnAt: number;
+}
+
+/** The late replies of `conversationId` their writers withdrew, oldest first. */
+export function withdrawnRepliesShown(
+  database: Database,
+  conversationId: string,
+): WithdrawnReply[] {
+  return (
+    database
+      // A withdrawn reply changes no more, so its last update is its withdrawal.
+      .select({ id: lateReply.id, writer: member.name, withdrawnAt: lateReply.updatedAt })
+      .from(lateReply)
+      .innerJoin(member, eq(member.userId, lateReply.writtenBy))
+      .where(and(eq(lateReply.conversationId, conversationId), eq(lateReply.state, "withdrawn")))
+      .orderBy(asc(lateReply.updatedAt), asc(sql`${lateReply}.rowid`))
+      .all()
+  );
+}
+
+/**
+ * The reopen templates among the messages `messageIds` that went, and whose
+ * every reply behind them was withdrawn: the patient was told of a reply that
+ * will not come.
+ */
+export function reopensWithdrawn(database: Database, messageIds: string[]): Set<string> {
+  if (messageIds.length === 0) {
+    return new Set();
+  }
+  const rows = database
+    .select({ messageId: outboxMessage.whatsappMessageId, state: lateReply.state })
+    .from(outboxMessage)
+    .innerJoin(lateReply, eq(lateReply.reopenId, outboxMessage.id))
+    .where(inArray(outboxMessage.whatsappMessageId, messageIds))
+    .all();
+  const kept = new Set(rows.filter((row) => row.state !== "withdrawn").map((row) => row.messageId));
+  return new Set(
+    rows.flatMap((row) => (row.messageId && !kept.has(row.messageId) ? [row.messageId] : [])),
+  );
+}
+
 /**
  * The late replies of `conversationId` not delivered, oldest first, as
  * the member `readerId` reads them: a delivered one is a message, a

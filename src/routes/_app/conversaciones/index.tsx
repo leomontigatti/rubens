@@ -1,4 +1,4 @@
-import { MessagesSquareIcon } from "lucide-react";
+import { ArrowRightLeftIcon, MessagesSquareIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -8,20 +8,23 @@ import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowLink, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
+import type { FilterGroup } from "#/components/filter-groups.ts";
 import { PageHeader } from "#/components/page-header.tsx";
 import { useDebounced } from "#/components/use-debounced.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { conversationPageSize } from "#/lib/whatsapp-messages.ts";
-import { findConversations, getConversations, getOpenHandoffs } from "#/server/inbox.functions.ts";
+import { findConversations, getConversations } from "#/server/inbox.functions.ts";
 import type { ConversationSummary } from "#/organization/inbox.ts";
 
 import { messageText, messageTime, registeredName } from "#/routes/_app/conversaciones/-labels.ts";
-import { OpenHandoffList } from "#/routes/_app/conversaciones/-handoffs.tsx";
+import { HandoffSummary } from "#/routes/_app/conversaciones/-handoffs.tsx";
 import { MessageStatus, refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
-// The inbox (ui: "Conversaciones"): the open handoffs, then the WhatsApp
-// conversations the member reads, latest first, a page at a time. Which ones, and which messages'
-// words, the object decides by role (docs/domain/assistant.md § Inbox).
+// The inbox (ui: "Conversaciones"): the WhatsApp conversations the member
+// reads, those with an open handoff first, then latest first, a page at a
+// time; the `Derivación` filter narrows it to the open handoffs. Which ones,
+// and which messages' words, the object decides by role
+// (docs/domain/assistant.md § Inbox).
 
 export const Route = createFileRoute("/_app/conversaciones/")({
   head: () => ({ meta: [{ title: "Conversaciones · underthing" }] }),
@@ -29,15 +32,13 @@ export const Route = createFileRoute("/_app/conversaciones/")({
   // the browser's history, and patient data must not.
   validateSearch: z.object({
     pagina: z.number().int().positive().optional().catch(undefined),
+    derivacion: z.literal("abierta").optional().catch(undefined),
   }),
-  loaderDeps: ({ search }) => ({ page: search.pagina }),
-  loader: async ({ deps }) => {
-    const [conversations, handoffs] = await Promise.all([
-      getConversations({ data: deps }),
-      getOpenHandoffs({ data: {} }),
-    ]);
-    return { conversations, handoffs };
-  },
+  loaderDeps: ({ search }) => ({
+    page: search.pagina,
+    withHandoff: search.derivacion === "abierta",
+  }),
+  loader: async ({ deps }) => ({ conversations: await getConversations({ data: deps }) }),
   component: Conversations,
 });
 
@@ -84,6 +85,11 @@ const columns: DataTableColumn<ConversationSummary>[] = [
       ),
   },
   {
+    id: "handoff",
+    header: "Derivación",
+    cell: ({ handoffs }) => <HandoffSummary handoffs={handoffs} />,
+  },
+  {
     id: "last",
     header: "Último mensaje",
     cell: ({ lastMessage }) => (
@@ -96,16 +102,27 @@ const columns: DataTableColumn<ConversationSummary>[] = [
   { id: "at", header: "Fecha", cell: ({ lastMessage }) => messageTime(lastMessage.sentAt) },
 ];
 
+/** The `Derivación` filter: the conversations with an open handoff, or all of them. */
+function handoffFilter(withHandoff: boolean): FilterGroup {
+  return {
+    id: "derivacion",
+    label: "Derivación",
+    icon: ArrowRightLeftIcon,
+    value: withHandoff ? "abierta" : null,
+    options: [{ value: "abierta", label: "Con derivación abierta" }],
+  };
+}
+
 /**
  * The conversations matching what is typed, asked for once typing pauses;
  * only the answer to the text in the box is shown.
  */
-function useConversationSearch(typed: string) {
+function useConversationSearch(typed: string, withHandoff: boolean) {
   const { viewer } = Route.useRouteContext();
   const asked = useDebounced(typed.trim(), searchDelay);
   const answer = useQuery({
-    queryKey: ["conversation-search", viewer.organizationId, viewer.userId, asked],
-    queryFn: () => findConversations({ data: { query: asked } }),
+    queryKey: ["conversation-search", viewer.organizationId, viewer.userId, asked, withHandoff],
+    queryFn: () => findConversations({ data: { query: asked, withHandoff } }),
     enabled: asked !== "",
   });
   const searching = typed.trim() !== "";
@@ -119,7 +136,7 @@ function useConversationSearch(typed: string) {
 }
 
 function Conversations() {
-  const { conversations: result, handoffs } = Route.useLoaderData();
+  const { conversations: result } = Route.useLoaderData();
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
@@ -130,7 +147,6 @@ function Conversations() {
         title="Conversaciones"
         description="Los mensajes de WhatsApp con los pacientes."
       />
-      {handoffs.ok && <OpenHandoffList handoffs={handoffs.handoffs} />}
       <ConversationTable listed={result} />
     </div>
   );
@@ -141,8 +157,10 @@ function ConversationTable(props: {
 }) {
   const { listed } = props;
   const navigate = Route.useNavigate();
+  const { derivacion } = Route.useSearch();
+  const withHandoff = derivacion === "abierta";
   const [query, setQuery] = useState("");
-  const search = useConversationSearch(query);
+  const search = useConversationSearch(query, withHandoff);
   const shown = search.searching ? (search.found?.conversations ?? []) : listed.conversations;
   const table = useServerDataTable({
     rows: shown,
@@ -175,23 +193,44 @@ function ConversationTable(props: {
           placeholder: "Buscar por paciente o teléfono",
           loading: search.waiting,
         }}
+        filters={{
+          groups: [handoffFilter(withHandoff)],
+          // A new filter starts the list over, on its first page.
+          onPick: () => void navigate({ search: { derivacion: "abierta" } }),
+          onRemove: () => void navigate({ search: {} }),
+        }}
         pager={search.searching ? searchPager : pager}
-        noRecords={!search.searching && listed.total === 0}
-        empty={
-          search.refused ? (
-            <ErrorAlert message={searchRefusalMessages[search.refused]} />
-          ) : search.searching ? (
-            search.found && <NoMatches icon={MessagesSquareIcon} />
-          ) : (
-            <EmptyState
-              icon={MessagesSquareIcon}
-              title="Sin conversaciones"
-              description="Todavía no hay conversaciones de WhatsApp."
-            />
-          )
-        }
+        noRecords={!search.searching && !withHandoff && listed.total === 0}
+        empty={<NoConversations search={search} withHandoff={withHandoff} />}
       />
       {more && <p className="text-muted-foreground text-sm">{more}</p>}
     </div>
+  );
+}
+
+/** What the list shows with no rows: the search's refusal or no match, then why the list is empty. */
+function NoConversations(props: {
+  search: ReturnType<typeof useConversationSearch>;
+  withHandoff: boolean;
+}) {
+  const { search } = props;
+  if (search.refused) {
+    return <ErrorAlert message={searchRefusalMessages[search.refused]} />;
+  }
+  if (search.searching) {
+    return search.found && <NoMatches icon={MessagesSquareIcon} />;
+  }
+  return props.withHandoff ? (
+    <EmptyState
+      icon={ArrowRightLeftIcon}
+      title="Sin derivaciones abiertas"
+      description="Ninguna conversación espera la respuesta de una persona."
+    />
+  ) : (
+    <EmptyState
+      icon={MessagesSquareIcon}
+      title="Sin conversaciones"
+      description="Todavía no hay conversaciones de WhatsApp."
+    />
   );
 }

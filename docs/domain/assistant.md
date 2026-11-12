@@ -282,7 +282,7 @@ never reached the patient: the handoff it closed opens again, the reply keeps
 `No entregado` in the conversation, and its writer is told (`Tu respuesta a
 {paciente} no se entregó`), with a link to the conversation. Whether its notification was read
 does not matter, and going back to the assistant does not close it. The inbox lists
-open handoffs.
+the conversations with an open handoff first, and can show only those.
 
 A reply a person writes after the window closed is stored, and the patient gets
 the reopen template (`Tenemos una respuesta para vos, respondé este mensaje para
@@ -293,7 +293,9 @@ answered them. If the patient has not answered about 7 days after the reply, or
 after the template when it went later, or the template could not go, the person
 is told it was not delivered. Until the patient answers, the person who wrote a
 reply may withdraw it: it never goes, and the template is dropped if it has not
-gone and no other reply waits behind it. The reply itself
+gone and no other reply waits behind it. The conversation keeps a trace of who
+withdrew a reply and when, without its words; when the template had gone, the
+assistant is told the reply it announced was withdrawn. The reply itself
 never goes into a template, and it needs a patient of the number who accepts
 WhatsApp, whom the template greets.
 
