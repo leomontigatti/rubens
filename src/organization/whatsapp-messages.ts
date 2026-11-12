@@ -1,4 +1,4 @@
-import { and, eq, exists, inArray, max, not, or } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, isNull, lte, max, ne, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -10,6 +10,7 @@ import type {
 } from "#/lib/whatsapp-messages.ts";
 import { assistantWaitMs } from "#/lib/assistant.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
+import { reactionType, takesBack } from "#/lib/reactions.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { guardian, patient } from "#/organization/schema.ts";
@@ -126,8 +127,51 @@ export function relinkPatient(tx: Writer, patientId: string) {
   }
 }
 
+/** The patient's reactions in `conversationId` to the message `reactsTo`, in SQL. */
+function reactionsTo(conversationId: string, reactsTo: string) {
+  return and(
+    eq(whatsappMessage.conversationId, conversationId),
+    eq(whatsappMessage.type, reactionType),
+    eq(whatsappMessage.reactsTo, reactsTo),
+  );
+}
+
+/**
+ * Leaves the patient's reactions to the same message sent before `reaction`,
+ * which replaced or took them back, for no turn to read: one still waiting
+ * is judged as nothing, and a turn that read it meanwhile accepts no proposal
+ * on it (`answeredMeanwhile` in `proposals.ts`). Says whether a reaction sent
+ * after it is stored already, as when Meta delivers them out of order:
+ * `reaction` is then replaced itself.
+ */
+function replaceReactions(
+  tx: Writer,
+  reaction: { conversationId: string; whatsappId: string; reactsTo: string; sentAt: number },
+) {
+  // Not the reaction itself, which Meta may deliver again.
+  const to = and(
+    reactionsTo(reaction.conversationId, reaction.reactsTo),
+    ne(whatsappMessage.whatsappId, reaction.whatsappId),
+  );
+  tx.update(whatsappMessage)
+    .set({ judgement: "notForPractitioner" })
+    .where(and(to, isNull(whatsappMessage.judgement), lte(whatsappMessage.sentAt, reaction.sentAt)))
+    .run();
+  const later = tx
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(and(to, gt(whatsappMessage.sentAt, reaction.sentAt)))
+    .get();
+  return later !== undefined;
+}
+
 function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
   const conversationId = conversationWith(tx, message.from);
+  const replaced =
+    message.reactsTo !== undefined &&
+    replaceReactions(tx, { conversationId, ...message, reactsTo: message.reactsTo });
+  // A reaction taken back or replaced is ignored: no turn reads it, and one taken back opens no window (`lastIncomingAt`).
+  const ignored = takesBack(message) || replaced;
   const stored = tx
     .insert(whatsappMessage)
     .values({
@@ -137,7 +181,9 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
       type: message.type,
       text: message.text,
       payload: message.payload,
+      reactsTo: message.reactsTo,
       sentAt: message.sentAt,
+      judgement: ignored ? "notForPractitioner" : undefined,
     })
     .onConflictDoNothing({ target: whatsappMessage.whatsappId })
     .returning({ id: whatsappMessage.id })
@@ -146,6 +192,9 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
     return { whatsappId: message.whatsappId, alreadyStored: true };
   }
   linkPatients(tx, conversationId, message.from);
+  if (ignored) {
+    return { whatsappId: message.whatsappId, alreadyStored: false };
+  }
   // Each message restarts the assistant's wait, so a burst gets one turn (`assistant.ts`).
   tx.update(conversation)
     .set({ assistantDueAt: Date.now() + assistantWaitMs })
@@ -324,6 +373,12 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
   });
 }
 
+/** A reaction the patient took back (`takesBack`), in SQL. */
+const takenBack = and(
+  eq(whatsappMessage.type, reactionType),
+  or(isNull(whatsappMessage.text), eq(whatsappMessage.text, "")),
+)!;
+
 /** When the patient last wrote in `conversationId`, which opens its window. */
 export function lastIncomingAt(database: Writer, conversationId: string) {
   const last = database
@@ -333,6 +388,7 @@ export function lastIncomingAt(database: Writer, conversationId: string) {
       and(
         eq(whatsappMessage.conversationId, conversationId),
         eq(whatsappMessage.direction, "incoming"),
+        not(takenBack),
       ),
     )
     .get();

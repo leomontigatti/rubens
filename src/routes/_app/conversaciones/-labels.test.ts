@@ -43,6 +43,7 @@ describe("a message's text", () => {
       judgement: null,
       sentBy: null,
       media: null,
+      reaction: null,
     } as const;
 
     expect(messageText(unjudged)).toBe("me duele la muela");
@@ -59,6 +60,7 @@ describe("a message's text", () => {
       judgement: "notForPractitioner",
       sentBy: null,
       media: null,
+      reaction: null,
     } as const;
 
     expect(messageText(photo)).toBe("Foto");
@@ -77,10 +79,29 @@ describe("a message's text", () => {
       judgement: "notForPractitioner",
       sentBy: null,
       media: { kind: "document", filename: "Radiografía.pdf", availableUntil: 1 },
+      reaction: null,
     } as const;
 
     expect(messageText(file)).toBe("Archivo: Radiografía.pdf");
     expect(messageText({ ...file, media: { ...file.media, filename: null } })).toBe("Archivo");
+  });
+
+  it("says a reaction to a message the inbox does not hold is one, with its emoji, or that it was taken back", () => {
+    const reaction = {
+      id: "1",
+      direction: "incoming",
+      sentAt: 0,
+      type: "reaction",
+      text: "👍",
+      status: null,
+      judgement: "notForPractitioner",
+      sentBy: null,
+      media: null,
+      reaction: null,
+    } as const;
+
+    expect(messageText(reaction)).toBe("Reaccionó con 👍 a un mensaje anterior");
+    expect(messageText({ ...reaction, text: "" })).toBe("Quitó una reacción a un mensaje anterior");
   });
 
   it("marks a voice note's transcript, and says when it has none", () => {
@@ -94,6 +115,7 @@ describe("a message's text", () => {
       judgement: "notForPractitioner",
       sentBy: null,
       media: null,
+      reaction: null,
     } as const;
 
     expect(messageText(voiceNote)).toBe("Nota de voz: quiero cancelar el turno");
@@ -136,6 +158,7 @@ describe("who wrote a message", () => {
     judgement: null,
     sentBy: null,
     media: null,
+    reaction: null,
   } as const;
 
   it("names no one for the patient's own messages, which sit on their side of the chat", () => {

@@ -554,6 +554,7 @@ export {
 
 export {
   afterTheWait,
+  patientReacts,
   patientSends,
   patientSpeaks,
   patientWrites,

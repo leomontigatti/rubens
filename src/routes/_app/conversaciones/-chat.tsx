@@ -28,7 +28,8 @@ import { OptOutRows } from "#/routes/_app/conversaciones/-opt-outs.tsx";
 // the messages, and what has not gone yet where it was written, the reopen
 // template before the replies that wait behind it; where a waiting reply
 // was withdrawn, a muted line saying who withdrew it, without its words; and
-// under a reply that looked like an opt-out, its decision (`-opt-outs.tsx`).
+// under a reply that looked like an opt-out, its decision (`-opt-outs.tsx`);
+// on a message the patient reacted to, the reaction (`inbox.ts`).
 // The message a link points at is marked out and scrolled to.
 
 type ChatItem =
@@ -197,11 +198,16 @@ function MessageBubble({
     />
   );
   return sender === null ? (
-    <PatientBubble footer={footer} media={opens} highlighted={highlighted}>
+    <PatientBubble
+      footer={footer}
+      media={opens}
+      reaction={message.reaction}
+      highlighted={highlighted}
+    >
       {text}
     </PatientBubble>
   ) : (
-    <WhatsappBubble author={sender} footer={footer}>
+    <WhatsappBubble author={sender} footer={footer} reaction={message.reaction}>
       {text}
     </WhatsappBubble>
   );

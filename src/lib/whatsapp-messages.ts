@@ -40,10 +40,12 @@ export interface IncomingWhatsappMessage {
   sentAt: number;
   /** Meta's message type: `text`, `image`, `audio`, … */
   type: string;
-  /** A text message's body; other types keep theirs in `payload`. */
+  /** A text message's body, or a reaction's emoji (empty for one taken back); other types keep theirs in `payload`. */
   text: string | null;
   /** The message as Meta sent it, JSON. */
   payload: string;
+  /** A reaction's target: the WhatsApp id of the message it reacts to. */
+  reactsTo?: string;
 }
 
 /** Meta's news about a message the organization's number sent. */
