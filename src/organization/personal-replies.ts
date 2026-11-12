@@ -1,9 +1,10 @@
-import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { defaultReturnAfterHours } from "#/lib/conversation-holds.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
-import { openHandoffsOf } from "#/organization/handoffs.ts";
+import { mayAnswer, openHandoffsOf } from "#/organization/handoffs.ts";
+import { settleFailedReplies } from "#/organization/failed-replies.ts";
 import { answeredByPerson } from "#/organization/turn-retries.ts";
 import { conversation, handoff, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { storeOutgoing } from "#/organization/whatsapp-messages.ts";
@@ -23,39 +24,21 @@ export function returnAfterHours(database: Writer) {
 }
 
 /**
- * The open handoffs a reply answers: a clinical one only from a practitioner
- * who keeps clinical records; for a late reply, only those opened before it
- * was written, since a later one is about a message it never read.
+ * The open handoffs a reply answers, those its writer may answer
+ * (`handoffs.ts`); for a late reply, only those opened before it was
+ * written, since a later one is about a message it never read.
  */
 function answeredHandoffs(
   database: Writer,
   conversationId: string,
-  reply: { readsClinical: boolean; writtenAt?: number },
+  reply: { writtenBy: string; keepsRecords: boolean; writtenAt?: number },
 ) {
+  const writer = { memberId: reply.writtenBy, keepsRecords: reply.keepsRecords };
   return openHandoffsOf(database, conversationId).filter(
     (one) =>
-      (!one.clinical || reply.readsClinical) &&
+      mayAnswer(database, one, writer) &&
       (reply.writtenAt === undefined || one.createdAt <= reply.writtenAt),
   );
-}
-
-/**
- * Whether a clinical handoff of the conversation was open at any time since
- * `since`: one may open, and close, while Meta answers the reply that answers it.
- */
-export function clinicalHandoffOpenSince(tx: Writer, conversationId: string, since: number) {
-  const found = tx
-    .select({ id: handoff.id })
-    .from(handoff)
-    .where(
-      and(
-        eq(handoff.conversationId, conversationId),
-        eq(handoff.clinical, true),
-        or(eq(handoff.state, "open"), gte(handoff.closedAt, since)),
-      ),
-    )
-    .get();
-  return found !== undefined;
 }
 
 /**
@@ -71,8 +54,8 @@ export function settleReply(
     writtenBy: string;
     conversationId: string;
     phone: string;
-    readsClinical: boolean;
-    /** Since when a clinical handoff it answers counts: when it was written or its send started. */
+    keepsRecords: boolean;
+    /** Up to when the patient's messages it answers go: when it was written or its send started. */
     since: number;
     whatsappId: string;
     text: string;
@@ -83,7 +66,6 @@ export function settleReply(
   const { conversationId, text, writtenBy } = reply;
   // Read after the send: a handoff may have opened while Meta answered.
   const answered = answeredHandoffs(tx, conversationId, reply);
-  const clinical = reply.readsClinical && clinicalHandoffOpenSince(tx, conversationId, reply.since);
   const stored = storeOutgoing(database, tx, {
     phone: reply.phone,
     whatsappId: reply.whatsappId,
@@ -91,14 +73,11 @@ export function settleReply(
     text,
     payload: JSON.stringify({ text }),
     sentBy: writtenBy,
-    judgement: clinical ? "clinical" : undefined,
   });
-  if (reply.readsClinical) {
-    answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
-  }
+  answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
   if (answered.length > 0) {
     tx.update(handoff)
-      .set({ state: "closed", closedAt: Date.now(), heldReply: null })
+      .set({ state: "closed", closedAt: Date.now(), heldReply: null, answeredBy: stored.id })
       .where(
         inArray(
           handoff.id,
@@ -107,6 +86,8 @@ export function settleReply(
       )
       .run();
   }
+  // Meta may have reported the reply failed before its send returned.
+  settleFailedReplies(tx, [reply.whatsappId]);
   // Still theirs unless someone took it over while Meta answered.
   const theirs = eq(conversation.heldBy, writtenBy);
   tx.update(conversation)

@@ -1,4 +1,5 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 
 import type { Role } from "#/lib/access.ts";
 import { notificationListSize, notificationReferenceSchema } from "#/lib/notifications.ts";
@@ -7,8 +8,8 @@ import { patientName } from "#/lib/patients.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { member, notification, patient } from "#/organization/schema.ts";
-import { handoff, template } from "#/organization/whatsapp-schema.ts";
+import { appointment, member, notification, patient, practitioner } from "#/organization/schema.ts";
+import { conversationPatient, handoff, template } from "#/organization/whatsapp-schema.ts";
 
 // Notifications to staff (`src/lib/notifications.ts`): written in the
 // transaction of the event they tell of, one row per recipient, each read on
@@ -72,11 +73,55 @@ export function notifyOptOut(tx: Writer, patientId: string, kind: "optOut" | "op
   notify(tx, recipients, { kind, patientId });
 }
 
+const handedOffAppointment = alias(appointment, "handed_off_appointment");
+const handedOffPatient = alias(patient, "handed_off_patient");
+
+/** The first patient, by name, each of `conversationIds`' number stands for. */
+function firstPatientOf(database: Database, conversationIds: string[]) {
+  const rows =
+    conversationIds.length === 0
+      ? []
+      : database
+          .select({
+            conversationId: conversationPatient.conversationId,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            chosenName: patient.chosenName,
+          })
+          .from(conversationPatient)
+          .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
+          .where(inArray(conversationPatient.conversationId, conversationIds))
+          .orderBy(asc(patient.lastName), asc(patient.firstName))
+          .all();
+  const first = new Map<string, string>();
+  for (const row of rows) {
+    if (!first.has(row.conversationId)) {
+      first.set(row.conversationId, patientName(row));
+    }
+  }
+  return first;
+}
+
+/** Whether `acting` is a practitioner who keeps clinical records. */
+function keepsRecords(database: Database, acting: Acting) {
+  const own = acting.roles.includes("practitioner")
+    ? database
+        .select({ keeps: practitioner.keepsClinicalRecords })
+        .from(practitioner)
+        .where(eq(practitioner.memberId, acting.userId))
+        .get()
+    : undefined;
+  return own?.keeps === true;
+}
+
 /**
  * `acting`'s notifications, unread first, each part newest first: an unread
  * one stays in the list however many came after it.
  */
 export function listNotifications(database: Database, acting: Acting) {
+  // A handoff to the practitioner reaches someone who keeps no clinical
+  // records only when nobody active does (`handoffs.ts`).
+  const noPractitioner = !keepsRecords(database, acting);
   const rows = database
     .select({
       id: notification.id,
@@ -92,7 +137,11 @@ export function listNotifications(database: Database, acting: Acting) {
       createdAt: notification.createdAt,
       conversationId: handoff.conversationId,
       handoffReason: handoff.reason,
-      handoffClinical: handoff.clinical,
+      handoffForPractitioner: handoff.forPractitioner,
+      handoffDetail: handoff.detail,
+      handedOffFirstName: handedOffPatient.firstName,
+      handedOffLastName: handedOffPatient.lastName,
+      handedOffChosenName: handedOffPatient.chosenName,
       patientId: patient.id,
       firstName: patient.firstName,
       chosenName: patient.chosenName,
@@ -100,12 +149,18 @@ export function listNotifications(database: Database, acting: Acting) {
     })
     .from(notification)
     .leftJoin(handoff, eq(handoff.id, notification.handoffId))
+    .leftJoin(handedOffAppointment, eq(handedOffAppointment.id, handoff.appointmentId))
+    .leftJoin(handedOffPatient, eq(handedOffPatient.id, handedOffAppointment.patientId))
     .leftJoin(template, eq(template.id, notification.templateId))
     .leftJoin(patient, eq(patient.id, notification.patientId))
     .where(eq(notification.recipientId, acting.userId))
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
     .all();
+  // A handoff about no appointment names the first patient its number stands for.
+  const firstPatients = firstPatientOf(database, [
+    ...new Set(rows.flatMap((row) => (row.conversationId ? [row.conversationId] : []))),
+  ]);
   return {
     ok: true,
     notifications: rows.map(
@@ -114,7 +169,11 @@ export function listNotifications(database: Database, acting: Acting) {
         notDeliveredIn,
         conversationId,
         handoffReason,
-        handoffClinical,
+        handoffForPractitioner,
+        handoffDetail,
+        handedOffFirstName,
+        handedOffLastName,
+        handedOffChosenName,
         patientId,
         firstName,
         chosenName,
@@ -128,7 +187,21 @@ export function listNotifications(database: Database, acting: Acting) {
         // A handoff's notification says what it was about and where, never the patient's words.
         handoff:
           conversationId !== null && handoffReason !== null
-            ? { conversationId, reason: handoffReason, clinical: handoffClinical === true }
+            ? {
+                conversationId,
+                reason: handoffReason,
+                forPractitioner: handoffForPractitioner === true,
+                noPractitioner: handoffForPractitioner === true && noPractitioner,
+                patient:
+                  handedOffFirstName !== null && handedOffLastName !== null
+                    ? patientName({
+                        firstName: handedOffFirstName,
+                        lastName: handedOffLastName,
+                        chosenName: handedOffChosenName,
+                      })
+                    : (firstPatients.get(conversationId) ?? null),
+                detail: handoffDetail,
+              }
             : null,
         // An opt-out's names the patient whose consent to turn off, never the patient's words.
         patient:

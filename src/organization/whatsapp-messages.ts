@@ -3,7 +3,6 @@ import { and, eq, exists, inArray, max, not, or } from "drizzle-orm";
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
   IncomingWhatsappMessage,
-  MessageJudgement,
   WhatsappEvents,
   WhatsappMessageStatus,
   WhatsappStatusUpdate,
@@ -19,6 +18,7 @@ import {
   conversationPatient,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { settleFailedReplies } from "#/organization/failed-replies.ts";
 import { storeNumberEvent } from "#/organization/whatsapp-limits.ts";
 import {
   storeTemplateCategory,
@@ -219,9 +219,8 @@ export function storeOutgoing(
     payload: string;
     /** For an assistant reply: the communication rules' version it was written under. */
     rulesVersion?: number;
-    /** For a member's reply from the inbox: who wrote it, and whether it answered a clinical handoff. */
+    /** For a member's reply from the inbox: who wrote it. */
     sentBy?: string;
-    judgement?: MessageJudgement;
   },
 ) {
   const stored = tx
@@ -236,7 +235,6 @@ export function storeOutgoing(
       sentAt: Date.now(),
       rulesVersion: message.rulesVersion,
       sentBy: message.sentBy,
-      judgement: message.judgement,
     })
     .returning({ id: whatsappMessage.id })
     .get();
@@ -307,6 +305,13 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
       statuses: events.statuses.map((update) => storeStatus(database, tx, update)),
       templateStatuses: events.templateStatuses.map((update) => storeTemplateUpdate(tx, update)),
     };
+    // A reply whose status just turned failed reopens the handoff it closed.
+    settleFailedReplies(
+      tx,
+      events.statuses
+        .filter((update, index) => update.status === "failed" && stored.statuses[index]!.updated)
+        .map((update) => update.whatsappId),
+    );
     for (const update of events.templateCategories ?? []) {
       const changed = storeTemplateCategory(tx, update);
       if (changed) {

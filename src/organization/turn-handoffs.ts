@@ -1,6 +1,8 @@
 import type * as z from "zod";
 
 import type { assistantToolSchemas } from "#/lib/assistant.ts";
+import type { HandoffDetail } from "#/lib/handoffs.ts";
+import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 import type { answeredMessage, HandoffWanted } from "#/organization/handoffs.ts";
 
@@ -23,10 +25,16 @@ export interface TurnToSort {
   handOff: HandOffCall | null;
   /** The appointment a rule kept the patient from moving (past the cutoff, the one move used). */
   ruleRefused: string | null;
+  /** Why, as the handoff's notification says it. */
+  refusal: HandoffDetail["refused"];
+  /** The changes the turn's accepted proposals made, which that notification names too. */
+  applied: HandoffDetail["applied"];
   /** The patients whose messages go to the number as the turn settles: a contact may change while the model runs. */
   reachedNow: string[];
   /** The turn's messages are voice notes nobody could understand (`assistant.ts`). */
   unintelligible?: boolean;
+  /** The photos, videos and files among the turn's messages, which the model never reads. */
+  media?: MediaType[];
 }
 
 const modelReasons = {
@@ -38,63 +46,123 @@ const modelReasons = {
 } as const satisfies Record<HandOffCall["reason"], HandoffWanted["reason"]>;
 
 /**
- * A follow-up's answer: only a plainly good one, or an opt-out that is not
- * clinical, is the assistant's; any other is the practitioner's, as clinical.
- * So is an opt-out from a number that reaches no patient now, its contact
- * moved while the model ran: there is no consent to turn off.
+ * A follow-up's answer: only a plainly good one, or an opt-out that needs
+ * no practitioner, is the assistant's; a photo or a file is reception's, as
+ * anywhere; any other answer is the practitioner's. So is an opt-out from a
+ * number that reaches no patient now, its contact moved while the model ran:
+ * there is no consent to turn off.
  */
 function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted | null {
   const { judgement } = turn;
-  // A photo or a file beside the answer makes it clinical (`assistant.ts`).
-  const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.clinical;
-  const optOutOnly = judgement.optOut && !judgement.clinical;
+  // Words beside the photo that answer it otherwise make the whole answer the practitioner's.
+  const otherAnswer = judgement.followUpAnswer === "other";
+  if (turn.media?.length && !otherAnswer && !judgement.healthQuestion && !judgement.emergency) {
+    return { reason: "media", forPractitioner: false, appointmentId };
+  }
+  const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.healthQuestion;
+  const optOutOnly = judgement.optOut && !judgement.healthQuestion;
   const nobodyToTurnOff = judgement.optOut && turn.reachedNow.length === 0;
   if ((plainlyGood || optOutOnly) && !nobodyToTurnOff && !judgement.emergency && !turn.handOff) {
     return null;
   }
   const reason = judgement.emergency ? "emergency" : "followUpAnswer";
-  return { reason, clinical: true, appointmentId };
-}
-
-/** The model's hand_off, clinical when the call or the judgement says so. */
-function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
-  const { judgement, answered } = turn;
-  // Only an appointment the turn could speak of: the model's id is checked, not trusted.
-  const known = [...turn.appointments.map((one) => one.id), answered?.appointmentId];
-  const named = known.find((id) => id !== undefined && id === handOff.appointmentId);
-  const clinicalReason = handOff.reason === "clinical" || handOff.reason === "emergency";
-  return {
-    reason: modelReasons[handOff.reason],
-    clinical: judgement.clinical || judgement.emergency || handOff.clinical || clinicalReason,
-    appointmentId: named ?? null,
-  };
+  return { reason, forPractitioner: true, appointmentId };
 }
 
 /**
- * What underthing hands off without the model asking: a clinical judgement,
- * a move a rule refused, a second misunderstanding (a voice note nobody could
- * understand counts as one), nothing booked. An
- * opt-out from a number of patients is answered, not handed off, unless it is
- * clinical too.
+ * `appointmentId` when it is an appointment the turn could speak of: the
+ * model's id is checked, not trusted.
+ */
+function knownAppointment(turn: TurnToSort, appointmentId: string | undefined) {
+  const known = [...turn.appointments.map((one) => one.id), turn.answered?.appointmentId];
+  return known.find((id) => id !== undefined && id === appointmentId) ?? null;
+}
+
+/**
+ * A question that needs the practitioner: the practitioner of the upcoming
+ * appointment the model judged treats it, else of the appointment whose
+ * follow-up the patient is answering, who did the procedure; with neither,
+ * reception decides who sees it, as in a clinic of several specialties. An
+ * emergency is always the practitioner's.
+ */
+function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffWanted {
+  // Only an upcoming appointment treats it: the one a patient answers may be past or cancelled.
+  const upcoming = turn.appointments.find((one) => one.id === turn.judgement.treatedBy)?.id;
+  if (turn.judgement.emergency) {
+    return {
+      reason: "emergency",
+      forPractitioner: true,
+      appointmentId: appointmentId ?? upcoming ?? null,
+    };
+  }
+  const followedUp = turn.answered?.kind === "followUp" ? turn.answered.appointmentId : null;
+  const treatedBy = upcoming ?? followedUp;
+  return treatedBy
+    ? { reason: "clinical", forPractitioner: true, appointmentId: treatedBy }
+    : { reason: "unmatchedHealthQuestion", forPractitioner: false, appointmentId };
+}
+
+/** A move a rule refused, or a photo or a file: reception's, which a health question gives way to. */
+function receptionReason(turn: TurnToSort): HandoffWanted | null {
+  if (turn.ruleRefused) {
+    return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };
+  }
+  if (turn.media?.length) {
+    return { reason: "media", forPractitioner: false, appointmentId: null };
+  }
+  return null;
+}
+
+/**
+ * The model's hand_off, to the practitioner when its reason or the judgement
+ * says so. A health question that goes to reception gives way to a refusal or
+ * a photo, then to the hand_off's own reason, which reception reads it beside.
+ */
+function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
+  const named = knownAppointment(turn, handOff.appointmentId);
+  const health = handOff.reason === "clinical" || handOff.reason === "emergency";
+  const reception = {
+    reason: modelReasons[handOff.reason],
+    forPractitioner: false,
+    appointmentId: named,
+  };
+  if (!health && !turn.judgement.healthQuestion) {
+    return reception;
+  }
+  const wanted = healthHandoff(turn, named);
+  if (wanted.forPractitioner) {
+    return wanted;
+  }
+  return receptionReason(turn) ?? (health ? wanted : reception);
+}
+
+/**
+ * What underthing hands off without the model asking: a health question, a
+ * move a rule refused, a photo or a file, a second misunderstanding (a voice
+ * note nobody could understand counts as one), nothing booked. A health
+ * question that goes to reception gives way to a refusal or a photo, which
+ * reception reads it beside. An opt-out from a number of patients is
+ * answered, not handed off, unless it is a health question too.
  */
 function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   const { judgement } = turn;
-  if (judgement.clinical || judgement.emergency) {
-    const reason = judgement.emergency ? "emergency" : "clinical";
-    return { reason, clinical: true, appointmentId: null };
+  const health = judgement.healthQuestion || judgement.emergency ? healthHandoff(turn, null) : null;
+  if (health?.forPractitioner) {
+    return health;
   }
-  if (turn.ruleRefused) {
-    return { reason: "ruleRefused", clinical: false, appointmentId: turn.ruleRefused };
+  const other = receptionReason(turn) ?? health;
+  if (other) {
+    return other;
   }
   if (judgement.optOut && turn.reachedNow.length > 0) {
     return null;
   }
   const reason = unansweredReason(turn);
-  return reason ? { reason, clinical: false, appointmentId: null } : null;
+  return reason ? { reason, forPractitioner: false, appointmentId: null } : null;
 }
 
 /**
- * Why a turn that is neither clinical nor refused is handed off, if it is: a
+ * Why a turn that needs no practitioner and was not refused is handed off, if it is: a
  * second misunderstanding, a number of no patient, nothing booked. An opt-out
  * reaching here comes from a number that reaches nobody now, its contact moved
  * while the model ran, so there is no consent to turn off.
@@ -117,13 +185,28 @@ function unansweredReason(turn: TurnToSort): HandoffWanted["reason"] | null {
  */
 export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
   const { answered } = turn;
-  if (answered?.kind === "followUp" && answered.firstReply) {
-    return followUpHandoff(turn, answered.appointmentId);
-  }
-  const wanted = turn.handOff ? modelHandoff(turn, turn.handOff) : judgedHandoff(turn);
+  const wanted =
+    answered?.kind === "followUp" && answered.firstReply
+      ? followUpHandoff(turn, answered.appointmentId)
+      : turn.handOff
+        ? modelHandoff(turn, turn.handOff)
+        : judgedHandoff(turn);
   // A handoff about nothing in particular, right after a message about an
   // appointment, concerns that appointment.
   return (
-    wanted && { ...wanted, appointmentId: wanted.appointmentId ?? answered?.appointmentId ?? null }
+    wanted && {
+      ...wanted,
+      appointmentId: wanted.appointmentId ?? answered?.appointmentId ?? null,
+      detail: detailOf(turn, wanted),
+    }
   );
+}
+
+/** What the handoff's notification and label say of the turn: a refused move, its own changes, the media sent. */
+function detailOf(turn: TurnToSort, wanted: HandoffWanted): HandoffDetail | null {
+  const media = wanted.reason === "media" ? [...new Set(turn.media)] : [];
+  if (!turn.refusal && turn.applied.length === 0 && media.length === 0) {
+    return null;
+  }
+  return { refused: turn.refusal, applied: turn.applied, ...(media.length > 0 && { media }) };
 }

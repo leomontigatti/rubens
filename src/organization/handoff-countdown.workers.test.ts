@@ -60,7 +60,7 @@ async function bookMartina(practitionerId: string, patientId: string, start: str
  * the assistant hands the conversation to `Juan`, clinical or not. Answers
  * with when the window closes.
  */
-async function handedToJuan(options: { hoursAgo: number; clinical: boolean }) {
+async function handedToJuan(options: { hoursAgo: number; forPractitioner: boolean }) {
   const martina = await world.addPatient("Martina", martinaPhone);
   await world.addSchedule({ practitionerId: world.juan.practitionerId });
   await world.addSchedule({
@@ -71,12 +71,21 @@ async function handedToJuan(options: { hoursAgo: number; clinical: boolean }) {
   await bookMartina(world.lucia.practitionerId, martina.id, "13:00");
   const sentAt = Date.now() - options.hoursAgo * hourMs;
   await patientWrites(world.organization, "quiero hablar con alguien", martinaPhone, sentAt);
-  const { clinical } = options;
+  const { forPractitioner } = options;
+  // A handoff to reception goes to the handoff contacts: Juan is the one.
+  expectOk(
+    await world.organization.saveHandoffContacts(adminCaller, {
+      memberIds: [world.juan.caller.userId],
+    }),
+  );
   scriptedModel.script((one) => {
-    one.call("judge_messages", { clinical, emergency: false });
+    one.call("judge_messages", {
+      healthQuestion: forPractitioner,
+      emergency: false,
+      ...(forPractitioner && { treatedBy: appointmentId }),
+    });
     one.call("hand_off", {
-      reason: clinical ? "clinical" : "patient_asked",
-      clinical,
+      reason: forPractitioner ? "clinical" : "patient_asked",
       appointmentId,
     });
     return "";
@@ -112,7 +121,7 @@ afterEach(() => {
 
 describe("a handoff made 20 hours before the window closes", () => {
   it("reminds its recipient 6 hours before the close, and the others 2 hours before", async () => {
-    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: false });
 
     await alarmAt(closesAt - 6 * hourMs - 60_000);
     expect(await remindersOf(world.juan.caller)).toEqual([]);
@@ -125,7 +134,8 @@ describe("a handoff made 20 hours before the window closes", () => {
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt, closesAt]);
     expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
     expect(await remindersOf(adminCaller)).toEqual([closesAt]);
-    expect(await remindersOf(world.lucia.caller)).toEqual([closesAt]);
+    // A practitioner it was not handed to does not read the conversation.
+    expect(await remindersOf(world.lucia.caller)).toEqual([]);
 
     await alarmAt(closesAt + hourMs);
     expect(await remindersOf(world.juan.caller)).toHaveLength(2);
@@ -134,7 +144,7 @@ describe("a handoff made 20 hours before the window closes", () => {
 
 describe("a handoff made 1 hour before the window closes", () => {
   it("reminds the others at once, but not its recipient, who was just told", async () => {
-    const closesAt = await handedToJuan({ hoursAgo: 23, clinical: false });
+    const closesAt = await handedToJuan({ hoursAgo: 23, forPractitioner: false });
 
     await runDurableObjectAlarm(world.organization);
 
@@ -151,7 +161,7 @@ describe("a team of more members than one insert can bind", () => {
         addStaff(world.organization, `Recepción ${index}`, ["receptionist"]),
       ),
     );
-    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: false });
 
     await alarmAt(closesAt - 2 * hourMs);
 
@@ -162,7 +172,7 @@ describe("a team of more members than one insert can bind", () => {
 
 describe("a patient's later message", () => {
   it("restarts the window, and both reminders move with it", async () => {
-    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: false });
     vi.setSystemTime(closesAt - 10 * hourMs);
     await patientWrites(world.organization, "sigo esperando", martinaPhone);
     const newClose = Date.now() + 24 * hourMs;
@@ -180,13 +190,13 @@ describe("a patient's later message", () => {
 });
 
 describe("a clinical handoff", () => {
-  it("reminds at 2 hours before the close only the practitioners who keep clinical records", async () => {
-    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: true });
+  it("reminds at 2 hours before the close only the practitioners who keep clinical records and read it", async () => {
+    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: true });
 
     await alarmAt(closesAt - 2 * hourMs);
 
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
-    expect(await remindersOf(world.lucia.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.lucia.caller)).toEqual([]);
     expect(await remindersOf(world.receptionist)).toEqual([]);
     expect(await remindersOf(adminCaller)).toEqual([]);
   });
@@ -194,7 +204,7 @@ describe("a clinical handoff", () => {
 
 describe("a handoff made after the window closed", () => {
   it("tells the patient nothing and has no reminders, though its recipient is told at once", async () => {
-    await handedToJuan({ hoursAgo: 25, clinical: false });
+    await handedToJuan({ hoursAgo: 25, forPractitioner: false });
 
     expect(fakeMeta.textsSent()).toEqual([]);
     const listed = expectOk(await world.organization.listNotifications(world.juan.caller));
@@ -204,7 +214,7 @@ describe("a handoff made after the window closed", () => {
     await patientWrites(world.organization, "hola?", martinaPhone);
     const closesAt = Date.now() + 24 * hourMs;
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       return "";
     });
     await afterTheWait(world.organization);
@@ -222,7 +232,7 @@ describe("the admin's reminder times", () => {
         othersHours: 4,
       }),
     );
-    const closesAt = await handedToJuan({ hoursAgo: 4, clinical: false });
+    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: false });
 
     await alarmAt(closesAt - 10 * hourMs);
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);

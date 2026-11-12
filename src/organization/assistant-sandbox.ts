@@ -12,7 +12,8 @@ import { phoneSpellings } from "#/lib/phones.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
 import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
 
-import { judgeTurn, readConversation, settleTurn } from "#/organization/assistant.ts";
+import { judgeTurn, readConversation } from "#/organization/assistant.ts";
+import { settleTurn } from "#/organization/turn-settling.ts";
 import type { TurnMode } from "#/organization/assistant.ts";
 import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
 import { maxModelCalls } from "#/organization/assistant-model.ts";
@@ -35,6 +36,7 @@ import {
   handoffReplyText,
   openHeldReply,
   replyTexts,
+  says,
 } from "#/organization/turn-replies.ts";
 import {
   conversation,
@@ -402,7 +404,7 @@ class SandboxRun {
     const handoffs = database
       .select({
         reason: handoff.reason,
-        clinical: handoff.clinical,
+        forPractitioner: handoff.forPractitioner,
         appointmentId: handoff.appointmentId,
         heldReply: handoff.heldReply,
       })
@@ -484,18 +486,18 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
   if (!judged) {
     return { ...shown, outcome: "unread" as const, held: null, replies: [] };
   }
-  const settled = run.step(() =>
+  const { settled, practitioner } = run.step(() =>
     settleTurn(database, { conversationId, appointments, answered, ...judged, read }),
   );
-  const said =
-    settled === "silent"
-      ? { held: null, replies: [] }
-      : await sandboxReply(run, model, {
-          ...judged,
-          settled,
-          answered,
-          patients: read.patients.map((one) => one.firstName),
-        });
+  const said = !says(settled)
+    ? { held: null, replies: [] }
+    : await sandboxReply(run, model, {
+        ...judged,
+        settled,
+        practitioner,
+        answered,
+        patients: read.patients.map((one) => one.firstName),
+      });
   for (const text of said.replies) {
     run.append("outgoing", text);
   }
@@ -505,7 +507,7 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
 /**
  * What the patient would be told, as `deliverReply` (`turn-replies.ts`) tells
  * them but sending nothing: the fixed reply, or the model's once the clinical
- * check passes it; a reply it flags is held on a clinical handoff.
+ * check passes it; a reply it flags is held on a handoff to the practitioner.
  */
 async function sandboxReply(
   run: SandboxRun,
@@ -532,10 +534,10 @@ async function sandboxReply(
   const opened = run.step(() =>
     openHeldReply(run.database, { conversationId, answered: turn.answered, words: texts.text }),
   );
-  const text = handoffReplyText(turn.rules);
+  const text = opened && handoffReplyText(turn.rules, opened.practitioner);
   return {
     held: texts.text,
-    replies: opened && text ? splitReply(text, { whole: false }) : [],
+    replies: text ? splitReply(text, { whole: false }) : [],
   };
 }
 

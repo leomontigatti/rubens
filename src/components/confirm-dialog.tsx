@@ -15,8 +15,9 @@ import { upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
 /**
  * Asks before a destructive action; `confirmLabel` repeats the action's name.
- * A question with two answers (`alternative`) shows neither as destructive,
- * since neither loses anything, and leaves `Cancelar` the quietest.
+ * A question with two answers (`alternative`), or one whose action loses
+ * nothing (`destructive: false`), shows no answer as destructive, and leaves
+ * `Cancelar` the quietest.
  */
 export function ConfirmDialog(props: {
   open: boolean;
@@ -27,6 +28,8 @@ export function ConfirmDialog(props: {
   confirmLabel: string;
   onConfirm: () => void;
   alternative?: { label: string; onSelect: () => void };
+  /** Whether confirming loses something; `false` for an action that only moves work along. */
+  destructive?: boolean;
 }) {
   const { alternative } = props;
   // In this order: closing first would read as a dismissal, and undo what confirming does.
@@ -53,7 +56,7 @@ export function ConfirmDialog(props: {
             </AlertDialogAction>
           )}
           <AlertDialogAction
-            variant={alternative ? "default" : "destructive"}
+            variant={alternative || props.destructive === false ? "default" : "destructive"}
             onClick={() => answer(props.onConfirm)}
           >
             {props.confirmLabel}

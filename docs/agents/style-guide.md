@@ -337,3 +337,4 @@ the loss goes beyond the record being deleted.
 | `Desactivar` with consequences             | Confirmed, saying what happens: `DeactivateButton` gives the count of future appointments.                                                                                |
 | `Desactivar` with none, `Reactivar`        | At once: it can be reversed the same way.                                                                                                                                 |
 | A save that sends appointments to the list | Asked with the count, two answers and no destructive button: a time off's or a closure's `Avisar por WhatsApp` or `Guardar sin avisar` (`ConfirmDialog`'s `alternative`). |
+| A hand-over that loses nothing             | Asked once, its button the default one, not destructive: a handoff's `Pasar al profesional`, which changes who answers it (`ConfirmDialog`'s `destructive={false}`).      |

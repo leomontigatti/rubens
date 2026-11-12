@@ -23,12 +23,20 @@ and practitioner.
   records, for every patient of the organization. Patients move between
   practitioners (a general dentist and an orthodontist), and Ley 26.529 makes the
   institution the custodian of the record. Every read is written to the audit log.
-- **Receptionists never see clinical content.** The admin role alone grants no
-  reading in the app either: an admin can only produce a patient's copy of their record
+- **Receptionists never see clinical records.** They read every WhatsApp
+  conversation, a patient's health words included: patients write to the
+  organization, and reception acts on what it reads, bound by professional
+  secrecy ([ADR-0013](../adr/0013-reception-reads-every-conversation.md)). The
+  clinical record is what Ley 26.529 protects, and it stays with the
+  practitioners. The admin role alone grants no reading of records in the app either: an admin can only produce a patient's copy of their record
   ([clinical-records.md](./clinical-records.md#copies-for-the-patient)), which is
   audited, and void a note or file whose author left, or delete what was voided,
   seeing its date, author, file names and reason but not its text
   ([clinical-records.md](./clinical-records.md#voiding)). A practitioner who is also the admin reads records as a practitioner.
+- **A practitioner reads only the WhatsApp conversations handed to them**, not
+  every conversation of their patients; the link between a number and its
+  patients still routes a handoff to the appointment's practitioner
+  ([assistant.md](./assistant.md#inbox)).
 - **A practitioner sees only their own appointments.** An appointment already says
   something about a patient's health, so the schedule shows no more than the work
   needs. On the calendar, other practitioners' appointments in the room show only

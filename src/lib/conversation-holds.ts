@@ -1,7 +1,5 @@
 import * as z from "zod";
 
-import type { FormOfAddress } from "#/lib/communication-rules.ts";
-
 // Taking a conversation over from the inbox (docs/domain/assistant.md §
 // Inbox): a member holds it while the assistant stays silent in it, replies
 // to the patient under their own name, and the conversation goes back to the
@@ -48,15 +46,4 @@ export const lateReplyChanceMs = 7 * 24 * 60 * 60_000;
 /** A person's reply as the patient reads it on WhatsApp: under their name, in bold. */
 export function withSenderName(text: string, name: string): string {
   return `*${name}*\n${text}`;
-}
-
-/**
- * What the patient is told when the assistant takes the conversation back
- * after a person answered: that they can keep writing here. Fixed, so it
- * promises nothing the model wrote.
- */
-export function returnedReply(formOfAddress: FormOfAddress): string {
-  return formOfAddress === "usted"
-    ? "Gracias por su paciencia. Si necesita algo más sobre su turno, escríbanos por acá."
-    : "Gracias por tu paciencia. Si necesitás algo más sobre tu turno, escribinos por acá.";
 }

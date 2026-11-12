@@ -1,6 +1,7 @@
 import * as z from "zod";
 
 import type { FormOfAddress } from "#/lib/communication-rules.ts";
+import type { HandoffReason } from "#/lib/handoffs.ts";
 
 // The patient assistant's words to the model (docs/domain/assistant.md § For
 // patients, ADR-0006 § The model interprets, underthing decides): its system
@@ -43,7 +44,7 @@ export function withoutMark(text: string): string {
 export const assistantToolSchemas = {
   list_patients: {
     description:
-      "The patients this WhatsApp number is the contact of, each with their upcoming appointments (id, date, time, status).",
+      "The patients this WhatsApp number is the contact of, each with their upcoming appointments (id, date, time, status, medical service, and the specialty of its practitioner).",
     inputSchema: z.object({}),
   },
   get_appointment: {
@@ -56,8 +57,18 @@ export const assistantToolSchemas = {
   judge_messages: {
     description: "Records the judgement of the patient's new messages. Call it once every turn.",
     inputSchema: z.object({
-      clinical: z.boolean().describe("Mentions symptoms, a study, a treatment or how they feel"),
+      healthQuestion: z
+        .boolean()
+        .describe(
+          "True when the patient asks or tells about symptoms, care, a medicine or a treatment, or how they are after a procedure unless plainly well. False for a symptom given only as the reason for another request, such as an appointment because of a toothache",
+        ),
       emergency: z.boolean().describe("A risk to life or health right now"),
+      treatedBy: z
+        .string()
+        .optional()
+        .describe(
+          "When healthQuestion: the appointmentId of the upcoming appointment whose medical service and specialty cover it; omit it when none does",
+        ),
       understood: z
         .boolean()
         .default(true)
@@ -117,7 +128,6 @@ export const assistantToolSchemas = {
         "clinical",
         "emergency",
       ]),
-      clinical: z.boolean().describe("True when the conversation is about health or symptoms"),
       appointmentId: z
         .string()
         .optional()
@@ -130,6 +140,28 @@ export const assistantToolSchemas = {
 
 export type AssistantToolName = keyof typeof assistantToolSchemas;
 
+/**
+ * What each open handoff is about, as the prompt tells the model: so it
+ * tells a new request from the topic a person already has.
+ */
+const handoffTopics: Record<HandoffReason, string> = {
+  patientAsked: "the patient asked for a person, or to be contacted",
+  ruleRefused: "a change the rules do not allow (past the cutoff, or the one move used)",
+  organizationCancelled: "a new time for an appointment the practice cancelled",
+  clinical: "a question for the practitioner",
+  emergency: "a possible emergency",
+  followUpAnswer: "the patient's answer to the practice's follow-up",
+  misunderstoodTwice: "messages the assistant did not understand",
+  voiceUnintelligible: "a voice note nobody could understand",
+  unknownNumber: "a number that is no patient's",
+  noUpcomingAppointment: "a patient with no upcoming appointment",
+  heldReply: "a question for the practitioner",
+  windowClosed: "a reply that could not go before the conversation window closed",
+  modelUnavailable: "messages the assistant could not read",
+  media: "a photo, a video or a file the patient sent",
+  unmatchedHealthQuestion: "a health question for a person at the practice to direct",
+};
+
 export interface PromptContext {
   organizationName: string;
   /** Now, as the patient reads the time: in the organization's office's zone. */
@@ -138,6 +170,26 @@ export interface PromptContext {
   formOfAddress: FormOfAddress;
   /** The organization's tone text; empty when it set none. */
   tone: string;
+  /** Why each of the conversation's open handoffs was made; none when none is open. */
+  openHandoffs: HandoffReason[];
+}
+
+/** What the patient is told when they ask again about what a person already has. */
+function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
+  return formOfAddress === "usted"
+    ? "Ya se lo pasé, le va a responder por acá."
+    : "Ya se lo pasé, te va a responder por acá.";
+}
+
+/** The rule on the conversation's open handoffs, or none while none is open. */
+function openHandoffRule(context: PromptContext) {
+  if (context.openHandoffs.length === 0) {
+    return [];
+  }
+  const topics = [...new Set(context.openHandoffs.map((reason) => handoffTopics[reason]))];
+  return [
+    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, when and where). Do not answer that topic yourself and do not hand it off again: if the patient asks about it, say "${alreadyHandedOffReply(context.formOfAddress)}"`,
+  ];
 }
 
 /** `now` as the prompt states it, such as `2099-01-05 09:00 (America/Argentina/Buenos_Aires)`. */
@@ -164,10 +216,10 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "- Hand the conversation to a person at the practice (hand_off).",
   ];
   const rules = [
-    `Every turn, call judge_messages exactly once, about the patient's new messages: clinical (symptoms, a study, a treatment, how they feel, a photo) and emergency (a risk to life or health right now). The new messages are what follows the line "${newMessagesMark}" in the patient's last message.`,
+    `Every turn, call judge_messages exactly once, about the patient's new messages, which follow the line "${newMessagesMark}" in the patient's last message: healthQuestion, treatedBy and emergency (a risk to life or health right now). You only judge; underthing decides who answers a health question.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
-    "Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); the message is clinical (clinical, clinical: true); it is an emergency (emergency, clinical: true). Pass the appointmentId when it is about one appointment. A person then answers: do not answer it yourself.",
+    'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); a health question (clinical); an emergency (emergency). Pass the appointmentId when it is about one appointment. Do what you can of the rest in the same turn, such as confirming. A person answers what you hand off: do not answer it, do not tell the patient you passed it on or why a rule refused it, never ask whether they want a person (hand off instead), and never send them to another professional ("consultá con tu odontólogo"). If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00".',
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
     'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',
@@ -176,10 +228,12 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "Free times come only from find_free_times. When the patient wants another time, including in answer to a message from the practice that moved their appointment or asks them to pick another time, call find_free_times and offer some of its times.",
     "When the patient picks a free time, propose the move and ask them to confirm it, stating the appointment, practitioner, date, time and office in full; accept it only on their yes in a later message.",
     "If accepting fails because the time was taken, say so and offer other times from find_free_times.",
-    "If find_free_times or a move refuses it (past the cutoff, or the one move already used), do not offer times: tell the patient a person will contact them, and call hand_off with reason rule_refused.",
-    "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Clinical messages go to the practitioner.",
+    "If find_free_times or a move refuses it (past the cutoff, or the one move already used), do not offer times and do not explain the refusal: call hand_off with reason rule_refused.",
+    "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Hand a health question off instead.",
     "If asked whether you are a bot or a person, say plainly that you are the practice's automated assistant. Do not say so unprompted.",
     "Never say anything about a patient this number is not the contact of.",
+    "Your reply goes to the patient as it is: write only to them, never to the practice's staff, and never about your tools or your own mistakes.",
+    ...openHandoffRule(context),
   ];
   const tone = context.tone ? `\nThe practice describes its tone as: ${context.tone}\n` : "";
   return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina. You answer patients about appointments they already have.
@@ -215,14 +269,18 @@ export function unintelligibleVoiceReply(formOfAddress: FormOfAddress): string {
 }
 
 /**
- * What the patient is told when the assistant hands the conversation off:
- * that a person answers here. Fixed, so a handoff's reply says nothing the
- * model wrote.
+ * What the patient is told when the assistant hands the conversation to the
+ * practitioner: to `practitioner`, the appointment's, by the name patients
+ * read, or to the practitioner when no appointment names one. Fixed, so a
+ * handoff's reply says nothing the model wrote. Any other handoff tells the
+ * patient nothing.
  */
-export function handoffReply(formOfAddress: FormOfAddress): string {
-  return formOfAddress === "usted"
-    ? "Gracias por escribirnos. Le pasamos su mensaje a una persona del equipo, que le va a responder por acá."
-    : "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.";
+export function practitionerHandoffReply(
+  formOfAddress: FormOfAddress,
+  practitioner: string | null,
+): string {
+  const consultation = formOfAddress === "usted" ? "su consulta" : "tu consulta";
+  return `Le paso ${consultation} ${practitioner ? `a ${practitioner}` : "al profesional"}.`;
 }
 
 /** The number the emergency reply gives: Argentina's medical emergencies (SAME). */

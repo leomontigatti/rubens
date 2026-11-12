@@ -45,7 +45,7 @@ const martinaPhone = "+5491155550000";
 const optedOutText =
   "Entendido. Le avisamos al equipo para que no te enviemos más mensajes por WhatsApp.";
 
-const optOut = { clinical: false, emergency: false, optOut: true };
+const optOut = { healthQuestion: false, emergency: false, optOut: true };
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
@@ -259,10 +259,10 @@ describe("a reply the model judges an opt-out", () => {
 
   it("still hands a clinical message off, with the handoff's reply", async () => {
     const martina = await world.addPatient("Martina", martinaPhone);
-    await bookAt(martina.id, "12:00");
+    const booked = await bookAt(martina.id, "12:00");
     await patientWrites(world.organization, "me duele mucho, no me escriban más", martinaPhone);
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { ...optOut, clinical: true });
+      turn.call("judge_messages", { ...optOut, healthQuestion: true, treatedBy: booked.id });
       return "";
     });
 
@@ -272,11 +272,11 @@ describe("a reply the model judges an opt-out", () => {
       { id: martina.id, name: "Martina Paz" },
     ]);
     const [opened] = expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs;
-    expect(opened).toMatchObject({ reason: "clinical", clinical: true });
+    expect(opened).toMatchObject({ reason: "clinical", forPractitioner: true });
     expect(fakeMeta.textsSent()).toEqual([
       {
         to: "5491155550000",
-        text: "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.",
+        text: "Le paso tu consulta a Juan Gómez.",
       },
     ]);
   });

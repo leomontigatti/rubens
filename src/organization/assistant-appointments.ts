@@ -24,6 +24,8 @@ export function upcomingAppointments(database: Database, patientIds: string[], n
       startsAt: appointment.startsAt,
       medicalService: medicalService.name,
       practitioner: practitioner.displayName,
+      /** What the practitioner treats, so the model tells whose a health question is; none when unset. */
+      specialty: practitioner.specialty,
       office: office.name,
       address: office.address,
       timeZone: office.timeZone,

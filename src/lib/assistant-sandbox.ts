@@ -46,7 +46,7 @@ const sandboxProposalSchema = z.object({
 
 const sandboxHandoffSchema = z.object({
   reason: z.enum(handoffReasons),
-  clinical: z.boolean(),
+  forPractitioner: z.boolean(),
   appointmentId: id.nullable(),
   heldReply: z.string().max(maxSandboxTextLength).nullable(),
 });

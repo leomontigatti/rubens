@@ -21,7 +21,8 @@ by ADR-0008.
 - WhatsApp, the assistant and Telegram: `0010-whatsapp-cloud-api-number-per-organization.md`
   (the channel), `0012-whatsapp-directory-durable-object.md` (finding a number's
   organization), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
-  `0007-patients-words-on-telegram.md`
+  `0007-patients-words-on-telegram.md`, `0013-reception-reads-every-conversation.md`
+  (who reads a conversation)
 
 ## Decisions
 
@@ -39,6 +40,9 @@ by ADR-0008.
 - [ADR-0007: A handoff carries the patient's own words to Telegram](./0007-patients-words-on-telegram.md) -
   people can answer handed-off patients from Telegram; amended by ADR-0010, which makes
   the app's view a full inbox.
+- [ADR-0013: Reception reads every conversation; the clinical record stays with the practitioners](./0013-reception-reads-every-conversation.md) -
+  reception and admins read every WhatsApp message, and the assistant hands to the
+  practitioner only what needs one; amends ADR-0007's Telegram note and #169's burst ruling.
 - [ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization](./0008-cloudflare-workers-one-object-per-organization.md) -
   each organization's data in its own SQLite object as the tenant boundary, booking
   rules and jobs in the object, app-level encryption of clinical data; supersedes

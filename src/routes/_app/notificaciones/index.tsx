@@ -144,23 +144,39 @@ function NotificationRow(props: {
   );
 }
 
-/** Where a notification is acted on: the conversation handed off or not delivered to, the patient to turn off, the template, or the WhatsApp settings. */
+/**
+ * Where a notification is acted on: the conversation handed off or not
+ * delivered to, with the handoff contacts when no practitioner could take
+ * it, the patient to turn off, the template, or the WhatsApp settings.
+ */
 function NotificationLink({ notification }: { notification: Notification }) {
   if (notification.conversationId) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        nativeButton={false}
-        render={
-          <Link
-            to="/conversaciones/$conversationId"
-            params={{ conversationId: notification.conversationId }}
-          />
-        }
-      >
-        Ver conversación
-      </Button>
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={
+            <Link
+              to="/conversaciones/$conversationId"
+              params={{ conversationId: notification.conversationId }}
+            />
+          }
+        >
+          Ver conversación
+        </Button>
+        {notification.handoff?.noPractitioner && (
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link to="/whatsapp/configuracion/contactos" />}
+          >
+            Ver contactos de derivación
+          </Button>
+        )}
+      </>
     );
   }
   if (notification.patient) {

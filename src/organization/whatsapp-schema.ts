@@ -13,6 +13,7 @@ import { modelRunPurposes } from "#/lib/assistant.ts";
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { lateReplyStates } from "#/lib/conversation-holds.ts";
 import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
+import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
 import {
@@ -313,10 +314,8 @@ export const lateReply = sqliteTable(
       .references(() => member.userId),
     /** The reply as the patient will read it, under its writer's name. */
     text: text("text").notNull(),
-    /** Whether its writer is a practitioner who keeps clinical records, who may answer a clinical handoff. */
-    readsClinical: flag("reads_clinical").notNull(),
-    /** Whether it answers a clinical handoff, so its words are withheld like clinical ones. */
-    clinical: flag("clinical").notNull(),
+    /** Whether its writer is a practitioner who keeps clinical records, who may answer a handoff to the practitioner. */
+    keepsRecords: flag("keeps_records").notNull(),
     /** The patients the number reached when it was written: it goes only while it still reaches each. */
     patientIds: text("patient_ids", { mode: "json" }).$type<string[]>().notNull(),
     state: text("state", { enum: lateReplyStates }).notNull().default("waiting"),
@@ -379,8 +378,9 @@ export const inboxSettings = sqliteTable(
 /**
  * A conversation the assistant handed to a person (`src/lib/handoffs.ts`):
  * open until a person's reply reaches the patient, or a person closes it
- * without one. A clinical handoff goes only to practitioners who keep
- * clinical records; anyone else sees that it exists, never its words.
+ * without one. A handoff to the practitioner goes to practitioners who keep
+ * clinical records, and only they answer it; anyone who reads the
+ * conversation reads its words.
  */
 export const handoff = sqliteTable(
   "handoff",
@@ -390,19 +390,25 @@ export const handoff = sqliteTable(
       .notNull()
       .references(() => conversation.id),
     reason: text("reason", { enum: handoffReasons }).notNull(),
-    clinical: flag("clinical").notNull(),
+    /** Whether it needs the practitioner, rather than reception (`handoffs.ts`). */
+    forPractitioner: flag("for_practitioner").notNull(),
     /** The appointment it concerns, whose practitioner it goes to; none when it concerns none. */
     appointmentId: text("appointment_id").references(() => appointment.id),
     state: text("state", { enum: handoffStates }).notNull().default("open"),
     closedAt: instant("closed_at"),
     /** The member who closed it without a reply. */
     closedBy: text("closed_by").references(() => member.userId),
+    /** The person's reply that closed it, which reopens it if Meta reports it failed. */
+    answeredBy: text("answered_by").references(() => whatsappMessage.id),
     /**
-     * The assistant's reply the clinical check held unsent, for its
-     * recipients to send, fix or drop; none once dropped or the handoff
-     * closed, and for other reasons.
+     * The assistant's reply the clinical check held unsent, for a
+     * practitioner who keeps clinical records to send or fix, and anyone who
+     * reads it to drop; none once dropped or the handoff closed, and for
+     * other reasons.
      */
     heldReply: text("held_reply"),
+    /** What the turn that made it knew of a refused move and its own changes, for the notification. */
+    detail: text("detail", { mode: "json" }).$type<HandoffDetail>(),
     /**
      * Whether it counts back from the window's close with reminders: made
      * inside the window. One made after the close tells the patient nothing.
@@ -412,12 +418,6 @@ export const handoff = sqliteTable(
     remindedFor: instant("reminded_for"),
     /** The window's close every other member who may answer it was last reminded of. */
     widelyRemindedFor: instant("widely_reminded_for"),
-    /**
-     * On a clinical one, the newest patient message its reader had seen when
-     * they reported an opt-out among its words, which reception cannot read:
-     * the report covers it and every message before it.
-     */
-    optOutReportedThrough: text("opt_out_reported_through").references(() => whatsappMessage.id),
     ...timestamps,
   },
   (table) => [index("handoff_conversation_idx").on(table.conversationId, table.state)],

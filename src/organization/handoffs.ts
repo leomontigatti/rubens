@@ -1,7 +1,8 @@
-import { and, desc, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lt, notInArray } from "drizzle-orm";
 
 import { isWindowOpen } from "#/lib/conversation-window.ts";
-import type { HandoffReason } from "#/lib/handoffs.ts";
+import { mediaTypes } from "#/lib/whatsapp-messages.ts";
+import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import { attendedTimings } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
 
@@ -18,27 +19,32 @@ import {
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // Handoffs (docs/domain/assistant.md § Handoff): who a handoff goes to, and
-// opening one with its notifications in one transaction. The assistant
-// decides when (`assistant.ts`); the inbox lists and closes them
-// (`handoff-inbox.ts`).
+// opening one with its notifications in one transaction. One that needs the
+// practitioner goes to a practitioner who keeps clinical records, any other
+// to reception. The assistant decides when (`assistant.ts`); the inbox lists
+// them, passes one to the practitioner and closes them (`handoff-inbox.ts`).
 
 export interface HandoffWanted {
   reason: HandoffReason;
-  clinical: boolean;
-  /** The appointment it concerns, whose practitioner it goes to; `null` for none. */
+  /** Whether it needs the practitioner, rather than reception. */
+  forPractitioner: boolean;
+  /** The appointment it concerns; its practitioner takes it when it needs one. `null` for none. */
   appointmentId: string | null;
   /** The assistant's reply the clinical check held, for a `heldReply` handoff. */
   heldReply?: string;
+  /** What the turn knew of a refused move and its own changes, for the notification. */
+  detail?: HandoffDetail | null;
 }
 
 /**
- * The practitioner of `appointmentId`, when they can take the handoff: an
- * active member, and for a clinical one a practitioner who keeps clinical records.
+ * The practitioner of `appointmentId`, with the name patients read, when they
+ * can take a handoff to the practitioner: an active member who keeps clinical records.
  */
-function practitionerFor(tx: Writer, appointmentId: string, clinical: boolean) {
+function practitionerFor(tx: Writer, appointmentId: string) {
   const found = tx
     .select({
       memberId: member.userId,
+      name: practitioner.displayName,
       active: member.active,
       keepsClinicalRecords: keepsRecords.mapWith(Boolean),
     })
@@ -47,18 +53,17 @@ function practitionerFor(tx: Writer, appointmentId: string, clinical: boolean) {
     .innerJoin(member, eq(member.userId, practitioner.memberId))
     .where(eq(appointment.id, appointmentId))
     .get();
-  if (!found?.active || (clinical && !found.keepsClinicalRecords)) {
-    return null;
-  }
-  return found.memberId;
+  return found?.active && found.keepsClinicalRecords ? found : null;
 }
 
 /**
- * The active handoff contacts, those who keep clinical records for a clinical
- * handoff. Before an admin picks any, every active admin takes a handoff, and
- * every active practitioner who keeps clinical records a clinical one.
+ * The active handoff contacts, those who keep clinical records for a handoff
+ * to the practitioner. Before an admin picks any, every active practitioner
+ * who keeps clinical records takes a handoff to the practitioner, and every
+ * active admin any other, and one to the practitioner when nobody keeps
+ * clinical records.
  */
-function contactsFor(tx: Writer, clinical: boolean) {
+function contactsFor(tx: Writer, forPractitioner: boolean) {
   const active = tx
     .select({
       memberId: member.userId,
@@ -69,25 +74,53 @@ function contactsFor(tx: Writer, clinical: boolean) {
     .from(member)
     .leftJoin(practitioner, eq(practitioner.memberId, member.userId))
     .where(eq(member.active, true))
-    .all()
-    .filter((row) => !clinical || row.keepsClinicalRecords);
-  const contacts = active.filter((row) => row.handoffContact);
-  if (contacts.length > 0) {
-    return contacts.map((row) => row.memberId);
+    .all();
+  const eligible = active.filter((row) => !forPractitioner || row.keepsClinicalRecords);
+  const contacts = eligible.filter((row) => row.handoffContact);
+  const chosen = contacts.length > 0 || !forPractitioner ? contacts : eligible;
+  if (chosen.length > 0) {
+    return chosen.map((row) => row.memberId);
   }
-  return active.filter((row) => clinical || row.roles.includes("admin")).map((row) => row.memberId);
+  return active.filter((row) => row.roles.includes("admin")).map((row) => row.memberId);
 }
 
-/** Who `wanted` goes to: the appointment's practitioner, else the handoff contacts. */
-function recipientsOf(tx: Writer, wanted: HandoffWanted) {
-  const own = wanted.appointmentId && practitionerFor(tx, wanted.appointmentId, wanted.clinical);
-  return own ? [own] : contactsFor(tx, wanted.clinical);
+/**
+ * Who `wanted` goes to: for the practitioner, the appointment's, by the name
+ * patients read, else the handoff contacts who keep clinical records; any
+ * other to the handoff contacts.
+ */
+function recipientsOf(tx: Writer, wanted: Omit<HandoffWanted, "reason">) {
+  const own =
+    wanted.forPractitioner && wanted.appointmentId
+      ? practitionerFor(tx, wanted.appointmentId)
+      : null;
+  return own
+    ? { memberIds: [own.memberId], practitioner: own.name }
+    : { memberIds: contactsFor(tx, wanted.forPractitioner), practitioner: null };
+}
+
+/**
+ * Sends the handoff `handoffId` to the recipients `wanted` goes to, and
+ * notifies each at once; says the appointment's practitioner by the name
+ * patients read when it went to them.
+ */
+export function sendHandoff(tx: Writer, handoffId: string, wanted: Omit<HandoffWanted, "reason">) {
+  const recipients = recipientsOf(tx, wanted);
+  if (recipients.memberIds.length > 0) {
+    tx.insert(handoffRecipient)
+      .values(recipients.memberIds.map((memberId) => ({ handoffId, memberId })))
+      .run();
+    notify(tx, recipients.memberIds, { kind: "handoff", handoffId });
+  }
+  return recipients.practitioner;
 }
 
 /**
  * Opens a handoff of `conversationId`, and notifies each of its recipients at
  * once. One opened inside the window counts back from its close
- * (`handoff-countdown.ts`); one opened after it has no countdown.
+ * (`handoff-countdown.ts`); one opened after it has no countdown. Says the
+ * practitioner it went to, by the name patients read, when it went to the
+ * appointment's.
  */
 export function openHandoff(tx: Writer, conversationId: string, wanted: HandoffWanted) {
   const countsDown = isWindowOpen(lastIncomingAt(tx, conversationId), Date.now());
@@ -96,36 +129,32 @@ export function openHandoff(tx: Writer, conversationId: string, wanted: HandoffW
     .values({ conversationId, ...wanted, countsDown })
     .returning({ id: handoff.id })
     .get();
-  const recipients = recipientsOf(tx, wanted);
-  if (recipients.length > 0) {
-    tx.insert(handoffRecipient)
-      .values(recipients.map((memberId) => ({ handoffId: opened.id, memberId })))
-      .run();
-    notify(tx, recipients, { kind: "handoff", handoffId: opened.id });
-  }
-  return opened.id;
+  return { id: opened.id, practitioner: sendHandoff(tx, opened.id, wanted) };
 }
 
-/** The open handoffs of `conversationId`, each clinical or not. */
+/** The open handoffs of `conversationId`, each for the practitioner or not. */
 export function openHandoffsOf(database: Writer, conversationId: string) {
   return database
-    .select({ id: handoff.id, clinical: handoff.clinical, createdAt: handoff.createdAt })
+    .select({
+      id: handoff.id,
+      reason: handoff.reason,
+      forPractitioner: handoff.forPractitioner,
+      createdAt: handoff.createdAt,
+    })
     .from(handoff)
     .where(and(eq(handoff.conversationId, conversationId), eq(handoff.state, "open")))
     .all();
 }
 
 /**
- * Whether `wanted` opens beside the conversation's open handoffs: always when
- * none is open; a clinical one when none open is clinical, so clinical words
- * reach someone who may read them; never a second of the same kind.
+ * Whether `wanted` opens beside the conversation's open handoffs: unless one
+ * of its kind, for the practitioner or for reception, is open already.
  */
-export function addsToOpen(open: { clinical: boolean }[], wanted: HandoffWanted) {
-  if (open.length === 0) {
-    return true;
-  }
-  const clinicalOpen = open.some((handoff) => handoff.clinical);
-  return wanted.clinical && !clinicalOpen;
+export function addsToOpen(
+  open: { forPractitioner: boolean }[],
+  wanted: Pick<HandoffWanted, "forPractitioner">,
+) {
+  return !open.some((handoff) => handoff.forPractitioner === wanted.forPractitioner);
 }
 
 /**
@@ -183,10 +212,35 @@ export function answeredMessage(database: Database, conversationId: string, befo
         eq(whatsappMessage.direction, "incoming"),
         isNotNull(whatsappMessage.judgement),
         gte(whatsappMessage.sentAt, latest.sentAt),
+        // A photo is reception's: the words that come after it are still the answer.
+        notInArray(whatsappMessage.type, [...mediaTypes]),
       ),
     )
     .get();
   return { kind, appointmentId: latest.appointmentId, firstReply: !judgedSince };
+}
+
+/**
+ * Whether `memberId` may answer the handoff `one`: any one to reception;
+ * one to the practitioner only when they keep clinical records, or it went
+ * to them because nobody active did.
+ */
+export function mayAnswer(
+  tx: Writer,
+  one: { id: string; forPractitioner: boolean },
+  member: { memberId: string; keepsRecords: boolean },
+) {
+  if (!one.forPractitioner || member.keepsRecords) {
+    return true;
+  }
+  const recipient = tx
+    .select({ one: handoffRecipient.memberId })
+    .from(handoffRecipient)
+    .where(
+      and(eq(handoffRecipient.handoffId, one.id), eq(handoffRecipient.memberId, member.memberId)),
+    )
+    .get();
+  return recipient !== undefined;
 }
 
 /** Every recipient of `handoffIds`, by handoff. */

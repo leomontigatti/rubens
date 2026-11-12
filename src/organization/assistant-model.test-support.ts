@@ -45,7 +45,7 @@ interface ToolCall {
 
 /** The turn a test does not script: it judges the messages as nothing special, and replies. */
 const plainTurn: Script = (turn) => {
-  turn.call("judge_messages", { clinical: false, emergency: false });
+  turn.call("judge_messages", { healthQuestion: false, emergency: false });
   return "Hola, ¿en qué te puedo ayudar?";
 };
 

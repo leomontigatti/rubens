@@ -43,7 +43,7 @@ vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
 
 const martinaPhone = "+5491155550000";
 
-const notClinical = { clinical: false, emergency: false };
+const notClinical = { healthQuestion: false, emergency: false };
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
@@ -285,7 +285,7 @@ describe("a sandbox conversation", () => {
     const message = {
       direction: "incoming" as const,
       text: "hola",
-      judgement: "notClinical" as const,
+      judgement: "notForPractitioner" as const,
     };
     const full = {
       ...started,
@@ -331,9 +331,10 @@ describe("a sandbox conversation", () => {
         conversationId: listed.conversations[0]!.id,
       }),
     );
-    expect(
-      read.messages.map((message) => ("text" in message ? message.text : message.withheld)),
-    ).toEqual(["quiero cancelar", "Te cancelo el turno del lunes?"]);
+    expect(read.messages.map((message) => message.text)).toEqual([
+      "quiero cancelar",
+      "Te cancelo el turno del lunes?",
+    ]);
     const proposals = await inStorage(world.organization, (database) =>
       database.select({ acceptedAt: proposal.acceptedAt }).from(proposal).all(),
     );
@@ -351,11 +352,9 @@ describe("a sandbox conversation", () => {
     const played = await playPatient(await startSandbox(), "me duele un poco");
 
     expect(played.turn.held).toBe("Ese dolor es normal después de la consulta.");
-    expect(played.turn.replies).toEqual([
-      "Gracias por escribirnos. Le pasamos tu mensaje a una persona del equipo, que te va a responder por acá.",
-    ]);
+    expect(played.turn.replies).toEqual(["Le paso tu consulta al profesional."]);
     expect(played.sandbox.handoffs).toEqual([
-      expect.objectContaining({ reason: "heldReply", clinical: true }),
+      expect.objectContaining({ reason: "heldReply", forPractitioner: true }),
     ]);
     expect(expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs).toEqual(
       [],

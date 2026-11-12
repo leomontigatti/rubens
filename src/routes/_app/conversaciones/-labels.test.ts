@@ -31,15 +31,22 @@ describe("who a conversation is with", () => {
 });
 
 describe("a message's text", () => {
-  it("says a message the assistant has not checked yet shows once it does", () => {
-    const unchecked = { id: "1", direction: "incoming", sentAt: 0, withheld: "notJudged" } as const;
+  it("shows the words of a message the assistant has not judged yet", () => {
+    const unjudged = {
+      id: "1",
+      direction: "incoming",
+      sentAt: 0,
+      type: "text",
+      text: "me duele la muela",
+      status: null,
+      judgement: null,
+      sentBy: null,
+    } as const;
 
-    expect(messageText(unchecked)).toBe(
-      "Mensaje sin revisar. Se muestra cuando el asistente lo revise.",
-    );
+    expect(messageText(unjudged)).toBe("me duele la muela");
   });
 
-  it("names the type of a message with no words, such as a photo", () => {
+  it("names a message with no words by its kind, such as a photo", () => {
     const photo = {
       id: "1",
       direction: "incoming",
@@ -47,12 +54,13 @@ describe("a message's text", () => {
       type: "image",
       text: null,
       status: null,
-      judgement: "notClinical",
+      judgement: "notForPractitioner",
       sentBy: null,
-      withheld: null,
     } as const;
 
-    expect(messageText(photo)).toBe("Mensaje sin texto (image)");
+    expect(messageText(photo)).toBe("Foto");
+    expect(messageText({ ...photo, type: "document" })).toBe("Archivo");
+    expect(messageText({ ...photo, type: "sticker" })).toBe("Mensaje sin texto (sticker)");
   });
 
   it("marks a voice note's transcript, and says when it has none", () => {
@@ -63,9 +71,8 @@ describe("a message's text", () => {
       type: "audio",
       text: "quiero cancelar el turno",
       status: null,
-      judgement: "notClinical",
+      judgement: "notForPractitioner",
       sentBy: null,
-      withheld: null,
     } as const;
 
     expect(messageText(voiceNote)).toBe("Nota de voz: quiero cancelar el turno");
@@ -84,7 +91,6 @@ describe("who wrote a message", () => {
     status: "sent",
     judgement: null,
     sentBy: null,
-    withheld: null,
   } as const;
 
   it("names no one for the patient's own messages, which sit on their side of the chat", () => {
@@ -95,12 +101,6 @@ describe("who wrote a message", () => {
     expect(messageSender({ ...reply, sentBy: "Rita Paz" })).toBe("Rita Paz");
     expect(messageSender(reply)).toBe("Asistente");
     expect(messageSender({ ...reply, type: "template" })).toBe("Plantilla");
-  });
-
-  it("names no one for a practitioner's reply withheld from the reader", () => {
-    expect(messageSender({ id: "1", direction: "outgoing", sentAt: 0, withheld: "clinical" })).toBe(
-      "Profesional",
-    );
   });
 });
 

@@ -15,11 +15,11 @@ import {
   submitTemplate,
   templateNamed,
 } from "#/organization/organization.test-support.ts";
-import { practitioner } from "#/organization/schema.ts";
-import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { handoff, handoffRecipient, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
-// The inbox's reading rules (docs/domain/assistant.md § Inbox): who reads
-// which conversations, and which messages they read the words of.
+// The inbox's reading rules (docs/domain/assistant.md § Inbox): reception
+// and admins read every conversation, every message in it; a practitioner
+// only the conversations handed to them.
 
 // The booking confirmation reaches Meta through the Graph API client, whose
 // HTTP calls go to the fake Meta.
@@ -68,6 +68,24 @@ function judge(whatsappId: string, judgement: MessageJudgement) {
   );
 }
 
+/** Hands the one conversation to `caller`, as an open handoff the assistant opened. */
+async function handedTo(caller: { userId: string }) {
+  const [conversation] = expectOk(
+    await world.organization.listConversations(world.receptionist, {}),
+  ).conversations;
+  await inStorage(world.organization, (database) => {
+    const opened = database
+      .insert(handoff)
+      .values({ conversationId: conversation!.id, reason: "clinical", forPractitioner: true })
+      .returning({ id: handoff.id })
+      .get();
+    database
+      .insert(handoffRecipient)
+      .values({ handoffId: opened.id, memberId: caller.userId })
+      .run();
+  });
+}
+
 /** The one conversation `caller` lists, read in full. */
 async function readOnlyConversation(caller: { userId: string }) {
   const listed = expectOk(await world.organization.listConversations(caller, {}));
@@ -112,7 +130,7 @@ afterEach(() => {
 });
 
 describe("reading a conversation in the inbox", () => {
-  it("shows reception that a message waits to be read, never its words, until it is judged", async () => {
+  it("shows reception a message the assistant has not judged yet, with its words", async () => {
     await patientWrites(symptoms);
 
     const read = await readOnlyConversation(world.receptionist);
@@ -122,65 +140,58 @@ describe("reading a conversation in the inbox", () => {
       patients: [{ id: martinaId, name: "Martina Paz" }],
     });
     expect(read.messages).toEqual([
-      expect.objectContaining({ direction: "incoming", withheld: "notJudged" }),
+      expect.objectContaining({ direction: "incoming", text: symptoms, judgement: null }),
     ]);
-    expect(JSON.stringify(read)).not.toContain(symptoms);
   });
 
-  it("shows reception a message judged not clinical, and only that a clinical one exists", async () => {
-    await patientWrites(symptoms).then((id) => judge(id, "clinical"));
-    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notClinical"));
+  it("shows reception a message judged for the practitioner, with its words", async () => {
+    await patientWrites(symptoms).then((id) => judge(id, "forPractitioner"));
+    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notForPractitioner"));
 
     const read = await readOnlyConversation(world.receptionist);
 
     expect(read.messages).toEqual([
-      expect.objectContaining({ withheld: "clinical" }),
-      expect.objectContaining({ withheld: null, text: "Gracias, ahí estaré" }),
+      expect.objectContaining({ text: symptoms, judgement: "forPractitioner" }),
+      expect.objectContaining({ text: "Gracias, ahí estaré", judgement: "notForPractitioner" }),
     ]);
-    expect(JSON.stringify(read)).not.toContain(symptoms);
   });
 
-  it("lets a practitioner who keeps clinical records read every message about their own appointment", async () => {
+  it("lets a practitioner read a conversation handed to them, every message included", async () => {
     await patientWrites("Gracias, ahí estaré");
-    await patientWrites(symptoms).then((id) => judge(id, "clinical"));
+    await patientWrites(symptoms).then((id) => judge(id, "forPractitioner"));
+    await handedTo(world.juan.caller);
 
     const read = await readOnlyConversation(world.juan.caller);
 
     expect(read.messages).toEqual([
-      expect.objectContaining({ withheld: null, text: "Gracias, ahí estaré", judgement: null }),
-      expect.objectContaining({ withheld: null, text: symptoms, judgement: "clinical" }),
+      expect.objectContaining({ text: "Gracias, ahí estaré", judgement: null }),
+      expect.objectContaining({ text: symptoms, judgement: "forPractitioner" }),
     ]);
   });
 
-  it("withholds unjudged messages from a practitioner who keeps no clinical records", async () => {
-    await inStorage(world.organization, (database) =>
-      database
-        .update(practitioner)
-        .set({ keepsClinicalRecords: false })
-        .where(eq(practitioner.id, world.juan.practitionerId))
-        .run(),
-    );
-    await patientWrites(symptoms);
-
-    const read = await readOnlyConversation(world.juan.caller);
-
-    expect(read.messages).toEqual([expect.objectContaining({ withheld: "notJudged" })]);
-    expect(JSON.stringify(read)).not.toContain(symptoms);
-  });
-
-  it("refuses a practitioner a conversation about another practitioner's appointments", async () => {
+  it("refuses a practitioner the conversation of their own patient when it was not handed to them", async () => {
     await patientWrites(symptoms);
     const [conversation] = expectOk(
       await world.organization.listConversations(world.receptionist, {}),
     ).conversations;
 
-    const listed = expectOk(await world.organization.listConversations(world.lucia.caller, {}));
-    const opened = await world.organization.readConversation(world.lucia.caller, {
+    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
+    const opened = await world.organization.readConversation(world.juan.caller, {
       conversationId: conversation!.id,
     });
 
+    // Juan has Martina's appointment, but nothing of her conversation was handed to him.
     expect(listed.conversations).toEqual([]);
     expect(opened).toEqual({ ok: false, reason: "notFound" });
+  });
+
+  it("refuses a practitioner a conversation handed to someone else", async () => {
+    await patientWrites(symptoms);
+    await handedTo(world.juan.caller);
+
+    const listed = expectOk(await world.organization.listConversations(world.lucia.caller, {}));
+
+    expect(listed.conversations).toEqual([]);
   });
 
   it("gives an admin who is not a practitioner the receptionist's view", async () => {
@@ -190,31 +201,29 @@ describe("reading a conversation in the inbox", () => {
     const asReception = await readOnlyConversation(world.receptionist);
 
     expect(asAdmin).toEqual(asReception);
-    expect(JSON.stringify(asAdmin)).not.toContain(symptoms);
   });
 
-  it("lists conversations latest first, each with its latest message read by the same rule", async () => {
+  it("lists conversations latest first, each with its latest message", async () => {
     await patientWrites(symptoms);
     await world.addPatient("Bruno", "+5491155550001");
     await patientWrites(symptoms, "+5491155550001");
-    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notClinical"));
+    await patientWrites("Gracias, ahí estaré").then((id) => judge(id, "notForPractitioner"));
 
     const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
 
     expect(listed.conversations).toEqual([
       expect.objectContaining({
         phone: martinaPhone,
-        lastMessage: expect.objectContaining({ withheld: null, text: "Gracias, ahí estaré" }),
+        lastMessage: expect.objectContaining({ text: "Gracias, ahí estaré" }),
       }),
       expect.objectContaining({
         phone: "+5491155550001",
-        lastMessage: expect.objectContaining({ withheld: "notJudged" }),
+        lastMessage: expect.objectContaining({ text: symptoms }),
       }),
     ]);
-    expect(JSON.stringify(listed)).not.toContain(symptoms);
   });
 
-  it("shows the booking confirmation's text and delivery to its practitioner before the patient answers", async () => {
+  it("shows the booking confirmation's text and delivery to reception before the patient answers, and not to its practitioner", async () => {
     await runDurableObjectAlarm(world.organization);
     expectOk(
       await world.organization.storeWhatsappEvents({
@@ -224,8 +233,8 @@ describe("reading a conversation in the inbox", () => {
       }),
     );
 
-    const read = await readOnlyConversation(world.juan.caller);
-    const elsewhere = expectOk(await world.organization.listConversations(world.lucia.caller, {}));
+    const read = await readOnlyConversation(world.receptionist);
+    const asJuan = expectOk(await world.organization.listConversations(world.juan.caller, {}));
 
     expect(read.conversation.patients).toEqual([]);
     expect(read.messages).toEqual([
@@ -236,7 +245,7 @@ describe("reading a conversation in the inbox", () => {
         status: "delivered",
       }),
     ]);
-    expect(elsewhere.conversations).toEqual([]);
+    expect(asJuan.conversations).toEqual([]);
   });
 
   it("finds conversations by a patient's name or by the number, a page at a time", async () => {
@@ -325,12 +334,12 @@ describe("the patients a conversation's number stands for", () => {
     });
   }
 
-  it("shows the practitioner a number's conversation once its patient is registered and booked, before they write again", async () => {
+  it("links a number's conversation to its patient once registered, before they write again", async () => {
     await patientWrites("Hola, ¿atienden con obra social?", unknownPhone);
     const bruno = await world.addPatient("Bruno", unknownPhone);
     await bookWithJuan(bruno.id, "13:00");
 
-    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
+    const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
 
     expect(listed.conversations).toEqual([
       expect.objectContaining({
@@ -340,7 +349,7 @@ describe("the patients a conversation's number stands for", () => {
     ]);
   });
 
-  it("moves the link with the patient's number, so the old number's conversation is no longer theirs", async () => {
+  it("moves the link with the patient's number, so the old number's conversation stands for nobody", async () => {
     const newPhone = "+5491155558888";
     await patientWrites(symptoms);
     await patientWrites("Hola", newPhone);
@@ -357,17 +366,14 @@ describe("the patients a conversation's number stands for", () => {
       }),
     );
 
-    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
-    const opened = await world.organization.readConversation(world.juan.caller, {
-      conversationId: atOldNumber!.id,
-    });
+    const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
     expect(listed.conversations).toEqual([
       expect.objectContaining({
         phone: newPhone,
         patients: [{ id: martinaId, name: "Martina Paz" }],
       }),
+      expect.objectContaining({ id: atOldNumber!.id, patients: [] }),
     ]);
-    expect(opened).toEqual({ ok: false, reason: "notFound" });
   });
 
   it("follows the patient's message contact to a guardian's number and back", async () => {
@@ -382,10 +388,10 @@ describe("the patients a conversation's number stands for", () => {
         phone: guardianPhone,
       }),
     ).guardian;
-    const phonesJuanSees = async () =>
-      expectOk(await world.organization.listConversations(world.juan.caller, {})).conversations.map(
-        (conversation) => [conversation.phone, conversation.patients.map(({ id }) => id)],
-      );
+    const linkedPhones = async () =>
+      expectOk(await world.organization.listConversations(world.receptionist, {}))
+        .conversations.filter((conversation) => conversation.patients.length > 0)
+        .map((conversation) => [conversation.phone, conversation.patients.map(({ id }) => id)]);
 
     expectOk(
       await world.organization.setMessageContact(world.receptionist, {
@@ -393,9 +399,9 @@ describe("the patients a conversation's number stands for", () => {
         guardianId: added.id,
       }),
     );
-    const throughGuardian = await phonesJuanSees();
+    const throughGuardian = await linkedPhones();
     expectOk(await world.organization.removeGuardian(world.receptionist, { guardianId: added.id }));
-    const backToPatient = await phonesJuanSees();
+    const backToPatient = await linkedPhones();
 
     expect(throughGuardian).toEqual([[guardianPhone, [martinaId]]]);
     expect(backToPatient).toEqual([[martinaPhone, [martinaId]]]);
@@ -428,7 +434,8 @@ describe("the patients a conversation's number stands for", () => {
       }),
     );
 
-    const listed = expectOk(await world.organization.listConversations(world.juan.caller, {}));
-    expect(listed.conversations.map((conversation) => conversation.phone)).toEqual([newPhone]);
+    const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
+    const linked = listed.conversations.filter((conversation) => conversation.patients.length > 0);
+    expect(linked.map((conversation) => conversation.phone)).toEqual([newPhone]);
   });
 });

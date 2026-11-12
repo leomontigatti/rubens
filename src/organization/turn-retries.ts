@@ -11,11 +11,10 @@ import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 // A turn the model could not read (docs/domain/assistant.md § The conversation
 // window): the patient's messages stay unjudged and unanswered, and the turn
 // runs again from the alarm, each time a little later, while the window is
-// open. Still unread at the hand-off time, they go to a person as a clinical
-// handoff, since nobody knows what they say, and are stored as clinical: a
-// person answers them, and no later turn reads them again as new. So are
-// those a person answered meanwhile, by a reply or by closing a handoff. No
-// code reads them in the model's place.
+// open. Still unread at the hand-off time, they go to reception, which reads
+// them, and are stored as judged: a person answers them, and no later turn
+// reads them again as new. So are those a person answered meanwhile, by a
+// reply or by closing a handoff. No code reads them in the model's place.
 
 const minuteMs = 60_000;
 
@@ -48,9 +47,8 @@ function changedSince(database: Database, conversationId: string, startedAt: num
 /**
  * Settles a turn the model could not read, whose unread messages are
  * `messageIds`: sets its retry, or past the hand-off time, or once the turn
- * made a change, opens the clinical handoff, to the practitioner of
- * `appointmentId` when it has one, and stops retrying until the patient
- * writes again. A wait a newer message set while the model ran is kept.
+ * made a change, opens the handoff to reception, about `appointmentId` when
+ * it has one, and stops retrying until the patient writes again. A wait a newer message set while the model ran is kept.
  */
 export function retryOrHandOff(
   database: Database,
@@ -83,12 +81,16 @@ export function retryOrHandOff(
         .run();
       return;
     }
-    const wanted: HandoffWanted = { reason: "modelUnavailable", clinical: true, appointmentId };
+    const wanted: HandoffWanted = {
+      reason: "modelUnavailable",
+      forPractitioner: false,
+      appointmentId,
+    };
     if (addsToOpen(openHandoffsOf(tx, conversationId), wanted)) {
       openHandoff(tx, conversationId, wanted);
     }
     tx.update(whatsappMessage)
-      .set({ judgement: "clinical" })
+      .set({ judgement: "notForPractitioner" })
       .where(and(inArray(whatsappMessage.id, turn.messageIds), isNull(whatsappMessage.judgement)))
       .run();
     tx.update(conversation)
@@ -107,9 +109,9 @@ export function clearFailedTurns(database: Database, conversationId: string) {
 }
 
 /**
- * Stores as clinical the messages of `conversationId` the model could not
- * read, sent up to `upTo`, once a person who reads clinical words answered
- * them, by a reply or by closing a handoff, and stops their retry: a retry
+ * Stores as judged the messages of `conversationId` the model could not
+ * read, sent up to `upTo`, once a person answered them, by a reply or by
+ * closing a handoff, and stops their retry: a retry
  * would read them as new after that answer, and act on them twice. Only
  * while the model is failing: a message waiting for its first turn is still
  * the assistant's to judge.
@@ -130,7 +132,7 @@ export function answeredByPerson(tx: Writer, conversationId: string, upTo: numbe
     isNull(whatsappMessage.judgement),
   );
   tx.update(whatsappMessage)
-    .set({ judgement: "clinical" })
+    .set({ judgement: "notForPractitioner" })
     .where(and(unread, lte(whatsappMessage.sentAt, upTo)))
     .run();
   const stillUnread = tx

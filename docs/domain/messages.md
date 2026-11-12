@@ -147,10 +147,10 @@ conversation handed off.
 Every event that staff act on is a notification in the app, read or unread:
 confirmations, cancellations, reschedules, requests to approve, handoffs, replies
 not delivered because the patient never answered, warnings about the WhatsApp
-number, and replies that look like opt-outs. Reception sees all of them, a
-clinical handoff only as existing ([assistant.md](./assistant.md#handoff)); a
+number, and replies that look like opt-outs. Reception sees all of them; a
 practitioner sees those about their own appointments and the handoffs sent to
-them. The app holds the full
+them. A handoff's notification says why, so its reader can answer without
+reading the conversation back ([assistant.md](./assistant.md#handoff)). The app holds the full
 record, so a failed external delivery loses nothing.
 
 A practitioner can link Telegram from their profile, through the bot's start link.

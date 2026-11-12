@@ -69,8 +69,8 @@ export function SandboxLastTurn({ turn }: { turn: Turn }) {
     <RecordSection title="Último turno">
       <div className="flex flex-col gap-4">
         <p className="text-sm">
-          {/* A held reply opens a clinical handoff: the patient is told a person answers. */}
-          {sandboxOutcomeLabels[turn.held === null ? turn.outcome : "handedOff"]}
+          {/* A held reply opens a handoff to the practitioner, which the patient is told. */}
+          {sandboxOutcomeLabels[turn.held === null ? turn.outcome : "toPractitioner"]}
         </p>
         {turn.held !== null && (
           <Alert variant="warning">

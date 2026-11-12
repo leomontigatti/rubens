@@ -23,6 +23,10 @@ export const notificationKinds = [
   "handoff",
   "handoffReminder",
   "replyNotDelivered",
+  /** A message judged an emergency in a conversation the member holds: the patient got the emergency reply. */
+  "emergency",
+  /** Meta reported a person's reply failed: the handoff it closed is open again. */
+  "replyFailed",
   "optOut",
   "optOutReminder",
 ] as const;

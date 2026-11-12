@@ -23,7 +23,7 @@ import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 // inside the window counts back from its close, which each later message
 // from the patient moves. Its recipients are reminded some hours before the
 // close, and a little later every other member who may answer it is too,
-// for a clinical one only practitioners who keep clinical records. Each
+// for one to the practitioner only practitioners who keep clinical records. Each
 // reminder goes once per close, by the object's alarm, and none after the
 // close. The admin sets both times in the WhatsApp settings.
 
@@ -73,7 +73,7 @@ export function saveHandoffReminders(
 interface Countdown {
   id: string;
   conversationId: string;
-  clinical: boolean;
+  forPractitioner: boolean;
   closesAt: number;
   /** When its recipients' reminder goes; `null` when it went for this close, or fell before the handoff opened. */
   recipientsAt: number | null;
@@ -86,7 +86,7 @@ interface Countdown {
 interface CountingHandoff {
   id: string;
   conversationId: string;
-  clinical: boolean;
+  forPractitioner: boolean;
   createdAt: number;
   remindedFor: number | null;
   widelyRemindedFor: number | null;
@@ -109,7 +109,7 @@ function countdownOf(
   return {
     id: one.id,
     conversationId: one.conversationId,
-    clinical: one.clinical,
+    forPractitioner: one.forPractitioner,
     closesAt,
     recipientsAt: recipientsDone ? null : recipientsAt,
     othersAt: wentFor(one.widelyRemindedFor, closesAt) ? null : Math.max(othersAt, one.createdAt),
@@ -124,7 +124,7 @@ function countdowns(database: Writer, now: number): Countdown[] {
     .select({
       id: handoff.id,
       conversationId: handoff.conversationId,
-      clinical: handoff.clinical,
+      forPractitioner: handoff.forPractitioner,
       createdAt: handoff.createdAt,
       remindedFor: handoff.remindedFor,
       widelyRemindedFor: handoff.widelyRemindedFor,
@@ -159,8 +159,8 @@ function activeRecipients(database: Writer, handoffId: string) {
 
 /**
  * The active members who may answer the handoff: those who read its
- * conversation in the inbox, and for a clinical one only practitioners who
- * keep clinical records, the only ones who read its words.
+ * conversation in the inbox, and for one to the practitioner only
+ * practitioners who keep clinical records, the only ones who answer it.
  */
 function mayAnswer(database: Database, countdown: Countdown) {
   const members = database
@@ -171,7 +171,7 @@ function mayAnswer(database: Database, countdown: Countdown) {
   return members
     .filter((acting) => {
       const reader = readerOf(database, acting);
-      if (countdown.clinical && !reader.readsClinical) {
+      if (countdown.forPractitioner && !reader.keepsRecords) {
         return false;
       }
       const found = database

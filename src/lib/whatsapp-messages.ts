@@ -14,12 +14,21 @@ export const whatsappMessageStatuses = ["sent", "delivered", "read", "failed"] a
 export type WhatsappMessageStatus = (typeof whatsappMessageStatuses)[number];
 
 /**
- * The assistant's judgement of a patient's message (docs/domain/assistant.md
- * § Inbox); a message it has not judged yet has none.
+ * The assistant's judgement of a patient's message, whether it needs the
+ * practitioner (docs/domain/assistant.md § Handoff); a message it has not
+ * judged yet has none.
  */
-export const messageJudgements = ["clinical", "notClinical"] as const;
+export const messageJudgements = ["forPractitioner", "notForPractitioner"] as const;
 
 export type MessageJudgement = (typeof messageJudgements)[number];
+
+/**
+ * Meta's types of what a patient sends as media (a photo, a study, a
+ * receipt): never passed to the model, but handed to reception.
+ */
+export const mediaTypes = ["image", "document", "video"] as const;
+
+export type MediaType = (typeof mediaTypes)[number];
 
 /** A message a patient's number sent the organization's number. */
 export interface IncomingWhatsappMessage {

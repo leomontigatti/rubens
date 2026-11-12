@@ -137,8 +137,8 @@ function templatesSent() {
 async function handedOffThenClosed() {
   await writes("quiero hablar con alguien");
   scriptedModel.script((one) => {
-    one.call("judge_messages", { clinical: false, emergency: false });
-    one.call("hand_off", { reason: "patient_asked", clinical: false, appointmentId });
+    one.call("judge_messages", { healthQuestion: false, emergency: false });
+    one.call("hand_off", { reason: "patient_asked", appointmentId });
     return "Ya te paso con alguien.";
   });
   await afterTheWait(world.organization);
@@ -170,7 +170,7 @@ beforeEach(async () => {
   await approveReopen();
   await writes("hola");
   scriptedModel.script((one) => {
-    one.call("judge_messages", { clinical: false, emergency: false });
+    one.call("judge_messages", { healthQuestion: false, emergency: false });
     return "Hola Martina, ¿en qué te ayudo?";
   });
   await afterTheWait(world.organization);
@@ -388,17 +388,19 @@ describe("a person's reply after the window closed", () => {
 
   it("closes only the handoffs opened before it was written", async () => {
     await handedOffThenClosed();
-    // Juan keeps clinical records, so his reply may answer a clinical handoff.
-    expectOk(await world.organization.takeOverConversation(world.juan.caller, { conversationId }));
-    expectOk(await replyAs(world.juan.caller));
+    expectOk(await replyAs(world.receptionist));
     await runDurableObjectAlarm(world.organization);
     vi.setSystemTime(Date.now() + day);
     await runDurableObjectAlarm(world.organization);
     await numberTurns({ kind: "restricted", until: null });
-    // The patient answers while Meta holds the number, with something new and clinical.
+    // The patient answers while Meta holds the number, with something new for the practitioner.
     await writes("y además me duele la muela");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: true, emergency: false });
+      one.call("judge_messages", {
+        healthQuestion: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       return "";
     });
     await afterTheWait(world.organization);
@@ -407,7 +409,7 @@ describe("a person's reply after the window closed", () => {
     await numberTurns({ kind: "unrestricted" });
     await runDurableObjectAlarm(world.organization);
 
-    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Juan Gómez*\n${reply}` }]);
+    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Rita Paz*\n${reply}` }]);
     expect(await openHandoffs()).toEqual([expect.objectContaining({ reason: "clinical" })]);
   });
 
@@ -426,11 +428,15 @@ describe("a person's reply after the window closed", () => {
     expect((await read()).lateReplies).toEqual([]);
   });
 
-  it("withholds a practitioner's reply to a clinical handoff from reception while it waits", async () => {
+  it("shows reception a practitioner's reply to a handoff to them while it waits", async () => {
     await writes("me duele mucho la muela");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: true, emergency: false });
-      one.call("hand_off", { reason: "clinical", clinical: true, appointmentId });
+      one.call("judge_messages", {
+        healthQuestion: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
+      one.call("hand_off", { reason: "clinical", appointmentId });
       return "Ya le paso tu mensaje al profesional.";
     });
     await afterTheWait(world.organization);
@@ -439,7 +445,7 @@ describe("a person's reply after the window closed", () => {
     expectOk(await replyAs(world.juan.caller, "Tomá un ibuprofeno"));
 
     expect((await read(world.receptionist)).lateReplies).toEqual([
-      expect.objectContaining({ writer: "Juan Gómez", text: null }),
+      expect.objectContaining({ writer: "Juan Gómez", text: "*Juan Gómez*\nTomá un ibuprofeno" }),
     ]);
     expect((await read(world.juan.caller)).lateReplies).toEqual([
       expect.objectContaining({ text: "*Juan Gómez*\nTomá un ibuprofeno" }),
@@ -507,7 +513,7 @@ describe("withdrawing a late reply", () => {
     await world.addPatient("Lucía", luciaPhone);
     await patientWrites(world.organization, "hola", luciaPhone);
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       return "Hola Lucía, ¿en qué te ayudo?";
     });
     await afterTheWait(world.organization);
@@ -600,7 +606,7 @@ describe("an assistant reply whose window closed meanwhile", () => {
       Date.now() - 24 * hour,
     );
     scriptedModel.script((one) => {
-      one.call("judge_messages", { clinical: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       return "Tu turno es el jueves a las 12.";
     });
 
@@ -608,7 +614,7 @@ describe("an assistant reply whose window closed meanwhile", () => {
 
     expect(fakeMeta.textsSent()).toEqual([]);
     expect(await openHandoffs()).toEqual([
-      expect.objectContaining({ reason: "windowClosed", clinical: false }),
+      expect.objectContaining({ reason: "windowClosed", forPractitioner: false }),
     ]);
     const handoffNotified = await notificationsOf(adminCaller);
     expect(handoffNotified).toEqual([expect.objectContaining({ kind: "handoff" })]);

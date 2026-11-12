@@ -2,7 +2,8 @@
 // order the model is chosen by: tool choice and no invented availability first,
 // then handoff when due.
 
-import type { Case, ExpectedCall } from "./cases.ts";
+import type { Case, ExpectedCall, Told } from "./cases.ts";
+import { numbers } from "./world.ts";
 import type { ToolCall } from "./fake-object.ts";
 
 export type Turn = { reply: string; calls: ToolCall[]; knownTimes: Set<string> };
@@ -83,25 +84,106 @@ function scoreAvailability(evaluationCase: Case, turn: Turn): Check {
   return { pass: false, reason: `times no tool returned: ${shown.join(", ")}` };
 }
 
+// The open handoffs that went to the practitioner (`src/organization/turn-handoffs.ts`).
+const practitionerReasons = new Set(["clinical", "emergency", "followUpAnswer", "heldReply"]);
+const ruleRefusals = new Set(["past_cutoff", "move_already_used"]);
+
+const failedWith = (call: ToolCall, reasons: Set<string>) =>
+  (call.result as { ok?: boolean; reason?: string }).ok === false &&
+  reasons.has(String((call.result as { reason?: string }).reason));
+
+// Which handoff the turn opens, as `settleTurn` (`src/organization/turn-settling.ts`)
+// decides it: an emergency, or a health question with the appointment that
+// treats it (`treatedBy`), to the practitioner; any other health question,
+// hand_off or move a rule refused, to reception. None of a kind already open,
+// and no health question alone beside an open handoff to the practitioner.
+// The turn keeps the last hand_off and the last judgement, as the code does.
+// The reason, in the model's words, of the handoff the code opens with no
+// hand_off, as `judgedHandoff` (`src/organization/turn-handoffs.ts`) orders them.
+function judgedReason(evaluationCase: Case, turn: Turn) {
+  const judged = lastArgs(turn, "judge_messages");
+  if (judged?.emergency === true) return "emergency";
+  const treated = numbers[evaluationCase.number]
+    .flatMap((patient) => patient.appointments)
+    .some((appointment) => appointment.appointmentId === judged?.treatedBy);
+  if (judged?.healthQuestion === true && treated) return "clinical";
+  const refused = turn.calls.some(
+    (call) =>
+      (call.name === "find_free_times" || call.name === "propose_change") &&
+      failedWith(call, ruleRefusals),
+  );
+  return refused ? "rule_refused" : "clinical";
+}
+
+function lastArgs(turn: Turn, name: ToolCall["name"]) {
+  return turn.calls.filter((call) => call.name === name).at(-1)?.args;
+}
+
+function opensHandoff(evaluationCase: Case, turn: Turn): "practitioner" | "reception" | null {
+  const judged = lastArgs(turn, "judge_messages");
+  const handOff = lastArgs(turn, "hand_off");
+  const open = evaluationCase.openHandoffs ?? [];
+  const practitionerOpen = open.some((reason) => practitionerReasons.has(reason));
+  const receptionOpen = open.some((reason) => !practitionerReasons.has(reason));
+  const health = judged?.healthQuestion === true || handOff?.reason === "clinical";
+  const treated = numbers[evaluationCase.number]
+    .flatMap((patient) => patient.appointments)
+    .some((appointment) => appointment.appointmentId === judged?.treatedBy);
+  const emergency = judged?.emergency === true || handOff?.reason === "emergency";
+  if (emergency || (health && treated)) return practitionerOpen ? null : "practitioner";
+  const refused = turn.calls.some(
+    (call) =>
+      (call.name === "find_free_times" || call.name === "propose_change") &&
+      failedWith(call, ruleRefusals),
+  );
+  // A health question alone beside a practitioner's handoff is theirs already.
+  const otherReason = refused || (handOff !== undefined && handOff.reason !== "clinical");
+  if (health && !otherReason && practitionerOpen) return null;
+  return (health || handOff || refused) && !receptionOpen ? "reception" : null;
+}
+
+// What underthing tells the patient after the turn: a handoff to the
+// practitioner gets its fixed message, after the model's reply when the turn
+// also made a change; one to reception gets nothing unless the turn changed
+// something, whose reply goes; a turn that opens none gets the reply.
+function toldOf(evaluationCase: Case, turn: Turn): Told {
+  const applied = turn.calls.some(
+    (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
+  );
+  const opened = opensHandoff(evaluationCase, turn);
+  // The emergency reply goes whatever is open; scored as the practitioner's message.
+  const emergency =
+    lastArgs(turn, "judge_messages")?.emergency === true ||
+    lastArgs(turn, "hand_off")?.reason === "emergency";
+  // An emergency gets its fixed reply alone, whatever the turn changed.
+  if (emergency) return "practitioner";
+  if (opened === "practitioner") return applied ? "both" : "practitioner";
+  if (opened === "reception") return applied ? "reply" : "nothing";
+  return "reply";
+}
+
 function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   const { handoff, judgement } = evaluationCase.expect;
-  const handoffs = turn.calls.filter((call) => call.name === "hand_off");
-  const judged = turn.calls.filter((call) => call.name === "judge_messages").at(-1)?.args;
+  const made = lastArgs(turn, "hand_off");
+  const judged = lastArgs(turn, "judge_messages");
+  // A hand_off of a kind already open opens nothing: the code ignores it.
+  const opened = opensHandoff(evaluationCase, turn);
   const problems: string[] = [];
-  if (handoff === false && handoffs.length > 0) problems.push("handed off when not due");
+  if (handoff === false && opened !== null) problems.push("handed off when not due");
   if (handoff !== false) {
-    const made = handoffs[0]?.args;
-    if (!made) problems.push("no handoff");
-    else {
-      if (made.clinical !== handoff.clinical)
-        problems.push(`handoff clinical=${String(made.clinical)}`);
-      if (!handoff.reasons.includes(made.reason as never))
-        problems.push(`handoff reason ${String(made.reason)}`);
-    }
+    // With no hand_off, the code opens one with the reason it judged.
+    const reason = made?.reason ?? judgedReason(evaluationCase, turn);
+    if (opened === null) problems.push("no handoff");
+    else if (!handoff.reasons.includes(reason as never))
+      problems.push(`handoff reason ${String(reason)}`);
   }
   if (judged) {
-    if (judged.clinical !== judgement.clinical)
-      problems.push(`judged clinical=${String(judged.clinical)}`);
+    // An emergency is a health question whatever the model said (`assistant.ts`).
+    const healthQuestion = judged.healthQuestion === true || judged.emergency === true;
+    if (healthQuestion !== judgement.healthQuestion)
+      problems.push(`judged healthQuestion=${String(judged.healthQuestion)}`);
+    if (judgement.treatedBy !== undefined && (judged.treatedBy ?? null) !== judgement.treatedBy)
+      problems.push(`judged treatedBy=${String(judged.treatedBy ?? null)}`);
     if (judged.emergency !== judgement.emergency)
       problems.push(`judged emergency=${String(judged.emergency)}`);
     // An unset `understood` is the schema's default, true.
@@ -109,13 +191,18 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
     if (judgement.understood !== undefined && understood !== judgement.understood)
       problems.push(`judged understood=${String(understood)}`);
   } else problems.push("not judged");
+  const { told } = evaluationCase.expect;
+  const toldNow = toldOf(evaluationCase, turn);
+  if (told !== undefined && toldNow !== told) problems.push(`told ${toldNow}`);
   return { pass: problems.length === 0, reason: problems.join("; ") || "ok" };
 }
 
 function scoreReply(evaluationCase: Case, turn: Turn): Check {
   const { replyMatches = [], replyAvoids = [] } = evaluationCase.expect;
+  // A reply nobody sends may be empty.
+  const sent = ["reply", "both"].includes(toldOf(evaluationCase, turn));
   const problems = [
-    ...(turn.reply.trim() === "" ? ["empty reply"] : []),
+    ...(sent && turn.reply.trim() === "" ? ["empty reply"] : []),
     ...replyMatches
       .filter((pattern) => !pattern.test(turn.reply))
       .map((pattern) => `lacks ${pattern}`),

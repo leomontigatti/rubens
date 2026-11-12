@@ -29,7 +29,7 @@ const refusals = {
   forbidden: "Solo el personal puede responder conversaciones.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Escribí la respuesta.",
-  notFound: "No encontramos esa conversación, o no es sobre tus turnos.",
+  notFound: "No encontramos esa conversación, o no te la derivaron.",
   notHolding: "Otra persona tomó la conversación, o volvió al asistente. Recargá la página.",
   noReopenTemplate:
     "La ventana de conversación está cerrada y la plantilla Reabrir la conversación no está aprobada: un administrador la envía desde las plantillas de WhatsApp.",
@@ -90,6 +90,8 @@ export function ReplyBox(props: {
   hold: ConversationHold | null;
   window: ConversationWindow;
   draft: ReplyDraft | null;
+  /** The member answers a handoff to the practitioner in a conversation reception reads too. */
+  readByReception: boolean;
 }) {
   if (!props.hold?.mine) {
     return null;
@@ -101,6 +103,7 @@ export function ReplyBox(props: {
       window={props.window}
       heldUntil={props.hold.heldUntil}
       initialText={props.draft?.text ?? ""}
+      readByReception={props.readByReception}
     />
   );
 }
@@ -110,6 +113,7 @@ function ReplyForm(props: {
   window: ConversationWindow;
   heldUntil: number;
   initialText: string;
+  readByReception: boolean;
 }) {
   const { running, run } = useHoldAction();
   const [text, setText] = useState(props.initialText);
@@ -129,7 +133,9 @@ function ReplyForm(props: {
     open && closesAt !== null
       ? `Le llega al paciente por WhatsApp con tu nombre. La ventana de conversación se cierra el ${messageTime(closesAt)}.`
       : "La ventana de conversación está cerrada: le enviamos al paciente una plantilla para reabrirla, y tu respuesta le llega con tu nombre cuando conteste.";
-  const hint = `${sending} La conversación vuelve al asistente el ${messageTime(props.heldUntil)}.`;
+  const returns = `La conversación vuelve al asistente el ${messageTime(props.heldUntil)}.`;
+  const readers = props.readByReception ? " Recepción también lee esta conversación." : "";
+  const hint = `${sending} ${returns}${readers}`;
 
   return (
     <form

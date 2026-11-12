@@ -24,9 +24,8 @@ import { refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // One conversation in the inbox as a WhatsApp chat (`-chat.tsx`), under its
 // open handoffs, with who answers it beside its title, where a member takes it
-// over and replies. A message the member may not read shows that it exists,
-// never its words. A reply the clinical check held goes to the reply's box to
-// be sent or fixed.
+// over and replies. A reply the clinical check held goes to the reply's box to
+// be sent or fixed, by a practitioner who keeps clinical records.
 
 const backToInbox = { to: "/conversaciones", label: "Conversaciones" } as const;
 
@@ -98,6 +97,11 @@ function ConversationPage() {
         hold={hold}
         window={window}
         draft={liveDraft}
+        // A practitioner answering what was handed to them is told reception reads it too.
+        readByReception={
+          handoffs.ok &&
+          handoffs.handoffs.some((handoff) => handoff.forPractitioner && handoff.mayAnswer)
+        }
       />
     </div>
   );
