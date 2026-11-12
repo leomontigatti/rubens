@@ -336,7 +336,7 @@ describe("a number with nothing booked to talk about", () => {
     await turn();
 
     expect((await openHandoffs())[0]).toMatchObject({
-      reason: "healthQuestion",
+      reason: "unmatchedHealthQuestion",
       forPractitioner: false,
       recipients: ["Lucía Díaz", "Rita Paz"],
     });
@@ -848,7 +848,7 @@ describe("what the patient is told on a handoff (#290)", () => {
     await turn();
 
     expect(await openHandoffs()).toMatchObject([
-      { reason: "healthQuestion", forPractitioner: false, recipients: ["Ana Admin"] },
+      { reason: "unmatchedHealthQuestion", forPractitioner: false, recipients: ["Ana Admin"] },
     ]);
     expect(await notifiedOfHandoff(world.juan.caller)).toEqual([]);
     expect(fakeMeta.textsSent()).toEqual([]);
@@ -869,7 +869,7 @@ describe("what the patient is told on a handoff (#290)", () => {
 
     await turn();
 
-    expect(await openHandoffs()).toMatchObject([{ reason: "healthQuestion" }]);
+    expect(await openHandoffs()).toMatchObject([{ reason: "unmatchedHealthQuestion" }]);
   });
 
   it("reaches a solo practitioner who is also the admin, of either kind, in their one inbox", async () => {

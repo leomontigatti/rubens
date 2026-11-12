@@ -99,7 +99,7 @@ function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffW
   const treatedBy = upcoming ?? followedUp;
   return treatedBy
     ? { reason: "clinical", forPractitioner: true, appointmentId: treatedBy }
-    : { reason: "healthQuestion", forPractitioner: false, appointmentId };
+    : { reason: "unmatchedHealthQuestion", forPractitioner: false, appointmentId };
 }
 
 /**

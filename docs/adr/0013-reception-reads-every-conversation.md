@@ -29,12 +29,13 @@ We decided:
 - **The clinical record stays practitioner-only.** It is what Ley 26.529 protects, and
   nothing about who reads it changes ([access.md](../domain/access.md)). Staff who read
   a conversation are bound by professional secrecy.
-- **The judgement asks whether a message needs the practitioner**: advice or whether
-  something is normal, a medicine or a treatment, how the patient is after a procedure.
-  A symptom beside another request does not. That judgement now routes a handoff and
+- **The judgement asks whether a message is a health question**: symptoms, care, a
+  medicine or a treatment, how the patient is after a procedure. A symptom given only as
+  the reason for another request is not one. With it the model names the upcoming
+  appointment that covers the question, if any. That judgement now routes a handoff and
   hides nothing; the check on the assistant's own replies is unchanged.
-- **Handoffs split by who answers**: what needs the practitioner goes to them, and the
-  patient is told so; everything else, a photo and a message the model could not read
+- **Handoffs split by who answers**: a health question an appointment's practitioner
+  treats, and an emergency, go to the practitioner, and the patient is told so; everything else, a photo and a message the model could not read
   included, goes to reception and tells the patient nothing about it. The assistant
   keeps answering while a handoff is open, the emergency reply always goes, and taking
   a conversation back sends nothing.

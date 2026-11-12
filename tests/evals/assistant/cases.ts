@@ -100,11 +100,11 @@ const anyTime = /\b\d{1,2}[:.]\d{2}\b/;
 // indirect question in the same clause, is the refusal it should give, and passes.
 const saysNormal = /(?<!\bsi\b[^.!?,;]{0,40})\b(?:es|está|sería|parece) (?:algo )?normal/i;
 
-// Tells the patient what to take, put on or do; a refusal in the same clause,
-// such as "no puedo indicarte qué tomar ni qué aplicar", passes, and a "pero"
-// ends the clause as punctuation does.
+// Tells the patient what to take, put on or do; a refusal to advise in the
+// same clause, such as "no puedo indicarte qué tomar ni qué aplicar", passes,
+// and a "pero" ends the clause as punctuation does.
 const givesAdvice =
-  /(?<!\b(?:no|ni|sin)\b(?:(?!\bpero\b)[^.!?,;]){0,80})\b(?:tom[aá]|pon[eé]|aplic[aá]|hac[eé])(?=[\s.,;!?]|$)/i;
+  /(?<!\bno (?:te |le )?(?:puedo|podemos|sabría)\b(?:(?!\bpero\b)[^.!?,;]){0,80})\b(?:tom[aá]|pon[eé]|aplic[aá]|hac[eé])(?=[\s.,;!?]|$)/i;
 
 // Sends the patient to another professional, or says it passed something on,
 // in place of the handoff underthing makes.
@@ -332,7 +332,8 @@ export const cases: Case[] = [
     history: [],
     patient: ["con quién me atiendo el jueves?"],
     expect: {
-      // Any tool that names the practitioner will do.
+      // Only get_appointment names the practitioner: list_patients gives the specialty alone.
+      calls: [{ name: "get_appointment", args: { appointmentId: "apt-101" } }],
       handoff: noHandoff,
       judgement: plain,
       replyMatches: [/Paula R[ií]os|R[ií]os/],

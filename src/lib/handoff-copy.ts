@@ -20,7 +20,7 @@ const handoffReasonLabels: Record<HandoffReason, string> = {
   windowClosed: "La ventana se cerró antes de la respuesta del asistente",
   modelUnavailable: "El asistente no pudo leer el mensaje",
   media: "Mandó una foto, un video o un archivo",
-  healthQuestion: "Consulta de salud que no es de su profesional",
+  unmatchedHealthQuestion: "Consulta de salud que no es de su profesional",
 };
 
 const mediaNames: Record<MediaType, string> = {

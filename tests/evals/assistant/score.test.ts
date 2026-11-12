@@ -223,6 +223,8 @@ describe("score", () => {
     expect(reply("Tomá un ibuprofeno y poné hielo.")).toBe(false);
     expect(reply("No sé la causa, pero poné hielo.")).toBe(false);
     expect(reply("No sé si sirve pero tomá ibuprofeno.")).toBe(false);
+    expect(reply("No te preocupes y poné hielo.")).toBe(false);
+    expect(reply("Sin dudas tomá ibuprofeno.")).toBe(false);
   });
 
   it("counts a handoff the judgement opens in code, though the model called no hand_off", () => {

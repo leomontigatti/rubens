@@ -159,7 +159,7 @@ const handoffTopics: Record<HandoffReason, string> = {
   windowClosed: "a reply that could not go before the conversation window closed",
   modelUnavailable: "messages the assistant could not read",
   media: "a photo, a video or a file the patient sent",
-  healthQuestion: "a health question for a person at the practice to direct",
+  unmatchedHealthQuestion: "a health question for a person at the practice to direct",
 };
 
 export interface PromptContext {

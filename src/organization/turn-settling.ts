@@ -101,7 +101,8 @@ export function settleTurn(
       .where(eq(conversation.id, turn.conversationId))
       .run();
     // A health question beside an open handoff to the practitioner is theirs already.
-    const theirs = wanted?.reason === "healthQuestion" && open.some((one) => one.forPractitioner);
+    const theirs =
+      wanted?.reason === "unmatchedHealthQuestion" && open.some((one) => one.forPractitioner);
     const opened =
       wanted && !theirs && addsToOpen(open, wanted)
         ? openHandoff(tx, turn.conversationId, wanted)

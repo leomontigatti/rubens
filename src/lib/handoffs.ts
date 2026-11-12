@@ -41,7 +41,7 @@ export const handoffReasons = [
   /** A photo, a video or a file, which never reaches the model. */
   "media",
   /** A health question no upcoming appointment's practitioner treats: reception decides who sees it. */
-  "healthQuestion",
+  "unmatchedHealthQuestion",
 ] as const;
 
 export type HandoffReason = (typeof handoffReasons)[number];
