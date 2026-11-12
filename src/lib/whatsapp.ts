@@ -46,3 +46,12 @@ export function isLowerLimit(previous: string | null, next: string) {
 export const numberHoldReasons = ["restricted", "disabled", "rateLimited"] as const;
 
 export type NumberHoldReason = (typeof numberHoldReasons)[number];
+
+/**
+ * The business account's costs in WhatsApp Manager, where Meta shows what it
+ * bills the organization for its messages. Meta documents no address with the
+ * account's id; WhatsApp Manager's own pages take it as `waba_id`.
+ */
+export function whatsappManagerCostsUrl(businessAccountId: string) {
+  return `https://business.facebook.com/wa/manage/insights/?waba_id=${encodeURIComponent(businessAccountId)}`;
+}
