@@ -1,6 +1,7 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { withdrawnReplyNote } from "#/lib/assistant.ts";
 import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
 
 import {
@@ -482,6 +483,51 @@ describe("withdrawing a late reply", () => {
     vi.setSystemTime(Date.now() + 8 * day);
     await runDurableObjectAlarm(world.organization);
     expect(await notificationsOf(world.receptionist)).toEqual([]);
+  });
+
+  it("leaves a trace in the conversation with who withdrew it and when, without its words", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    const { id } = (await read()).lateReplies[0]!;
+    vi.setSystemTime(Date.now() + hour);
+
+    expectOk(await withdraw(world.receptionist, id));
+
+    const expected = [{ id, writer: "Rita Paz", withdrawnAt: Date.now() }];
+    expect((await read()).withdrawnReplies).toEqual(expected);
+    expect((await read(world.receptionist)).withdrawnReplies).toEqual(expected);
+  });
+
+  it("tells the assistant the team withdrew its pending reply when the template had gone", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    expectOk(await withdraw(world.receptionist));
+
+    await writes("sí, decime");
+    await afterTheWait(world.organization);
+
+    const template = scriptedModel.turns
+      .at(-1)!
+      .messages.find((one) => one.content.includes("tenemos una respuesta para vos"));
+    expect(template).toEqual({
+      role: "assistant",
+      content: expect.stringContaining(withdrawnReplyNote),
+    });
+  });
+
+  it("tells the assistant nothing withdrawn while another reply behind the template is left", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist, "Primera"));
+    expectOk(await replyAs(world.receptionist, "Segunda"));
+    await runDurableObjectAlarm(world.organization);
+    expectOk(await withdraw(world.receptionist));
+
+    await writes("hola");
+    await afterTheWait(world.organization);
+
+    const said = scriptedModel.turns.at(-1)!.messages.map((one) => one.content);
+    expect(said.join("\n")).not.toContain(withdrawnReplyNote);
   });
 
   it("drops the reopen template not sent yet when no other reply waits behind it", async () => {

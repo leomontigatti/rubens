@@ -33,6 +33,13 @@ export const assistantWaitMs = 8_000;
 export const newMessagesMark = "[new messages]";
 
 /**
+ * What follows a reopen template whose every reply behind it was withdrawn,
+ * so the model does not promise the patient a reply that will not come.
+ */
+export const withdrawnReplyNote =
+  "[The practice withdrew the reply this message announced: there is no reply to give.]";
+
+/**
  * A patient's `text` with every bracket turned to a parenthesis, so only
  * underthing places the boundary of what the turn judges: no message, nor
  * the messages of a burst joined, can then spell the mark in any form.

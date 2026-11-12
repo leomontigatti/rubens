@@ -17,11 +17,14 @@ import {
 import type {
   ConversationListOptions,
   ConversationReference,
+  MediaType,
   MessageJudgement,
   WhatsappMessageStatus,
 } from "#/lib/whatsapp-messages.ts";
+import type { HandoffReason } from "#/lib/handoffs.ts";
 
 import type { Database } from "#/organization/database.ts";
+import { recipientsByHandoff } from "#/organization/handoffs.ts";
 import type { Acting } from "#/organization/members.ts";
 import { member, patient, practitioner } from "#/organization/schema.ts";
 import {
@@ -31,8 +34,12 @@ import {
   handoff,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
-import { lateRepliesShown, queuedReopenShown } from "#/organization/late-replies.ts";
-import type { QueuedReopen, ShownLateReply } from "#/organization/late-replies.ts";
+import {
+  lateRepliesShown,
+  queuedReopenShown,
+  withdrawnRepliesShown,
+} from "#/organization/late-replies.ts";
+import type { QueuedReopen, ShownLateReply, WithdrawnReply } from "#/organization/late-replies.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
@@ -58,12 +65,65 @@ export interface InboxMessage {
   media: MessageMedia | null;
 }
 
+/** An open handoff, as the inbox names it: why, and to whom. */
+export interface ListedHandoff {
+  id: string;
+  reason: HandoffReason;
+  /** Whether it needs the practitioner, rather than reception. */
+  forPractitioner: boolean;
+  /** For a `media` handoff, what the patient sent. */
+  media: MediaType[];
+  /** Who it went to, by name. */
+  recipients: string[];
+}
+
 export interface ConversationSummary {
   id: string;
   phone: string;
   /** The patients the number is the message contact of, by name. */
   patients: { id: string; name: string }[];
   lastMessage: InboxMessage;
+  /** Its open handoffs, oldest first. */
+  handoffs: ListedHandoff[];
+}
+
+/** The open handoffs of each of `conversationIds`, oldest first. */
+function openHandoffsByConversation(database: Database, conversationIds: string[]) {
+  const rows =
+    conversationIds.length === 0
+      ? []
+      : database
+          .select({
+            id: handoff.id,
+            conversationId: handoff.conversationId,
+            reason: handoff.reason,
+            forPractitioner: handoff.forPractitioner,
+            detail: handoff.detail,
+          })
+          .from(handoff)
+          .where(and(inArray(handoff.conversationId, conversationIds), eq(handoff.state, "open")))
+          .orderBy(asc(handoff.createdAt), asc(sql`${handoff}.rowid`))
+          .all();
+  const recipients = recipientsByHandoff(
+    database,
+    rows.map((row) => row.id),
+  );
+  const byConversation = new Map<string, ListedHandoff[]>();
+  for (const { conversationId, detail, ...row } of rows) {
+    const listed = { ...row, media: detail?.media ?? [], recipients: recipients.get(row.id) ?? [] };
+    byConversation.set(conversationId, [...(byConversation.get(conversationId) ?? []), listed]);
+  }
+  return byConversation;
+}
+
+/** Whether the conversation has an open handoff. */
+function withOpenHandoff(database: Database): SQL {
+  return exists(
+    database
+      .select({ one: handoff.id })
+      .from(handoff)
+      .where(and(eq(handoff.conversationId, conversation.id), eq(handoff.state, "open"))),
+  );
 }
 
 function ownPractitioner(database: Database, acting: Acting) {
@@ -198,8 +258,10 @@ function matching(database: Database, query: string): SQL | undefined {
 }
 
 /**
- * A page of the conversations `acting` reads, latest message first, each with
- * its latest message, narrowed to what `query` matches.
+ * A page of the conversations `acting` reads, those with an open handoff
+ * first, then latest message first, each with its latest message and open
+ * handoffs, narrowed to what `query` matches and, when `withHandoff`, to
+ * those with an open handoff.
  */
 export function listConversations(
   database: Database,
@@ -213,7 +275,11 @@ export function listConversations(
     return { ok: false, reason: "invalidInput" };
   }
   const reader = readerOf(database, acting);
-  const shown = and(reader.visible, matching(database, parsed.data.query));
+  const shown = and(
+    reader.visible,
+    matching(database, parsed.data.query),
+    parsed.data.withHandoff ? withOpenHandoff(database) : undefined,
+  );
   const { total } = database.select({ total: count() }).from(conversation).where(shown).get() ?? {
     total: 0,
   };
@@ -230,14 +296,17 @@ export function listConversations(
     .from(conversation)
     .innerJoin(whatsappMessage, eq(whatsappMessage.id, sql`(${latestId})`))
     .where(shown)
-    .orderBy(desc(whatsappMessage.sentAt), desc(sql`${whatsappMessage}.rowid`))
+    .orderBy(
+      desc(withOpenHandoff(database)),
+      desc(whatsappMessage.sentAt),
+      desc(sql`${whatsappMessage}.rowid`),
+    )
     .limit(conversationPageSize)
     .offset((page - 1) * conversationPageSize)
     .all();
-  const patients = patientsOf(
-    database,
-    rows.map((row) => row.conversationId),
-  );
+  const conversationIds = rows.map((row) => row.conversationId);
+  const patients = patientsOf(database, conversationIds);
+  const handoffs = openHandoffsByConversation(database, conversationIds);
   return {
     ok: true,
     total,
@@ -247,6 +316,7 @@ export function listConversations(
       phone: row.phone,
       patients: patients.get(row.conversationId) ?? [],
       lastMessage: asRead(row),
+      handoffs: handoffs.get(row.conversationId) ?? [],
     })),
   };
 }
@@ -262,7 +332,7 @@ export function readConversation(
 ):
   | {
       ok: true;
-      conversation: Omit<ConversationSummary, "lastMessage">;
+      conversation: Omit<ConversationSummary, "lastMessage" | "handoffs">;
       messages: InboxMessage[];
       /** Who took the conversation over, until when; `null` while the assistant holds it. */
       hold: ConversationHold | null;
@@ -271,6 +341,8 @@ export function readConversation(
       lateReplies: ShownLateReply[];
       /** The reopen template those replies wait behind, while it is queued. */
       queuedReopen: QueuedReopen | null;
+      /** The late replies their writers withdrew, shown as a trace without their words. */
+      withdrawnReplies: WithdrawnReply[];
     }
   | { ok: false; reason: "invalidInput" | "notFound" } {
   const parsed = conversationReferenceSchema.safeParse(input);
@@ -303,6 +375,7 @@ export function readConversation(
     window: windowOf(lastIncomingAt(database, conversationId)),
     lateReplies: lateRepliesShown(database, conversationId, acting.userId),
     queuedReopen: queuedReopenShown(database, conversationId),
+    withdrawnReplies: withdrawnRepliesShown(database, conversationId),
   };
 }
 

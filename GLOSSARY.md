@@ -226,7 +226,7 @@ _Avoid_: suggestion, draft, pending action
 
 **`handoff`** — ui: "Derivación"
 A conversation the `assistant` passes to a person: to the `practitioner` for a
-health question about what they treat, or an emergency (ui: `Para el profesional`);
+health question about what they treat, or an emergency (marked ui: `Clínica`);
 otherwise to reception, which directs any other health question and can pass a
 handoff to the practitioner (ui: `Pasar al profesional`). The assistant leaves its topic to that
 person and keeps answering the rest. It is open until a person's reply reaches the

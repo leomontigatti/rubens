@@ -73,15 +73,29 @@ async function handedTo(caller: { userId: string }) {
   const [conversation] = expectOk(
     await world.organization.listConversations(world.receptionist, {}),
   ).conversations;
-  await inStorage(world.organization, (database) => {
+  await opensHandoff(conversation!.id, caller, { forPractitioner: true });
+}
+
+/** Opens a handoff the assistant opened in `conversationId`, to `recipient`; or one closed since. */
+function opensHandoff(
+  conversationId: string,
+  recipient: { userId: string },
+  options: { forPractitioner?: boolean; state?: "open" | "closed" } = {},
+) {
+  return inStorage(world.organization, (database) => {
     const opened = database
       .insert(handoff)
-      .values({ conversationId: conversation!.id, reason: "clinical", forPractitioner: true })
+      .values({
+        conversationId,
+        reason: options.forPractitioner ? "clinical" : "patientAsked",
+        forPractitioner: options.forPractitioner ?? false,
+        state: options.state ?? "open",
+      })
       .returning({ id: handoff.id })
       .get();
     database
       .insert(handoffRecipient)
-      .values({ handoffId: opened.id, memberId: caller.userId })
+      .values({ handoffId: opened.id, memberId: recipient.userId })
       .run();
   });
 }
@@ -221,6 +235,63 @@ describe("reading a conversation in the inbox", () => {
         lastMessage: expect.objectContaining({ text: symptoms }),
       }),
     ]);
+  });
+
+  it("lists the conversations with an open handoff first, each with its open handoffs", async () => {
+    await patientWrites(symptoms);
+    await world.addPatient("Bruno", "+5491155550001");
+    await patientWrites("hola", "+5491155550001");
+    await world.addPatient("Carla", "+5491155550002");
+    await patientWrites("hola", "+5491155550002");
+    const [carla, bruno, martina] = expectOk(
+      await world.organization.listConversations(world.receptionist, {}),
+    ).conversations;
+    await opensHandoff(martina!.id, world.juan.caller, { forPractitioner: true });
+    await opensHandoff(carla!.id, world.receptionist, { state: "closed" });
+
+    const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));
+
+    expect(listed.conversations.map((one) => [one.id, one.handoffs])).toEqual([
+      [
+        martina!.id,
+        [
+          {
+            id: expect.any(String),
+            reason: "clinical",
+            media: [],
+            forPractitioner: true,
+            recipients: ["Juan Gómez"],
+          },
+        ],
+      ],
+      [carla!.id, []],
+      [bruno!.id, []],
+    ]);
+  });
+
+  it("narrows the list to the conversations with an open handoff, a search too", async () => {
+    await patientWrites(symptoms);
+    await world.addPatient("Bruno", "+5491155550001");
+    await patientWrites("hola", "+5491155550001");
+    const [bruno, martina] = expectOk(
+      await world.organization.listConversations(world.receptionist, {}),
+    ).conversations;
+    await opensHandoff(martina!.id, world.receptionist);
+    await opensHandoff(bruno!.id, world.receptionist, { state: "closed" });
+
+    const narrowed = expectOk(
+      await world.organization.listConversations(world.receptionist, { withHandoff: true }),
+    );
+    const searched = expectOk(
+      await world.organization.listConversations(world.receptionist, {
+        withHandoff: true,
+        query: "Bruno",
+      }),
+    );
+
+    expect(narrowed.conversations.map((one) => one.id)).toEqual([martina!.id]);
+    expect(narrowed.total).toBe(1);
+    expect(searched.conversations).toEqual([]);
   });
 
   it("shows the booking confirmation's text and delivery to reception before the patient answers, and not to its practitioner", async () => {
