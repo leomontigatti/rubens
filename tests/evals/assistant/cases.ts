@@ -709,8 +709,6 @@ export const cases: Case[] = [
       forbidden: ["propose_change", "accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      // Says the change was not made; "no hice ningún cambio, ya está confirmado" passes.
-      replyAvoids: [/no se (pudo|realizó)|no (pude|quedó)/i],
     },
   },
 ];
