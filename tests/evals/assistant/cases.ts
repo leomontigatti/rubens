@@ -3,6 +3,7 @@
 // patient, practitioner and address comes from world.ts.
 
 import type { HandoffReason as OpenHandoffReason } from "../../../src/lib/handoffs.ts";
+import { reactionLine } from "../../../src/lib/reactions.ts";
 
 import type { NumberKey } from "./world.ts";
 
@@ -91,6 +92,15 @@ const moveProposal: HistoryMessage = {
   role: "assistant",
   text: "Te propongo mover tu Sesión de kinesiología con Lic. Paula Ríos del jueves 12/11 a las 16:30 al martes 17/11 a las 10:30 en Sede Norte (Av. Rafael Núñez 4500). ¿Lo confirmo?",
 };
+
+// A move to Tuesday the assistant proposed, still waiting on the patient.
+const movingToTuesday: HistoryMessage[] = [
+  reminder,
+  { role: "patient", text: "lo puedo cambiar?" },
+  offeredSlots,
+  { role: "patient", text: "el martes" },
+  moveProposal,
+];
 
 const plain = { healthQuestion: false, emergency: false };
 const noHandoff = false as const;
@@ -217,13 +227,7 @@ export const cases: Case[] = [
     id: "move-accept",
     description: "Moving: the patient's yes to the latest proposal accepts it",
     number: "onePatient",
-    history: [
-      reminder,
-      { role: "patient", text: "lo puedo cambiar?" },
-      offeredSlots,
-      { role: "patient", text: "el martes" },
-      moveProposal,
-    ],
+    history: movingToTuesday,
     patient: ["dale, confirmalo"],
     liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
     expect: { calls: [{ name: "accept_proposal" }], handoff: noHandoff, judgement: plain },
@@ -232,13 +236,7 @@ export const cases: Case[] = [
     id: "move-slot-taken",
     description: "Moving: a time taken meanwhile is reported and others offered",
     number: "onePatient",
-    history: [
-      reminder,
-      { role: "patient", text: "lo puedo cambiar?" },
-      offeredSlots,
-      { role: "patient", text: "el martes" },
-      moveProposal,
-    ],
+    history: movingToTuesday,
     patient: ["sí, perfecto"],
     liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
     slotTaken: true,
@@ -575,6 +573,64 @@ export const cases: Case[] = [
       replyAvoids: [
         /no (se )?(puede|pude|podemos|es posible)|regla|24 ?h|una vez|persona|equipo|alguien/i,
       ],
+    },
+  },
+  {
+    id: "thumbs-up-after-proposal",
+    description: "Reactions: a message holding only 👍 after the move proposal is the yes (#292)",
+    number: "onePatient",
+    history: movingToTuesday,
+    patient: ["👍"],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      calls: [{ name: "accept_proposal" }],
+      forbidden: ["propose_change"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "thumbs-up-reaction-on-proposal",
+    description: "Reactions: a 👍 reaction on the move proposal is the yes (#292)",
+    number: "onePatient",
+    history: movingToTuesday,
+    patient: [reactionLine("👍", moveProposal.text)],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      calls: [{ name: "accept_proposal" }],
+      forbidden: ["propose_change"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "thumbs-up-on-older-message",
+    description:
+      "Reactions: a 👍 on the times offered before the proposal asks for nothing, and accepts nothing (#292)",
+    number: "onePatient",
+    history: movingToTuesday,
+    patient: [reactionLine("👍", offeredSlots.text)],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    // The model never reads a reaction taken back (`src/organization/reactions.ts`):
+    // the patient's 👍 on the proposal, removed, leaves the conversation as it was.
+    id: "reaction-taken-back",
+    description:
+      "Reactions: after a 👍 on the proposal taken back, a hesitation accepts nothing (#292)",
+    number: "onePatient",
+    history: movingToTuesday,
+    patient: ["esperá, lo consulto y te aviso"],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
     },
   },
 ];

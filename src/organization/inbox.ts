@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, exists, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, like, ne, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
@@ -8,6 +8,7 @@ import type { MessageMedia } from "#/lib/message-media.ts";
 import { isWindowOpen, windowClosesAt } from "#/lib/conversation-window.ts";
 import { patientName } from "#/lib/patients.ts";
 import { parsePhone } from "#/lib/phones.ts";
+import { liveReactions, reactionType } from "#/lib/reactions.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import {
   conversationListSchema,
@@ -65,6 +66,8 @@ export interface InboxMessage {
   sentBy: string | null;
   /** A patient's voice note, photo, video or file, which the inbox opens from Meta; `null` for words alone. */
   media: MessageMedia | null;
+  /** The patient's reaction shown under it, its emoji; `null` for none. */
+  reaction: string | null;
 }
 
 /** An open handoff, as the inbox names it: why, and to whom. */
@@ -172,6 +175,8 @@ export const messageColumns = {
   sentAt: whatsappMessage.sentAt,
   type: whatsappMessage.type,
   text: whatsappMessage.text,
+  whatsappId: whatsappMessage.whatsappId,
+  reactsTo: whatsappMessage.reactsTo,
   status: whatsappMessage.status,
   judgement: whatsappMessage.judgement,
   payload: whatsappMessage.payload,
@@ -181,7 +186,7 @@ type MessageRow = Pick<typeof whatsappMessage.$inferSelect, keyof typeof message
   senderName?: string | null;
 };
 
-export function asRead(row: MessageRow): InboxMessage {
+export function asRead(row: MessageRow, reaction: string | null = null): InboxMessage {
   const { id, direction, sentAt, type, text, status, judgement } = row;
   return {
     id,
@@ -193,6 +198,7 @@ export function asRead(row: MessageRow): InboxMessage {
     judgement,
     sentBy: row.senderName ?? null,
     media: messageMediaOf(row),
+    reaction,
   };
 }
 
@@ -289,7 +295,10 @@ export function listConversations(
   const latestId = database
     .select({ id: latestMessage.id })
     .from(latestMessage)
-    .where(eq(latestMessage.conversationId, conversation.id))
+    // A reaction is shown under its message, never as the conversation's latest.
+    .where(
+      and(eq(latestMessage.conversationId, conversation.id), ne(latestMessage.type, reactionType)),
+    )
     .orderBy(desc(latestMessage.sentAt), desc(sql`${latestMessage}.rowid`))
     .limit(1);
   // A conversation is created with its first message, so each has a latest.
@@ -374,7 +383,7 @@ export function readConversation(
   return {
     ok: true,
     conversation: { ...found, patients: patientsOf(database, [found.id]).get(found.id) ?? [] },
-    messages: messages.map(asRead),
+    messages: withReactions(messages),
     hold: holdOf(database, acting, conversationId),
     window: windowOf(lastIncomingAt(database, conversationId)),
     lateReplies: lateRepliesShown(database, conversationId, acting.userId),
@@ -382,6 +391,23 @@ export function readConversation(
     withdrawnReplies: withdrawnRepliesShown(database, conversationId),
     optOuts: optOutsShown(database, conversationId),
   };
+}
+
+/**
+ * The messages as the chat shows them: each with the patient's reaction to it
+ * under it, and no reaction as a message of its own unless the one it reacts
+ * to is not stored.
+ */
+function withReactions(rows: MessageRow[]) {
+  const live = liveReactions(rows);
+  const stored = new Set(rows.map((row) => row.whatsappId));
+  return rows
+    .filter(
+      (row) =>
+        row.type !== reactionType ||
+        (!stored.has(row.reactsTo!) && live.get(row.reactsTo!) === row),
+    )
+    .map((row) => asRead(row, live.get(row.whatsappId)?.text ?? null));
 }
 
 /** A conversation's window, read now: whether a free-form reply may go, and when it closes. */

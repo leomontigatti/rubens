@@ -34,6 +34,8 @@ const metaMessage = z.looseObject({
   timestamp: z.coerce.number().int(),
   type: z.string(),
   text: z.object({ body: z.string() }).optional(),
+  /** A reaction, or, with no emoji (or an empty one), its removal. */
+  reaction: z.object({ message_id: z.string().min(1), emoji: z.string().optional() }).optional(),
 });
 
 const metaStatus = z.looseObject({
@@ -100,8 +102,9 @@ function incomingOf(message: MetaMessage): IncomingWhatsappMessage {
     from: `+${message.from}`,
     sentAt: message.timestamp * 1000,
     type: message.type,
-    text: message.text?.body ?? null,
+    text: message.text?.body ?? (message.reaction ? (message.reaction.emoji ?? "") : null),
     payload: JSON.stringify(message),
+    ...(message.reaction && { reactsTo: message.reaction.message_id }),
   };
 }
 

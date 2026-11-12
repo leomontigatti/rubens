@@ -1,4 +1,4 @@
-import { and, eq, exists, inArray, max, not, or } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, max, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -10,6 +10,7 @@ import type {
 } from "#/lib/whatsapp-messages.ts";
 import { assistantWaitMs } from "#/lib/assistant.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
+import { reactionType, takesBack } from "#/lib/reactions.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { guardian, patient } from "#/organization/schema.ts";
@@ -129,6 +130,8 @@ export function relinkPatient(tx: Writer, patientId: string) {
 
 function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
   const conversationId = conversationWith(tx, message.from);
+  // A reaction taken back is ignored: no turn reads it, and it opens no window (`lastIncomingAt`).
+  const ignored = takesBack(message);
   const stored = tx
     .insert(whatsappMessage)
     .values({
@@ -138,7 +141,9 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
       type: message.type,
       text: message.text,
       payload: message.payload,
+      reactsTo: message.reactsTo,
       sentAt: message.sentAt,
+      judgement: ignored ? "notForPractitioner" : undefined,
     })
     .onConflictDoNothing({ target: whatsappMessage.whatsappId })
     .returning({ id: whatsappMessage.id })
@@ -147,6 +152,9 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
     return { whatsappId: message.whatsappId, alreadyStored: true };
   }
   linkPatients(tx, conversationId, message.from);
+  if (ignored) {
+    return { whatsappId: message.whatsappId, alreadyStored: false };
+  }
   // Each message restarts the assistant's wait, so a burst gets one turn (`assistant.ts`).
   tx.update(conversation)
     .set({ assistantDueAt: Date.now() + assistantWaitMs })
@@ -325,6 +333,12 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
   });
 }
 
+/** A reaction the patient took back (`takesBack`), in SQL. */
+const takenBack = and(
+  eq(whatsappMessage.type, reactionType),
+  or(isNull(whatsappMessage.text), eq(whatsappMessage.text, "")),
+)!;
+
 /** When the patient last wrote in `conversationId`, which opens its window. */
 export function lastIncomingAt(database: Writer, conversationId: string) {
   const last = database
@@ -334,6 +348,7 @@ export function lastIncomingAt(database: Writer, conversationId: string) {
       and(
         eq(whatsappMessage.conversationId, conversationId),
         eq(whatsappMessage.direction, "incoming"),
+        not(takenBack),
       ),
     )
     .get();

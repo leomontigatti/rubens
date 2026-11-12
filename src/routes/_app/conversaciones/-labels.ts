@@ -10,6 +10,7 @@ import {
 import type { MediaKind, MessageMedia } from "#/lib/message-media.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatPhone } from "#/lib/phones.ts";
+import { reactionType } from "#/lib/reactions.ts";
 import type { ConversationSummary, InboxMessage } from "#/organization/inbox.ts";
 
 // How the inbox writes a message, in the list and in the conversation.
@@ -78,6 +79,10 @@ export function messageText(message: InboxMessage) {
     return message.text === ""
       ? "Nota de voz que no se pudo entender"
       : `Nota de voz: ${message.text}`;
+  }
+  // One whose message the inbox holds shows under it instead (`-chat.tsx`).
+  if (message.type === reactionType) {
+    return `Reaccionó con ${message.text} a un mensaje anterior`;
   }
   if (message.media?.filename) {
     return `${mediaLabels[message.type] ?? "Archivo"}: ${message.media.filename}`;

@@ -85,6 +85,38 @@ describe("score", () => {
     expect(result.reply.pass).toBe(false);
   });
 
+  it("passes a 👍 to the proposal, as text or as a reaction, only when it is accepted", () => {
+    for (const caseId of ["thumbs-up-after-proposal", "thumbs-up-reaction-on-proposal"]) {
+      const accepted = turn(caseId, "Listo, quedó el martes 17/11 a las 10:30.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+        tools.run("accept_proposal", {});
+      });
+      const asked = turn(caseId, "Querés que lo confirme?", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      });
+
+      expect(accepted.toolChoice.pass).toBe(true);
+      expect(accepted.availability.pass).toBe(true);
+      expect(asked.toolChoice).toEqual({ pass: false, reason: "missing accept_proposal" });
+    }
+  });
+
+  it("fails accepting the proposal on a 👍 to an older message, or after one taken back", () => {
+    for (const caseId of ["thumbs-up-on-older-message", "reaction-taken-back"]) {
+      const accepted = turn(caseId, "Listo, quedó el martes 17/11 a las 10:30.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+        tools.run("accept_proposal", {});
+      });
+      const waited = turn(caseId, "Dale, cualquier cosa avisame.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      });
+
+      expect(accepted.toolChoice).toEqual({ pass: false, reason: "forbidden accept_proposal" });
+      expect(waited.toolChoice.pass).toBe(true);
+      expect(waited.handoff.pass).toBe(true);
+    }
+  });
+
   it("fails a change that was accepted before it was proposed", () => {
     const result = turn("confirm-after-reminder", "Listo, confirmado.", (tools) => {
       tools.run("judge_messages", { healthQuestion: false, emergency: false });
