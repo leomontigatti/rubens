@@ -151,16 +151,16 @@ export async function patientWrites(
 /** A reaction from `from` to the message Meta knows as `reactsTo`; an empty `emoji` takes it back. */
 export async function patientReacts(
   organization: DurableObjectStub<Organization>,
-  reaction: { from: string; reactsTo: string; emoji: string },
+  reaction: { from: string; reactsTo: string; emoji: string; sentAt?: number },
 ) {
   const whatsappId = `wamid.${crypto.randomUUID()}`;
-  const { from, reactsTo, emoji } = reaction;
+  const { from, reactsTo, emoji, sentAt = Date.now() } = reaction;
   const stored = await organization.storeWhatsappEvents({
     messages: [
       {
         whatsappId,
         from,
-        sentAt: Date.now(),
+        sentAt,
         type: "reaction",
         text: emoji,
         reactsTo,

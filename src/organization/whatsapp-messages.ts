@@ -1,4 +1,4 @@
-import { and, eq, exists, inArray, isNull, max, ne, not, or } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, isNull, lte, max, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -128,33 +128,47 @@ export function relinkPatient(tx: Writer, patientId: string) {
   }
 }
 
+/** The patient's reactions in `conversationId` to the message `reactsTo`, in SQL. */
+function reactionsTo(conversationId: string, reactsTo: string) {
+  return and(
+    eq(whatsappMessage.conversationId, conversationId),
+    eq(whatsappMessage.type, reactionType),
+    eq(whatsappMessage.reactsTo, reactsTo),
+  );
+}
+
 /**
- * Leaves the patient's earlier reactions to the same message, replaced or
- * taken back by `by`, for no turn to read: one still waiting is judged as
- * nothing, and a turn reading it meanwhile acts on nothing (`answeredMeanwhile`).
+ * Leaves the patient's reactions to the same message sent before `reaction`,
+ * which replaced or took them back, for no turn to read: one still waiting
+ * is judged as nothing, and a turn that read it meanwhile accepts no proposal
+ * on it (`answeredMeanwhile` in `proposals.ts`). Says whether a reaction sent
+ * after it is stored already, as when Meta delivers them out of order:
+ * `reaction` is then replaced itself.
  */
 function replaceReactions(
   tx: Writer,
-  reaction: { conversationId: string; reactsTo: string; by: string },
+  reaction: { conversationId: string; reactsTo: string; sentAt: number },
 ) {
+  const to = reactionsTo(reaction.conversationId, reaction.reactsTo);
   tx.update(whatsappMessage)
     .set({ judgement: "notForPractitioner" })
-    .where(
-      and(
-        eq(whatsappMessage.conversationId, reaction.conversationId),
-        eq(whatsappMessage.type, reactionType),
-        eq(whatsappMessage.reactsTo, reaction.reactsTo),
-        isNull(whatsappMessage.judgement),
-        ne(whatsappMessage.id, reaction.by),
-      ),
-    )
+    .where(and(to, isNull(whatsappMessage.judgement), lte(whatsappMessage.sentAt, reaction.sentAt)))
     .run();
+  const later = tx
+    .select({ id: whatsappMessage.id })
+    .from(whatsappMessage)
+    .where(and(to, gt(whatsappMessage.sentAt, reaction.sentAt)))
+    .get();
+  return later !== undefined;
 }
 
 function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
   const conversationId = conversationWith(tx, message.from);
-  // A reaction taken back is ignored: no turn reads it, and it opens no window (`lastIncomingAt`).
-  const ignored = takesBack(message);
+  const replaced =
+    message.reactsTo !== undefined &&
+    replaceReactions(tx, { conversationId, reactsTo: message.reactsTo, sentAt: message.sentAt });
+  // A reaction taken back or replaced is ignored: no turn reads it, and one taken back opens no window (`lastIncomingAt`).
+  const ignored = takesBack(message) || replaced;
   const stored = tx
     .insert(whatsappMessage)
     .values({
@@ -175,9 +189,6 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
     return { whatsappId: message.whatsappId, alreadyStored: true };
   }
   linkPatients(tx, conversationId, message.from);
-  if (message.reactsTo) {
-    replaceReactions(tx, { conversationId, reactsTo: message.reactsTo, by: stored.id });
-  }
   if (ignored) {
     return { whatsappId: message.whatsappId, alreadyStored: false };
   }

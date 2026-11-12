@@ -18,7 +18,7 @@ import {
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // A patient's WhatsApp reactions (docs/domain/assistant.md § Proposals): what
 // the model reads of them, the yes a 👍 on the latest proposal gives, and the
@@ -53,8 +53,28 @@ function writes(text: string) {
   return patientWrites(world.organization, text, martinaPhone);
 }
 
-function reacts(reactsTo: string, emoji: string) {
-  return patientReacts(world.organization, { from: martinaPhone, reactsTo, emoji });
+function reacts(reactsTo: string, emoji: string, sentAt?: number) {
+  return patientReacts(world.organization, { from: martinaPhone, reactsTo, emoji, sentAt });
+}
+
+/** Starts the alarm once the wait is over, and returns its run once the model is writing. */
+async function alarmUntilTurn() {
+  const turns = scriptedModel.turns.length;
+  vi.setSystemTime(Date.now() + assistantWaitMs);
+  const alarm = runDurableObjectAlarm(world.organization);
+  while (scriptedModel.turns.length === turns) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  return { alarm };
+}
+
+/** Holds the model mid-turn until `release`. */
+function holdingTurn() {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { released, release };
 }
 
 /** Meta's id for the message the assistant sent with `text`. */
@@ -197,10 +217,7 @@ describe("the patient's reactions", () => {
     await afterTheWait();
     const proposed = await sentId(proposal);
     await reacts(proposed, "👍");
-    let release!: () => void;
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const { released, release } = holdingTurn();
     let accepted: unknown;
     scriptedModel.script(async (turn) => {
       turn.call("judge_messages", notClinical);
@@ -208,19 +225,72 @@ describe("the patient's reactions", () => {
       accepted = turn.call("accept_proposal");
       return "Listo, quedó confirmado.";
     });
-    const turns = scriptedModel.turns.length;
-    vi.setSystemTime(Date.now() + assistantWaitMs);
-    const alarm = runDurableObjectAlarm(world.organization);
-    while (scriptedModel.turns.length === turns) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
-
+    const { alarm } = await alarmUntilTurn();
     await reacts(proposed, "");
     release();
     await alarm;
 
     expect(accepted).toEqual({ ok: false, reason: "held" });
     expect((await world.appointmentOf(appointmentId)).status).not.toBe("confirmed");
+  });
+
+  it("settles the patient's words when they change a reaction while the model writes, not reading them again", async () => {
+    const address = await assistantAnswers("dónde queda?", "Av. Siempre Viva 123.");
+    await writes("y a qué hora es el turno?");
+    await reacts(address, "👍");
+    const { released, release } = holdingTurn();
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      await released;
+      return "El lunes 5 de enero a las 09:00.";
+    });
+    const { alarm } = await alarmUntilTurn();
+
+    await reacts(address, "❤️");
+    release();
+    await alarm;
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(
+      "[new messages]\n[reaccionó ❤️ al mensaje: «Av. Siempre Viva 123.»]",
+    );
+  });
+
+  it("runs no turn for a 👍 that Meta delivers after the patient took it back", async () => {
+    const proposal = "Confirmo tu Consulta con Juan Gómez del lunes 5 de enero a las 09:00?";
+    await writes("lo puedo confirmar?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return proposal;
+    });
+    await afterTheWait();
+    const proposed = await sentId(proposal);
+    const turns = scriptedModel.turns.length;
+
+    await reacts(proposed, "", Date.now());
+    await reacts(proposed, "👍", Date.now() - 2_000);
+    await afterTheWait();
+
+    expect(scriptedModel.turns).toHaveLength(turns);
+  });
+
+  it("counts no failed turn once the only message a failed turn left is taken back", async () => {
+    const reply = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
+    await reacts(reply, "👍");
+    scriptedModel.script(() => {
+      throw new Error("The model is overloaded");
+    });
+    await afterTheWait();
+
+    await reacts(reply, "");
+    vi.setSystemTime(Date.now() + 60_000);
+    await runDurableObjectAlarm(world.organization);
+
+    const failed = await inStorage(world.organization, (database) =>
+      database.select({ failedTurns: conversation.failedTurns }).from(conversation).get(),
+    );
+    expect(failed?.failedTurns).toBe(0);
   });
 
   it("reads only the reaction the patient left on a message: none once taken back, the last once replaced", async () => {

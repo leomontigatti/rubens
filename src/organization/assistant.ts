@@ -443,6 +443,8 @@ async function runTurn(
   }
   const read = await readTranscribed(database, cloud, ports.transcriber, conversationId);
   if (!read) {
+    // Nothing waits, as once the patient took back the only reaction a failed turn left.
+    clearFailedTurns(database, conversationId);
     return null;
   }
   const { transcribed } = read;
@@ -473,10 +475,12 @@ async function runTurn(
     return null;
   }
   // A person answered the turn's words while the model read them: theirs is the answer.
+  // A reaction the patient replaced meanwhile is no answer (`whatsapp-messages.ts`).
+  const words = turn.read.unjudged.filter((message) => message.type !== reactionType);
   if (
     answeredMeanwhile(
       database,
-      turn.read.unjudged.map((message) => message.id),
+      words.map((message) => message.id),
     )
   ) {
     turnForTheRest(database, conversationId);
