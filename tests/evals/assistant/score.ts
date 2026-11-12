@@ -162,6 +162,11 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
   return "reply";
 }
 
+// A value a model wrote, for a problem's text: a string as is, anything else as JSON.
+function shown(value: unknown) {
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
 function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   const { handoff, judgement } = evaluationCase.expect;
   const made = lastArgs(turn, "hand_off");
@@ -175,7 +180,7 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
     const reason = made?.reason ?? judgedReason(evaluationCase, turn);
     if (opened === null) problems.push("no handoff");
     else if (!handoff.reasons.includes(reason as never))
-      problems.push(`handoff reason ${String(reason)}`);
+      problems.push(`handoff reason ${shown(reason)}`);
   }
   if (judged) {
     // An emergency is a health question whatever the model said (`assistant.ts`).
@@ -183,7 +188,7 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
     if (healthQuestion !== judgement.healthQuestion)
       problems.push(`judged healthQuestion=${String(judged.healthQuestion)}`);
     if (judgement.treatedBy !== undefined && (judged.treatedBy ?? null) !== judgement.treatedBy)
-      problems.push(`judged treatedBy=${String(judged.treatedBy ?? null)}`);
+      problems.push(`judged treatedBy=${shown(judged.treatedBy ?? null)}`);
     if (judged.emergency !== judgement.emergency)
       problems.push(`judged emergency=${String(judged.emergency)}`);
     // An unset `understood` is the schema's default, true.

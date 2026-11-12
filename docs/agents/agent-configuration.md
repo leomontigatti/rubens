@@ -23,8 +23,17 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
   one would silently stop it reading these instructions. Claude-only notes go in
   `~/.claude/CLAUDE.md`.
 - **A skill only underthing uses** goes in `.agents/skills/<name>/`, under a name no shared skill
-  has, with `.claude/skills` made a symlink to `.agents/skills` so Claude Code sees it. There is
-  none today. A change to a shared skill is a PR to `leomontigatti/agent-workflow`.
+  has, with a link to it in `.claude/skills/<name>` so Claude Code sees it. A change to a shared
+  skill is a PR to `leomontigatti/agent-workflow`.
+- **Skills a dependency ships** are not linked by pnpm: its approval takes every skill a package
+  has, so `pnpm-workspace.yaml` denies them under `permissions`, and a new package asking for it
+  shows in `pnpm permissions list`. The ones worth having are copied one by one from the installed
+  package with the `skills` CLI, which writes both places and records each in `skills-lock.json`:
+  `react-router` and `router-query` (`@tanstack/react-router`), `react-start`
+  (`@tanstack/react-start`) and `fallow`. A copy does not follow the package: after bumping one,
+  copy it again, with telemetry off,
+  `DISABLE_TELEMETRY=1 npx skills add ./node_modules/<package> -s <skill> -a codex -a claude-code -y`.
+  They are kept as published, so formatting, lint, the type check and fallow skip them.
 - **A hook change is a change to the script.** Adding or removing a project hook touches both
   wiring files, which carry the same events and matchers. The scripts read either payload:
   Claude Code's `tool_input.file_path`, or a Codex patch in `tool_input.command`.

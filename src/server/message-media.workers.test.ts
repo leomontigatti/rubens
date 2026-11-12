@@ -55,6 +55,11 @@ async function served(
 }
 
 /** A media message Martina sent `daysAgo`, as Meta's webhook hands it over; returns its ids. */
+// The fake media are text: read as bytes, so workerd does not warn about decoding an image or a voice note.
+async function bytesOf(response: Response) {
+  return new TextDecoder().decode(await response.arrayBuffer());
+}
+
 async function patientSends(type: string, body: Record<string, unknown>, daysAgo = 0) {
   const whatsappId = `wamid.${crypto.randomUUID()}`;
   expectOk(
@@ -116,7 +121,7 @@ describe("the media route", () => {
     const response = await served(receptionist, photo);
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe("bytes of media-photo");
+    expect(await bytesOf(response)).toBe("bytes of media-photo");
     expect(response.headers.get("content-type")).toBe("image/jpeg");
     expect(response.headers.get("content-disposition")).toBe("inline");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -136,7 +141,7 @@ describe("the media route", () => {
     expect(firstBytes.status).toBe(206);
     expect(firstBytes.headers.get("content-range")).toBe(`bytes 0-1/${length}`);
     expect(firstBytes.headers.get("content-length")).toBe("2");
-    expect(await firstBytes.text()).toBe("by");
+    expect(await bytesOf(firstBytes)).toBe("by");
   });
 
   it("claims no byte ranges when Meta's media host takes none, and sends the whole file", async () => {
@@ -148,7 +153,7 @@ describe("the media route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("accept-ranges")).toBeNull();
     expect(response.headers.get("content-range")).toBeNull();
-    expect(await response.text()).toBe("bytes of media-voice");
+    expect(await bytesOf(response)).toBe("bytes of media-voice");
   });
 
   it("asks Meta for the whole file when the range is not one a player sends", async () => {
