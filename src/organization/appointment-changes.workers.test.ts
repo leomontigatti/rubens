@@ -465,6 +465,12 @@ describe("rescheduling", () => {
       { field: "Fin", before: "05/01/2099 09:30", after: "05/01/2099 12:30" },
       { field: "Consultorio", before: "Consultorio 1", after: "Norte 1" },
     ]);
+    // Titled by the appointment as it is now, in its office's zone (#173).
+    expect(move!.appointment).toEqual({
+      startsAt: new Date(at("17:00")).getTime(),
+      practitioner: "Juan Gómez",
+      timeZone: "America/Lima",
+    });
   });
 
   it("refuses the appointment of a deactivated patient, or practitioner", async () => {

@@ -107,8 +107,8 @@ function PractitionerSection({ settings }: { settings: PractitionerSettings }) {
         <Detail label="Intervalo de turnos" value={`${settings.gridMinutes} minutos`} />
         <Detail label="Color en la agenda" value={<ColorName color={settings.color} />} />
         <Detail
-          label="Historia clínica"
-          value={settings.keepsClinicalRecords ? "La lleva" : "No la lleva"}
+          label="Lleva historias clínicas"
+          value={settings.keepsClinicalRecords ? "Sí" : "No"}
         />
       </dl>
     </RecordSection>

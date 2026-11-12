@@ -11,7 +11,6 @@ import { HandoffRemindersSection } from "#/routes/_app/whatsapp/configuracion/-h
 import { NumberSection } from "#/routes/_app/whatsapp/configuracion/-number.tsx";
 import { ReturnTimeSection } from "#/routes/_app/whatsapp/configuracion/-return-time.tsx";
 import { SandboxSection } from "#/routes/_app/whatsapp/configuracion/-sandbox.tsx";
-import { UsageSection } from "#/routes/_app/whatsapp/configuracion/-usage.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/")({
   head: () => ({ meta: [{ title: "Configuración de WhatsApp · underthing" }] }),
@@ -28,7 +27,7 @@ function WhatsappSettings() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Configuración"
-        description="Cómo el consultorio escribe a los pacientes por WhatsApp."
+        description="Cómo la organización escribe a los pacientes por WhatsApp."
       />
       <NumberSection settings={settings} />
       <CommunicationRulesSection settings={settings} />
@@ -36,7 +35,6 @@ function WhatsappSettings() {
       <HandoffRemindersSection settings={settings} />
       <ReturnTimeSection settings={settings} />
       <SandboxSection />
-      <UsageSection settings={settings} />
     </div>
   );
 }

@@ -8,14 +8,13 @@ import {
   proposalState,
   proposalStatement,
   sandboxOutcomeLabels,
-  sandboxToolLabels,
   windowCountdown,
 } from "#/lib/assistant-sandbox-copy.ts";
 import type { playSandboxTurn } from "#/server/whatsapp.functions.ts";
 
 // What the sandbox shows beside its conversation (docs/domain/assistant.md §
 // Trying it): the window's countdown, the number of messages, the proposals,
-// and the last turn's tool calls, outcome and clinical check.
+// and the last turn's outcome and clinical check.
 
 export type Played = Extract<Awaited<ReturnType<typeof playSandboxTurn>>, { ok: true }>;
 
@@ -78,39 +77,8 @@ export function SandboxLastTurn({ turn }: { turn: Turn }) {
             <AlertDescription className="whitespace-pre-wrap">{turn.held}</AlertDescription>
           </Alert>
         )}
-        <div className="flex flex-col gap-2">
-          <h3 className="text-muted-foreground text-sm">Herramientas</h3>
-          {turn.toolCalls.length === 0 ? (
-            <p className="text-sm">No usó ninguna.</p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {turn.toolCalls.map((call, index) => (
-                <li key={index} className="flex flex-col gap-1">
-                  <span className="text-sm">
-                    {sandboxToolLabels[call.name]}{" "}
-                    <code className="text-muted-foreground text-xs">{call.name}</code>
-                  </span>
-                  <ToolJson label="Pidió" value={call.args} />
-                  <ToolJson label="Devolvió" value={call.result} />
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
       </div>
     </RecordSection>
-  );
-}
-
-/** What a tool was asked or returned, as the object saw it. */
-function ToolJson(props: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-xs">{props.label}</span>
-      <pre className="bg-muted max-h-48 overflow-auto rounded-md p-2 text-xs">
-        {JSON.stringify(JSON.parse(props.value), null, 2)}
-      </pre>
-    </div>
   );
 }
 

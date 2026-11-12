@@ -11,8 +11,7 @@ import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
 type Settings = Extract<Awaited<ReturnType<typeof getWhatsappSettings>>, { ok: true }>;
 
-export const handoffContactsHint =
-  "Reciben las derivaciones del asistente que no son sobre el turno de un profesional. Al menos uno tiene que ser un profesional que lleve historias clínicas: solo ellos reciben las derivaciones clínicas.";
+export const handoffContactsHint = "Quiénes reciben las derivaciones que no son de un turno.";
 
 export const keepsRecordsLabel = "Lleva historias clínicas";
 
@@ -45,8 +44,10 @@ export function HandoffContactsSection({ settings }: { settings: Settings }) {
         ) : (
           <Alert variant="warning">
             <AlertTitle>Todavía no hay contactos de derivación</AlertTitle>
+            {/* Who gets them meanwhile (`contactsFor` in `src/organization/handoffs.ts`). */}
             <AlertDescription>
-              Elegí al menos un profesional que lleve historias clínicas.
+              Mientras no elijas, las derivaciones van a los administradores, y las clínicas a los
+              profesionales que llevan historias clínicas.
             </AlertDescription>
           </Alert>
         )}

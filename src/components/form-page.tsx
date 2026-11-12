@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import {
   useBlocker,
   useCanGoBack,
@@ -13,7 +14,8 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
-import { FormGrid, FormProblemsContext } from "#/components/app-form.tsx";
+import { FormGrid } from "#/components/app-form.tsx";
+import { FormProblemsContext } from "#/components/field-problem.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { isStillOn } from "#/components/form-page-location.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
@@ -194,6 +196,8 @@ export function FormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
+  /** What the submit does beyond saving, beside its button. */
+  submitNote?: string;
   /** The form makes a new record, so it has no saved values to go back to. */
   creates?: boolean;
   pending: boolean;
@@ -250,6 +254,7 @@ export function FormPage(props: {
               page={page}
               pending={pending}
               submitLabel={props.submitLabel}
+              submitNote={props.submitNote}
               discardable={!props.creates}
             />
           </form>
@@ -325,20 +330,35 @@ function RefusalAlert({
   );
 }
 
-/** `Volver` on the left; `Descartar cambios`, once it applies, and the submit button on the right. */
+/**
+ * `Volver` on the left; `Descartar cambios`, once it applies, and the submit
+ * button on the right, after the note on what it does, if any.
+ */
 function FormPageActions(props: {
   page: FormPageControl;
   pending: boolean;
   submitLabel: string;
+  submitNote?: string;
   discardable: boolean;
 }) {
   const { page, pending } = props;
   return (
-    <div className="bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4">
+    <div
+      className={cn(
+        "bg-background sticky bottom-0 flex items-center justify-between gap-3 border-t py-4",
+        props.submitNote && "flex-wrap",
+      )}
+    >
       <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
         <ChevronLeftIcon data-icon="inline-start" aria-hidden />
         Volver
       </Button>
+      {/* On a narrow screen, a row of its own above the buttons. */}
+      {props.submitNote && (
+        <p className="text-muted-foreground order-first basis-full text-sm sm:order-none sm:ml-auto sm:basis-auto sm:text-right">
+          {props.submitNote}
+        </p>
+      )}
       <div className="flex items-center gap-3">
         {props.discardable && page.dirty && (
           <Button type="button" variant="outline" disabled={pending} onClick={page.askToDiscard}>

@@ -53,9 +53,13 @@ function EditTemplate() {
   }
   return (
     <div className="flex flex-col gap-6">
-      {/* Keyed: another template's page starts its form afresh, not from this one's state. */}
+      {/* Keyed: another template's page starts afresh, not from this one's state. */}
       <EditForm key={template.id} template={template} organizationName={listed.organizationName} />
-      <TemplateVersions versions={template.versions} organizationName={listed.organizationName} />
+      <TemplateVersions
+        key={template.id}
+        versions={template.versions}
+        organizationName={listed.organizationName}
+      />
     </div>
   );
 }
@@ -66,7 +70,7 @@ function LatestWarning({ latest }: { latest: TemplateVersion | undefined }) {
     return (
       <Alert variant="warning">
         <AlertTitle>
-          Meta pasó la versión {latest.version} a {templateCategoryLabels[latest.category]}
+          Meta pasó la última versión a {templateCategoryLabels[latest.category]}
         </AlertTitle>
         <AlertDescription>
           Cuesta más del doble que una de utilidad, así que underthing deja de enviarla. Enviá una
@@ -78,7 +82,7 @@ function LatestWarning({ latest }: { latest: TemplateVersion | undefined }) {
   if (latest?.status === "rejected") {
     return (
       <Alert variant="destructive">
-        <AlertTitle>Meta rechazó la versión {latest.version}</AlertTitle>
+        <AlertTitle>Meta rechazó la última versión</AlertTitle>
         <AlertDescription>
           {latest.rejectionReason
             ? rejectionText(latest.rejectionReason)
@@ -137,7 +141,7 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
     template.timing && !template.event ? { name: template.name, timing: template.timing } : null;
 
   const versionNote = latest
-    ? `Versión ${latest.version} en Meta. Si cambiás el texto, se envía como la versión ${latest.version + 1}, que Meta revisa de nuevo.`
+    ? "Si cambiás el texto, se envía a Meta como una versión nueva, que Meta revisa de nuevo."
     : "Todavía no se envió a Meta. Al guardarla, se envía y Meta la revisa antes de que se pueda usar.";
 
   return (

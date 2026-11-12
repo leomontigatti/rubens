@@ -383,11 +383,12 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 
 - **Template preview** (first release): each template as WhatsApp bubbles, filled
   with a sample appointment, with its approval status at Meta and the reason for a
-  rejection, checks against Meta's rules before it is submitted, and its approved
-  versions side by side.
+  rejection, checks against Meta's rules before it is submitted, and its newest
+  version beside the one in use, each by the day it was sent, the older ones on
+  demand.
 - **Sandbox** (first release): staff play the patient against the real assistant,
-  with its real tools and the real agenda, starting from a scenario. It shows the
-  tool calls, the proposals, whether the clinical check would hold a reply, the
+  with its real tools and the real agenda, starting from a scenario. It shows what
+  the turn did, the proposals, whether the clinical check would hold a reply, the
   window's countdown and the number of messages. It runs the organization's real
   object methods with their writes discarded, so it never writes, never reaches
   WhatsApp, is rate-limited, and counts in the
@@ -402,5 +403,6 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 Each organization pays for what its assistant uses. Meta bills the organization
 directly for its WhatsApp messages: each template, and each message inside a window
 past the number's free ones of the month. underthing records the rest per organization:
-voice transcription and the model's replies, sandbox use included. Rates and an
+voice transcription and the model's replies, sandbox use included; no screen shows
+it yet, since the assistant is part of the first release. Rates and an
 example month: [whatsapp-assistant.md](../research/whatsapp-assistant.md#cost-example).

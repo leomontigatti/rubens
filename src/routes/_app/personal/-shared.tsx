@@ -32,6 +32,22 @@ export function useAction() {
   });
 }
 
+/**
+ * For the edit form, whose refusals show under the field that caused them: the
+ * last admin's under the roles, the last clinical contact's under the roles or,
+ * as `lastClinicalContactSetting`, under the setting.
+ */
+export function useEditAction() {
+  return useFormAction(
+    { ...refusalMessages, lastClinicalContactSetting: refusalMessages.lastClinicalContact },
+    {
+      lastAdmin: "roles",
+      lastClinicalContact: "roles",
+      lastClinicalContactSetting: "keepsClinicalRecords",
+    },
+  );
+}
+
 export function RefusalAlert({ reason }: { reason: RefusalReason }) {
   return <RefusalMessage message={refusalMessages[reason]} />;
 }

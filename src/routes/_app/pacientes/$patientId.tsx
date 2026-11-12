@@ -20,6 +20,7 @@ import { defaultTimeZone } from "#/lib/offices.ts";
 import {
   documentLabel,
   historyChanges,
+  historyTitle,
   legalName,
   patientBadges,
   patientName,
@@ -394,21 +395,6 @@ function AppointmentItem({ appointment }: { appointment: PatientAppointment }) {
   );
 }
 
-const actionLabels: Record<HistoryEntry["action"], string> = {
-  create: "Alta",
-  update: "Cambio",
-  delete: "Baja",
-  deactivate: "Desactivación",
-  reactivate: "Reactivación",
-};
-
-/** What an entry is about, after its action: nothing for the patient's own. */
-const entityLabels: Record<string, string> = {
-  appointment: " de turno",
-  coverage: " de cobertura",
-  guardian: " de responsable",
-};
-
 /** Who made an entry's change: a member, the assistant on a patient's yes, or a member since removed. */
 function authorOf(entry: HistoryEntry) {
   if (entry.userId === assistantUserId) {
@@ -425,10 +411,7 @@ function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, 
         {entries.map((entry) => (
           <li key={entry.id} className="flex flex-col gap-1">
             <p className="text-sm">
-              <span className="font-medium">
-                {actionLabels[entry.action]}
-                {entityLabels[entry.entityType]}
-              </span>
+              <span className="font-medium">{historyTitle(entry)}</span>
               <span className="text-muted-foreground">
                 {" · "}
                 {formatDateTime(entry.createdAt, defaultTimeZone)} · {authorOf(entry)}

@@ -1,14 +1,14 @@
 import { createFormHook, createFormHookContexts, useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { SearchIcon } from "lucide-react";
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { comboboxTextChange } from "#/components/combobox-text.ts";
 import { DateInput, TimeInput } from "#/components/date-time-input.tsx";
 import { placeAttributes } from "#/components/field-size.ts";
 import type { FieldPlace } from "#/components/field-size.ts";
-import type { FieldProblem } from "#/components/form-problems.ts";
+import { FieldProblemText, useFieldProblem } from "#/components/field-problem.tsx";
 
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -54,31 +54,11 @@ import { Textarea } from "#/components/ui/textarea.tsx";
 
 const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
 
-/** What the last submit refused, which each field finds its own in. */
-export const FormProblemsContext = createContext<FieldProblem[]>([]);
-
 const joinIds = (...ids: (string | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
-
-/** A field's problem, and what its input needs to say so to a screen reader. */
-export function useFieldProblem(name: string) {
-  const problem = useContext(FormProblemsContext).find((one) => one.field === name)?.message;
-  return problem
-    ? { problem, errorId: `${name}-error`, invalid: true as const }
-    : { problem, errorId: undefined, invalid: undefined };
-}
 
 /** The hint a field's input points at, when it has one. */
 function FieldHint(props: { id?: string; children?: string }) {
   return props.id ? <FieldDescription id={props.id}>{props.children}</FieldDescription> : null;
-}
-
-/** Under the field. No live region: focus moves to the first one, which reads it out. */
-export function FieldProblemText(props: { id?: string; children?: string }) {
-  return props.id ? (
-    <FieldError id={props.id} role={undefined}>
-      {props.children}
-    </FieldError>
-  ) : null;
 }
 
 type InputProps = Pick<
@@ -298,15 +278,21 @@ const useSubmitting = (form: AnyFormApi) => useStore(form.store, (state) => stat
 function CheckboxField(props: FieldPlace & { label: string }) {
   const field = useFieldContext<boolean>();
   const submitting = useSubmitting(field.form);
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
   return (
-    <Field {...placeAttributes(props, "quarter")} orientation="horizontal" className="w-fit">
-      <Checkbox
-        id={field.name}
-        checked={field.state.value}
-        disabled={submitting}
-        onCheckedChange={(checked) => field.handleChange(checked)}
-      />
-      <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+    <Field {...placeAttributes(props, "quarter")} data-invalid={invalid}>
+      <Field orientation="horizontal" className="w-fit">
+        <Checkbox
+          id={field.name}
+          checked={field.state.value}
+          disabled={submitting}
+          aria-invalid={invalid}
+          aria-describedby={errorId}
+          onCheckedChange={(checked) => field.handleChange(checked)}
+        />
+        <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+      </Field>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );
 }

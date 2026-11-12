@@ -65,7 +65,6 @@ const columns: DataTableColumn<TemplateRow>[] = [
       </div>
     ),
   },
-  { id: "version", header: "Versión", cell: (row) => row.latest?.version ?? "—" },
   {
     id: "status",
     header: "Estado",
@@ -119,7 +118,7 @@ function TemplateList({ settings }: { settings: Settings }) {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Plantillas"
-        description="Los mensajes con los que el consultorio les escribe primero a los pacientes."
+        description="Los mensajes con los que la organización les escribe primero a los pacientes."
         actions={
           <div className="flex gap-2">
             <Button

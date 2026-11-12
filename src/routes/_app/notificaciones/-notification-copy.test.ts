@@ -4,6 +4,7 @@ import type { NotificationFacts } from "#/routes/_app/notificaciones/-notificati
 import {
   notificationText,
   notificationTitle,
+  waitingText,
 } from "#/routes/_app/notificaciones/-notification-copy.ts";
 
 const facts: NotificationFacts = {
@@ -124,7 +125,7 @@ describe("an opt-out's notification", () => {
     ...facts,
     kind: "optOut",
     handoff: null,
-    patient: { id: "patient-1", name: "Marta Quiroga" },
+    patient: { id: "patient-1", name: "Marta Quiroga", phone: "+5493514000001" },
     messageId: "message-1",
   };
 
@@ -155,7 +156,10 @@ describe("a not-delivered late reply's notification", () => {
 
   it("names the patient it was for", () => {
     expect(
-      notificationTitle({ ...notDelivered, patient: { id: "patient-1", name: "Marta Quiroga" } }),
+      notificationTitle({
+        ...notDelivered,
+        patient: { id: "patient-1", name: "Marta Quiroga", phone: "+5493514000001" },
+      }),
     ).toBe("Tu respuesta a Marta Quiroga no le llegó");
   });
 
@@ -163,5 +167,99 @@ describe("a not-delivered late reply's notification", () => {
     expect(notificationTitle(notDelivered)).toBe(
       "Tu respuesta de WhatsApp no le llegó al paciente",
     );
+  });
+});
+
+describe("a not-delivered late reply's text", () => {
+  const notDelivered: NotificationFacts = { ...facts, kind: "replyNotDelivered", handoff: null };
+
+  it("gives the patient's phone, so they can be reached another way (#178)", () => {
+    const patient = { id: "patient-1", name: "Marta Quiroga", phone: "+5493514000001" };
+
+    expect(notificationText({ ...notDelivered, patient })).toBe(
+      "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio, al 0351 15-400-0001.",
+    );
+  });
+
+  it("leaves the phone out for a number of no patient", () => {
+    expect(notificationText(notDelivered)).toBe(
+      "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio.",
+    );
+  });
+});
+
+describe("a handoff reminder's notification", () => {
+  const reminder: NotificationFacts = {
+    ...withHandoff({ reason: "patientAsked", detail: null }),
+    kind: "handoffReminder",
+    // Thursday 12 November 2026, 19:00 UTC: 16:00 in Buenos Aires.
+    until: Date.UTC(2026, 10, 12, 19, 0),
+  };
+
+  it("names the patient in its title (#177)", () => {
+    expect(notificationTitle(reminder)).toBe("Marta Quiroga sigue esperando respuesta");
+  });
+
+  it("gives the reason and the fixed close time", () => {
+    expect(notificationText(reminder)).toBe(
+      "Pidió hablar con una persona. La ventana de WhatsApp cierra el jueves 12 de noviembre a las 16:00. Respondé antes para que tu respuesta le llegue enseguida.",
+    );
+  });
+
+  it("keeps the old title for a number of no patient", () => {
+    expect(
+      notificationTitle({ ...reminder, handoff: { ...reminder.handoff!, patient: null } }),
+    ).toBe("Una derivación de WhatsApp sigue sin respuesta");
+  });
+});
+
+describe("an emergency's notification", () => {
+  const emergency: NotificationFacts = { ...facts, kind: "emergency", handoff: null };
+
+  it("names the patient", () => {
+    expect(
+      notificationTitle({
+        ...emergency,
+        patient: { id: "patient-1", name: "Marta Quiroga", phone: "+5493514000001" },
+      }),
+    ).toBe("Posible urgencia de Marta Quiroga en una conversación que tomaste");
+    expect(notificationTitle(emergency)).toBe("Posible urgencia en una conversación que tomaste");
+  });
+
+  it("speaks of the organization's phone", () => {
+    expect(notificationText(emergency)).toBe(
+      "El asistente le envió al paciente el mensaje de urgencia, con el 107 y el teléfono de la organización. Respondele cuanto antes.",
+    );
+  });
+});
+
+describe("a restriction of the number", () => {
+  const restricted: NotificationFacts = { ...facts, kind: "numberRestricted", handoff: null };
+
+  it("says the number is what cannot start conversations (#165)", () => {
+    expect(notificationText(restricted)).toBe(
+      "El número no puede iniciar conversaciones hasta que Meta levante la restricción.",
+    );
+  });
+
+  it("says how many messages wait only when some do", () => {
+    expect(waitingText(0)).toBeNull();
+    expect(waitingText(null)).toBeNull();
+    expect(waitingText(1)).toBe("1 mensaje espera y sale cuando se levante.");
+    expect(waitingText(3)).toBe("3 mensajes esperan y salen cuando se levante.");
+  });
+});
+
+describe("a template's notification", () => {
+  it("names the template without its version number (#185)", () => {
+    expect(
+      notificationTitle({
+        ...facts,
+        kind: "templateRejected",
+        handoff: null,
+        templateName: "Recordatorio",
+        templateVersion: 2,
+      }),
+    ).toBe("Meta rechazó la plantilla Recordatorio");
   });
 });

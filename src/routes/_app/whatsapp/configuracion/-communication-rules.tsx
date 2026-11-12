@@ -42,7 +42,6 @@ export function CommunicationRulesSection({ settings }: { settings: Settings }) 
             label="Teléfono para urgencias"
             value={rules.phone ? formatPhone(rules.phone) : null}
           />
-          <Detail label="Versión" value={rules.version || null} />
         </dl>
         <dl>
           <Detail

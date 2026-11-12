@@ -47,7 +47,7 @@ function EditCommunicationRules() {
   return <RulesForm initial={settings.communicationRules} />;
 }
 
-function RulesForm(props: { initial: CommunicationRulesInput & { version: number } }) {
+function RulesForm(props: { initial: CommunicationRulesInput }) {
   const { initial } = props;
   const page = useFormPage({ to: "/whatsapp/configuracion" });
   const action = useFormAction(refusalMessages, refusalFields);
@@ -71,17 +71,12 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
     },
   });
 
-  const description = initial.version
-    ? `Versión ${initial.version}. Al guardar, se crea la versión ${initial.version + 1}.`
-    : "Todavía nadie las guardó: el asistente trata de vos.";
-
   return (
     <ActionFormPage
       page={page}
       form={form}
       action={action}
       title="Reglas de comunicación"
-      description={description}
       submitLabel="Guardar"
     >
       <form.AppField name="formOfAddress">
@@ -108,7 +103,7 @@ function RulesForm(props: { initial: CommunicationRulesInput & { version: number
           <field.TextField
             label="Teléfono para urgencias"
             type="tel"
-            hint="El teléfono del consultorio que el asistente da, junto al 107, cuando un mensaje parece una urgencia. Sin teléfono, da solo el 107."
+            hint="El teléfono de la organización que el asistente da, junto al 107, cuando un mensaje parece una urgencia. Sin teléfono, da solo el 107."
           />
         )}
       </form.AppField>

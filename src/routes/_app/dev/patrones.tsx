@@ -457,7 +457,7 @@ function Patterns() {
       <Pattern title="Casilla">
         <Field orientation="horizontal" className="w-fit">
           <Checkbox id="pattern-records" />
-          <FieldLabel htmlFor="pattern-records">Lleva historia clínica</FieldLabel>
+          <FieldLabel htmlFor="pattern-records">Lleva historias clínicas</FieldLabel>
         </Field>
       </Pattern>
       <Pattern title="Grupo de casillas">
