@@ -174,7 +174,7 @@ function PatternFormPage(props: { title: string; record?: RecordHeader }) {
       page={page}
       form={form}
       title={props.title}
-      submitLabel={props.record ? "Guardar" : "Crear"}
+      submitLabel={props.record ? "Guardar" : "Crear prestación"}
       creates={!props.record}
       record={props.record}
       pending={false}
@@ -196,6 +196,38 @@ function PatternMarkedSelect() {
     <FormGrid>
       <form.AppField name="color">
         {(field) => <field.MarkedSelectField label="Color en la agenda" options={options} />}
+      </form.AppField>
+    </FormGrid>
+  );
+}
+
+const patternTemplates = [
+  { value: "confirmation", label: "Confirmación del turno", detail: "Al dar el turno" },
+  { value: "reminder", label: "Recordatorio", detail: "1 día antes del turno" },
+  { value: "followUp", label: "Seguimiento", detail: "1 día después del turno" },
+];
+
+/** Several records picked from a list: with picks, and with nothing to pick. */
+function PatternMultiCombobox() {
+  const form = useAppForm({ defaultValues: { picked: ["reminder"], none: [] as string[] } });
+  const shared = {
+    emptyText: "No hay plantillas listas para enviar.",
+    noMatchText: (query: string) => `Ninguna plantilla lista para enviar coincide con “${query}”.`,
+    removeLabel: (name: string) => `Quitar ${name}`,
+  };
+  return (
+    <FormGrid>
+      <form.AppField name="picked">
+        {(field) => (
+          <field.MultiComboboxField
+            label="Mensajes por WhatsApp"
+            options={patternTemplates}
+            {...shared}
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="none">
+        {(field) => <field.MultiComboboxField label="Sin opciones" options={[]} {...shared} />}
       </form.AppField>
     </FormGrid>
   );
@@ -358,6 +390,9 @@ function Patterns() {
       </Pattern>
       <Pattern title="Lista con marcas">
         <PatternMarkedSelect />
+      </Pattern>
+      <Pattern title="Varios registros de una lista">
+        <PatternMultiCombobox />
       </Pattern>
       <Pattern title="Filtros">
         <div className="flex flex-wrap items-center gap-2">

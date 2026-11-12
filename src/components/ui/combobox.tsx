@@ -1,6 +1,6 @@
 "use client";
-// Local edit: `ComboboxInput` takes `clearLabel`, the clear button's accessible name, which
-// upstream leaves unnamed.
+// Local edits: `ComboboxInput` takes `clearLabel`, the clear button's accessible name, and
+// `ComboboxChip` takes `removeLabel`, its remove button's, both of which upstream leaves unnamed.
 
 import * as React from "react";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
@@ -216,9 +216,11 @@ function ComboboxChip({
   className,
   children,
   showRemove = true,
+  removeLabel,
   ...props
 }: ComboboxPrimitive.Chip.Props & {
   showRemove?: boolean;
+  removeLabel?: string;
 }) {
   return (
     <ComboboxPrimitive.Chip
@@ -235,6 +237,7 @@ function ComboboxChip({
           render={<Button variant="ghost" size="icon-xs" />}
           className="-ml-1 opacity-50 hover:opacity-100"
           data-slot="combobox-chip-remove"
+          aria-label={removeLabel}
         >
           <XIcon className="pointer-events-none" />
         </ComboboxPrimitive.ChipRemove>

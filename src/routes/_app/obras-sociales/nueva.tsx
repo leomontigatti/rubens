@@ -22,7 +22,7 @@ function NewInsurer() {
     <InsurerForm
       title="Nueva obra social o prepaga"
       initial={newInsurer}
-      submitLabel="Crear"
+      submitLabel="Crear obra social"
       creates
       onSubmit={(input) => addInsurer({ data: input })}
     />
