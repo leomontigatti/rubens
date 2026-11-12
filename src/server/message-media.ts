@@ -42,13 +42,18 @@ function disposition(kind: "inline" | "attachment", filename: string | null) {
   return filename ? `${kind}; filename*=UTF-8''${encodeURIComponent(filename)}` : kind;
 }
 
-/** The response to the member `resolved` asking for the media of the message `reference`. */
+/** The response to `request`, from the member `resolved`, for the media of the message `reference`. */
 export async function serveMessageMedia(
+  request: Request,
   resolved: ResolvedCaller,
   reference: MessageReference,
 ): Promise<Response> {
   const opened = resolved.ok
-    ? await resolved.organization.openMessageMedia(resolved.caller, reference)
+    ? await resolved.organization.openMessageMedia(
+        resolved.caller,
+        reference,
+        request.headers.get("range"),
+      )
     : resolved;
   if (!opened.ok) {
     const refusal = refusals[opened.reason];
@@ -61,10 +66,15 @@ export async function serveMessageMedia(
   const mimeType = opened.mimeType.split(";")[0]!.trim().toLowerCase();
   const inPlace = shownInPlace.some((pattern) => pattern.test(mimeType));
   return new Response(opened.body, {
+    // Meta's media host names the range it sent only on a partial answer.
+    status: opened.contentRange ? 206 : 200,
     headers: {
       ...privateHeaders,
       "content-type": inPlace ? opened.mimeType : "application/octet-stream",
       "content-disposition": disposition(inPlace ? "inline" : "attachment", opened.filename),
+      "accept-ranges": "bytes",
+      ...(opened.length && { "content-length": opened.length }),
+      ...(opened.contentRange && { "content-range": opened.contentRange }),
       // A PDF is shown by the browser's own viewer, which a sandbox would block.
       ...(mimeType !== "application/pdf" && {
         "content-security-policy": "default-src 'none'; img-src 'self'; media-src 'self'; sandbox",

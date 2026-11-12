@@ -54,6 +54,8 @@ interface MetaRequest {
   method: string;
   url: string;
   authorization: string | null;
+  /** The byte range a media download asked for; absent when it asked for none. */
+  range?: string;
   body: unknown;
 }
 
@@ -242,6 +244,7 @@ class FakeMeta {
       method: request.method,
       url: request.url,
       authorization: request.headers.get("authorization"),
+      range: request.headers.get("range") ?? undefined,
       body,
     });
     const held = this.#hold;
@@ -297,9 +300,7 @@ class FakeMeta {
         return new Response("Service unavailable", { status: 503 });
       }
       return bytes
-        ? new Response(bytes.slice().buffer, {
-            headers: { "content-type": this.#mediaTypeOf(mid) },
-          })
+        ? this.#mediaBytes(bytes, this.#mediaTypeOf(mid), request.headers.get("range"))
         : new Response("Not found", { status: 404 });
     }
     const mediaId = /^\/v[\d.]+\/(media-[\w-]+)$/.exec(url.pathname)?.[1];
@@ -316,8 +317,28 @@ class FakeMeta {
       messaging_product: "whatsapp",
       url: `https://${mediaHost}/whatsapp_business/attachments/?mid=${mediaId}`,
       mime_type: this.#mediaTypeOf(mediaId),
-      file_size: this.media.get(mediaId)!.byteLength,
       id: mediaId,
+    });
+  }
+
+  /** A media's bytes as Meta's media host serves them: whole, or the one range `bytes=a-b` asks for. */
+  #mediaBytes(bytes: Uint8Array, mimeType: string, range: string | null) {
+    const asked = /^bytes=(\d+)-(\d*)$/.exec(range ?? "");
+    if (!asked) {
+      return new Response(bytes.slice().buffer, {
+        headers: { "content-type": mimeType, "content-length": String(bytes.byteLength) },
+      });
+    }
+    const start = Number(asked[1]);
+    const end = asked[2] ? Number(asked[2]) : bytes.byteLength - 1;
+    const part = bytes.slice(start, end + 1);
+    return new Response(part.buffer, {
+      status: 206,
+      headers: {
+        "content-type": mimeType,
+        "content-length": String(part.byteLength),
+        "content-range": `bytes ${start}-${end}/${bytes.byteLength}`,
+      },
     });
   }
 

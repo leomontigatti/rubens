@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { mediaIn, mediaKeptMs } from "#/lib/message-media.ts";
+import { byteRangeOf, mediaIn, mediaKeptMs } from "#/lib/message-media.ts";
 import { messageReferenceSchema } from "#/lib/whatsapp-messages.ts";
 import type { MessageReference } from "#/lib/whatsapp-messages.ts";
 
@@ -17,22 +17,43 @@ import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts
 // was sent; the message stays, a voice note's transcript included.
 
 /**
- * Opens the media of the message `input` for `acting`, streamed from Meta. A
- * message in a conversation they may not read, or one with no media, is not
- * found; media past Meta's seven days is `expired`, without asking Meta.
+ * Opens the media of the message `input` for `acting`, streamed from Meta,
+ * all of it or the byte `range` their player asks for. A message in a
+ * conversation they may not read, or one with no media, is not found; media
+ * past Meta's seven days is `expired`, without asking Meta.
  */
 export async function openMessageMedia(
   database: Database,
   cloud: WhatsappCloud,
   acting: Acting,
   input: MessageReference,
+  range: string | null,
 ) {
   const parsed = messageReferenceSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" } as const;
   }
-  const { conversationId, messageId } = parsed.data;
-  const reader = readerOf(database, acting);
+  const found = readableMedia(database, acting, parsed.data);
+  if (!found) {
+    return { ok: false, reason: "notFound" } as const;
+  }
+  if (Date.now() >= found.sentAt + mediaKeptMs) {
+    return { ok: false, reason: "expired" } as const;
+  }
+  const opened = await fromMeta(cloud, found.media.mediaId, byteRangeOf(range), input.messageId);
+  if (!opened) {
+    return { ok: false, reason: "metaUnavailable" } as const;
+  }
+  const { kind, filename } = found.media;
+  return { ...opened, kind, filename };
+}
+
+/** The media of the patient's message `reference` in a conversation `acting` reads, with when it was sent. */
+function readableMedia(
+  database: Database,
+  acting: Acting,
+  { conversationId, messageId }: { conversationId: string; messageId: string },
+) {
   const message = database
     .select({
       direction: whatsappMessage.direction,
@@ -46,40 +67,35 @@ export async function openMessageMedia(
       and(
         eq(whatsappMessage.id, messageId),
         eq(whatsappMessage.conversationId, conversationId),
-        reader.visible,
+        readerOf(database, acting).visible,
       ),
     )
     .get();
   const media = message?.direction === "incoming" ? mediaIn(message.type, message.payload) : null;
-  if (!message || !media) {
-    return { ok: false, reason: "notFound" } as const;
-  }
-  if (Date.now() >= message.sentAt + mediaKeptMs) {
-    return { ok: false, reason: "expired" } as const;
-  }
+  return message && media ? { media, sentAt: message.sentAt } : null;
+}
+
+/** The media `mediaId` as Meta streams it, or `null` when Meta does not serve it, logged by message id alone. */
+async function fromMeta(
+  cloud: WhatsappCloud,
+  mediaId: string,
+  range: string | null,
+  messageId: string,
+) {
   if (cloud.missingSetting()) {
-    return { ok: false, reason: "metaUnavailable" } as const;
+    return null;
   }
-  const opened = await cloud.openMedia(media.mediaId).catch((error: unknown) => {
+  const opened = await cloud.openMedia(mediaId, range).catch((error: unknown) => {
     // An error can quote Meta's answer, so only its class is logged.
     const why = error instanceof Error ? error.name : typeof error;
     console.error(`[conversation-media] Meta did not serve message ${messageId}: ${why}`);
     return null;
   });
-  if (!opened?.ok) {
-    if (opened) {
-      console.error(
-        `[conversation-media] Meta refused message ${messageId} (code ${opened.metaError.code})`,
-      );
-    }
-    return { ok: false, reason: "metaUnavailable" } as const;
+  if (opened && !opened.ok) {
+    console.error(
+      `[conversation-media] Meta refused message ${messageId} (code ${opened.metaError.code})`,
+    );
+    return null;
   }
-  return {
-    ok: true,
-    kind: media.kind,
-    filename: media.filename,
-    mimeType: opened.mimeType,
-    size: opened.size,
-    body: opened.body,
-  } as const;
+  return opened;
 }

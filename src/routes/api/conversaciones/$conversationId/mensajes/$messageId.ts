@@ -10,6 +10,7 @@ export const Route = createFileRoute("/api/conversaciones/$conversationId/mensaj
     handlers: {
       GET: async ({ request, params }) =>
         serveMessageMedia(
+          request,
           await resolveCaller(request, workerEnv, currentAuthMode(), clerkSession(workerEnv)),
           // The router's params are not a plain object, which RPC cannot clone.
           { conversationId: params.conversationId, messageId: params.messageId },

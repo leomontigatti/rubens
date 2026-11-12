@@ -102,9 +102,9 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   }
 
   /** A patient's photo, video, file or voice note in a conversation the member reads, streamed from Meta. */
-  openMessageMedia(caller: Caller, input: MessageReference) {
+  openMessageMedia(caller: Caller, input: MessageReference, range: string | null) {
     return this.as(caller, patientEditors, (acting) =>
-      openMessageMedia(this.database, this.whatsapp, acting, input),
+      openMessageMedia(this.database, this.whatsapp, acting, input, range),
     );
   }
 

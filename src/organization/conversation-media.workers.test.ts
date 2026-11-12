@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  addRefusedAdmin,
   expectOk,
   fakeMeta,
   inStorage,
@@ -78,6 +79,14 @@ function photoSent(mediaId = "media-photo", daysAgo = 0) {
   return patientSends("image", { id: mediaId, mime_type: "image/jpeg" }, { daysAgo });
 }
 
+/** The media of `reference` as `caller` opens it, whole. */
+function opens(
+  caller: { userId: string },
+  reference: { conversationId: string; messageId: string },
+) {
+  return world.organization.openMessageMedia(caller, reference, null);
+}
+
 async function bytesOf(stream: ReadableStream) {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
@@ -98,7 +107,7 @@ describe("opening a patient's media from the inbox", () => {
   it("streams reception a photo from Meta, with its type, through the number's token", async () => {
     const photo = await photoSent();
 
-    const opened = expectOk(await world.organization.openMessageMedia(world.receptionist, photo));
+    const opened = expectOk(await opens(world.receptionist, photo));
 
     expect(opened.mimeType).toBe("image/jpeg");
     expect(await bytesOf(opened.body)).toEqual(photoBytes);
@@ -113,14 +122,14 @@ describe("who opens a patient's media", () => {
   it("refuses a practitioner the media of a conversation not handed to them, and serves it once it is", async () => {
     const photo = await photoSent();
 
-    expect(await world.organization.openMessageMedia(world.juan.caller, photo)).toEqual({
+    expect(await opens(world.juan.caller, photo)).toEqual({
       ok: false,
       reason: "notFound",
     });
     expect(fakeMeta.requests).toEqual([]);
 
     await handedTo(photo.conversationId, world.juan.caller);
-    const opened = expectOk(await world.organization.openMessageMedia(world.juan.caller, photo));
+    const opened = expectOk(await opens(world.juan.caller, photo));
     expect(await bytesOf(opened.body)).toEqual(photoBytes);
   });
 
@@ -135,26 +144,35 @@ describe("who opens a patient's media", () => {
     const text = read.messages.at(-1)!;
 
     expect(
-      await world.organization.openMessageMedia(world.receptionist, {
+      await opens(world.receptionist, {
         conversationId: photo.conversationId,
         messageId: text.id,
       }),
     ).toEqual({ ok: false, reason: "notFound" });
     expect(
-      await world.organization.openMessageMedia(world.receptionist, {
+      await opens(world.receptionist, {
         conversationId: crypto.randomUUID(),
         messageId: photo.messageId,
       }),
     ).toEqual({ ok: false, reason: "notFound" });
   });
 
-  it("is refused to anyone signed out or deactivated", async () => {
+  it("is refused to anyone signed out, deactivated or still holding the starting password", async () => {
     const photo = await photoSent();
+    const callers = [
+      { userId: "user-nobody" },
+      await addRefusedAdmin(world.organization, "deactivated"),
+      await addRefusedAdmin(world.organization, "mustChangePassword"),
+    ];
 
-    expect(await world.organization.openMessageMedia({ userId: "user-nobody" }, photo)).toEqual({
-      ok: false,
-      reason: "unauthenticated",
-    });
+    const answers = await Promise.all(callers.map((caller) => opens(caller, photo)));
+
+    expect(answers.map((answer) => (answer.ok ? "opened" : answer.reason))).toEqual([
+      "unauthenticated",
+      "unauthenticated",
+      "mustChangePassword",
+    ]);
+    expect(fakeMeta.requests).toEqual([]);
   });
 });
 
@@ -162,7 +180,7 @@ describe("media Meta no longer has, or does not serve", () => {
   it("says a photo sent more than seven days ago is gone, without asking Meta", async () => {
     const photo = await photoSent("media-old", 7);
 
-    expect(await world.organization.openMessageMedia(world.receptionist, photo)).toEqual({
+    expect(await opens(world.receptionist, photo)).toEqual({
       ok: false,
       reason: "expired",
     });
@@ -172,21 +190,21 @@ describe("media Meta no longer has, or does not serve", () => {
   it("serves a photo until its seventh day is over", async () => {
     const photo = await photoSent("media-six-days", 6);
 
-    expectOk(await world.organization.openMessageMedia(world.receptionist, photo));
+    expectOk(await opens(world.receptionist, photo));
   });
 
   it("says Meta did not serve it when Meta refuses the media id, and when its media host fails", async () => {
     const photo = await photoSent();
     fakeMeta.mediaHostFails = true;
 
-    expect(await world.organization.openMessageMedia(world.receptionist, photo)).toEqual({
+    expect(await opens(world.receptionist, photo)).toEqual({
       ok: false,
       reason: "metaUnavailable",
     });
 
     fakeMeta.mediaHostFails = false;
     fakeMeta.media.delete("media-photo");
-    expect(await world.organization.openMessageMedia(world.receptionist, photo)).toEqual({
+    expect(await opens(world.receptionist, photo)).toEqual({
       ok: false,
       reason: "metaUnavailable",
     });
@@ -196,7 +214,7 @@ describe("media Meta no longer has, or does not serve", () => {
     const photo = await photoSent();
     fakeMeta.settings = { WHATSAPP_PHONE_NUMBER_ID: "123456789012345" };
 
-    expect(await world.organization.openMessageMedia(world.receptionist, photo)).toEqual({
+    expect(await opens(world.receptionist, photo)).toEqual({
       ok: false,
       reason: "metaUnavailable",
     });

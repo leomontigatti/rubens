@@ -42,11 +42,16 @@ let practitioner: { userId: string };
 async function served(
   caller: { userId: string } | null,
   reference: { conversationId: string; messageId: string },
+  headers: Record<string, string> = {},
 ) {
   const verify: VerifySession = () =>
     Promise.resolve(caller ? { userId: caller.userId, organizationClaim: organizationId } : null);
-  const request = new Request("https://underthing.test/api/media");
-  return serveMessageMedia(await resolveCaller(request, bindings, "clerk", verify), reference);
+  const request = new Request("https://underthing.test/api/media", { headers });
+  return serveMessageMedia(
+    request,
+    await resolveCaller(request, bindings, "clerk", verify),
+    reference,
+  );
 }
 
 /** A media message Martina sent `daysAgo`, as Meta's webhook hands it over; returns its ids. */
@@ -117,6 +122,29 @@ describe("the media route", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("content-security-policy")).toContain("sandbox");
+  });
+
+  it("relays the byte range a player asks for, as Safari needs to play a voice note, with the whole length", async () => {
+    const voiceNote = await fileSent("audio", "media-voice", "audio/ogg; codecs=opus");
+    const length = "bytes of media-voice".length;
+
+    const whole = await served(receptionist, voiceNote);
+    const firstBytes = await served(receptionist, voiceNote, { range: "bytes=0-1" });
+
+    expect(whole.headers.get("content-length")).toBe(String(length));
+    expect(firstBytes.status).toBe(206);
+    expect(firstBytes.headers.get("content-range")).toBe(`bytes 0-1/${length}`);
+    expect(firstBytes.headers.get("content-length")).toBe("2");
+    expect(await firstBytes.text()).toBe("by");
+  });
+
+  it("asks Meta for the whole file when the range is not one a player sends", async () => {
+    const voiceNote = await fileSent("audio", "media-voice", "audio/ogg");
+
+    const response = await served(receptionist, voiceNote, { range: "bytes=0-1, x" });
+
+    expect(response.status).toBe(200);
+    expect(fakeMeta.requests.at(-1)?.range).toBeUndefined();
   });
 
   it("opens a PDF inline under its file name", async () => {

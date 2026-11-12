@@ -184,8 +184,7 @@ rules, fetches the media from Meta by the id in the message and streams it to th
 browser, never storing, caching or linking it at a public URL. Meta deletes a
 patient's media seven days after it was sent: the button then gives way to
 `Ya no está disponible en WhatsApp (pasaron más de 7 días)`, and the transcript
-stays. Adding a photo or a file to the clinical record waits for the record's notes
-and files (#310).
+stays.
 
 Anyone allowed to read a conversation can take it over at any time, not only on a
 handoff, from whoever held it. While a person holds a conversation, the assistant

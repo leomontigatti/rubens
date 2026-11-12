@@ -72,3 +72,12 @@ export function messageMediaOf(message: {
     availableUntil: message.sentAt + mediaKeptMs,
   };
 }
+
+/**
+ * The byte range a browser's player asks for (`Range: bytes=0-1023`), which
+ * Safari needs answered to play audio and video; `null` for none, or for any
+ * other form, which gets the whole file.
+ */
+export function byteRangeOf(header: string | null) {
+  return header && /^bytes=\d+-\d*$/.test(header) ? header : null;
+}

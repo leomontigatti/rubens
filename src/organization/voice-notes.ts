@@ -37,7 +37,7 @@ async function transcriptOf(cloud: WhatsappCloud, transcriber: Transcriber, payl
   if (missing) {
     throw new AudioUnavailable(missing);
   }
-  const media = await cloud.openMedia(parsed.data.audio.id);
+  const media = await cloud.openMedia(parsed.data.audio.id, null);
   if (!media.ok) {
     throw new AudioUnavailable(`Meta refused the media (code ${media.metaError.code})`);
   }
