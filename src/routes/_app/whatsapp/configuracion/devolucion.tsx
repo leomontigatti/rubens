@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { SelectOptions, useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { maxReturnAfterHours, returnTimeSchema } from "#/lib/conversation-holds.ts";
+import { returnTimeSchema } from "#/lib/conversation-holds.ts";
+import { returnTimeChoices } from "#/lib/hour-choices.ts";
 import { getWhatsappSettings, saveReturnTime } from "#/server/whatsapp.functions.ts";
 
 import { returnTimeHint } from "#/routes/_app/whatsapp/configuracion/-return-time.tsx";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/_app/whatsapp/configuracion/devolucion")(
   component: EditReturnTime,
 });
 
-const wrongHours = `Ingresá una cantidad entera de horas, de 1 a ${maxReturnAfterHours}.`;
+const wrongHours = "Elegí las horas de la lista.";
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -43,7 +44,7 @@ function ReturnTimeForm(props: { hours: number }) {
     defaultValues: { hours: String(props.hours) },
     onSubmit: async ({ value }) => {
       const parsed = returnTimeSchema.safeParse({
-        hours: Number(value.hours.trim() || Number.NaN),
+        hours: Number(value.hours),
       });
       if (!parsed.success) {
         page.showProblems([{ field: "hours", message: wrongHours }]);
@@ -66,15 +67,9 @@ function ReturnTimeForm(props: { hours: number }) {
     >
       <form.AppField name="hours">
         {(field) => (
-          <field.TextField
-            label="Horas"
-            type="number"
-            min={1}
-            max={maxReturnAfterHours}
-            step={1}
-            required
-            hint={`De 1 a ${maxReturnAfterHours} horas.`}
-          />
+          <field.SelectField label="Vuelve al asistente después de" required>
+            <SelectOptions options={returnTimeChoices(props.hours)} />
+          </field.SelectField>
         )}
       </form.AppField>
     </ActionFormPage>

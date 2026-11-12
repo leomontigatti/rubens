@@ -128,6 +128,8 @@ beside it.
   the `PageHeader`'s `actions`, on the title's line, and again in the list's `EmptyState`.
 - **A form that holds a form of its own goes in `lead`**, above the form element: booking's patient
   picker, whose quick registration submits apart. Its problems still show under its field.
+- **A create's submit button names the thing**: `Crear prestación`, `Agregar cobertura`, never
+  a bare `Crear`.
 - **The fields sit in rows by their size, outside any card** ([Forms](#forms)). The actions
   close the form: `Volver` on the left, `Descartar cambios` and the submit button on the right. On
   a long form they stick to the bottom of the window.
@@ -184,8 +186,8 @@ carried over from en-escena.
   four to a row at twelve), `half` (six; two to a row at twelve) or `full` (the row). A field is a `quarter` unless what it holds
   needs more, judged by its content and the form's layout, not by its kind:
   - `full`: a text area, a group of checkboxes, the patient search, the free times, a block such
-    as a template's text beside its preview (the form kit's text area, checkbox group and combobox
-    default to it);
+    as a template's text beside its preview (the form kit's text area, checkbox group and both
+    comboboxes default to it);
   - `half`: an email, an address, a medical service, a template's name, a specialty, and a select
     whose longest option does not fit a quarter, measured in the browser at 1440 px;
   - `quarter`: the rest, names, a phone, a document's type and number, dates, times, durations,
@@ -222,8 +224,12 @@ carried over from en-escena.
   (`src/components/app-form.tsx`), as booking's patient picker: it searches as [Tables](#tables)
   says, its list opens only on the answer to the text in the box, and the record picked stays in
   the box.
-- **Several options are picked in place**, as a group of checkboxes (a schedule's days, a
+- **A few fixed options are picked in place**, as a group of checkboxes (a schedule's days, a
   member's roles), never in a popover that covers what follows.
+- **Several records picked from a list are the form kit's `MultiComboboxField`**: each pick a
+  chip that removes it, the list searched by name, each option with a line that tells it apart,
+  and its own lines for nothing to pick and for a search that finds nothing: a medical service's
+  `Mensajes por WhatsApp`.
 - **A `Checkbox` for a boolean submitted with the form**; a switch, once there is one, for a
   setting that takes effect on its own and reads as on or off.
 - **A long form splits into titled sections**, never cards nested in cards.

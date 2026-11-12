@@ -37,7 +37,7 @@ function NewMedicalService() {
       description={practitioner.displayName}
       initial={newMedicalService}
       templates={result.templates}
-      submitLabel="Crear"
+      submitLabel="Crear prestación"
       creates
       onSubmit={(fields) =>
         addMedicalService({ data: { ...fields, practitionerId: practitioner.id } })

@@ -2,6 +2,9 @@ import * as z from "zod";
 
 import { durationMinutesSchema } from "#/lib/availability.ts";
 
+/** The most reminders a medical service sends: templates timed before the appointment. */
+export const maxReminders = 5;
+
 /** The longest reschedule cutoff: 30 days. */
 const maxCutoffHours = 720;
 
