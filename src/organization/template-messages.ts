@@ -206,9 +206,9 @@ function notSentFor(tx: Writer, appointmentId: string) {
 }
 
 /**
- * The booked and confirmed appointments still ahead, of `medicalServiceIds`:
- * a subquery when they are not a few, since the object's SQLite binds at most
- * 100 parameters a query.
+ * The booked and confirmed appointments still ahead, of `medicalServiceIds`.
+ * A caller with no bound on them passes a subquery: the object's SQLite binds
+ * at most 100 parameters a query.
  */
 function upcomingOf(tx: Writer, medicalServiceIds: string[] | SQLWrapper) {
   return tx
