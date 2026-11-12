@@ -148,6 +148,34 @@ export async function patientWrites(
   return whatsappId;
 }
 
+/** A reaction from `from` to the message Meta knows as `reactsTo`; an empty `emoji` takes it back. */
+export async function patientReacts(
+  organization: DurableObjectStub<Organization>,
+  reaction: { from: string; reactsTo: string; emoji: string; sentAt?: number },
+) {
+  const whatsappId = `wamid.${crypto.randomUUID()}`;
+  const { from, reactsTo, emoji, sentAt = Date.now() } = reaction;
+  const stored = await organization.storeWhatsappEvents({
+    messages: [
+      {
+        whatsappId,
+        from,
+        sentAt,
+        type: "reaction",
+        text: emoji,
+        reactsTo,
+        payload: "{}",
+      },
+    ],
+    statuses: [],
+    templateStatuses: [],
+  });
+  if (!stored.ok) {
+    throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
+  }
+  return whatsappId;
+}
+
 /** A photo, a document or another message with no text from `from`, as Meta's webhook hands it over. */
 export async function patientSends(
   organization: DurableObjectStub<Organization>,

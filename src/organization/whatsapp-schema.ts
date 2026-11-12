@@ -113,6 +113,8 @@ export const whatsappMessage = sqliteTable(
     text: text("text"),
     /** The message as Meta sent it, JSON: a voice note's media id, and the rest for the types nothing reads yet. */
     payload: text("payload").notNull(),
+    /** A reaction's target's WhatsApp id; its emoji is `text`, empty once taken back. */
+    reactsTo: text("reacts_to"),
     /** When Meta says it was sent. */
     sentAt: instant("sent_at").notNull(),
     // An outgoing message's latest status and when Meta says it happened;

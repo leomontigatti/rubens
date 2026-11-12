@@ -34,6 +34,8 @@ const metaMessage = z.looseObject({
   timestamp: z.coerce.number().int(),
   type: z.string(),
   text: z.object({ body: z.string() }).optional(),
+  /** A reaction, or, with no emoji (or an empty one), its removal. */
+  reaction: z.object({ message_id: z.string().min(1), emoji: z.string().optional() }).optional(),
 });
 
 const metaStatus = z.looseObject({
@@ -94,14 +96,23 @@ const metaWebhook = z.object({
 
 type MetaMessage = z.infer<typeof metaMessage>;
 
+/** A text's body, or a reaction's emoji: empty when the patient took it back, which Meta sends without one. */
+function textOf(message: MetaMessage) {
+  if (message.reaction) {
+    return message.reaction.emoji ?? "";
+  }
+  return message.text?.body ?? null;
+}
+
 function incomingOf(message: MetaMessage): IncomingWhatsappMessage {
   return {
     whatsappId: message.id,
     from: `+${message.from}`,
     sentAt: message.timestamp * 1000,
     type: message.type,
-    text: message.text?.body ?? null,
+    text: textOf(message),
     payload: JSON.stringify(message),
+    ...(message.reaction && { reactsTo: message.reaction.message_id }),
   };
 }
 

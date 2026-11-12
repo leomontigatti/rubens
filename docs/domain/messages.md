@@ -11,8 +11,10 @@ Every message the organization starts is a template Meta approved for the
 organization, in its own voice: the drafts are in
 [whatsapp-templates.md](../operations/whatsapp-templates.md). underthing fills in its
 facts (the date, the time, the practitioner, the office). Templates carry no
-buttons: the patient answers in their own words, and the assistant reads the
-answer ([assistant.md](./assistant.md)). The patient's answer opens the
+buttons: the patient answers in their own words, or with a reaction to the
+message, and the assistant reads the answer ([assistant.md](./assistant.md)); a 👍
+or ✅ is a yes only to a reminder that asks to confirm or to the assistant's latest
+proposal ([assistant.md](./assistant.md#proposals)). The patient's answer opens the
 conversation window ([assistant.md](./assistant.md#the-conversation-window)).
 
 Messages to patients are text, never media. What a patient sends as media, a voice
