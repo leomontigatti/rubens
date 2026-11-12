@@ -6,12 +6,11 @@ import {
   addMember,
   adminCaller,
   expectOk,
-  inStorage,
+  recordedModelUsage,
   scriptedModel,
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { modelUsage } from "#/organization/whatsapp-schema.ts";
 
 // The assistant's review of a template's text (#345): an admin sends the text
 // being written, unsaved edits included, and the assistant's model reads it
@@ -90,14 +89,16 @@ describe("reviewing a template's text", () => {
 
     expectOk(await organization.reviewTemplate(adminCaller, { body }));
 
-    const { usage } = expectOk(await organization.whatsappSettings(adminCaller));
-    expect(usage.models).toEqual([
-      { model: assistantModelId, sandbox: false, inputTokens: 900, outputTokens: 70 },
+    expect(await recordedModelUsage(organization)).toEqual([
+      {
+        day: expect.any(String),
+        model: assistantModelId,
+        purpose: "templateReview",
+        sandbox: false,
+        inputTokens: 900,
+        outputTokens: 70,
+      },
     ]);
-    const purposes = await inStorage(organization, (database) =>
-      database.select({ purpose: modelUsage.purpose }).from(modelUsage).all(),
-    );
-    expect(purposes).toEqual([{ purpose: "templateReview" }]);
   });
 
   it("refuses a member who is not an admin, without calling the model", async () => {

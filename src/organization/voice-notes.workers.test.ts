@@ -10,6 +10,7 @@ import {
   metaAccessToken,
   patientSpeaks,
   patientWrites,
+  recordedTranscriptions,
   scriptedModel,
   scriptedTranscriber,
   setUpBookingWorld,
@@ -93,11 +94,6 @@ async function openHandoffs() {
 
 function scheduledAlarm() {
   return runInDurableObject(world.organization, (_instance, state) => state.storage.getAlarm());
-}
-
-/** The month's transcription as an admin reads it in the WhatsApp settings. */
-async function monthTranscription() {
-  return expectOk(await world.organization.whatsappSettings(adminCaller)).usage.transcriptions;
 }
 
 beforeEach(async () => {
@@ -303,8 +299,10 @@ describe("transcription's use", () => {
     await speaks("ruido");
     await turn();
 
-    expect(await monthTranscription()).toEqual([
-      { model: "@cf/openai/whisper-large-v3-turbo", sandbox: false, seconds: 7.5 },
+    const heard = { day: "2098-12-01", model: "@cf/openai/whisper-large-v3-turbo", sandbox: false };
+    expect(await recordedTranscriptions(world.organization)).toEqual([
+      { ...heard, audioMs: 3_500 },
+      { ...heard, audioMs: 4_000 },
     ]);
   });
 
@@ -313,6 +311,6 @@ describe("transcription's use", () => {
     scriptedTranscriber.fails = true;
     await turn();
 
-    expect(await monthTranscription()).toEqual([]);
+    expect(await recordedTranscriptions(world.organization)).toEqual([]);
   });
 });
