@@ -4,7 +4,8 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
-import { FieldProblemText, FormGrid, useFieldProblem } from "#/components/app-form.tsx";
+import { FormGrid } from "#/components/app-form.tsx";
+import { FieldProblemText, useFieldProblem } from "#/components/field-problem.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { freeStartsByDay } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
