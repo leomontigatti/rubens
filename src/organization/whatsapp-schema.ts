@@ -473,7 +473,7 @@ export const proposal = sqliteTable(
 
 /**
  * What one run of the assistant's model used (docs/domain/assistant.md §
- * Costs): a turn's, or a clinical check's, in the sandbox or not, on the
+ * Costs): a turn's, a clinical check's or a template review's, in the sandbox or not, on the
  * organization's day, for the practice to pay for what it uses.
  */
 export const modelUsage = sqliteTable(

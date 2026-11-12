@@ -19,7 +19,7 @@ export const assistantModelId = "claude-haiku-5-5";
 export const transcriptionModelId = "@cf/openai/whisper-large-v3-turbo";
 
 /** What a run of the model is for, as the organization's usage records it (assistant.md § Costs). */
-export const modelRunPurposes = ["turn", "clinicalCheck"] as const;
+export const modelRunPurposes = ["turn", "clinicalCheck", "templateReview"] as const;
 
 /** How long the assistant waits after a patient's message before its turn (§ Pace). */
 export const assistantWaitMs = 8_000;

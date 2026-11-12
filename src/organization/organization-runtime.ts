@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { fakeMetaFetch, fakesMeta } from "#/dev/fake-meta.ts";
+import { fakeModel, fakesModel } from "#/dev/fake-model.ts";
 import { accountsFor } from "#/organization/accounts.ts";
 import { nextTurnAlarm, runDueTurns } from "#/organization/assistant.ts";
 import { nextReturnAlarm, returnDueConversations } from "#/organization/conversation-holds.ts";
@@ -40,6 +41,8 @@ type RuntimeEnv = WorkerEnv &
     AI?: Ai;
     /** `"true"` answers Meta's calls inside the Worker, for the browser suite (`src/dev/fake-meta.ts`). */
     WHATSAPP_FAKE_META?: string;
+    /** `"true"` fakes the assistant's model inside the Worker, for a browser check (`src/dev/fake-model.ts`). */
+    ASSISTANT_FAKE_MODEL?: string;
   };
 
 /**
@@ -71,7 +74,7 @@ export abstract class OrganizationRuntime extends DurableObject {
     const workerEnv = env as unknown as RuntimeEnv;
     this.database = openDatabase(ctx.storage);
     this.accounts = accountsFor(workerEnv);
-    this.assistant = assistantModelFor(workerEnv);
+    this.assistant = fakesModel(workerEnv) ? fakeModel : assistantModelFor(workerEnv);
     this.transcriber = transcriberFor(workerEnv);
     const directory = workerEnv.WHATSAPP_DIRECTORY.get(
       workerEnv.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),

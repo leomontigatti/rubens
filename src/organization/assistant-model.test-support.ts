@@ -10,6 +10,8 @@ import type {
   ModelTurn,
   ModelUsage,
   ReplyToCheck,
+  TemplateReview,
+  TemplateToReview,
 } from "#/organization/assistant-model.ts";
 import type { Organization } from "#/organization/organization.ts";
 import type { Transcriber, Transcript } from "#/organization/transcription.ts";
@@ -52,26 +54,58 @@ const plainTurn: Script = (turn) => {
 /** What the clinical check finds in a reply, or that it failed; a reply nothing scripts passes. */
 type CheckScript = CheckedReply | "fails";
 
+/** What the review of a template's text finds, or that it failed; a review nothing scripts finds nothing. */
+type ReviewScript = TemplateReview | "fails";
+
 class ScriptedModel implements AssistantModel {
   /** Every turn the object ran, in order. */
   turns: ModelTurn[] = [];
   calls: ToolCall[] = [];
   /** Every reply the object asked the clinical check about, in order. */
   checks: ReplyToCheck[] = [];
+  /** Every template's text the object asked the model to review, in order. */
+  reviews: TemplateToReview[] = [];
   /** Whether the Worker has the model's API key. */
   hasApiKey = true;
   #scripts: Script[] = [];
   #checkScripts: CheckScript[] = [];
   #checkTokens: Tokens | null = null;
+  #reviewScripts: ReviewScript[] = [];
+  #reviewTokens: Tokens | null = null;
 
   reset() {
     this.turns = [];
     this.calls = [];
     this.checks = [];
+    this.reviews = [];
     this.hasApiKey = true;
     this.#scripts = [];
     this.#checkScripts = [];
     this.#checkTokens = null;
+    this.#reviewScripts = [];
+    this.#reviewTokens = null;
+  }
+
+  /** The tokens every template review reports from now on; none until a test says. */
+  reviewUses(tokens: Tokens) {
+    this.#reviewTokens = tokens;
+  }
+
+  /** What the next template review finds; queued in order. */
+  scriptReview(found: ReviewScript) {
+    this.#reviewScripts.push(found);
+  }
+
+  async reviewTemplate(request: TemplateToReview) {
+    this.reviews.push(request);
+    if (this.#reviewTokens) {
+      request.recordUsage({ model: assistantModelId, ...this.#reviewTokens });
+    }
+    const found = this.#reviewScripts.shift() ?? { notes: [] };
+    if (found === "fails") {
+      throw new Error("The scripted template review failed");
+    }
+    return found;
   }
 
   /** The tokens every clinical check reports from now on; none until a test says. */
