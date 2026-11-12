@@ -1,4 +1,4 @@
-import { and, eq, exists, inArray, isNull, max, not, or } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, max, ne, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -128,6 +128,29 @@ export function relinkPatient(tx: Writer, patientId: string) {
   }
 }
 
+/**
+ * Leaves the patient's earlier reactions to the same message, replaced or
+ * taken back by `by`, for no turn to read: one still waiting is judged as
+ * nothing, and a turn reading it meanwhile acts on nothing (`answeredMeanwhile`).
+ */
+function replaceReactions(
+  tx: Writer,
+  reaction: { conversationId: string; reactsTo: string; by: string },
+) {
+  tx.update(whatsappMessage)
+    .set({ judgement: "notForPractitioner" })
+    .where(
+      and(
+        eq(whatsappMessage.conversationId, reaction.conversationId),
+        eq(whatsappMessage.type, reactionType),
+        eq(whatsappMessage.reactsTo, reaction.reactsTo),
+        isNull(whatsappMessage.judgement),
+        ne(whatsappMessage.id, reaction.by),
+      ),
+    )
+    .run();
+}
+
 function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
   const conversationId = conversationWith(tx, message.from);
   // A reaction taken back is ignored: no turn reads it, and it opens no window (`lastIncomingAt`).
@@ -152,6 +175,9 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
     return { whatsappId: message.whatsappId, alreadyStored: true };
   }
   linkPatients(tx, conversationId, message.from);
+  if (message.reactsTo) {
+    replaceReactions(tx, { conversationId, reactsTo: message.reactsTo, by: stored.id });
+  }
   if (ignored) {
     return { whatsappId: message.whatsappId, alreadyStored: false };
   }

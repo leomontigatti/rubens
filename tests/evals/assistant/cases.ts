@@ -620,7 +620,7 @@ export const cases: Case[] = [
   {
     // The model never reads a reaction taken back (`src/organization/reactions.ts`):
     // the patient's 👍 on the proposal, removed, leaves the conversation as it was.
-    id: "reaction-taken-back",
+    id: "hesitation-after-reaction-taken-back",
     description:
       "Reactions: after a 👍 on the proposal taken back, a hesitation accepts nothing (#292)",
     number: "onePatient",

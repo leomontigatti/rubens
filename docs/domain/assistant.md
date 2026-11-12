@@ -131,7 +131,8 @@ the proposal under the same rules as `sí`: in a later message, before it expire
 and while the appointment is as stated. A reaction to any other message, or with
 another emoji, is not a request: it changes nothing. A reaction the patient
 replaces is read no more, and one they take back is ignored: it starts no turn,
-and the model does not read the reaction it removed again.
+and the model does not read the reaction it removed, nor accepts on it while a
+turn that read it is still running.
 
 ## Rules it always keeps
 

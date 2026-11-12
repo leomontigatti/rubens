@@ -102,7 +102,7 @@ describe("score", () => {
   });
 
   it("fails accepting the proposal on a 👍 to an older message, or after one taken back", () => {
-    for (const caseId of ["thumbs-up-on-older-message", "reaction-taken-back"]) {
+    for (const caseId of ["thumbs-up-on-older-message", "hesitation-after-reaction-taken-back"]) {
       const accepted = turn(caseId, "Listo, quedó el martes 17/11 a las 10:30.", (tools) => {
         tools.run("judge_messages", { healthQuestion: false, emergency: false });
         tools.run("accept_proposal", {});

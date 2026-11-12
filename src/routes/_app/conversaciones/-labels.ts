@@ -82,7 +82,9 @@ export function messageText(message: InboxMessage) {
   }
   // One whose message the inbox holds shows under it instead (`-chat.tsx`).
   if (message.type === reactionType) {
-    return `Reaccionó con ${message.text} a un mensaje anterior`;
+    return message.text
+      ? `Reaccionó con ${message.text} a un mensaje anterior`
+      : "Quitó una reacción a un mensaje anterior";
   }
   if (message.media?.filename) {
     return `${mediaLabels[message.type] ?? "Archivo"}: ${message.media.filename}`;

@@ -86,7 +86,7 @@ describe("a message's text", () => {
     expect(messageText({ ...file, media: { ...file.media, filename: null } })).toBe("Archivo");
   });
 
-  it("says a reaction to a message the inbox does not hold is one, with its emoji", () => {
+  it("says a reaction to a message the inbox does not hold is one, with its emoji, or that it was taken back", () => {
     const reaction = {
       id: "1",
       direction: "incoming",
@@ -101,6 +101,7 @@ describe("a message's text", () => {
     } as const;
 
     expect(messageText(reaction)).toBe("Reaccionó con 👍 a un mensaje anterior");
+    expect(messageText({ ...reaction, text: "" })).toBe("Quitó una reacción a un mensaje anterior");
   });
 
   it("marks a voice note's transcript, and says when it has none", () => {

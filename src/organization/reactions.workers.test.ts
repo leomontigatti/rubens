@@ -1,6 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { runDurableObjectAlarm } from "cloudflare:test";
+
+import { assistantWaitMs } from "#/lib/assistant.ts";
 import { conversationWindowMs } from "#/lib/conversation-window.ts";
 
 import {
@@ -157,6 +160,69 @@ describe("the patient's reactions", () => {
     expect(read.window.closesAt).toBe(reactedAt + conversationWindowMs);
   });
 
+  it("runs no turn for a 👍 on the proposal taken back during the wait, and reads only the last of a replaced one", async () => {
+    const proposal = "Confirmo tu Consulta con Juan Gómez del lunes 5 de enero a las 09:00?";
+    await writes("lo puedo confirmar?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return proposal;
+    });
+    await afterTheWait();
+    const proposed = await sentId(proposal);
+    const turns = scriptedModel.turns.length;
+
+    await reacts(proposed, "👍");
+    await reacts(proposed, "");
+    await afterTheWait();
+
+    expect(scriptedModel.turns).toHaveLength(turns);
+    expect((await world.appointmentOf(appointmentId)).status).not.toBe("confirmed");
+
+    await reacts(proposed, "😮");
+    await reacts(proposed, "✅");
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(`[new messages]\n[reaccionó ✅ al mensaje: «${proposal}»]`);
+  });
+
+  it("accepts nothing on a 👍 the patient took back while the model wrote", async () => {
+    const proposal = "Confirmo tu Consulta con Juan Gómez del lunes 5 de enero a las 09:00?";
+    await writes("lo puedo confirmar?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return proposal;
+    });
+    await afterTheWait();
+    const proposed = await sentId(proposal);
+    await reacts(proposed, "👍");
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let accepted: unknown;
+    scriptedModel.script(async (turn) => {
+      turn.call("judge_messages", notClinical);
+      await released;
+      accepted = turn.call("accept_proposal");
+      return "Listo, quedó confirmado.";
+    });
+    const turns = scriptedModel.turns.length;
+    vi.setSystemTime(Date.now() + assistantWaitMs);
+    const alarm = runDurableObjectAlarm(world.organization);
+    while (scriptedModel.turns.length === turns) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    await reacts(proposed, "");
+    release();
+    await alarm;
+
+    expect(accepted).toEqual({ ok: false, reason: "held" });
+    expect((await world.appointmentOf(appointmentId)).status).not.toBe("confirmed");
+  });
+
   it("reads only the reaction the patient left on a message: none once taken back, the last once replaced", async () => {
     const first = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
     const second = await assistantAnswers("y la dirección?", "Av. Siempre Viva 123.");
@@ -192,5 +258,41 @@ describe("the patient's reactions", () => {
 
     const takenBack = await conversationShown();
     expect(takenBack.read.messages.map(({ reaction }) => reaction)).toEqual([null, null]);
+  });
+
+  it("keeps the patient's last words as what an open handoff shows, whatever they react to after", async () => {
+    await writes("me duele la muela desde ayer");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", {
+        healthQuestion: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
+      turn.call("hand_off", { reason: "clinical", appointmentId });
+      return "";
+    });
+    await afterTheWait();
+    const told = await sentId("Le paso tu consulta a Juan Gómez.");
+
+    await reacts(told, "👍");
+    await reacts(told, "");
+
+    const listed = expectOk(await world.organization.listOpenHandoffs(adminCaller, {}));
+    expect(listed.handoffs.map((one) => one.lastPatientMessage?.text)).toEqual([
+      "me duele la muela desde ayer",
+    ]);
+  });
+
+  it("lists a conversation whose only message is a reaction to one never stored", async () => {
+    await patientReacts(world.organization, {
+      from: "+5491155559999",
+      reactsTo: "wamid.never-stored",
+      emoji: "👍",
+    });
+
+    const listed = expectOk(await world.organization.listConversations(adminCaller, {}));
+    expect(listed.conversations.map((one) => one.lastMessage)).toMatchObject([
+      { type: "reaction", text: "👍" },
+    ]);
   });
 });

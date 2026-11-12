@@ -9,7 +9,8 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 // The patient's reactions as a turn reads them (`assistant.ts`): each with
 // the words of the message it reacts to. The conversation so far holds only
 // the reaction a message still shows, so one replaced or taken back is not
-// read again; the turn's new messages hold each, as the patient sent them.
+// read again; storing a reaction judges the ones it replaced
+// (`whatsapp-messages.ts`), so a turn's new messages hold none of them.
 
 /** The reactions of `conversationId`: which still show, and the words of the messages they react to. */
 export function reactionsOf(database: Database, conversationId: string) {

@@ -96,13 +96,21 @@ const metaWebhook = z.object({
 
 type MetaMessage = z.infer<typeof metaMessage>;
 
+/** A text's body, or a reaction's emoji: empty when the patient took it back, which Meta sends without one. */
+function textOf(message: MetaMessage) {
+  if (message.reaction) {
+    return message.reaction.emoji ?? "";
+  }
+  return message.text?.body ?? null;
+}
+
 function incomingOf(message: MetaMessage): IncomingWhatsappMessage {
   return {
     whatsappId: message.id,
     from: `+${message.from}`,
     sentAt: message.timestamp * 1000,
     type: message.type,
-    text: message.text?.body ?? (message.reaction ? (message.reaction.emoji ?? "") : null),
+    text: textOf(message),
     payload: JSON.stringify(message),
     ...(message.reaction && { reactsTo: message.reaction.message_id }),
   };

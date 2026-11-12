@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, exists, inArray, like, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, like, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
@@ -295,11 +295,13 @@ export function listConversations(
   const latestId = database
     .select({ id: latestMessage.id })
     .from(latestMessage)
-    // A reaction is shown under its message, never as the conversation's latest.
-    .where(
-      and(eq(latestMessage.conversationId, conversation.id), ne(latestMessage.type, reactionType)),
+    .where(eq(latestMessage.conversationId, conversation.id))
+    // A reaction shows under its message: the latest is one only when nothing else is.
+    .orderBy(
+      sql`${latestMessage.type} = ${reactionType}`,
+      desc(latestMessage.sentAt),
+      desc(sql`${latestMessage}.rowid`),
     )
-    .orderBy(desc(latestMessage.sentAt), desc(sql`${latestMessage}.rowid`))
     .limit(1);
   // A conversation is created with its first message, so each has a latest.
   const rows = database
