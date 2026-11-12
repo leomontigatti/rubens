@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "drizzle-orm";
 
 import type { HandoffDetail } from "#/lib/handoffs.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import { reactionType } from "#/lib/reactions.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
@@ -40,7 +39,8 @@ import {
 import { deliverReply, maySend, says } from "#/organization/turn-replies.ts";
 import { settleTurn } from "#/organization/turn-settling.ts";
 import { organizationName } from "#/organization/members.ts";
-import { office, patient } from "#/organization/schema.ts";
+import { organizationTimeZone } from "#/organization/offices.ts";
+import { patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 
@@ -293,13 +293,7 @@ function asTurnMessages(read: Read): TurnMessage[] {
 
 /** The organization's name, and the zone its first office reads time in. */
 function promptSetting(database: Database) {
-  const name = organizationName(database);
-  const first = database
-    .select({ timeZone: office.timeZone })
-    .from(office)
-    .orderBy(asc(office.createdAt))
-    .get();
-  return { organizationName: name, timeZone: first?.timeZone ?? defaultTimeZone };
+  return { organizationName: organizationName(database), timeZone: organizationTimeZone(database) };
 }
 
 /**
