@@ -132,7 +132,9 @@ beside it.
   a bare `Crear`.
 - **The fields sit in rows by their size, outside any card** ([Forms](#forms)). The actions
   close the form: `Volver` on the left, `Descartar cambios` and the submit button on the right. On
-  a long form they stick to the bottom of the window.
+  a long form they stick to the bottom of the window. Below `sm`, as on a phone, the submit button
+  takes a row of its own, full width, under `Volver` and `Descartar cambios`: the three and a long
+  label (`Guardar y enviar a Meta`) do not fit one row at 390px.
 - **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
 - **On an edit, `Descartar cambios` shows once something differs from what the form opened with.**
   A create has none (`FormPage`'s `creates`): with no saved values to go back to, it would only
