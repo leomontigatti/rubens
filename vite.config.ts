@@ -13,6 +13,9 @@ import { devPort } from "./scripts/worktree-port.ts";
 const port = devPort(process.cwd());
 
 const generated = ["src/routeTree.gen.ts", "src/organization/migrations/**"];
+// Agent skills copied from dependencies (`skills-lock.json`), and Claude Code's links
+// to them: theirs, kept as published.
+const vendoredSkills = [".agents/skills/**", ".claude/skills/**"];
 
 // The organization object's migrations are `.sql` files its generated index
 // imports (`src/organization/migrations/migrations.js`): each loads as its text.
@@ -44,7 +47,7 @@ export default defineConfig({
       ],
 
   lint: {
-    ignorePatterns: ["dist/**", ".wrangler/**", ".tanstack/**", ...generated],
+    ignorePatterns: ["dist/**", ".wrangler/**", ".tanstack/**", ...vendoredSkills, ...generated],
     plugins: ["react", "import", "typescript"],
     // The style guide's mechanical rules: `@shadcn/lint`, and `ui` for what it
     // does not cover. It reads the components and the theme from components.json.
@@ -161,7 +164,7 @@ export default defineConfig({
   },
 
   fmt: {
-    ignorePatterns: ["pnpm-lock.yaml", ".claude/worktrees/**", ...generated],
+    ignorePatterns: ["pnpm-lock.yaml", ".claude/worktrees/**", ...vendoredSkills, ...generated],
     semi: true,
     trailingComma: "all",
     sortPackageJson: false,
