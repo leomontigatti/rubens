@@ -50,7 +50,8 @@ and what it became: its creation, a new name, text or timing, each text sent to
 Meta, and its deletion.
 
 A medical service picks which of the organization's templates its appointments
-get, any number of them, each once; several may share a timing. A template no
+get, each once, and at most five reminders among them; several may share a timing.
+Its form offers the ones Meta approved, and keeps one it already picks. A template no
 medical service picks is sent to nobody. A medical service also sets **the
 reschedule cutoff**: how long before the appointment the patient can still move
 it through the assistant ([assistant.md](./assistant.md#cancelling-and-moving)).

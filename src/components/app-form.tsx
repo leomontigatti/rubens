@@ -13,11 +13,15 @@ import type { FieldProblem } from "#/components/form-problems.ts";
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
   Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxValue,
   useComboboxAnchor,
 } from "#/components/ui/combobox.tsx";
 import {
@@ -31,7 +35,7 @@ import {
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { InputGroupAddon } from "#/components/ui/input-group.tsx";
-import { NativeSelect } from "#/components/ui/native-select.tsx";
+import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   Select,
   SelectContent,
@@ -225,6 +229,15 @@ function SelectField(
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );
+}
+
+/** A `SelectField`'s options, from a list of them. */
+export function SelectOptions(props: { options: { value: string; label: string }[] }) {
+  return props.options.map((option) => (
+    <NativeSelectOption key={option.value} value={option.value}>
+      {option.label}
+    </NativeSelectOption>
+  ));
 }
 
 interface MarkedOption {
@@ -467,6 +480,103 @@ function ComboboxResults<Item>(props: ComboboxFieldProps<Item> & { note?: string
   );
 }
 
+/** An option of a `MultiComboboxField`: its name, and a line that tells it apart. */
+interface DetailedOption {
+  value: string;
+  label: string;
+  detail: string;
+}
+
+/**
+ * Several records picked from a list the page already holds: each pick shows
+ * as a chip in the box, and typing narrows the list by name.
+ */
+function MultiComboboxField(
+  props: FieldPlace & {
+    label: string;
+    options: DetailedOption[];
+    placeholder?: string;
+    /** The line the list shows when there is nothing to pick. */
+    emptyText: string;
+    /** The line the list shows when the search finds nothing. */
+    noMatchText: (query: string) => string;
+    /** A chip's remove button's accessible name. */
+    removeLabel: (label: string) => string;
+  },
+) {
+  const field = useFieldContext<string[]>();
+  const submitting = useSubmitting(field.form);
+  const { problem, errorId, invalid } = useFieldProblem(field.name);
+  const [query, setQuery] = useState("");
+  // The list takes the box's whole width, not the bare input's.
+  const anchor = useComboboxAnchor();
+  const picked = props.options.filter((option) => field.state.value.includes(option.value));
+
+  return (
+    <Field {...placeAttributes(props, "full")} data-invalid={invalid}>
+      <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+      <Combobox
+        multiple
+        items={props.options}
+        value={picked}
+        onValueChange={(options: DetailedOption[], details) => {
+          // Base UI drops every pick on an Escape with the list closed: a
+          // second Escape to close it would lose them. A chip removes its own.
+          if (details.reason === "escape-key") {
+            return;
+          }
+          field.handleChange(
+            pickedIn(
+              props.options,
+              options.map((option) => option.value),
+            ),
+          );
+        }}
+        inputValue={query}
+        onInputValueChange={setQuery}
+        itemToStringLabel={(option: DetailedOption) => option.label}
+        isItemEqualToValue={(option, other) => option.value === other.value}
+        disabled={submitting}
+      >
+        <ComboboxChips ref={anchor}>
+          <ComboboxValue>
+            {(options: DetailedOption[]) =>
+              options.map((option) => (
+                <ComboboxChip key={option.value} removeLabel={props.removeLabel(option.label)}>
+                  {option.label}
+                </ComboboxChip>
+              ))
+            }
+          </ComboboxValue>
+          <ComboboxChipsInput
+            id={field.name}
+            placeholder={props.placeholder}
+            onBlur={field.handleBlur}
+            aria-invalid={invalid}
+            aria-describedby={errorId}
+          />
+        </ComboboxChips>
+        <ComboboxContent anchor={anchor}>
+          <ComboboxEmpty>
+            {props.options.length === 0 ? props.emptyText : props.noMatchText(query.trim())}
+          </ComboboxEmpty>
+          <ComboboxList>
+            {(option: DetailedOption) => (
+              <ComboboxItem key={option.value} value={option}>
+                <span className="flex flex-col">
+                  {option.label}
+                  <span className="text-muted-foreground text-xs">{option.detail}</span>
+                </span>
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+    </Field>
+  );
+}
+
 /** The box's text and what it searches for, as `comboboxTextChange` moves them. */
 function useComboboxText(pickedLabel: string | null, picked: boolean, dropPick: () => void) {
   const [text, setText] = useState(pickedLabel ?? "");
@@ -498,6 +608,7 @@ export const { useAppForm } = createFormHook({
     CheckboxField,
     CheckboxGroupField,
     ComboboxField,
+    MultiComboboxField,
   },
   formComponents: {},
 });

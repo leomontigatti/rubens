@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { useAppForm } from "#/components/app-form.tsx";
+import { SelectOptions, useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { handoffRemindersSchema, maxReminderHours } from "#/lib/handoffs.ts";
+import { handoffRemindersSchema } from "#/lib/handoffs.ts";
+import { handoffReminderChoices } from "#/lib/hour-choices.ts";
 import { getWhatsappSettings, saveHandoffReminders } from "#/server/whatsapp.functions.ts";
 
 import { handoffRemindersHint } from "#/routes/_app/whatsapp/configuracion/-handoff-reminders.tsx";
@@ -14,9 +15,7 @@ export const Route = createFileRoute("/_app/whatsapp/configuracion/recordatorios
   component: EditHandoffReminders,
 });
 
-const wrongHours = `Ingresá una cantidad entera de horas, de 1 a ${maxReminderHours}.`;
-
-const noHours = "Ingresá las horas.";
+const wrongHours = "Elegí las horas de la lista.";
 
 const othersFirst =
   "A los demás se les recuerda más cerca del cierre: ingresá las mismas horas o menos que para quien la recibe.";
@@ -36,22 +35,11 @@ function EditHandoffReminders() {
   return <HandoffRemindersForm {...settings.handoffReminders} />;
 }
 
-const fieldNames = ["recipientHours", "othersHours"] as const;
-
-/** Whole hours from a field, or `NaN` for an empty one. */
-function hoursOf(text: string) {
-  return Number(text.trim() || Number.NaN);
-}
-
-/** What is wrong with the hours `value` holds, by field: empty ones first, then the schema's refusals. */
-function hoursProblems(value: Record<(typeof fieldNames)[number], string>) {
-  const empty = fieldNames.filter((field) => value[field].trim() === "");
-  if (empty.length > 0) {
-    return empty.map((field) => ({ field, message: noHours }));
-  }
+/** What is wrong with the hours `value` holds, by field, as the schema refuses them. */
+function hoursProblems(value: { recipientHours: string; othersHours: string }) {
   const parsed = handoffRemindersSchema.safeParse({
-    recipientHours: hoursOf(value.recipientHours),
-    othersHours: hoursOf(value.othersHours),
+    recipientHours: Number(value.recipientHours),
+    othersHours: Number(value.othersHours),
   });
   if (parsed.success) {
     return { hours: parsed.data };
@@ -83,7 +71,7 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
     },
   });
 
-  const hint = `Horas antes del cierre, de 1 a ${maxReminderHours}.`;
+  const hint = "Horas antes del cierre.";
   return (
     <ActionFormPage
       page={page}
@@ -95,28 +83,16 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
     >
       <form.AppField name="recipientHours">
         {(field) => (
-          <field.TextField
-            label="A quien la recibe"
-            type="number"
-            min={1}
-            max={maxReminderHours}
-            step={1}
-            required
-            hint={hint}
-          />
+          <field.SelectField label="A quien la recibe" required hint={hint}>
+            <SelectOptions options={handoffReminderChoices(props.recipientHours)} />
+          </field.SelectField>
         )}
       </form.AppField>
       <form.AppField name="othersHours">
         {(field) => (
-          <field.TextField
-            label="A los demás que pueden responderla"
-            type="number"
-            min={1}
-            max={maxReminderHours}
-            step={1}
-            required
-            hint={hint}
-          />
+          <field.SelectField label="A los demás que pueden responderla" required hint={hint}>
+            <SelectOptions options={handoffReminderChoices(props.othersHours)} />
+          </field.SelectField>
         )}
       </form.AppField>
     </ActionFormPage>

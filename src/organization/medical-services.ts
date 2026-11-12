@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import {
+  maxReminders,
   medicalServiceActiveChangeSchema,
   medicalServiceInputSchema,
   medicalServiceUpdateSchema,
@@ -21,7 +22,11 @@ import type { Acting } from "#/organization/members.ts";
 import { findPractitioner } from "#/organization/practitioners.ts";
 import { medicalService } from "#/organization/schema.ts";
 import { rebuildPicks } from "#/organization/template-messages.ts";
-import { medicalServiceTemplate, template } from "#/organization/whatsapp-schema.ts";
+import {
+  medicalServiceTemplate,
+  template,
+  whatsappTemplate,
+} from "#/organization/whatsapp-schema.ts";
 
 // Practitioners' medical services. Everyone reads them, since booking picks
 // from them; an admin changes anyone's and a practitioner their own (the
@@ -46,7 +51,8 @@ type Refusal =
   | "invalidInput"
   | "notFound"
   | "practitionerInactive"
-  | "unknownTemplate";
+  | "unknownTemplate"
+  | "tooManyReminders";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
@@ -55,6 +61,7 @@ const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const practitionerInactive = { ok: false, reason: "practitionerInactive" } as const;
 const unknownTemplate = { ok: false, reason: "unknownTemplate" } as const;
+const tooManyReminders = { ok: false, reason: "tooManyReminders" } as const;
 
 const medicalServiceColumns = {
   id: medicalService.id,
@@ -89,8 +96,20 @@ function withPicks<T extends { id: string }>(database: Database, rows: T[]) {
   return rows.map((row) => ({ ...row, templateIds: picks.get(row.id)! }));
 }
 
-/** The organization's own templates a medical service can pick, in the order their messages go. */
+/**
+ * The organization's own templates a medical service can pick, in the order
+ * their messages go, each marked when it has a version that goes now
+ * (`approvedVersion`).
+ */
 function pickableTemplates(database: Database) {
+  const approved = new Set(
+    database
+      .selectDistinct({ id: whatsappTemplate.templateId })
+      .from(whatsappTemplate)
+      .where(and(eq(whatsappTemplate.status, "approved"), eq(whatsappTemplate.category, "utility")))
+      .all()
+      .map((row) => row.id),
+  );
   return database
     .select({
       id: template.id,
@@ -101,17 +120,26 @@ function pickableTemplates(database: Database) {
     .from(template)
     .where(notInArray(template.id, [...eventTemplateIds]))
     .all()
-    .map(({ id, name, ...stored }) => ({ id, name, timing: timingOf(stored)! }))
+    .map(({ id, name, ...stored }) => ({
+      id,
+      name,
+      timing: timingOf(stored)!,
+      approved: approved.has(id),
+    }))
     .sort((a, b) => {
       const [x, y] = [timingRank(a.timing), timingRank(b.timing)];
       return x[0] - y[0] || x[1] - y[1] || a.name.localeCompare(b.name, "es");
     });
 }
 
-/** Whether every one of `templateIds` is one of the organization's own templates. */
-function allPickable(tx: Database, templateIds: string[]) {
-  const known = new Set(pickableTemplates(tx).map((one) => one.id));
-  return templateIds.every((id) => known.has(id));
+/** Why `templateIds` cannot be picked: one is no organization template, or too many are reminders. */
+function picksRefusal(tx: Database, templateIds: string[]) {
+  const pickable = new Map(pickableTemplates(tx).map((one) => [one.id, one]));
+  if (!templateIds.every((id) => pickable.has(id))) {
+    return unknownTemplate;
+  }
+  const reminders = templateIds.filter((id) => pickable.get(id)!.timing.when === "before");
+  return reminders.length > maxReminders ? tooManyReminders : null;
 }
 
 /** Makes `templateIds` the templates `medicalServiceId` picks, and rebuilds the messages the change affects. */
@@ -162,7 +190,7 @@ export function listMedicalServices(
   medicalServices: MedicalService[];
   canEdit: boolean;
   /** The organization's own templates its medical services can pick. */
-  templates: { id: string; name: string; timing: Timing }[];
+  templates: { id: string; name: string; timing: Timing; approved: boolean }[];
 }> {
   const found = findPractitioner(database, acting, options.practitionerId);
   if (!found) {
@@ -214,8 +242,9 @@ export function createMedicalService(
     if (!found.active) {
       return practitionerInactive;
     }
-    if (!allPickable(tx, templateIds)) {
-      return unknownTemplate;
+    const refusal = picksRefusal(tx, templateIds);
+    if (refusal) {
+      return refusal;
     }
     const created = tx.insert(medicalService).values(fields).returning(medicalServiceColumns).get();
     savePicks(tx, created.id, [], templateIds);
@@ -253,8 +282,9 @@ export function updateMedicalService(
     if (!findPractitioner(tx, acting, current.practitionerId)?.canEdit) {
       return forbidden;
     }
-    if (!allPickable(tx, templateIds)) {
-      return unknownTemplate;
+    const refusal = picksRefusal(tx, templateIds);
+    if (refusal) {
+      return refusal;
     }
     const [before] = withPicks(tx, [current]);
     const updated = tx

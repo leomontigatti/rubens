@@ -11,6 +11,7 @@ import {
   fakeMeta,
   inStorage,
   setUpTestOrganization,
+  submitTemplate,
 } from "#/organization/organization.test-support.ts";
 import { member } from "#/organization/schema.ts";
 
@@ -259,14 +260,90 @@ describe("the templates a medical service sends", () => {
 
     expect(await created()).toMatchObject({ templateIds: [], rescheduleCutoffHours: 24 });
     expect((await servicesOf(adminCaller, false)).templates).toEqual([
-      { id: expect.any(String), name: "Confirmación del turno", timing: { when: "booking" } },
+      {
+        id: expect.any(String),
+        name: "Confirmación del turno",
+        timing: { when: "booking" },
+        approved: false,
+      },
       {
         id: expect.any(String),
         name: "Recordatorio con confirmación",
         timing: { when: "before", hours: 24 },
+        approved: false,
       },
-      { id: expect.any(String), name: "Recordatorio", timing: { when: "before", hours: 2 } },
-      { id: expect.any(String), name: "Seguimiento", timing: { when: "after", hours: 24 } },
+      {
+        id: expect.any(String),
+        name: "Recordatorio",
+        timing: { when: "before", hours: 2 },
+        approved: false,
+      },
+      {
+        id: expect.any(String),
+        name: "Seguimiento",
+        timing: { when: "after", hours: 24 },
+        approved: false,
+      },
+    ]);
+  });
+
+  it("says which templates Meta approved, the ones ready to send", async () => {
+    const { organization, servicesOf } = await world();
+    const ids = await drafts(servicesOf);
+
+    await submitTemplate(organization, ids["Recordatorio"]!, {
+      status: "APPROVED",
+      metaId: "900000000000041",
+    });
+    await submitTemplate(organization, ids["Seguimiento"]!, {
+      status: "PENDING",
+      metaId: "900000000000042",
+    });
+
+    const { templates } = await servicesOf(adminCaller, false);
+    expect(templates.filter((one) => one.approved).map((one) => one.name)).toEqual([
+      "Recordatorio",
+    ]);
+  });
+
+  it("refuses more than five reminders, on a create and an edit", async () => {
+    const { organization, firstVisit, created, servicesOf } = await world();
+    const ids = await drafts(servicesOf);
+    const added: string[] = [];
+    for (const hours of [4, 6, 8, 48]) {
+      fakeMeta.answerNextWith(200, { id: `9000000000005${hours}`, status: "PENDING" });
+      const result = expectOk(
+        await organization.createTemplate(adminCaller, {
+          name: `Recordatorio ${hours} horas`,
+          timing: { when: "before", hours },
+          body: "Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}. Consultorios Prueba",
+        }),
+      );
+      added.push(result.templateId);
+    }
+    const reminders = [ids["Recordatorio"]!, ids["Recordatorio con confirmación"]!, ...added];
+    const five = [...reminders.slice(0, 5), ids["Seguimiento"]!];
+    const service = await created(adminCaller, firstVisit({ templateIds: five }));
+
+    const answers = [
+      await organization.createMedicalService(
+        adminCaller,
+        firstVisit({ name: "Control", templateIds: reminders }),
+      ),
+      await organization.updateMedicalService(adminCaller, {
+        ...firstVisit(),
+        templateIds: reminders,
+        rescheduleCutoffHours: 24,
+        medicalServiceId: service.id,
+      }),
+    ];
+
+    expect(answers.map((answer) => (answer.ok ? "saved" : answer.reason))).toEqual([
+      "tooManyReminders",
+      "tooManyReminders",
+    ]);
+    expect((await servicesOf(adminCaller, false)).medicalServices).toMatchObject([
+      { templateIds: expect.arrayContaining(five) },
     ]);
   });
 

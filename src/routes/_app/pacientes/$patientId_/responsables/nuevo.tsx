@@ -26,7 +26,7 @@ function NewGuardian() {
       title="Agregar responsable"
       description={patientName(result.patient)}
       initial={{ name: "", relationship: "", phone: "" }}
-      submitLabel="Agregar"
+      submitLabel="Agregar responsable"
       creates
       schema={guardianInputSchema}
       ids={{ patientId }}
