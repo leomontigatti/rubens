@@ -13,7 +13,7 @@ import {
 } from "#/components/ui/dialog.tsx";
 import { patientName } from "#/lib/patients.ts";
 import { formatPhone } from "#/lib/phones.ts";
-import { formatLocalDate } from "#/lib/schedules.ts";
+import { formatLocalDate } from "#/lib/dates.ts";
 import type { DuplicateCandidate, DuplicateMatch, Patient } from "#/organization/patients.ts";
 
 // The duplicate check as the registration and edit forms show it: a document

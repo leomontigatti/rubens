@@ -2,7 +2,8 @@ import { TZDate, tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
-import { formatLocalDate, shiftDate } from "#/lib/schedules.ts";
+import { formatLocalDate } from "#/lib/dates.ts";
+import { shiftDate } from "#/lib/schedules.ts";
 
 // How time off and closures are entered and stored: an entry is whole local
 // days or a local start and end, in an office's zone or the organization's

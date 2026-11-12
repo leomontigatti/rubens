@@ -170,7 +170,7 @@ export function usePatientForm(
 /** A patient's or a guardian's phone. */
 export const phoneFieldProps = {
   label: "Teléfono",
-  type: "tel",
+  type: "tel" as const,
   required: true,
   hint: "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.",
 };
@@ -231,7 +231,7 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
             {(field) => <field.TextField label="Número de documento" />}
           </form.AppField>
           <form.AppField name="birthDate">
-            {(field) => <field.TextField label="Fecha de nacimiento" type="date" />}
+            {(field) => <field.DateField label="Fecha de nacimiento" />}
           </form.AppField>
           <form.AppField name="email">
             {(field) => (

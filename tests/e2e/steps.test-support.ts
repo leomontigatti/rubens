@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { formatLocalDate } from "#/lib/schedules.ts";
+import { formatLocalDate } from "#/lib/dates.ts";
 
 import { medicalServiceName } from "./world.test-support.ts";
 

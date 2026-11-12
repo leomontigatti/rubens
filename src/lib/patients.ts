@@ -1,11 +1,9 @@
-import { tz } from "@date-fns/tz";
-import { format } from "date-fns";
 import * as z from "zod";
 
 import { appointmentStatusLabels, cancellerLabels } from "#/lib/appointment-statuses.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatPhone, parsePhone } from "#/lib/phones.ts";
-import { formatLocalDate } from "#/lib/schedules.ts";
+import { formatDateTime, formatLocalDate } from "#/lib/dates.ts";
 
 export const documentTypes = ["dni", "passport", "other"] as const;
 
@@ -241,7 +239,7 @@ interface HistoryContext {
 const byName = (id: string, context: HistoryContext) => context.names[id] ?? "Desconocido";
 
 const localDateTime = (instant: string, context: HistoryContext) =>
-  format(new Date(instant), "dd/MM/yyyy HH:mm", { in: tz(context.timeZone) });
+  formatDateTime(new Date(instant), context.timeZone);
 
 // How the change history shows a field's value, when not as written.
 const formatters: Record<string, (text: string, context: HistoryContext) => string> = {

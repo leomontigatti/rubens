@@ -5,6 +5,7 @@ import { createContext, useContext, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { comboboxTextChange } from "#/components/combobox-text.ts";
+import { DateInput, TimeInput } from "#/components/date-time-input.tsx";
 import { placeAttributes } from "#/components/field-size.ts";
 import type { FieldPlace } from "#/components/field-size.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
@@ -78,8 +79,11 @@ export function FieldProblemText(props: { id?: string; children?: string }) {
 
 type InputProps = Pick<
   ComponentProps<typeof Input>,
-  "type" | "required" | "autoComplete" | "min" | "max" | "step" | "placeholder" | "maxLength"
->;
+  "required" | "autoComplete" | "min" | "max" | "step" | "placeholder" | "maxLength"
+> & {
+  /** A date or a time is a `DateField` or a `TimeField`, which every browser shows alike. */
+  type?: "text" | "email" | "tel" | "number" | "password";
+};
 
 /**
  * The fields of a form, in rows by their size, as wide as the form is (not the
@@ -123,6 +127,39 @@ function TextField(props: InputProps & FieldPlace & { label: string; hint?: stri
     </Field>
   );
 }
+
+/** A date or a time, typed or picked: `DateInput` and `TimeInput` say how. */
+function typedField(Box: typeof DateInput | typeof TimeInput) {
+  return function TypedField(
+    props: FieldPlace & { label: string; hint?: string; required?: boolean },
+  ) {
+    const field = useFieldContext<string>();
+    const { problem, errorId, invalid } = useFieldProblem(field.name);
+    const hintId = props.hint ? `${field.name}-hint` : undefined;
+    return (
+      <Field {...placeAttributes(props, "quarter")} data-invalid={invalid}>
+        <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+        <Box
+          id={field.name}
+          value={field.state.value}
+          onChange={field.handleChange}
+          onBlur={field.handleBlur}
+          required={props.required}
+          aria-invalid={invalid}
+          aria-describedby={joinIds(hintId, errorId)}
+        />
+        <FieldHint id={hintId}>{props.hint}</FieldHint>
+        <FieldProblemText id={errorId}>{problem}</FieldProblemText>
+      </Field>
+    );
+  };
+}
+
+/** A date, typed as `dd/mm/aaaa` or picked on the calendar; the form holds `YYYY-MM-DD`. */
+const DateField = typedField(DateInput);
+
+/** A time on a 24-hour clock, typed as `HH:mm`; the form holds `HH:MM`. */
+const TimeField = typedField(TimeInput);
 
 /** A long text, such as a message body, whose box grows with what it holds. */
 function TextareaField(
@@ -453,6 +490,8 @@ export const { useAppForm } = createFormHook({
   formContext,
   fieldComponents: {
     TextField,
+    DateField,
+    TimeField,
     TextareaField,
     SelectField,
     MarkedSelectField,

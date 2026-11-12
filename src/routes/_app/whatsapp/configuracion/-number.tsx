@@ -1,5 +1,3 @@
-import { tz } from "@date-fns/tz";
-import { format } from "date-fns";
 import { useEffect, useState } from "react";
 
 import { useFormAction } from "#/components/admin-form.tsx";
@@ -14,6 +12,7 @@ import { messagingLimitLabels } from "#/lib/whatsapp.ts";
 import type { ConnectionState, NumberHoldReason } from "#/lib/whatsapp.ts";
 import { connectWhatsapp, disconnectWhatsapp } from "#/server/whatsapp.functions.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
+import { formatDateTime } from "#/lib/dates.ts";
 
 import {
   loadFacebookSdk,
@@ -188,7 +187,7 @@ function HoldNotice({ hold }: { hold: NonNullable<Settings["hold"]> }) {
   const until =
     hold.until === null
       ? "hasta que Meta lo levante"
-      : `hasta el ${format(hold.until, "dd/MM/yyyy HH:mm", { in: tz(defaultTimeZone) })}`;
+      : `hasta el ${formatDateTime(hold.until, defaultTimeZone)}`;
   return (
     <Alert variant="warning">
       <AlertTitle>{holdTitles[hold.reason]}</AlertTitle>

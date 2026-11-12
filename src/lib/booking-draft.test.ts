@@ -110,6 +110,15 @@ describe("what an overbooking form books", () => {
     expect(refusedPaths(overbookingRequestOf({ ...typed, date: "" }, zone))).toEqual(["start"]);
     expect(refusedPaths(overbookingRequestOf({ ...typed, time: "" }, zone))).toEqual(["start"]);
   });
+
+  it("refuses a time or a date that is half typed or names none, rather than booking another time", () => {
+    for (const time of ["10:", "10:3", "25:00", "23:75"]) {
+      expect(refusedPaths(overbookingRequestOf({ ...typed, time }, zone))).toEqual(["start"]);
+    }
+    for (const date of ["05/01/20", "31/02/2099"]) {
+      expect(refusedPaths(overbookingRequestOf({ ...typed, date }, zone))).toEqual(["start"]);
+    }
+  });
 });
 
 describe("the free times a new booking asks for", () => {

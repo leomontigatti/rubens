@@ -7,6 +7,8 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { entryFieldNames, entryValues } from "#/components/range-entry-values.ts";
+import type { EntryValues } from "#/components/range-entry-values.ts";
 import { answering, questionAfter, questionText } from "#/components/range-entry-question.ts";
 import type { NoticeQuestion, QuestionSubject } from "#/components/range-entry-question.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
@@ -20,27 +22,7 @@ import type { AffectsAppointments, Notice, RangeEntry } from "#/lib/time-ranges.
 // sends appointments to the "to reschedule" list, and the delete on its edit
 // page.
 
-type Kind = RangeEntry["kind"];
-
 type Outcome<R extends string> = { ok: true } | { ok: false; reason: R };
-
-/** What the form holds; `owner` is who or where the entry is for, when the form asks. */
-interface EntryValues {
-  owner: string;
-  kind: Kind;
-  firstDate: string;
-  lastDate: string;
-  start: string;
-  end: string;
-}
-
-/** The entry the fields hold, unchecked: the schema decides whether it is one. */
-export function readRangeEntry(values: EntryValues): unknown {
-  if (values.kind === "hours") {
-    return { kind: "hours", start: values.start, end: values.end };
-  }
-  return { kind: "days", firstDate: values.firstDate, lastDate: values.lastDate };
-}
 
 type EntryField = "practitionerId" | "officeId" | "firstDate" | "lastDate" | "start" | "end";
 
@@ -61,15 +43,6 @@ const rangeMessages: Record<string, string> = {
 
 const entryMessage = (issue: z.core.$ZodIssue) =>
   rangeMessages[issue.message] ?? messageIn(fieldMessages)(issue);
-
-/** The form holds who or where the entry is for in one field. */
-const entryFieldNames = { practitionerId: "owner", officeId: "owner" };
-
-/** What the form opens with: the entry's fields, and none for the other kind. */
-function entryValues(initial: RangeEntry | null, owner: string): EntryValues {
-  const empty = { owner, firstDate: "", lastDate: "", start: "", end: "" };
-  return initial ? { ...empty, ...initial } : { ...empty, kind: "days" };
-}
 
 interface Deletion<R extends string> {
   question: string;
@@ -116,7 +89,7 @@ export function EntryForm<R extends string>(props: {
   async function save(values: EntryValues, notice: Notice) {
     const submitted = props.onSubmit(values, notice);
     if (!(submitted instanceof Promise)) {
-      page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames));
+      page.showProblems(fieldProblems(submitted.issues, entryMessage, entryFieldNames(values)));
       return;
     }
     let refused: NoticeQuestion<EntryValues> | null = null;
@@ -183,14 +156,24 @@ export function EntryForm<R extends string>(props: {
         )}
       </form.AppField>
       <form.Subscribe selector={(state) => state.values.kind}>
-        {(kind) => {
-          const { type, fields } = kindFields[kind];
-          return fields.map(([name, label]) => (
+        {(kind) =>
+          kindFields[kind].map(([name, label, holds], index) => (
             <form.AppField key={name} name={name}>
-              {(field) => <field.TextField label={label} type={type} required />}
+              {(field) =>
+                holds === "date" ? (
+                  // A range of hours takes a row of its own: two dates, two times.
+                  <field.DateField
+                    label={label}
+                    startsRow={kind === "hours" && index === 0}
+                    required
+                  />
+                ) : (
+                  <field.TimeField label={label} required />
+                )
+              }
             </form.AppField>
-          ));
-        }}
+          ))
+        }
       </form.Subscribe>
       <ConfirmDialog
         open={asking}
@@ -242,20 +225,16 @@ function useDeletion<R extends string>(
   };
 }
 
-/** Each kind's two inputs: their input type, and each field's name and label. */
+/** Each kind's fields: their name, label and whether each holds a date or a time. */
 const kindFields = {
-  days: {
-    type: "date",
-    fields: [
-      ["firstDate", "Desde"],
-      ["lastDate", "Hasta (inclusive)"],
-    ],
-  },
-  hours: {
-    type: "datetime-local",
-    fields: [
-      ["start", "Inicio"],
-      ["end", "Fin"],
-    ],
-  },
+  days: [
+    ["firstDate", "Desde", "date"],
+    ["lastDate", "Hasta (inclusive)", "date"],
+  ],
+  hours: [
+    ["startDate", "Fecha de inicio", "date"],
+    ["startTime", "Hora de inicio", "time"],
+    ["endDate", "Fecha de fin", "date"],
+    ["endTime", "Hora de fin", "time"],
+  ],
 } as const;

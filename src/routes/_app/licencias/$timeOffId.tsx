@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { EntryForm, readRangeEntry } from "#/components/range-entry.tsx";
+import { EntryForm } from "#/components/range-entry.tsx";
+import { readRangeEntry } from "#/components/range-entry-values.ts";
 import { timeOffUpdateSchema } from "#/lib/time-ranges.ts";
 import { editTimeOff, getTimeOff, removeTimeOff } from "#/server/time-off.functions.ts";
 

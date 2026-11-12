@@ -2,13 +2,8 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
-import {
-  formatLocalDate,
-  shiftDate,
-  shortTime,
-  weekdayLabels,
-  weekdayOf,
-} from "#/lib/schedules.ts";
+import { formatLocalDate } from "#/lib/dates.ts";
+import { shiftDate, shortTime, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { WeeklySlot } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";

@@ -1,3 +1,5 @@
+import { formatDay, formatTime } from "#/lib/dates.ts";
+
 // Filling a WhatsApp template from an appointment
 // (`docs/operations/whatsapp-templates.md`): the values underthing puts in each
 // variable, the text the patient reads, and the parameters Meta is sent. The
@@ -44,25 +46,12 @@ export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = 
 
 /** The day as the templates write it, such as `jueves 12 de noviembre`. */
 export function appointmentDay(start: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone,
-  }).formatToParts(start);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((one) => one.type === type)?.value;
-  return `${part("weekday")} ${part("day")} de ${part("month")}`;
+  return formatDay(start, timeZone);
 }
 
 /** The time on a 24-hour clock, such as `09:05`. */
 export function appointmentTime(start: Date, timeZone: string) {
-  return new Intl.DateTimeFormat("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone,
-  }).format(start);
+  return formatTime(start, timeZone);
 }
 
 /** The value of each variable for `appointment`. */

@@ -114,7 +114,10 @@ export function bookingRequestOf(values: BookingValues) {
 export function overbookingRequestOf(values: BookingValues, timeZone: string) {
   return overbookingInputSchema.safeParse({
     ...partialInputOf(values),
-    start: values.date && values.time ? instantOf(values.date, values.time, timeZone) : undefined,
+    start:
+      isWholeDate(values.date) && isWholeTime(values.time)
+        ? instantOf(values.date, values.time, timeZone)
+        : undefined,
     roomId: values.roomId || null,
   });
 }
@@ -128,6 +131,11 @@ export const overbookingFieldNames = { patientId: "patient", start: "time" };
 /** A date input's value once it is a whole date: cleared, or half typed, it is none. */
 function isWholeDate(date: string): boolean {
   return z.iso.date().safeParse(date).success;
+}
+
+/** A time input's value once it is a whole `HH:MM`: `instantOf` would roll `25:00` into the next day. */
+function isWholeTime(time: string): boolean {
+  return z.iso.time({ precision: -1 }).safeParse(time).success;
 }
 
 /**

@@ -7,6 +7,7 @@ import * as z from "zod";
 import { EmptyState, NoPractitioners } from "#/components/empty-state.tsx";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { DateInput } from "#/components/date-time-input.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
@@ -111,6 +112,7 @@ function QueryForm(props: {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const { query } = props;
+  const [firstDate, setFirstDate] = useState(query.firstDate);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -158,11 +160,11 @@ function QueryForm(props: {
           </Field>
           <Field>
             <FieldLabel htmlFor="firstDate">Fecha</FieldLabel>
-            <Input
+            <DateInput
               id="firstDate"
               name="firstDate"
-              type="date"
-              defaultValue={query.firstDate}
+              value={firstDate}
+              onChange={setFirstDate}
               required
             />
           </Field>

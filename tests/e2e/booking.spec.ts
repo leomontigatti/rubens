@@ -8,6 +8,7 @@ import {
   openBooking,
   selectMedicalService,
 } from "./steps.test-support.ts";
+import { formatLocalDate } from "#/lib/dates.ts";
 import { nextWeek, people, storageStateOf } from "./world.test-support.ts";
 
 // The booking path as reception walks it: book from the calendar, have a second
@@ -115,8 +116,8 @@ test("moves an appointment a time off left outside working time", async ({ page,
   await admin
     .getByRole("combobox", { name: "Profesional" })
     .selectOption({ label: people.practitioner.name });
-  await admin.getByLabel("Desde").fill(date);
-  await admin.getByLabel("Hasta (inclusive)").fill(date);
+  await admin.getByLabel("Desde").fill(formatLocalDate(date));
+  await admin.getByLabel("Hasta (inclusive)").fill(formatLocalDate(date));
   await admin.getByRole("button", { name: "Crear licencia" }).click();
   // It asks first, counting the appointment it leaves outside working time.
   const question = admin.getByRole("alertdialog");
@@ -130,7 +131,7 @@ test("moves an appointment a time off left outside working time", async ({ page,
   await expect(listed).toBeVisible();
   await listed.getByRole("button", { name: "Reprogramar" }).click();
 
-  await page.getByLabel("Horarios libres desde").fill(moveTo);
+  await page.getByLabel("Horarios libres desde").fill(formatLocalDate(moveTo));
   await page
     .getByRole("group", { name: "Horario" })
     .getByRole("button", { name: "10:00" })

@@ -171,7 +171,7 @@ export function ReschedulePage({ loaded }: { loaded: LoadedAppointment }) {
         )}
       </form.AppField>
       <form.AppField name="freeFrom">
-        {(field) => <field.TextField label="Horarios libres desde" type="date" />}
+        {(field) => <field.DateField label="Horarios libres desde" />}
       </form.AppField>
       <form.Field name="start">
         {(field) => (

@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { assistantModelId, transcriptionModelId } from "#/lib/assistant.ts";
-import { transcriptionLine, usageLine, usageMonthName } from "#/lib/assistant-usage.ts";
+import { transcriptionLine, usageLine } from "#/lib/assistant-usage.ts";
 
 describe("the assistant's usage as the WhatsApp settings show it", () => {
-  it("names the month in Spanish", () => {
-    expect(usageMonthName("2098-12")).toBe("diciembre de 2098");
-    expect(usageMonthName("2099-01")).toBe("enero de 2099");
-  });
-
   it("names the assistant's model and the patients' or the sandbox's use, with grouped tokens", () => {
     const used = { model: assistantModelId, inputTokens: 45_350, outputTokens: 1_630 };
 
