@@ -54,7 +54,9 @@ function conversationWith(tx: Writer, phone: string): string {
 
 /**
  * The patients whose messages go to `phone`: through the guardian who is
- * their message contact, or to their own phone when no guardian is.
+ * their message contact, or to their own phone when no guardian is. A query,
+ * to run with `.all()` or to pass to an `inArray` as a subquery: a number may
+ * reach more patients than one statement binds.
  */
 export function patientsReachedAt(tx: Writer, phone: string) {
   const spellings = phoneSpellings(phone);
@@ -77,8 +79,7 @@ export function patientsReachedAt(tx: Writer, phone: string) {
         exists(contactGuardian(true)),
         and(inArray(patient.phone, spellings), not(exists(contactGuardian(false)))),
       ),
-    )
-    .all();
+    );
 }
 
 /**
@@ -87,7 +88,7 @@ export function patientsReachedAt(tx: Writer, phone: string) {
  * went elsewhere leaves, so the number is never taken for theirs.
  */
 function linkPatients(tx: Writer, conversationId: string, phone: string) {
-  const patients = patientsReachedAt(tx, phone);
+  const patients = patientsReachedAt(tx, phone).all();
   tx.delete(conversationPatient)
     .where(eq(conversationPatient.conversationId, conversationId))
     .run();

@@ -246,6 +246,16 @@ describe("a reply the model judges an opt-out", () => {
     expect(fakeMeta.textsSent()).toEqual([{ to: "5491155550000", text: "Tu turno es a las 9." }]);
   });
 
+  it("holds each patient of a number that reaches more of them than one statement binds", async () => {
+    const patientIds = await world.addPatientsSharing(numberPhone, 100);
+
+    await numberOptsOut();
+
+    for (const patientId of patientIds) {
+      expect(await pendingSince(patientId)).not.toBeNull();
+    }
+  });
+
   it("holds no patient whose messages go to another number", async () => {
     const martina = await world.addPatient("Martina", numberPhone);
     const pedro = await world.addPatient("Pedro", "+5491155559999");

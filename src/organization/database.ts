@@ -1,3 +1,5 @@
+import { sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
@@ -20,6 +22,16 @@ export type Writer = Parameters<Parameters<Database["transaction"]>[0]>[0] | Dat
 
 export function openDatabase(storage: DurableObjectStorage): Database {
   return drizzle(storage, { schema });
+}
+
+/**
+ * `values`, a list held in memory (a turn's messages, a webhook's statuses), as
+ * a subquery for an `inArray` that binds one parameter however long it is: the
+ * object's SQLite binds at most 100 a query. Where a query alone reads the list,
+ * the `inArray` takes that query instead (`patientsReachedAt`).
+ */
+export function boundAsOne(values: string[]): SQL {
+  return sql`(select value from json_each(${JSON.stringify(values)}))`;
 }
 
 /** Applies every migration the object has not run yet. */

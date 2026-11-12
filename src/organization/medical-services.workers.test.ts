@@ -100,6 +100,18 @@ describe("managing medical services", () => {
     expect(medicalServices.map((service) => service.name)).toEqual(["Control", "Primera vez"]);
   });
 
+  it("lists more of a practitioner's medical services than one statement binds", async () => {
+    const { rita, firstVisit, created, servicesOf } = await world();
+    for (let added = 0; added < 110; added++) {
+      await created(adminCaller, firstVisit({ name: `Servicio ${added}` }));
+    }
+
+    const { medicalServices } = await servicesOf(rita.caller, false);
+
+    expect(medicalServices).toHaveLength(110);
+    expect(medicalServices.every((service) => service.templateIds.length === 0)).toBe(true);
+  });
+
   it("lets a practitioner manage their own medical services and no one else's", async () => {
     const { organization, juan, ana, firstVisit, created, servicesOf } = await world();
     const own = await organization.createMedicalService(juan.caller, firstVisit());

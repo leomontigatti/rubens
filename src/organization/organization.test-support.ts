@@ -237,6 +237,26 @@ export async function setUpBookingWorld() {
     return result.patient;
   }
 
+  /**
+   * Registers `count` more patients reached at `phone`, past the duplicate check,
+   * and returns their ids: enough of them binds more ids than one statement takes.
+   */
+  async function addPatientsSharing(phone: string, count: number) {
+    const ids: string[] = [];
+    for (let added = 0; added < count; added++) {
+      const registered = expectOk(
+        await organization.registerPatient(adminCaller, {
+          firstName: `Paciente ${added}`,
+          lastName: "Paz",
+          phone,
+          confirmDuplicates: true,
+        }),
+      );
+      ids.push(registered.patient.id);
+    }
+    return ids;
+  }
+
   /** Books `input`, as reception unless `caller` is given; throws on a refusal. */
   async function book(input: BookingInput & WarningConfirmation, caller = receptionist) {
     const result = await organization.bookAppointment(caller, input);
@@ -303,6 +323,7 @@ export async function setUpBookingWorld() {
     addMedicalService,
     pickTemplates,
     addPatient,
+    addPatientsSharing,
     book,
     overbook,
     appointmentOf,

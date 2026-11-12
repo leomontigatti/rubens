@@ -21,7 +21,7 @@ import {
 } from "#/organization/moves.ts";
 import type { Slot } from "#/organization/moves.ts";
 import { answeredMeanwhile } from "#/organization/turn-retries.ts";
-import { isHeld, lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
+import { isHeld, lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
 
 // Proposals (docs/domain/assistant.md § Proposals, ADR-0006 § The model
@@ -211,10 +211,7 @@ function appointmentNow(database: Database, conversationId: string, appointmentI
     .from(conversation)
     .where(eq(conversation.id, conversationId))
     .get()!;
-  const patientIds = patientsReachedAt(database, phone).map((one) => one.id);
-  return upcomingAppointments(database, patientIds, Date.now()).find(
-    (one) => one.id === appointmentId,
-  );
+  return upcomingAppointments(database, phone, Date.now()).find((one) => one.id === appointmentId);
 }
 
 /**

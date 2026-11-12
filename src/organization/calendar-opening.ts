@@ -9,6 +9,7 @@ import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { meets } from "#/organization/availability.ts";
+import { boundAsOne } from "#/organization/database.ts";
 import type { Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { appointment, practitioner, schedule } from "#/organization/schema.ts";
@@ -33,7 +34,7 @@ function countByRoom(
     .where(
       and(
         eq(appointment.practitionerId, practitionerId),
-        inArray(appointment.roomId, [...roomIds]),
+        inArray(appointment.roomId, boundAsOne([...roomIds])),
         inArray(appointment.status, [...activeAppointmentStatuses]),
         meets(appointment, week),
       ),
@@ -60,7 +61,12 @@ function scheduledRooms(
       lastDate: schedule.lastDate,
     })
     .from(schedule)
-    .where(and(eq(schedule.practitionerId, practitionerId), inArray(schedule.roomId, [...roomIds])))
+    .where(
+      and(
+        eq(schedule.practitionerId, practitionerId),
+        inArray(schedule.roomId, boundAsOne([...roomIds])),
+      ),
+    )
     .all();
   const held = rows.filter(
     (row) => occurrencesDuring({ ...row, timeZone: defaultTimeZone }, week).length > 0,

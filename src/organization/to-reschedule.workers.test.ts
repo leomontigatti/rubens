@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   addRoom,
+  addStaff,
   adminCaller,
   answeringNotice,
   at,
@@ -353,6 +354,35 @@ describe("the menu's count of the to-reschedule list", () => {
     expect(await w.listed(w.juan.caller)).toHaveLength(2);
     expect(await w.count(w.juan.caller)).toBe(2);
   });
+});
+
+describe("a list of more practitioners than one statement binds", () => {
+  it("lists and counts the appointments of each that a closure takes", async () => {
+    const w = await world();
+    for (let added = 0; added < 100; added++) {
+      const { practitionerId } = await addStaff(w.organization, `Profesional ${added}`);
+      const room = await addRoom(w.organization, w.office.id, `Consultorio ${added + 10}`);
+      await w.addSchedule({ practitionerId, roomId: room.id });
+      const service = await w.addMedicalService(practitionerId);
+      expectOk(
+        await w.organization.bookAppointment(w.receptionist, {
+          patientId: w.maria.id,
+          practitionerId,
+          medicalServiceId: service.id,
+          start: at("12:00"),
+          durationMinutes: 30,
+          confirmWarnings: true,
+        }),
+      );
+    }
+    expect(await w.listed()).toEqual([]);
+
+    await w.addClosure(w.office.id, "2099-01-05");
+
+    expect(await w.listed()).toHaveLength(100);
+    expect(await w.count()).toBe(100);
+    // About 600 calls set up the practitioners, past the default 5 seconds on a loaded run.
+  }, 20_000);
 });
 
 describe("deactivated people on the to-reschedule list", () => {

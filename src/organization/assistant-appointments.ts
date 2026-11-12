@@ -5,17 +5,15 @@ import { formatDay, formatTime } from "#/lib/dates.ts";
 import type { Database } from "#/organization/database.ts";
 import { upcomingStatuses } from "#/organization/template-messages.ts";
 import { appointment, medicalService, office, practitioner, room } from "#/organization/schema.ts";
+import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 
 // The appointments a patient assistant's turn may speak of and act on
 // (docs/domain/assistant.md § For patients): the upcoming ones of the patients
 // the conversation's number is the message contact of, with what the patient
 // may be told of each and nothing clinical.
 
-/** The upcoming appointments of `patientIds`, with what the patient may be told of each. */
-export function upcomingAppointments(database: Database, patientIds: string[], now: number) {
-  if (patientIds.length === 0) {
-    return [];
-  }
+/** The upcoming appointments of the patients `phone` reaches, with what the patient may be told of each. */
+export function upcomingAppointments(database: Database, phone: string, now: number) {
   return database
     .select({
       id: appointment.id,
@@ -37,7 +35,7 @@ export function upcomingAppointments(database: Database, patientIds: string[], n
     .innerJoin(office, eq(office.id, room.officeId))
     .where(
       and(
-        inArray(appointment.patientId, patientIds),
+        inArray(appointment.patientId, patientsReachedAt(database, phone)),
         inArray(appointment.status, upcomingStatuses),
         gt(appointment.startsAt, now),
       ),

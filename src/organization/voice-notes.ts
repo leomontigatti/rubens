@@ -5,6 +5,7 @@ import { transcriptionModelId } from "#/lib/assistant.ts";
 
 import { recordTranscription } from "#/organization/assistant-usage.ts";
 import type { CommunicationRules } from "#/organization/communication-rules.ts";
+import { boundAsOne } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Transcriber } from "#/organization/transcription.ts";
@@ -51,7 +52,7 @@ function untranscribed(database: Database, messageIds: string[]) {
     .from(whatsappMessage)
     .where(
       and(
-        inArray(whatsappMessage.id, messageIds),
+        inArray(whatsappMessage.id, boundAsOne(messageIds)),
         eq(whatsappMessage.direction, "incoming"),
         eq(whatsappMessage.type, "audio"),
         isNull(whatsappMessage.text),

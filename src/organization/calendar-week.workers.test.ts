@@ -164,6 +164,17 @@ describe("where a practitioner's calendar opens", () => {
     });
   });
 
+  it("is the room with most of their appointments among more rooms than one statement binds", async () => {
+    const w = await world();
+    for (let added = 0; added < 110; added++) {
+      await addRoom(w.organization, w.office.id, `Consultorio ${added + 10}`);
+    }
+    expect((await opening(w, w.juan.caller)).roomId).toBe(w.shared.id);
+    await bookMostlyInOtherRoom(w);
+
+    expect((await opening(w, w.juan.caller)).roomId).toBe(w.otherRoom.id);
+  });
+
   it("counts only that week's active appointments", async () => {
     const w = await world();
     const first = await bookMostlyInOtherRoom(w);

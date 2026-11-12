@@ -253,6 +253,31 @@ describe("sending the booking confirmation", () => {
     ]);
   });
 
+  it("sends it while more templates are approved than one statement binds", async () => {
+    for (let hour = 1; hour <= 100; hour++) {
+      fakeMeta.answerNextWith(200, {
+        id: `9000000001${String(hour).padStart(5, "0")}`,
+        status: "APPROVED",
+        category: "UTILITY",
+      });
+      expectOk(
+        await world.organization.createTemplate(adminCaller, {
+          name: `Seguimiento ${hour} horas`,
+          timing: { when: "after", hours: hour },
+          body: "Hola {{paciente}}, gracias por venir el {{fecha}}. Consultorios Prueba",
+        }),
+      );
+    }
+    await submitConfirmation("APPROVED");
+    fakeMeta.answerWith(200, metaSent("wamid.confirmation"));
+    await bookMartina();
+
+    await runDurableObjectAlarm(world.organization);
+
+    expect(sentToMeta()).toHaveLength(1);
+    expect(await outbox()).toEqual([expect.objectContaining({ state: "sent", attempts: 1 })]);
+  });
+
   it("sends the latest approved version", async () => {
     await submitConfirmation("APPROVED", "900000000000001");
     await submitConfirmation("APPROVED", "900000000000002", `${confirmationBody}.`);

@@ -45,14 +45,12 @@ import {
  * reopen template greets them; `null` when there is none to send it to.
  */
 function greetedAt(tx: Writer, phone: string) {
-  const ids = patientsReachedAt(tx, phone).map((one) => one.id);
-  if (ids.length === 0) {
-    return null;
-  }
   const names = tx
     .select({ firstName: patient.firstName, chosenName: patient.chosenName })
     .from(patient)
-    .where(and(inArray(patient.id, ids), eq(patient.whatsappConsent, true)))
+    .where(
+      and(inArray(patient.id, patientsReachedAt(tx, phone)), eq(patient.whatsappConsent, true)),
+    )
     .orderBy(asc(patient.firstName))
     .all()
     .map((one) => one.chosenName ?? one.firstName);
@@ -136,7 +134,9 @@ function reopenFor(tx: Writer, conversationId: string) {
 
 /** The patients `phone` reaches now, by id. */
 function reachedIds(tx: Writer, phone: string) {
-  return patientsReachedAt(tx, phone).map((one) => one.id);
+  return patientsReachedAt(tx, phone)
+    .all()
+    .map((one) => one.id);
 }
 
 /**

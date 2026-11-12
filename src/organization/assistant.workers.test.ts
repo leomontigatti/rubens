@@ -95,6 +95,13 @@ function storedFlags() {
   );
 }
 
+/** The patient writes `count` messages, more than one statement binds when past 100. */
+async function patientWritesMany(count: number) {
+  for (let written = 0; written < count; written++) {
+    await patientWrites(`mensaje ${written}`);
+  }
+}
+
 /** Lets the test act while the model writes: the returned `release` ends the held turn. */
 function holdingTurn() {
   let release!: () => void;
@@ -579,6 +586,20 @@ describe("the organization's voice", () => {
 });
 
 describe("judging every patient message", () => {
+  it("judges a burst of more messages than one statement binds, and replies", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWritesMany(110);
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Hola, en qué te puedo ayudar?";
+    });
+
+    await afterTheWait();
+
+    expect(await judgementsShown()).toEqual(Array(110).fill("notForPractitioner"));
+    expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "Hola, en qué te puedo ayudar?" }]);
+  });
+
   it("stores the turn's judgement on each new message, which reception reads with its words", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
@@ -836,6 +857,23 @@ describe("a message the model could not read", () => {
       expect.objectContaining({ reason: "modelUnavailable", forPractitioner: false }),
     ]);
     expect(textsToMeta()).toEqual([]);
+  });
+
+  it("hands off a burst of more messages than one statement binds, judging each", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWritesMany(110);
+    scriptedModel.script((turn) => {
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("accept_proposal");
+      throw new Error("The model is overloaded");
+    });
+
+    await afterTheWait();
+
+    expect(await openHandoffs()).toEqual([
+      expect.objectContaining({ reason: "modelUnavailable", forPractitioner: false }),
+    ]);
+    expect(await judgementsShown()).toEqual(Array(110).fill("notForPractitioner"));
   });
 
   it("is not read again as new once the handoff is closed and the patient writes", async () => {
@@ -1233,6 +1271,27 @@ describe("confirming and cancelling through proposals", () => {
     };
     expect(proposed).toEqual({ ok: true, proposal: stated });
     expect(accepted).toEqual({ ok: true, applied: stated });
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(textsToMeta()).toEqual([
+      { to: "5491155550000", text: "Listo, tu turno quedó confirmado." },
+    ]);
+  });
+
+  it("confirms for a number that reaches more patients than one statement binds", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await world.addPatientsSharing(martinaPhone, 100);
+    await patientWrites("sí, voy");
+    let accepted: unknown;
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      accepted = turn.call("accept_proposal");
+      return "Listo, tu turno quedó confirmado.";
+    });
+
+    await afterTheWait();
+
+    expect(accepted).toMatchObject({ ok: true, applied: { kind: "confirm" } });
     expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
     expect(textsToMeta()).toEqual([
       { to: "5491155550000", text: "Listo, tu turno quedó confirmado." },

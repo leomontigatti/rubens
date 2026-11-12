@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, inArray, isNotNull, lt, notInArray } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
@@ -243,17 +244,14 @@ export function mayAnswer(
 }
 
 /** Every recipient of `handoffIds`, by handoff. */
-export function recipientsByHandoff(database: Database, handoffIds: string[]) {
-  const rows =
-    handoffIds.length === 0
-      ? []
-      : database
-          .select({ handoffId: handoffRecipient.handoffId, name: member.name })
-          .from(handoffRecipient)
-          .innerJoin(member, eq(member.userId, handoffRecipient.memberId))
-          .where(inArray(handoffRecipient.handoffId, handoffIds))
-          .orderBy(member.name)
-          .all();
+export function recipientsByHandoff(database: Database, handoffIds: string[] | SQLWrapper) {
+  const rows = database
+    .select({ handoffId: handoffRecipient.handoffId, name: member.name })
+    .from(handoffRecipient)
+    .innerJoin(member, eq(member.userId, handoffRecipient.memberId))
+    .where(inArray(handoffRecipient.handoffId, handoffIds))
+    .orderBy(member.name)
+    .all();
   const byHandoff = new Map<string, string[]>();
   for (const row of rows) {
     byHandoff.set(row.handoffId, [...(byHandoff.get(row.handoffId) ?? []), row.name]);

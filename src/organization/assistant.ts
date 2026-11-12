@@ -173,14 +173,10 @@ function turnTools(
  * turn, not from the conversation's links, which date from its last message.
  */
 function patientsOf(database: Database, phone: string) {
-  const ids = patientsReachedAt(database, phone).map((one) => one.id);
-  if (ids.length === 0) {
-    return [];
-  }
   return database
     .select({ id: patient.id, firstName: patient.firstName, chosenName: patient.chosenName })
     .from(patient)
-    .where(inArray(patient.id, ids))
+    .where(inArray(patient.id, patientsReachedAt(database, phone)))
     .orderBy(asc(patient.id))
     .all()
     .map((one) => ({ id: one.id, firstName: one.chosenName ?? one.firstName }));
@@ -385,13 +381,8 @@ function mayReply(
   const patients = patientsOf(database, turn.read.phone);
   const unchanged =
     JSON.stringify(patients) === JSON.stringify(turn.read.patients) &&
-    JSON.stringify(
-      upcomingAppointments(
-        database,
-        patients.map((one) => one.id),
-        now,
-      ),
-    ) === JSON.stringify(turn.appointments);
+    JSON.stringify(upcomingAppointments(database, turn.read.phone, now)) ===
+      JSON.stringify(turn.appointments);
   return !newerWaits && unchanged && maySend(database, cloud, turn.conversationId);
 }
 
@@ -448,8 +439,7 @@ async function runTurn(
     return null;
   }
   const { transcribed } = read;
-  const patientIds = read.patients.map((one) => one.id);
-  const appointments = upcomingAppointments(database, patientIds, Date.now());
+  const appointments = upcomingAppointments(database, read.phone, Date.now());
   // The turn's own view of them, which a proposal it accepts changes: its
   // reply is checked against the state its own change left.
   const view = [...appointments];

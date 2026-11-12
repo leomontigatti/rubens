@@ -258,6 +258,13 @@ describe("a person's reply after the window closed", () => {
     expect(await openHandoffs()).toHaveLength(1);
   });
 
+  it("is held for a number that reaches more patients than one statement binds", async () => {
+    await handedOffThenClosed();
+    await world.addPatientsSharing(martinaPhone, 100);
+
+    expect(expectOk(await replyAs(world.receptionist))).toEqual({ ok: true, held: true });
+  });
+
   it("shows the reopen template as the patient will read it while it is queued, then as its message", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist));

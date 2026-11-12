@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import {
@@ -71,29 +72,29 @@ const medicalServiceColumns = {
   active: medicalService.active,
 };
 
-/** The templates each of `ids` picks. */
-function picksOf(database: Database, ids: string[]) {
-  const rows = database
+/**
+ * `rows` with the templates each picks. `among` names the same medical
+ * services, as the query that read them when there may be more than one
+ * statement binds.
+ */
+function withPicks<T extends { id: string }>(
+  database: Database,
+  rows: T[],
+  among: string[] | SQLWrapper = rows.map((row) => row.id),
+) {
+  const picked = database
     .select({
       medicalServiceId: medicalServiceTemplate.medicalServiceId,
       templateId: medicalServiceTemplate.templateId,
     })
     .from(medicalServiceTemplate)
-    .where(inArray(medicalServiceTemplate.medicalServiceId, ids))
+    .where(inArray(medicalServiceTemplate.medicalServiceId, among))
     .all();
-  const byService = new Map<string, string[]>(ids.map((id) => [id, []]));
-  for (const { medicalServiceId, templateId } of rows) {
-    byService.get(medicalServiceId)!.push(templateId);
+  const byService = new Map<string, string[]>(rows.map((row) => [row.id, []]));
+  for (const { medicalServiceId, templateId } of picked) {
+    byService.get(medicalServiceId)?.push(templateId);
   }
-  return byService;
-}
-
-function withPicks<T extends { id: string }>(database: Database, rows: T[]) {
-  const picks = picksOf(
-    database,
-    rows.map((row) => row.id),
-  );
-  return rows.map((row) => ({ ...row, templateIds: picks.get(row.id)! }));
+  return rows.map((row) => ({ ...row, templateIds: byService.get(row.id)! }));
 }
 
 /**
@@ -195,15 +196,14 @@ export function listMedicalServices(
   if (!found) {
     return notFound;
   }
+  const listed = and(
+    eq(medicalService.practitionerId, found.id),
+    options.includeInactive ? undefined : eq(medicalService.active, true),
+  );
   const rows = database
     .select(medicalServiceColumns)
     .from(medicalService)
-    .where(
-      and(
-        eq(medicalService.practitionerId, found.id),
-        options.includeInactive ? undefined : eq(medicalService.active, true),
-      ),
-    )
+    .where(listed)
     .orderBy(asc(medicalService.name))
     .all();
   return {
@@ -214,7 +214,11 @@ export function listMedicalServices(
       canEdit: found.canEdit,
       active: found.active,
     },
-    medicalServices: withPicks(database, rows),
+    medicalServices: withPicks(
+      database,
+      rows,
+      database.select({ id: medicalService.id }).from(medicalService).where(listed),
+    ),
     canEdit: found.canEdit && found.active,
     templates: pickableTemplates(database),
   };
