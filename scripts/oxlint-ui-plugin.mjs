@@ -393,6 +393,9 @@ function patternsOf(node) {
   return plainTemplate ? [{ node, text: node.quasis[0].value.cooked }] : [];
 }
 
+// An object property's key, written as a name or as a string.
+const keyOf = (property) => property.key?.name ?? property.key?.value;
+
 // `Intl.DateTimeFormat(locale, { timeZone })` writes nothing a person reads
 // itself: it is how a zone's name is checked.
 function asksOnlyZone(options) {
@@ -400,7 +403,7 @@ function asksOnlyZone(options) {
     options?.type === "ObjectExpression" &&
     options.properties.length > 0 &&
     options.properties.every(
-      (property) => property.type === "Property" && property.key?.name === "timeZone",
+      (property) => property.type === "Property" && keyOf(property) === "timeZone",
     )
   );
 }
@@ -431,7 +434,7 @@ const DATE_OPTIONS = new Set([
 
 const asksDateParts = (options) =>
   options?.type === "ObjectExpression" &&
-  options.properties.some((property) => DATE_OPTIONS.has(property.key?.name));
+  options.properties.some((property) => DATE_OPTIONS.has(keyOf(property)));
 
 // `date.toLocaleDateString()`, or `toLocaleString` asked for a date's parts.
 function writesLocaleString(node) {
