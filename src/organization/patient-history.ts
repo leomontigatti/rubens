@@ -1,4 +1,4 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import type { AuditValues } from "#/lib/audit-fields.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
@@ -70,7 +70,7 @@ type EntryRow = {
  * rooms the entries point at, by id. A side's times are in the zone of the
  * office of the room that side names, else of the appointment's office now.
  */
-function appointmentContext(database: Database, entries: readonly EntryRow[]) {
+function appointmentContext(database: Database, patientId: string, entries: readonly EntryRow[]) {
   const appointmentEntries = entries.filter((entry) => entry.entityType === "appointment");
   const idsOf = (field: (typeof namedFields)[number]) => [
     ...new Set(
@@ -79,10 +79,22 @@ function appointmentContext(database: Database, entries: readonly EntryRow[]) {
         .filter((value): value is string => typeof value === "string"),
     ),
   ];
-  const appointmentIds = [...new Set(appointmentEntries.map((entry) => entry.entityId))];
-  const appointments = whereIn(appointmentIds, (ids) =>
-    selectDayAppointments(database).where(inArray(appointment.id, ids)).all(),
-  );
+  const appointments =
+    appointmentEntries.length === 0
+      ? []
+      : selectDayAppointments(database)
+          .where(
+            inArray(
+              appointment.id,
+              database
+                .select({ id: auditLog.entityId })
+                .from(auditLog)
+                .where(
+                  and(eq(auditLog.patientId, patientId), eq(auditLog.entityType, "appointment")),
+                ),
+            ),
+          )
+          .all();
   const practitioners = whereIn(idsOf("practitionerId"), (ids) =>
     database
       .select({ id: practitioner.id, name: practitioner.displayName })
@@ -168,7 +180,7 @@ export function getPatientHistory(
     // Insertion order breaks a tie: two entries can share a millisecond.
     .orderBy(desc(auditLog.createdAt), desc(sql`${auditLog}.rowid`))
     .all();
-  const { timeZonesOf, appointmentOf, names } = appointmentContext(database, rows);
+  const { timeZonesOf, appointmentOf, names } = appointmentContext(database, patientId.data, rows);
   return {
     ok: true,
     entries: rows.map(({ entityId, ...row }) => ({
