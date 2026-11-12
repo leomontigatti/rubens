@@ -119,18 +119,35 @@ describe("score", () => {
     }
   });
 
-  it("fails confirming on a 👍 to a message that does not ask to confirm", () => {
-    const confirmed = turn(
+  it("fails confirming on a 👍 to a message that does not ask, an older reminder, or one already confirmed", () => {
+    for (const caseId of [
       "thumbs-up-on-booking-confirmation",
-      "Listo, tu turno quedó confirmado.",
-      (tools) => {
+      "thumbs-up-on-older-reminder",
+      "thumbs-up-on-reminder-already-confirmed",
+    ]) {
+      const confirmed = turn(caseId, "Listo, tu turno quedó confirmado.", (tools) => {
         tools.run("judge_messages", { healthQuestion: false, emergency: false });
         tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
         tools.run("accept_proposal", {});
+      });
+
+      expect(confirmed.toolChoice.reason).toBe(
+        "forbidden propose_change; forbidden accept_proposal",
+      );
+    }
+  });
+
+  it("fails telling the patient a change was not made on a 👍 to a reminder already confirmed", () => {
+    const result = turn(
+      "thumbs-up-on-reminder-already-confirmed",
+      "Perdón, no se pudo confirmar el turno.",
+      (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
       },
     );
 
-    expect(confirmed.toolChoice.reason).toBe("forbidden propose_change; forbidden accept_proposal");
+    expect(result.toolChoice.pass).toBe(true);
+    expect(result.reply.pass).toBe(false);
   });
 
   it("fails accepting the proposal on a 👍 to an older message, or after one taken back", () => {

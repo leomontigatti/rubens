@@ -684,6 +684,34 @@ export const cases: Case[] = [
       judgement: plain,
     },
   },
+  {
+    id: "thumbs-up-on-older-reminder",
+    description:
+      "Reactions: a late 👍 on the reminder, with a move proposal waiting after it, confirms nothing (#292)",
+    number: "onePatient",
+    history: movingToTuesday,
+    patient: [reactionLine("👍", reminder.text)],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "thumbs-up-on-reminder-already-confirmed",
+    description:
+      "Reactions: a 👍 on the reminder of an appointment already confirmed changes nothing (#292)",
+    number: "alreadyConfirmed",
+    history: [reminder],
+    patient: [reactionLine("👍", reminder.text)],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyAvoids: [/no (se )?(pudo|pude|hice)/i],
+    },
+  },
 ];
 
 export function findCase(id: string): Case {

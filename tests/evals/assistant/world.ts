@@ -82,6 +82,7 @@ export const numbers = {
     },
   ],
   cancelledByOrganization: [lucia({ status: "cancelled_by_organization", freeSlots: [] })],
+  alreadyConfirmed: [lucia({ status: "confirmed" })],
   guardian: [
     {
       patientId: "pat-tomas",
