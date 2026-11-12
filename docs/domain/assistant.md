@@ -87,7 +87,8 @@ patient's yes, freeing the old time.
   or by putting it on the "to reschedule" list, does not use up that one move. The
   cutoff leaves time to fill a freed slot; the once-only rule stops a patient from
   pushing an appointment back forever.
-- **Cancelling** is open until the appointment starts.
+- **Cancelling** is open until the appointment starts, and notifies reception and the
+  admins ([messages.md](./messages.md#to-staff)).
 - A move past the cutoff, after the one move, or a patient who asks to be
   contacted, is handed off, and the patient is told nothing about it
   ([Handoff](#handoff)).

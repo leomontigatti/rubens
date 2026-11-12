@@ -150,13 +150,18 @@ conversation handed off.
 ## To staff
 
 Every event that staff act on is a notification in the app, read or unread:
-confirmations, cancellations, reschedules, requests to approve, handoffs, replies
+cancellations, reschedules, requests to approve, handoffs, replies
 not delivered because the patient never answered, warnings about the WhatsApp
 number, and replies that look like opt-outs. Reception sees all of them; a
 practitioner sees those about their own appointments and the handoffs sent to
 them. A handoff's notification says why, so its reader can answer without
 reading the conversation back ([assistant.md](./assistant.md#handoff)). The app holds the full
 record, so a failed external delivery loses nothing.
+
+A cancellation the patient makes through the assistant notifies reception and the admins,
+so they can give the freed time to another patient: it names the patient, the appointment's
+day and time and its practitioner, and links to the appointment's week on the agenda. Undoing
+the cancellation withdraws it. A patient's confirmation notifies nobody, since nobody acts on it.
 
 A practitioner can link Telegram from their profile, through the bot's start link.
 They then get a Telegram copy of every cancellation and reschedule of their

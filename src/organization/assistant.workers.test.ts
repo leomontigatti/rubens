@@ -1171,6 +1171,82 @@ describe("confirming and cancelling through proposals", () => {
     expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "Listo, cancelamos tu turno." }]);
   });
 
+  /** The cancellations `caller` was notified of, by what each names. */
+  async function cancellationNotices(caller: { userId: string }) {
+    const listed = expectOk(await world.organization.listNotifications(caller));
+    return listed.notifications
+      .filter((one) => one.kind === "appointmentCancelled")
+      .map((one) => one.appointment);
+  }
+
+  it("notifies reception and the admins of a cancellation, so they can fill the time", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelalo por favor");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("accept_proposal");
+      return "Listo, cancelamos tu turno.";
+    });
+
+    await afterTheWait();
+
+    const notice = {
+      id: appointmentId,
+      patient: "Martina Paz",
+      practitioner: "Juan Gómez",
+      startsAt: at("12:00").getTime(),
+      timeZone: "America/Argentina/Buenos_Aires",
+      roomId: world.room.id,
+      date: "2099-01-05",
+    };
+    expect(await cancellationNotices(world.receptionist)).toEqual([notice]);
+    expect(await cancellationNotices(adminCaller)).toEqual([notice]);
+    expect(await cancellationNotices(world.juan.caller)).toEqual([]);
+  });
+
+  it("withdraws the cancellation's notifications once reception undoes it", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    await patientWrites("cancelalo por favor");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "cancel" });
+      turn.call("accept_proposal");
+      return "Listo, cancelamos tu turno.";
+    });
+    await afterTheWait();
+
+    expectOk(await world.organization.undoAppointmentStatus(world.receptionist, { appointmentId }));
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
+    expect(await cancellationNotices(world.receptionist)).toEqual([]);
+    expect(await cancellationNotices(adminCaller)).toEqual([]);
+  });
+
+  it("notifies nobody of a confirmation, nor of a cancellation made in the app", async () => {
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
+    const other = await bookPatient("Tomás", "+5493515550002", at("13:00"));
+    await patientWrites("sí, voy");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      turn.call("accept_proposal");
+      return "Listo, tu turno quedó confirmado.";
+    });
+    await afterTheWait();
+
+    expectOk(
+      await world.organization.cancelAppointment(world.receptionist, {
+        appointmentId: other.appointmentId,
+        cancelledBy: "patient",
+      }),
+    );
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(await cancellationNotices(world.receptionist)).toEqual([]);
+    expect(await cancellationNotices(adminCaller)).toEqual([]);
+  });
+
   it("refuses a cancellation accepted once the appointment started", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     vi.setSystemTime(at("11:30"));
