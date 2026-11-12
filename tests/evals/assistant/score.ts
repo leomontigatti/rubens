@@ -155,7 +155,9 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
   const emergency =
     lastArgs(turn, "judge_messages")?.emergency === true ||
     lastArgs(turn, "hand_off")?.reason === "emergency";
-  if (opened === "practitioner" || emergency) return applied ? "both" : "practitioner";
+  // An emergency gets its fixed reply alone, whatever the turn changed.
+  if (emergency) return "practitioner";
+  if (opened === "practitioner") return applied ? "both" : "practitioner";
   if (opened === "reception") return applied ? "reply" : "nothing";
   return "reply";
 }
