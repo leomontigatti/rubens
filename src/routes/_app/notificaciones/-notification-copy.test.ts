@@ -149,3 +149,19 @@ describe("an opt-out's notification", () => {
     );
   });
 });
+
+describe("a not-delivered late reply's notification", () => {
+  const notDelivered: NotificationFacts = { ...facts, kind: "replyNotDelivered", handoff: null };
+
+  it("names the patient it was for", () => {
+    expect(
+      notificationTitle({ ...notDelivered, patient: { id: "patient-1", name: "Marta Quiroga" } }),
+    ).toBe("Tu respuesta a Marta Quiroga no le llegó");
+  });
+
+  it("says the patient when the number is of no patient", () => {
+    expect(notificationTitle(notDelivered)).toBe(
+      "Tu respuesta de WhatsApp no le llegó al paciente",
+    );
+  });
+});

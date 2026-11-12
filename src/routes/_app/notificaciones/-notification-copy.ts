@@ -31,7 +31,7 @@ export interface NotificationFacts {
     /** What the turn that made it knew of a refused move and its own changes. */
     detail: HandoffDetail | null;
   } | null;
-  /** The patient an `optOut` or `optOutReminder` notification is about. */
+  /** The patient an `optOut`, `optOutReminder`, `replyFailed` or `replyNotDelivered` notification is about. */
   patient: { id: string; name: string } | null;
   /** The patient's message an opt-out's notification links to; `null` for one from before they did. */
   messageId: string | null;
@@ -75,7 +75,6 @@ const fixedTitles: Partial<Record<NotificationKind, string>> = {
   messagingLimitLowered: "Meta bajó el límite de mensajes del número",
   handoff: "Te derivaron una conversación de WhatsApp",
   handoffReminder: "Una derivación de WhatsApp sigue sin respuesta",
-  replyNotDelivered: "Tu respuesta de WhatsApp no le llegó al paciente",
   emergency: "Posible urgencia en una conversación que tomaste",
 };
 
@@ -108,6 +107,10 @@ export function notificationTitle(facts: NotificationFacts): string {
       return `Meta deshabilitó la plantilla ${template(facts)}`;
     case "templateRecategorized":
       return `Meta pasó la plantilla ${template(facts)} a ${categoryLabels[facts.detail ?? ""] ?? facts.detail}`;
+    case "replyNotDelivered":
+      return facts.patient
+        ? `Tu respuesta a ${facts.patient.name} no le llegó`
+        : "Tu respuesta de WhatsApp no le llegó al paciente";
     case "replyFailed":
       return facts.patient
         ? `Tu respuesta a ${facts.patient.name} no se entregó`

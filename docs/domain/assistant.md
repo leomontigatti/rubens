@@ -318,9 +318,13 @@ the reopen template (`Tenemos una respuesta para vos, respondé este mensaje par
 verla`). The reply goes out when the patient answers, or writes again before the
 template went; the replies written meanwhile wait behind the same template and go
 in order, and the person is the conversation's holder again, since the patient
-answered them. If the patient has not answered about 7 days after the reply, or
-after the template when it went later, or the template could not go, the person
-is told it was not delivered. Until the patient answers, the person who wrote a
+answered them. When Meta held the number until the window the patient's answer
+opened had closed, the replies still waiting get the template again. If the
+patient has not answered about 7 days after the reply, or after the template
+when it went later, or the template could not go, or Meta reports it failed
+(the patient blocked the number, say), the person is told it was not delivered
+(`Tu respuesta a {paciente} no le llegó`); a reply written after a template
+that failed gets a new one. Until the patient answers, the person who wrote a
 reply may withdraw it: it never goes, and the template is dropped if it has not
 gone and no other reply waits behind it. The conversation keeps a trace of who
 withdrew a reply and when, without its words; when the template had gone, the
