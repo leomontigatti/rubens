@@ -1,4 +1,4 @@
-import { runDurableObjectAlarm } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
@@ -18,7 +18,8 @@ import type { Caller } from "#/organization/members.ts";
 // A handoff's countdown (docs/domain/assistant.md § Handoff): counted back
 // from the window's close, it reminds its recipients, then every other member
 // who may answer it, by the object's alarm. Meta is faked at its HTTP
-// boundary and the model scripted at its port; the clock is moved by hand.
+// boundary and the model scripted at its port; the clock is moved by hand,
+// from 18:00 in the office's zone (Buenos Aires, UTC-3).
 
 vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   const actual = await original();
@@ -109,7 +110,7 @@ async function alarmAt(instant: number) {
 
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date("2098-12-01T12:00:00Z"));
+  vi.setSystemTime(new Date("2098-12-01T21:00:00Z"));
   fakeMeta.reset();
   scriptedModel.reset();
   world = await setUpBookingWorld();
@@ -170,10 +171,64 @@ describe("a team of more members than one insert can bind", () => {
   });
 });
 
+describe("a reminder outside 08:00 to 21:00 in the office's zone", () => {
+  it("waits until 08:00", async () => {
+    // Martina wrote at 09:00, so the window closes at 09:00 the next day: the
+    // recipient's reminder falls at 03:00 and the others' at 07:00.
+    const closesAt = await handedToJuan({ hoursAgo: 9, forPractitioner: false });
+    const eightAm = closesAt - hourMs;
+
+    await alarmAt(eightAm - 60_000);
+    expect(await remindersOf(world.juan.caller)).toEqual([]);
+    expect(await remindersOf(world.receptionist)).toEqual([]);
+
+    await alarmAt(eightAm);
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.receptionist)).toEqual([closesAt]);
+  });
+
+  it("does not go when the window closes before 08:00", async () => {
+    // Martina wrote at 02:30, so the window closes at 02:30: the recipient's
+    // reminder goes at 20:30, and the others' would fall at 00:30.
+    const closesAt = await handedToJuan({ hoursAgo: 15.5, forPractitioner: false });
+
+    await alarmAt(closesAt - 6 * hourMs);
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
+
+    await alarmAt(closesAt - 2 * hourMs);
+    await alarmAt(closesAt - 60_000);
+    expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
+    expect(await remindersOf(world.receptionist)).toEqual([]);
+  });
+});
+
+describe("a change to the office's zone", () => {
+  it("sets the alarm for a reminder it moves into the hours", async () => {
+    // At 02:30 in Buenos Aires the window closes, so the others' reminder, at
+    // 00:30, does not go; in Tokyo it falls at 12:30.
+    const closesAt = await handedToJuan({ hoursAgo: 15.5, forPractitioner: false });
+    await alarmAt(closesAt - 6 * hourMs);
+
+    expectOk(
+      await world.organization.updateOffice(adminCaller, {
+        officeId: world.office.id,
+        name: "Sede Centro",
+        address: "Cabildo 1",
+        timeZone: "Asia/Tokyo",
+      }),
+    );
+
+    const alarm = await runInDurableObject(world.organization, (_instance, state) =>
+      state.storage.getAlarm(),
+    );
+    expect(alarm).toBe(closesAt - 2 * hourMs);
+  });
+});
+
 describe("a patient's later message", () => {
   it("restarts the window, and both reminders move with it", async () => {
-    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: false });
-    vi.setSystemTime(closesAt - 10 * hourMs);
+    const closesAt = await handedToJuan({ hoursAgo: 0, forPractitioner: false });
+    vi.setSystemTime(closesAt - 3 * hourMs);
     await patientWrites(world.organization, "sigo esperando", martinaPhone);
     const newClose = Date.now() + 24 * hourMs;
 
@@ -232,7 +287,7 @@ describe("the admin's reminder times", () => {
         othersHours: 4,
       }),
     );
-    const closesAt = await handedToJuan({ hoursAgo: 4, forPractitioner: false });
+    const closesAt = await handedToJuan({ hoursAgo: 0, forPractitioner: false });
 
     await alarmAt(closesAt - 10 * hourMs);
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);

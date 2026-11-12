@@ -1,4 +1,4 @@
-import { tz } from "@date-fns/tz";
+import { TZDate, tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -6,7 +6,8 @@ import { es } from "date-fns/locale";
 // clock, Spanish names. An instant is written in the zone passed, never the
 // process's or the browser's, so the caller decides which zone a screen
 // shows. Formats a person, or the assistant, reads are written here only; the
-// `ui/no-raw-date-format` lint rule keeps them out of the other files.
+// `ui/no-raw-date-format` lint rule keeps them out of the other files. The
+// hours a message waits for are read on the same clock.
 
 type Instant = Date | number;
 
@@ -64,4 +65,26 @@ export function formatMonth(month: string): string {
 /** `Sunday 2026-11-08 23:30`, as the assistant's prompt states the time: in English, the date as ISO. */
 export function formatPromptNow(instant: Instant, timeZone: string): string {
   return format(instant, "EEEE yyyy-MM-dd HH:mm", { in: tz(timeZone) });
+}
+
+/**
+ * `instant` when its hour in the zone is from `hours.opens` up to `hours.closes`,
+ * else the next `hours.opens` o'clock there: a message outside the hours waits for
+ * the morning.
+ */
+export function withinHours(
+  instant: Instant,
+  timeZone: string,
+  hours: { opens: number; closes: number },
+): number {
+  const local = new TZDate(+instant, timeZone);
+  const hour = local.getHours();
+  if (hour >= hours.opens && hour < hours.closes) {
+    return local.getTime();
+  }
+  if (hour >= hours.closes) {
+    local.setDate(local.getDate() + 1);
+  }
+  local.setHours(hours.opens, 0, 0, 0);
+  return local.getTime();
 }
