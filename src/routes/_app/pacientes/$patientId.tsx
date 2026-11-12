@@ -26,7 +26,7 @@ import {
 } from "#/lib/patients.ts";
 import { assistantUserId } from "#/lib/audit-fields.ts";
 import { formatPhone } from "#/lib/phones.ts";
-import { formatLocalDate } from "#/lib/schedules.ts";
+import { formatDateTime, formatLocalDate } from "#/lib/dates.ts";
 import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-statuses.ts";
 import { getPatientAppointments } from "#/server/appointments.functions.ts";
 import { getCoverages } from "#/server/coverages.functions.ts";
@@ -70,14 +70,6 @@ export const Route = createFileRoute("/_app/pacientes/$patientId")({
 function useAction() {
   return useFormAction(patientRefusalMessages);
 }
-
-// Instants are shown in the organization's zone; offices are all in Argentina.
-const instantFormat = new Intl.DateTimeFormat("es-AR", {
-  dateStyle: "short",
-  timeStyle: "short",
-  hourCycle: "h23",
-  timeZone: defaultTimeZone,
-});
 
 function PatientScreen() {
   const { viewer } = Route.useRouteContext();
@@ -282,7 +274,7 @@ function WhatsappSection({
           <Alert variant="warning">
             <AlertTitle>Pidió no recibir más mensajes</AlertTitle>
             <AlertDescription>
-              {`El ${instantFormat.format(optOutPendingSince)} su número respondió algo que parece un pedido de baja. Sus recordatorios y avisos quedan en espera hasta que decidas.`}
+              {`El ${formatDateTime(optOutPendingSince, defaultTimeZone)} su número respondió algo que parece un pedido de baja. Sus recordatorios y avisos quedan en espera hasta que decidas.`}
             </AlertDescription>
           </Alert>
           <div className="flex flex-wrap gap-2">
@@ -315,7 +307,7 @@ function WhatsappSection({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p>
             {patient.whatsappConsent
-              ? `Acepta WhatsApp desde el ${instantFormat.format(patient.whatsappConsentAt)}.`
+              ? `Acepta WhatsApp desde el ${formatDateTime(patient.whatsappConsentAt, defaultTimeZone)}.`
               : "No acepta WhatsApp: no se le envían mensajes."}
           </p>
           <Button
@@ -377,18 +369,14 @@ function AppointmentList(props: {
 }
 
 function AppointmentItem({ appointment }: { appointment: PatientAppointment }) {
-  const when = new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "short",
-    timeStyle: "short",
-    hourCycle: "h23",
-    timeZone: appointment.timeZone,
-  });
   return (
     <li className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex flex-col gap-0.5 text-sm">
         <p>
-          <span className="font-medium">{when.format(appointment.start)}</span> ·{" "}
-          {appointment.practitionerName} · {appointment.medicalServiceName}
+          <span className="font-medium">
+            {formatDateTime(appointment.start, appointment.timeZone)}
+          </span>{" "}
+          · {appointment.practitionerName} · {appointment.medicalServiceName}
         </p>
         <p className="text-muted-foreground">
           {[`${appointment.officeName}, ${appointment.roomName}`, cancellationText(appointment)]
@@ -443,7 +431,7 @@ function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, 
               </span>
               <span className="text-muted-foreground">
                 {" · "}
-                {instantFormat.format(entry.createdAt)} · {authorOf(entry)}
+                {formatDateTime(entry.createdAt, defaultTimeZone)} · {authorOf(entry)}
               </span>
             </p>
             <ul className="text-muted-foreground text-sm">

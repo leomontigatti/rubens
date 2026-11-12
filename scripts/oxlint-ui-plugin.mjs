@@ -12,6 +12,7 @@
 // - `no-raw-empty`: the ui `Empty` where `EmptyState` belongs.
 // - `no-raw-form`: a `<form>` where `FormPage` belongs.
 // - `no-uncontrolled-input`: a default value where `useAppForm` holds the field.
+// - `no-raw-date-format`: a date or a time written for a person outside `src/lib/dates.ts`.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -370,11 +371,93 @@ const noUncontrolledInput = {
   },
 };
 
+// date-fns' functions that write a date by a pattern.
+const PATTERN_FORMATS = new Set(["format", "formatDate", "lightFormat"]);
+
+// A pattern a date is stored or compared in, never shown: ISO from the year on
+// (`yyyy-MM-dd`, `yyyy-MM-dd'T'HH:mm`), or one number alone (`m`).
+const isMachinePattern = (pattern) =>
+  pattern.startsWith("yyyy-MM") || /^(yyyy|MM?|dd?|HH?|mm?|ss?)$/.test(pattern);
+
+// The patterns a call's argument can be, each as its node and text: a string,
+// a template without expressions, or either branch of a condition. Anything
+// else is not judged.
+function patternsOf(node) {
+  if (node?.type === "ConditionalExpression") {
+    return [...patternsOf(node.consequent), ...patternsOf(node.alternate)];
+  }
+  if (node?.type === "Literal" && typeof node.value === "string") {
+    return [{ node, text: node.value }];
+  }
+  const plainTemplate = node?.type === "TemplateLiteral" && node.expressions.length === 0;
+  return plainTemplate ? [{ node, text: node.quasis[0].value.cooked }] : [];
+}
+
+// `Intl.DateTimeFormat(locale, { timeZone })` writes nothing a person reads
+// itself: it is how a zone's name is checked.
+function asksOnlyZone(options) {
+  return (
+    options?.type === "ObjectExpression" &&
+    options.properties.length > 0 &&
+    options.properties.every(
+      (property) => property.type === "Property" && property.key?.name === "timeZone",
+    )
+  );
+}
+
+const isIntlDateTimeFormat = (callee) =>
+  callee?.type === "MemberExpression" &&
+  callee.object?.name === "Intl" &&
+  callee.property?.name === "DateTimeFormat";
+
+const LOCALE_STRINGS = new Set(["toLocaleDateString", "toLocaleTimeString"]);
+
+const noRawDateFormat = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "A date or a time a person reads is written by src/lib/dates.ts.",
+    },
+    messages: {
+      format:
+        "Write a date or a time a person reads with src/lib/dates.ts (formatDate, formatTime, formatDateTime, formatDay, formatDayHeading, formatLocalDate, formatMonth): every screen then writes it the same way, in the zone passed. A pattern a date is stored in, such as yyyy-MM-dd, is fine here.",
+    },
+    schema: [],
+  },
+  create(context) {
+    // Local names of date-fns' pattern functions, as this file imports them.
+    const formats = new Set();
+    const report = (node) => context.report({ node, messageId: "format" });
+    const shownPatterns = (node) =>
+      node.callee?.type === "Identifier" && formats.has(node.callee.name)
+        ? patternsOf(node.arguments[1]).filter((pattern) => !isMachinePattern(pattern.text))
+        : [];
+    const writesForPerson = (node) =>
+      (isIntlDateTimeFormat(node.callee) && !asksOnlyZone(node.arguments[1])) ||
+      LOCALE_STRINGS.has(node.callee?.property?.name);
+    const check = (node) => {
+      shownPatterns(node).forEach((pattern) => report(pattern.node));
+      if (writesForPerson(node)) report(node);
+    };
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value !== "date-fns") return;
+        node.specifiers
+          .filter((one) => one.type === "ImportSpecifier" && PATTERN_FORMATS.has(one.imported.name))
+          .forEach((one) => formats.add(one.local.name));
+      },
+      CallExpression: check,
+      NewExpression: check,
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
     "no-bare-label": noBareLabel,
+    "no-raw-date-format": noRawDateFormat,
     "no-raw-form": noRawForm,
     "no-raw-empty": noRawEmpty,
     "no-raw-form-element": noRawFormElement,

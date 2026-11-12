@@ -129,10 +129,10 @@ export function ScheduleForm(props: {
         {(field) => <field.CheckboxGroupField legend="Días" options={weekdayOptions} row />}
       </form.AppField>
       <form.AppField name="startTime">
-        {(field) => <field.TextField label="Inicio" type="time" required />}
+        {(field) => <field.TimeField label="Inicio" required />}
       </form.AppField>
       <form.AppField name="endTime">
-        {(field) => <field.TextField label="Fin" type="time" required />}
+        {(field) => <field.TimeField label="Fin" required />}
       </form.AppField>
       <form.AppField name="roomId">
         {(field) => (
@@ -149,10 +149,10 @@ export function ScheduleForm(props: {
         )}
       </form.AppField>
       <form.AppField name="date">
-        {(field) => <field.TextField label={props.dateLabel} type="date" startsRow required />}
+        {(field) => <field.DateField label={props.dateLabel} startsRow required />}
       </form.AppField>
       <form.AppField name="lastDate">
-        {(field) => <field.TextField label="Hasta (opcional)" type="date" />}
+        {(field) => <field.DateField label="Hasta (opcional)" />}
       </form.AppField>
     </ActionFormPage>
   );

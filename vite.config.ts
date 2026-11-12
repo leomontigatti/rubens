@@ -71,6 +71,7 @@ export default defineConfig({
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
       "ui/no-bare-label": "error",
+      "ui/no-raw-date-format": "error",
       "ui/no-raw-empty": "error",
       "ui/no-raw-form": "error",
       "ui/no-raw-form-element": "error",
@@ -95,6 +96,7 @@ export default defineConfig({
           "shadcn/no-arbitrary-values": "off",
           "shadcn/require-static-classes": "off",
           "ui/no-bare-label": "off",
+          "ui/no-raw-date-format": "off",
           "ui/no-raw-form-element": "off",
           "ui/no-raw-table": "off",
         },
@@ -117,6 +119,19 @@ export default defineConfig({
         rules: {
           "ui/no-raw-form": "off",
           "ui/no-uncontrolled-input": "off",
+        },
+      },
+      {
+        // The one place a date is written for a person; and the files PR #300
+        // changes, which move onto it once that PR merges.
+        files: [
+          "src/lib/dates.ts",
+          "src/lib/assistant.ts",
+          "src/routes/_app/conversaciones/**",
+          "src/routes/_app/notificaciones/**",
+        ],
+        rules: {
+          "ui/no-raw-date-format": "off",
         },
       },
       {

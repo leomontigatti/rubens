@@ -2,6 +2,8 @@ import { tz, tzOffset } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
+import { formatLocalDate } from "#/lib/dates.ts";
+
 // A schedule's fields and the rules on them that need no database: the
 // validation shared by the form and the services, and the collision check the
 // services run on the weekly fields (ADR-0003). Dates are local `YYYY-MM-DD`
@@ -206,12 +208,6 @@ export function findCollision<T extends WeeklySlot>(
 /** The weekdays of a schedule as the screens show them: "Lunes, Miércoles". */
 export function weekdaysLabel(days: readonly number[]): string {
   return days.map((day) => weekdayLabels[day]).join(", ");
-}
-
-/** A local `YYYY-MM-DD` date as `DD/MM/YYYY`. */
-export function formatLocalDate(date: string): string {
-  const [year, month, day] = date.split("-");
-  return `${day}/${month}/${year}`;
 }
 
 /** The dates a schedule applies, as its screen shows them. */

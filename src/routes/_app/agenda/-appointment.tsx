@@ -1,6 +1,4 @@
-import { tz } from "@date-fns/tz";
 import { Link } from "@tanstack/react-router";
-import { format } from "date-fns";
 
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -13,14 +11,11 @@ import {
 import type { DayAppointment } from "#/organization/appointments.ts";
 
 import { StatusSection } from "#/routes/_app/agenda/-appointment-status.tsx";
+import { formatTime } from "#/lib/dates.ts";
 
 // An appointment clicked on the calendar: what it is and its status, the
 // status changes, its room and reception note, and the links to editing them,
 // rescheduling, cancelling and an overbooking over it, each on its own page.
-
-function localTime(instant: Date, timeZone: string) {
-  return format(instant, "HH:mm", { in: tz(timeZone) });
-}
 
 /** The appointment clicked, with its practitioner. */
 export interface PickedAppointment {
@@ -70,7 +65,7 @@ function AppointmentDetails(props: {
       <DialogHeader>
         <DialogTitle>{appointment.patientName}</DialogTitle>
         <DialogDescription>
-          {localTime(appointment.start, timeZone)} a {localTime(appointment.end, timeZone)} con{" "}
+          {formatTime(appointment.start, timeZone)} a {formatTime(appointment.end, timeZone)} con{" "}
           {practitioner.displayName} · {appointment.medicalServiceName}
           {appointment.overbooking && " · Sobreturno"}
         </DialogDescription>

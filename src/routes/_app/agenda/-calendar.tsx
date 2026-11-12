@@ -1,7 +1,5 @@
-import { tz } from "@date-fns/tz";
 import { cn } from "cn";
 import { ZapIcon } from "lucide-react";
-import { format } from "date-fns";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
@@ -9,11 +7,12 @@ import { layoutCells, layoutColumn, layoutDay } from "#/lib/calendar-layout.ts";
 import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
-import { formatLocalDate, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
+import { weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
 import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/organization/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
+import { formatLocalDate, formatTime } from "#/lib/dates.ts";
 
 // The calendar's pieces (docs/domain/appointments.md § Calendar): the time
 // axis, and a day's column of 30-minute cells, white and bookable where free,
@@ -24,10 +23,6 @@ import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 
 /** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
 const minuteHeight = 1.6;
-
-function localTime(instant: Date, timeZone: string) {
-  return format(instant, "HH:mm", { in: tz(timeZone) });
-}
 
 /** A length in minutes as the pixels it is drawn at on the calendar. */
 function px(minutes: number): string {
@@ -69,7 +64,7 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
             className="text-muted-foreground bg-background absolute top-(--top) right-2 -translate-y-1/2 px-0.5 text-xs tabular-nums"
             style={{ "--top": px(row.top) } as CSSProperties}
           >
-            {localTime(row.start, props.timeZone)}
+            {formatTime(row.start, props.timeZone)}
           </span>
         ))}
       </div>
@@ -144,7 +139,7 @@ export function DayColumn(props: {
                     "--width": laneWidth({ lane, lanes }),
                   } as CSSProperties
                 }
-                aria-label={`Dar turno el ${dateLabel} a las ${localTime(start, timeZone)}`}
+                aria-label={`Dar turno el ${dateLabel} a las ${formatTime(start, timeZone)}`}
                 onClick={() =>
                   props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
                 }
@@ -233,7 +228,7 @@ function CardHeading(props: {
       <StatusIcon status={card.status} />
       {card.overbooking && <ZapIcon role="img" aria-label="Sobreturno" />}
       <span className="truncate">
-        {localTime(card.start, props.timeZone)} {card.patientName}
+        {formatTime(card.start, props.timeZone)} {card.patientName}
       </span>
     </Button>
   );
@@ -257,7 +252,7 @@ function BusyCard(props: { block: PlacedBlock; busy: BusyBlock; timeZone: string
         } as CSSProperties
       }
     >
-      {localTime(busy.start, props.timeZone)} {busy.practitionerName}
+      {formatTime(busy.start, props.timeZone)} {busy.practitionerName}
     </div>
   );
 }
