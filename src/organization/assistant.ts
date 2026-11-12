@@ -475,8 +475,7 @@ async function runTurn(
   });
 }
 
-/** The kinds of media among `messages`, each once. */
-function kindsOf(messages: { type: string }[]): MediaType[] {
+function mediaKindsOf(messages: { type: string }[]): MediaType[] {
   return [...new Set(messages.map((message) => message.type as MediaType))];
 }
 
@@ -528,12 +527,12 @@ async function judgeWithoutMedia(
     const onlyMedia = {
       ...nothingElse,
       judgement,
-      media: kindsOf(media),
+      media: mediaKindsOf(media),
       read: { ...read, unjudged: media },
     };
     return { turn: onlyMedia, unread };
   }
-  return { turn: { ...judged, media: kindsOf(media), read }, unread };
+  return { turn: { ...judged, media: mediaKindsOf(media), read }, unread };
 }
 
 /** Runs every turn whose wait is over, earliest first: the object's alarm. */

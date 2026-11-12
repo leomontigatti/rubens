@@ -379,6 +379,17 @@ describe("a photo or a file from the patient", () => {
     ]);
   });
 
+  it("names every kind the patient sent while its handoff is open", async () => {
+    await patientSends(world.organization, "image", martinaPhone);
+    await turn();
+    await patientSends(world.organization, "document", martinaPhone);
+    await turn();
+
+    expect(await openHandoffs(adminCaller)).toMatchObject([
+      { reason: "media", media: ["image", "document"] },
+    ]);
+  });
+
   it("is kept from the model when the patient writes beside it, and goes to reception with it", async () => {
     await writes("te mando el comprobante");
     await patientSends(world.organization, "document", martinaPhone);

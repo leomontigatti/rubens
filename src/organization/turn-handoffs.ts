@@ -136,7 +136,9 @@ export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
   const wanted =
     answered?.kind === "followUp" && answered.firstReply
       ? followUpHandoff(turn, answered.appointmentId)
-      : modelOrJudgedHandoff(turn);
+      : turn.handOff
+        ? modelHandoff(turn, turn.handOff)
+        : judgedHandoff(turn);
   // A handoff about nothing in particular, right after a message about an
   // appointment, concerns that appointment.
   return (
@@ -146,10 +148,6 @@ export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
       detail: detailOf(turn, wanted),
     }
   );
-}
-
-function modelOrJudgedHandoff(turn: TurnToSort) {
-  return turn.handOff ? modelHandoff(turn, turn.handOff) : judgedHandoff(turn);
 }
 
 /** What the handoff's notification and label say of the turn: a refused move, its own changes, the media sent. */

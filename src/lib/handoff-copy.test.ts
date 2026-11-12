@@ -18,7 +18,7 @@ describe("a handoff's reason", () => {
     );
   });
 
-  it("keeps any other reason's label", () => {
-    expect(handoffReasonLabel("patientAsked", [])).toBe("Pidió hablar con una persona");
+  it("names the media only on a handoff for them", () => {
+    expect(handoffReasonLabel("patientAsked", ["image"])).toBe(handoffReasonLabel("patientAsked"));
   });
 });

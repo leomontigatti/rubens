@@ -1,5 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
+import type { MediaType } from "#/lib/whatsapp-messages.ts";
+
 import type { Database, Writer } from "#/organization/database.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { HandoffWanted } from "#/organization/handoffs.ts";
@@ -8,7 +10,7 @@ import { holdForOptOut } from "#/organization/opt-out-holds.ts";
 import { handoffWanted } from "#/organization/turn-handoffs.ts";
 import type { Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
 import type { SettledTurn } from "#/organization/turn-replies.ts";
-import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { conversation, handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { isHeld, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 
 // Settling a judged turn of the patient assistant (`assistant.ts`,
@@ -44,6 +46,36 @@ function storeJudgement(tx: Writer, turn: JudgedTurn, forPractitioner: boolean) 
 }
 
 /**
+ * Adds the kinds of media a later burst sent to the conversation's open
+ * `media` handoff, so its reason names everything the patient sent.
+ */
+function addMediaToOpen(tx: Writer, conversationId: string, media: MediaType[]) {
+  if (media.length === 0) {
+    return;
+  }
+  const found = tx
+    .select({ id: handoff.id, detail: handoff.detail })
+    .from(handoff)
+    .where(
+      and(
+        eq(handoff.conversationId, conversationId),
+        eq(handoff.state, "open"),
+        eq(handoff.reason, "media"),
+      ),
+    )
+    .get();
+  if (!found) {
+    return;
+  }
+  const detail = found.detail ?? { refused: null, applied: [] };
+  const merged = [...new Set([...(detail.media ?? []), ...media])];
+  tx.update(handoff)
+    .set({ detail: { ...detail, media: merged } })
+    .where(eq(handoff.id, found.id))
+    .run();
+}
+
+/**
  * Settles the judged turn in one transaction: stores the judgement, counts a
  * misunderstanding, opens the handoff it calls for, notifies an opt-out, and
  * says what the patient is told. While a member holds the conversation the
@@ -68,6 +100,9 @@ export function settleTurn(
       .run();
     const opened =
       wanted && addsToOpen(open, wanted) ? openHandoff(tx, turn.conversationId, wanted) : null;
+    if (wanted && !opened) {
+      addMediaToOpen(tx, turn.conversationId, wanted.detail?.media ?? []);
+    }
     const optOutAsked = turn.judgement.optOut && holdForOptOut(tx, turn.reachedNow).length > 0;
     return {
       settled: outcomeOf(tx, turn, { opened, wanted, optOutAsked }),
