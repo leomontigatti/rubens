@@ -577,7 +577,7 @@ describe("answering a follow-up", () => {
   });
 
   it("hands a clinical message after the first answer to the follow-up's practitioner", async () => {
-    const appointmentId = await followUpSent();
+    await followUpSent();
     await contactsAre(world.lucia.caller);
     await writes("muy bien!");
     scriptedModel.script((one) => {
@@ -587,11 +587,8 @@ describe("answering a follow-up", () => {
     await turn();
     await writes("bueno, me duele un poco");
     scriptedModel.script((one) => {
-      one.call("judge_messages", {
-        needsPractitioner: true,
-        emergency: false,
-        treatedBy: appointmentId,
-      });
+      // The follow-up's appointment is past: list_patients never gave the model its id.
+      one.call("judge_messages", { needsPractitioner: true, emergency: false });
       return "";
     });
 

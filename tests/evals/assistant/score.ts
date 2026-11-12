@@ -112,7 +112,8 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
   const emergency = judged?.emergency === true || handOff?.reason === "emergency";
   const forPractitioner = emergency || (health && treated);
   // A health question beside an open handoff to the practitioner is theirs already.
-  const toReception = health && !forPractitioner && !practitionerOpen;
+  if (health && !forPractitioner && practitionerOpen) return "reply";
+  const toReception = health && !forPractitioner;
   const applied = turn.calls.some(
     (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
   );

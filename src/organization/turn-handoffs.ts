@@ -80,15 +80,17 @@ function knownAppointment(turn: TurnToSort, appointmentId: string | undefined) {
 
 /**
  * A question that needs the practitioner: the practitioner of the upcoming
- * appointment the model judged treats it; with none, reception decides who
- * sees it, as in a clinic of several specialties. An emergency is always the
- * practitioner's.
+ * appointment the model judged treats it, else of the appointment whose
+ * follow-up the patient is answering, who did the procedure; with neither,
+ * reception decides who sees it, as in a clinic of several specialties. An
+ * emergency is always the practitioner's.
  */
 function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffWanted {
   if (turn.judgement.emergency) {
     return { reason: "emergency", forPractitioner: true, appointmentId };
   }
-  const treatedBy = knownAppointment(turn, turn.judgement.treatedBy);
+  const followedUp = turn.answered?.kind === "followUp" ? turn.answered.appointmentId : null;
+  const treatedBy = knownAppointment(turn, turn.judgement.treatedBy) ?? followedUp;
   return treatedBy
     ? { reason: "clinical", forPractitioner: true, appointmentId: treatedBy }
     : { reason: "healthQuestion", forPractitioner: false, appointmentId };
