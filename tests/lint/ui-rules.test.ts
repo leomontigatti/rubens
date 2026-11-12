@@ -311,10 +311,9 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
   const dateFiles = [
     existing("src/lib/dates.ts"),
     existing("src/routes/_app/conversaciones/-labels.ts"),
-    existing("src/routes/_app/notificaciones/-notification-copy.ts"),
   ];
 
-  it("leave dates.ts its formats, and skip the files PR #300 changes until it merges", () => {
+  it("leave dates.ts its formats, and skip the inbox until #314 has rewritten it", () => {
     expect(dateFormat(codes(...dateFiles))).toEqual([]);
   });
 
