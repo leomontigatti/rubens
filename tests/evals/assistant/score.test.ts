@@ -97,7 +97,10 @@ describe("score", () => {
 
       expect(accepted.toolChoice.pass).toBe(true);
       expect(accepted.availability.pass).toBe(true);
-      expect(asked.toolChoice).toEqual({ pass: false, reason: "missing accept_proposal" });
+      expect(asked.toolChoice).toEqual({
+        pass: false,
+        reason: 'missing accept_proposal({"accepts":"move"})',
+      });
     }
   });
 
@@ -114,7 +117,7 @@ describe("score", () => {
 
       expect(confirmed.toolChoice.pass).toBe(true);
       expect(asked.toolChoice.reason).toBe(
-        'missing propose_change({"kind":"confirm","appointmentId":"apt-101"}); missing accept_proposal',
+        'missing propose_change({"kind":"confirm","appointmentId":"apt-101"}); missing accept_proposal({"accepts":"confirm"})',
       );
     }
   });
@@ -160,7 +163,24 @@ describe("score", () => {
       tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
     });
 
-    expect(result.toolChoice).toEqual({ pass: false, reason: "missing accept_proposal" });
+    expect(result.toolChoice).toEqual({
+      pass: false,
+      reason: 'missing accept_proposal({"accepts":"confirm"})',
+    });
+  });
+
+  it("fails a confirmation proposed after a cancellation was accepted", () => {
+    const result = turn("confirm-after-reminder", "Listo, confirmado.", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      tools.run("propose_change", { kind: "cancel", appointmentId: "apt-101" });
+      tools.run("accept_proposal", {});
+      tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+    });
+
+    expect(result.toolChoice).toEqual({
+      pass: false,
+      reason: 'missing accept_proposal({"accepts":"confirm"})',
+    });
   });
 
   it("fails an appointment time stated before any tool returned it", () => {

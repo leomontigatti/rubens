@@ -48,11 +48,15 @@ const changes = new Set(["propose_change", "accept_proposal"]);
 function matches(call: ToolCall, expected: ExpectedCall): boolean {
   if (call.name !== expected.name) return false;
   if (changes.has(call.name) && (call.result as { ok?: boolean }).ok !== true) return false;
+  if (expected.name === "accept_proposal")
+    return (call.result as { applied: { kind: string } }).applied.kind === expected.accepts;
   return Object.entries(expected.args ?? {}).every(([key, value]) => call.args[key] === value);
 }
 
 function describeCall(expected: ExpectedCall): string {
-  return expected.args ? `${expected.name}(${JSON.stringify(expected.args)})` : expected.name;
+  const shownArgs =
+    expected.name === "accept_proposal" ? { accepts: expected.accepts } : expected.args;
+  return shownArgs ? `${expected.name}(${JSON.stringify(shownArgs)})` : expected.name;
 }
 
 function scoreToolChoice(evaluationCase: Case, turn: Turn): Check {
