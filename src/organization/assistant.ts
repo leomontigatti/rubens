@@ -407,15 +407,16 @@ async function readTranscribed(
 }
 
 /**
- * Runs the turn of `conversationId`: judges the patient's new messages, and
- * sends the reply when underthing allows it.
+ * Runs the turn of `conversationId`: judges the patient's new messages and
+ * settles them, and returns the delivery of its reply, which sends it when
+ * underthing allows it, or `null` when the turn says nothing.
  */
 async function runTurn(
   database: Database,
   cloud: WhatsappCloud,
   ports: { model: AssistantModel; transcriber: Transcriber },
   conversationId: string,
-) {
+): Promise<(() => Promise<void>) | null> {
   const { model } = ports;
   // Claimed only while still due, then cleared before the model runs: a
   // message that arrived during an earlier turn of the batch restarted the
@@ -427,11 +428,11 @@ async function runTurn(
     .returning({ id: conversation.id })
     .get();
   if (!claimed) {
-    return;
+    return null;
   }
   const read = await readTranscribed(database, cloud, ports.transcriber, conversationId);
   if (!read) {
-    return;
+    return null;
   }
   const { transcribed } = read;
   const patientIds = read.patients.map((one) => one.id);
@@ -458,7 +459,7 @@ async function runTurn(
     clearFailedTurns(database, conversationId);
   }
   if (!turn) {
-    return;
+    return null;
   }
   // A person answered the turn's words while the model read them: theirs is the answer.
   if (
@@ -468,7 +469,7 @@ async function runTurn(
     )
   ) {
     turnForTheRest(database, conversationId);
-    return;
+    return null;
   }
   const { settled, practitioner, changed } = settleTurn(database, {
     conversationId,
@@ -478,22 +479,23 @@ async function runTurn(
   });
   // A photo's handoff is settled, but the patient hears nothing while their text is unread.
   if (!says(settled) || unread.length > 0) {
-    return;
+    return null;
   }
   const replying = { conversationId, read, appointments: view };
-  await deliverReply(database, cloud, model, {
-    conversationId,
-    phone: read.phone,
-    patients: read.patients.map((one) => one.firstName),
-    answered,
-    settled,
-    practitioner,
-    changed,
-    reply: turn.reply,
-    rules: turn.rules,
-    proposed: turn.proposed,
-    mayReply: () => mayReply(database, cloud, replying),
-  });
+  return () =>
+    deliverReply(database, cloud, model, {
+      conversationId,
+      phone: read.phone,
+      patients: read.patients.map((one) => one.firstName),
+      answered,
+      settled,
+      practitioner,
+      changed,
+      reply: turn.reply,
+      rules: turn.rules,
+      proposed: turn.proposed,
+      mayReply: () => mayReply(database, cloud, replying),
+    });
 }
 
 function mediaKindsOf(messages: { type: string }[]): MediaType[] {
@@ -556,7 +558,14 @@ async function judgeWithoutMedia(
   return { turn: { ...judged, media: mediaKindsOf(media), read }, unread };
 }
 
-/** Runs every turn whose wait is over, earliest first: the object's alarm. */
+/**
+ * Runs every turn whose wait is over, earliest first: the object's alarm.
+ * The turns are judged one at a time, but each reply is delivered alongside
+ * the turns after it, so a conversation's turn does not wait for another's
+ * clinical check and typing pauses (docs/domain/assistant.md § Pace). The
+ * alarm ends once every reply is delivered, and fails as the first
+ * delivery that failed.
+ */
 export async function runDueTurns(
   database: Database,
   cloud: WhatsappCloud,
@@ -571,7 +580,19 @@ export async function runDueTurns(
     .where(lte(conversation.assistantDueAt, Date.now()))
     .orderBy(asc(conversation.assistantDueAt))
     .all();
-  for (const { id } of due) {
-    await runTurn(database, cloud, ports, id);
+  const deliveries: Promise<void>[] = [];
+  const failures: unknown[] = [];
+  try {
+    for (const { id } of due) {
+      const deliver = await runTurn(database, cloud, ports, id);
+      if (deliver) {
+        deliveries.push(deliver().catch((error: unknown) => void failures.push(error)));
+      }
+    }
+  } finally {
+    await Promise.all(deliveries);
+  }
+  if (failures.length > 0) {
+    throw failures[0];
   }
 }

@@ -312,6 +312,9 @@ Meta, so splitting a reply multiplies its cost ([costs](#costs)). A proposal is
 never split: it stays whole in one message, so what the patient accepts is what
 they read. An organization's communication rule can ask for one message instead.
 
+One conversation's typing never holds back another's reply: patients who write at
+the same time are each answered after their own pauses, not one after the other's.
+
 ## Communication rules
 
 How the assistant writes is set in three layers, the higher one winning:
