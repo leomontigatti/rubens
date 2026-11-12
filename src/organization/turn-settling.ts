@@ -47,7 +47,7 @@ function storeJudgement(tx: Writer, turn: JudgedTurn, forPractitioner: boolean) 
 
 /**
  * Adds the kinds of media a later burst sent to the conversation's open
- * `media` handoff, so its reason names everything the patient sent.
+ * `media` handoff to reception, so its reason names everything the patient sent.
  */
 function addMediaToOpen(tx: Writer, conversationId: string, media: MediaType[]) {
   if (media.length === 0) {
@@ -61,6 +61,8 @@ function addMediaToOpen(tx: Writer, conversationId: string, media: MediaType[]) 
         eq(handoff.conversationId, conversationId),
         eq(handoff.state, "open"),
         eq(handoff.reason, "media"),
+        // One passed to the practitioner is theirs now: a later photo is reception's.
+        eq(handoff.forPractitioner, false),
       ),
     )
     .get();

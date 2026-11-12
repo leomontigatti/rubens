@@ -390,6 +390,25 @@ describe("a photo or a file from the patient", () => {
     ]);
   });
 
+  it("leaves a media handoff passed to the practitioner as it was when reception gets another photo", async () => {
+    await patientSends(world.organization, "image", martinaPhone);
+    await turn();
+    const [passed] = await openHandoffs(adminCaller);
+    expectOk(await world.organization.passToPractitioner(adminCaller, { handoffId: passed!.id }));
+    await writes("quiero hablar con alguien");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      one.call("hand_off", { reason: "patient_asked" });
+      return "";
+    });
+    await turn();
+    await patientSends(world.organization, "document", martinaPhone);
+    await turn();
+
+    const handoffs = await openHandoffs(adminCaller);
+    expect(handoffs.find((one) => one.id === passed!.id)).toMatchObject({ media: ["image"] });
+  });
+
   it("is kept from the model when the patient writes beside it, and goes to reception with it", async () => {
     await writes("te mando el comprobante");
     await patientSends(world.organization, "document", martinaPhone);
