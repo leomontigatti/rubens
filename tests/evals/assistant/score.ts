@@ -98,6 +98,23 @@ const failedWith = (call: ToolCall, reasons: Set<string>) =>
 // hand_off or move a rule refused, to reception. None of a kind already open,
 // and no health question alone beside an open handoff to the practitioner.
 // The turn keeps the last hand_off and the last judgement, as the code does.
+// The reason, in the model's words, of the handoff the code opens with no
+// hand_off, as `judgedHandoff` (`src/organization/turn-handoffs.ts`) orders them.
+function judgedReason(evaluationCase: Case, turn: Turn) {
+  const judged = lastArgs(turn, "judge_messages");
+  if (judged?.emergency === true) return "emergency";
+  const treated = numbers[evaluationCase.number]
+    .flatMap((patient) => patient.appointments)
+    .some((appointment) => appointment.appointmentId === judged?.treatedBy);
+  if (judged?.healthQuestion === true && treated) return "clinical";
+  const refused = turn.calls.some(
+    (call) =>
+      (call.name === "find_free_times" || call.name === "propose_change") &&
+      failedWith(call, ruleRefusals),
+  );
+  return refused ? "rule_refused" : "clinical";
+}
+
 function lastArgs(turn: Turn, name: ToolCall["name"]) {
   return turn.calls.filter((call) => call.name === name).at(-1)?.args;
 }
@@ -152,9 +169,8 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   const problems: string[] = [];
   if (handoff === false && opened !== null) problems.push("handed off when not due");
   if (handoff !== false) {
-    // With no hand_off, the judgement opens one for a health question or an emergency.
-    const judgedReason = judged?.emergency === true ? "emergency" : "clinical";
-    const reason = made?.reason ?? judgedReason;
+    // With no hand_off, the code opens one with the reason it judged.
+    const reason = made?.reason ?? judgedReason(evaluationCase, turn);
     if (opened === null) problems.push("no handoff");
     else if (!handoff.reasons.includes(reason as never))
       problems.push(`handoff reason ${String(reason)}`);

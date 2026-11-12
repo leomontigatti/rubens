@@ -491,6 +491,33 @@ describe("the move's rules", () => {
     ]);
   });
 
+  it("hands a refused move to reception beside an open handoff to the practitioner, though the model handed it off as clinical", async () => {
+    vi.setSystemTime(new Date(+at("12:00") - 23 * 60 * 60_000));
+    await writes("me duele la muela desde ayer, es normal?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", {
+        healthQuestion: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
+      return "";
+    });
+    await turn();
+    await writes("y lo podemos pasar? me duele el oído también");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: true, emergency: false });
+      one.call("find_free_times", { appointmentId });
+      one.call("hand_off", { reason: "clinical" });
+      return "";
+    });
+
+    await turn();
+
+    const reasons = (await openHandoffs()).map((one) => one.reason);
+    expect(reasons).toEqual(expect.arrayContaining(["clinical", "ruleRefused"]));
+    expect(reasons).toHaveLength(2);
+  });
+
   it("refuses the yes to a move once the cutoff passed since the proposal", async () => {
     vi.setSystemTime(new Date(+at("12:00") - 24 * 60 * 60_000 - 10 * 60_000));
     await writes("lo paso al 12 a las 10");

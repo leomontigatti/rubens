@@ -135,6 +135,8 @@ describe("score", () => {
     );
 
     expect(refusedOnly.reply.pass).toBe(true);
+    // The code opens the refusal's handoff though the model called no hand_off.
+    expect(refusedOnly.handoff).toEqual({ pass: true, reason: "ok" });
     expect(movedToo.handoff).toEqual({ pass: true, reason: "ok" });
   });
 

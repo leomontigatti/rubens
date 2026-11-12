@@ -102,10 +102,21 @@ function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffW
     : { reason: "unmatchedHealthQuestion", forPractitioner: false, appointmentId };
 }
 
+/** A move a rule refused, or a photo or a file: reception's, which a health question gives way to. */
+function receptionReason(turn: TurnToSort): HandoffWanted | null {
+  if (turn.ruleRefused) {
+    return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };
+  }
+  if (turn.media?.length) {
+    return { reason: "media", forPractitioner: false, appointmentId: null };
+  }
+  return null;
+}
+
 /**
  * The model's hand_off, to the practitioner when its reason or the judgement
- * says so. A health question that goes to reception gives way to the
- * hand_off's own reason, which reception reads the question beside.
+ * says so. A health question that goes to reception gives way to a refusal or
+ * a photo, then to the hand_off's own reason, which reception reads it beside.
  */
 function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
   const named = knownAppointment(turn, handOff.appointmentId);
@@ -119,7 +130,10 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
     return reception;
   }
   const wanted = healthHandoff(turn, named);
-  return wanted.forPractitioner || health ? wanted : reception;
+  if (wanted.forPractitioner) {
+    return wanted;
+  }
+  return receptionReason(turn) ?? (health ? wanted : reception);
 }
 
 /**
@@ -136,14 +150,9 @@ function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   if (health?.forPractitioner) {
     return health;
   }
-  if (turn.ruleRefused) {
-    return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };
-  }
-  if (turn.media?.length) {
-    return { reason: "media", forPractitioner: false, appointmentId: null };
-  }
-  if (health) {
-    return health;
+  const other = receptionReason(turn) ?? health;
+  if (other) {
+    return other;
   }
   if (judgement.optOut && turn.reachedNow.length > 0) {
     return null;
