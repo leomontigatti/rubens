@@ -8,21 +8,23 @@ import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
-import { Button } from "#/components/ui/button.tsx";
 import { timingEntry, timingFromEntry } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
-import type { TemplateVariable } from "#/lib/template-filling.ts";
 import { templateCreateSchema, templateVariables } from "#/lib/whatsapp-templates.ts";
 import type { TemplateProblem } from "#/lib/whatsapp-templates.ts";
 
 import { maxReminders } from "#/lib/medical-services.ts";
-import { problemText, templateRefusalMessages } from "#/lib/whatsapp-template-copy.ts";
+import {
+  problemText,
+  templateRefusalMessages,
+  variableLabels,
+} from "#/lib/whatsapp-template-copy.ts";
 
 import { TemplatePreview } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
 
 // The form a template is written in, for a new one and an edit: for the
 // organization's own, its name and when it goes; for every one, its text,
-// with the variables it may use as chips, and the preview beside it.
+// with the variables it may use as chips above it, and the preview beside it.
 
 const templateFormRefusals = {
   ...templateRefusalMessages,
@@ -188,20 +190,13 @@ export function TemplateForm(props: {
   const when = useStore(form.store, (state) => state.values.timing.when);
   const bodyChanged = body.trim() !== (props.sentBody ?? null);
 
-  function insertVariable(variable: TemplateVariable) {
-    const box = document.getElementById("body");
-    const text = `{{${variable}}}`;
-    if (!(box instanceof HTMLTextAreaElement)) {
-      form.setFieldValue("body", `${body}${text}`);
-      return;
-    }
-    const { selectionStart, selectionEnd } = box;
-    form.setFieldValue("body", body.slice(0, selectionStart) + text + body.slice(selectionEnd));
-    requestAnimationFrame(() => {
-      box.focus();
-      box.setSelectionRange(selectionStart + text.length, selectionStart + text.length);
-    });
-  }
+  const variables = {
+    label: "Insertar variable",
+    options: templateVariables(templateId).map((variable) => ({
+      label: variableLabels[variable],
+      text: `{{${variable}}}`,
+    })),
+  };
 
   return (
     <FormPage
@@ -264,9 +259,10 @@ export function TemplateForm(props: {
       <div className="grid items-start gap-6 lg:grid-cols-5">
         <div className="flex flex-col gap-3 lg:col-span-3">
           <form.AppField name="body">
-            {(field) => <field.TextareaField label="Texto" required hint={sendTimeHint} />}
+            {(field) => (
+              <field.TextareaField label="Texto" required hint={sendTimeHint} inserts={variables} />
+            )}
           </form.AppField>
-          <VariableChips variables={templateVariables(templateId)} onPick={insertVariable} />
           <p className="text-muted-foreground text-sm">
             {formOfAddressNotes[props.followsTrato ? "follows" : "fixed"]}
           </p>
@@ -280,32 +276,5 @@ export function TemplateForm(props: {
         </div>
       </div>
     </FormPage>
-  );
-}
-
-/** The variables the text may use, each a chip that writes it in at the cursor. */
-function VariableChips(props: {
-  variables: readonly TemplateVariable[];
-  onPick: (variable: TemplateVariable) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium" id="variable-chips">
-        Variables
-      </p>
-      <div className="flex flex-wrap gap-2" role="group" aria-labelledby="variable-chips">
-        {props.variables.map((variable) => (
-          <Button
-            key={variable}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => props.onPick(variable)}
-          >
-            {`{{${variable}}}`}
-          </Button>
-        ))}
-      </div>
-    </div>
   );
 }
