@@ -6,7 +6,12 @@ import type { ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
-import type { TemplateCreate, TemplateDelete, TemplateEdit } from "#/lib/whatsapp-templates.ts";
+import type {
+  TemplateCreate,
+  TemplateDelete,
+  TemplateEdit,
+  TemplateReviewRequest,
+} from "#/lib/whatsapp-templates.ts";
 
 import { withOrganization } from "#/server/with-organization.ts";
 
@@ -33,6 +38,12 @@ export const deleteTemplate = createServerFn({ method: "POST" })
   .validator((data: TemplateDelete) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.deleteTemplate(caller, data)),
+  );
+
+export const reviewTemplate = createServerFn({ method: "POST" })
+  .validator((data: TemplateReviewRequest) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.reviewTemplate(caller, data)),
   );
 
 export const refreshWhatsappTemplates = createServerFn({ method: "POST" }).handler(() =>

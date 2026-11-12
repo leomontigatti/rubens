@@ -54,6 +54,15 @@ also says whether changing `Trato` in the communication rules changes the text:
 it does for a default draft never sent, and not once it is sent. The preview warns when the text says `mañana`, `hoy` or `en N horas`, and
 fills `{{organizacion}}` with the organization's name.
 
+Under the preview of a template's page, `Revisar` sends the text in the box,
+saved or not, to the assistant's model with the `Trato`, the `Tono` and the
+utility category's rules (`src/lib/template-review.ts`), and lists its notes as
+`Observaciones`, or `Sin observaciones.` It only advises: the fixed checks above
+still refuse on their own, and with no model key or a failed call it says so in a
+plain line and the save works as before. The text goes with its variables
+unfilled, so no patient's data does; the call counts in the assistant's usage
+([assistant.md](../domain/assistant.md#costs)).
+
 Each new organization starts with the four drafts below, unsent, in `vos` (the
 rules' starting value); each follows the `Trato` an admin then saves until it is
 sent. A draft

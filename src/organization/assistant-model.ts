@@ -9,11 +9,14 @@ import {
   clinicalCheckSchema,
 } from "#/lib/assistant.ts";
 import type { AssistantToolName } from "#/lib/assistant.ts";
+import type { FormOfAddress } from "#/lib/communication-rules.ts";
+import { templateReviewPrompt, templateReviewSchema } from "#/lib/template-review.ts";
 import type * as z from "zod";
 
 // The assistant's model port (ADR-0006 § TanStack AI): one turn in, the reply
 // out, with the turn's tools run by the object in between; and the clinical
-// check, a call of its own that reads one reply before it goes out. Claude Haiku 5.5
+// check, a call of its own that reads one reply before it goes out; and the
+// review of a template's text an admin is writing (#345). Claude Haiku 5.5
 // through TanStack AI's Anthropic adapter; the object's tests put a scripted
 // model behind the same port (`assistant-model.test-support.ts`). The API key
 // is a Worker secret and never leaves this module. Each call to the model
@@ -65,6 +68,16 @@ export interface ReplyToCheck {
 
 export type CheckedReply = z.output<typeof clinicalCheckSchema>;
 
+/** A template's text to review, with the organization's Trato and Tono. */
+export interface TemplateToReview {
+  body: string;
+  formOfAddress: FormOfAddress;
+  tone: string;
+  recordUsage: RecordUsage;
+}
+
+export type TemplateReview = z.output<typeof templateReviewSchema>;
+
 export interface AssistantModel {
   /** The setting that keeps a turn from running, or `null` when none is missing. */
   missingSetting(): "missingApiKey" | null;
@@ -72,6 +85,8 @@ export interface AssistantModel {
   runTurn(turn: ModelTurn): Promise<{ reply: string }>;
   /** The clinical check: whether the reply is clinical, or about a patient not listed. */
   checkReply(request: ReplyToCheck): Promise<CheckedReply>;
+  /** The notes on a template's text: what breaks Meta's utility category, the Trato or the Tono. */
+  reviewTemplate(request: TemplateToReview): Promise<TemplateReview>;
 }
 
 /** A turn's model calls: enough for a lookup or two, the judgement and the reply. */
@@ -125,6 +140,17 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
         systemPrompts: [clinicalCheckPrompt(patients)],
         messages: [{ role: "user", content: `<reply>\n${reply}\n</reply>` }],
         outputSchema: clinicalCheckSchema,
+        middleware: [usageOf(recordUsage)],
+        stream: false,
+      });
+    },
+    reviewTemplate({ body, formOfAddress, tone, recordUsage }) {
+      return chat({
+        adapter: adapter(),
+        threadId: `template-review-${crypto.randomUUID()}`,
+        systemPrompts: [templateReviewPrompt({ formOfAddress, tone })],
+        messages: [{ role: "user", content: `<template>\n${body}\n</template>` }],
+        outputSchema: templateReviewSchema,
         middleware: [usageOf(recordUsage)],
         stream: false,
       });

@@ -7,7 +7,12 @@ import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { deleteTemplate, editTemplate, getWhatsappSettings } from "#/server/whatsapp.functions.ts";
+import {
+  deleteTemplate,
+  editTemplate,
+  getWhatsappSettings,
+  reviewTemplate,
+} from "#/server/whatsapp.functions.ts";
 
 import {
   rejectionText,
@@ -166,6 +171,7 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
       }}
       lead={<LatestWarning latest={latest} />}
       save={(values) => editTemplate({ data: { templateId: template.id, ...values } })}
+      review={(body) => reviewTemplate({ data: { body } })}
     />
   );
 }

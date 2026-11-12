@@ -9,9 +9,9 @@ import type { Writer } from "#/organization/database.ts";
 import { modelUsage, transcriptionUsage } from "#/organization/whatsapp-schema.ts";
 
 // What the organization's assistant uses (docs/domain/assistant.md § Costs):
-// every run of the model, a turn's or a clinical check's, records the tokens
-// its calls used and the model, and every voice note transcribed the audio's
-// length and the model, on the organization's day. Meta bills its messages
+// every run of the model, a turn's, a clinical check's or a template review's
+// (#345), records the tokens its calls used and the model, and every voice
+// note transcribed the audio's length and the model, on the organization's day. Meta bills its messages
 // to the practice itself, so they are not here.
 
 /** A run of the model: what it was for, and whether the sandbox ran it. */

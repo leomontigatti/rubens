@@ -17,7 +17,12 @@ import type {
   MessageReference,
   WhatsappEvents,
 } from "#/lib/whatsapp-messages.ts";
-import type { TemplateCreate, TemplateDelete, TemplateEdit } from "#/lib/whatsapp-templates.ts";
+import type {
+  TemplateCreate,
+  TemplateDelete,
+  TemplateEdit,
+  TemplateReviewRequest,
+} from "#/lib/whatsapp-templates.ts";
 
 import {
   listSandboxScenarios,
@@ -49,6 +54,7 @@ import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
 import { getWhatsappSettings } from "#/organization/whatsapp.ts";
 import { createTemplate, deleteTemplate, editTemplate } from "#/organization/templates.ts";
+import { reviewTemplate } from "#/organization/template-review.ts";
 import { refreshWhatsappTemplates } from "#/organization/whatsapp-templates.ts";
 
 /**
@@ -179,6 +185,11 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
 
   deleteTemplate(caller: Caller, input: TemplateDelete) {
     return this.as(caller, ["admin"], (acting) => deleteTemplate(this.database, acting, input));
+  }
+
+  /** The assistant's notes on a template's text being written; nothing is saved (#345). */
+  async reviewTemplate(caller: Caller, input: TemplateReviewRequest) {
+    return this.as(caller, ["admin"], () => reviewTemplate(this.database, this.assistant, input));
   }
 
   /** The assistant's `vos` or `usted` and tone (#185), which the settings read back. */
