@@ -57,6 +57,16 @@ export function notify(tx: Writer, recipientIds: string[], content: Notification
   }
 }
 
+/** The patient a notification about `conversationId` names: the first its number was linked to. */
+export function notifiedPatientOf(tx: Writer, conversationId: string) {
+  const first = tx
+    .select({ patientId: conversationPatient.patientId })
+    .from(conversationPatient)
+    .where(eq(conversationPatient.conversationId, conversationId))
+    .get();
+  return first?.patientId ?? null;
+}
+
 /** Notifies every active admin of `content`. */
 export function notifyAdmins(tx: Writer, content: NotificationContent) {
   notify(tx, activeWith(tx, ["admin"]), content);

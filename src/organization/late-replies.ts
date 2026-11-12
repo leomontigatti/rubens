@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import { lateReplyChanceMs, lateReplyReferenceSchema } from "#/lib/conversation-holds.ts";
 import type { LateReplyReference, LateReplyState } from "#/lib/conversation-holds.ts";
@@ -12,7 +12,7 @@ import { organizationName } from "#/organization/members.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Acting } from "#/organization/members.ts";
-import { notify } from "#/organization/notifications.ts";
+import { notifiedPatientOf, notify } from "#/organization/notifications.ts";
 import { settleReply } from "#/organization/personal-replies.ts";
 import { member, patient } from "#/organization/schema.ts";
 import {
@@ -34,10 +34,11 @@ import {
 // reopen template, `reabrir_conversacion`, through the outbox. The reply goes
 // as its writer wrote it once the patient writes again, whether or not the
 // template went first. The replies written before the patient answers wait
-// behind the same template. If the patient has not answered within
+// behind the same template, and get it again when the window the answer
+// opened closed before they could go. If the patient has not answered within
 // `lateReplyChanceMs` of the reply, or of the template when it went later, or
-// the template could not go, the writer is told the reply was not delivered.
-// Until the patient answers, its writer may withdraw it. The reply itself never goes into the template.
+// the template could not go or Meta reports it failed, the writer is told the
+// reply was not delivered. Until the patient answers, its writer may withdraw it. The reply itself never goes into the template.
 
 /**
  * The first names of the patients `phone` reaches who accept WhatsApp, as the
@@ -80,31 +81,7 @@ export function queueLateReply(
     if (!greetedAt(tx, reply.phone)) {
       return { ok: false as const, reason: "cannotReopen" as const };
     }
-    // A reply joins the template an earlier reply still waits behind, keeping its own chance (`chanceEndsAt`).
-    const waiting = tx
-      .select({ reopenId: lateReply.reopenId })
-      .from(lateReply)
-      .innerJoin(outboxMessage, eq(outboxMessage.id, lateReply.reopenId))
-      .where(
-        and(
-          eq(lateReply.conversationId, conversationId),
-          eq(lateReply.state, "waiting"),
-          inArray(outboxMessage.state, ["queued", "sent"]),
-        ),
-      )
-      .get();
-    const reopenId =
-      waiting?.reopenId ??
-      tx
-        .insert(outboxMessage)
-        .values({
-          kind: "reopenConversation",
-          templateId: eventKindTemplates.reopenConversation,
-          conversationId,
-          dueAt: Date.now(),
-        })
-        .returning({ id: outboxMessage.id })
-        .get().id;
+    const reopenId = reopenFor(tx, conversationId);
     tx.insert(lateReply)
       .values({
         conversationId,
@@ -117,6 +94,44 @@ export function queueLateReply(
       .run();
     return { ok: true as const };
   });
+}
+
+/**
+ * The reopen template a late reply of `conversationId` waits behind: one an
+ * earlier reply still waits behind, queued since the patient last wrote (a
+ * reply keeps its own chance, `chanceEndsAt`) and not reported failed by
+ * Meta; otherwise a new one, queued now.
+ */
+function reopenFor(tx: Writer, conversationId: string) {
+  const since = lastIncomingAt(tx, conversationId) ?? 0;
+  const waiting = tx
+    .select({ reopenId: lateReply.reopenId })
+    .from(lateReply)
+    .innerJoin(outboxMessage, eq(outboxMessage.id, lateReply.reopenId))
+    .leftJoin(whatsappMessage, eq(whatsappMessage.id, outboxMessage.whatsappMessageId))
+    .where(
+      and(
+        eq(lateReply.conversationId, conversationId),
+        eq(lateReply.state, "waiting"),
+        inArray(outboxMessage.state, ["queued", "sent"]),
+        gte(outboxMessage.createdAt, since),
+        or(isNull(whatsappMessage.status), ne(whatsappMessage.status, "failed")),
+      ),
+    )
+    .get();
+  return (
+    waiting?.reopenId ??
+    tx
+      .insert(outboxMessage)
+      .values({
+        kind: "reopenConversation",
+        templateId: eventKindTemplates.reopenConversation,
+        conversationId,
+        dueAt: Date.now(),
+      })
+      .returning({ id: outboxMessage.id })
+      .get().id
+  );
 }
 
 /** The patients `phone` reaches now, by id. */
@@ -201,8 +216,10 @@ function waitingReplies(database: Database) {
       patientIds: lateReply.patientIds,
       createdAt: lateReply.createdAt,
       reopenId: lateReply.reopenId,
+      reopenQueuedAt: outboxMessage.createdAt,
       reopenState: outboxMessage.state,
       reopenSentAt: whatsappMessage.sentAt,
+      reopenStatus: whatsappMessage.status,
     })
     .from(lateReply)
     .innerJoin(conversation, eq(conversation.id, lateReply.conversationId))
@@ -220,10 +237,15 @@ type Waiting = ReturnType<typeof waitingReplies>[number];
  * chance after it was written, or after its template went if that was later,
  * so a reply joining an older template still gets the whole of it; a
  * template that cannot go (Meta paused it, or the number is held) waits out
- * the same chance. At once when the template was dropped or failed.
+ * the same chance. At once when the template was dropped or failed, before
+ * it went or once Meta reported it failed (the patient blocked the number, say).
  */
 function chanceEndsAt(waiting: Waiting) {
-  if (waiting.reopenState === "dropped" || waiting.reopenState === "failed") {
+  if (
+    waiting.reopenState === "dropped" ||
+    waiting.reopenState === "failed" ||
+    waiting.reopenStatus === "failed"
+  ) {
     return Date.now();
   }
   return Math.max(waiting.reopenSentAt ?? 0, waiting.createdAt) + lateReplyChanceMs;
@@ -232,13 +254,15 @@ function chanceEndsAt(waiting: Waiting) {
 /**
  * When the object's alarm should next settle a late reply: at once for one
  * the patient answered, while the number may send (when a hold of Meta's ends,
- * if it ends by time); otherwise when its template's chance ends.
+ * if it ends by time), and for one whose window that answer opened closed
+ * first; otherwise when its template's chance ends.
  */
 export function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): number | null {
   const now = Date.now();
   const due = waitingReplies(database).map((one) => {
-    if (!isWindowOpen(lastIncomingAt(database, one.conversationId), now)) {
-      return chanceEndsAt(one);
+    const lastIncoming = lastIncomingAt(database, one.conversationId);
+    if (!isWindowOpen(lastIncoming, now)) {
+      return missedWindow(one, lastIncoming) ? now : chanceEndsAt(one);
     }
     if (cloud.missingSetting()) {
       return null;
@@ -250,10 +274,18 @@ export function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): nu
   return times.length > 0 ? Math.min(...times) : null;
 }
 
-/** Marks `waiting` not delivered and tells its writer, once; a template it alone waited behind is dropped. */
-function notDelivered(database: Database, waiting: Waiting) {
+/**
+ * Marks `waiting` not delivered and tells its writer, once; a template it
+ * alone waited behind is dropped, for `reason`: `answered` when the patient
+ * wrote, so the template had nothing left to reopen.
+ */
+function notDelivered(
+  database: Database,
+  waiting: Waiting,
+  reason: "answered" | "replyNotDelivered",
+) {
   database.transaction((tx) => {
-    dropUnneededReopen(tx, waiting, "replyNotDelivered");
+    dropUnneededReopen(tx, waiting, reason);
     const marked = tx
       .update(lateReply)
       .set({ state: "notDelivered" })
@@ -264,6 +296,7 @@ function notDelivered(database: Database, waiting: Waiting) {
       notify(tx, [waiting.writtenBy], {
         kind: "replyNotDelivered",
         conversationId: waiting.conversationId,
+        patientId: notifiedPatientOf(tx, waiting.conversationId),
       });
     }
   });
@@ -346,7 +379,7 @@ export function withdrawOwnLateReply(
 }
 
 /** Whether late reply `id` still waits: its writer may have withdrawn it while the alarm sent earlier ones. */
-function stillWaiting(database: Database, id: string) {
+function stillWaiting(database: Writer, id: string) {
   const current = database
     .select({ state: lateReply.state })
     .from(lateReply)
@@ -367,7 +400,7 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
   // A contact changed since it was written: the number may no longer hear about each patient.
   const reachedNow = new Set(reachedIds(database, waiting.phone));
   if (!waiting.patientIds.every((id) => reachedNow.has(id))) {
-    notDelivered(database, waiting);
+    notDelivered(database, waiting, "answered");
     return;
   }
   const sent = await whileSending(database, () =>
@@ -382,7 +415,7 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
   });
   if (!sent?.ok) {
     if (!sent || !holdOnRefusal(database, sent.metaError)) {
-      notDelivered(database, waiting);
+      notDelivered(database, waiting, "answered");
     }
     return;
   }
@@ -402,22 +435,54 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
 }
 
 /**
+ * Whether the patient wrote after `waiting`'s template was queued, yet the
+ * window that opened closed before the reply could go (Meta held the number
+ * all along, say): it needs the template again.
+ */
+function missedWindow(waiting: Waiting, lastIncoming: number | null) {
+  return lastIncoming !== null && lastIncoming > waiting.reopenQueuedAt;
+}
+
+/**
+ * Puts `waiting`, whose window closed unused, behind a reopen template queued
+ * since; the one it leaves is dropped if it has not gone and no other reply
+ * waits behind it.
+ */
+function reopenAgain(database: Database, waiting: Waiting) {
+  database.transaction((tx) => {
+    // Its writer may have withdrawn it while the alarm sent earlier ones.
+    if (!stillWaiting(tx, waiting.id)) {
+      return;
+    }
+    dropUnneededReopen(tx, waiting, "answered");
+    const reopenId = reopenFor(tx, waiting.conversationId);
+    tx.update(lateReply).set({ reopenId }).where(eq(lateReply.id, waiting.id)).run();
+  });
+}
+
+/**
  * Settles every late reply that is due, oldest first: the object's alarm.
- * One the patient answered goes; one whose template's chance ended without
- * an answer is not delivered.
+ * One the patient answered goes, or waits behind the template again when the
+ * window that answer opened closed first; one whose template's chance ended
+ * without an answer is not delivered.
  */
 export async function settleLateReplies(database: Database, cloud: WhatsappCloud) {
   for (const one of waitingReplies(database)) {
     const now = Date.now();
-    if (isWindowOpen(lastIncomingAt(database, one.conversationId), now)) {
+    const lastIncoming = lastIncomingAt(database, one.conversationId);
+    if (isWindowOpen(lastIncoming, now)) {
       if (!cloud.missingSetting() && !activeHold(database, now)) {
         await deliver(database, cloud, one);
       }
       continue;
     }
+    if (missedWindow(one, lastIncoming)) {
+      reopenAgain(database, one);
+      continue;
+    }
     const endsAt = chanceEndsAt(one);
     if (endsAt !== null && endsAt <= now) {
-      notDelivered(database, one);
+      notDelivered(database, one, "replyNotDelivered");
     }
   }
 }
