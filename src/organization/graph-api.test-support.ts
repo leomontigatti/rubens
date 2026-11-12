@@ -88,6 +88,8 @@ class FakeMeta {
   mediaTypes = new Map<string, string>();
   /** Whether Meta's media host fails, after the Graph API linked the media. */
   mediaHostFails = false;
+  /** Whether Meta's media host takes byte ranges; when it does not, it sends the whole file. */
+  mediaHostTakesRanges = true;
   /** The Worker's Embedded Signup settings. */
   signupSettings: SignupSettings = {};
   /** The number Embedded Signup connects, as Meta lists it in its account. */
@@ -113,6 +115,7 @@ class FakeMeta {
     this.media = new Map();
     this.mediaTypes = new Map();
     this.mediaHostFails = false;
+    this.mediaHostTakesRanges = true;
     this.templatesPerPage = 100;
     this.signupSettings = {
       META_APP_ID: "1234567890",
@@ -324,9 +327,13 @@ class FakeMeta {
   /** A media's bytes as Meta's media host serves them: whole, or the one range `bytes=a-b` asks for. */
   #mediaBytes(bytes: Uint8Array, mimeType: string, range: string | null) {
     const asked = /^bytes=(\d+)-(\d*)$/.exec(range ?? "");
-    if (!asked) {
+    if (!asked || !this.mediaHostTakesRanges) {
       return new Response(bytes.slice().buffer, {
-        headers: { "content-type": mimeType, "content-length": String(bytes.byteLength) },
+        headers: {
+          "content-type": mimeType,
+          "content-length": String(bytes.byteLength),
+          ...(this.mediaHostTakesRanges && { "accept-ranges": "bytes" }),
+        },
       });
     }
     const start = Number(asked[1]);
@@ -337,6 +344,7 @@ class FakeMeta {
       headers: {
         "content-type": mimeType,
         "content-length": String(part.byteLength),
+        "accept-ranges": "bytes",
         "content-range": `bytes ${start}-${end}/${bytes.byteLength}`,
       },
     });

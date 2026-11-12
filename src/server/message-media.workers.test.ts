@@ -132,10 +132,23 @@ describe("the media route", () => {
     const firstBytes = await served(receptionist, voiceNote, { range: "bytes=0-1" });
 
     expect(whole.headers.get("content-length")).toBe(String(length));
+    expect(whole.headers.get("accept-ranges")).toBe("bytes");
     expect(firstBytes.status).toBe(206);
     expect(firstBytes.headers.get("content-range")).toBe(`bytes 0-1/${length}`);
     expect(firstBytes.headers.get("content-length")).toBe("2");
     expect(await firstBytes.text()).toBe("by");
+  });
+
+  it("claims no byte ranges when Meta's media host takes none, and sends the whole file", async () => {
+    const voiceNote = await fileSent("audio", "media-voice", "audio/ogg");
+    fakeMeta.mediaHostTakesRanges = false;
+
+    const response = await served(receptionist, voiceNote, { range: "bytes=0-1" });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("accept-ranges")).toBeNull();
+    expect(response.headers.get("content-range")).toBeNull();
+    expect(await response.text()).toBe("bytes of media-voice");
   });
 
   it("asks Meta for the whole file when the range is not one a player sends", async () => {

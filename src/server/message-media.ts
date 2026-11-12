@@ -66,13 +66,12 @@ export async function serveMessageMedia(
   const mimeType = opened.mimeType.split(";")[0]!.trim().toLowerCase();
   const inPlace = shownInPlace.some((pattern) => pattern.test(mimeType));
   return new Response(opened.body, {
-    // Meta's media host names the range it sent only on a partial answer.
-    status: opened.contentRange ? 206 : 200,
+    status: opened.partial ? 206 : 200,
     headers: {
       ...privateHeaders,
       "content-type": inPlace ? opened.mimeType : "application/octet-stream",
       "content-disposition": disposition(inPlace ? "inline" : "attachment", opened.filename),
-      "accept-ranges": "bytes",
+      ...(opened.acceptRanges && { "accept-ranges": opened.acceptRanges }),
       ...(opened.length && { "content-length": opened.length }),
       ...(opened.contentRange && { "content-range": opened.contentRange }),
       // A PDF is shown by the browser's own viewer, which a sandbox would block.

@@ -3,10 +3,16 @@
 // that lasts five minutes, and the bytes come from that link, streamed, with
 // the number's token, which goes to Meta's own hosts only.
 
-/** The media's bytes as the media host streams them, with its length and, for a byte range, the range it sent. */
+/**
+ * The media's bytes as the media host streams them, with its own headers: its
+ * length, whether it takes byte ranges, and for a byte range (`partial`) the
+ * range it sent.
+ */
 export interface MediaHostAnswer {
   body: ReadableStream<Uint8Array>;
+  partial: boolean;
   length: string | null;
+  acceptRanges: string | null;
   contentRange: string | null;
 }
 
@@ -38,7 +44,9 @@ export async function fromMediaHost(
   }
   return {
     body: response.body,
+    partial: response.status === 206,
     length: response.headers.get("content-length"),
+    acceptRanges: response.headers.get("accept-ranges"),
     contentRange: response.headers.get("content-range"),
   };
 }
