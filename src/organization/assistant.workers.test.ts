@@ -1,5 +1,5 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
@@ -93,18 +93,6 @@ function storedFlags() {
       .orderBy(sql`${whatsappMessage}.rowid`)
       .all(),
   );
-}
-
-/** How many of the patient's messages no turn has judged yet. */
-async function unjudgedCount() {
-  const rows = await inStorage(world.organization, (database) =>
-    database
-      .select({ id: whatsappMessage.id })
-      .from(whatsappMessage)
-      .where(and(eq(whatsappMessage.direction, "incoming"), isNull(whatsappMessage.judgement)))
-      .all(),
-  );
-  return rows.length;
 }
 
 /** The patient writes `count` messages, more than one statement binds when past 100. */
@@ -608,7 +596,7 @@ describe("judging every patient message", () => {
 
     await afterTheWait();
 
-    expect(await unjudgedCount()).toBe(0);
+    expect(await judgementsShown()).toEqual(Array(110).fill("notForPractitioner"));
     expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "Hola, en qué te puedo ayudar?" }]);
   });
 
@@ -885,7 +873,7 @@ describe("a message the model could not read", () => {
     expect(await openHandoffs()).toEqual([
       expect.objectContaining({ reason: "modelUnavailable", forPractitioner: false }),
     ]);
-    expect(await unjudgedCount()).toBe(0);
+    expect(await judgementsShown()).toEqual(Array(110).fill("notForPractitioner"));
   });
 
   it("is not read again as new once the handoff is closed and the patient writes", async () => {
