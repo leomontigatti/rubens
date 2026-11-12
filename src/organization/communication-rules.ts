@@ -5,6 +5,7 @@ import type { CommunicationRulesInput, FormOfAddress } from "#/lib/communication
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { rewordDefaultDrafts } from "#/organization/templates.ts";
 import { communicationRules } from "#/organization/whatsapp-schema.ts";
 
 // The organization's communication rules for the assistant (`src/lib/communication-rules.ts`):
@@ -46,7 +47,7 @@ export function currentCommunicationRules(database: Writer): CommunicationRules 
 /**
  * Saves `input` as the rules, as `acting`, under the next version, and audits
  * what changed with the version it made. Every save makes a version, one that
- * changes nothing included.
+ * changes nothing included. The default drafts never sent follow its `Trato`.
  */
 export function saveCommunicationRules(
   database: Database,
@@ -73,6 +74,7 @@ export function saveCommunicationRules(
       before: { ...changed?.before, version },
       after: { ...changed?.after, version: after.version },
     });
+    rewordDefaultDrafts(tx, acting, after.formOfAddress);
     return { ok: true, version: after.version } as const;
   });
 }

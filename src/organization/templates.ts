@@ -1,6 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 
 import { changedFields } from "#/lib/audit-fields.ts";
+import type { FormOfAddress } from "#/lib/communication-rules.ts";
+import { defaultDraftIn, isDefaultDraft } from "#/lib/default-drafts.ts";
 import { timingColumns, timingOf, timingRank } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
 import {
@@ -91,8 +93,9 @@ function byListOrder(
 
 /**
  * Every template of the organization, its own first in the order their
- * messages go, then the event templates, each with its versions newest first;
- * and the setting that keeps templates from being submitted, if any.
+ * messages go, then the event templates, each with its versions newest first
+ * and whether its draft follows the `Trato` (`followsTrato`); and the setting
+ * that keeps templates from being submitted, if any.
  */
 export function listTemplates(database: Database, cloud: WhatsappCloud) {
   const versions = versionsByTemplate(database);
@@ -113,6 +116,7 @@ export function listTemplates(database: Database, cloud: WhatsappCloud) {
       timing: timingOf({ timing, timingHours }),
       versions: versions.get(row.id) ?? [],
       picked: picked.has(row.id),
+      followsTrato: !versions.has(row.id) && row.draft !== null && isDefaultDraft(row.draft),
     }))
     .sort(byListOrder);
   return { missing: cloud.missingTemplateSetting(), templates };
@@ -278,6 +282,39 @@ export async function editTemplate(
     submitVersion(database, cloud, acting, { templateId, body: checked.body }, () => undefined),
   );
   return submitted.ok ? ({ ok: true, submitted: true } as const) : submitted;
+}
+
+/**
+ * Rewords in `formOfAddress`, as `acting`, each template never sent to Meta whose
+ * draft is still one of the defaults (`src/lib/default-drafts.ts`), audited; a
+ * text the organization wrote stays.
+ */
+export function rewordDefaultDrafts(tx: Writer, acting: Acting, formOfAddress: FormOfAddress) {
+  const sent = new Set(
+    tx
+      .selectDistinct({ id: whatsappTemplate.templateId })
+      .from(whatsappTemplate)
+      .all()
+      .map((row) => row.id),
+  );
+  for (const { id, draft } of tx
+    .select({ id: template.id, draft: template.draft })
+    .from(template)
+    .all()) {
+    const reworded = draft === null || sent.has(id) ? null : defaultDraftIn(formOfAddress, draft);
+    if (reworded === null || reworded === draft) {
+      continue;
+    }
+    tx.update(template).set({ draft: reworded }).where(eq(template.id, id)).run();
+    recordAudit(tx, acting.userId, {
+      action: "update",
+      entityType: "template",
+      entityId: id,
+      patientId: null,
+      before: { draft },
+      after: { draft: reworded },
+    });
+  }
 }
 
 /**

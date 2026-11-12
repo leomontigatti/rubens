@@ -11,9 +11,10 @@ each is sent is in [messages.md](../domain/messages.md#to-patients).
   wait for an approved utility version, and the admins are warned
   ([messages.md](../domain/messages.md#when-meta-limits-the-number)).
 - **Voice**: the organization's own, `vos` or `usted` (`Trato` in the communication
-  rules), written into the text. Each draft is worded in the `Trato` the rules have
-  when it is created; a later change of `Trato` changes no text, and the template's
-  page says so. An organization can have several approved versions of one template;
+  rules), written into the text. A default draft never sent follows the `Trato`: a save
+  of the rules rewords it to the text below in the `Trato` saved, audited as a change of
+  the template. A template once sent to Meta, or a draft whose text is not one below,
+  keeps its text whatever the `Trato`. The template's page says which. An organization can have several approved versions of one template;
   any approved one may go.
 - **The name, not a sign-off.** A text names the organization with `{{organizacion}}`
   (`te escribimos de {{organizacion}}`), and carries no signature.
@@ -48,12 +49,13 @@ latest version's; a template never sent and picked by no medical service can be
 deleted from it. Under `Texto`, the variables it may use, each a chip that writes
 it in at the cursor, and the hint `No escribas cuándo se envía (mañana, en 2
 horas): usá {{fecha}} y {{hora}}. Sin ¿ ni ¡ de apertura y sin emojis.` The page
-also says that changing `Trato` in the communication rules does not change the
-text. The preview warns when the text says `mañana`, `hoy` or `en N horas`, and
+also says whether changing `Trato` in the communication rules changes the text:
+it does for a default draft never sent, and not once it is sent. The preview warns when the text says `mañana`, `hoy` or `en N horas`, and
 fills `{{organizacion}}` with the organization's name.
 
-Each new organization starts with the four drafts below, unsent, in the `Trato` its
-communication rules have then: `vos` (the rules' starting value) or `usted`. A draft
+Each new organization starts with the four drafts below, unsent, in `vos` (the
+rules' starting value); each follows the `Trato` an admin then saves until it is
+sent. A draft
 sends nothing until an admin submits it, Meta approves it, and a medical service picks
 it. There is no draft for care instructions: a medical service that sends them gets a
 template of its own, written by an admin. The event templates' drafts follow the same

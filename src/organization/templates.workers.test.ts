@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { variablesIn } from "#/lib/template-filling.ts";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -13,9 +14,12 @@ import {
   auditEntriesFor,
   expectOk,
   fakeMeta,
+  inStorage,
   setUpBookingWorld,
+  submitTemplate,
   templateNamed,
 } from "#/organization/organization.test-support.ts";
+import { template } from "#/organization/whatsapp-schema.ts";
 
 // The organization's templates as an admin manages them (`templates.ts`):
 // its own, created, named, timed and deleted while never sent, and the event
@@ -93,6 +97,94 @@ describe("the drafts every organization starts with", () => {
       expect(variablesIn(draft)).toContain("organizacion");
       expect(checkTemplateBody(templateVariables(id), draft)).toEqual({ ok: true, body: draft });
     }
+  });
+});
+
+describe("the drafts never sent, when an admin changes Trato", () => {
+  const usted = { formOfAddress: "usted", tone: "", phone: "" } as const;
+
+  /** Each template's draft by its name. */
+  async function draftsByName() {
+    return Object.fromEntries((await listed()).map(({ name, draft }) => [name, draft]));
+  }
+
+  it("are reworded in the Trato saved, every one of them, and back again", async () => {
+    const inVos = await draftsByName();
+
+    expectOk(await world.organization.saveCommunicationRules(adminCaller, usted));
+
+    const inUsted = await draftsByName();
+    expect(inUsted["Confirmación del turno"]).toBe(
+      "Hola {{paciente}}, le escribimos de {{organizacion}}: su turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si necesita cambiarlo, responda este mensaje.",
+    );
+    expect(inUsted["Reabrir la conversación"]).toBe(
+      "Hola {{paciente}}, le escribimos de {{organizacion}}: tenemos una respuesta para usted. Responda este mensaje para verla.",
+    );
+    for (const draft of Object.values(inUsted)) {
+      expect(draft).toMatch(/^Hola \{\{paciente\}\}, le escribimos de \{\{organizacion\}\}/);
+    }
+
+    expectOk(
+      await world.organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        formOfAddress: "vos",
+      }),
+    );
+
+    expect(await draftsByName()).toEqual(inVos);
+  });
+
+  it("are audited each with the text it had, by the admin who saved, and only when reworded", async () => {
+    const draftId = await templateNamed(world.organization, "Seguimiento");
+    const inVos = (await listed()).find((one) => one.id === draftId)!.draft;
+
+    expectOk(
+      await world.organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        formOfAddress: "vos",
+      }),
+    );
+    expect(await auditEntriesFor(world.organization, draftId)).toEqual([]);
+
+    expectOk(await world.organization.saveCommunicationRules(adminCaller, usted));
+
+    expect(await auditEntriesFor(world.organization, draftId)).toEqual([
+      {
+        action: "update",
+        entityType: "template",
+        userId: adminCaller.userId,
+        patientId: null,
+        before: { draft: inVos },
+        after: {
+          draft:
+            "Hola {{paciente}}, le escribimos de {{organizacion}} por su turno del {{fecha}} con {{profesional}}. Cuéntenos cómo se siente respondiendo este mensaje.",
+        },
+      },
+    ]);
+  });
+
+  it("leave a template already sent to Meta, and a text the organization wrote, as they are", async () => {
+    const sentId = await templateNamed(world.organization, "Recordatorio");
+    await submitTemplate(world.organization, sentId, { status: "PENDING", metaId: "703" });
+    const writtenId = await templateNamed(world.organization, "Seguimiento");
+    const written = "Hola {{paciente}}, gracias por venir a {{organizacion}}. Te esperamos pronto.";
+    await inStorage(world.organization, (database) =>
+      database.update(template).set({ draft: written }).where(eq(template.id, writtenId)).run(),
+    );
+    const before = await draftsByName();
+
+    expectOk(await world.organization.saveCommunicationRules(adminCaller, usted));
+
+    const after = await listed();
+    const sent = after.find((one) => one.id === sentId)!;
+    expect(sent.draft).toBe(before["Recordatorio"]);
+    expect(sent.versions.map((version) => version.body)).toEqual([before["Recordatorio"]]);
+    expect(after.find((one) => one.id === writtenId)!.draft).toBe(written);
+    expect(await auditEntriesFor(world.organization, sentId)).toEqual([]);
+    expect(after.filter((one) => !one.followsTrato).map((one) => one.name)).toEqual([
+      "Recordatorio",
+      "Seguimiento",
+    ]);
   });
 });
 

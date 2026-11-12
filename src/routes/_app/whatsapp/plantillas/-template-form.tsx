@@ -59,9 +59,13 @@ const whenOptions = [
 const sendTimeHint =
   "No escribas cuándo se envía (mañana, en 2 horas): usá {{fecha}} y {{hora}}. Sin ¿ ni ¡ de apertura y sin emojis. Hasta 1024 caracteres, sin empezar ni terminar con una variable.";
 
-/** Why a change of `Trato` leaves the text alone (docs/operations/whatsapp-templates.md § Voice). */
-const formOfAddressNote =
-  "Si cambiás el trato (vos o usted) en Reglas de comunicación, este texto no cambia: editalo acá.";
+/** Whether a change of `Trato` changes the text (docs/operations/whatsapp-templates.md § Voice). */
+const formOfAddressNotes = {
+  fixed:
+    "Si cambiás el trato (vos o usted) en Reglas de comunicación, este texto no cambia: editalo acá.",
+  follows:
+    "Mientras no la envíes a Meta, este texto cambia con el trato (vos o usted) de Reglas de comunicación. Una vez enviada, ya no cambia: editalo acá.",
+};
 
 /** The name and timing as the server takes them. */
 const settingsSchema = templateCreateSchema.pick({ name: true, timing: true });
@@ -102,6 +106,8 @@ export function TemplateForm(props: {
   record?: RecordHeader;
   lead?: ReactNode;
   versionNote?: string;
+  /** Whether its text is a default draft never sent, which follows the `Trato`. */
+  followsTrato?: boolean;
   save: (values: TemplateValues) => Promise<TemplateSaveResult>;
 }) {
   const { templateId, settings, save } = props;
@@ -252,7 +258,9 @@ export function TemplateForm(props: {
             {(field) => <field.TextareaField label="Texto" required hint={sendTimeHint} />}
           </form.AppField>
           <VariableChips variables={templateVariables(templateId)} onPick={insertVariable} />
-          <p className="text-muted-foreground text-sm">{formOfAddressNote}</p>
+          <p className="text-muted-foreground text-sm">
+            {formOfAddressNotes[props.followsTrato ? "follows" : "fixed"]}
+          </p>
         </div>
         <div className="lg:col-span-2">
           <TemplatePreview
