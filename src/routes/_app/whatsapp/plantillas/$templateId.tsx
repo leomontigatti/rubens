@@ -151,6 +151,7 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
       description={template.name}
       submitLabel={(bodyChanged) => (bodyChanged ? "Guardar y enviar a Meta" : "Guardar")}
       versionNote={versionNote}
+      followsTrato={template.followsTrato}
       record={{
         status: latest ? (
           <Badge variant={templateStatusVariants[latest.status]}>
