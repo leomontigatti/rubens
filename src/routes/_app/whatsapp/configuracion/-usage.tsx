@@ -1,5 +1,6 @@
 import { Detail, RecordSection } from "#/components/record-section.tsx";
-import { transcriptionLine, usageLine, usageMonthName } from "#/lib/assistant-usage.ts";
+import { transcriptionLine, usageLine } from "#/lib/assistant-usage.ts";
+import { formatMonth } from "#/lib/dates.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
 // What the assistant used this month in the WhatsApp settings
@@ -15,8 +16,8 @@ export function UsageSection({ settings }: { settings: Settings }) {
       <div className="flex flex-col gap-4">
         <p className="text-muted-foreground text-sm">
           Los tokens que usó el modelo del asistente y el audio de las notas de voz que transcribió
-          en {usageMonthName(month)}, en las conversaciones con pacientes y en la prueba. Meta le
-          cobra los mensajes de WhatsApp al consultorio directamente.
+          en {formatMonth(month)}, en las conversaciones con pacientes y en la prueba. Meta le cobra
+          los mensajes de WhatsApp al consultorio directamente.
         </p>
         {models.length === 0 && transcriptions.length === 0 ? (
           <p className="text-sm">Todavía no hay uso este mes.</p>

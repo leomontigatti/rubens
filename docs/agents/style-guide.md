@@ -172,7 +172,10 @@ carried over from en-escena.
   that are only their form (`/ingresar`, `/cambiar-contrasena`, `/disponibilidad`) are the
   exception: they read the form's `FormData` on submit and show one problem in an `ErrorAlert`,
   with no per-field errors or unsaved changes for the form kit to hold. Their inputs stay
-  uncontrolled, so what the browser autofills or a user types before hydration is what submits.
+  uncontrolled, so what the browser autofills or a user types before hydration is what submits,
+  save `/disponibilidad`'s `Fecha`: a controlled `DateInput` that submits through a hidden input,
+  so a date typed before the page hydrates is not what submits: the date the page opened with,
+  today's unless the address names one, is.
 - **A field is `Field` with a `FieldLabel`, never a hand-made wrapper** (`pnpm lint` enforces it:
   `ui/no-bare-label`). The label sits above the input. A placeholder shows an example, never the
   label.
@@ -204,6 +207,11 @@ carried over from en-escena.
   without `w-fit` the label fills the row, and a click on the empty space ticks the box.
   A group of them is a `FieldSet` with a `FieldLegend variant="label"`, and its boxes in a
   `FieldGroup data-slot="checkbox-group"`.
+- **A date is a `DateField` and a time a `TimeField`**, two fields side by side, never
+  `type="date"`, `type="time"` or `datetime-local`: the browser draws those in its own language
+  and clock. They are typed as `dd/mm/aaaa` and `HH:mm` (`src/components/date-time-input.tsx`).
+  A date or a time shown to a person is written by `src/lib/dates.ts`, and `pnpm lint` keeps
+  hand-written formats out (`ui/no-raw-date-format`).
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
 - **Every `<form>` takes `method="post"`.** Submitted before the page hydrates, the browser sends
   the form on its own, and a GET puts every field, a password included, in the URL, the history and

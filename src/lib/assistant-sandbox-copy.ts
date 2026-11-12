@@ -1,6 +1,6 @@
 import type { AssistantToolName } from "#/lib/assistant.ts";
 import type { ProposalKind } from "#/lib/proposals.ts";
-import { appointmentDay, appointmentTime } from "#/lib/template-filling.ts";
+import { formatDay, formatTime } from "#/lib/dates.ts";
 
 // The copy of the assistant's sandbox in the WhatsApp settings
 // (`src/routes/_app/whatsapp/configuracion/prueba.tsx`): its refusals, what a turn did, and
@@ -60,7 +60,7 @@ export function scenarioLabel(scenario: {
   practitioner: string;
 }) {
   const start = new Date(scenario.startsAt);
-  const when = `${appointmentDay(start, scenario.timeZone)}, ${appointmentTime(start, scenario.timeZone)}`;
+  const when = `${formatDay(start, scenario.timeZone)}, ${formatTime(start, scenario.timeZone)}`;
   return `${scenario.patient} · ${when} · ${scenario.practitioner}`;
 }
 

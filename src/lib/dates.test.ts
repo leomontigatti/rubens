@@ -5,8 +5,10 @@ import {
   formatDateTime,
   formatDay,
   formatDayHeading,
+  formatDayHeadingWithYear,
   formatLocalDate,
   formatMonth,
+  formatPromptNow,
   formatTime,
 } from "#/lib/dates.ts";
 
@@ -50,6 +52,14 @@ describe("formatDayHeading", () => {
   });
 });
 
+describe("formatDayHeadingWithYear", () => {
+  it("adds the year, for a day in another year than this one", () => {
+    expect(formatDayHeadingWithYear(lateSunday, buenosAires)).toBe(
+      "Domingo 8 de noviembre de 2026",
+    );
+  });
+});
+
 describe("formatLocalDate", () => {
   it("writes a calendar date as day, month and year", () => {
     expect(formatLocalDate("2026-03-07")).toBe("07/03/2026");
@@ -60,5 +70,11 @@ describe("formatMonth", () => {
   it("names a calendar month in Spanish, with its year", () => {
     expect(formatMonth("2098-12")).toBe("diciembre de 2098");
     expect(formatMonth("2026-01")).toBe("enero de 2026");
+  });
+});
+
+describe("formatPromptNow", () => {
+  it("writes the English weekday and the ISO date and time in the zone passed", () => {
+    expect(formatPromptNow(lateSunday, buenosAires)).toBe("Sunday 2026-11-08 23:30");
   });
 });

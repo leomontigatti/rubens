@@ -1,8 +1,4 @@
-import { tz } from "@date-fns/tz";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-
-import { formatShortDay, formatTime } from "#/lib/dates.ts";
+import { formatDateTime, formatDay, formatShortDay, formatTime } from "#/lib/dates.ts";
 import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
@@ -55,14 +51,11 @@ const categoryLabels: Record<string, string> = {
 const resubmit = "Enviá una versión nueva desde su página en Plantillas.";
 
 export function localTime(instant: number) {
-  return format(instant, "dd/MM/yyyy HH:mm", { in: tz(defaultTimeZone) });
+  return formatDateTime(instant, defaultTimeZone);
 }
 
 function day(instant: number) {
-  return format(instant, "EEEE d 'de' MMMM 'a las' HH:mm", {
-    in: tz(defaultTimeZone),
-    locale: es,
-  });
+  return `${formatDay(instant, defaultTimeZone)} a las ${formatTime(instant, defaultTimeZone)}`;
 }
 
 function template(facts: NotificationFacts) {

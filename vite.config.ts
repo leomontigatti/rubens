@@ -122,14 +122,8 @@ export default defineConfig({
         },
       },
       {
-        // The one place a date is written for a person; and the files PR #300
-        // changes, which move onto it once that PR merges.
-        files: [
-          "src/lib/dates.ts",
-          "src/lib/assistant.ts",
-          "src/routes/_app/conversaciones/**",
-          "src/routes/_app/notificaciones/**",
-        ],
+        // The one place a date is written for a person.
+        files: ["src/lib/dates.ts"],
         rules: {
           "ui/no-raw-date-format": "off",
         },

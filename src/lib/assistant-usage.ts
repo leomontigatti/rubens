@@ -1,5 +1,4 @@
 import { assistantModelId, transcriptionModelId } from "#/lib/assistant.ts";
-import { formatMonth } from "#/lib/dates.ts";
 
 // The assistant's usage as the WhatsApp settings show it (docs/domain/assistant.md
 // § Costs): the month's name, each model's tokens and the audio its voice
@@ -28,11 +27,6 @@ const modelNames: Record<string, string> = {
 const tokenFormat = new Intl.NumberFormat("es-AR");
 
 const minuteFormat = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
-
-/** `2098-12` as `diciembre de 2098`. */
-export function usageMonthName(month: string) {
-  return formatMonth(month);
-}
 
 /** Which model was used, and by whom. */
 function usageLabel(used: { model: string; sandbox: boolean }) {
