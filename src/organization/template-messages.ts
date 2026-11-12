@@ -1,4 +1,5 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { attendedTimings, bookingTimings, timingDueAt, timingOf } from "#/lib/template-timing.ts";
@@ -107,8 +108,9 @@ function queueTimed(
           },
         ];
   });
-  if (rows.length > 0) {
-    tx.insert(outboxMessage).values(rows).run();
+  // A row per insert, as `notify` inserts: the object's SQLite binds at most 100 parameters a query.
+  for (const row of rows) {
+    tx.insert(outboxMessage).values(row).run();
   }
 }
 
@@ -203,8 +205,12 @@ function notSentFor(tx: Writer, appointmentId: string) {
     .filter((id) => !sent.has(id));
 }
 
-/** The booked and confirmed appointments still ahead, of `medicalServiceIds`. */
-function upcomingOf(tx: Writer, medicalServiceIds: string[]) {
+/**
+ * The booked and confirmed appointments still ahead, of `medicalServiceIds`.
+ * A caller with no bound on them passes a subquery: the object's SQLite binds
+ * at most 100 parameters a query.
+ */
+function upcomingOf(tx: Writer, medicalServiceIds: string[] | SQLWrapper) {
   return tx
     .select({ id: appointment.id })
     .from(appointment)
@@ -231,9 +237,7 @@ export function rebuildTemplate(tx: Writer, templateId: string) {
   const services = tx
     .select({ id: medicalServiceTemplate.medicalServiceId })
     .from(medicalServiceTemplate)
-    .where(eq(medicalServiceTemplate.templateId, templateId))
-    .all()
-    .map((row) => row.id);
+    .where(eq(medicalServiceTemplate.templateId, templateId));
   for (const booked of upcomingOf(tx, services)) {
     tx.update(outboxMessage)
       .set({ state: "dropped", dropReason: "appointmentChanged" })

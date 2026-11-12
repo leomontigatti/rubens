@@ -222,6 +222,28 @@ describe("a change of a template's timing", () => {
     expect(fakeMeta.requests).toEqual([]);
   });
 
+  it("queues again at the new time when more medical services pick it than one statement binds", async () => {
+    for (const { practitionerId } of [world.juan, world.lucia]) {
+      for (let added = 0; added < 50; added++) {
+        expectOk(
+          await world.organization.createMedicalService(adminCaller, {
+            practitionerId,
+            name: `Control ${added}`,
+            durationMinutes: 30,
+            templateIds: [drafts.dayBefore],
+          }),
+        );
+      }
+    }
+    await bookMartina();
+
+    await retime(drafts.dayBefore, { when: "before", hours: 48 });
+
+    expect(await queued()).toEqual([
+      { templateId: drafts.dayBefore, dueAt: +nineOnMonday - hours(48) },
+    ]);
+  });
+
   it("queues for the timing stored last, when another admin retimes it while Meta reads a new text", async () => {
     await bookMartina();
     fakeMeta.answerWith(200, { id: "900000000000019", status: "PENDING", category: "UTILITY" });
@@ -432,6 +454,33 @@ describe("templates on and after the appointment's attendance", () => {
     await runDurableObjectAlarm(world.organization);
 
     expect(sentTemplates()).toEqual([metaTemplateName(created.templateId, 1)]);
+  });
+});
+
+describe("a medical service picking the most templates it may", () => {
+  it("saves them and queues each one's message when its appointment is attended", async () => {
+    const afterVisit: string[] = [];
+    for (let hour = 1; hour <= 50; hour++) {
+      fakeMeta.answerNextWith(200, {
+        id: `9000000001${String(hour).padStart(5, "0")}`,
+        status: "APPROVED",
+        category: "UTILITY",
+      });
+      const created = expectOk(
+        await world.organization.createTemplate(adminCaller, {
+          name: `Seguimiento ${hour} horas`,
+          timing: { when: "after", hours: hour },
+          body: "Hola {{paciente}}, gracias por venir el {{fecha}}. Consultorios Prueba",
+        }),
+      );
+      afterVisit.push(created.templateId);
+    }
+    await world.pickTemplates(medicalServiceId, afterVisit);
+    const { appointmentId } = await bookMartina();
+
+    await markAttended(appointmentId);
+
+    expect((await queued()).map((row) => row.templateId).sort()).toEqual(afterVisit.sort());
   });
 });
 

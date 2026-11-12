@@ -189,6 +189,32 @@ describe("storing the webhook's WhatsApp events", () => {
     expect(await linkedPatients(organization, message!.conversationId)).toEqual([tomas.patientId]);
   });
 
+  it("links a number to more patients than one statement binds", async () => {
+    const { organization } = await setUpTestOrganization();
+    const receptionist = await addMember(organization, ["receptionist"]);
+    const patientIds: string[] = [];
+    for (let added = 0; added < 60; added++) {
+      const result = expectOk(
+        await organization.registerPatient(receptionist, {
+          firstName: `Paciente ${added}`,
+          lastName: "Pérez",
+          phone: "0351 15 555-1111",
+          confirmDuplicates: true,
+        }),
+      );
+      patientIds.push(result.patient.id);
+    }
+
+    await organization.storeWhatsappEvents({
+      templateStatuses: [],
+      messages: [incoming("+5493515551111")],
+      statuses: [],
+    });
+
+    const [message] = await storedMessages(organization);
+    expect(await linkedPatients(organization, message!.conversationId)).toEqual(patientIds.sort());
+  });
+
   it("links an Argentine mobile typed without its 15 to the number WhatsApp sends with a 9", async () => {
     const { organization } = await setUpTestOrganization();
     // Typed without the 15, the number is stored as +54 351 …; WhatsApp sends 549 351 ….

@@ -304,6 +304,33 @@ describe("a sandbox conversation", () => {
     expect(scriptedModel.turns).toEqual([]);
   });
 
+  it("plays a turn after more messages than one statement binds", async () => {
+    const started = await startSandbox();
+    const long = {
+      ...started,
+      messages: [
+        ...started.messages,
+        ...Array.from({ length: 40 }, (_, index) => ({
+          direction: index % 2 === 0 ? ("incoming" as const) : ("outgoing" as const),
+          text: index % 2 === 0 ? "hola" : "Hola, ¿en qué te ayudo?",
+          judgement: index % 2 === 0 ? ("notForPractitioner" as const) : null,
+          sentAt: Date.now() + index + 1,
+        })),
+      ],
+    };
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Sigo acá.";
+    });
+
+    const played = await playPatient(long, "¿seguís?");
+
+    expect(played.sandbox.messages.at(-1)).toMatchObject({
+      direction: "outgoing",
+      text: "Sigo acá.",
+    });
+  });
+
   it("stays apart from the number's real conversation: neither sees the other's proposal, and the inbox shows only the real one", async () => {
     // Meta answers the real conversation's reply; the sandbox still reaches it never.
     fakeMeta.reset();

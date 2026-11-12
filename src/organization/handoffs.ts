@@ -106,12 +106,11 @@ function recipientsOf(tx: Writer, wanted: Omit<HandoffWanted, "reason">) {
  */
 export function sendHandoff(tx: Writer, handoffId: string, wanted: Omit<HandoffWanted, "reason">) {
   const recipients = recipientsOf(tx, wanted);
-  if (recipients.memberIds.length > 0) {
-    tx.insert(handoffRecipient)
-      .values(recipients.memberIds.map((memberId) => ({ handoffId, memberId })))
-      .run();
-    notify(tx, recipients.memberIds, { kind: "handoff", handoffId });
+  // A row per insert, as `notify` inserts: the object's SQLite binds at most 100 parameters a query.
+  for (const memberId of recipients.memberIds) {
+    tx.insert(handoffRecipient).values({ handoffId, memberId }).run();
   }
+  notify(tx, recipients.memberIds, { kind: "handoff", handoffId });
   return recipients.practitioner;
 }
 
