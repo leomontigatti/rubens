@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import type { Writer } from "#/organization/database.ts";
-import { notify } from "#/organization/notifications.ts";
-import { conversationPatient, handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { notifiedPatientOf, notify } from "#/organization/notifications.ts";
+import { handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // A person's reply that Meta reports as failed (docs/domain/assistant.md §
 // Handoff): it never reached the patient, so the handoffs it closed open
@@ -67,15 +67,10 @@ export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
           .run();
       }
     }
-    const first = tx
-      .select({ patientId: conversationPatient.patientId })
-      .from(conversationPatient)
-      .where(eq(conversationPatient.conversationId, reply.conversationId))
-      .get();
     notify(tx, [reply.sentBy!], {
       kind: "replyFailed",
       conversationId: reply.conversationId,
-      patientId: first?.patientId ?? null,
+      patientId: notifiedPatientOf(tx, reply.conversationId),
     });
   }
 }

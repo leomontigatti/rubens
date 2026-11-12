@@ -51,8 +51,8 @@ export const outboxStates = ["queued", "sent", "dropped", "failed"] as const;
  * patient withdrew consent, its medical service no longer picks its template
  * (docs/domain/messages.md § When Meta limits the number), or, for the reopen
  * template, the patient wrote first, so the replies it waited for went
- * without it, or the last of them was not delivered, or was withdrawn, before
- * it could go.
+ * without it or could not go at all, or the last of them was not delivered,
+ * or was withdrawn, before it could go.
  */
 export const outboxDropReasons = [
   "appointmentChanged",
