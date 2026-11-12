@@ -288,6 +288,41 @@ describe("a person's reply", () => {
     ]);
   });
 
+  it("that Meta reports failed names no patient in its notice when the number stands for several", async () => {
+    await handedOff(false);
+    // A sibling on the same number, first by name.
+    expectOk(
+      await world.organization.registerPatient(adminCaller, {
+        firstName: "Ana",
+        lastName: "Paz",
+        phone: martinaPhone,
+        confirmDuplicates: true,
+      }),
+    );
+    expectOk(await takeOver(world.receptionist));
+    expectOk(await reply(world.receptionist, "Hola, te llamo en un rato."));
+    const [sent] = await inStorage(world.organization, (database) =>
+      database
+        .select({ whatsappId: whatsappMessage.whatsappId })
+        .from(whatsappMessage)
+        .where(eq(whatsappMessage.text, "*Rita Paz*\nHola, te llamo en un rato."))
+        .all(),
+    );
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: [{ whatsappId: sent!.whatsappId, status: "failed", at: Date.now() }],
+        templateStatuses: [],
+      }),
+    );
+
+    const told = expectOk(await world.organization.listNotifications(world.receptionist));
+    expect(told.notifications.filter((one) => one.kind === "replyFailed")).toMatchObject([
+      { conversationId, patient: null },
+    ]);
+  });
+
   it("reopens the handoff it closed when Meta reports more replies failed in one call than one statement binds", async () => {
     await handedOff(false);
     expectOk(await takeOver(world.receptionist));
