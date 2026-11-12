@@ -89,7 +89,12 @@ function ConversationPage() {
           onUseReply={(text) => void putInReply(text)}
         />
       )}
-      <ConversationChat messages={messages} queuedReopen={queuedReopen} lateReplies={lateReplies} />
+      <ConversationChat
+        conversationId={conversation.id}
+        messages={messages}
+        queuedReopen={queuedReopen}
+        lateReplies={lateReplies}
+      />
       {/* Keyed, so a draft never follows a navigation to another conversation. */}
       <ReplyBox
         key={conversation.id}

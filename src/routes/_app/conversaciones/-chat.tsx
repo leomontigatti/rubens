@@ -17,6 +17,7 @@ import {
   messageText,
 } from "#/routes/_app/conversaciones/-labels.ts";
 import { LateReplyBubble } from "#/routes/_app/conversaciones/-late-replies.tsx";
+import { MessageMediaControl } from "#/routes/_app/conversaciones/-media.tsx";
 import { MessageStatus } from "#/routes/_app/conversaciones/-messages.tsx";
 
 // The conversation as the patient's phone shows it, by day, oldest first:
@@ -29,6 +30,7 @@ type ChatItem =
   | { kind: "lateReply"; at: number; reply: ShownLateReply };
 
 export function ConversationChat(props: {
+  conversationId: string;
   messages: InboxMessage[];
   queuedReopen: QueuedReopen | null;
   lateReplies: ShownLateReply[];
@@ -58,7 +60,12 @@ export function ConversationChat(props: {
         <Fragment key={`${index}-${day.label}`}>
           <WhatsappDay>{day.label}</WhatsappDay>
           {day.items.map((item) => (
-            <ChatBubble key={`${item.kind}-${idOf(item)}`} item={item} />
+            <ChatBubble
+              key={`${item.kind}-${idOf(item)}`}
+              item={item}
+              conversationId={props.conversationId}
+              now={now}
+            />
           ))}
         </Fragment>
       ))}
@@ -73,7 +80,15 @@ function idOf(item: ChatItem) {
   return item.kind === "reopen" ? item.reopen.id : item.reply.id;
 }
 
-function ChatBubble({ item }: { item: ChatItem }) {
+function ChatBubble({
+  item,
+  conversationId,
+  now,
+}: {
+  item: ChatItem;
+  conversationId: string;
+  now: number;
+}) {
   if (item.kind === "lateReply") {
     return <LateReplyBubble reply={item.reply} />;
   }
@@ -93,10 +108,18 @@ function ChatBubble({ item }: { item: ChatItem }) {
       </WhatsappBubble>
     );
   }
-  return <MessageBubble message={item.message} />;
+  return <MessageBubble message={item.message} conversationId={conversationId} now={now} />;
 }
 
-function MessageBubble({ message }: { message: InboxMessage }) {
+function MessageBubble({
+  message,
+  conversationId,
+  now,
+}: {
+  message: InboxMessage;
+  conversationId: string;
+  now: number;
+}) {
   const text = <span>{messageText(message)}</span>;
   const footer = (
     <>
@@ -105,8 +128,18 @@ function MessageBubble({ message }: { message: InboxMessage }) {
     </>
   );
   const sender = messageSender(message);
+  const { media } = message;
+  const opens = media && (
+    <MessageMediaControl
+      conversationId={conversationId}
+      message={{ ...message, media }}
+      now={now}
+    />
+  );
   return sender === null ? (
-    <PatientBubble footer={footer}>{text}</PatientBubble>
+    <PatientBubble footer={footer} media={opens}>
+      {text}
+    </PatientBubble>
   ) : (
     <WhatsappBubble author={sender} footer={footer}>
       {text}

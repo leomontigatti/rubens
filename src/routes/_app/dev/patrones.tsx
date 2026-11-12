@@ -453,6 +453,26 @@ function Patterns() {
         <WhatsappChat label="Mensajes">
           <WhatsappDay>Hoy</WhatsappDay>
           <PatientBubble footer="17:41">¿Puedo pasar el turno al viernes?</PatientBubble>
+          <PatientBubble
+            footer="17:42"
+            media={
+              <Button variant="outline" size="sm">
+                Ver foto
+              </Button>
+            }
+          >
+            Foto
+          </PatientBubble>
+          <PatientBubble
+            footer="17:42"
+            media={
+              <p className="text-muted-foreground text-xs">
+                Ya no está disponible en WhatsApp (pasaron más de 7 días)
+              </p>
+            }
+          >
+            Archivo: Radiografía.pdf
+          </PatientBubble>
           <WhatsappBubble
             author="Rita Prueba"
             footer={

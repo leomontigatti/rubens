@@ -80,8 +80,12 @@ class FakeMeta {
   #heldPause: { index: number; until: Promise<void> } | null = null;
   /** How many templates Meta lists per page. */
   templatesPerPage = 100;
-  /** The voice notes Meta holds, by media id: the bytes of each, which the object downloads. */
+  /** The media Meta holds, by media id: the bytes of each, which the object downloads. */
   media = new Map<string, Uint8Array>();
+  /** The media type Meta gives a media id in `media`; a voice note's when none is set. */
+  mediaTypes = new Map<string, string>();
+  /** Whether Meta's media host fails, after the Graph API linked the media. */
+  mediaHostFails = false;
   /** The Worker's Embedded Signup settings. */
   signupSettings: SignupSettings = {};
   /** The number Embedded Signup connects, as Meta lists it in its account. */
@@ -105,6 +109,8 @@ class FakeMeta {
     this.#heldStep = null;
     this.templatesAtMeta = [];
     this.media = new Map();
+    this.mediaTypes = new Map();
+    this.mediaHostFails = false;
     this.templatesPerPage = 100;
     this.signupSettings = {
       META_APP_ID: "1234567890",
@@ -278,16 +284,22 @@ class FakeMeta {
   };
 
   /**
-   * A voice note's media, as Meta serves it: its id answers with a link on
+   * A message's media, as Meta serves it: its id answers with a link on
    * Meta's media host, and the link with the bytes; an id Meta does not hold
    * answers Meta's error. `null` for a request that is not about media.
    */
   #mediaAnswer(request: Request) {
     const url = new URL(request.url);
     if (url.hostname === mediaHost) {
-      const bytes = this.media.get(url.searchParams.get("mid") ?? "");
+      const mid = url.searchParams.get("mid") ?? "";
+      const bytes = this.media.get(mid);
+      if (this.mediaHostFails) {
+        return new Response("Service unavailable", { status: 503 });
+      }
       return bytes
-        ? new Response(bytes.slice().buffer, { headers: { "content-type": "audio/ogg" } })
+        ? new Response(bytes.slice().buffer, {
+            headers: { "content-type": this.#mediaTypeOf(mid) },
+          })
         : new Response("Not found", { status: 404 });
     }
     const mediaId = /^\/v[\d.]+\/(media-[\w-]+)$/.exec(url.pathname)?.[1];
@@ -303,9 +315,14 @@ class FakeMeta {
     return Response.json({
       messaging_product: "whatsapp",
       url: `https://${mediaHost}/whatsapp_business/attachments/?mid=${mediaId}`,
-      mime_type: "audio/ogg; codecs=opus",
+      mime_type: this.#mediaTypeOf(mediaId),
+      file_size: this.media.get(mediaId)!.byteLength,
       id: mediaId,
     });
+  }
+
+  #mediaTypeOf(mediaId: string) {
+    return this.mediaTypes.get(mediaId) ?? "audio/ogg; codecs=opus";
   }
 
   #signupAnswer(step: SignupStep) {

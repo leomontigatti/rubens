@@ -12,7 +12,8 @@ src/
 │   │                  `_app/whatsapp/` holds two pages, `configuracion/` (the settings and the
 │   │                  form page of each) and `plantillas/` (the templates and each one's edit page)
 │   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET),
-│                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature)
+│                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature),
+│                      `conversaciones/…/mensajes/$messageId.ts` (a patient's media, streamed from Meta)
 ├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),
 │   │                  `form-page.tsx` (a create or an edit on its own page),
 │   │                  `admin-form.tsx` (the admin screens' submit step and controls), `confirm-dialog.tsx` (the question before a destructive
@@ -32,7 +33,8 @@ src/
 │   │                  (`members.ts`, `audit.ts`, …), `encryption.ts` (the organization's key),
 │   │                  `schema.ts` and `whatsapp-schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
 ├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it);
-│                      `fake-meta.ts` (Meta answered inside the Worker, for the browser suite)
+│                      `fake-meta.ts` (Meta answered inside the Worker, for the browser suite),
+│                      `fake-meta-media.ts` (the made-up media it serves)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
 ├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules
 ├── server/            server-only modules that are not routes: `*.functions.ts` (server functions),

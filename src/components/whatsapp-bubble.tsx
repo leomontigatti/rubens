@@ -33,6 +33,8 @@ interface BubbleProps {
   author?: string;
   /** What follows the words, under them: its time, and its status. */
   footer?: ReactNode;
+  /** What opens the message's media, between its words and its footer. */
+  media?: ReactNode;
   children: ReactNode;
 }
 
@@ -64,6 +66,7 @@ function Bubble(props: BubbleProps & { className: string }) {
     <div className={cn("max-w-md rounded-lg px-3 py-2 text-sm shadow-xs", props.className)}>
       {props.author && <p className="text-xs font-medium">{props.author}</p>}
       <p className="wrap-break-word whitespace-pre-wrap">{props.children}</p>
+      {props.media && <div className="mt-2">{props.media}</div>}
       {props.footer && (
         <div className="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-xs">
           {props.footer}

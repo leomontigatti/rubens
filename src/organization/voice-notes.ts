@@ -37,11 +37,11 @@ async function transcriptOf(cloud: WhatsappCloud, transcriber: Transcriber, payl
   if (missing) {
     throw new AudioUnavailable(missing);
   }
-  const media = await cloud.downloadMedia(parsed.data.audio.id);
+  const media = await cloud.openMedia(parsed.data.audio.id);
   if (!media.ok) {
     throw new AudioUnavailable(`Meta refused the media (code ${media.metaError.code})`);
   }
-  return transcriber.transcribe(media.bytes, media.mimeType);
+  return transcriber.transcribe(await new Response(media.body).arrayBuffer(), media.mimeType);
 }
 
 /** The voice notes among the patient's messages `messageIds` with no transcript yet, oldest first. */

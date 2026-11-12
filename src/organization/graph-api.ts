@@ -94,8 +94,10 @@ export type TemplateReadResult = ({ ok: true } & TemplateReview) | MetaRefusal;
 
 export type TemplateNamesResult = { ok: true; names: string[] } | MetaRefusal;
 
-/** A message's media as Meta serves it: its bytes and its media type. */
-export type MediaResult = { ok: true; bytes: ArrayBuffer; mimeType: string } | MetaRefusal;
+/** A message's media as Meta streams it: its body as it arrives, its media type and its size in bytes, when Meta says. */
+export type MediaStreamResult =
+  | { ok: true; body: ReadableStream<Uint8Array>; mimeType: string; size: number | null }
+  | MetaRefusal;
 
 export interface WhatsappCloud {
   /** The setting that keeps a send from being made, or `null` when none is missing. */
@@ -113,10 +115,11 @@ export interface WhatsappCloud {
    */
   showTyping(messageId: string): Promise<{ ok: true } | MetaRefusal>;
   /**
-   * Downloads the media `mediaId` of a patient's message, such as a voice
-   * note, which Meta serves only with the number's token; requires every setting.
+   * Streams the media `mediaId` of a patient's message, such as a voice note,
+   * which Meta serves only with the number's token: the bytes pass through as
+   * Meta sends them. Requires every setting.
    */
-  downloadMedia(mediaId: string): Promise<MediaResult>;
+  openMedia(mediaId: string): Promise<MediaStreamResult>;
   /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
   missingTemplateSetting(): MissingTemplateSetting | null;
   /** Submits a utility template, with named variables and no buttons, for Meta's review. */
@@ -144,6 +147,7 @@ interface TemplateListAnswer {
 interface MediaAnswer {
   url?: unknown;
   mime_type?: unknown;
+  file_size?: unknown;
 }
 
 interface TemplateAnswer {
@@ -166,6 +170,40 @@ export function whatsappCloudFor(
       connection.tokenRefused(answer.metaError, token);
     }
     return answer;
+  }
+
+  async function openMedia(mediaId: string): Promise<MediaStreamResult> {
+    const token = connection.settings().WHATSAPP_ACCESS_TOKEN;
+    if (!token) {
+      throw new Error("The WhatsApp settings are incomplete: check missingSetting() first");
+    }
+    const headers = { authorization: `Bearer ${token}` };
+    const described = await answerOf(
+      await fetcher(
+        `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(mediaId)}`,
+        {
+          headers,
+        },
+      ),
+      token,
+    );
+    if (!described.ok) {
+      return described;
+    }
+    const { url, mime_type: mimeType, file_size: size } = described.body as MediaAnswer;
+    if (typeof url !== "string" || typeof mimeType !== "string") {
+      throw new Error("The Graph API described a media without its link and type");
+    }
+    const response = await fetcher(mediaUrl(url), { headers });
+    if (!response.ok || !response.body) {
+      throw new Error(`Meta's media host answered ${response.status}`);
+    }
+    return {
+      ok: true,
+      body: response.body,
+      mimeType,
+      size: typeof size === "number" ? size : null,
+    };
   }
 
   function missingSetting(): MissingSetting | null {
@@ -279,34 +317,7 @@ export function whatsappCloudFor(
       });
       return answer.ok ? { ok: true } : answer;
     },
-    async downloadMedia(mediaId) {
-      const token = connection.settings().WHATSAPP_ACCESS_TOKEN;
-      if (!token) {
-        throw new Error("The WhatsApp settings are incomplete: check missingSetting() first");
-      }
-      const headers = { authorization: `Bearer ${token}` };
-      const described = await answerOf(
-        await fetcher(
-          `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(mediaId)}`,
-          {
-            headers,
-          },
-        ),
-        token,
-      );
-      if (!described.ok) {
-        return described;
-      }
-      const { url, mime_type: mimeType } = described.body as MediaAnswer;
-      if (typeof url !== "string" || typeof mimeType !== "string") {
-        throw new Error("The Graph API described a media without its link and type");
-      }
-      const response = await fetcher(mediaUrl(url), { headers });
-      if (!response.ok) {
-        throw new Error(`Meta's media host answered ${response.status}`);
-      }
-      return { ok: true, bytes: await response.arrayBuffer(), mimeType };
-    },
+    openMedia,
     missingTemplateSetting,
     async createTemplate({ name, languageCode, body, examples }) {
       const { token, accountId } = templateSettings();

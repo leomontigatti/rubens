@@ -3,6 +3,8 @@ import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { actsForEveryone } from "#/lib/access.ts";
+import { messageMediaOf } from "#/lib/message-media.ts";
+import type { MessageMedia } from "#/lib/message-media.ts";
 import { isWindowOpen, windowClosesAt } from "#/lib/conversation-window.ts";
 import { patientName } from "#/lib/patients.ts";
 import { parsePhone } from "#/lib/phones.ts";
@@ -52,6 +54,8 @@ export interface InboxMessage {
   judgement: MessageJudgement | null;
   /** The member who wrote an outgoing reply from the inbox, by name; `null` for the assistant's and the templates. */
   sentBy: string | null;
+  /** A patient's voice note, photo, video or file, which the inbox opens from Meta; `null` for words alone. */
+  media: MessageMedia | null;
 }
 
 export interface ConversationSummary {
@@ -108,6 +112,7 @@ export const messageColumns = {
   text: whatsappMessage.text,
   status: whatsappMessage.status,
   judgement: whatsappMessage.judgement,
+  payload: whatsappMessage.payload,
 };
 
 type MessageRow = Pick<typeof whatsappMessage.$inferSelect, keyof typeof messageColumns> & {
@@ -116,7 +121,17 @@ type MessageRow = Pick<typeof whatsappMessage.$inferSelect, keyof typeof message
 
 export function asRead(row: MessageRow): InboxMessage {
   const { id, direction, sentAt, type, text, status, judgement } = row;
-  return { id, direction, sentAt, type, text, status, judgement, sentBy: row.senderName ?? null };
+  return {
+    id,
+    direction,
+    sentAt,
+    type,
+    text,
+    status,
+    judgement,
+    sentBy: row.senderName ?? null,
+    media: messageMediaOf(row),
+  };
 }
 
 export function patientsOf(database: Database, conversationIds: string[]) {

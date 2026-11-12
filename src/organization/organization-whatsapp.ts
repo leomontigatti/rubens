@@ -12,7 +12,11 @@ import type {
 } from "#/lib/handoffs.ts";
 import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
-import type { ConversationReference, WhatsappEvents } from "#/lib/whatsapp-messages.ts";
+import type {
+  ConversationReference,
+  MessageReference,
+  WhatsappEvents,
+} from "#/lib/whatsapp-messages.ts";
 import type { TemplateCreate, TemplateDelete, TemplateEdit } from "#/lib/whatsapp-templates.ts";
 
 import {
@@ -22,6 +26,7 @@ import {
 } from "#/organization/assistant-sandbox.ts";
 import type { SandboxTurnsRunning } from "#/organization/assistant-sandbox.ts";
 import { saveCommunicationRules } from "#/organization/communication-rules.ts";
+import { openMessageMedia } from "#/organization/conversation-media.ts";
 import {
   replyToConversation,
   returnConversation,
@@ -93,6 +98,13 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   passToPractitioner(caller: Caller, input: HandoffReference) {
     return this.asThenArm(caller, patientEditors, (acting) =>
       passHandoffToPractitioner(this.database, acting, input),
+    );
+  }
+
+  /** A patient's photo, video, file or voice note in a conversation the member reads, streamed from Meta. */
+  openMessageMedia(caller: Caller, input: MessageReference) {
+    return this.as(caller, patientEditors, (acting) =>
+      openMessageMedia(this.database, this.whatsapp, acting, input),
     );
   }
 
