@@ -17,6 +17,8 @@ const evalModules = [
   "./tests/evals/assistant/voice/notes.ts",
   "./tests/evals/assistant/voice/transcribers.ts",
   "./tests/evals/assistant/voice/wer.ts",
+  // `eval:template-review` calls the model through the app's own adapter.
+  "./src/organization/assistant-model.ts",
   "promptfoo",
 ];
 

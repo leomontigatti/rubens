@@ -84,6 +84,8 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   way in CI, so one that stops loading fails before a paid run.
 - `eval:voice`: the voice notes through each transcription option, then the transcript
   through one candidate. On demand, like `eval:assistant`.
+- `eval:template-review`: the template review (#345) on the real model, through the app's
+  own adapter, on a promotional text and a clean one. On demand, like `eval:assistant`.
 - `eval:report`: re-scores saved `eval:assistant` runs with today's checks and folds them
   into one table. Offline: no API calls.
 

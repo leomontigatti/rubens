@@ -47,6 +47,15 @@ pnpm eval:voice --assistant claude-haiku-5-5 --repeat 2
 pnpm eval:voice gpt-4o-mini-transcribe --assistant claude-haiku-5-5
 ```
 
+The template review (#345), on the assistant's model through the app's own adapter: a
+promotional text must get notes and a clean one none, each answer parsed as
+`{ notes: string[] }`. It prints each answer with its tokens, latency and cost, and
+exits 1 on a wrong one:
+
+```sh
+pnpm eval:template-review
+```
+
 ## What a turn is scored on
 
 In the order #157 ranks the criteria (`score.ts`):

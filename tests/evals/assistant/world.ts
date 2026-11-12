@@ -81,6 +81,28 @@ export const numbers = {
       ],
     },
   ],
+  // A kinesiology session and a dental check-up, with two practitioners.
+  withDentist: [
+    {
+      ...lucia(),
+      appointments: [
+        ...lucia().appointments,
+        {
+          appointmentId: "apt-103",
+          service: "Consulta odontológica",
+          practitioner: "Od. Carla Méndez",
+          specialty: "Odontología",
+          date: "2026-11-13",
+          time: "11:00",
+          ...centro,
+          status: "booked" as const,
+          freeSlots: [
+            { slotId: "slot-m1", date: "2026-11-20", time: "11:00", office: centro.office },
+          ],
+        },
+      ],
+    },
+  ],
   cancelledByOrganization: [lucia({ status: "cancelled_by_organization", freeSlots: [] })],
   alreadyConfirmed: [lucia({ status: "confirmed" })],
   guardian: [

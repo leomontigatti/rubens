@@ -282,6 +282,43 @@ describe("score", () => {
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101; told both");
   });
 
+  it("tells a booking because of a toothache, reception's, from a medicine question, the dentist's", () => {
+    const booking = turn("booking-for-a-toothache", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      tools.run("hand_off", { reason: "patient_asked" });
+    });
+    const bookingJudgedHealth = turn("booking-for-a-toothache", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: true, emergency: false });
+    });
+    const toDentist = turn("toothache-medicine-with-dentist", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: true, emergency: false, treatedBy: "apt-103" });
+    });
+    const toKinesiologist = turn("toothache-medicine-with-dentist", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: true, emergency: false, treatedBy: "apt-101" });
+    });
+
+    expect(booking.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(bookingJudgedHealth.handoff.reason).toBe(
+      "handoff reason clinical; judged healthQuestion=true",
+    );
+    expect(toDentist.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101");
+  });
+
+  it("opens nothing on the topic of an open handoff to reception, and sends the reply", () => {
+    const result = turn(
+      "repeat-during-reception-handoff",
+      "Ya se lo pasé, te va a responder por acá.",
+      (tools) => {
+        tools.run("judge_messages", { healthQuestion: true, emergency: false });
+        tools.run("hand_off", { reason: "clinical" });
+      },
+    );
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(result.reply).toEqual({ pass: true, reason: "ok" });
+  });
+
   it("counts no handoff the code would not open beside an open one of its kind", () => {
     const result = turn(
       "repeat-during-handoff",
