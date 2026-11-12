@@ -1,4 +1,3 @@
-import { monthUsage } from "#/organization/assistant-usage.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import { returnAfterHours } from "#/organization/personal-replies.ts";
 import { handoffReminders } from "#/organization/handoff-countdown.ts";
@@ -43,7 +42,7 @@ function logMissingSettings(...settings: (MissingSetting | MissingTemplateSettin
  * on it if any, and what Embedded Signup launches with (`null` while the Worker misses a setting),
  * the templates with the setting that keeps them from being submitted, the assistant's
  * communication rules, the members who may be handoff contacts, the return
- * time, the handoff reminders and what the assistant used this month.
+ * time, the handoff reminders and the month's WhatsApp messages.
  */
 export function getWhatsappSettings(
   database: Database,
@@ -68,7 +67,6 @@ export function getWhatsappSettings(
     handoffContacts: listHandoffContacts(database).members,
     returnAfterHours: returnAfterHours(database),
     handoffReminders: handoffReminders(database),
-    usage: monthUsage(database),
     messages: monthMessages(database),
     businessAccountId: cloud.businessAccountId(),
   } as const;

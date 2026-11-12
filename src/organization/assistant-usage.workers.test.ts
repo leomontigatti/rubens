@@ -3,22 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { assistantModelId } from "#/lib/assistant.ts";
 
 import {
-  adminCaller,
   afterTheWait,
   at,
-  expectOk,
   fakeMeta,
   patientWrites,
+  recordedModelUsage,
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
 
 // What the assistant uses, per organization (docs/domain/assistant.md § Costs):
 // each model run of a turn, the clinical check's included, records its tokens
-// and its model on the organization's day, and admins read the month's totals
-// in the WhatsApp settings, which refuse anyone else (`whatsapp.workers.test.ts`).
-// The sandbox's turns are recorded as sandbox use, shown apart in the month's
-// totals (`assistant-sandbox.workers.test.ts`). Voice notes record the length
+// and its model on the organization's day. No screen shows it yet, so the tests
+// read the recorded rows. The sandbox's turns are recorded as sandbox use
+// (`assistant-sandbox.workers.test.ts`), and a template review as its own
+// purpose (`template-review.workers.test.ts`). Voice notes record the length
 // of their audio (`voice-notes.workers.test.ts`).
 // The model is scripted at its port, reporting the
 // tokens each of its calls used; Meta is faked at its HTTP boundary.
@@ -43,11 +42,6 @@ const martinaPhone = "+5491155550000";
 const notClinical = { healthQuestion: false, emergency: false };
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
-
-/** The month's usage as an admin reads it in the WhatsApp settings. */
-async function monthUsage() {
-  return expectOk(await world.organization.whatsappSettings(adminCaller)).usage;
-}
 
 /** A turn of two model calls, a tool lookup and the reply, with the tokens each used. */
 function twoCallTurn() {
@@ -82,9 +76,21 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** A run of the turn's model, on `day`, with the tokens it used. */
+function turnRun(day: string, inputTokens: number, outputTokens: number) {
+  return {
+    day,
+    model: assistantModelId,
+    purpose: "turn",
+    sandbox: false,
+    inputTokens,
+    outputTokens,
+  };
+}
+
 describe("the assistant's usage", () => {
-  it("is nothing in a month with no turn", async () => {
-    expect(await monthUsage()).toEqual({ month: "2098-12", models: [], transcriptions: [] });
+  it("is nothing before any turn", async () => {
+    expect(await recordedModelUsage(world.organization)).toEqual([]);
   });
 
   it("records the tokens of every model call of a turn and of its clinical check, with the model", async () => {
@@ -94,11 +100,11 @@ describe("the assistant's usage", () => {
     await afterTheWait(world.organization);
 
     expect(fakeMeta.textsSent()).toHaveLength(1);
-    expect(await monthUsage()).toEqual({
-      month: "2098-12",
-      models: [{ model: assistantModelId, sandbox: false, inputTokens: 2_800, outputTokens: 110 }],
-      transcriptions: [],
-    });
+    expect(await recordedModelUsage(world.organization)).toEqual([
+      turnRun("2098-12-10", 1_200, 40),
+      turnRun("2098-12-10", 1_300, 60),
+      { ...turnRun("2098-12-10", 300, 10), purpose: "clinicalCheck" },
+    ]);
   });
 
   it("records what a turn the model failed partway used", async () => {
@@ -110,28 +116,21 @@ describe("the assistant's usage", () => {
     await afterTheWait(world.organization);
 
     expect(fakeMeta.textsSent()).toEqual([]);
-    expect((await monthUsage()).models).toEqual([
-      { model: assistantModelId, sandbox: false, inputTokens: 1_200, outputTokens: 40 },
+    expect(await recordedModelUsage(world.organization)).toEqual([
+      turnRun("2098-12-10", 1_200, 40),
     ]);
   });
 
-  it("adds each turn of the month, and leaves last month's out", async () => {
+  it("records each run on the organization's day, not UTC's", async () => {
+    // Midnight UTC of the first of January is still December 31 in Buenos Aires.
+    vi.setSystemTime(new Date("2099-01-01T00:30:00Z"));
     twoCallTurn();
     await patientWrites(world.organization, "cuándo es mi turno?", martinaPhone);
     await afterTheWait(world.organization);
-    // The first of January in Buenos Aires: December's turn is last month's.
-    vi.setSystemTime(new Date("2099-01-01T03:00:00Z"));
-    twoCallTurn();
-    await patientWrites(world.organization, "y dónde queda?", martinaPhone);
-    await afterTheWait(world.organization);
-    twoCallTurn();
-    await patientWrites(world.organization, "gracias", martinaPhone);
-    await afterTheWait(world.organization);
 
-    expect(await monthUsage()).toEqual({
-      month: "2099-01",
-      models: [{ model: assistantModelId, sandbox: false, inputTokens: 5_000, outputTokens: 200 }],
-      transcriptions: [],
-    });
+    expect(await recordedModelUsage(world.organization)).toEqual([
+      turnRun("2098-12-31", 1_200, 40),
+      turnRun("2098-12-31", 1_300, 60),
+    ]);
   });
 });

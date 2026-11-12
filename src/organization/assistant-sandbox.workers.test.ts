@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { sandboxModelCallsPerHour } from "#/lib/assistant-sandbox.ts";
 import type { SandboxState } from "#/lib/assistant-sandbox.ts";
-import { assistantModelId } from "#/lib/assistant.ts";
 
 import {
   addRefusedAdmin,
@@ -13,6 +12,7 @@ import {
   fakeMeta,
   inStorage,
   patientWrites,
+  recordedModelUsage,
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
@@ -396,7 +396,7 @@ describe("a sandbox conversation", () => {
 });
 
 describe("sandbox use", () => {
-  it("is recorded on a line of its own, apart from the patients' conversations", async () => {
+  it("is recorded as sandbox use, apart from the patients' conversations", async () => {
     await patientWrites(world.organization, "hola", martinaPhone);
     scriptedModel.script((turn) => {
       turn.uses({ inputTokens: 1_000, outputTokens: 10 });
@@ -413,10 +413,13 @@ describe("sandbox use", () => {
 
     await playPatient(await startSandbox(), "hola");
 
-    const usage = expectOk(await world.organization.whatsappSettings(adminCaller)).usage;
-    expect(usage.models).toEqual([
-      { model: assistantModelId, sandbox: false, inputTokens: 1_000, outputTokens: 10 },
-      { model: assistantModelId, sandbox: true, inputTokens: 1_500, outputTokens: 45 },
+    const runs = await recordedModelUsage(world.organization);
+    expect(
+      runs.map(({ purpose, sandbox, inputTokens }) => ({ purpose, sandbox, inputTokens })),
+    ).toEqual([
+      { purpose: "turn", sandbox: false, inputTokens: 1_000 },
+      { purpose: "turn", sandbox: true, inputTokens: 1_200 },
+      { purpose: "clinicalCheck", sandbox: true, inputTokens: 300 },
     ]);
   });
 
