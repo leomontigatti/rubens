@@ -17,7 +17,8 @@ An admin connects it from the WhatsApp settings, through Meta's signup. The
 organization owns its WhatsApp Business account and the number, adds its own
 payment method, and Meta bills it for its messages. The settings show the
 connection, the number's messaging limit and each template's approval
-([messages.md](./messages.md#when-meta-limits-the-number)).
+([messages.md](./messages.md#when-meta-limits-the-number)), and how many of the
+messages Meta bills went this month ([costs](#costs)).
 
 ## For patients
 
@@ -401,8 +402,11 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 ## Costs
 
 Each organization pays for what its assistant uses. Meta bills the organization
-directly for its WhatsApp messages: each template, and each message inside a window
-past the number's free ones of the month. underthing records the rest per organization:
+directly for its WhatsApp messages, per message delivered: each template by its
+category, and each other message the organization sends (a service message) past the
+number's 1,000 free ones of the month. The WhatsApp settings count both for the
+month, in the organization's zone, without prices, which are Meta's and change; every
+template counts as utility, since the outbox sends only a utility version. underthing records the rest per organization:
 voice transcription and the model's replies, sandbox use and the template review
 (`Revisar` on a template's page) included; no screen shows
 it yet, since the assistant is part of the first release. Rates and an

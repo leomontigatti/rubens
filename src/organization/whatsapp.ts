@@ -11,6 +11,7 @@ import type {
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappNumber } from "#/organization/whatsapp-connection.ts";
 import { activeHold } from "#/organization/whatsapp-limits.ts";
+import { monthMessages } from "#/organization/month-messages.ts";
 import { organizationName } from "#/organization/members.ts";
 import { listTemplates } from "#/organization/templates.ts";
 
@@ -68,5 +69,7 @@ export function getWhatsappSettings(
     returnAfterHours: returnAfterHours(database),
     handoffReminders: handoffReminders(database),
     usage: monthUsage(database),
+    messages: monthMessages(database),
+    businessAccountId: cloud.businessAccountId(),
   } as const;
 }
