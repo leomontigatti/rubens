@@ -7,6 +7,7 @@ import { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
 import { CommunicationRulesSection } from "#/routes/_app/whatsapp/configuracion/-communication-rules.tsx";
 import { HandoffContactsSection } from "#/routes/_app/whatsapp/configuracion/-handoff-contacts.tsx";
+import { MessagesSection } from "#/routes/_app/whatsapp/configuracion/-messages.tsx";
 import { HandoffRemindersSection } from "#/routes/_app/whatsapp/configuracion/-handoff-reminders.tsx";
 import { NumberSection } from "#/routes/_app/whatsapp/configuracion/-number.tsx";
 import { ReturnTimeSection } from "#/routes/_app/whatsapp/configuracion/-return-time.tsx";
@@ -34,6 +35,7 @@ function WhatsappSettings() {
       <HandoffContactsSection settings={settings} />
       <HandoffRemindersSection settings={settings} />
       <ReturnTimeSection settings={settings} />
+      <MessagesSection settings={settings} />
       <SandboxSection />
     </div>
   );

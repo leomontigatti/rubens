@@ -124,6 +124,8 @@ export interface WhatsappCloud {
   openMedia(mediaId: string, range: string | null): Promise<MediaStreamResult>;
   /** The setting that keeps templates from being submitted or read, or `null` when none is missing. */
   missingTemplateSetting(): MissingTemplateSetting | null;
+  /** Meta's id for the business account the number belongs to, or `null` while none is known. */
+  businessAccountId(): string | null;
   /** Submits a utility template, with named variables and no buttons, for Meta's review. */
   createTemplate(draft: TemplateDraft): Promise<TemplateCreateResult>;
   /** Meta's current verdict on the template `templateId`. */
@@ -277,6 +279,7 @@ export function whatsappCloudFor(
 
   return {
     missingSetting,
+    businessAccountId: () => connection.settings().WHATSAPP_BUSINESS_ACCOUNT_ID || null,
     sendTemplate({ to, templateName, languageCode, parameters = [] }) {
       return sendMessage(to, {
         type: "template",
