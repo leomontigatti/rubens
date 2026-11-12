@@ -3,6 +3,7 @@ import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
+import { formatPhone } from "#/lib/phones.ts";
 import { messagingLimitLabels } from "#/lib/whatsapp.ts";
 import { rejectionText } from "#/lib/whatsapp-template-copy.ts";
 
@@ -31,8 +32,11 @@ export interface NotificationFacts {
     /** What the turn that made it knew of a refused move and its own changes. */
     detail: HandoffDetail | null;
   } | null;
-  /** The patient an `optOut`, `optOutReminder`, `replyFailed` or `replyNotDelivered` notification is about. */
-  patient: { id: string; name: string } | null;
+  /**
+   * The patient an `optOut`, `optOutReminder`, `replyFailed`, `replyNotDelivered`
+   * or `emergency` notification is about, with their phone in E.164.
+   */
+  patient: { id: string; name: string; phone: string } | null;
   /** The patient's message an opt-out's notification links to; `null` for one from before they did. */
   messageId: string | null;
   /** Whether what it asked for was done: an opt-out decided. */
@@ -63,8 +67,7 @@ function day(instant: number) {
 }
 
 function template(facts: NotificationFacts) {
-  const label = facts.templateName ?? "una plantilla";
-  return `${label} (versión ${facts.templateVersion ?? "?"})`;
+  return facts.templateName ?? "una plantilla";
 }
 
 /** The titles that say the same whatever the event held. */
@@ -74,8 +77,6 @@ const fixedTitles: Partial<Record<NotificationKind, string>> = {
   numberRateLimited: "Meta frenó los envíos del número de WhatsApp",
   messagingLimitLowered: "Meta bajó el límite de mensajes del número",
   handoff: "Te derivaron una conversación de WhatsApp",
-  handoffReminder: "Una derivación de WhatsApp sigue sin respuesta",
-  emergency: "Posible urgencia en una conversación que tomaste",
 };
 
 /** The texts that say the same whatever the event held. */
@@ -83,48 +84,49 @@ const fixedTexts: Partial<Record<NotificationKind, string>> = {
   templatePaused:
     "Meta la pausa cuando los pacientes la reportan o la bloquean. Vuelve a salir cuando Meta la reactive.",
   numberDisabled: "No puede enviar mensajes hasta que Meta la rehabilite.",
-  replyNotDelivered:
-    "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio.",
   emergency:
-    "El asistente le envió al paciente el mensaje de urgencia, con el 107 y el teléfono del consultorio. Respondele cuanto antes.",
+    "El asistente le envió al paciente el mensaje de urgencia, con el 107 y el teléfono de la organización. Respondele cuanto antes.",
   replyFailed:
     "WhatsApp no pudo entregarla, y queda como No entregado en la conversación. Si respondía una derivación, la derivación volvió a quedar abierta.",
   appointmentCancelled:
     "Lo canceló por WhatsApp con el asistente. Mirá en la agenda si podés darle el horario a otro paciente.",
 };
 
+type Title = (facts: NotificationFacts) => string;
+
+/** The titles that say what the event held: the template, or the patient by name when known. */
+const titles: Partial<Record<NotificationKind, Title>> = {
+  templateRejected: (facts) => `Meta rechazó la plantilla ${template(facts)}`,
+  templatePaused: (facts) => `Meta pausó la plantilla ${template(facts)}`,
+  templateDisabled: (facts) => `Meta deshabilitó la plantilla ${template(facts)}`,
+  templateRecategorized: (facts) =>
+    `Meta pasó la plantilla ${template(facts)} a ${categoryLabels[facts.detail ?? ""] ?? facts.detail}`,
+  replyNotDelivered: ({ patient }) =>
+    patient
+      ? `Tu respuesta a ${patient.name} no le llegó`
+      : "Tu respuesta de WhatsApp no le llegó al paciente",
+  replyFailed: ({ patient }) =>
+    patient
+      ? `Tu respuesta a ${patient.name} no se entregó`
+      : "Tu respuesta al paciente no se entregó",
+  optOut: ({ patient }) =>
+    `${patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`,
+  optOutReminder: ({ patient }) =>
+    `Falta decidir si ${patient?.name ?? "un paciente"} sigue recibiendo mensajes de WhatsApp`,
+  appointmentCancelled: ({ appointment }) => cancelledTitle(appointment),
+  handoffReminder: ({ handoff }) =>
+    handoff?.patient
+      ? `${handoff.patient} sigue esperando respuesta`
+      : "Una derivación de WhatsApp sigue sin respuesta",
+  emergency: ({ patient }) =>
+    patient
+      ? `Posible urgencia de ${patient.name} en una conversación que tomaste`
+      : "Posible urgencia en una conversación que tomaste",
+};
+
 export function notificationTitle(facts: NotificationFacts): string {
-  const fixed = fixedTitles[facts.kind];
-  if (fixed) {
-    return fixed;
-  }
-  switch (facts.kind) {
-    case "templateRejected":
-      return `Meta rechazó la plantilla ${template(facts)}`;
-    case "templatePaused":
-      return `Meta pausó la plantilla ${template(facts)}`;
-    case "templateDisabled":
-      return `Meta deshabilitó la plantilla ${template(facts)}`;
-    case "templateRecategorized":
-      return `Meta pasó la plantilla ${template(facts)} a ${categoryLabels[facts.detail ?? ""] ?? facts.detail}`;
-    case "replyNotDelivered":
-      return facts.patient
-        ? `Tu respuesta a ${facts.patient.name} no le llegó`
-        : "Tu respuesta de WhatsApp no le llegó al paciente";
-    case "replyFailed":
-      return facts.patient
-        ? `Tu respuesta a ${facts.patient.name} no se entregó`
-        : "Tu respuesta al paciente no se entregó";
-    case "optOut":
-      return `${facts.patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`;
-    case "optOutReminder":
-      return `Falta decidir si ${facts.patient?.name ?? "un paciente"} sigue recibiendo mensajes de WhatsApp`;
-    case "appointmentCancelled":
-      return cancelledTitle(facts.appointment);
-    default:
-      // Every other kind's title is fixed, above.
-      return "";
-  }
+  // Every kind has a title in one of the two.
+  return fixedTitles[facts.kind] ?? titles[facts.kind]?.(facts) ?? "";
 }
 
 export function notificationText(facts: NotificationFacts): string {
@@ -141,8 +143,8 @@ export function notificationText(facts: NotificationFacts): string {
       return `Cuesta más del doble que una de utilidad, así que underthing deja de enviarla. ${resubmit}`;
     case "numberRestricted":
       return facts.until === null
-        ? "No puede iniciar conversaciones hasta que Meta levante la restricción."
-        : `No puede iniciar conversaciones hasta el ${day(facts.until)}.`;
+        ? "El número no puede iniciar conversaciones hasta que Meta levante la restricción."
+        : `El número no puede iniciar conversaciones hasta el ${day(facts.until)}.`;
     case "numberRateLimited":
       return `Meta rechazó envíos por exceso de mensajes. underthing vuelve a intentar el ${day(facts.until ?? Date.now())}.`;
     case "messagingLimitLowered":
@@ -151,6 +153,8 @@ export function notificationText(facts: NotificationFacts): string {
       return handoffText(facts.handoff);
     case "handoffReminder":
       return reminderText(facts);
+    case "replyNotDelivered":
+      return notDeliveredText(facts.patient);
     case "optOut":
     case "optOutReminder":
       return optOutText(facts);
@@ -185,8 +189,12 @@ type HandoffFacts = NonNullable<NotificationFacts["handoff"]>;
 
 const appliedVerbs = { confirm: "confirmó", cancel: "canceló", move: "pasó" } as const;
 
-/** Why the conversation was handed off, so its reader answers without reading it back. */
-function handoffWhy(handoff: HandoffFacts) {
+/**
+ * Why the conversation was handed off, so its reader answers without reading
+ * it back; with the patient after the reason unless `named` elsewhere, as a
+ * reminder's title names them.
+ */
+function handoffWhy(handoff: HandoffFacts, named = false) {
   const refused = handoff.reason === "ruleRefused" ? handoff.detail?.refused : null;
   const who = handoff.patient ?? "El paciente";
   if (refused) {
@@ -196,7 +204,7 @@ function handoffWhy(handoff: HandoffFacts) {
       : `${who} quiere pasar ${appointment}, que ya movió una vez.`;
   }
   const label = handoffReasonLabel(handoff.reason, handoff.detail?.media);
-  return handoff.patient ? `${label}: ${handoff.patient}.` : `${label}.`;
+  return handoff.patient && !named ? `${label}: ${handoff.patient}.` : `${label}.`;
 }
 
 /** What the turn that handed it off did anyway, so the reader does not undo or repeat it. */
@@ -227,17 +235,23 @@ function reminderText(facts: NotificationFacts) {
     facts.until === null
       ? "La ventana de WhatsApp cierra pronto"
       : `La ventana de WhatsApp cierra el ${day(facts.until)}`;
-  return `${handoffWhy(facts.handoff)} ${closes}. Respondé antes para que tu respuesta le llegue enseguida.`;
+  return `${handoffWhy(facts.handoff, true)} ${closes}. Respondé antes para que tu respuesta le llegue enseguida.`;
 }
 
-/** How many messages waited when it happened, and what becomes of them; nothing for a kind that holds none. */
+/** Why a late reply did not reach the patient, and the phone to reach them another way. */
+function notDeliveredText(patient: NotificationFacts["patient"]) {
+  const other = patient
+    ? `contactalo por otro medio, al ${formatPhone(patient.phone)}`
+    : "contactalo por otro medio";
+  return `La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o ${other}.`;
+}
+
+/** How many messages waited when it happened, and that they go once it lifts; nothing when none did. */
 export function waitingText(waiting: number | null): string | null {
-  if (waiting === null) {
+  if (!waiting) {
     return null;
   }
-  if (waiting === 0) {
-    return "Ningún mensaje espera por esto.";
-  }
-  const count = waiting === 1 ? "1 mensaje espera" : `${waiting} mensajes esperan`;
-  return `${count} para salir. Salen en cuanto se pueda, salvo los que ya no correspondan, y no se envían por otro medio.`;
+  return waiting === 1
+    ? "1 mensaje espera y sale cuando se levante."
+    : `${waiting} mensajes esperan y salen cuando se levante.`;
 }

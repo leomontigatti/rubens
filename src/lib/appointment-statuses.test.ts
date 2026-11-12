@@ -166,7 +166,7 @@ describe("cancellation text", () => {
   it("says who cancelled, and why when a reason was given", () => {
     expect(cancellationText({ cancelledBy: null, cancellationReason: null })).toBeNull();
     expect(cancellationText({ cancelledBy: "business", cancellationReason: null })).toBe(
-      "Canceló: El consultorio",
+      "Canceló: La organización",
     );
     expect(cancellationText({ cancelledBy: "patient", cancellationReason: "Viaja" })).toBe(
       "Canceló: El paciente (Viaja)",

@@ -9,7 +9,7 @@ import { memberUpdateSchema } from "#/lib/staff.ts";
 import { editMember, getMember } from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
-import { RefusalAlert, roleOptions, useAction } from "#/routes/_app/personal/-shared.tsx";
+import { RefusalAlert, roleOptions, useEditAction } from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId_/editar")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
@@ -102,7 +102,7 @@ function EditMember() {
 function MemberForm({ member }: { member: StaffMember }) {
   const { memberId } = member;
   const page = useFormPage({ to: "/personal/$memberId", params: { memberId } });
-  const action = useAction();
+  const action = useEditAction();
   const settings = shownSettings(member);
   const defaultValues: MemberValues = {
     ...settingsValues(settings),
@@ -117,7 +117,16 @@ function MemberForm({ member }: { member: StaffMember }) {
         page.showProblems(fieldProblems(parsed.error.issues, messageIn(fieldMessages)));
         return;
       }
-      if (await action.save(() => editMember({ data: { ...update, roles: parsed.data.roles } }))) {
+      const saved = await action.save(async () => {
+        const result = await editMember({ data: { ...update, roles: parsed.data.roles } });
+        // Still a practitioner, they stay the last clinical contact by the setting, not the role.
+        return !result.ok &&
+          result.reason === "lastClinicalContact" &&
+          value.roles.includes("practitioner")
+          ? { ok: false, reason: "lastClinicalContactSetting" }
+          : result;
+      });
+      if (saved) {
         page.leave();
       }
     },
@@ -163,7 +172,7 @@ function MemberForm({ member }: { member: StaffMember }) {
             )}
           </form.AppField>
           <form.AppField name="keepsClinicalRecords">
-            {(field) => <field.CheckboxField label="Lleva historia clínica" startsRow />}
+            {(field) => <field.CheckboxField label="Lleva historias clínicas" startsRow />}
           </form.AppField>
         </>
       )}

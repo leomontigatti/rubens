@@ -28,9 +28,9 @@ function NewTemplate() {
       sentBody={null}
       organizationName={settings.organizationName}
       title="Nueva plantilla"
-      description="Un mensaje del consultorio a los pacientes de las prestaciones que la envíen."
+      description="Un mensaje de la organización a los pacientes de las prestaciones que la envíen."
       submitLabel={() => "Crear y enviar a Meta"}
-      versionNote="Al crearla, se envía a Meta, que la revisa antes de que se pueda usar."
+      submitNote="Al crearla, se envía a Meta, que la revisa antes de que se pueda usar."
       lead={
         missing && (
           <Alert variant="warning">

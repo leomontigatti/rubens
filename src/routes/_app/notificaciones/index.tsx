@@ -85,7 +85,7 @@ function NotificationList() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notificaciones"
-        description="Los avisos para vos, como las conversaciones que te derivaron, los turnos que los pacientes cancelaron por WhatsApp, los pacientes que pidieron no recibir más mensajes y los de Meta sobre el número de WhatsApp."
+        description="Los avisos para vos: derivaciones, turnos cancelados por WhatsApp, pedidos de baja y avisos de Meta."
       />
       {result.notifications.length === 0 ? (
         <EmptyState
@@ -118,13 +118,6 @@ function NotificationRow(props: {
   const waiting = waitingText(notification.waiting);
   return (
     <li className="flex flex-wrap items-start gap-4 p-4">
-      <span
-        aria-hidden
-        className={cn(
-          "mt-1.5 size-2 shrink-0 rounded-full",
-          notification.read ? "bg-transparent" : "bg-primary",
-        )}
-      />
       <div className="flex min-w-0 flex-1 basis-64 flex-col gap-1 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <p className={cn(notification.read ? "font-normal" : "font-medium")}>

@@ -20,8 +20,8 @@ export function SandboxSection() {
       }
     >
       <p className="text-muted-foreground text-sm">
-        Escribí como un paciente desde el recordatorio de un turno y mirá qué responde el asistente,
-        qué herramientas usa y qué retendría el control clínico. Nada se guarda ni se envía.
+        Escribí como un paciente desde el recordatorio de un turno y mirá qué responde el asistente
+        y qué retendría el control clínico. Nada se guarda ni se envía.
       </p>
     </RecordSection>
   );

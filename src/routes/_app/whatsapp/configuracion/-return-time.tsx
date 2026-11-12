@@ -11,7 +11,7 @@ import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 type Settings = Extract<Awaited<ReturnType<typeof getWhatsappSettings>>, { ok: true }>;
 
 export const returnTimeHint =
-  "Cuando alguien toma una conversación desde Conversaciones, el asistente no responde en ella. Vuelve a responder cuando la devuelven, o pasado este tiempo desde que la tomaron o desde su última respuesta.";
+  "Cuánto después de que alguien toma una conversación, o de su última respuesta, vuelve a responder el asistente.";
 
 function hoursText(hours: number) {
   return hours === 1 ? "1 hora" : `${hours} horas`;

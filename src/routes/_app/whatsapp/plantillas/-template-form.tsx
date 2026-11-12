@@ -54,7 +54,7 @@ export interface TemplateValues {
 const whenOptions = [
   { value: "booking", label: "Al dar el turno" },
   { value: "before", label: "Antes del turno" },
-  { value: "attended", label: "Al marcar el turno como atendido" },
+  { value: "attended", label: "Al atender el turno" },
   { value: "after", label: "Después del turno" },
 ] as const;
 
@@ -107,7 +107,10 @@ export function TemplateForm(props: {
   sentBody: string | null;
   record?: RecordHeader;
   lead?: ReactNode;
+  /** What a save does at Meta, above the fields. */
   versionNote?: string;
+  /** What a save does at Meta, beside the submit button. */
+  submitNote?: string;
   /** Whether its text is a default draft never sent, which follows the `Trato`. */
   followsTrato?: boolean;
   save: (values: TemplateValues) => Promise<TemplateSaveResult>;
@@ -207,6 +210,7 @@ export function TemplateForm(props: {
       title={props.title}
       description={props.description}
       submitLabel={props.submitLabel(bodyChanged)}
+      submitNote={props.submitNote}
       creates={templateId === null}
       pending={action.pending}
       refusals={action.error ? [{ field: action.errorField, message: action.error }] : undefined}

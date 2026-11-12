@@ -475,10 +475,36 @@ describe("an emergency while a member holds the conversation", () => {
 
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([expect.stringContaining("107")]);
     const told = expectOk(await world.organization.listNotifications(world.receptionist));
+    // Named by the first patient its number stands for.
     expect(told.notifications.filter((one) => one.kind === "emergency")).toMatchObject([
-      { conversationId },
+      { conversationId, patient: { name: "Martina Paz", phone: martinaPhone } },
     ]);
     expect((await read()).hold).not.toBeNull();
+  });
+
+  it("names no patient when the number stands for several, since it cannot tell whose", async () => {
+    // A sibling on the same number, first by name.
+    expectOk(
+      await world.organization.registerPatient(adminCaller, {
+        firstName: "Ana",
+        lastName: "Paz",
+        phone: martinaPhone,
+        confirmDuplicates: true,
+      }),
+    );
+    expectOk(await takeOver(world.receptionist));
+    await writes("me caí y me sangra mucho la boca, no para");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: true, emergency: true });
+      return "";
+    });
+
+    await turn();
+
+    const told = expectOk(await world.organization.listNotifications(world.receptionist));
+    expect(told.notifications.filter((one) => one.kind === "emergency")).toMatchObject([
+      { conversationId, patient: null },
+    ]);
   });
 });
 

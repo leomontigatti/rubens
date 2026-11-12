@@ -381,7 +381,8 @@ describe("a person's reply after the window closed", () => {
     const told = expect.objectContaining({
       kind: "replyNotDelivered",
       conversationId,
-      patient: expect.objectContaining({ id: patientId }),
+      // With the patient's phone, to reach them another way (#178).
+      patient: expect.objectContaining({ id: patientId, phone: martinaPhone }),
     });
     expect(await notificationsOf(world.receptionist)).toEqual([told, told]);
   });

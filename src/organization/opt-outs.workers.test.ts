@@ -81,10 +81,12 @@ async function makeGuardianContact(patientId: string) {
   );
 }
 
-/** The patients `caller`'s opt-out notifications are about. */
+/** The patients `caller`'s opt-out notifications are about, by id and name. */
 async function optOutsNotified(caller: Caller) {
   const listed = expectOk(await world.organization.listNotifications(caller));
-  return listed.notifications.filter((one) => one.kind === "optOut").map((one) => one.patient);
+  return listed.notifications
+    .filter((one) => one.kind === "optOut")
+    .map((one) => one.patient && { id: one.patient.id, name: one.patient.name });
 }
 
 function scheduledAlarm() {

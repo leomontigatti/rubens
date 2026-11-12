@@ -72,6 +72,8 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
   });
 
   const hint = "Horas antes del cierre.";
+  // Who else may answer a clinical one (`src/organization/handoff-countdown.ts`).
+  const othersHint = `${hint} Si es clínica, solo a los profesionales que llevan historias clínicas.`;
   return (
     <ActionFormPage
       page={page}
@@ -90,7 +92,7 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
       </form.AppField>
       <form.AppField name="othersHours">
         {(field) => (
-          <field.SelectField label="A los demás que pueden responderla" required hint={hint}>
+          <field.SelectField label="A los demás que pueden responderla" required hint={othersHint}>
             <SelectOptions options={handoffReminderChoices(props.othersHours)} />
           </field.SelectField>
         )}

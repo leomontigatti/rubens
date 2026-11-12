@@ -309,3 +309,36 @@ export function historyChanges(
     after: formatValue(field, entry.after?.[field], after),
   }));
 }
+
+const actionLabels = {
+  create: "Alta",
+  update: "Cambio",
+  delete: "Baja",
+  deactivate: "Desactivación",
+  reactivate: "Reactivación",
+} as const;
+
+/** What an entry is about, after its action: nothing for the patient's own. */
+const entityLabels: Record<string, string> = {
+  appointment: " de turno",
+  coverage: " de cobertura",
+  guardian: " de responsable",
+};
+
+/**
+ * A change history entry's title: its action and what it is about, an
+ * appointment by its time and practitioner as it is now.
+ */
+export function historyTitle(entry: {
+  action: keyof typeof actionLabels;
+  entityType: string;
+  appointment: { startsAt: number; practitioner: string; timeZone: string } | null;
+}): string {
+  const action = actionLabels[entry.action];
+  const { appointment } = entry;
+  if (appointment) {
+    const when = formatDateTime(appointment.startsAt, appointment.timeZone);
+    return `${action} del turno del ${when} con ${appointment.practitioner}`;
+  }
+  return `${action}${entityLabels[entry.entityType] ?? ""}`;
+}
