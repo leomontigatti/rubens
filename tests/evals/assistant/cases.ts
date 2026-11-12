@@ -25,7 +25,11 @@ export type HandoffReason =
 
 type HistoryMessage = { role: "patient" | "assistant"; text: string };
 
-export type ExpectedCall = { name: ToolName; args?: Record<string, unknown> };
+// An acceptance names the kind of change it must have applied: the turn's
+// latest proposal when it accepted, not any proposal the turn made.
+export type ExpectedCall =
+  | { name: Exclude<ToolName, "accept_proposal">; args?: Record<string, unknown> }
+  | { name: "accept_proposal"; accepts: Proposal["kind"] };
 
 export type Expectation = {
   // Every one of these must be called, with at least these arguments.
@@ -137,7 +141,7 @@ export const cases: Case[] = [
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "confirm" },
       ],
       handoff: noHandoff,
       judgement: plain,
@@ -164,7 +168,7 @@ export const cases: Case[] = [
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "cancel", appointmentId: "apt-101" } },
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "cancel" },
       ],
       handoff: noHandoff,
       judgement: plain,
@@ -236,7 +240,11 @@ export const cases: Case[] = [
     history: movingToTuesday,
     patient: ["dale, confirmalo"],
     liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
-    expect: { calls: [{ name: "accept_proposal" }], handoff: noHandoff, judgement: plain },
+    expect: {
+      calls: [{ name: "accept_proposal", accepts: "move" }],
+      handoff: noHandoff,
+      judgement: plain,
+    },
   },
   {
     id: "move-slot-taken",
@@ -528,7 +536,7 @@ export const cases: Case[] = [
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "confirm" },
       ],
       handoff: { reasons: ["clinical"] },
       judgement: { healthQuestion: true, emergency: false, treatedBy: null },
@@ -550,7 +558,7 @@ export const cases: Case[] = [
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "confirm" },
       ],
       handoff: { reasons: ["clinical"] },
       judgement: { healthQuestion: true, emergency: false, treatedBy: "apt-101" },
@@ -569,7 +577,7 @@ export const cases: Case[] = [
     patient: ["sí, dale. y el de mañana a la mañana también lo podés pasar?"],
     expect: {
       calls: [
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "move" },
         { name: "find_free_times", args: { appointmentId: "apt-102" } },
       ],
       handoff: { reasons: ["rule_refused"] },
@@ -589,7 +597,7 @@ export const cases: Case[] = [
     patient: ["👍"],
     liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
     expect: {
-      calls: [{ name: "accept_proposal" }],
+      calls: [{ name: "accept_proposal", accepts: "move" }],
       forbidden: ["propose_change"],
       handoff: noHandoff,
       judgement: plain,
@@ -603,7 +611,7 @@ export const cases: Case[] = [
     patient: [reactionLine("👍", moveProposal.text)],
     liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
     expect: {
-      calls: [{ name: "accept_proposal" }],
+      calls: [{ name: "accept_proposal", accepts: "move" }],
       forbidden: ["propose_change"],
       handoff: noHandoff,
       judgement: plain,
@@ -649,7 +657,7 @@ export const cases: Case[] = [
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "confirm" },
       ],
       handoff: noHandoff,
       judgement: plain,
@@ -665,7 +673,7 @@ export const cases: Case[] = [
     expect: {
       calls: [
         { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
-        { name: "accept_proposal" },
+        { name: "accept_proposal", accepts: "confirm" },
       ],
       handoff: noHandoff,
       judgement: plain,
