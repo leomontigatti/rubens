@@ -25,6 +25,9 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
 - **A skill only underthing uses** goes in `.agents/skills/<name>/`, under a name no shared skill
   has, with `.claude/skills` made a symlink to `.agents/skills` so Claude Code sees it. There is
   none today. A change to a shared skill is a PR to `leomontigatti/agent-workflow`.
+- **Skills a dependency ships** are not linked by pnpm: its approval takes every skill a package
+  has, so `pnpm-workspace.yaml` denies them under `permissions`, and a new package asking for it
+  shows in `pnpm permissions list`. One worth having is installed by itself into `.agents/skills/`.
 - **A hook change is a change to the script.** Adding or removing a project hook touches both
   wiring files, which carry the same events and matchers. The scripts read either payload:
   Claude Code's `tool_input.file_path`, or a Codex patch in `tool_input.command`.
