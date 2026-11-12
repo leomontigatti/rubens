@@ -104,6 +104,17 @@ export const templateRefusalMessages = {
   missingBusinessAccountId: connectNumber,
 };
 
+/** Why the assistant's review of a text has no notes to show, in a plain message: it blocks nothing. */
+export const templateReviewRefusals = {
+  unauthenticated: templateRefusalMessages.unauthenticated,
+  forbidden: templateRefusalMessages.forbidden,
+  mustChangePassword: templateRefusalMessages.mustChangePassword,
+  invalidInput: "Escribí el texto antes de revisarlo.",
+  // What the Worker misses is in its configuration, not the admin's to fix.
+  missingApiKey: "El asistente no está disponible para revisar textos. Podés guardar igual.",
+  reviewFailed: "No se pudo revisar el texto. Probá de nuevo en un rato; podés guardar igual.",
+};
+
 const variable = (name: string) => "{{" + name + "}}";
 
 /** What to fix, for each problem the rules check found. */

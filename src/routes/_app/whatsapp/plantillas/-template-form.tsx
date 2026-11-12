@@ -1,6 +1,6 @@
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
@@ -21,10 +21,12 @@ import {
 } from "#/lib/whatsapp-template-copy.ts";
 
 import { TemplatePreview } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
+import { TemplateReview } from "#/routes/_app/whatsapp/plantillas/-template-review.tsx";
 
 // The form a template is written in, for a new one and an edit: for the
 // organization's own, its name and when it goes; for every one, its text,
-// with the variables it may use as chips above it, and the preview beside it.
+// with the variables it may use as chips above it, and the preview beside it,
+// with the assistant's review under it where the page offers one.
 
 const templateFormRefusals = {
   ...templateRefusalMessages,
@@ -116,6 +118,8 @@ export function TemplateForm(props: {
   /** Whether its text is a default draft never sent, which follows the `Trato`. */
   followsTrato?: boolean;
   save: (values: TemplateValues) => Promise<TemplateSaveResult>;
+  /** The assistant's review of the text in the box, under the preview; none without it. */
+  review?: ComponentProps<typeof TemplateReview>["review"];
 }) {
   const { templateId, settings, save } = props;
   const page = useFormPage({ to: "/whatsapp/plantillas" });
@@ -267,12 +271,13 @@ export function TemplateForm(props: {
             {formOfAddressNotes[props.followsTrato ? "follows" : "fixed"]}
           </p>
         </div>
-        <div className="lg:col-span-2">
+        <div className="flex flex-col gap-6 lg:col-span-2">
           <TemplatePreview
             templateId={templateId}
             body={body}
             organizationName={props.organizationName}
           />
+          {props.review && <TemplateReview body={body} review={props.review} />}
         </div>
       </div>
     </FormPage>

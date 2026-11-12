@@ -114,9 +114,15 @@ export const templateEditSchema = z.object({
 
 export const templateDeleteSchema = z.object({ templateId: z.uuid() });
 
+/** A text the assistant reviews (#345): the one being written, saved or not. */
+export const templateReviewRequestSchema = z.object({
+  body: bodySchema.trim().min(1),
+});
+
 export type TemplateCreate = z.input<typeof templateCreateSchema>;
 export type TemplateEdit = z.input<typeof templateEditSchema>;
 export type TemplateDelete = z.input<typeof templateDeleteSchema>;
+export type TemplateReviewRequest = z.input<typeof templateReviewRequestSchema>;
 
 /** What keeps a body from being submitted, each a code the screen turns into what to fix. */
 export type TemplateProblem =

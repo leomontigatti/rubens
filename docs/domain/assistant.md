@@ -403,6 +403,7 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 Each organization pays for what its assistant uses. Meta bills the organization
 directly for its WhatsApp messages: each template, and each message inside a window
 past the number's free ones of the month. underthing records the rest per organization:
-voice transcription and the model's replies, sandbox use included; no screen shows
+voice transcription and the model's replies, sandbox use and the template review
+(`Revisar` on a template's page) included; no screen shows
 it yet, since the assistant is part of the first release. Rates and an
 example month: [whatsapp-assistant.md](../research/whatsapp-assistant.md#cost-example).
