@@ -306,14 +306,14 @@ describe("the templates a medical service sends", () => {
     ]);
   });
 
-  it("refuses more than five reminders, on a create and an edit", async () => {
-    const { organization, firstVisit, created, servicesOf } = await world();
-    const ids = await drafts(servicesOf);
+  /** Four more reminders than the drafts' two, so six in all: one more than a medical service sends. */
+  async function sixReminders(setUp: Awaited<ReturnType<typeof world>>) {
+    const ids = await drafts(setUp.servicesOf);
     const added: string[] = [];
     for (const hours of [4, 6, 8, 48]) {
       fakeMeta.answerNextWith(200, { id: `9000000000005${hours}`, status: "PENDING" });
       const result = expectOk(
-        await organization.createTemplate(adminCaller, {
+        await setUp.organization.createTemplate(adminCaller, {
           name: `Recordatorio ${hours} horas`,
           timing: { when: "before", hours },
           body: "Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}. Consultorios Prueba",
@@ -322,7 +322,13 @@ describe("the templates a medical service sends", () => {
       added.push(result.templateId);
     }
     const reminders = [ids["Recordatorio"]!, ids["Recordatorio con confirmación"]!, ...added];
-    const five = [...reminders.slice(0, 5), ids["Seguimiento"]!];
+    return { ids, reminders, five: [...reminders.slice(0, 5), ids["Seguimiento"]!] };
+  }
+
+  it("refuses more than five reminders, on a create and an edit", async () => {
+    const setUp = await world();
+    const { organization, firstVisit, created, servicesOf } = setUp;
+    const { reminders, five } = await sixReminders(setUp);
     const service = await created(adminCaller, firstVisit({ templateIds: five }));
 
     const answers = [
@@ -345,6 +351,28 @@ describe("the templates a medical service sends", () => {
     expect((await servicesOf(adminCaller, false)).medicalServices).toMatchObject([
       { templateIds: expect.arrayContaining(five) },
     ]);
+  });
+
+  it("refuses retiming a template it picks into a sixth reminder, and keeps its timing", async () => {
+    const setUp = await world();
+    const { organization, firstVisit, created } = setUp;
+    const { ids, five } = await sixReminders(setUp);
+    await created(adminCaller, firstVisit({ templateIds: five }));
+    const followUp = ids["Seguimiento"]!;
+    const timingOfFollowUp = async () => {
+      const settings = await organization.whatsappSettings(adminCaller);
+      return settings.ok ? settings.templates.find((one) => one.id === followUp) : undefined;
+    };
+    const listed = (await timingOfFollowUp())!;
+
+    const answer = await organization.editTemplate(adminCaller, {
+      templateId: followUp,
+      body: listed.draft!,
+      settings: { name: "Seguimiento", timing: { when: "before", hours: 1 } },
+    });
+
+    expect(answer).toEqual({ ok: false, reason: "tooManyReminders" });
+    expect((await timingOfFollowUp())!.timing).toEqual({ when: "after", hours: 24 });
   });
 
   it("saves and returns the templates it picks, each once, several sharing a timing", async () => {

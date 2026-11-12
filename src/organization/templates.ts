@@ -1,8 +1,9 @@
-import { eq, sql } from "drizzle-orm";
+import { and, count, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { changedFields } from "#/lib/audit-fields.ts";
 import type { FormOfAddress } from "#/lib/communication-rules.ts";
 import { defaultDraftIn, isDefaultDraft } from "#/lib/default-drafts.ts";
+import { maxReminders } from "#/lib/medical-services.ts";
 import { timingColumns, timingOf, timingRank } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
 import {
@@ -44,6 +45,7 @@ import {
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const nameTaken = { ok: false, reason: "nameTaken" } as const;
+const tooManyReminders = { ok: false, reason: "tooManyReminders" } as const;
 const alreadySubmitting = { ok: false, reason: "alreadySubmitting" } as const;
 
 const templateColumns = {
@@ -198,6 +200,35 @@ export async function createTemplate(
   return { ok: true, templateId } as const;
 }
 
+/**
+ * Whether timing template `templateId` before the appointment gives a medical
+ * service that picks it more reminders than one sends
+ * (`medical-services.ts`, which checks its own picks).
+ */
+function makesTooManyReminders(database: Database, templateId: string, timing: Timing) {
+  if (timing.when !== "before") {
+    return false;
+  }
+  const picking = database
+    .select({ id: medicalServiceTemplate.medicalServiceId })
+    .from(medicalServiceTemplate)
+    .where(eq(medicalServiceTemplate.templateId, templateId));
+  const otherReminders = database
+    .select({ count: count() })
+    .from(medicalServiceTemplate)
+    .innerJoin(template, eq(template.id, medicalServiceTemplate.templateId))
+    .where(
+      and(
+        inArray(medicalServiceTemplate.medicalServiceId, picking),
+        eq(template.timing, "before"),
+        ne(template.id, templateId),
+      ),
+    )
+    .groupBy(medicalServiceTemplate.medicalServiceId)
+    .all();
+  return otherReminders.some((service) => service.count + 1 > maxReminders);
+}
+
 /** Writes `settings` on the organization's template `templateId`, audited, rebuilding its messages when its timing changed. */
 function saveSettings(
   tx: Writer,
@@ -263,6 +294,9 @@ export async function editTemplate(
   }
   if (settings && nameInUse(database, settings.name, templateId)) {
     return nameTaken;
+  }
+  if (settings && makesTooManyReminders(database, templateId, settings.timing)) {
+    return tooManyReminders;
   }
   const body = parsed.data.body.trim();
   const changed = body !== latestBody(database, templateId);

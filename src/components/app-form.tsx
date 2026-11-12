@@ -231,7 +231,6 @@ function SelectField(
   );
 }
 
-/** A `SelectField`'s options, from a list of them. */
 export function SelectOptions(props: { options: { value: string; label: string }[] }) {
   return props.options.map((option) => (
     <NativeSelectOption key={option.value} value={option.value}>

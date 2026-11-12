@@ -88,7 +88,7 @@ export function MedicalServiceForm(props: {
         {(field) => (
           <field.MultiComboboxField
             label="Mensajes por WhatsApp"
-            options={templateOptions(templates, initial.templateIds ?? [])}
+            options={templateOptions(templates, field.state.value)}
             emptyText="No hay plantillas listas para enviar."
             noMatchText={(query) => `Ninguna plantilla lista para enviar coincide con “${query}”.`}
             removeLabel={(name) => `Quitar ${name}`}

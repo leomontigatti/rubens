@@ -30,6 +30,8 @@ const templateFormRefusals = {
   metaRefused: "Meta rechazó la plantilla.",
   notFound: "No encontramos esa plantilla.",
   nameTaken: "Ya hay una plantilla con ese nombre.",
+  tooManyReminders:
+    "Una prestación que la envía ya tiene 5 recordatorios: quitásela en Prestaciones o elegí otro momento.",
   alreadySubmitting:
     "Esta plantilla ya se está enviando a Meta. Esperá a que termine y volvé a intentar.",
 };
@@ -112,7 +114,10 @@ export function TemplateForm(props: {
 }) {
   const { templateId, settings, save } = props;
   const page = useFormPage({ to: "/whatsapp/plantillas" });
-  const action = useFormAction(templateFormRefusals, { nameTaken: "name" });
+  const action = useFormAction(templateFormRefusals, {
+    nameTaken: "name",
+    tooManyReminders: "timing.when",
+  });
 
   // The name and timing stored: a refused edit keeps them, and a discard goes back to them.
   const [stored, setStored] = useState({

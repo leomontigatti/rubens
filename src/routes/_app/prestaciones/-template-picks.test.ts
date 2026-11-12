@@ -28,7 +28,7 @@ describe("the templates a medical service is offered", () => {
     ]);
   });
 
-  it("keeps one it already picks that is no longer approved, so the save does not drop it", () => {
+  it("keeps one it still picks that is no longer approved, so the save does not drop it", () => {
     expect(templateOptions([confirmation, followUp], ["followUp"]).map((one) => one.value)).toEqual(
       ["confirmation", "followUp"],
     );
@@ -36,7 +36,7 @@ describe("the templates a medical service is offered", () => {
 });
 
 describe("the reminders a medical service picks", () => {
-  const templates = ["a", "b", "c", "d", "e", "f"].map((id) => reminder(id));
+  const templates = [confirmation, ...["a", "b", "c", "d", "e", "f"].map((id) => reminder(id))];
 
   it("takes up to five, whatever else it picks", () => {
     expect(tooManyReminders(templates, ["a", "b", "c", "d", "e", "confirmation"])).toBe(false);

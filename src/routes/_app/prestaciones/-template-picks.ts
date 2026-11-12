@@ -16,8 +16,8 @@ export interface PickableTemplate {
 }
 
 /**
- * The approved templates, and any other the medical service already picks, so
- * an edit shows and keeps it until it is removed.
+ * The approved templates, and any other the medical service still picks, so
+ * an edit shows and keeps it; once removed, it is no longer offered.
  */
 export function templateOptions(templates: PickableTemplate[], picked: readonly string[]) {
   return templates
