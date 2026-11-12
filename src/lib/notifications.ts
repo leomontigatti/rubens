@@ -8,8 +8,9 @@ import * as z from "zod";
 // (docs/domain/assistant.md § Handoff); a person's reply written after the
 // window closed that never reached the patient, which its writer gets; and
 // replies that look like opt-outs, which reception and the admins get, one
-// per patient whose WhatsApp consent a person may turn off, and again daily
-// while nobody decided on the patient (`src/organization/opt-out-holds.ts`);
+// per patient whose WhatsApp consent a person may turn off, linking to the
+// reply, unread again daily while nobody decided on the patient and resolved
+// once someone did (`src/organization/opt-out-holds.ts`);
 // and a cancellation a patient made through the assistant, which reception
 // and the admins get, so they can fill the time.
 

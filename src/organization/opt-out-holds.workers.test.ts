@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  addStaff,
+  addRefusedAdmin,
   adminCaller,
   afterTheWait,
   at,
@@ -11,13 +13,17 @@ import {
   expectOk,
   fakeMeta,
   inStorage,
+  patientSends,
+  patientSpeaks,
   patientWrites,
   scriptedModel,
+  scriptedTranscriber,
   setUpBookingWorld,
   submitTemplate,
   templateNamed,
 } from "#/organization/organization.test-support.ts";
 import type { Caller } from "#/organization/members.ts";
+import { member } from "#/organization/schema.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 
 // The hold an opt-out-looking reply puts on the number
@@ -40,6 +46,11 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
 vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
   ...(await original()),
   assistantModelFor: () => scriptedModel,
+}));
+
+vi.mock(import("#/organization/transcription.ts"), async (original) => ({
+  ...(await original()),
+  transcriberFor: () => scriptedTranscriber,
 }));
 
 const numberPhone = "+5491155550000";
@@ -177,6 +188,7 @@ beforeEach(async () => {
   vi.setSystemTime(new Date("2098-12-01T12:00:00Z"));
   fakeMeta.reset();
   scriptedModel.reset();
+  scriptedTranscriber.reset();
   world = await setUpBookingWorld();
   await world.addSchedule({ practitionerId: world.juan.practitionerId });
   medicalServiceId = (await world.addMedicalService(world.juan.practitionerId)).id;
@@ -328,7 +340,7 @@ describe("reception turning a patient of a held number off", () => {
 });
 
 describe("a patient of a held number nobody decided on", () => {
-  it("reminds reception and the admins daily, until someone decides", async () => {
+  it("reminds reception and the admins daily on the same notification, until someone decides", async () => {
     const martina = await world.addPatient("Martina", numberPhone);
     const tomas = await addThroughGuardian("Tomás", "+5493515550002");
     await numberOptsOut();
@@ -340,6 +352,7 @@ describe("a patient of a held number nobody decided on", () => {
 
     vi.setSystemTime(optedOutAt + dayMs);
     await runDurableObjectAlarm(world.organization);
+    expect(await notificationsOf(world.receptionist, "optOut")).toEqual([]);
     expect(await notificationsOf(world.receptionist, "optOutReminder")).toHaveLength(2);
     expect(await notificationsOf(adminCaller, "optOutReminder")).toEqual(
       expect.arrayContaining([martina.id, tomas.id]),
@@ -347,6 +360,7 @@ describe("a patient of a held number nobody decided on", () => {
     expect(await notificationsOf(world.juan.caller, "optOutReminder")).toEqual([]);
 
     for (const one of await unreadOf(world.receptionist, "optOutReminder")) {
+      expect(one.createdAt).toBe(optedOutAt + dayMs);
       expectOk(
         await world.organization.markNotificationRead(world.receptionist, {
           notificationId: one.id,
@@ -361,11 +375,235 @@ describe("a patient of a held number nobody decided on", () => {
     );
     vi.setSystemTime(optedOutAt + 2 * dayMs);
     await runDurableObjectAlarm(world.organization);
-    // A member who has not read the day's reminder is not told again.
+    // The undecided patient's notification is unread again; the decided one's stays resolved.
     expect(
       (await unreadOf(world.receptionist, "optOutReminder")).map((one) => one.patient?.id),
     ).toEqual([tomas.id]);
+    expect(await notificationsOf(world.receptionist, "optOutReminder")).toHaveLength(2);
     expect(await notificationsOf(adminCaller, "optOutReminder")).toHaveLength(2);
     expect(await scheduledAlarm()).toBe(optedOutAt + 3 * dayMs);
+  });
+});
+
+/** The conversation of the held number, as `caller` reads it. */
+async function heldConversation(caller: Caller = world.receptionist) {
+  const listed = expectOk(await world.organization.listConversations(caller, {}));
+  const found = listed.conversations.find((one) => one.phone === numberPhone)!;
+  return expectOk(await world.organization.readConversation(caller, { conversationId: found.id }));
+}
+
+/** The patient's message the model judged an opt-out, in the held number's conversation. */
+async function optOutMessage() {
+  const read = await heldConversation();
+  const incoming = read.messages.filter((one) => one.direction === "incoming");
+  return { conversationId: read.conversation.id, ...incoming.at(-1)! };
+}
+
+async function consentOf(patientId: string) {
+  return expectOk(await world.organization.getPatient(adminCaller, { patientId })).patient
+    .whatsappConsent;
+}
+
+describe("the opt-out's notification", () => {
+  it("links to the patient's message that asked, once per held patient", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    const tomas = await addThroughGuardian("Tomás", "+5493515550002");
+
+    await numberOptsOut("basta de mensajes");
+
+    const message = await optOutMessage();
+    expect(message.text).toBe("basta de mensajes");
+    for (const caller of [world.receptionist, adminCaller]) {
+      const listed = expectOk(await world.organization.listNotifications(caller));
+      const optOuts = listed.notifications.filter((one) => one.kind === "optOut");
+      expect(optOuts).toHaveLength(2);
+      expect(optOuts.map((one) => one.patient?.id)).toEqual(
+        expect.arrayContaining([martina.id, tomas.id]),
+      );
+      for (const one of optOuts) {
+        expect(one).toMatchObject({
+          messageId: message.id,
+          conversationId: message.conversationId,
+          resolved: false,
+        });
+      }
+    }
+  });
+});
+
+describe("a held patient's daily reminder", () => {
+  it("leaves out a member who is no longer reception or an admin", async () => {
+    await world.addPatient("Martina", numberPhone);
+    const moved = (await addStaff(world.organization, "Carla Paz", ["receptionist"])).caller;
+    await numberOptsOut();
+    const [theirs] = await unreadOf(moved, "optOut");
+    expectOk(await world.organization.markNotificationRead(moved, { notificationId: theirs!.id }));
+    await inStorage(world.organization, (database) =>
+      database
+        .update(member)
+        .set({ roles: ["practitioner"] })
+        .where(eq(member.userId, moved.userId))
+        .run(),
+    );
+
+    vi.setSystemTime(Date.now() + dayMs);
+    await runDurableObjectAlarm(world.organization);
+
+    expect(await unreadOf(moved, "optOutReminder")).toEqual([]);
+    expect(await unreadOf(world.receptionist, "optOutReminder")).toHaveLength(1);
+  });
+});
+
+describe("the opt-out under its message in the conversation", () => {
+  it.each([
+    ["a photo", () => patientSends(world.organization, "image", numberPhone)],
+    [
+      "a voice note nobody could make out",
+      () => {
+        scriptedTranscriber.hears("ruido", { text: "", seconds: 4 });
+        return patientSpeaks(world.organization, "ruido", numberPhone);
+      },
+    ],
+  ])(
+    "sits under the patient's words when %s followed them in the same burst",
+    async (_, follows) => {
+      await world.addPatient("Martina", numberPhone);
+      await patientWrites(world.organization, "no me manden más mensajes", numberPhone);
+      await follows();
+      scriptedModel.script((turn) => {
+        turn.call("judge_messages", { healthQuestion: false, emergency: false, optOut: true });
+        return "";
+      });
+      await afterTheWait(world.organization);
+
+      const read = await heldConversation();
+      const words = read.messages.find((one) => one.text === "no me manden más mensajes")!;
+      expect(read.optOuts.map((one) => one.messageId)).toEqual([words.id]);
+    },
+  );
+
+  it("shows each patient the number reaches, undecided, to every reader who can change consent", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    const tomas = await addThroughGuardian("Tomás", "+5493515550002");
+    await numberOptsOut();
+    const message = await optOutMessage();
+
+    for (const caller of [world.receptionist, adminCaller]) {
+      expect((await heldConversation(caller)).optOuts).toEqual([
+        { messageId: message.id, patient: { id: martina.id, name: "Martina Paz" }, decision: null },
+        { messageId: message.id, patient: { id: tomas.id, name: "Tomás Paz" }, decision: null },
+      ]);
+    }
+  });
+
+  it("keeps a patient: lifts their hold, keeps their consent, and resolves everyone's notification", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    const tomas = await addThroughGuardian("Tomás", "+5493515550002");
+    await numberOptsOut();
+    const message = await optOutMessage();
+
+    vi.setSystemTime(Date.now() + hourMs);
+    expectOk(
+      await world.organization.decideOptOut(world.receptionist, {
+        messageId: message.id,
+        patientId: martina.id,
+        whatsappConsent: true,
+      }),
+    );
+
+    expect(await pendingSince(martina.id)).toBeNull();
+    expect(await pendingSince(tomas.id)).not.toBeNull();
+    expect(await consentOf(martina.id)).toBe(true);
+    expect((await heldConversation()).optOuts).toEqual([
+      {
+        messageId: message.id,
+        patient: { id: martina.id, name: "Martina Paz" },
+        decision: { kept: true, by: "Rita Paz", at: Date.now() },
+      },
+      { messageId: message.id, patient: { id: tomas.id, name: "Tomás Paz" }, decision: null },
+    ]);
+    for (const caller of [world.receptionist, adminCaller]) {
+      const listed = expectOk(await world.organization.listNotifications(caller));
+      const byPatient = Object.fromEntries(
+        listed.notifications.map((one) => [one.patient?.id, one]),
+      );
+      expect(byPatient[martina.id]).toMatchObject({ resolved: true, read: true });
+      expect(byPatient[tomas.id]).toMatchObject({ resolved: false, read: false });
+    }
+  });
+
+  it("turns a patient off: their consent goes, and the line says so", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    await numberOptsOut();
+    const message = await optOutMessage();
+
+    expectOk(
+      await world.organization.decideOptOut(adminCaller, {
+        messageId: message.id,
+        patientId: martina.id,
+        whatsappConsent: false,
+      }),
+    );
+
+    expect(await consentOf(martina.id)).toBe(false);
+    expect((await heldConversation()).optOuts).toEqual([
+      expect.objectContaining({
+        decision: { kept: false, by: "Ana Admin", at: Date.now() },
+      }),
+    ]);
+  });
+
+  it("refuses a decision someone already made, from a page loaded before it, and changes nothing", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    await numberOptsOut();
+    const message = await optOutMessage();
+    const decision = { messageId: message.id, patientId: martina.id };
+    expectOk(
+      await world.organization.decideOptOut(world.receptionist, {
+        ...decision,
+        whatsappConsent: true,
+      }),
+    );
+
+    expect(
+      await world.organization.decideOptOut(adminCaller, { ...decision, whatsappConsent: false }),
+    ).toEqual({ ok: false, reason: "decided" });
+    expect(await consentOf(martina.id)).toBe(true);
+  });
+
+  it("refuses a stranger, a deactivated member and one who must change their password, holding the patient still", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    await numberOptsOut();
+    const message = await optOutMessage();
+    const decision = { messageId: message.id, patientId: martina.id, whatsappConsent: false };
+
+    expect(await world.organization.decideOptOut({ userId: "user-stranger" }, decision)).toEqual({
+      ok: false,
+      reason: "unauthenticated",
+    });
+    for (const state of ["deactivated", "mustChangePassword"] as const) {
+      const refused = await addRefusedAdmin(world.organization, state);
+      expect((await world.organization.decideOptOut(refused, decision)).ok).toBe(false);
+    }
+    expect(await consentOf(martina.id)).toBe(true);
+    expect(await pendingSince(martina.id)).not.toBeNull();
+  });
+
+  it("shows the decision made on the patient's record, and resolves the notification", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    await numberOptsOut();
+
+    expectOk(
+      await world.organization.setWhatsappConsent(adminCaller, {
+        patientId: martina.id,
+        whatsappConsent: false,
+      }),
+    );
+
+    expect((await heldConversation()).optOuts).toEqual([
+      expect.objectContaining({ decision: { kept: false, by: "Ana Admin", at: Date.now() } }),
+    ]);
+    const listed = expectOk(await world.organization.listNotifications(world.receptionist));
+    expect(listed.notifications).toEqual([expect.objectContaining({ resolved: true })]);
   });
 });

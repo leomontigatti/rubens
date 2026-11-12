@@ -56,9 +56,18 @@ export function WhatsappBubble(props: BubbleProps & { pending?: boolean }) {
   );
 }
 
-/** One message from the patient, on the other side of the chat. */
-export function PatientBubble(props: BubbleProps) {
-  return <Bubble {...props} className="bg-card text-card-foreground self-start rounded-tl-none" />;
+/** One message from the patient, on the other side of the chat; `highlighted` is one a link pointed at. */
+export function PatientBubble(props: BubbleProps & { highlighted?: boolean }) {
+  const { highlighted, ...bubble } = props;
+  return (
+    <Bubble
+      {...bubble}
+      className={cn(
+        "bg-card text-card-foreground self-start rounded-tl-none",
+        highlighted && "ring-primary ring-2",
+      )}
+    />
+  );
 }
 
 function Bubble(props: BubbleProps & { className: string }) {

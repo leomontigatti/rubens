@@ -109,6 +109,9 @@ export const whatsappConsentChangeSchema = z.object({
   whatsappConsent: z.boolean(),
 });
 
+/** A decision on a patient an opt-out-looking reply held, made under that reply. */
+export const optOutDecisionSchema = whatsappConsentChangeSchema.extend({ messageId: z.uuid() });
+
 export const patientActiveChangeSchema = z.object({ id: z.uuid(), active: z.boolean() });
 
 export const patientReferenceSchema = patientActiveChangeSchema.pick({ id: true });
@@ -124,6 +127,7 @@ export interface DuplicateConfirmation {
 }
 export type PatientUpdate = z.input<typeof patientUpdateSchema>;
 export type WhatsappConsentChange = z.input<typeof whatsappConsentChangeSchema>;
+export type OptOutDecision = z.input<typeof optOutDecisionSchema>;
 export type PatientActiveChange = z.input<typeof patientActiveChangeSchema>;
 export type PatientReference = z.input<typeof patientReferenceSchema>;
 
