@@ -321,6 +321,33 @@ describe("the patient's reactions", () => {
     expect(fakeMeta.textsSent().map((one) => one.text)).toContain("Listo, quedó confirmado.");
   });
 
+  it("reads a 👍 that Meta delivered twice once, as the patient's yes", async () => {
+    const proposal = "Confirmo tu Consulta con Juan Gómez del lunes 5 de enero a las 09:00?";
+    await writes("lo puedo confirmar?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      return proposal;
+    });
+    await afterTheWait();
+    const thumbsUp = {
+      whatsappId: "wamid.the-thumbs-up",
+      from: martinaPhone,
+      sentAt: Date.now(),
+      type: "reaction",
+      text: "👍",
+      reactsTo: await sentId(proposal),
+      payload: "{}",
+    };
+    const call = { messages: [thumbsUp], statuses: [], templateStatuses: [] };
+
+    expectOk(await world.organization.storeWhatsappEvents(call));
+    expectOk(await world.organization.storeWhatsappEvents(call));
+    await afterTheWait();
+
+    expect(lastTurnRead().at(-1)).toBe(`[new messages]\n[reaccionó 👍 al mensaje: «${proposal}»]`);
+  });
+
   it("counts no failed turn once the only message a failed turn left is taken back", async () => {
     const reply = await assistantAnswers("hola", "Hola, en qué te puedo ayudar?");
     await reacts(reply, "👍");

@@ -1,4 +1,4 @@
-import { and, eq, exists, gt, inArray, isNull, lte, max, not, or } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, isNull, lte, max, ne, not, or } from "drizzle-orm";
 
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -147,9 +147,13 @@ function reactionsTo(conversationId: string, reactsTo: string) {
  */
 function replaceReactions(
   tx: Writer,
-  reaction: { conversationId: string; reactsTo: string; sentAt: number },
+  reaction: { conversationId: string; whatsappId: string; reactsTo: string; sentAt: number },
 ) {
-  const to = reactionsTo(reaction.conversationId, reaction.reactsTo);
+  // Not the reaction itself, which Meta may deliver again.
+  const to = and(
+    reactionsTo(reaction.conversationId, reaction.reactsTo),
+    ne(whatsappMessage.whatsappId, reaction.whatsappId),
+  );
   tx.update(whatsappMessage)
     .set({ judgement: "notForPractitioner" })
     .where(and(to, isNull(whatsappMessage.judgement), lte(whatsappMessage.sentAt, reaction.sentAt)))
@@ -166,7 +170,7 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
   const conversationId = conversationWith(tx, message.from);
   const replaced =
     message.reactsTo !== undefined &&
-    replaceReactions(tx, { conversationId, reactsTo: message.reactsTo, sentAt: message.sentAt });
+    replaceReactions(tx, { conversationId, ...message, reactsTo: message.reactsTo });
   // A reaction taken back or replaced is ignored: no turn reads it, and one taken back opens no window (`lastIncomingAt`).
   const ignored = takesBack(message) || replaced;
   const stored = tx
