@@ -1,4 +1,4 @@
-import { runDurableObjectAlarm } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
@@ -199,6 +199,29 @@ describe("a reminder outside 08:00 to 21:00 in the office's zone", () => {
     await alarmAt(closesAt - 60_000);
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
     expect(await remindersOf(world.receptionist)).toEqual([]);
+  });
+});
+
+describe("a change to the office's zone", () => {
+  it("sets the alarm for a reminder it moves into the hours", async () => {
+    // At 02:30 in Buenos Aires the window closes, so the others' reminder, at
+    // 00:30, does not go; in Tokyo it falls at 12:30.
+    const closesAt = await handedToJuan({ hoursAgo: 15.5, forPractitioner: false });
+    await alarmAt(closesAt - 6 * hourMs);
+
+    expectOk(
+      await world.organization.updateOffice(adminCaller, {
+        officeId: world.office.id,
+        name: "Sede Centro",
+        address: "Cabildo 1",
+        timeZone: "Asia/Tokyo",
+      }),
+    );
+
+    const alarm = await runInDurableObject(world.organization, (_instance, state) =>
+      state.storage.getAlarm(),
+    );
+    expect(alarm).toBe(closesAt - 2 * hourMs);
   });
 });
 

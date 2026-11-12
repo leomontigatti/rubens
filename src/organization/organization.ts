@@ -251,12 +251,18 @@ export class Organization extends OrganizationWhatsapp {
     return this.as(caller, "any", () => getOffice(this.database, input));
   }
 
+  // The first office's zone holds the handoff reminders to office hours, so a
+  // new or edited office sets the alarm again.
   createOffice(caller: Caller, input: OfficeInput) {
-    return this.as(caller, ["admin"], (acting) => createOffice(this.database, acting, input));
+    return this.asThenArm(caller, ["admin"], (acting) =>
+      createOffice(this.database, acting, input),
+    );
   }
 
   updateOffice(caller: Caller, input: OfficeUpdate) {
-    return this.as(caller, ["admin"], (acting) => updateOffice(this.database, acting, input));
+    return this.asThenArm(caller, ["admin"], (acting) =>
+      updateOffice(this.database, acting, input),
+    );
   }
 
   setOfficeActive(caller: Caller, input: ActiveChange) {
