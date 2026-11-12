@@ -78,7 +78,7 @@ async function handedOff(forPractitioner: boolean) {
   );
   scriptedModel.script((one) => {
     one.call("judge_messages", {
-      needsPractitioner: forPractitioner,
+      healthQuestion: forPractitioner,
       emergency: false,
       ...(forPractitioner && { treatedBy: appointmentId }),
     });
@@ -146,7 +146,7 @@ describe("taking a conversation over", () => {
   it("keeps the assistant from proposing or accepting a change while a member holds it", async () => {
     await writes("cancelame el turno");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       one.call("propose_change", { appointmentId, kind: "cancel" });
       return "¿Te lo cancelo?";
     });
@@ -155,7 +155,7 @@ describe("taking a conversation over", () => {
 
     await writes("sí");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       one.call("propose_change", { appointmentId, kind: "confirm" });
       one.call("accept_proposal");
       return "Listo.";
@@ -437,7 +437,7 @@ describe("an emergency while a member holds the conversation", () => {
     expectOk(await takeOver(world.receptionist));
     await writes("me caí y me sangra mucho la boca, no para");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: true, emergency: true });
+      one.call("judge_messages", { healthQuestion: true, emergency: true });
       return "";
     });
 

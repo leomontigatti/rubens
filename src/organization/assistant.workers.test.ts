@@ -126,7 +126,7 @@ function afterTheWait() {
 const toPractitionerText = "Le paso tu consulta a Juan Gómez.";
 
 /** The judgement every turn of these tests makes unless it says otherwise. */
-const notClinical = { needsPractitioner: false, emergency: false };
+const notClinical = { healthQuestion: false, emergency: false };
 
 beforeEach(async () => {
   // The object's clock, a month before the appointments: the alarm it sets
@@ -550,7 +550,7 @@ describe("judging every patient message", () => {
     await patientWrites("me duele mucho la muela");
     scriptedModel.script((turn) => {
       turn.call("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: appointmentId,
       });
@@ -580,7 +580,7 @@ describe("judging every patient message", () => {
     await bookPatient("Martina", martinaPhone);
     await patientWrites("no puedo respirar");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: true });
+      turn.call("judge_messages", { healthQuestion: true, emergency: true });
       return "Llamá al 107.";
     });
 
@@ -604,7 +604,7 @@ describe("judging every patient message", () => {
     await bookPatient("Martina", martinaPhone);
     const messageId = await patientWrites("no puedo respirar");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: true });
+      turn.call("judge_messages", { healthQuestion: true, emergency: true });
       return "Llamá al 107.";
     });
 
@@ -624,7 +624,7 @@ describe("judging every patient message", () => {
     await patientWrites("cuándo es mi turno?");
     scriptedModel.script((turn) => {
       turn.call("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: appointmentId,
       });
@@ -657,7 +657,7 @@ describe("judging every patient message", () => {
       const last = turn.messages.at(-1)!.content.split("\n");
       const judged = last.slice(last.lastIndexOf("[new messages]") + 1).join("\n");
       turn.call("judge_messages", {
-        needsPractitioner: /duele/u.test(judged),
+        healthQuestion: /duele/u.test(judged),
         emergency: false,
         treatedBy: appointmentId,
       });
@@ -687,7 +687,7 @@ describe("judging every patient message", () => {
     await afterTheWait();
     await patientWrites("gracias");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
+      turn.call("judge_messages", { healthQuestion: true, emergency: false });
       return "Le paso tu consulta a la profesional.";
     });
 
@@ -1046,7 +1046,7 @@ describe("what keeps a reply from going", () => {
     const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
       turn.call("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: appointmentId,
       });
@@ -1069,7 +1069,7 @@ describe("what keeps a reply from going", () => {
     const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
       turn.call("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: appointmentId,
       });

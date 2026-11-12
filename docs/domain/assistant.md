@@ -33,7 +33,7 @@ In the first release:
   per patient of the number who still accepts WhatsApp, for a person to turn
   their consent off or keep it, and holds what the organization starts to them
   until then ([patients.md](./patients.md#whatsapp-consent)). It is not a
-  handoff, unless the reply needs the practitioner too, or the number reaches no
+  handoff, unless the reply is a health question too, or the number reaches no
   patient by the time the turn settles.
 
 In the second release:
@@ -64,14 +64,15 @@ every patient whose messages go to it, the patient's own or a guardian's
 the assistant asks which one before acting. The assistant never tells a number
 anything about a patient who is not theirs, and never anything clinical.
 
-Each turn judges whether the patient's new messages need the practitioner:
-advice, or whether something is normal; a medicine or a treatment; how the
-patient is after a procedure, in a follow-up answer that is not plainly good. A
-symptom mentioned beside another request (`un turno porque me duele una muela`)
-does not: the request is the assistant's. A clinic can have several specialties,
-so the assistant also judges whose question it is: the practitioner of an
-upcoming appointment who treats it, by the appointment's medical service and the
-practitioner's specialty, or nobody's. An emergency always needs the
+Each turn judges only what it can see, and underthing decides who answers. The
+model judges whether the patient's new messages are a health question:
+symptoms, care, a medicine or a treatment, how they are after a procedure in an
+answer that is not plainly good. A symptom given only as the reason for another
+request (`un turno porque me duele una muela`) is not one: the request is the
+assistant's. A clinic can have several specialties, so the model also names the
+upcoming appointment whose medical service and practitioner's specialty cover
+the question, if any. A health question goes to that appointment's
+practitioner, and otherwise to reception. An emergency always needs the
 practitioner, whatever the model said of it.
 
 ## Cancelling and moving
@@ -143,7 +144,8 @@ No organization can edit or override these:
   records sends or fixes it, and anyone who reads it drops it. Telegram gets the
   handoff without it. The check is a model call of its own that reads the reply
   alone, never the conversation.
-- What needs the practitioner is not answered: it is handed to them. A photo, a
+- A health question is not answered: it is handed off, to the practitioner who
+  treats it or to reception. A photo, a
   video or a file never reaches the model: it goes to reception as an ordinary
   handoff, and reception passes it to the practitioner when it needs one.
 
@@ -191,7 +193,7 @@ The assistant hands a conversation to a person when:
 - a rule refuses what the patient wants (past the cutoff, the one move used);
 - the patient wants a new time for an appointment the organization cancelled,
   until booking arrives in the second release;
-- the patient needs the practitioner ([above](#for-patients)), or a follow-up's
+- the patient asks a health question ([above](#for-patients)), or a follow-up's
   answer is not plainly good;
 - it has misunderstood the patient twice in a row;
 - a voice note stays unintelligible;

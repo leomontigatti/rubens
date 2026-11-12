@@ -26,8 +26,8 @@ export interface JudgedTurn extends TurnToSort {
 
 /**
  * Stores the turn's judgement on the messages it judged: for the
- * practitioner when the model judged them so or they open a handoff to the
- * practitioner. A message that arrived meanwhile is left for the next turn.
+ * practitioner when the turn wants a handoff to the practitioner, opened now
+ * or open already. A message that arrived meanwhile is left for the next turn.
  */
 function storeJudgement(tx: Writer, turn: JudgedTurn, forPractitioner: boolean) {
   const judgement = forPractitioner ? "forPractitioner" : "notForPractitioner";
@@ -93,7 +93,7 @@ export function settleTurn(
   const turn = { ...judged, reachedNow };
   const wanted = handoffWanted(turn);
   return database.transaction((tx) => {
-    storeJudgement(tx, turn, turn.judgement.needsPractitioner || wanted?.forPractitioner === true);
+    storeJudgement(tx, turn, wanted?.forPractitioner === true);
     const open = openHandoffsOf(tx, turn.conversationId);
     const misunderstood = !wanted && !turn.judgement.understood;
     tx.update(conversation)

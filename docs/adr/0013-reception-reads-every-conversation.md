@@ -43,9 +43,11 @@ We decided:
   question goes to an upcoming appointment's practitioner only when it is about what
   they treat, judged by the appointment's medical service and the practitioner's
   specialty, which the model now reads. Any other health question, or one from a
-  patient with nothing booked, goes to reception, which decides who sees it. The
-  judgement opens the handoff in code when the model does not, and an emergency always
-  counts as needing the practitioner.
+  patient with nothing booked, goes to reception, which decides who sees it. The model
+  only judges what it can see (whether it is a health question, and which appointment
+  covers it) and the code routes: asked whether only the practitioner could answer, the
+  model read it literally and sent a toothache nowhere. The judgement opens the handoff
+  in code when the model does not, and an emergency always counts as a health question.
 
 ## Considered
 

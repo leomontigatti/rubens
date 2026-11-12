@@ -56,11 +56,11 @@ function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted
   const { judgement } = turn;
   // Words beside the photo that answer it otherwise make the whole answer the practitioner's.
   const otherAnswer = judgement.followUpAnswer === "other";
-  if (turn.media?.length && !otherAnswer && !judgement.needsPractitioner && !judgement.emergency) {
+  if (turn.media?.length && !otherAnswer && !judgement.healthQuestion && !judgement.emergency) {
     return { reason: "media", forPractitioner: false, appointmentId };
   }
-  const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.needsPractitioner;
-  const optOutOnly = judgement.optOut && !judgement.needsPractitioner;
+  const plainlyGood = judgement.followUpAnswer === "plainlyGood" && !judgement.healthQuestion;
+  const optOutOnly = judgement.optOut && !judgement.healthQuestion;
   const nobodyToTurnOff = judgement.optOut && turn.reachedNow.length === 0;
   if ((plainlyGood || optOutOnly) && !nobodyToTurnOff && !judgement.emergency && !turn.handOff) {
     return null;
@@ -106,7 +106,7 @@ function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffW
 function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
   const named = knownAppointment(turn, handOff.appointmentId);
   const health = handOff.reason === "clinical" || handOff.reason === "emergency";
-  if (health || turn.judgement.needsPractitioner) {
+  if (health || turn.judgement.healthQuestion) {
     return healthHandoff(turn, named);
   }
   return { reason: modelReasons[handOff.reason], forPractitioner: false, appointmentId: named };
@@ -121,7 +121,7 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
  */
 function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   const { judgement } = turn;
-  if (judgement.needsPractitioner || judgement.emergency) {
+  if (judgement.healthQuestion || judgement.emergency) {
     return healthHandoff(turn, null);
   }
   if (turn.ruleRefused) {

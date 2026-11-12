@@ -108,7 +108,6 @@ function turnTools(
               ...whenOf(upcoming),
               status: upcoming.status,
               medicalService: upcoming.medicalService,
-              practitioner: upcoming.practitioner,
               specialty: upcoming.specialty,
             })),
         })),
@@ -144,8 +143,8 @@ function turnTools(
           return { ok: false, reason: "invalidInput" };
         }
         // An emergency always needs a practitioner, whatever the model said of it.
-        const { needsPractitioner, emergency } = parsed.data;
-        recorded.judgement = { ...parsed.data, needsPractitioner: needsPractitioner || emergency };
+        const { healthQuestion, emergency } = parsed.data;
+        recorded.judgement = { ...parsed.data, healthQuestion: healthQuestion || emergency };
         return { ok: true };
       },
     },
@@ -335,7 +334,7 @@ export async function judgeTurn(
   return {
     reply: ran.reply,
     judgement: handedOffEmergency
-      ? { ...judgement, emergency: true, needsPractitioner: true }
+      ? { ...judgement, emergency: true, healthQuestion: true }
       : judgement,
     handOff: recorded.handOff,
     ruleRefused: recorded.ruleRefused,
@@ -523,7 +522,7 @@ async function judgeWithoutMedia(
   if (!judged) {
     // Only the media is judged now: the rest waits for the model.
     const judgement = {
-      needsPractitioner: false,
+      healthQuestion: false,
       emergency: false,
       understood: true,
       optOut: false,

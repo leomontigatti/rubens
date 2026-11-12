@@ -48,7 +48,6 @@ export function fakeObject(evaluationCase: Case): FakeObject {
             time: each.time,
             status: each.status,
             medicalService: each.service,
-            practitioner: each.practitioner,
             specialty: each.specialty,
           })),
         })),

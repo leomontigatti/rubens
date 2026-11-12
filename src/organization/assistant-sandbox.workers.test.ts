@@ -43,7 +43,7 @@ vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
 
 const martinaPhone = "+5491155550000";
 
-const notClinical = { needsPractitioner: false, emergency: false };
+const notClinical = { healthQuestion: false, emergency: false };
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;

@@ -137,7 +137,7 @@ function templatesSent() {
 async function handedOffThenClosed() {
   await writes("quiero hablar con alguien");
   scriptedModel.script((one) => {
-    one.call("judge_messages", { needsPractitioner: false, emergency: false });
+    one.call("judge_messages", { healthQuestion: false, emergency: false });
     one.call("hand_off", { reason: "patient_asked", appointmentId });
     return "Ya te paso con alguien.";
   });
@@ -170,7 +170,7 @@ beforeEach(async () => {
   await approveReopen();
   await writes("hola");
   scriptedModel.script((one) => {
-    one.call("judge_messages", { needsPractitioner: false, emergency: false });
+    one.call("judge_messages", { healthQuestion: false, emergency: false });
     return "Hola Martina, ¿en qué te ayudo?";
   });
   await afterTheWait(world.organization);
@@ -397,7 +397,7 @@ describe("a person's reply after the window closed", () => {
     await writes("y además me duele la muela");
     scriptedModel.script((one) => {
       one.call("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: appointmentId,
       });
@@ -432,7 +432,7 @@ describe("a person's reply after the window closed", () => {
     await writes("me duele mucho la muela");
     scriptedModel.script((one) => {
       one.call("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: appointmentId,
       });
@@ -513,7 +513,7 @@ describe("withdrawing a late reply", () => {
     await world.addPatient("Lucía", luciaPhone);
     await patientWrites(world.organization, "hola", luciaPhone);
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       return "Hola Lucía, ¿en qué te ayudo?";
     });
     await afterTheWait(world.organization);
@@ -606,7 +606,7 @@ describe("an assistant reply whose window closed meanwhile", () => {
       Date.now() - 24 * hour,
     );
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       return "Tu turno es el jueves a las 12.";
     });
 

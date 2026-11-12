@@ -121,7 +121,7 @@ async function addThroughGuardian(firstName: string, ownPhone: string) {
 async function numberOptsOut(text = "no me manden más mensajes") {
   await patientWrites(world.organization, text, numberPhone);
   scriptedModel.script((turn) => {
-    turn.call("judge_messages", { needsPractitioner: false, emergency: false, optOut: true });
+    turn.call("judge_messages", { healthQuestion: false, emergency: false, optOut: true });
     return "";
   });
   await afterTheWait(world.organization);
@@ -226,7 +226,7 @@ describe("a reply the model judges an opt-out", () => {
 
     await patientWrites(world.organization, "¿a qué hora es mi turno?", numberPhone);
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { needsPractitioner: false, emergency: false });
+      turn.call("judge_messages", { healthQuestion: false, emergency: false });
       return "Tu turno es a las 9.";
     });
     await afterTheWait(world.organization);

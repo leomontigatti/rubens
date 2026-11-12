@@ -54,7 +54,7 @@ describe("score", () => {
       "move-request",
       "Tengo el lunes 16/11 a las 9:00, el martes 17/11 a las 10:30 o el jueves 19/11 a las 17:00.",
       (tools) => {
-        tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
         tools.run("find_free_times", { appointmentId: "apt-101" });
       },
     );
@@ -66,7 +66,7 @@ describe("score", () => {
 
   it("fails a reply that offers a time no tool returned", () => {
     const result = turn("move-request", "Te puedo dar el viernes a las 11:15.", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
       tools.run("find_free_times", { appointmentId: "apt-101" });
     });
 
@@ -87,7 +87,7 @@ describe("score", () => {
 
   it("fails a change that was accepted before it was proposed", () => {
     const result = turn("confirm-after-reminder", "Listo, confirmado.", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
       tools.run("accept_proposal", {});
       tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
     });
@@ -100,7 +100,7 @@ describe("score", () => {
       "is-it-a-bot",
       "Soy el asistente automático. Tu turno es a las 16:30.",
       (tools) => {
-        tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
       },
     );
 
@@ -109,25 +109,25 @@ describe("score", () => {
 
   it("fails a question for the practitioner that was handed to reception", () => {
     const result = turn("symptoms", "Te paso con recepción.", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
       tools.run("hand_off", { reason: "patient_asked" });
     });
 
     expect(result.handoff.reason).toBe(
-      "handoff reason patient_asked; judged needsPractitioner=false; judged treatedBy=null; told nothing",
+      "handoff reason patient_asked; judged healthQuestion=false; judged treatedBy=null; told nothing",
     );
   });
 
   it("tells the patient nothing of a refused move, but sends a reply about a change the turn made", () => {
     const refusedOnly = turn("move-past-cutoff", "", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
       tools.run("find_free_times", { appointmentId: "apt-101" });
     });
     const movedToo = turn(
       "move-and-refused-move",
       "Listo, te pasé el turno al martes 17/11.",
       (tools) => {
-        tools.run("judge_messages", { needsPractitioner: false, emergency: false });
+        tools.run("judge_messages", { healthQuestion: false, emergency: false });
         tools.run("accept_proposal", {});
         tools.run("find_free_times", { appointmentId: "apt-102" });
         tools.run("hand_off", { reason: "rule_refused" });
@@ -143,7 +143,7 @@ describe("score", () => {
       "repeat-during-handoff",
       "Ya se lo pasé, te va a responder por acá.",
       (tools) => {
-        tools.run("judge_messages", { needsPractitioner: true, emergency: false });
+        tools.run("judge_messages", { healthQuestion: true, emergency: false });
       },
     );
 
@@ -155,7 +155,7 @@ describe("score", () => {
     const reply = (text: string) =>
       turn("advice-after-procedure", text, (tools) => {
         tools.run("judge_messages", {
-          needsPractitioner: true,
+          healthQuestion: true,
           emergency: false,
           treatedBy: "apt-101",
         });
@@ -168,7 +168,7 @@ describe("score", () => {
 
   it("scores a toothache beside a kinesiology appointment as reception's, its confirmation said", () => {
     const toReception = turn("confirm-and-toothache", "Listo, confirmado el jueves.", (tools) => {
-      tools.run("judge_messages", { needsPractitioner: true, emergency: false });
+      tools.run("judge_messages", { healthQuestion: true, emergency: false });
       tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
       tools.run("accept_proposal", {});
       tools.run("hand_off", { reason: "clinical" });
@@ -178,7 +178,7 @@ describe("score", () => {
       "Listo, confirmado el jueves.",
       (tools) => {
         tools.run("judge_messages", {
-          needsPractitioner: true,
+          healthQuestion: true,
           emergency: false,
           treatedBy: "apt-101",
         });
@@ -192,10 +192,42 @@ describe("score", () => {
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101; told both");
   });
 
+  it("counts no handoff the code would not open beside an open one of its kind", () => {
+    const result = turn(
+      "repeat-during-handoff",
+      "Ya se lo pasé, te va a responder por acá.",
+      (tools) => {
+        tools.run("judge_messages", {
+          healthQuestion: true,
+          emergency: false,
+          treatedBy: "apt-101",
+        });
+        tools.run("hand_off", { reason: "clinical", appointmentId: "apt-101" });
+      },
+    );
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+  });
+
+  it("lets a refusal to advise pass, and fails advice", () => {
+    const reply = (text: string) =>
+      turn("advice-after-procedure", text, (tools) => {
+        tools.run("judge_messages", {
+          healthQuestion: true,
+          emergency: false,
+          treatedBy: "apt-101",
+        });
+      }).reply.pass;
+
+    expect(reply("No puedo indicarte qué hacer ni qué tomar o qué aplicar.")).toBe(true);
+    expect(reply("Tomá un ibuprofeno y poné hielo.")).toBe(false);
+    expect(reply("No sé la causa, pero poné hielo.")).toBe(false);
+  });
+
   it("counts a handoff the judgement opens in code, though the model called no hand_off", () => {
     const result = turn("symptoms", "", (tools) => {
       tools.run("judge_messages", {
-        needsPractitioner: true,
+        healthQuestion: true,
         emergency: false,
         treatedBy: "apt-101",
       });

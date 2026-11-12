@@ -46,7 +46,7 @@ vi.mock(import("#/organization/transcription.ts"), async (original) => ({
 const martinaPhone = "+5491155550000";
 const lucasPhone = "+5491155550001";
 
-const notClinical = { needsPractitioner: false, emergency: false };
+const notClinical = { healthQuestion: false, emergency: false };
 
 /** What the patient is told on a handoff, as `vos`. */
 

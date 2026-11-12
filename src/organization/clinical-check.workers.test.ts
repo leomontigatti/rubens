@@ -44,7 +44,7 @@ const martinaPhone = "+5491155550000";
 /** What the patient is told when a held reply hands the conversation to the practitioner. */
 const toPractitionerText = "Le paso tu consulta al profesional.";
 
-const notClinical = { needsPractitioner: false, emergency: false };
+const notClinical = { healthQuestion: false, emergency: false };
 
 /** What the model wrote, which the check finds clinical. */
 const clinicalReply = "Tranquila, ese dolor es normal después de una extracción.";
@@ -300,7 +300,7 @@ describe("an emergency", () => {
 
   function judgedAnEmergency() {
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: true, emergency: true });
+      one.call("judge_messages", { healthQuestion: true, emergency: true });
       return "Respirá hondo, seguro no es nada.";
     });
   }

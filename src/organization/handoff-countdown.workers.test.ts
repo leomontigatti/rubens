@@ -80,7 +80,7 @@ async function handedToJuan(options: { hoursAgo: number; forPractitioner: boolea
   );
   scriptedModel.script((one) => {
     one.call("judge_messages", {
-      needsPractitioner: forPractitioner,
+      healthQuestion: forPractitioner,
       emergency: false,
       ...(forPractitioner && { treatedBy: appointmentId }),
     });
@@ -214,7 +214,7 @@ describe("a handoff made after the window closed", () => {
     await patientWrites(world.organization, "hola?", martinaPhone);
     const closesAt = Date.now() + 24 * hourMs;
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: false, emergency: false });
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
       return "";
     });
     await afterTheWait(world.organization);
