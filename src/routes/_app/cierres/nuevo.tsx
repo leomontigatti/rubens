@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { EntryForm, readRangeEntry } from "#/components/range-entry.tsx";
+import { EntryForm } from "#/components/range-entry.tsx";
+import { readRangeEntry } from "#/components/range-entry-values.ts";
 import { closureInputSchema } from "#/lib/time-ranges.ts";
 import { addClosure, getClosures } from "#/server/closures.functions.ts";
 

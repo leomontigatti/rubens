@@ -412,6 +412,35 @@ const isIntlDateTimeFormat = (callee) =>
 
 const LOCALE_STRINGS = new Set(["toLocaleDateString", "toLocaleTimeString"]);
 
+// The options only a date takes: a number's `toLocaleString` takes none of them,
+// so they tell a date's apart without its type.
+const DATE_OPTIONS = new Set([
+  "dateStyle",
+  "timeStyle",
+  "weekday",
+  "era",
+  "year",
+  "month",
+  "day",
+  "hour",
+  "minute",
+  "second",
+  "hour12",
+  "hourCycle",
+]);
+
+const asksDateParts = (options) =>
+  options?.type === "ObjectExpression" &&
+  options.properties.some((property) => DATE_OPTIONS.has(property.key?.name));
+
+// `date.toLocaleDateString()`, or `toLocaleString` asked for a date's parts.
+function writesLocaleString(node) {
+  const method = node.callee?.property?.name;
+  return (
+    LOCALE_STRINGS.has(method) || (method === "toLocaleString" && asksDateParts(node.arguments[1]))
+  );
+}
+
 const noRawDateFormat = {
   meta: {
     type: "problem",
@@ -434,7 +463,7 @@ const noRawDateFormat = {
         : [];
     const writesForPerson = (node) =>
       (isIntlDateTimeFormat(node.callee) && !asksOnlyZone(node.arguments[1])) ||
-      LOCALE_STRINGS.has(node.callee?.property?.name);
+      writesLocaleString(node);
     const check = (node) => {
       shownPatterns(node).forEach((pattern) => report(pattern.node));
       if (writesForPerson(node)) report(node);

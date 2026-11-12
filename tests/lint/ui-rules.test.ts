@@ -292,11 +292,11 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
 
   const intlProbe = probe(
     "intl-dates.ts",
-    `export const short = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeZone: "UTC" });\nexport const plain = Intl.DateTimeFormat("es-AR");\nexport const day = (at: Date) => at.toLocaleDateString("es-AR");\nexport const time = (at: Date) => at.toLocaleTimeString("es-AR");\n`,
+    `export const short = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeZone: "UTC" });\nexport const plain = Intl.DateTimeFormat("es-AR");\nexport const day = (at: Date) => at.toLocaleDateString("es-AR");\nexport const time = (at: Date) => at.toLocaleTimeString("es-AR");\nexport const both = (at: Date) => at.toLocaleString("en-US", { dateStyle: "short" });\nexport const count = (n: number) => n.toLocaleString("es-AR", { maximumFractionDigits: 1 });\n`,
   );
 
-  it("reject Intl's date formats and a date's own locale strings", () => {
-    expect(dateFormat(codes(intlProbe))).toHaveLength(4);
+  it("reject Intl's date formats and a date's own locale strings, not a number's", () => {
+    expect(dateFormat(codes(intlProbe))).toHaveLength(5);
   });
 
   const zoneCheckProbe = probe(

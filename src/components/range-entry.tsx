@@ -7,7 +7,8 @@ import { useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
-import { isLocalDate } from "#/components/date-time-text.ts";
+import { entryFieldNames, entryValues } from "#/components/range-entry-values.ts";
+import type { EntryValues } from "#/components/range-entry-values.ts";
 import { answering, questionAfter, questionText } from "#/components/range-entry-question.ts";
 import type { NoticeQuestion, QuestionSubject } from "#/components/range-entry-question.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
@@ -21,33 +22,7 @@ import type { AffectsAppointments, Notice, RangeEntry } from "#/lib/time-ranges.
 // sends appointments to the "to reschedule" list, and the delete on its edit
 // page.
 
-type Kind = RangeEntry["kind"];
-
 type Outcome<R extends string> = { ok: true } | { ok: false; reason: R };
-
-/** What the form holds; `owner` is who or where the entry is for, when the form asks. */
-interface EntryValues {
-  owner: string;
-  kind: Kind;
-  firstDate: string;
-  lastDate: string;
-  startDate: string;
-  startTime: string;
-  endDate: string;
-  endTime: string;
-}
-
-/** The entry the fields hold, unchecked: the schema decides whether it is one. */
-export function readRangeEntry(values: EntryValues): unknown {
-  if (values.kind === "hours") {
-    return {
-      kind: "hours",
-      start: `${values.startDate}T${values.startTime}`,
-      end: `${values.endDate}T${values.endTime}`,
-    };
-  }
-  return { kind: "days", firstDate: values.firstDate, lastDate: values.lastDate };
-}
 
 type EntryField = "practitionerId" | "officeId" | "firstDate" | "lastDate" | "start" | "end";
 
@@ -68,39 +43,6 @@ const rangeMessages: Record<string, string> = {
 
 const entryMessage = (issue: z.core.$ZodIssue) =>
   rangeMessages[issue.message] ?? messageIn(fieldMessages)(issue);
-
-/**
- * The fields a problem points at: who or where the entry is for is one field,
- * and a start or an end is a date and a time, the date's unless only the time
- * is wrong.
- */
-function entryFieldNames(values: EntryValues) {
-  const part = (end: "start" | "end") =>
-    isLocalDate(values[`${end}Date`]) ? `${end}Time` : `${end}Date`;
-  return { practitionerId: "owner", officeId: "owner", start: part("start"), end: part("end") };
-}
-
-/** What the form opens with: the entry's fields, and none for the other kind. */
-function entryValues(initial: RangeEntry | null, owner: string): EntryValues {
-  const empty = {
-    owner,
-    firstDate: "",
-    lastDate: "",
-    startDate: "",
-    startTime: "",
-    endDate: "",
-    endTime: "",
-  };
-  if (!initial) {
-    return { ...empty, kind: "days" };
-  }
-  if (initial.kind === "days") {
-    return { ...empty, ...initial };
-  }
-  const [startDate = "", startTime = ""] = initial.start.split("T");
-  const [endDate = "", endTime = ""] = initial.end.split("T");
-  return { ...empty, kind: "hours", startDate, startTime, endDate, endTime };
-}
 
 interface Deletion<R extends string> {
   question: string;
