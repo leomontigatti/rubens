@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  addOffice,
   adminCaller,
   afterTheWait as afterWait,
   auditEntriesFor,
@@ -582,6 +583,31 @@ describe("the organization's voice", () => {
     expect(system).toContain("Cordial y breve.");
     expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "En qué lo puedo ayudar?" }]);
     expect((await storedFlags()).at(-1)).toMatchObject({ rulesVersion: 1 });
+  });
+
+  it("reads the time in the first office's zone, not a later office's", async () => {
+    await bookPatient("Martina", martinaPhone);
+    expectOk(
+      await world.organization.updateOffice(adminCaller, {
+        officeId: world.office.id,
+        name: world.office.name,
+        address: world.office.address,
+        timeZone: "America/Bogota",
+      }),
+    );
+    wait(60_000);
+    await addOffice(world.organization, "Sede Norte", "Europe/Madrid");
+    await patientWrites("hola");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Hola, en qué te ayudo?";
+    });
+
+    await afterTheWait();
+
+    const { system } = scriptedModel.turns[0]!;
+    expect(system).toContain("(America/Bogota)");
+    expect(system).not.toContain("Europe/Madrid");
   });
 });
 
