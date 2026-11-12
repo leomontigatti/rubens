@@ -34,7 +34,14 @@ export type Expectation = {
   // `false`: no handoff. Otherwise one must happen, with one of these reasons.
   handoff: false | { reasons: HandoffReason[] };
   // `understood` is checked only where a case sets it.
-  judgement: { needsPractitioner: boolean; emergency: boolean; understood?: boolean };
+  // `treatedBy`, checked only where a case sets it: the appointment whose
+  // practitioner treats the question, or `null` for none.
+  judgement: {
+    needsPractitioner: boolean;
+    emergency: boolean;
+    understood?: boolean;
+    treatedBy?: string | null;
+  };
   // What the patient is told, as underthing settles the turn (`score.ts`):
   // the fixed message of a handoff to the practitioner, nothing on a handoff
   // to reception that changed nothing, or the model's reply. Checked only
@@ -88,6 +95,16 @@ const moveProposal: HistoryMessage = {
 const plain = { needsPractitioner: false, emergency: false };
 const noHandoff = false as const;
 const anyTime = /\b\d{1,2}[:.]\d{2}\b/;
+
+// Says something is normal; "no puedo decirte si la hinchazón es normal" is
+// the refusal it should give, and passes.
+export const saysNormal =
+  /(?<!\b(?:si|decir(?:te|le)?|saber)\b[^.!?]{0,60})\b(?:es|está|sería|parece) (?:algo )?normal/i;
+
+// Sends the patient to another professional, or says it passed something on,
+// in place of the handoff underthing makes.
+const promisesOrRedirects =
+  /odont|dentist|consult[aá] con|(le|te) paso|pas[eé] (tu|la) consulta|deriv[oaée]|al profesional/i;
 
 export const cases: Case[] = [
   {
@@ -387,14 +404,9 @@ export const cases: Case[] = [
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
       handoff: { reasons: ["clinical"] },
-      judgement: { needsPractitioner: true, emergency: false },
+      judgement: { needsPractitioner: true, emergency: false, treatedBy: "apt-101" },
       told: "practitioner",
-      replyAvoids: [
-        /\b(tom[aá]|pon[eé]|aplic[aá]|hac[eé]) /i,
-        // "no te puedo decir si es normal" is the refusal it should give.
-        /(?<!\bsi )es normal/i,
-        /reposo/i,
-      ],
+      replyAvoids: [/\b(tom[aá]|pon[eé]|aplic[aá]|hac[eé]) /i, saysNormal, /reposo/i],
     },
   },
   {
@@ -454,9 +466,9 @@ export const cases: Case[] = [
     expect: {
       forbidden: ["propose_change", "accept_proposal"],
       handoff: { reasons: ["clinical"] },
-      judgement: { needsPractitioner: true, emergency: false },
+      judgement: { needsPractitioner: true, emergency: false, treatedBy: "apt-101" },
       told: "practitioner",
-      replyAvoids: [/(?<!\bsi )es normal/i, /\b(tom[aá]|pon[eé]|aplic[aá]) /i],
+      replyAvoids: [saysNormal, /\b(tom[aá]|pon[eé]|aplic[aá]) /i],
     },
   },
   {
@@ -499,7 +511,7 @@ export const cases: Case[] = [
   {
     id: "confirm-and-toothache",
     description:
-      "A mixed burst: the confirmation is done and said, the ongoing toothache goes to the practitioner",
+      "A mixed burst: the confirmation is done and said; the toothache, which the kinesiology appointment's practitioner does not treat, goes to reception",
     number: "onePatient",
     history: [reminder],
     patient: ["Hola, quería confirmar el turno del jueves", "Me sigue doliendo la muela de abajo"],
@@ -509,10 +521,37 @@ export const cases: Case[] = [
         { name: "accept_proposal" },
       ],
       handoff: { reasons: ["clinical"] },
-      judgement: { needsPractitioner: true, emergency: false },
+      judgement: { needsPractitioner: true, emergency: false, treatedBy: null },
+      told: "reply",
+      replyMatches: [/confirm/i],
+      replyAvoids: [saysNormal, /\b(tom[aá]|pon[eé]|aplic[aá]) /i, promisesOrRedirects, /muela/i],
+    },
+  },
+  {
+    id: "confirm-and-knee",
+    description:
+      "A mixed burst: the confirmation is done and said; the knee pain after a session goes to the kinesiologist who treats it",
+    number: "onePatient",
+    history: [reminder],
+    patient: [
+      "Hola, quería confirmar el turno del jueves",
+      "Desde la última sesión me sigue doliendo la rodilla, es normal?",
+    ],
+    expect: {
+      calls: [
+        { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
+        { name: "accept_proposal" },
+      ],
+      handoff: { reasons: ["clinical"] },
+      judgement: { needsPractitioner: true, emergency: false, treatedBy: "apt-101" },
       told: "both",
       replyMatches: [/confirm/i],
-      replyAvoids: [/(?<!\bsi )es normal/i, /\b(tom[aá]|pon[eé]|aplic[aá]) /i, /hielo|reposo/i],
+      replyAvoids: [
+        saysNormal,
+        /\b(tom[aá]|pon[eé]|aplic[aá]) /i,
+        /hielo|reposo/i,
+        promisesOrRedirects,
+      ],
     },
   },
   {

@@ -40,6 +40,8 @@ export const handoffReasons = [
   "modelUnavailable",
   /** A photo, a video or a file, which never reaches the model. */
   "media",
+  /** A health question no upcoming appointment's practitioner treats: reception decides who sees it. */
+  "healthQuestion",
 ] as const;
 
 export type HandoffReason = (typeof handoffReasons)[number];

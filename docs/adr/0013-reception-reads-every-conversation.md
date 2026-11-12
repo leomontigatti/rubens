@@ -38,6 +38,14 @@ We decided:
   included, goes to reception and tells the patient nothing about it. The assistant
   keeps answering while a handoff is open, the emergency reply always goes, and taking
   a conversation back sends nothing.
+- **A health question goes to the practitioner who treats it** (2026-11-12, from the
+  first run of the evaluation on this change). A clinic can have several specialties: a
+  question goes to an upcoming appointment's practitioner only when it is about what
+  they treat, judged by the appointment's medical service and the practitioner's
+  specialty, which the model now reads. Any other health question, or one from a
+  patient with nothing booked, goes to reception, which decides who sees it. The
+  judgement opens the handoff in code when the model does not, and an emergency always
+  counts as needing the practitioner.
 
 ## Considered
 

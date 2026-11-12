@@ -16,6 +16,8 @@ export type Appointment = {
   appointmentId: string;
   service: string;
   practitioner: string;
+  // What the practitioner treats, as list_patients returns it.
+  specialty: string;
   date: string;
   time: string;
   office: string;
@@ -47,6 +49,7 @@ function lucia(overrides: Partial<Appointment> = {}): Patient {
         appointmentId: "apt-101",
         service: "Sesión de kinesiología",
         practitioner: "Lic. Paula Ríos",
+        specialty: "Kinesiología",
         date: "2026-11-12",
         time: "16:30",
         ...centro,
@@ -88,6 +91,7 @@ export const numbers = {
           appointmentId: "apt-201",
           service: "Control pediátrico",
           practitioner: "Dr. Martín Sosa",
+          specialty: "Pediatría",
           date: "2026-11-11",
           time: "09:00",
           ...norte,
@@ -106,6 +110,7 @@ export const numbers = {
           appointmentId: "apt-202",
           service: "Sesión de kinesiología",
           practitioner: "Lic. Paula Ríos",
+          specialty: "Kinesiología",
           date: "2026-11-13",
           time: "18:00",
           ...centro,

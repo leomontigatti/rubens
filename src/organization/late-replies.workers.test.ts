@@ -396,7 +396,11 @@ describe("a person's reply after the window closed", () => {
     // The patient answers while Meta holds the number, with something new for the practitioner.
     await writes("y además me duele la muela");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: true, emergency: false });
+      one.call("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       return "";
     });
     await afterTheWait(world.organization);
@@ -427,7 +431,11 @@ describe("a person's reply after the window closed", () => {
   it("shows reception a practitioner's reply to a handoff to them while it waits", async () => {
     await writes("me duele mucho la muela");
     scriptedModel.script((one) => {
-      one.call("judge_messages", { needsPractitioner: true, emergency: false });
+      one.call("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       one.call("hand_off", { reason: "clinical", appointmentId });
       return "Ya le paso tu mensaje al profesional.";
     });

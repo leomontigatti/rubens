@@ -107,6 +107,9 @@ function turnTools(
               appointmentId: upcoming.id,
               ...whenOf(upcoming),
               status: upcoming.status,
+              medicalService: upcoming.medicalService,
+              practitioner: upcoming.practitioner,
+              specialty: upcoming.specialty,
             })),
         })),
       }),
@@ -140,7 +143,9 @@ function turnTools(
         if (!parsed.success) {
           return { ok: false, reason: "invalidInput" };
         }
-        recorded.judgement = parsed.data;
+        // An emergency always needs a practitioner, whatever the model said of it.
+        const { needsPractitioner, emergency } = parsed.data;
+        recorded.judgement = { ...parsed.data, needsPractitioner: needsPractitioner || emergency };
         return { ok: true };
       },
     },

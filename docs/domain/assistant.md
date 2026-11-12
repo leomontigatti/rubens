@@ -68,7 +68,11 @@ Each turn judges whether the patient's new messages need the practitioner:
 advice, or whether something is normal; a medicine or a treatment; how the
 patient is after a procedure, in a follow-up answer that is not plainly good. A
 symptom mentioned beside another request (`un turno porque me duele una muela`)
-does not: the request is the assistant's.
+does not: the request is the assistant's. A clinic can have several specialties,
+so the assistant also judges whose question it is: the practitioner of an
+upcoming appointment who treats it, by the appointment's medical service and the
+practitioner's specialty, or nobody's. An emergency always needs the
+practitioner, whatever the model said of it.
 
 ## Cancelling and moving
 
@@ -194,9 +198,10 @@ The assistant hands a conversation to a person when:
 - the patient sent a photo, a video or a file;
 - the model could not read a message well before the window closes.
 
-A handoff that needs the practitioner (what needs them, a follow-up's answer, an
-emergency, a held reply) goes to the practitioner of the appointment it
-concerns, when they keep clinical records, else to the handoff contacts who do,
+A handoff that needs the practitioner (a question the practitioner of an
+upcoming appointment treats, a follow-up's answer, an emergency, a held reply)
+goes to the practitioner of the appointment it concerns, when they keep
+clinical records, else to the handoff contacts who do,
 members an admin picks, else to every active practitioner who does while none is
 picked. With none of them, it goes to the active admins, words included, and
 their notification says that no practitioner keeps clinical records, with a
@@ -204,7 +209,13 @@ link to the handoff contacts. Only a practitioner who keeps clinical records, or
 a member it went to, answers it or closes it.
 
 Every other handoff goes to the handoff contacts, or to every active admin while
-none is picked, and not to the appointment's practitioner. Roles combine on one
+none is picked, and not to the appointment's practitioner. That includes a health
+question no upcoming appointment's practitioner treats, such as a toothache from a
+patient whose appointment is a kinesiology session, or from a patient with nothing
+booked: reception decides who sees it, or tells the patient to book with the right
+specialist. While a handoff to the practitioner is open, a health question opens
+nothing more: the practitioner has the conversation's health topic already. The
+judgement opens the handoff even when the model never hands the conversation off. Roles combine on one
 member, so a solo practitioner who is also the admin gets both kinds. Reception
 can pass one to the practitioner (`Pasar al profesional`), which then goes where
 a handoff to the practitioner goes, telling the patient nothing. At least one
@@ -227,7 +238,8 @@ What the patient is told:
   the name patients read of the appointment's practitioner, or `al profesional`
   when it goes to someone else; in the organization's `Trato`.
 - **Any other handoff**: nothing about what it hands off. The assistant does not
-  explain a refusal; a person replies, and a message unanswered overnight waits
+  explain a refusal, never sends the patient to another professional itself
+  (`consultá con tu odontólogo`), and never says it passed anything on; a person replies, and a message unanswered overnight waits
   for office hours. When the same turn also made a change, its reply states only
   that change (`Listo, te pasé el turno del jueves al viernes 10:00`), after the
   clinical check.

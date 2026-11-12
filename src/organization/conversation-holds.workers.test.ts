@@ -77,7 +77,11 @@ async function handedOff(forPractitioner: boolean) {
     forPractitioner ? "me duele mucho la muela, tomo algo?" : "quiero hablar con alguien",
   );
   scriptedModel.script((one) => {
-    one.call("judge_messages", { needsPractitioner: forPractitioner, emergency: false });
+    one.call("judge_messages", {
+      needsPractitioner: forPractitioner,
+      emergency: false,
+      ...(forPractitioner && { treatedBy: appointmentId }),
+    });
     one.call("hand_off", {
       reason: forPractitioner ? "clinical" : "patient_asked",
       appointmentId,

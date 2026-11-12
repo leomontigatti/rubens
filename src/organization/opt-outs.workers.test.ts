@@ -259,10 +259,10 @@ describe("a reply the model judges an opt-out", () => {
 
   it("still hands a clinical message off, with the handoff's reply", async () => {
     const martina = await world.addPatient("Martina", martinaPhone);
-    await bookAt(martina.id, "12:00");
+    const booked = await bookAt(martina.id, "12:00");
     await patientWrites(world.organization, "me duele mucho, no me escriban más", martinaPhone);
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { ...optOut, needsPractitioner: true });
+      turn.call("judge_messages", { ...optOut, needsPractitioner: true, treatedBy: booked.id });
       return "";
     });
 
@@ -276,7 +276,7 @@ describe("a reply the model judges an opt-out", () => {
     expect(fakeMeta.textsSent()).toEqual([
       {
         to: "5491155550000",
-        text: "Le paso tu consulta al profesional.",
+        text: "Le paso tu consulta a Juan Gómez.",
       },
     ]);
   });

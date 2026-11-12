@@ -3,6 +3,7 @@
 // then handoff when due.
 
 import type { Case, ExpectedCall, Told } from "./cases.ts";
+import { numbers } from "./world.ts";
 import type { ToolCall } from "./fake-object.ts";
 
 export type Turn = { reply: string; calls: ToolCall[]; knownTimes: Set<string> };
@@ -94,7 +95,8 @@ const failedWith = (call: ToolCall, reasons: Set<string>) =>
 // What underthing tells the patient after the turn, as `settleTurn`
 // (`src/organization/assistant.ts`) decides it: a handoff to the practitioner
 // gets its fixed message, after the model's reply when the turn also made a
-// change; one to reception, the model's hand_off or a move a rule refused,
+// change; a health question goes to the practitioner only with the
+// appointment that treats it (`treatedBy`), else to reception; one to reception, the model's hand_off or a move a rule refused,
 // gets nothing unless the turn changed something, whose reply goes; and one
 // of a kind already open opens nothing, so the reply goes.
 function toldOf(evaluationCase: Case, turn: Turn): Told {
@@ -103,11 +105,14 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
   const open = evaluationCase.openHandoffs ?? [];
   const practitionerOpen = open.some((reason) => practitionerReasons.has(reason));
   const receptionOpen = open.some((reason) => !practitionerReasons.has(reason));
-  const forPractitioner =
-    judged?.needsPractitioner === true ||
-    judged?.emergency === true ||
-    handOff?.reason === "clinical" ||
-    handOff?.reason === "emergency";
+  const health = judged?.needsPractitioner === true || handOff?.reason === "clinical";
+  const treated = numbers[evaluationCase.number]
+    .flatMap((patient) => patient.appointments)
+    .some((appointment) => appointment.appointmentId === judged?.treatedBy);
+  const emergency = judged?.emergency === true || handOff?.reason === "emergency";
+  const forPractitioner = emergency || (health && treated);
+  // A health question beside an open handoff to the practitioner is theirs already.
+  const toReception = health && !forPractitioner && !practitionerOpen;
   const applied = turn.calls.some(
     (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
   );
@@ -120,7 +125,7 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
       (call.name === "find_free_times" || call.name === "propose_change") &&
       failedWith(call, ruleRefusals),
   );
-  if ((handOff || refused) && !receptionOpen) return applied ? "reply" : "nothing";
+  if ((handOff || refused || toReception) && !receptionOpen) return applied ? "reply" : "nothing";
   return "reply";
 }
 
@@ -132,13 +137,21 @@ function scoreHandoff(evaluationCase: Case, turn: Turn): Check {
   if (handoff === false && handoffs.length > 0) problems.push("handed off when not due");
   if (handoff !== false) {
     const made = handoffs[0]?.args;
-    if (!made) problems.push("no handoff");
-    else if (!handoff.reasons.includes(made.reason as never))
+    // The judgement opens a health handoff in code when the model calls no hand_off.
+    const judgedOpens =
+      (judged?.needsPractitioner === true || judged?.emergency === true) &&
+      handoff.reasons.some((reason) => reason === "clinical" || reason === "emergency");
+    if (!made && !judgedOpens) problems.push("no handoff");
+    else if (made && !handoff.reasons.includes(made.reason as never))
       problems.push(`handoff reason ${String(made.reason)}`);
   }
   if (judged) {
-    if (judged.needsPractitioner !== judgement.needsPractitioner)
+    // An emergency needs the practitioner whatever the model said (`assistant.ts`).
+    const needsPractitioner = judged.needsPractitioner === true || judged.emergency === true;
+    if (needsPractitioner !== judgement.needsPractitioner)
       problems.push(`judged needsPractitioner=${String(judged.needsPractitioner)}`);
+    if (judgement.treatedBy !== undefined && (judged.treatedBy ?? null) !== judgement.treatedBy)
+      problems.push(`judged treatedBy=${String(judged.treatedBy ?? null)}`);
     if (judged.emergency !== judgement.emergency)
       problems.push(`judged emergency=${String(judged.emergency)}`);
     // An unset `understood` is the schema's default, true.

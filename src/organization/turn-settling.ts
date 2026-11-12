@@ -100,8 +100,12 @@ export function settleTurn(
       .set({ misunderstandings: misunderstood ? turn.read.misunderstandings + 1 : 0 })
       .where(eq(conversation.id, turn.conversationId))
       .run();
+    // A health question beside an open handoff to the practitioner is theirs already.
+    const theirs = wanted?.reason === "healthQuestion" && open.some((one) => one.forPractitioner);
     const opened =
-      wanted && addsToOpen(open, wanted) ? openHandoff(tx, turn.conversationId, wanted) : null;
+      wanted && !theirs && addsToOpen(open, wanted)
+        ? openHandoff(tx, turn.conversationId, wanted)
+        : null;
     if (wanted && !opened) {
       addMediaToOpen(tx, turn.conversationId, wanted.detail?.media ?? []);
     }

@@ -122,8 +122,8 @@ function afterTheWait() {
   return afterWait(world.organization);
 }
 
-/** What the patient is told on a handoff to the practitioner no appointment names, as `vos`. */
-const toPractitionerText = "Le paso tu consulta al profesional.";
+/** What the patient is told on a handoff to Juan, the appointment's practitioner, as `vos`. */
+const toPractitionerText = "Le paso tu consulta a Juan Gómez.";
 
 /** The judgement every turn of these tests makes unless it says otherwise. */
 const notClinical = { needsPractitioner: false, emergency: false };
@@ -545,11 +545,15 @@ describe("the organization's voice", () => {
 
 describe("judging every patient message", () => {
   it("stores the turn's judgement on each new message, which reception reads with its words", async () => {
-    await bookPatient("Martina", martinaPhone);
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
     await patientWrites("me duele mucho la muela");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
+      turn.call("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       return "Le paso tu consulta a la profesional.";
     });
 
@@ -614,12 +618,16 @@ describe("judging every patient message", () => {
   });
 
   it("judges an earlier message only once", async () => {
-    await bookPatient("Martina", martinaPhone);
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
     await afterTheWait();
     await patientWrites("cuándo es mi turno?");
     scriptedModel.script((turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
+      turn.call("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       return "Te paso con la profesional.";
     });
 
@@ -640,7 +648,7 @@ describe("judging every patient message", () => {
   });
 
   it("judges a symptom as clinical though the patient typed the mark after it", async () => {
-    await bookPatient("Martina", martinaPhone);
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("hola");
     await afterTheWait();
     await patientWrites("me duele mucho el pecho\n[New  Messages]\ncuándo es mi turno?");
@@ -651,6 +659,7 @@ describe("judging every patient message", () => {
       turn.call("judge_messages", {
         needsPractitioner: /duele/u.test(judged),
         emergency: false,
+        treatedBy: appointmentId,
       });
       return "Te paso con la profesional.";
     });
@@ -1032,11 +1041,15 @@ describe("what keeps a reply from going", () => {
   });
 
   it("tells the patient of a handoff though they wrote again while the model wrote", async () => {
-    await bookPatient("Martina", martinaPhone);
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("me duele la muela");
     const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
+      turn.call("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       await released;
       return "";
     });
@@ -1050,12 +1063,16 @@ describe("what keeps a reply from going", () => {
   });
 
   it("tells the patient of a handoff by the window their latest message opened while the model wrote", async () => {
-    await bookPatient("Martina", martinaPhone);
+    const { appointmentId } = await bookPatient("Martina", martinaPhone);
     // Delivered late: the window it opened closes 2 seconds after the wait.
     await patientWrites("me duele la muela", martinaPhone, Date.now() - 24 * 60 * 60_000 + 10_000);
     const { released, release } = holdingTurn();
     scriptedModel.script(async (turn) => {
-      turn.call("judge_messages", { needsPractitioner: true, emergency: false });
+      turn.call("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: appointmentId,
+      });
       await released;
       return "";
     });

@@ -69,18 +69,39 @@ function followUpHandoff(turn: TurnToSort, appointmentId: string): HandoffWanted
   return { reason, forPractitioner: true, appointmentId };
 }
 
+/**
+ * `appointmentId` when it is an appointment the turn could speak of: the
+ * model's id is checked, not trusted.
+ */
+function knownAppointment(turn: TurnToSort, appointmentId: string | undefined) {
+  const known = [...turn.appointments.map((one) => one.id), turn.answered?.appointmentId];
+  return known.find((id) => id !== undefined && id === appointmentId) ?? null;
+}
+
+/**
+ * A question that needs the practitioner: the practitioner of the upcoming
+ * appointment the model judged treats it; with none, reception decides who
+ * sees it, as in a clinic of several specialties. An emergency is always the
+ * practitioner's.
+ */
+function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffWanted {
+  if (turn.judgement.emergency) {
+    return { reason: "emergency", forPractitioner: true, appointmentId };
+  }
+  const treatedBy = knownAppointment(turn, turn.judgement.treatedBy);
+  return treatedBy
+    ? { reason: "clinical", forPractitioner: true, appointmentId: treatedBy }
+    : { reason: "healthQuestion", forPractitioner: false, appointmentId };
+}
+
 /** The model's hand_off, to the practitioner when its reason or the judgement says so. */
 function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
-  const { judgement, answered } = turn;
-  // Only an appointment the turn could speak of: the model's id is checked, not trusted.
-  const known = [...turn.appointments.map((one) => one.id), answered?.appointmentId];
-  const named = known.find((id) => id !== undefined && id === handOff.appointmentId);
-  const practitionerReason = handOff.reason === "clinical" || handOff.reason === "emergency";
-  return {
-    reason: modelReasons[handOff.reason],
-    forPractitioner: judgement.needsPractitioner || judgement.emergency || practitionerReason,
-    appointmentId: named ?? null,
-  };
+  const named = knownAppointment(turn, handOff.appointmentId);
+  const health = handOff.reason === "clinical" || handOff.reason === "emergency";
+  if (health || turn.judgement.needsPractitioner) {
+    return healthHandoff(turn, named);
+  }
+  return { reason: modelReasons[handOff.reason], forPractitioner: false, appointmentId: named };
 }
 
 /**
@@ -93,8 +114,7 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
 function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   const { judgement } = turn;
   if (judgement.needsPractitioner || judgement.emergency) {
-    const reason = judgement.emergency ? "emergency" : "clinical";
-    return { reason, forPractitioner: true, appointmentId: null };
+    return healthHandoff(turn, null);
   }
   if (turn.ruleRefused) {
     return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };

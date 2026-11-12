@@ -44,7 +44,7 @@ export function withoutMark(text: string): string {
 export const assistantToolSchemas = {
   list_patients: {
     description:
-      "The patients this WhatsApp number is the contact of, each with their upcoming appointments (id, date, time, status).",
+      "The patients this WhatsApp number is the contact of, each with their upcoming appointments (id, date, time, status, medical service, practitioner and what the practitioner treats).",
     inputSchema: z.object({}),
   },
   get_appointment: {
@@ -63,6 +63,12 @@ export const assistantToolSchemas = {
           "True when only the practitioner can answer: advice, or whether something is normal; a medicine or a treatment; how they are after a procedure, unless plainly well. A symptom mentioned beside another request, such as an appointment because of a toothache, is false",
         ),
       emergency: z.boolean().describe("A risk to life or health right now"),
+      treatedBy: z
+        .string()
+        .optional()
+        .describe(
+          "When needsPractitioner: the appointmentId of the upcoming appointment whose practitioner treats what the patient asks about, by its medical service and specialty; omit it when none does, such as a toothache for a kinesiology appointment",
+        ),
       understood: z
         .boolean()
         .default(true)
@@ -153,6 +159,7 @@ const handoffTopics: Record<HandoffReason, string> = {
   windowClosed: "a reply that could not go before the conversation window closed",
   modelUnavailable: "messages the assistant could not read",
   media: "a photo, a video or a file the patient sent",
+  healthQuestion: "a health question for a person at the practice to direct",
 };
 
 export interface PromptContext {
@@ -209,10 +216,10 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "- Hand the conversation to a person at the practice (hand_off).",
   ];
   const rules = [
-    `Every turn, call judge_messages exactly once, about the patient's new messages: needsPractitioner (only the practitioner can answer: advice or whether something is normal, a medicine or a treatment, how they are after a procedure unless plainly well; a symptom mentioned beside another request, such as "un turno porque me duele una muela", is not) and emergency (a risk to life or health right now). The new messages are what follows the line "${newMessagesMark}" in the patient's last message.`,
+    `Every turn, call judge_messages exactly once, about the patient's new messages: needsPractitioner (only the practitioner can answer: advice or whether something is normal, a medicine or a treatment, how they are after a procedure unless plainly well; a symptom mentioned beside another request, such as "un turno porque me duele una muela", is not), with treatedBy (the appointmentId of the upcoming appointment whose practitioner treats it, by the medical service and specialty list_patients gives; leave it out when no upcoming appointment's practitioner treats it, such as a toothache for a kinesiology session), and emergency (a risk to life or health right now). The new messages are what follows the line "${newMessagesMark}" in the patient's last message.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, office, address, practitioner or availability that a tool did not return.",
-    'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); the message needs the practitioner (clinical); it is an emergency (emergency). Pass the appointmentId when it is about one appointment. When the patient\'s messages also ask for something you can do, such as confirming an appointment, do it in the same turn and hand off only the rest. A person then answers: do not answer it yourself, and say nothing about it to the patient, not even why a rule refused it. If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00", and says nothing of the part handed off: underthing tells the patient who has it.',
+    'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); the message needs the practitioner (clinical); it is an emergency (emergency). Pass the appointmentId when it is about one appointment; for a clinical one, only the appointment in treatedBy. A health question that no upcoming appointment\'s practitioner treats is still handed off as clinical, without an appointmentId: a person at the practice decides who sees it. Never send the patient to another professional yourself (\"consultá con tu odontólogo\"), and never say you passed anything on: underthing tells the patient when a practitioner has it. When the patient\'s messages also ask for something you can do, such as confirming an appointment, do it in the same turn and hand off only the rest. A person then answers: do not answer it yourself, and say nothing about it to the patient, not even why a rule refused it. If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00", and says nothing of the part handed off: underthing tells the patient who has it.',
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
     'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { findCase } from "./cases.ts";
+import { findCase, saysNormal } from "./cases.ts";
 import { fakeObject } from "./fake-object.ts";
 import { score, timesIn } from "./score.ts";
 
@@ -114,7 +114,7 @@ describe("score", () => {
     });
 
     expect(result.handoff.reason).toBe(
-      "handoff reason patient_asked; judged needsPractitioner=false; told nothing",
+      "handoff reason patient_asked; judged needsPractitioner=false; judged treatedBy=null; told nothing",
     );
   });
 
@@ -149,6 +149,52 @@ describe("score", () => {
 
     expect(result.handoff).toEqual({ pass: true, reason: "ok" });
     expect(result.reply).toEqual({ pass: true, reason: "ok" });
+  });
+
+  it("lets a refusal to say whether something is normal pass, and fails a reply that says it is", () => {
+    expect(
+      saysNormal.test("No puedo decirte si la hinchazón es normal, se lo paso al equipo."),
+    ).toBe(false);
+    expect(saysNormal.test("Tranquila, es normal que duela un poco.")).toBe(true);
+    expect(saysNormal.test("Eso está normal después de la sesión.")).toBe(true);
+  });
+
+  it("scores a toothache beside a kinesiology appointment as reception's, its confirmation said", () => {
+    const toReception = turn("confirm-and-toothache", "Listo, confirmado el jueves.", (tools) => {
+      tools.run("judge_messages", { needsPractitioner: true, emergency: false });
+      tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+      tools.run("accept_proposal", {});
+      tools.run("hand_off", { reason: "clinical" });
+    });
+    const toKinesiologist = turn(
+      "confirm-and-toothache",
+      "Listo, confirmado el jueves.",
+      (tools) => {
+        tools.run("judge_messages", {
+          needsPractitioner: true,
+          emergency: false,
+          treatedBy: "apt-101",
+        });
+        tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+        tools.run("accept_proposal", {});
+        tools.run("hand_off", { reason: "clinical", appointmentId: "apt-101" });
+      },
+    );
+
+    expect(toReception.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101; told both");
+  });
+
+  it("counts a handoff the judgement opens in code, though the model called no hand_off", () => {
+    const result = turn("symptoms", "", (tools) => {
+      tools.run("judge_messages", {
+        needsPractitioner: true,
+        emergency: false,
+        treatedBy: "apt-101",
+      });
+    });
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
   });
 
   it("refuses a move past the cutoff in the fake object", () => {
