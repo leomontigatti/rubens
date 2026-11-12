@@ -47,8 +47,10 @@ const docFilePattern = /\.md$/;
 
 // Records of something external, which a sweep may not rewrite. An ADR is the
 // decision as it was taken, `docs/research` cites sources by their own titles,
-// and the WhatsApp fixed texts are the Spanish patients receive, verbatim.
+// the WhatsApp fixed texts are the Spanish patients receive, verbatim, and
+// `.agents/skills` holds skills copied from dependencies as published.
 export const excludedDocDirectories = [
+  ".agents/skills",
   "docs/adr",
   "docs/research",
   "docs/operations/whatsapp-templates.md",
