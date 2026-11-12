@@ -5,6 +5,7 @@ import {
   formatDateTime,
   formatDay,
   formatDayHeading,
+  formatDayHeadingWithYear,
   formatLocalDate,
   formatMonth,
   formatPromptNow,
@@ -48,6 +49,14 @@ describe("formatDay", () => {
 describe("formatDayHeading", () => {
   it("starts with a capital, as a heading over the day", () => {
     expect(formatDayHeading(lateSunday, buenosAires)).toBe("Domingo 8 de noviembre");
+  });
+});
+
+describe("formatDayHeadingWithYear", () => {
+  it("adds the year, for a day in another year than this one", () => {
+    expect(formatDayHeadingWithYear(lateSunday, buenosAires)).toBe(
+      "Domingo 8 de noviembre de 2026",
+    );
   });
 });
 

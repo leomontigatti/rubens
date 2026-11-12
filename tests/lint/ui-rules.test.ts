@@ -308,13 +308,8 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(dateFormat(codes(zoneCheckProbe))).toEqual([]);
   });
 
-  const dateFiles = [
-    existing("src/lib/dates.ts"),
-    existing("src/routes/_app/conversaciones/-labels.ts"),
-  ];
-
-  it("leave dates.ts its formats, and skip the inbox until #314 has rewritten it", () => {
-    expect(dateFormat(codes(...dateFiles))).toEqual([]);
+  it("leave dates.ts its formats", () => {
+    expect(dateFormat(codes(existing("src/lib/dates.ts")))).toEqual([]);
   });
 
   const uiComponents = [

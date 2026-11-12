@@ -122,9 +122,8 @@ export default defineConfig({
         },
       },
       {
-        // The one place a date is written for a person; and the inbox, which
-        // moves onto it once #314 has rewritten it.
-        files: ["src/lib/dates.ts", "src/routes/_app/conversaciones/**"],
+        // The one place a date is written for a person.
+        files: ["src/lib/dates.ts"],
         rules: {
           "ui/no-raw-date-format": "off",
         },

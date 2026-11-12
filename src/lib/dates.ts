@@ -37,10 +37,16 @@ export function formatShortDay(instant: Instant, timeZone: string): string {
   return format(instant, "EEEE dd/MM", inZone(timeZone));
 }
 
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 /** `Domingo 8 de noviembre`, over the day's entries. */
 export function formatDayHeading(instant: Instant, timeZone: string): string {
-  const day = formatDay(instant, timeZone);
-  return day.charAt(0).toUpperCase() + day.slice(1);
+  return capitalized(formatDay(instant, timeZone));
+}
+
+/** `Domingo 8 de noviembre de 2026`, over the entries of a day in another year. */
+export function formatDayHeadingWithYear(instant: Instant, timeZone: string): string {
+  return capitalized(format(instant, "EEEE d 'de' MMMM 'de' yyyy", inZone(timeZone)));
 }
 
 /** A calendar date, `2026-03-07`, as `07/03/2026`: it falls on no zone. */

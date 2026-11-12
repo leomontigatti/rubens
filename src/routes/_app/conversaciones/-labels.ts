@@ -1,7 +1,12 @@
 import { tz } from "@date-fns/tz";
 import { format, subDays } from "date-fns";
-import { es } from "date-fns/locale";
 
+import {
+  formatDateTime,
+  formatDayHeading,
+  formatDayHeadingWithYear,
+  formatTime,
+} from "#/lib/dates.ts";
 import type { MediaKind, MessageMedia } from "#/lib/message-media.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { formatPhone } from "#/lib/phones.ts";
@@ -21,12 +26,12 @@ const inOffices = { in: tz(defaultTimeZone) };
 // Organizations have no zone of their own yet, and a message belongs to no
 // office; every office starts in this one.
 export function messageTime(sentAt: number) {
-  return format(sentAt, "dd/MM/yyyy HH:mm", inOffices);
+  return formatDateTime(sentAt, defaultTimeZone);
 }
 
 /** The time a bubble shows, `17:31`: its day is the separator above it. */
 export function messageClock(sentAt: number) {
-  return format(sentAt, "HH:mm", inOffices);
+  return formatTime(sentAt, defaultTimeZone);
 }
 
 /** The day of `at`, in the offices' zone, as `2026-11-10`. */
@@ -44,11 +49,9 @@ export function dayLabel(at: number, now: number) {
     return "Ayer";
   }
   const sameYear = day.slice(0, 4) === dayOf(now).slice(0, 4);
-  const written = format(at, sameYear ? "EEEE d 'de' MMMM" : "EEEE d 'de' MMMM 'de' yyyy", {
-    ...inOffices,
-    locale: es,
-  });
-  return written.charAt(0).toUpperCase() + written.slice(1);
+  return sameYear
+    ? formatDayHeading(at, defaultTimeZone)
+    : formatDayHeadingWithYear(at, defaultTimeZone);
 }
 
 /** `items`, in their order, split where the day of `at` changes, each run under its separator. */

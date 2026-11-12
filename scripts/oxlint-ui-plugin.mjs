@@ -452,7 +452,7 @@ const noRawDateFormat = {
     },
     messages: {
       format:
-        "Write a date or a time a person reads with src/lib/dates.ts (formatDate, formatTime, formatDateTime, formatDay, formatShortDay, formatDayHeading, formatLocalDate, formatMonth, formatPromptNow): every screen then writes it the same way, in the zone passed. A pattern a date is stored in, such as yyyy-MM-dd, is fine here.",
+        "Write a date or a time a person reads with src/lib/dates.ts (formatDate, formatTime, formatDateTime, formatDay, formatShortDay, formatDayHeading, formatDayHeadingWithYear, formatLocalDate, formatMonth, formatPromptNow): every screen then writes it the same way, in the zone passed. A pattern a date is stored in, such as yyyy-MM-dd, is fine here.",
     },
     schema: [],
   },
