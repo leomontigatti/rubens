@@ -387,6 +387,21 @@ describe("a person's reply after the window closed", () => {
     expect(await notificationsOf(world.receptionist)).toEqual([told, told]);
   });
 
+  it("names no patient in its notice when the number stands for several, since it cannot tell whose", async () => {
+    await handedOffThenClosed();
+    // A sibling on the same number, before Martina by name.
+    await world.addPatientsSharing(martinaPhone, 1);
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+
+    await reopenFailed();
+    await runDurableObjectAlarm(world.organization);
+
+    expect(await notificationsOf(world.receptionist)).toEqual([
+      expect.objectContaining({ kind: "replyNotDelivered", conversationId, patient: null }),
+    ]);
+  });
+
   it("gets a fresh template when the one before it failed", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist, "Primera"));

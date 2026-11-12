@@ -57,14 +57,13 @@ export function notify(tx: Writer, recipientIds: string[], content: Notification
   }
 }
 
-/** The patient a notification about `conversationId` names: the first its number was linked to. */
+/**
+ * The patient a notification about `conversationId` stores: its number's only
+ * one, by the rule the list names one by for a notification that stores none
+ * (`onlyPatient`).
+ */
 export function notifiedPatientOf(tx: Writer, conversationId: string) {
-  const first = tx
-    .select({ patientId: conversationPatient.patientId })
-    .from(conversationPatient)
-    .where(eq(conversationPatient.conversationId, conversationId))
-    .get();
-  return first?.patientId ?? null;
+  return onlyPatient(firstPatientOf(tx, [conversationId]).get(conversationId))?.id ?? null;
 }
 
 /** Notifies every active admin of `content`. */
@@ -159,7 +158,7 @@ const cancelledPatient = alias(patient, "cancelled_patient");
  * The first patient, by name, each of `conversationIds`' number stands for,
  * and whether they are its only one.
  */
-function firstPatientOf(database: Database, conversationIds: string[]) {
+function firstPatientOf(database: Writer, conversationIds: string[]) {
   const rows =
     conversationIds.length === 0
       ? []
@@ -190,7 +189,7 @@ function firstPatientOf(database: Database, conversationIds: string[]) {
   return first;
 }
 
-/** The number's patient, for a notification that stores none (an emergency): only when it has one, since it cannot tell whose. */
+/** The number's patient, for a notification about its conversation: only when it has one, since with several it cannot tell whose. */
 function onlyPatient(
   first: { id: string; name: string; phone: string; only: boolean } | undefined,
 ) {
@@ -306,8 +305,8 @@ export function listNotifications(database: Database, acting: Acting) {
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
     .all();
-  // A handoff about no appointment, and a notification of a conversation that
-  // names no patient (an emergency), name the first patient its number stands for.
+  // A handoff about no appointment names the first patient its number stands
+  // for; a notification of a conversation that stores none, its only one.
   const firstPatients = firstPatientOf(database, [
     ...new Set(
       rows.flatMap((row) => [row.conversationId, row.notDeliveredIn].filter((id) => id !== null)),
