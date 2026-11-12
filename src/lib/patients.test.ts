@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { historyChanges, patientName } from "#/lib/patients.ts";
+import { historyChanges, historyTitle, patientName } from "#/lib/patients.ts";
 
 describe("patientName", () => {
   it("calls a patient by their chosen first name, with their last name", () => {
@@ -180,5 +180,32 @@ describe("historyChanges", () => {
         ),
       ).toEqual([{ field: "Consultorio", before: "Desconocido", after: "Consultorio 1" }]);
     });
+  });
+});
+
+describe("historyTitle", () => {
+  it("names an appointment's entry by its time and practitioner (#173)", () => {
+    const appointment = {
+      // Thursday 12 November 2026, 13:00 UTC: 10:00 in Buenos Aires.
+      startsAt: Date.UTC(2026, 10, 12, 13, 0),
+      practitioner: "Juan Prueba",
+      timeZone: "America/Argentina/Buenos_Aires",
+    };
+
+    expect(historyTitle({ action: "update", entityType: "appointment", appointment })).toBe(
+      "Cambio del turno del 12/11/2026 10:00 con Juan Prueba",
+    );
+  });
+
+  it("says only what changed for an entry of no appointment", () => {
+    expect(historyTitle({ action: "update", entityType: "patient", appointment: null })).toBe(
+      "Cambio",
+    );
+    expect(historyTitle({ action: "create", entityType: "coverage", appointment: null })).toBe(
+      "Alta de cobertura",
+    );
+    expect(historyTitle({ action: "delete", entityType: "appointment", appointment: null })).toBe(
+      "Baja de turno",
+    );
   });
 });

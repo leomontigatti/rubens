@@ -445,8 +445,9 @@ describe("an emergency while a member holds the conversation", () => {
 
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([expect.stringContaining("107")]);
     const told = expectOk(await world.organization.listNotifications(world.receptionist));
+    // Named by the first patient its number stands for.
     expect(told.notifications.filter((one) => one.kind === "emergency")).toMatchObject([
-      { conversationId },
+      { conversationId, patient: { name: "Martina Paz", phone: martinaPhone } },
     ]);
     expect((await read()).hold).not.toBeNull();
   });

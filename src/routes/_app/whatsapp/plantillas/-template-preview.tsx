@@ -1,10 +1,13 @@
 import { CircleCheckIcon } from "lucide-react";
+import { useState } from "react";
 
 import { RecordSection } from "#/components/record-section.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
+import { Button } from "#/components/ui/button.tsx";
 import { WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
-import { formatDay, formatTime } from "#/lib/dates.ts";
+import { formatDateTime, formatDay, formatTime } from "#/lib/dates.ts";
+import { defaultTimeZone } from "#/lib/offices.ts";
 import { fillSample, sampleAppointment } from "#/lib/template-filling.ts";
 import { mentionsSendTime } from "#/lib/template-timing.ts";
 import { checkTemplateBody, templateVariables } from "#/lib/whatsapp-templates.ts";
@@ -100,7 +103,11 @@ function MetaReview() {
   );
 }
 
-/** Each version submitted to Meta side by side, newest first, with Meta's verdict. */
+/**
+ * The versions submitted to Meta, newest first, each by the day it was sent
+ * with Meta's verdict: the newest and the one in use side by side, the older
+ * ones behind `Ver anteriores`.
+ */
 export function TemplateVersions({
   versions,
   organizationName,
@@ -108,37 +115,57 @@ export function TemplateVersions({
   versions: TemplateVersion[];
   organizationName: string;
 }) {
+  const [showOlder, setShowOlder] = useState(false);
   if (versions.length === 0) {
     return null;
   }
+  const shown = versions.filter((version, index) => index === 0 || version.inUse);
+  const older = versions.filter((version) => !shown.includes(version));
   return (
-    <RecordSection title="Versiones">
+    <RecordSection
+      title="Versiones"
+      action={
+        older.length > 0 && (
+          <Button variant="outline" onClick={() => setShowOlder(!showOlder)}>
+            {showOlder ? "Ocultar anteriores" : `Ver anteriores (${older.length})`}
+          </Button>
+        )
+      }
+    >
       <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {versions.map((version) => (
-          <li key={version.id} className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-medium">Versión {version.version}</h3>
-              <Badge variant={templateStatusVariants[version.status]}>
-                {templateStatusLabels[version.status]}
-              </Badge>
-              {version.category !== "utility" && (
-                <Badge variant="warning">{templateCategoryLabels[version.category]}</Badge>
-              )}
-              {version.inUse && <Badge variant="outline">En uso</Badge>}
-            </div>
-            {version.status === "rejected" && (
-              <p className="text-destructive text-sm">
-                {version.rejectionReason
-                  ? rejectionText(version.rejectionReason)
-                  : "Meta no dio el motivo."}
-              </p>
-            )}
-            <WhatsappChat label={`Versión ${version.version}, como la lee el paciente`}>
-              <WhatsappBubble>{fillSample(version.body, organizationName)}</WhatsappBubble>
-            </WhatsappChat>
-          </li>
+        {(showOlder ? versions : shown).map((version) => (
+          <VersionItem key={version.id} version={version} organizationName={organizationName} />
         ))}
       </ul>
     </RecordSection>
+  );
+}
+
+function VersionItem(props: { version: TemplateVersion; organizationName: string }) {
+  const { version } = props;
+  const sent = `Enviada el ${formatDateTime(version.submittedAt, defaultTimeZone)}`;
+  return (
+    <li className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-medium">{sent}</h3>
+        <Badge variant={templateStatusVariants[version.status]}>
+          {templateStatusLabels[version.status]}
+        </Badge>
+        {version.category !== "utility" && (
+          <Badge variant="warning">{templateCategoryLabels[version.category]}</Badge>
+        )}
+        {version.inUse && <Badge variant="outline">En uso</Badge>}
+      </div>
+      {version.status === "rejected" && (
+        <p className="text-destructive text-sm">
+          {version.rejectionReason
+            ? rejectionText(version.rejectionReason)
+            : "Meta no dio el motivo."}
+        </p>
+      )}
+      <WhatsappChat label={`${sent}, como la lee el paciente`}>
+        <WhatsappBubble>{fillSample(version.body, props.organizationName)}</WhatsappBubble>
+      </WhatsappChat>
+    </li>
   );
 }

@@ -163,6 +163,8 @@ function firstPatientOf(database: Database, conversationIds: string[]) {
       : database
           .select({
             conversationId: conversationPatient.conversationId,
+            id: patient.id,
+            phone: patient.phone,
             firstName: patient.firstName,
             lastName: patient.lastName,
             chosenName: patient.chosenName,
@@ -172,10 +174,10 @@ function firstPatientOf(database: Database, conversationIds: string[]) {
           .where(inArray(conversationPatient.conversationId, conversationIds))
           .orderBy(asc(patient.lastName), asc(patient.firstName))
           .all();
-  const first = new Map<string, string>();
+  const first = new Map<string, { id: string; name: string; phone: string }>();
   for (const row of rows) {
     if (!first.has(row.conversationId)) {
-      first.set(row.conversationId, patientName(row));
+      first.set(row.conversationId, { id: row.id, name: patientName(row), phone: row.phone });
     }
   }
   return first;
@@ -264,6 +266,7 @@ export function listNotifications(database: Database, acting: Acting) {
       firstName: patient.firstName,
       chosenName: patient.chosenName,
       lastName: patient.lastName,
+      phone: patient.phone,
       cancelledId: appointment.id,
       cancelledStartsAt: appointment.startsAt,
       cancelledRoomId: appointment.roomId,
@@ -289,9 +292,12 @@ export function listNotifications(database: Database, acting: Acting) {
     .orderBy(sql`${notification.readAt} is not null`, desc(notification.createdAt))
     .limit(notificationListSize)
     .all();
-  // A handoff about no appointment names the first patient its number stands for.
+  // A handoff about no appointment, and a notification of a conversation that
+  // names no patient (an emergency), name the first patient its number stands for.
   const firstPatients = firstPatientOf(database, [
-    ...new Set(rows.flatMap((row) => (row.conversationId ? [row.conversationId] : []))),
+    ...new Set(
+      rows.flatMap((row) => [row.conversationId, row.notDeliveredIn].filter((id) => id !== null)),
+    ),
   ]);
   return {
     ok: true,
@@ -312,6 +318,7 @@ export function listNotifications(database: Database, acting: Acting) {
         firstName,
         chosenName,
         lastName,
+        phone,
         cancelledId,
         cancelledStartsAt,
         cancelledRoomId,
@@ -342,15 +349,15 @@ export function listNotifications(database: Database, acting: Acting) {
                         lastName: handedOffLastName,
                         chosenName: handedOffChosenName,
                       })
-                    : (firstPatients.get(conversationId) ?? null),
+                    : (firstPatients.get(conversationId)?.name ?? null),
                 detail: handoffDetail,
               }
             : null,
         // An opt-out's names the patient whose consent to turn off, never the patient's words.
         patient:
-          patientId !== null && firstName !== null && lastName !== null
-            ? { id: patientId, name: patientName({ firstName, lastName, chosenName }) }
-            : null,
+          patientId !== null && firstName !== null && lastName !== null && phone !== null
+            ? { id: patientId, name: patientName({ firstName, lastName, chosenName }), phone }
+            : (firstPatients.get(notDeliveredIn ?? "") ?? null),
         appointment: cancelledAppointment({
           cancelledId,
           cancelledStartsAt,

@@ -1,4 +1,3 @@
-import type { AssistantToolName } from "#/lib/assistant.ts";
 import type { ProposalKind } from "#/lib/proposals.ts";
 import { formatDay, formatTime } from "#/lib/dates.ts";
 
@@ -28,16 +27,6 @@ export const sandboxOutcomeLabels = {
   silent: "No respondió: una persona tomó la conversación.",
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;
-
-export const sandboxToolLabels: Record<AssistantToolName, string> = {
-  list_patients: "Pacientes del número",
-  get_appointment: "Datos del turno",
-  judge_messages: "Juicio de los mensajes",
-  hand_off: "Derivación",
-  find_free_times: "Horarios libres",
-  propose_change: "Propuesta",
-  accept_proposal: "Aceptación de la propuesta",
-};
 
 export const proposalKindLabels: Record<ProposalKind, string> = {
   confirm: "Confirmar",

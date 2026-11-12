@@ -137,7 +137,7 @@ export const statusActionLabels: Record<StatusAction, string> = {
 /** Who cancelled, as the user reads it. */
 export const cancellerLabels: Record<"patient" | "business", string> = {
   patient: "El paciente",
-  business: "El consultorio",
+  business: "La organización",
 };
 
 /** Who cancelled and why, as one line; `null` for an appointment not cancelled. */

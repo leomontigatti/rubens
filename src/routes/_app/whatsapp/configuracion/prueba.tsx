@@ -40,7 +40,7 @@ type Scenario = Extract<
 >["scenarios"][number];
 
 const description =
-  "Escribí como el paciente y mirá cómo responde el asistente, con sus herramientas reales sobre la agenda real. Nada se guarda: no cambia ningún turno, no se envía nada por WhatsApp y la conversación no aparece en Conversaciones. Cuenta en el uso del asistente.";
+  "Escribí como el paciente y mirá cómo responde el asistente sobre la agenda real. Nada se guarda ni se envía.";
 
 function AssistantSandbox() {
   const listed = Route.useLoaderData();

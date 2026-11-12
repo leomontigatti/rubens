@@ -153,8 +153,9 @@ function ConnectionNotices(props: { connection: Connection | null; canSignUp: bo
     <>
       {!connection && (
         <p className="text-muted-foreground text-sm">
-          Conectá el número nuevo del consultorio desde Meta: ahí elegís o creás la cuenta de
-          WhatsApp Business, agregás el número y la forma de pago, que Meta le cobra al consultorio.
+          Conectá el número nuevo de la organización desde Meta: ahí elegís o creás la cuenta de
+          WhatsApp Business, agregás el número y la forma de pago, que Meta le cobra a la
+          organización.
         </p>
       )}
       {!props.canSignUp && (

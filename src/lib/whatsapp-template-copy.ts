@@ -11,8 +11,8 @@ import type {
 
 /** An event template's event, which the list shows where the others show their timing. */
 export const eventLabels: Record<EventTemplateId, string> = {
-  turno_movido: "Cuando el consultorio mueve un turno",
-  turno_cancelado: "Cuando el consultorio cancela un turno",
+  turno_movido: "Cuando la organización mueve un turno",
+  turno_cancelado: "Cuando la organización cancela un turno",
   turno_a_reprogramar: "Cuando un turno queda para reprogramar",
   solicitud_no_confirmada: "Cuando no se confirma un turno pedido",
   reabrir_conversacion: "Cuando se responde con la conversación cerrada",
@@ -33,7 +33,7 @@ export function timingLabel(timing: Timing): string {
     case "booking":
       return "Al dar el turno";
     case "attended":
-      return "Al marcar el turno como atendido";
+      return "Al atender el turno";
     case "before":
       return `${timingSpan(timing.hours)} antes del turno`;
     case "after":
@@ -79,7 +79,7 @@ export function rejectionText(reason: string) {
   return rejectionLabels[reason] ?? reason;
 }
 
-const connectNumber = "Conectá el número del consultorio.";
+const connectNumber = "Conectá el número de la organización.";
 
 export const templateRefusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -121,8 +121,8 @@ export function problemText(problem: TemplateProblem): string {
     case "strayBraces":
       return "Cada variable va entre {{ y }}: revisá las llaves que quedaron abiertas o sueltas.";
     case "openingMark":
-      return "Sacá el ¿ y el ¡ de apertura: el consultorio escribe sin ellos, como el asistente.";
+      return "Sacá el ¿ y el ¡ de apertura: la organización escribe sin ellos, como el asistente.";
     case "emoji":
-      return "Sacá los emojis: los mensajes del consultorio no los llevan, como los del asistente.";
+      return "Sacá los emojis: los mensajes de la organización no los llevan, como los del asistente.";
   }
 }

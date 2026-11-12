@@ -4,6 +4,7 @@ import type { AuditValues } from "#/lib/audit-fields.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 
 import type { AuditAction } from "#/organization/audit.ts";
+import { selectDayAppointments } from "#/organization/appointments.ts";
 import type { Database } from "#/organization/database.ts";
 import { findPatient, patientIdSchema } from "#/organization/patients.ts";
 import {
@@ -19,6 +20,16 @@ import {
 // A patient's change history: every audit entry about them, their coverages,
 // guardians and appointments included. Only an admin reads it (the object's
 // requirement).
+
+/** The appointment an entry is about, as it is now: what its title names it by. */
+export interface HistoryAppointment {
+  /** Unix milliseconds. */
+  startsAt: number;
+  /** The practitioner, by the name patients read. */
+  practitioner: string;
+  /** Its office's zone, which `startsAt` reads in. */
+  timeZone: string;
+}
 
 /** The zones an appointment entry's times are shown in, one per side. */
 export interface HistoryTimeZones {
@@ -39,6 +50,8 @@ export interface HistoryEntry {
   createdAt: number;
   /** An appointment entry's zones, to show each side's times in; `null` for other entries. */
   timeZones: HistoryTimeZones | null;
+  /** An appointment entry's appointment; `null` for other entries. */
+  appointment: HistoryAppointment | null;
 }
 
 // The ids an appointment's audit entry may hold, each shown by its name.
@@ -53,7 +66,7 @@ type EntryRow = {
 
 /**
  * What the history needs to show appointment entries without ids: each
- * entry's zones, and the names of the practitioners, medical services and
+ * entry's appointment and zones, and the names of the practitioners, medical services and
  * rooms the entries point at, by id. A side's times are in the zone of the
  * office of the room that side names, else of the appointment's office now.
  */
@@ -67,14 +80,8 @@ function appointmentContext(database: Database, entries: readonly EntryRow[]) {
     ),
   ];
   const appointmentIds = [...new Set(appointmentEntries.map((entry) => entry.entityId))];
-  const zones = whereIn(appointmentIds, (ids) =>
-    database
-      .select({ id: appointment.id, timeZone: office.timeZone })
-      .from(appointment)
-      .innerJoin(room, eq(room.id, appointment.roomId))
-      .innerJoin(office, eq(office.id, room.officeId))
-      .where(inArray(appointment.id, ids))
-      .all(),
+  const appointments = whereIn(appointmentIds, (ids) =>
+    selectDayAppointments(database).where(inArray(appointment.id, ids)).all(),
   );
   const practitioners = whereIn(idsOf("practitionerId"), (ids) =>
     database
@@ -98,18 +105,24 @@ function appointmentContext(database: Database, entries: readonly EntryRow[]) {
       .where(inArray(room.id, ids))
       .all(),
   );
-  const currentZones = new Map(zones.map((row) => [row.id, row.timeZone]));
+  const current = new Map(
+    appointments.map((row) => [
+      row.id,
+      { startsAt: row.startsAt, practitioner: row.practitionerName, timeZone: row.timeZone },
+    ]),
+  );
   const roomZones = new Map(rooms.map((row) => [row.id, row.timeZone]));
   return {
     timeZonesOf: (entry: EntryRow): HistoryTimeZones | null => {
       if (entry.entityType !== "appointment") {
         return null;
       }
-      const current = currentZones.get(entry.entityId) ?? defaultTimeZone;
-      const zoneOf = (values: AuditValues | null) =>
-        roomZones.get(String(values?.roomId)) ?? current;
+      const zone = current.get(entry.entityId)?.timeZone ?? defaultTimeZone;
+      const zoneOf = (values: AuditValues | null) => roomZones.get(String(values?.roomId)) ?? zone;
       return { before: zoneOf(entry.before), after: zoneOf(entry.after) };
     },
+    appointmentOf: (entry: EntryRow): HistoryAppointment | null =>
+      entry.entityType === "appointment" ? (current.get(entry.entityId) ?? null) : null,
     names: Object.fromEntries(
       [...practitioners, ...services, ...rooms].map((row) => [row.id, row.name]),
     ),
@@ -155,13 +168,14 @@ export function getPatientHistory(
     // Insertion order breaks a tie: two entries can share a millisecond.
     .orderBy(desc(auditLog.createdAt), desc(sql`${auditLog}.rowid`))
     .all();
-  const { timeZonesOf, names } = appointmentContext(database, rows);
+  const { timeZonesOf, appointmentOf, names } = appointmentContext(database, rows);
   return {
     ok: true,
     entries: rows.map(({ entityId, ...row }) => ({
       ...row,
       action: row.action as AuditAction,
       timeZones: timeZonesOf({ ...row, entityId }),
+      appointment: appointmentOf({ ...row, entityId }),
     })),
     names,
   };

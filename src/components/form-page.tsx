@@ -194,6 +194,8 @@ export function FormPage(props: {
   title: string;
   description?: string;
   submitLabel: string;
+  /** What the submit does beyond saving, beside its button. */
+  submitNote?: string;
   /** The form makes a new record, so it has no saved values to go back to. */
   creates?: boolean;
   pending: boolean;
@@ -250,6 +252,7 @@ export function FormPage(props: {
               page={page}
               pending={pending}
               submitLabel={props.submitLabel}
+              submitNote={props.submitNote}
               discardable={!props.creates}
             />
           </form>
@@ -325,11 +328,15 @@ function RefusalAlert({
   );
 }
 
-/** `Volver` on the left; `Descartar cambios`, once it applies, and the submit button on the right. */
+/**
+ * `Volver` on the left; `Descartar cambios`, once it applies, and the submit
+ * button on the right, after the note on what it does, if any.
+ */
 function FormPageActions(props: {
   page: FormPageControl;
   pending: boolean;
   submitLabel: string;
+  submitNote?: string;
   discardable: boolean;
 }) {
   const { page, pending } = props;
@@ -340,6 +347,9 @@ function FormPageActions(props: {
         Volver
       </Button>
       <div className="flex items-center gap-3">
+        {props.submitNote && (
+          <p className="text-muted-foreground text-right text-sm">{props.submitNote}</p>
+        )}
         {props.discardable && page.dirty && (
           <Button type="button" variant="outline" disabled={pending} onClick={page.askToDiscard}>
             <Undo2Icon data-icon="inline-start" aria-hidden />
