@@ -26,7 +26,10 @@ import {
 // and link to the WhatsApp settings, where they are fixed; and handoffs, which
 // go to their recipients and link to the conversation, as do their reminders; and replies that look
 // like opt-outs, which go to reception and the admins and link to the
-// patient, whose WhatsApp consent is turned off there.
+// patient, whose WhatsApp consent is turned off there; and cancellations a
+// patient made through the assistant, which go to reception and the admins
+// and link to the appointment's week on the agenda, cancelled ones shown,
+// where its free time is given to another patient.
 
 export const Route = createFileRoute("/_app/notificaciones/")({
   head: () => ({ meta: [{ title: "Notificaciones · underthing" }] }),
@@ -80,7 +83,7 @@ function NotificationList() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notificaciones"
-        description="Los avisos para vos, como las conversaciones que te derivaron, los pacientes que pidieron no recibir más mensajes y los de Meta sobre el número de WhatsApp."
+        description="Los avisos para vos, como las conversaciones que te derivaron, los turnos que los pacientes cancelaron por WhatsApp, los pacientes que pidieron no recibir más mensajes y los de Meta sobre el número de WhatsApp."
       />
       {result.notifications.length === 0 ? (
         <EmptyState
@@ -120,7 +123,7 @@ function NotificationRow(props: {
           notification.read ? "bg-transparent" : "bg-primary",
         )}
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+      <div className="flex min-w-0 flex-1 basis-64 flex-col gap-1 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <p className={cn(notification.read ? "font-normal" : "font-medium")}>
             {notificationTitle(notification)}
@@ -147,9 +150,25 @@ function NotificationRow(props: {
 /**
  * Where a notification is acted on: the conversation handed off or not
  * delivered to, with the handoff contacts when no practitioner could take
- * it, the patient to turn off, the template, or the WhatsApp settings.
+ * it, the cancelled appointment's week, the patient to turn off, the
+ * template, or the WhatsApp settings.
  */
 function NotificationLink({ notification }: { notification: Notification }) {
+  if (notification.appointment) {
+    const { roomId, date } = notification.appointment;
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+        render={
+          <Link to="/agenda" search={{ consultorio: roomId, fecha: date, cancelados: true }} />
+        }
+      >
+        Ver en la agenda
+      </Button>
+    );
+  }
   if (notification.conversationId) {
     return (
       <>

@@ -9,7 +9,9 @@ import * as z from "zod";
 // window closed that never reached the patient, which its writer gets; and
 // replies that look like opt-outs, which reception and the admins get, one
 // per patient whose WhatsApp consent a person may turn off, and again daily
-// while nobody decided on the patient (`src/organization/opt-out-holds.ts`).
+// while nobody decided on the patient (`src/organization/opt-out-holds.ts`);
+// and a cancellation a patient made through the assistant, which reception
+// and the admins get, so they can fill the time.
 
 export const notificationKinds = [
   "templateRejected",
@@ -29,6 +31,8 @@ export const notificationKinds = [
   "replyFailed",
   "optOut",
   "optOutReminder",
+  /** A patient cancelled an appointment through the assistant: its time is free. */
+  "appointmentCancelled",
 ] as const;
 
 export type NotificationKind = (typeof notificationKinds)[number];

@@ -435,6 +435,8 @@ export const notification = sqliteTable(
     patientId: text("patient_id").references(() => patient.id),
     // The conversation of a `replyNotDelivered` (`whatsapp-schema.ts`, so no reference, as `handoffId`).
     conversationId: text("conversation_id"),
+    /** The appointment an `appointmentCancelled` is about. */
+    appointmentId: text("appointment_id").references(() => appointment.id),
     readAt: instant("read_at"),
     ...timestamps,
   },

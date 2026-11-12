@@ -2,6 +2,7 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+import { formatShortDay, formatTime } from "#/lib/dates.ts";
 import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
@@ -36,6 +37,14 @@ export interface NotificationFacts {
   } | null;
   /** The patient an `optOut` or `optOutReminder` notification is about. */
   patient: { id: string; name: string } | null;
+  /** The appointment an `appointmentCancelled` notification is about, by its patient's and practitioner's names. */
+  appointment: {
+    patient: string;
+    practitioner: string;
+    startsAt: number;
+    /** Its office's zone, which its time reads in. */
+    timeZone: string;
+  } | null;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -88,6 +97,8 @@ const fixedTexts: Partial<Record<NotificationKind, string>> = {
     "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.",
   optOutReminder:
     "Sus recordatorios y avisos quedan en espera hasta que decidas en su ficha: Dejar de enviar por WhatsApp, o Seguir enviando.",
+  appointmentCancelled:
+    "Lo canceló por WhatsApp con el asistente, y el horario quedó libre para otro paciente.",
 };
 
 export function notificationTitle(facts: NotificationFacts): string {
@@ -112,6 +123,8 @@ export function notificationTitle(facts: NotificationFacts): string {
       return `${facts.patient?.name ?? "Un paciente"} pidió no recibir más mensajes de WhatsApp`;
     case "optOutReminder":
       return `Falta decidir si ${facts.patient?.name ?? "un paciente"} sigue recibiendo mensajes de WhatsApp`;
+    case "appointmentCancelled":
+      return cancelledTitle(facts.appointment);
     default:
       // Every other kind's title is fixed, above.
       return "";
@@ -146,6 +159,15 @@ export function notificationText(facts: NotificationFacts): string {
       // Every other kind's text is fixed, above.
       return "";
   }
+}
+
+function cancelledTitle(appointment: NotificationFacts["appointment"]) {
+  if (!appointment) {
+    return "Un paciente canceló su turno";
+  }
+  const { patient, practitioner, startsAt, timeZone } = appointment;
+  const when = `${formatShortDay(startsAt, timeZone)} ${formatTime(startsAt, timeZone)}`;
+  return `${patient} canceló su turno del ${when} con ${practitioner}`;
 }
 
 type HandoffFacts = NonNullable<NotificationFacts["handoff"]>;

@@ -32,6 +32,11 @@ export function formatDay(instant: Instant, timeZone: string): string {
   return format(instant, "EEEE d 'de' MMMM", inZone(timeZone));
 }
 
+/** `domingo 08/11`, inside a sentence that names its time beside it. */
+export function formatShortDay(instant: Instant, timeZone: string): string {
+  return format(instant, "EEEE dd/MM", inZone(timeZone));
+}
+
 /** `Domingo 8 de noviembre`, over the day's entries. */
 export function formatDayHeading(instant: Instant, timeZone: string): string {
   const day = formatDay(instant, timeZone);
