@@ -622,6 +622,26 @@ export const cases: Case[] = [
     },
   },
   {
+    id: "confirm-and-repeat-during-reception-handoff",
+    description:
+      "An open handoff to reception: a confirmation and a repeat about the toothache in one message; the reply states the confirmation, then says it passed the toothache on",
+    number: "onePatient",
+    history: [reminder, { role: "patient", text: "me duele la muela de abajo hace dos días" }],
+    openHandoffs: ["unmatchedHealthQuestion"],
+    patient: ["el jueves voy, confirmado. y con la muela qué hago?"],
+    expect: {
+      calls: [
+        { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
+        { name: "accept_proposal", accepts: "confirm" },
+      ],
+      handoff: noHandoff,
+      judgement: { healthQuestion: true, emergency: false },
+      told: "reply",
+      replyMatches: [/confirm/i, /ya se lo pas/i],
+      replyAvoids: [givesAdvice, saysNormal, promisesOrRedirects],
+    },
+  },
+  {
     id: "confirm-and-toothache",
     description:
       "A mixed burst: the confirmation is done and said; the toothache, which the kinesiology appointment's practitioner does not treat, goes to reception",

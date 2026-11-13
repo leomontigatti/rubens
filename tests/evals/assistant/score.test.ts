@@ -319,6 +319,21 @@ describe("score", () => {
     expect(result.reply).toEqual({ pass: true, reason: "ok" });
   });
 
+  it("fails a repeat about an open handoff that drops the change the same turn made, or the sentence", () => {
+    const confirmAndRepeat = (reply: string) =>
+      turn("confirm-and-repeat-during-reception-handoff", reply, (tools) => {
+        tools.run("judge_messages", { healthQuestion: true, emergency: false });
+        tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+        tools.run("accept_proposal", {});
+      }).reply;
+
+    expect(
+      confirmAndRepeat("Listo, confirmado el jueves. Ya se lo pasé, te va a responder por acá."),
+    ).toEqual({ pass: true, reason: "ok" });
+    expect(confirmAndRepeat("Ya se lo pasé, te va a responder por acá.").pass).toBe(false);
+    expect(confirmAndRepeat("Listo, confirmado el jueves.").pass).toBe(false);
+  });
+
   it("counts no handoff the code would not open beside an open one of its kind", () => {
     const result = turn(
       "repeat-during-handoff",
