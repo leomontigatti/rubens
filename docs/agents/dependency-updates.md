@@ -57,6 +57,9 @@ there are no seams to test first, only the steps below.
    version and into `updateConfig.ignoreDependencies` in `pnpm-workspace.yaml`, which `pnpm update`
    skips, with a comment above it: what breaks, and the issue the run opens for the fix. Step 2
    skips the packages listed there too.
+   A new lint warning is not a break: the run leaves the code alone, so the PR stays a bump, and
+   opens one issue per new rule, naming its files. Compare `pnpm lint` against `origin/main`'s, by
+   rule and file: a count alone misreads the warnings already on `main` as new.
 8. **Audit the whole tree**: `pnpm audit --audit-level high`. `check:dependency-audit` fails only
    on advisories a branch adds, so nothing else reports one published against a package already
    on `main`: Dependabot alerts are off. For each high or critical advisory still open, the PR's

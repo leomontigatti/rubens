@@ -57,3 +57,11 @@ Severity choices, each explained in `.fallowrc.json`:
 `pnpm exec fallow dead-code` with no flags lists everything, inherited findings
 included. Expect scaffolding that has no user yet, such as shadcn components and the
 auth client; it stays until a feature uses it or it is deleted.
+
+## Fallow Cloud
+
+Not used. It collects which functions run in production and serves that to agents (the vendored
+`fallow` skill's cloud reads and hosted MCP server). underthing has no production traffic to
+collect yet, and sending production data to a third party is the user's decision. Don't run a
+`--cloud` command or connect to `api.fallow.cloud`; a cloud-backed call without a key returns
+`no_key` or is refused, which is expected here.
