@@ -26,6 +26,7 @@ import { isToReschedule } from "#/organization/to-reschedule.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
 import { approvedVersion } from "#/organization/whatsapp-templates.ts";
+import type { Job } from "#/organization/jobs.ts";
 
 // The outbox (`src/lib/outbox.ts`): messages to patients, queued in the
 // transaction that changes their appointment and sent by the object's alarm
@@ -114,7 +115,7 @@ function notHeldByOptOut(database: Database) {
  * approval, for Meta's settings or for an opt-out's decision is left out, so the alarm does not spin;
  * one waiting on a hold of the number, until the hold ends, if it ends by time.
  */
-export function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): number | null {
+function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): number | null {
   const hold = activeHold(database, Date.now());
   if (hold) {
     const anyQueued = database
@@ -357,7 +358,7 @@ function recordSent(
  * alarm. Each one is read again as it goes, so a message about an appointment
  * changed while an earlier one was sending is judged by the change.
  */
-export async function sendDueMessages(database: Database, cloud: WhatsappCloud) {
+async function sendDueMessages(database: Database, cloud: WhatsappCloud) {
   const templates = sendableTemplates(database, cloud);
   if (!templates) {
     return;
@@ -388,3 +389,10 @@ export async function sendDueMessages(database: Database, cloud: WhatsappCloud) 
     await sendQueued(database, cloud, one);
   }
 }
+
+/** The outbox's queued messages, sent when due. */
+export const outboxJob: Job = {
+  name: "outbox",
+  nextDue: (database, { whatsapp }) => nextOutboxAlarm(database, whatsapp),
+  run: (database, { whatsapp }) => sendDueMessages(database, whatsapp),
+};

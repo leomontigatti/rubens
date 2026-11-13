@@ -28,6 +28,7 @@ import {
   patientsReachedAt,
   whileSending,
 } from "#/organization/whatsapp-messages.ts";
+import type { Job } from "#/organization/jobs.ts";
 
 // A person's reply written after the conversation's window closed
 // (docs/domain/assistant.md § Handoff): stored, and the patient gets the
@@ -257,7 +258,7 @@ function chanceEndsAt(waiting: Waiting) {
  * if it ends by time), and for one whose window that answer opened closed
  * first; otherwise when its template's chance ends.
  */
-export function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): number | null {
+function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): number | null {
   const now = Date.now();
   const due = waitingReplies(database).map((one) => {
     const lastIncoming = lastIncomingAt(database, one.conversationId);
@@ -466,7 +467,7 @@ function reopenAgain(database: Database, waiting: Waiting) {
  * window that answer opened closed first; one whose template's chance ended
  * without an answer is not delivered.
  */
-export async function settleLateReplies(database: Database, cloud: WhatsappCloud) {
+async function settleLateReplies(database: Database, cloud: WhatsappCloud) {
   for (const one of waitingReplies(database)) {
     const now = Date.now();
     const lastIncoming = lastIncomingAt(database, one.conversationId);
@@ -581,3 +582,10 @@ export function lateRepliesShown(
       mine: writtenBy === readerId,
     }));
 }
+
+/** The late replies waiting behind the reopen template, settled when the patient answers or its chance ends. */
+export const lateRepliesJob: Job = {
+  name: "late replies",
+  nextDue: (database, { whatsapp }) => nextLateReplyAlarm(database, whatsapp),
+  run: (database, { whatsapp }) => settleLateReplies(database, whatsapp),
+};

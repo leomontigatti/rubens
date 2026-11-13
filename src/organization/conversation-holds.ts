@@ -22,6 +22,7 @@ import { member } from "#/organization/schema.ts";
 import { conversation, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
 import { lastIncomingAt, whileSending } from "#/organization/whatsapp-messages.ts";
+import type { Job } from "#/organization/jobs.ts";
 
 // Taking a conversation over from the inbox (docs/domain/assistant.md §
 // Inbox): anyone who reads a conversation can hold it, at any time, and the
@@ -212,7 +213,7 @@ function release(database: Database, conversationId: string) {
 }
 
 /** When the next hold ends, or `null` when nobody holds a conversation. */
-export function nextReturnAlarm(database: Database): number | null {
+function nextReturnAlarm(database: Database): number | null {
   const next = database
     .select({ at: min(conversation.heldUntil) })
     .from(conversation)
@@ -225,10 +226,17 @@ export function nextReturnAlarm(database: Database): number | null {
  * Gives every conversation whose hold ended back to the assistant: the
  * object's alarm. Nothing is sent; the assistant answers the patient's next message.
  */
-export function returnDueConversations(database: Database) {
+function returnDueConversations(database: Database) {
   database
     .update(conversation)
     .set({ heldBy: null, heldUntil: null })
     .where(and(isNotNull(conversation.heldBy), lte(conversation.heldUntil, Date.now())))
     .run();
 }
+
+/** The conversations a member holds, given back to the assistant when the hold ends. */
+export const conversationReturnsJob: Job = {
+  name: "conversation returns",
+  nextDue: (database) => nextReturnAlarm(database),
+  run: (database) => returnDueConversations(database),
+};
