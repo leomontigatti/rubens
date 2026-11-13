@@ -27,9 +27,9 @@ When the launch fails, check in this order:
 
 - **An error on start from a migration**: the branch's to fix. To start from a fresh seed, stop
   the server and delete this worktree's `.wrangler/state/`, never another worktree's.
-- **The Clerk sign-in instead of the dev one**: the worktree's `.env` (a link to the main
-  checkout's, `t3.json`) holds Clerk keys. Leave it; the browser suite (`pnpm test:e2e`) always
-  runs on the dev sign-in.
+- **The Clerk sign-in instead of the dev one**: the worktree has a `.env` with Clerk keys, put
+  there by hand or, in a worktree made before #124, linked from the main checkout. Leave it; the
+  browser suite (`pnpm test:e2e`) always runs on the dev sign-in.
 - **Port in use**: `pnpm dev:stop` stops this worktree's own server; a port held by another
   worktree's server is that thread's, so leave it.
 - **`node`, `pnpm` or `playwright-cli` not found**: the `SessionStart` warning names it; the fix
