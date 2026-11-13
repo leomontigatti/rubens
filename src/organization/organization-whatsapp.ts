@@ -76,8 +76,7 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     if (!organizationIdIn(this.database)) {
       return { ok: false, reason: "notSetUp" } as const;
     }
-    // A template's approval lets the messages waiting on it go.
-    return this.thenArm(() => storeWhatsappEvents(this.database, events));
+    return this.armingOnWrite(() => storeWhatsappEvents(this.database, events));
   }
 
   /** The open handoffs the member sees in the inbox (`src/organization/handoff-inbox.ts`). */
@@ -100,9 +99,9 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     );
   }
 
-  /** Passes a handoff to reception to the practitioner: its new recipients' reminders wake the alarm. */
+  /** Passes a handoff to reception to the practitioner. */
   passToPractitioner(caller: Caller, input: HandoffReference) {
-    return this.asThenArm(caller, patientEditors, (acting) =>
+    return this.as(caller, patientEditors, (acting) =>
       passHandoffToPractitioner(this.database, acting, input),
     );
   }
@@ -116,28 +115,26 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
 
   /** Takes a conversation the member reads over from the assistant (`src/organization/conversation-holds.ts`). */
   takeOverConversation(caller: Caller, input: ConversationReference) {
-    // Its hold ends by the alarm.
-    return this.asThenArm(caller, patientEditors, (acting) =>
+    return this.as(caller, patientEditors, (acting) =>
       takeOverConversation(this.database, acting, input),
     );
   }
 
   async replyToConversation(caller: Caller, input: PersonalReply) {
-    return this.asThenArm(caller, patientEditors, (acting) =>
+    return this.as(caller, patientEditors, (acting) =>
       replyToConversation(this.database, this.whatsapp, acting, input),
     );
   }
 
   returnConversation(caller: Caller, input: ConversationReference) {
-    return this.asThenArm(caller, patientEditors, (acting) =>
+    return this.as(caller, patientEditors, (acting) =>
       returnConversation(this.database, acting, input),
     );
   }
 
   /** Withdraws the member's own reply that waits behind the reopen template (`src/organization/late-replies.ts`). */
   withdrawLateReply(caller: Caller, input: LateReplyReference) {
-    // A template dropped with it no longer wakes the alarm.
-    return this.asThenArm(caller, patientEditors, (acting) =>
+    return this.as(caller, patientEditors, (acting) =>
       withdrawOwnLateReply(this.database, acting, input),
     );
   }
@@ -147,9 +144,9 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
     return this.as(caller, ["admin"], (acting) => saveReturnTime(this.database, acting, input));
   }
 
-  /** How many hours before the window closes a handoff's reminders go: the alarm is set after it. */
+  /** How many hours before the window closes a handoff's reminders go. */
   saveHandoffReminders(caller: Caller, input: HandoffRemindersInput) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
+    return this.as(caller, ["admin"], (acting) =>
       saveHandoffReminders(this.database, acting, input),
     );
   }
@@ -162,8 +159,7 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
 
   /** Completes Embedded Signup with what its popup returned. */
   async connectWhatsapp(caller: Caller, input: SignupCompletion) {
-    // A number connected lets the messages waiting on one go.
-    return this.asThenArm(caller, ["admin"], (acting) => this.number.connect(acting, input));
+    return this.as(caller, ["admin"], (acting) => this.number.connect(acting, input));
   }
 
   async disconnectWhatsapp(caller: Caller) {
@@ -171,14 +167,14 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   }
 
   async createTemplate(caller: Caller, input: TemplateCreate) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
+    return this.as(caller, ["admin"], (acting) =>
       createTemplate(this.database, this.whatsapp, acting, input),
     );
   }
 
-  /** A template's text, and for the organization's own its name and timing, which can queue messages. */
+  /** A template's text, and for the organization's own its name and timing. */
   async editTemplate(caller: Caller, input: TemplateEdit) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
+    return this.as(caller, ["admin"], (acting) =>
       editTemplate(this.database, this.whatsapp, acting, input),
     );
   }
@@ -211,9 +207,7 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   }
 
   async refreshWhatsappTemplates(caller: Caller) {
-    return this.asThenArm(caller, ["admin"], () =>
-      refreshWhatsappTemplates(this.database, this.whatsapp),
-    );
+    return this.as(caller, ["admin"], () => refreshWhatsappTemplates(this.database, this.whatsapp));
   }
 
   /** The upcoming appointments the assistant's sandbox can start from (#183). */

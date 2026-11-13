@@ -8,6 +8,7 @@ import { notifyOptOut, remindOptOut, resolveOptOut } from "#/organization/notifi
 import { appointment, member, optOutDecision, patient } from "#/organization/schema.ts";
 import { optOutHold, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
+import type { Job } from "#/organization/jobs.ts";
 
 // The hold an opt-out-looking reply puts on the number (docs/domain/patients.md
 // § WhatsApp consent): every patient whose messages go to it gets nothing the
@@ -165,7 +166,7 @@ export function heldAppointmentIds(database: Writer) {
 }
 
 /** When the next daily reminder about a held patient goes, or `null` with none held. */
-export function nextOptOutReminderAlarm(database: Database) {
+function nextOptOutReminderAlarm(database: Database) {
   return (
     database
       .select({ at: min(optOutHold.remindAt) })
@@ -178,7 +179,7 @@ export function nextOptOutReminderAlarm(database: Database) {
  * Reminds reception and the admins of every held patient whose day has
  * passed, on each one's notification of them: the object's alarm.
  */
-export function remindHeldOptOuts(database: Database) {
+function remindHeldOptOuts(database: Database) {
   const now = Date.now();
   database.transaction((tx) => {
     const due = tx
@@ -195,3 +196,10 @@ export function remindHeldOptOuts(database: Database) {
     }
   });
 }
+
+/** The daily reminders about patients an opt-out holds. */
+export const optOutRemindersJob: Job = {
+  name: "opt-out reminders",
+  nextDue: (database) => nextOptOutReminderAlarm(database),
+  run: (database) => remindHeldOptOuts(database),
+};

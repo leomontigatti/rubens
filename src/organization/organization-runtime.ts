@@ -3,10 +3,10 @@ import { DurableObject } from "cloudflare:workers";
 import { fakeMetaFetch, fakesMeta } from "#/dev/fake-meta.ts";
 import { fakeModel, fakesModel } from "#/dev/fake-model.ts";
 import { accountsFor } from "#/organization/accounts.ts";
-import { nextTurnAlarm, runDueTurns } from "#/organization/assistant.ts";
-import { nextReturnAlarm, returnDueConversations } from "#/organization/conversation-holds.ts";
-import { nextReminderAlarm, sendDueReminders } from "#/organization/handoff-countdown.ts";
-import { nextLateReplyAlarm, settleLateReplies } from "#/organization/late-replies.ts";
+import { assistantTurnsJob } from "#/organization/assistant.ts";
+import { conversationReturnsJob } from "#/organization/conversation-holds.ts";
+import { handoffRemindersJob } from "#/organization/handoff-countdown.ts";
+import { lateRepliesJob } from "#/organization/late-replies.ts";
 import { assistantModelFor } from "#/organization/assistant-model.ts";
 import type { AssistantModel } from "#/organization/assistant-model.ts";
 import type { Accounts } from "#/organization/accounts.ts";
@@ -19,8 +19,9 @@ import {
   whatsappCloudFor,
 } from "#/organization/graph-api.ts";
 import type { GraphApiSettings, SignupSettings, WhatsappCloud } from "#/organization/graph-api.ts";
-import { nextOptOutReminderAlarm, remindHeldOptOuts } from "#/organization/opt-out-holds.ts";
-import { nextOutboxAlarm, sendDueMessages } from "#/organization/outbox.ts";
+import type { Job, JobServices } from "#/organization/jobs.ts";
+import { optOutRemindersJob } from "#/organization/opt-out-holds.ts";
+import { outboxJob } from "#/organization/outbox.ts";
 import { authorize } from "#/organization/members.ts";
 import type { Acting, Caller, Refusal, Requirement } from "#/organization/members.ts";
 import type { EmailsInFlight } from "#/organization/staff.ts";
@@ -46,10 +47,29 @@ type RuntimeEnv = WorkerEnv &
   };
 
 /**
+ * The object's jobs, in the order the alarm runs them. A new job is one entry
+ * here; a reorder is a deliberate change of one line.
+ */
+const jobs: readonly Job[] = [
+  // What is already due to patients goes first: the queued messages, then the
+  // late replies the patient answered (or their writers told they did not go).
+  outboxJob,
+  lateRepliesJob,
+  // Before the turns, so a conversation whose hold ended has its turn in this alarm.
+  conversationReturnsJob,
+  assistantTurnsJob,
+  // After the turns, which can open handoffs and hold patients for an opt-out.
+  handoffRemindersJob,
+  optOutRemindersJob,
+];
+
+/**
  * What the organization's object runs on, under its RPC methods
  * (`organization.ts`): its SQLite storage, migrated before any call; the
  * services it reaches; and its one alarm (ADR-0008 § Jobs are Durable Object
- * alarms), always set to the earliest due item.
+ * alarms), set to the earliest item any of `jobs` has due. The alarm is set
+ * when the object starts, after each alarm, and after any call that opened a
+ * transaction (`armingOnWrite`), so no method chooses whether to set it.
  */
 export abstract class OrganizationRuntime extends DurableObject {
   protected readonly database: Database;
@@ -64,6 +84,8 @@ export abstract class OrganizationRuntime extends DurableObject {
   protected readonly whatsapp: WhatsappCloud;
   /** The organization's number, connected through Embedded Signup (`src/organization/whatsapp-connection.ts`). */
   protected readonly number: WhatsappNumber;
+  /** How many transactions the object has opened: a call that changed it wrote. */
+  #transactionsOpened = 0;
   /** The patient assistant's model (`src/organization/assistant-model.ts`). */
   protected readonly assistant: AssistantModel;
   /** What transcribes patients' voice notes (`src/organization/transcription.ts`). */
@@ -72,7 +94,7 @@ export abstract class OrganizationRuntime extends DurableObject {
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
     const workerEnv = env as unknown as RuntimeEnv;
-    this.database = openDatabase(ctx.storage);
+    this.database = openDatabase(ctx.storage, () => this.#transactionsOpened++);
     this.accounts = accountsFor(workerEnv);
     this.assistant = fakesModel(workerEnv) ? fakeModel : assistantModelFor(workerEnv);
     this.transcriber = transcriberFor(workerEnv);
@@ -107,52 +129,31 @@ export abstract class OrganizationRuntime extends DurableObject {
 
   /**
    * Authorizes `caller` against the member table for `requirement`, then runs
-   * `work` as them: every RPC method that takes a caller goes through here.
+   * `work` as them, then sets the alarm if it wrote: every RPC method that
+   * takes a caller goes through here.
    */
-  protected as<T>(
+  protected async as<T>(
     caller: Caller,
     requirement: Requirement,
     work: (acting: Acting) => T,
-  ): T | { ok: false; reason: Refusal } {
+  ): Promise<Awaited<T> | { ok: false; reason: Refusal }> {
     const authorized = authorize(this.database, caller, requirement);
-    return authorized.ok ? work(authorized.acting) : authorized;
+    return authorized.ok ? this.armingOnWrite(() => work(authorized.acting)) : authorized;
   }
 
-  /** `as()` for a call that can queue a message or let one go: the alarm is set after it. */
-  protected asThenArm<T>(caller: Caller, requirement: Requirement, work: (acting: Acting) => T) {
-    return this.thenArm(() => this.as(caller, requirement, work));
-  }
-
-  /**
-   * Sends the outbox's due messages, then the late replies the patient
-   * answered (or tells their writers they were not delivered), gives the
-   * conversations whose hold ended back to the assistant, and runs its due
-   * turns, then sends the handoff reminders those leave due and the daily
-   * reminders of patients an opt-out holds, and sets the alarm for the next item.
-   */
+  /** Runs every job, in the order of `jobs`, then sets the alarm for the next item. */
   override async alarm() {
-    await sendDueMessages(this.database, this.whatsapp);
-    await settleLateReplies(this.database, this.whatsapp);
-    returnDueConversations(this.database);
-    await runDueTurns(this.database, this.whatsapp, {
-      model: this.assistant,
-      transcriber: this.transcriber,
-    });
-    sendDueReminders(this.database);
-    remindHeldOptOuts(this.database);
+    const services = this.#jobServices();
+    for (const job of jobs) {
+      await job.run(this.database, services);
+    }
     await this.#armAlarm();
   }
 
   /** Sets the alarm to the earliest due item, or clears it when nothing waits on time. */
   async #armAlarm() {
-    const due = [
-      nextOutboxAlarm(this.database, this.whatsapp),
-      nextTurnAlarm(this.database, this.assistant),
-      nextReturnAlarm(this.database),
-      nextReminderAlarm(this.database),
-      nextLateReplyAlarm(this.database, this.whatsapp),
-      nextOptOutReminderAlarm(this.database),
-    ].filter((at) => at !== null);
+    const services = this.#jobServices();
+    const due = jobs.map((job) => job.nextDue(this.database, services)).filter((at) => at !== null);
     const next = due.length > 0 ? Math.min(...due) : null;
     if (next === null) {
       await this.ctx.storage.deleteAlarm();
@@ -161,10 +162,24 @@ export abstract class OrganizationRuntime extends DurableObject {
     }
   }
 
-  /** Runs `work`, then sets the alarm for what it may have queued or let go. */
-  protected async thenArm<T>(work: () => T): Promise<Awaited<T>> {
-    const result = await work();
-    await this.#armAlarm();
-    return result;
+  #jobServices(): JobServices {
+    return { whatsapp: this.whatsapp, assistant: this.assistant, transcriber: this.transcriber };
+  }
+
+  /**
+   * Runs `work`, then sets the alarm if it opened a transaction, even one
+   * rolled back or followed by a throw. Read as a count before and after, so
+   * a call that only read is not taken for one that wrote while it waited on
+   * Clerk or Meta: at most, a read waiting on one arms after another's write.
+   */
+  protected async armingOnWrite<T>(work: () => T): Promise<Awaited<T>> {
+    const before = this.#transactionsOpened;
+    try {
+      return await work();
+    } finally {
+      if (this.#transactionsOpened !== before) {
+        await this.#armAlarm();
+      }
+    }
   }
 }

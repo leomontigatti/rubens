@@ -43,6 +43,7 @@ import { organizationTimeZone } from "#/organization/offices.ts";
 import { patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
+import type { Job, JobServices } from "#/organization/jobs.ts";
 
 // The patient assistant (docs/domain/assistant.md § For patients, ADR-0006):
 // the object's alarm runs a turn once a conversation's wait is over. The
@@ -60,8 +61,8 @@ import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 const historyLength = 30;
 
 /** When the next turn is due, or `null` when none waits or the model cannot run. */
-export function nextTurnAlarm(database: Database, model: AssistantModel): number | null {
-  if (model.missingSetting()) {
+function nextTurnAlarm(database: Database, { assistant }: JobServices): number | null {
+  if (assistant.missingSetting()) {
     return null;
   }
   const next = database
@@ -569,11 +570,9 @@ async function judgeWithoutMedia(
  * alarm ends once every reply is delivered, and fails as the first
  * delivery that failed.
  */
-export async function runDueTurns(
-  database: Database,
-  cloud: WhatsappCloud,
-  ports: { model: AssistantModel; transcriber: Transcriber },
-) {
+async function runDueTurns(database: Database, services: JobServices) {
+  const cloud = services.whatsapp;
+  const ports = { model: services.assistant, transcriber: services.transcriber };
   if (ports.model.missingSetting()) {
     return;
   }
@@ -599,3 +598,9 @@ export async function runDueTurns(
     throw failures[0];
   }
 }
+
+export const assistantTurnsJob: Job = {
+  name: "assistant turns",
+  nextDue: nextTurnAlarm,
+  run: runDueTurns,
+};
