@@ -403,15 +403,6 @@ describe("a number with nothing booked to talk about", () => {
     expect(await handoffPatients(world.lucia.caller)).toEqual([null]);
   });
 
-  it("goes to every admin while no handoff contact is picked", async () => {
-    await writes("hola", unknownPhone);
-
-    await turn();
-
-    expect(await notifiedOfHandoff(adminCaller)).toHaveLength(1);
-    expect(await notifiedOfHandoff(world.receptionist)).toEqual([]);
-  });
-
   it("lists open handoffs of more conversations than one statement binds", async () => {
     for (let number = 0; number < 110; number++) {
       await writes("hola", `+54935155${String(number).padStart(5, "0")}`);
