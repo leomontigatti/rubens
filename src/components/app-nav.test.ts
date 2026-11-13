@@ -28,9 +28,11 @@ describe("the menu a member sees", () => {
   });
 
   it("counts the member's unread notifications on their link, for every role", () => {
-    const daily = navFor(["receptionist"], counts(0, 2))[0]!.items;
+    for (const role of ["receptionist", "practitioner", "admin"] as const) {
+      const daily = navFor([role], counts(0, 2))[0]!.items;
 
-    expect(daily.find((item) => "to" in item && item.to === "/notificaciones")?.count).toBe(2);
+      expect(daily.find((item) => "to" in item && item.to === "/notificaciones")?.count).toBe(2);
+    }
   });
 });
 

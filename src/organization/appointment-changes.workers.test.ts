@@ -576,7 +576,7 @@ describe("status changes", () => {
     expect(await w.change(id, "confirmed", w.juan.caller)).toEqual({ ok: true });
   });
 
-  it("answers notFound for an unknown appointment, and refuses a member with no booking role", async () => {
+  it("answers notFound for an unknown appointment, and refuses a caller who is not a member", async () => {
     const w = await world();
     const id = await w.bookJuan();
     const outsider = { userId: "user-outsider" };

@@ -197,6 +197,16 @@ describe("what a reschedule form moves", () => {
         ),
       ),
     ).toEqual(["start", "durationMinutes"]);
+    for (const durationMinutes of ["0", "721"]) {
+      expect(
+        refusedPaths(
+          rescheduleRequestOf(
+            { durationMinutes, freeFrom: "2099-01-05", start: nine },
+            appointmentId,
+          ),
+        ),
+      ).toEqual(["durationMinutes"]);
+    }
   });
 });
 

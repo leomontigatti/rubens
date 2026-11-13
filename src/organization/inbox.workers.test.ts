@@ -319,7 +319,7 @@ describe("reading a conversation in the inbox", () => {
     expect(asJuan.conversations).toEqual([]);
   });
 
-  it("finds conversations by a patient's name or by the number, a page at a time", async () => {
+  it("finds conversations by a patient's name or by the number in any format", async () => {
     await patientWrites("Hola");
     await world.addPatient("Bruno", "+5491155550001");
     await patientWrites("Hola", "+5491155550001");

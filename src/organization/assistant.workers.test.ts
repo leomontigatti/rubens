@@ -1084,6 +1084,7 @@ describe("a message the model could not read", () => {
         reason: "modelUnavailable",
         forPractitioner: false,
         recipients: ["Ana Admin"],
+        createdAt: sentAt + 18 * hourMs,
       }),
     ]);
     // Stored as judged, so no later turn reads it as new.

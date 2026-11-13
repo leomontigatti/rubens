@@ -63,7 +63,7 @@ describe("filling a template", () => {
     });
   });
 
-  it("fills the sample appointment the way the template drafts read", () => {
+  it("fills the practitioner, date, time and office from the sample appointment, the time in its office's zone", () => {
     const body =
       "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
 

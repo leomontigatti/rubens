@@ -518,6 +518,9 @@ describe("the calendar week of a room", () => {
 
   it("lists the active rooms by office and opens on the first one when none is asked for", async () => {
     const w = await world();
+    expectOk(
+      await w.organization.setRoomActive(adminCaller, { id: w.otherRoom.id, active: false }),
+    );
 
     expect(
       await w.organization.getCalendarWeek(w.receptionist, { date: "2099-01-07" }),
@@ -529,7 +532,6 @@ describe("the calendar week of a room", () => {
           officeName: "Sede Centro",
           rooms: [
             { id: w.room.id, name: "Consultorio 1" },
-            { id: w.otherRoom.id, name: "Consultorio 2" },
             { id: w.shared.id, name: "Consultorio doble" },
           ],
         },
