@@ -161,13 +161,21 @@ function judgedHandoff(turn: TurnToSort): HandoffWanted | null {
   return reason ? { reason, forPractitioner: false, appointmentId: null } : null;
 }
 
+/** The reasons a turn is handed off for when nothing it asks is the assistant's to answer. */
+export const unansweredReasons = [
+  "misunderstoodTwice",
+  "voiceUnintelligible",
+  "unknownNumber",
+  "noUpcomingAppointment",
+] as const satisfies HandoffWanted["reason"][];
+
 /**
  * Why a turn that needs no practitioner and was not refused is handed off, if it is: a
  * second misunderstanding, a number of no patient, nothing booked. An opt-out
  * reaching here comes from a number that reaches nobody now, its contact moved
  * while the model ran, so there is no consent to turn off.
  */
-function unansweredReason(turn: TurnToSort): HandoffWanted["reason"] | null {
+function unansweredReason(turn: TurnToSort): (typeof unansweredReasons)[number] | null {
   const { judgement } = turn;
   if (!judgement.understood && turn.read.misunderstandings >= 1) {
     return turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";

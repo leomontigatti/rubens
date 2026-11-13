@@ -123,10 +123,14 @@ function lastArgs(turn: Turn, name: ToolCall["name"]) {
   return turn.calls.filter((call) => call.name === name).at(-1)?.args;
 }
 
-function opensHandoff(evaluationCase: Case, turn: Turn): "practitioner" | "reception" | null {
+// `open` stands in for the case's open handoffs: with none, it is the handoff the turn wants.
+function opensHandoff(
+  evaluationCase: Case,
+  turn: Turn,
+  open = evaluationCase.openHandoffs ?? [],
+): "practitioner" | "reception" | null {
   const judged = lastArgs(turn, "judge_messages");
   const handOff = lastArgs(turn, "hand_off");
-  const open = evaluationCase.openHandoffs ?? [];
   const practitionerOpen = open.some((reason) => practitionerReasons.has(reason));
   const receptionOpen = open.some((reason) => !practitionerReasons.has(reason));
   const health = judged?.healthQuestion === true || handOff?.reason === "clinical";
@@ -149,7 +153,8 @@ function opensHandoff(evaluationCase: Case, turn: Turn): "practitioner" | "recep
 // What underthing tells the patient after the turn: a handoff to the
 // practitioner gets its fixed message, after the model's reply when the turn
 // also made a change; one to reception gets nothing unless the turn changed
-// something, whose reply goes; a turn that opens none gets the reply.
+// something, whose reply goes; one an open handoff covers gets the model's
+// reply, if any, then "Ya se lo pasé"; a turn that wants none gets the reply.
 function toldOf(evaluationCase: Case, turn: Turn): Told {
   const applied = turn.calls.some(
     (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
@@ -163,7 +168,7 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
   if (emergency) return "practitioner";
   if (opened === "practitioner") return applied ? "both" : "practitioner";
   if (opened === "reception") return applied ? "reply" : "nothing";
-  return "reply";
+  return opensHandoff(evaluationCase, turn, []) === null ? "reply" : "repeat";
 }
 
 // A value a model wrote, for a problem's text: a string as is, anything else as JSON.

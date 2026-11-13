@@ -797,7 +797,7 @@ describe("an open handoff", () => {
     return appointmentId;
   }
 
-  it("gets a handoff to the practitioner beside it for what needs one, and no second", async () => {
+  it("gets a handoff to the practitioner beside it for what needs one, and no second: the patient is told a person has it", async () => {
     const appointmentId = await handedOff();
     const judged = { healthQuestion: true, emergency: false, treatedBy: appointmentId };
     await writes("y me duele la muela");
@@ -816,6 +816,7 @@ describe("an open handoff", () => {
     expect((await openHandoffs()).map((one) => one.forPractitioner)).toEqual([true, false]);
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
       "Le paso tu consulta a Juan Gómez.",
+      "Ya se lo pasé, te va a responder por acá.",
     ]);
   });
 
@@ -1136,7 +1137,7 @@ describe("a burst that mixes an easy request with one for the practitioner (#290
 });
 
 describe("a health question while a handoff to the practitioner is open (#290)", () => {
-  it("opens nothing for reception, and the assistant's reply goes", async () => {
+  it("opens nothing for reception, and tells the patient a person has it", async () => {
     const appointmentId = await bookMartina();
     await writes("me duele la muela desde ayer, es normal?");
     scriptedModel.script((one) => {
@@ -1151,7 +1152,7 @@ describe("a health question while a handoff to the practitioner is open (#290)",
     await writes("y entonces tomo algo?");
     scriptedModel.script((one) => {
       one.call("judge_messages", { healthQuestion: true, emergency: false });
-      return "Ya se lo pasé, te va a responder por acá.";
+      return "";
     });
 
     await turn();
@@ -1184,7 +1185,7 @@ describe("an emergency the model handed off", () => {
 });
 
 describe("a hand_off of a kind already open (#290)", () => {
-  it("opens no second handoff, and the reply about the new request goes", async () => {
+  it("opens no second handoff: the reply about the new request goes, then that a person has the rest", async () => {
     const appointmentId = await bookMartina();
     const judged = { healthQuestion: true, emergency: false, treatedBy: appointmentId };
     await writes("me duele la muela desde ayer, es normal?");
@@ -1207,7 +1208,77 @@ describe("a hand_off of a kind already open (#290)", () => {
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
       "Le paso tu consulta a Juan Gómez.",
       "Es el lunes 5 de enero a las 09:00.",
+      "Ya se lo pasé, te va a responder por acá.",
     ]);
+  });
+});
+
+describe("a repeat about an open handoff to reception (#362)", () => {
+  async function toothacheHandedToReception() {
+    const appointmentId = await bookMartina();
+    await writes("me duele la muela de abajo hace dos días");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: true, emergency: false });
+      return "";
+    });
+    await turn();
+    return appointmentId;
+  }
+
+  it("tells the patient a person has it, and opens nothing more", async () => {
+    await toothacheHandedToReception();
+    await writes("y entonces qué hago con la muela?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: true, emergency: false });
+      return "";
+    });
+
+    await turn();
+
+    expect((await openHandoffs()).map((one) => one.reason)).toEqual(["unmatchedHealthQuestion"]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Ya se lo pasé, te va a responder por acá.",
+    ]);
+  });
+
+  it("states the change the same turn made first, checked, then that a person has the rest", async () => {
+    const appointmentId = await toothacheHandedToReception();
+    await writes("el lunes voy, confirmado. y con la muela qué hago?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: true, emergency: false });
+      one.call("propose_change", { appointmentId, kind: "confirm" });
+      one.call("accept_proposal");
+      return "Listo, confirmado el lunes.";
+    });
+
+    await turn();
+
+    expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(scriptedModel.checks.map((check) => check.reply)).toEqual([
+      "Listo, confirmado el lunes.",
+    ]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Listo, confirmado el lunes.",
+      "Ya se lo pasé, te va a responder por acá.",
+    ]);
+  });
+
+  it("says nothing of it to a number with nothing booked, whose every message reception has", async () => {
+    await contactsAre(world.lucia.caller);
+    await world.addPatient("Martina", martinaPhone);
+    await writes("quiero sacar un turno");
+    await turn();
+    await writes("para el martes si puede ser");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      return "Una persona de la recepción te va a escribir por acá.";
+    });
+
+    await turn();
+
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).not.toContain(
+      "Ya se lo pasé, te va a responder por acá.",
+    );
   });
 });
 

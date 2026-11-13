@@ -280,7 +280,8 @@ What the patient is told:
   (`consultá con tu odontólogo`), and never says it passed anything on; a person replies, and a message unanswered overnight waits
   for office hours. When the same turn also made a change, its reply states only
   that change (`Listo, te pasé el turno del jueves al viernes 10:00`), after the
-  clinical check.
+  clinical check. That silence is for the turn that makes the handoff: asked again
+  about any open handoff, reception's included, it says `Ya se lo pasé` ([below](#handoff)).
 - **A burst that mixes both**, such as `quería confirmar el turno del jueves` and
   `me sigue doliendo la muela`: the assistant does its part, and its reply about
   it goes after the clinical check, followed by the handoff's fixed reply
@@ -290,7 +291,10 @@ What the patient is told:
 While a handoff is open the assistant stays in the conversation. It answers the
 new requests it can handle (confirming, cancelling, moving, when and where), told
 what the open handoff is about, and does not answer that topic again: asked
-about it, it says `Ya se lo pasé, te va a responder por acá.` A second handoff
+about it, the patient gets `Ya se lo pasé, te va a responder por acá.`, fixed
+and after the assistant's reply to anything else in the same turn; a number with
+nothing booked, of no patient or misunderstood is handed off whatever it writes,
+so it never gets it. A second handoff
 of the kind already open, to the practitioner or to reception, is not opened. It
 stays silent while a person holds the conversation.
 

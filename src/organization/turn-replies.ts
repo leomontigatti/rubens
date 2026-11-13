@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 
 import {
+  alreadyHandedOffReply,
   emergencyReply,
   optOutReply,
   practitionerHandoffReply,
@@ -30,8 +31,9 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // How a settled turn of the patient assistant (`assistant.ts`) answers the
 // patient (docs/domain/assistant.md § Rules it always keeps): a fixed reply
-// for a handoff to the practitioner, an opt-out, an emergency or a voice note
-// nobody understood, and nothing for a handoff to reception; otherwise the
+// for a handoff to the practitioner, an opt-out, an emergency, a voice note
+// nobody understood or a repeat about an open handoff's topic, and nothing for
+// a handoff to reception; otherwise the
 // model's own, which goes out only once the fixed checks pass and the
 // clinical check finds nothing clinical in it and nothing about a patient the
 // number may not hear about. A reply the check flags is held on a handoff to
@@ -51,6 +53,8 @@ export type Settled =
   | "optOutAsked"
   /** Voice notes nobody could understand: the patient is asked to write. */
   | "unintelligible"
+  /** Asked again about what an open handoff has: after the model's reply, the patient is told a person has it. */
+  | "alreadyHandedOff"
   | "answered";
 
 /** A settled turn: what it tells the patient, and the practitioner a handoff went to, by the name patients read. */
@@ -59,7 +63,8 @@ export interface SettledTurn {
   practitioner: string | null;
   /**
    * A handoff to the practitioner in a turn that also made a change: the
-   * model's reply about the change goes first, then the fixed one.
+   * model's reply about the change goes first, then the fixed one. A repeat
+   * about an open handoff sends the model's reply first whether or not it did.
    */
   changed: boolean;
 }
@@ -221,6 +226,7 @@ function fixedReply(
     toPractitioner: practitionerHandoffReply(rules.formOfAddress, turn.practitioner),
     optOutAsked: optOutReply(rules.formOfAddress),
     unintelligible: unintelligibleVoiceReply(rules.formOfAddress),
+    alreadyHandedOff: alreadyHandedOffReply(rules.formOfAddress),
     answered: null,
   }[turn.settled];
 }
@@ -366,6 +372,15 @@ async function sendCheckedReply(
 }
 
 /**
+ * Whether the model's reply goes before the turn's fixed one: about the
+ * change a turn handed to the practitioner also made, and on a repeat about
+ * an open handoff, about any new request the turn answered.
+ */
+export function repliesFirst(turn: { settled: Saying; changed?: boolean }) {
+  return turn.settled === "alreadyHandedOff" || (turn.settled === "toPractitioner" && turn.changed);
+}
+
+/**
  * Answers the settled turn: its fixed reply when the number may send, or the
  * model's reply once the fixed checks and the clinical check pass and
  * `mayReply` still holds, read again after the check.
@@ -406,10 +421,10 @@ export async function deliverReply(
     whole: turn.proposed,
     urgent: turn.settled === "emergency",
   };
-  if (fixed && turn.settled === "toPractitioner" && turn.changed) {
-    // The easy part of a mixed burst is answered before the part handed off:
-    // the model's words about it, checked, and a reply the check holds is
-    // dropped, since the practitioner has the conversation already.
+  if (fixed && repliesFirst(turn)) {
+    // The easy part of a mixed burst is answered before the part a person
+    // has: the model's words about it, checked, and a reply the check holds
+    // is dropped, since a person has the conversation already.
     await sendCheckedReply(database, cloud, model, { ...turn, text: turn.reply });
   }
   if (fixed) {

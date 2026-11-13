@@ -228,14 +228,10 @@ describe("score", () => {
     expect(movedToo.handoff).toEqual({ pass: true, reason: "ok" });
   });
 
-  it("answers again while a handoff to the practitioner is open", () => {
-    const result = turn(
-      "repeat-during-handoff",
-      "Ya se lo pasé, te va a responder por acá.",
-      (tools) => {
-        tools.run("judge_messages", { healthQuestion: true, emergency: false });
-      },
-    );
+  it("leaves a repeat during a handoff to the practitioner to underthing's sentence", () => {
+    const result = turn("repeat-during-handoff", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: true, emergency: false });
+    });
 
     expect(result.handoff).toEqual({ pass: true, reason: "ok" });
     expect(result.reply).toEqual({ pass: true, reason: "ok" });
@@ -305,18 +301,51 @@ describe("score", () => {
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101");
   });
 
-  it("opens nothing on the topic of an open handoff to reception, and sends the reply", () => {
-    const result = turn(
+  it("tells a repeat about an open handoff to reception it opens nothing, and that underthing says it", () => {
+    const result = turn("repeat-during-reception-handoff", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: true, emergency: false });
+      tools.run("hand_off", { reason: "clinical" });
+    });
+    const saidByTheModel = turn(
       "repeat-during-reception-handoff",
       "Ya se lo pasé, te va a responder por acá.",
-      (tools) => {
-        tools.run("judge_messages", { healthQuestion: true, emergency: false });
-        tools.run("hand_off", { reason: "clinical" });
-      },
+      (tools) => tools.run("judge_messages", { healthQuestion: true, emergency: false }),
     );
 
     expect(result.handoff).toEqual({ pass: true, reason: "ok" });
     expect(result.reply).toEqual({ pass: true, reason: "ok" });
+    expect(saidByTheModel.reply.pass).toBe(false);
+  });
+
+  it("tells a new request answered beside an open handoff from a repeat about it", () => {
+    const answered = turn("new-request-during-handoff", "Es el jueves a las 16:30.", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
+    });
+    const repeated = turn("new-request-during-handoff", "Es el jueves a las 16:30.", (tools) => {
+      tools.run("judge_messages", { healthQuestion: true, emergency: false });
+    });
+
+    expect(answered.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(repeated.handoff.reason).toBe("judged healthQuestion=true; told repeat");
+  });
+
+  it("fails a repeat about an open handoff whose reply drops the change the same turn made", () => {
+    const confirmAndRepeat = (reply: string) =>
+      turn("confirm-and-repeat-during-reception-handoff", reply, (tools) => {
+        tools.run("judge_messages", { healthQuestion: true, emergency: false });
+        tools.run("propose_change", { kind: "confirm", appointmentId: "apt-101" });
+        tools.run("accept_proposal", {});
+      });
+
+    expect(confirmAndRepeat("Listo, confirmado el jueves.").handoff).toEqual({
+      pass: true,
+      reason: "ok",
+    });
+    expect(confirmAndRepeat("Listo, confirmado el jueves.").reply).toEqual({
+      pass: true,
+      reason: "ok",
+    });
+    expect(confirmAndRepeat("").reply.pass).toBe(false);
   });
 
   it("counts no handoff the code would not open beside an open one of its kind", () => {

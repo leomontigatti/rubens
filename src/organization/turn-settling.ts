@@ -8,7 +8,7 @@ import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs
 import type { HandoffWanted } from "#/organization/handoffs.ts";
 import { notify } from "#/organization/notifications.ts";
 import { holdForOptOut } from "#/organization/opt-out-holds.ts";
-import { handoffWanted } from "#/organization/turn-handoffs.ts";
+import { handoffWanted, unansweredReasons } from "#/organization/turn-handoffs.ts";
 import type { Judgement, TurnToSort } from "#/organization/turn-handoffs.ts";
 import type { SettledTurn } from "#/organization/turn-replies.ts";
 import { conversation, handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
@@ -81,7 +81,7 @@ function addMediaToOpen(tx: Writer, conversationId: string, media: MediaType[]) 
  * says what the patient is told. While a member holds the conversation the
  * assistant is silent in it. A handoff it opens to the practitioner says so,
  * one to reception says nothing; one of a kind already open opens nothing,
- * and the model's reply, which leaves that topic to the person, goes as any.
+ * and the patient is told that a person has it.
  */
 export function settleTurn(
   database: Database,
@@ -159,7 +159,20 @@ function outcomeOf(
     return "unintelligible";
   }
   // The fixed reply says the team is told: only with a patient to turn off.
-  return settling.optOutAsked ? "optOutAsked" : "answered";
+  if (settling.optOutAsked) {
+    return "optOutAsked";
+  }
+  return settling.wanted && repeatsTopic(settling.wanted) ? "alreadyHandedOff" : "answered";
+}
+
+/**
+ * Whether a handoff the turn wanted, which one already open covers, is the
+ * patient asking again about its topic. A number with nothing booked, or of
+ * no patient, or misunderstood, wants one every turn: what it writes next is
+ * no repeat.
+ */
+function repeatsTopic(wanted: HandoffWanted) {
+  return !(unansweredReasons as readonly string[]).includes(wanted.reason);
 }
 
 /** The member who holds `conversationId`, or `null` while the assistant does. */

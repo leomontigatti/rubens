@@ -182,8 +182,12 @@ export interface PromptContext {
   openHandoffs: HandoffReason[];
 }
 
-/** What the patient is told when they ask again about what a person already has. */
-function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
+/**
+ * What the patient is told when they ask again about what a person already
+ * has: underthing sends it, after the model's reply. Fixed, so the model's
+ * wording cannot leave it out.
+ */
+export function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
   return formOfAddress === "usted"
     ? "Ya se lo pasé, le va a responder por acá."
     : "Ya se lo pasé, te va a responder por acá.";
@@ -196,7 +200,7 @@ function openHandoffRule(context: PromptContext) {
   }
   const topics = [...new Set(context.openHandoffs.map((reason) => handoffTopics[reason]))];
   return [
-    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, when and where). Judge only the new messages: what the patient wrote about that topic before them is not judged again. Do not answer that topic yourself and do not hand it off again: if the patient asks about it, say "${alreadyHandedOffReply(context.formOfAddress)}"`,
+    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, when and where). Judge only the new messages: what the patient wrote about that topic before them is not judged again. Do not answer that topic yourself and do not hand it off again. When the patient asks about it, underthing tells them a person has it: your reply says nothing of it, and with nothing else to say, it is empty.`,
   ];
 }
 

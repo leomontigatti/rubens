@@ -388,6 +388,29 @@ describe("a sandbox conversation", () => {
     );
   });
 
+  it("shows a repeat about its open handoff as the change the turn made, then that a person has the rest", async () => {
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { healthQuestion: true, emergency: false });
+      return "";
+    });
+    const handedOff = await playPatient(await startSandbox(), "me duele la muela hace dos días");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { healthQuestion: true, emergency: false });
+      turn.call("propose_change", { appointmentId, kind: "confirm" });
+      turn.call("accept_proposal");
+      return "Listo, confirmado el lunes.";
+    });
+
+    const played = await playPatient(handedOff.sandbox, "el lunes voy. y con la muela qué hago?");
+
+    expect(played.turn.outcome).toBe("alreadyHandedOff");
+    expect(played.turn.replies).toEqual([
+      "Listo, confirmado el lunes.",
+      "Ya se lo pasé, te va a responder por acá.",
+    ]);
+    expect(played.sandbox.handoffs).toHaveLength(1);
+  });
+
   it("counts the window from the patient's last message", async () => {
     const played = await playPatient(await startSandbox(), "hola");
 
