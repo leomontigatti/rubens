@@ -355,6 +355,9 @@ describe("disconnecting the number", () => {
     expect(
       await whatsappDirectory().organizationForNumber(fakeMeta.signupNumber.phoneNumberId),
     ).toBeNull();
+    const requestsBefore = fakeMeta.requests.length;
+    expect(await callMeta()).toMatchObject({ ok: false });
+    expect(fakeMeta.requests).toHaveLength(requestsBefore);
   });
 
   it("refuses when no number is connected", async () => {

@@ -244,6 +244,10 @@ describe("a template Meta stops", () => {
     fakeMeta.answerWith(200, { id: "900000000000001", status: "PAUSED" });
 
     expectOk(await world.organization.refreshWhatsappTemplates(adminCaller));
+    const warned = [
+      expect.objectContaining({ kind: "templatePaused", templateId: ids.confirmation }),
+    ];
+    expect(await notificationsOf(adminCaller)).toEqual(warned);
     await templateTurns({ metaId: "900000000000001", status: "paused", reason: null });
 
     expect(await notificationsOf(adminCaller)).toEqual([
