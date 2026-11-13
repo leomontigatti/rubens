@@ -472,7 +472,9 @@ export async function setStartingPassword(
 }
 
 function markPasswordChange(database: Database, memberId: string, mustChangePassword: boolean) {
-  database.update(member).set({ mustChangePassword }).where(eq(member.userId, memberId)).run();
+  database.transaction((tx) =>
+    tx.update(member).set({ mustChangePassword }).where(eq(member.userId, memberId)).run(),
+  );
 }
 
 /**

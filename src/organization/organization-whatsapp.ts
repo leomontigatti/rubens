@@ -77,7 +77,7 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
       return { ok: false, reason: "notSetUp" } as const;
     }
     // A template's approval lets the messages waiting on it go.
-    return this.thenArm(() => storeWhatsappEvents(this.database, events));
+    return this.armingOnWrite(() => storeWhatsappEvents(this.database, events));
   }
 
   /** The open handoffs the member sees in the inbox (`src/organization/handoff-inbox.ts`). */

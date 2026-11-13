@@ -205,11 +205,13 @@ export function returnConversation(
 }
 
 function release(database: Database, conversationId: string) {
-  database
-    .update(conversation)
-    .set({ heldBy: null, heldUntil: null })
-    .where(eq(conversation.id, conversationId))
-    .run();
+  database.transaction((tx) =>
+    tx
+      .update(conversation)
+      .set({ heldBy: null, heldUntil: null })
+      .where(eq(conversation.id, conversationId))
+      .run(),
+  );
 }
 
 /** When the next hold ends, or `null` when nobody holds a conversation. */

@@ -406,16 +406,18 @@ export function markNotificationRead(
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" } as const;
   }
-  const marked = database
-    .update(notification)
-    .set({ readAt: Date.now() })
-    .where(
-      and(
-        eq(notification.id, parsed.data.notificationId),
-        eq(notification.recipientId, acting.userId),
-      ),
-    )
-    .returning({ id: notification.id })
-    .get();
+  const marked = database.transaction((tx) =>
+    tx
+      .update(notification)
+      .set({ readAt: Date.now() })
+      .where(
+        and(
+          eq(notification.id, parsed.data.notificationId),
+          eq(notification.recipientId, acting.userId),
+        ),
+      )
+      .returning({ id: notification.id })
+      .get(),
+  );
   return marked ? ({ ok: true } as const) : ({ ok: false, reason: "notFound" } as const);
 }
