@@ -127,10 +127,12 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   requirement, so a removed member or a changed role takes effect on the next call.
   The UI and the server functions are not the boundary.
 - **A method is one line**: `this.as(caller, requirement, (acting) => …)` into an
-  area module in `src/organization/`, or `this.asThenArm(…)` for a call that can queue
-  a message or let a waiting one go, which sets the object's alarm after it. The area function is synchronous and makes its
-  writes, its checks and its audit entry (`recordAudit()`) in one
-  `database.transaction`, with no `await` inside: an object runs one event at a time,
+  area module in `src/organization/`. The runtime sets the object's alarm after any
+  call that opened a transaction, so no method chooses whether to set it; a job is
+  one `Job` value (`src/organization/jobs.ts`) in the runtime's `jobs` list. The
+  area function is synchronous and makes its writes, its checks and its audit entry
+  (`recordAudit()`) in one `database.transaction`, with no `await` inside (a write
+  outside one is missed by the alarm): an object runs one event at a time,
   so a check and the write it guards cannot be raced (double booking, ADR-0003).
   The one exception is a call to an outside service (Clerk, Meta), which cannot sit
   inside a synchronous transaction: the area function checks, awaits the call, then

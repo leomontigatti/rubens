@@ -67,7 +67,9 @@ export const jobs: readonly Job[] = [
  * What the organization's object runs on, under its RPC methods
  * (`organization.ts`): its SQLite storage, migrated before any call; the
  * services it reaches; and its one alarm (ADR-0008 § Jobs are Durable Object
- * alarms), always set to the earliest due item.
+ * alarms), set to the earliest item any of `jobs` has due. The alarm is set
+ * when the object starts, after each alarm, and after any call that opened a
+ * transaction (`armingOnWrite`), so no method chooses whether to set it.
  */
 export abstract class OrganizationRuntime extends DurableObject {
   protected readonly database: Database;
@@ -137,11 +139,6 @@ export abstract class OrganizationRuntime extends DurableObject {
   ): Promise<Awaited<T> | { ok: false; reason: Refusal }> {
     const authorized = authorize(this.database, caller, requirement);
     return authorized.ok ? this.armingOnWrite(() => work(authorized.acting)) : authorized;
-  }
-
-  /** `as()` while the RPC methods move to it (#375). */
-  protected asThenArm<T>(caller: Caller, requirement: Requirement, work: (acting: Acting) => T) {
-    return this.as(caller, requirement, work);
   }
 
   /** Runs every job, in the order of `jobs`, then sets the alarm for the next item. */
