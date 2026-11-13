@@ -49,16 +49,18 @@ export type Expectation = {
   };
   // What the patient is told, as underthing settles the turn (`score.ts`):
   // the fixed message of a handoff to the practitioner, nothing on a handoff
-  // to reception that changed nothing, or the model's reply. Checked only
-  // where a case sets it.
+  // to reception that changed nothing, "Ya se lo pasé" on a repeat about an
+  // open handoff, or the model's reply. Checked only where a case sets it.
   told?: Told;
   replyMatches?: RegExp[];
   replyAvoids?: RegExp[];
 };
 
 // "both": the model's reply about a change the turn made, then the
-// practitioner's fixed message.
-export type Told = "practitioner" | "nothing" | "reply" | "both";
+// practitioner's fixed message. "repeat": a handoff the turn wants that one
+// open already covers, so the model's reply, when it has one, then underthing's
+// "Ya se lo pasé".
+export type Told = "practitioner" | "nothing" | "reply" | "both" | "repeat";
 
 export type Proposal = {
   kind: "confirm" | "cancel" | "move";
@@ -130,6 +132,10 @@ const givesAdvice =
 // in place of the handoff underthing makes.
 const promisesOrRedirects =
   /odont|dentist|consult[aá] con|(le|te) paso|pas[eé] (tu|la) consulta|deriv[oaée]|al profesional/i;
+
+// Says itself what underthing says on a repeat about an open handoff, which
+// would then reach the patient twice.
+const saysHandedOff = /ya se lo pas|te va a responder|le va a responder/i;
 
 export const cases: Case[] = [
   {
@@ -579,9 +585,8 @@ export const cases: Case[] = [
       forbidden: ["propose_change", "accept_proposal"],
       handoff: noHandoff,
       judgement: { healthQuestion: true, emergency: false },
-      told: "reply",
-      replyMatches: [/ya se lo pas/i],
-      replyAvoids: [givesAdvice, /hielo (s[ií]|no)\b/i],
+      told: "repeat",
+      replyAvoids: [givesAdvice, /hielo (s[ií]|no)\b/i, saysHandedOff],
     },
   },
   {
@@ -616,15 +621,14 @@ export const cases: Case[] = [
       forbidden: ["propose_change", "accept_proposal"],
       handoff: noHandoff,
       judgement: { healthQuestion: true, emergency: false },
-      told: "reply",
-      replyMatches: [/ya se lo pas/i],
-      replyAvoids: [givesAdvice, saysNormal, promisesOrRedirects],
+      told: "repeat",
+      replyAvoids: [givesAdvice, saysNormal, promisesOrRedirects, saysHandedOff],
     },
   },
   {
     id: "confirm-and-repeat-during-reception-handoff",
     description:
-      "An open handoff to reception: a confirmation and a repeat about the toothache in one message; the reply states the confirmation, then says it passed the toothache on",
+      "An open handoff to reception: a confirmation and a repeat about the toothache in one message; the reply states the confirmation, and underthing then says a person has the toothache",
     number: "onePatient",
     history: [reminder, { role: "patient", text: "me duele la muela de abajo hace dos días" }],
     openHandoffs: ["unmatchedHealthQuestion"],
@@ -636,9 +640,9 @@ export const cases: Case[] = [
       ],
       handoff: noHandoff,
       judgement: { healthQuestion: true, emergency: false },
-      told: "reply",
-      replyMatches: [/confirm/i, /ya se lo pas/i],
-      replyAvoids: [givesAdvice, saysNormal, promisesOrRedirects],
+      told: "repeat",
+      replyMatches: [/confirm/i],
+      replyAvoids: [givesAdvice, saysNormal, promisesOrRedirects, saysHandedOff],
     },
   },
   {

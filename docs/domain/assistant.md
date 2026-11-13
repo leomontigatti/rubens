@@ -291,7 +291,10 @@ What the patient is told:
 While a handoff is open the assistant stays in the conversation. It answers the
 new requests it can handle (confirming, cancelling, moving, when and where), told
 what the open handoff is about, and does not answer that topic again: asked
-about it, it says `Ya se lo pasé, te va a responder por acá.` A second handoff
+about it, the patient gets `Ya se lo pasé, te va a responder por acá.`, fixed
+and after the assistant's reply to anything else in the same turn; a number with
+nothing booked, of no patient or misunderstood is handed off whatever it writes,
+so it never gets it. A second handoff
 of the kind already open, to the practitioner or to reception, is not opened. It
 stays silent while a person holds the conversation.
 

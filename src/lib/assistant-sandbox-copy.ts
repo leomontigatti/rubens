@@ -24,6 +24,7 @@ export const sandboxOutcomeLabels = {
   emergency: "Lo trató como una urgencia.",
   optOutAsked: "Entendió que el paciente no quiere más mensajes: avisaría al equipo.",
   unintelligible: "No entendió la nota de voz: pediría que la escriba.",
+  alreadyHandedOff: "Una persona ya tiene ese tema: le diría al paciente que ya se lo pasó.",
   silent: "No respondió: una persona tomó la conversación.",
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;

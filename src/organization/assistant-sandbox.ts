@@ -9,6 +9,7 @@ import {
 import type { SandboxStart, SandboxState, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
+import { checkReply } from "#/lib/reply-checks.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
 import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
 
@@ -35,6 +36,7 @@ import {
   clinicalCheckHolds,
   handoffReplyText,
   openHeldReply,
+  repliesFirst,
   replyTexts,
   says,
 } from "#/organization/turn-replies.ts";
@@ -486,7 +488,7 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
   if (!judged) {
     return { ...shown, outcome: "unread" as const, held: null, replies: [] };
   }
-  const { settled, practitioner } = run.step(() =>
+  const { settled, practitioner, changed } = run.step(() =>
     settleTurn(database, { conversationId, appointments, answered, ...judged, read }),
   );
   const said = !says(settled)
@@ -495,6 +497,7 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
         ...judged,
         settled,
         practitioner,
+        changed,
         answered,
         patients: read.patients.map((one) => one.firstName),
       });
@@ -513,6 +516,7 @@ async function sandboxReply(
   run: SandboxRun,
   model: AssistantModel,
   turn: Parameters<typeof replyTexts>[0] & {
+    changed: boolean;
     answered: ReturnType<typeof answeredMessage>;
     patients: string[];
     proposed: boolean;
@@ -525,7 +529,8 @@ async function sandboxReply(
   }
   const whole = { whole: turn.proposed };
   if (texts.fixed) {
-    return { held: null, replies: splitReply(texts.text, whole) };
+    const first = repliesFirst(turn) ? await checkedModelReply(run, model, turn) : [];
+    return { held: null, replies: [...first, ...splitReply(texts.text, whole)] };
   }
   const request = { conversationId, reply: texts.text, patients: turn.patients };
   if (!(await clinicalCheckHolds(run.database, model, request, true))) {
@@ -539,6 +544,29 @@ async function sandboxReply(
     held: texts.text,
     replies: text ? splitReply(text, { whole: false }) : [],
   };
+}
+
+/**
+ * The model's reply that goes before a fixed one, as `deliverReply` sends it:
+ * once the fixed checks and the clinical check pass it, else none.
+ */
+async function checkedModelReply(
+  run: SandboxRun,
+  model: AssistantModel,
+  turn: { reply: string; patients: string[]; proposed: boolean },
+) {
+  const checked = checkReply(turn.reply);
+  if (!checked.ok) {
+    return [];
+  }
+  const request = {
+    conversationId: run.state.conversationId,
+    reply: checked.text,
+    patients: turn.patients,
+  };
+  return (await clinicalCheckHolds(run.database, model, request, true))
+    ? []
+    : splitReply(checked.text, { whole: turn.proposed });
 }
 
 /** The turn's answer: the conversation to carry on, its window's close, and what the turn did. */
