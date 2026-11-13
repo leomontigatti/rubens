@@ -12,6 +12,7 @@ import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
 import { auditLog, member } from "#/organization/schema.ts";
+import { modelUsage, transcriptionUsage } from "#/organization/whatsapp-schema.ts";
 import { fakeMeta } from "#/organization/graph-api.test-support.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
@@ -404,6 +405,40 @@ export function auditEntriesFor(organization: OrganizationStub, entityId: string
       .from(auditLog)
       .where(eq(auditLog.entityId, entityId))
       // Insertion order: two entries can share a millisecond.
+      .orderBy(sql`rowid`)
+      .all(),
+  );
+}
+
+/** What the object recorded of each run of the model, oldest first. */
+export function recordedModelUsage(organization: OrganizationStub) {
+  return inStorage(organization, (database) =>
+    database
+      .select({
+        day: modelUsage.day,
+        model: modelUsage.model,
+        purpose: modelUsage.purpose,
+        sandbox: modelUsage.sandbox,
+        inputTokens: modelUsage.inputTokens,
+        outputTokens: modelUsage.outputTokens,
+      })
+      .from(modelUsage)
+      .orderBy(sql`rowid`)
+      .all(),
+  );
+}
+
+/** What the object recorded of each voice note transcribed, oldest first. */
+export function recordedTranscriptions(organization: OrganizationStub) {
+  return inStorage(organization, (database) =>
+    database
+      .select({
+        day: transcriptionUsage.day,
+        model: transcriptionUsage.model,
+        sandbox: transcriptionUsage.sandbox,
+        audioMs: transcriptionUsage.audioMs,
+      })
+      .from(transcriptionUsage)
       .orderBy(sql`rowid`)
       .all(),
   );

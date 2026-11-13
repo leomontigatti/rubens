@@ -75,7 +75,7 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   wait is over (`turn-settling.ts` settles it: the judgement, the handoff and what the patient
   is told; `turn-replies.ts` sends its reply, after the clinical check; `turn-retries.ts`
   retries a turn the model could not read, then hands it off; `assistant-usage.ts` records
-  the tokens of each model run, for the WhatsApp settings' month totals;
+  the tokens of each model run and the audio of each voice note transcribed;
   `assistant-sandbox.ts` runs the same turn for the settings' sandbox, inside
   transactions it rolls back), and the
   object's `alarm()` is set to the earliest due item. Payload
