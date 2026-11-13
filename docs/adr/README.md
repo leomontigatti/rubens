@@ -27,13 +27,15 @@ by ADR-0008.
 ## Decisions
 
 - [ADR-0001: Application stack](./0001-stack.md) - TanStack Start on Vite+,
-  Drizzle on Postgres, Better Auth, pg-boss, shadcn/ui on Base UI; why each over its alternative.
+  Drizzle, shadcn/ui on Base UI; why each over its alternative. Its Postgres, pg-boss and
+  Better Auth are amended away by ADR-0008 and ADR-0009.
 - [ADR-0003: Scheduling integrity and clinical records](./0003-scheduling-and-clinical-records.md) -
   exclusion constraints and schedules against double booking; audited clinical
   records readable by every practitioner who keeps them.
 - [ADR-0005: Clinical notes are versioned, files live on the server's disk](./0005-versioned-clinical-notes.md) -
-  notes edited with every version kept instead of signed and amended; no app-level
-  encryption at launch; attachments on a Coolify volume, streamed by the app.
+  notes edited with every version kept instead of signed and amended. Its encryption and
+  files sections are reversed by ADR-0008: clinical text and files are encrypted by the app,
+  and files live in R2.
 - [ADR-0006: Patients talk to an assistant on the organization's WhatsApp number](./0006-patient-assistant-on-whatsapp.md) -
   the model interprets and Rubens decides through proposals; TanStack AI. Its channel
   (WAHA on the organization's own number) and pg-boss worker are superseded by ADR-0010.
