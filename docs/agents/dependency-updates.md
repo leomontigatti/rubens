@@ -7,7 +7,7 @@ code. Dependabot still bumps the action pins ([ci.md](../operations/ci.md#pins))
 
 ## The scheduled task
 
-- **Where:** T3 on the user's own machine, project `rubens`, every Monday at 08:00 local time, before the weekly architecture review. It runs only
+- **Where:** T3 on the user's own machine, project `rubens`, every Monday at 10:00 local time. It runs only
   while that machine and T3 are up; a missed week is caught up by the next run, since every run
   updates to the newest versions.
 - **What it does:** each run launches one worktree thread from `origin/main` with the prompt
