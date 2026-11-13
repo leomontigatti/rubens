@@ -20,6 +20,7 @@ import {
   inboxSettings,
 } from "#/organization/whatsapp-schema.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
+import type { Job } from "#/organization/jobs.ts";
 
 // A handoff's countdown (docs/domain/assistant.md § Handoff): one opened
 // inside the window counts back from its close, which each later message
@@ -155,7 +156,7 @@ function countdowns(database: Writer, now: number): Countdown[] {
 }
 
 /** When the object's alarm should next fire for a reminder, or `null` when none is to go. */
-export function nextReminderAlarm(database: Database): number | null {
+function nextReminderAlarm(database: Database): number | null {
   const due = countdowns(database, Date.now())
     .flatMap((one) => [one.recipientsAt, one.othersAt])
     .filter((at) => at !== null);
@@ -237,7 +238,7 @@ function remind(tx: Writer, countdown: Countdown, members: string[], othersToo: 
 }
 
 /** Sends each handoff reminder that is due: the object's alarm. */
-export function sendDueReminders(database: Database) {
+function sendDueReminders(database: Database) {
   const now = Date.now();
   for (const countdown of countdowns(database, now)) {
     const due = {
@@ -250,3 +251,10 @@ export function sendDueReminders(database: Database) {
     }
   }
 }
+
+/** The reminders of a handoff before the patient's window closes. */
+export const handoffRemindersJob: Job = {
+  name: "handoff reminders",
+  nextDue: (database) => nextReminderAlarm(database),
+  run: (database) => sendDueReminders(database),
+};

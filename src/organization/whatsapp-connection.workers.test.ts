@@ -355,14 +355,9 @@ describe("disconnecting the number", () => {
     expect(
       await whatsappDirectory().organizationForNumber(fakeMeta.signupNumber.phoneNumberId),
     ).toBeNull();
-  });
-
-  it("connects again through signup afterwards", async () => {
-    expectOk(await organization.disconnectWhatsapp(adminCaller));
-
-    expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({ ok: true });
-
-    expect(await connection()).toMatchObject({ state: "connected" });
+    const requestsBefore = fakeMeta.requests.length;
+    expect(await callMeta()).toMatchObject({ ok: false });
+    expect(fakeMeta.requests).toHaveLength(requestsBefore);
   });
 
   it("refuses when no number is connected", async () => {
@@ -392,8 +387,9 @@ describe("connecting again", () => {
   it("registers the same number again with the PIN it was first registered with", async () => {
     expectOk(await organization.disconnectWhatsapp(adminCaller));
 
-    expectOk(await organization.connectWhatsapp(adminCaller, completion()));
+    expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({ ok: true });
 
+    expect(await connection()).toMatchObject({ state: "connected" });
     const [first, second] = registeredPins();
     expect(second).toBe(first);
   });

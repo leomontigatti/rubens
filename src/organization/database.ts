@@ -20,8 +20,21 @@ export type Database = DrizzleSqliteDODatabase<typeof schema>;
 /** A transaction, or the database itself: what a write that must commit with others takes. */
 export type Writer = Parameters<Parameters<Database["transaction"]>[0]>[0] | Database;
 
-export function openDatabase(storage: DurableObjectStorage): Database {
-  return drizzle(storage, { schema });
+/**
+ * Opens the object's storage. `onTransaction`, when given, is told of every
+ * transaction opened: the only way an area writes (`docs/agents/coding-standards.md`),
+ * so the runtime knows which calls wrote.
+ */
+export function openDatabase(storage: DurableObjectStorage, onTransaction?: () => void): Database {
+  const database = drizzle(storage, { schema });
+  if (onTransaction) {
+    const transaction = database.transaction.bind(database);
+    database.transaction = (work, config) => {
+      onTransaction();
+      return transaction(work, config);
+    };
+  }
+  return database;
 }
 
 /**

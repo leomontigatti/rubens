@@ -27,13 +27,19 @@ on:
 permissions:
   contents: read
 
+# A skipped run gets its own group: in the shared one, a body edit right after a
+# push would cancel the run that checks the title.
 concurrency:
-  group: pr-title-${{ github.event.pull_request.number }}
+  group: pr-title-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && github.event.changes.title == null && github.event.changes.base == null && 'skip' || 'check' }}
   cancel-in-progress: true
 
 jobs:
   pr-title:
-    name: pr-title
+    # Body edits skip the job: a skipped job reports a success under its name, so the
+    # skipped run takes another name and `pr-title` keeps the verdict of the last run that
+    # read the title. A base change (a stacked PR retargeted) still runs it.
+    name: ${{ github.event.action == 'edited' && github.event.changes.title == null && github.event.changes.base == null && 'pr-title (title unchanged)' || 'pr-title' }}
+    if: github.event.action != 'edited' || github.event.changes.title != null || github.event.changes.base != null
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

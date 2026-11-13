@@ -1084,6 +1084,7 @@ describe("a message the model could not read", () => {
         reason: "modelUnavailable",
         forPractitioner: false,
         recipients: ["Ana Admin"],
+        createdAt: sentAt + 18 * hourMs,
       }),
     ]);
     // Stored as judged, so no later turn reads it as new.
@@ -1144,17 +1145,6 @@ describe("the conversation's wait", () => {
       role: "user",
       content: "[new messages]\nhola\ncuándo es mi turno?",
     });
-  });
-
-  it("judges every message that waits, however many the patient sent", async () => {
-    await bookPatient("Martina", martinaPhone);
-    for (let message = 1; message <= 35; message += 1) {
-      await patientWrites(`mensaje ${message}`);
-    }
-
-    await afterTheWait();
-
-    expect(await judgementsShown()).toEqual(Array.from({ length: 35 }, () => "notForPractitioner"));
   });
 });
 

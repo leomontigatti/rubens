@@ -214,12 +214,14 @@ export class Organization extends OrganizationWhatsapp {
   // `src/server/dev-sign-in.ts`).
 
   setUp(input: { organizationId: string; name: string; admin: Omit<MemberInput, "roles"> }) {
-    return setUpOrganization(this.database, input);
+    return this.armingOnWrite(() => setUpOrganization(this.database, input));
   }
 
   /** Sets the organization up with its first admin's Clerk user: the setup script's call. */
   setUpWithAccount(input: Parameters<typeof setUpWithAccount>[3]) {
-    return setUpWithAccount(this.database, this.accounts, this.emailsInFlight, input);
+    return this.armingOnWrite(() =>
+      setUpWithAccount(this.database, this.accounts, this.emailsInFlight, input),
+    );
   }
 
   activeMembers() {
@@ -251,18 +253,12 @@ export class Organization extends OrganizationWhatsapp {
     return this.as(caller, "any", () => getOffice(this.database, input));
   }
 
-  // The first office's zone holds the handoff reminders to 08:00–21:00, so a
-  // new or edited office sets the alarm again.
   createOffice(caller: Caller, input: OfficeInput) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
-      createOffice(this.database, acting, input),
-    );
+    return this.as(caller, ["admin"], (acting) => createOffice(this.database, acting, input));
   }
 
   updateOffice(caller: Caller, input: OfficeUpdate) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
-      updateOffice(this.database, acting, input),
-    );
+    return this.as(caller, ["admin"], (acting) => updateOffice(this.database, acting, input));
   }
 
   setOfficeActive(caller: Caller, input: ActiveChange) {
@@ -297,9 +293,8 @@ export class Organization extends OrganizationWhatsapp {
     );
   }
 
-  /** A change to the templates it picks can queue messages. */
   updateMedicalService(caller: Caller, input: MedicalServiceUpdate) {
-    return this.asThenArm(caller, medicalServiceEditors, (acting) =>
+    return this.as(caller, medicalServiceEditors, (acting) =>
       updateMedicalService(this.database, acting, input),
     );
   }
@@ -397,15 +392,13 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   setWhatsappConsent(caller: Caller, input: WhatsappConsentChange) {
-    return this.asThenArm(caller, patientEditors, (acting) =>
+    return this.as(caller, patientEditors, (acting) =>
       setWhatsappConsent(this.database, acting, input),
     );
   }
 
   decideOptOut(caller: Caller, input: OptOutDecision) {
-    return this.asThenArm(caller, patientEditors, (acting) =>
-      decideOptOut(this.database, acting, input),
-    );
+    return this.as(caller, patientEditors, (acting) => decideOptOut(this.database, acting, input));
   }
 
   setPatientActive(caller: Caller, input: PatientActiveChange) {
@@ -473,25 +466,25 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   createSchedule(caller: Caller, input: ScheduleInput) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       createSchedule(this.database, acting, input),
     );
   }
 
   changeSchedule(caller: Caller, input: ScheduleChange) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       changeSchedule(this.database, acting, input),
     );
   }
 
   endSchedule(caller: Caller, input: ScheduleEnd) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       endSchedule(this.database, acting, input),
     );
   }
 
   deleteSchedule(caller: Caller, input: ScheduleDelete) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       deleteSchedule(this.database, acting, input),
     );
   }
@@ -501,19 +494,19 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   createTimeOff(caller: Caller, input: TimeOffInput) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       createTimeOff(this.database, acting, input),
     );
   }
 
   updateTimeOff(caller: Caller, input: TimeOffUpdate) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       updateTimeOff(this.database, acting, input),
     );
   }
 
   deleteTimeOff(caller: Caller, input: TimeOffDelete) {
-    return this.asThenArm(caller, workingTimeEditors, (acting) =>
+    return this.as(caller, workingTimeEditors, (acting) =>
       deleteTimeOff(this.database, acting, input),
     );
   }
@@ -523,21 +516,15 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   createClosure(caller: Caller, input: ClosureInput) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
-      createClosure(this.database, acting, input),
-    );
+    return this.as(caller, ["admin"], (acting) => createClosure(this.database, acting, input));
   }
 
   updateClosure(caller: Caller, input: ClosureUpdate) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
-      updateClosure(this.database, acting, input),
-    );
+    return this.as(caller, ["admin"], (acting) => updateClosure(this.database, acting, input));
   }
 
   deleteClosure(caller: Caller, input: ClosureDelete) {
-    return this.asThenArm(caller, ["admin"], (acting) =>
-      deleteClosure(this.database, acting, input),
-    );
+    return this.as(caller, ["admin"], (acting) => deleteClosure(this.database, acting, input));
   }
 
   listAvailabilityPractitioners(caller: Caller) {
@@ -555,15 +542,11 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   bookAppointment(caller: Caller, input: BookingInput & WarningConfirmation) {
-    return this.asThenArm(caller, bookers, (acting) =>
-      bookAppointment(this.database, acting, input),
-    );
+    return this.as(caller, bookers, (acting) => bookAppointment(this.database, acting, input));
   }
 
   bookOverbooking(caller: Caller, input: OverbookingInput & WarningConfirmation) {
-    return this.asThenArm(caller, bookers, (acting) =>
-      bookOverbooking(this.database, acting, input),
-    );
+    return this.as(caller, bookers, (acting) => bookOverbooking(this.database, acting, input));
   }
 
   getPatientAppointments(caller: Caller, input: { patientId: string }) {
@@ -583,25 +566,23 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   rescheduleAppointment(caller: Caller, input: RescheduleInput & WarningConfirmation) {
-    return this.asThenArm(caller, bookers, (acting) =>
+    return this.as(caller, bookers, (acting) =>
       rescheduleAppointment(this.database, acting, input),
     );
   }
 
   changeAppointmentStatus(caller: Caller, input: StatusChangeInput) {
-    return this.asThenArm(caller, bookers, (acting) =>
+    return this.as(caller, bookers, (acting) =>
       changeAppointmentStatus(this.database, acting, input),
     );
   }
 
   cancelAppointment(caller: Caller, input: CancellationInput) {
-    return this.asThenArm(caller, bookers, (acting) =>
-      cancelAppointment(this.database, acting, input),
-    );
+    return this.as(caller, bookers, (acting) => cancelAppointment(this.database, acting, input));
   }
 
   undoAppointmentStatus(caller: Caller, input: AppointmentIdInput) {
-    return this.asThenArm(caller, bookers, (acting) =>
+    return this.as(caller, bookers, (acting) =>
       undoAppointmentStatus(this.database, acting, input),
     );
   }

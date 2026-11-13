@@ -149,11 +149,13 @@ export class WhatsappNumber {
   /** The connected number can no longer send: Meta's words, or `null` when they are not Meta's. */
   #fail(reason: string | null) {
     this.#opened = null;
-    this.#database
-      .update(whatsappConnection)
-      .set({ state: "failed", failureReason: reason, accessToken: null })
-      .where(eq(whatsappConnection.state, "connected"))
-      .run();
+    this.#database.transaction((tx) =>
+      tx
+        .update(whatsappConnection)
+        .set({ state: "failed", failureReason: reason, accessToken: null })
+        .where(eq(whatsappConnection.state, "connected"))
+        .run(),
+    );
   }
 
   /**

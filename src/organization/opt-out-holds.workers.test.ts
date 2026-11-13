@@ -506,7 +506,7 @@ describe("the opt-out under its message in the conversation", () => {
     }
   });
 
-  it("keeps a patient: lifts their hold, keeps their consent, and resolves everyone's notification", async () => {
+  it("keeps a patient: lifts their hold, keeps their consent, and resolves their notification only", async () => {
     const martina = await world.addPatient("Martina", numberPhone);
     const tomas = await addThroughGuardian("Tomás", "+5493515550002");
     await numberOptsOut();

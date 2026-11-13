@@ -4,6 +4,9 @@ import { today } from "#/lib/schedules.ts";
 
 import type { Organization } from "#/organization/organization.ts";
 
+import { accepted } from "#/dev/accepted.ts";
+import { seedQaData } from "#/dev/qa-seed.ts";
+
 import {
   devIncomingMessages,
   devMedicalService,
@@ -17,12 +20,14 @@ import {
 
 /**
  * Fills a new dev organization's object with `src/dev/world.ts`, through the
- * object's own methods, so the seed obeys the rules a screen does. An object
- * already set up is left as it is: two first page loads at once seed it once.
+ * object's own methods, so the seed obeys the rules a screen does; with `qa`,
+ * which only `pnpm dev` passes, `src/dev/qa-world.ts` too. An object already
+ * set up is left as it is: two first page loads at once seed it once.
  */
 export async function seedDevOrganization(
   organization: DurableObjectStub<Organization>,
   organizationId: string,
+  options: { qa: boolean } = { qa: false },
 ): Promise<void> {
   const setUp = await organization.setUp({
     organizationId,
@@ -62,7 +67,7 @@ export async function seedDevOrganization(
       includeInactive: false,
     }),
   );
-  accepted(
+  const { medicalService } = accepted(
     "createMedicalService",
     await organization.createMedicalService(admin, {
       ...devMedicalService,
@@ -70,11 +75,13 @@ export async function seedDevOrganization(
       templateIds: templates.map((one) => one.id),
     }),
   );
+  const devPatientIds: string[] = [];
   for (const patient of devPatients) {
-    accepted(
+    const registered = accepted(
       `registerPatient ${patient.lastName}`,
       await organization.registerPatient(admin, patient),
     );
+    devPatientIds.push(registered.patient.id);
   }
   accepted(
     "createSchedule",
@@ -115,15 +122,13 @@ export async function seedDevOrganization(
       ],
     }),
   );
-}
-
-/** `result` when the object accepted the step; a refusal stops the seed. */
-function accepted<T extends { ok: true } | { ok: false; reason: string }>(
-  step: string,
-  result: T,
-): Extract<T, { ok: true }> {
-  if (!result.ok) {
-    throw new Error(`dev seed: ${step} refused (${result.reason})`);
+  if (options.qa) {
+    await seedQaData(organization, {
+      admin,
+      officeId: office.office.id,
+      juanId: practitioner.id,
+      devConsultId: medicalService.id,
+      devPatientIds,
+    });
   }
-  return result as Extract<T, { ok: true }>;
 }

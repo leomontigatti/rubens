@@ -42,7 +42,9 @@ organization's data: the organization object's methods and the area modules in
   fires a due alarm by itself, racing the test, so a test that sends from the outbox fakes the
   object's clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`) to a time
   before the real one, which keeps what it queues in the scheduler's future
-  (`src/organization/outbox.workers.test.ts`).
+  (`src/organization/outbox.workers.test.ts`). When the alarm is set (after any call that
+  wrote, never after one that only read) is pinned once, in
+  `src/organization/organization-runtime.workers.test.ts`: a method's own tests need not check it.
 - **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
   `adminCaller`, `addMember`, `addRefusedAdmin`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
   `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`, `fakeAccounts`, `fakeMeta`). Extend it before adding another support file

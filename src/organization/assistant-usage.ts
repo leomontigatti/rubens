@@ -3,7 +3,7 @@ import { defaultTimeZone } from "#/lib/offices.ts";
 import { today } from "#/lib/schedules.ts";
 
 import type { ModelUsage } from "#/organization/assistant-model.ts";
-import type { Writer } from "#/organization/database.ts";
+import type { Database, Writer } from "#/organization/database.ts";
 import { modelUsage, transcriptionUsage } from "#/organization/whatsapp-schema.ts";
 
 // What the organization's assistant uses (docs/domain/assistant.md § Costs):
@@ -18,11 +18,17 @@ interface ModelRun extends ModelUsage {
   sandbox: boolean;
 }
 
-/** Records what one run of the model used, now. */
-export function recordModelUsage(tx: Writer, run: ModelRun) {
-  tx.insert(modelUsage)
-    .values({ ...run, day: today(defaultTimeZone) })
-    .run();
+/**
+ * Records what one run of the model used, now, in a transaction of its own:
+ * it is reported while the model's call is awaited, outside any other.
+ */
+export function recordModelUsage(database: Database, run: ModelRun) {
+  database.transaction((tx) =>
+    tx
+      .insert(modelUsage)
+      .values({ ...run, day: today(defaultTimeZone) })
+      .run(),
+  );
 }
 
 /** Records the transcription of a voice note `seconds` long, now. */
