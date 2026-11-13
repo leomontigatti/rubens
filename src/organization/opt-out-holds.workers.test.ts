@@ -62,7 +62,7 @@ const hourMs = 60 * 60_000;
 const dayMs = 24 * hourMs;
 
 const confirmationBody =
-  "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba";
+  "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}). Consultorios Prueba";
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;

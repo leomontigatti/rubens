@@ -15,8 +15,11 @@ const templateVariableNames = [
   "fecha",
   "hora",
   "sede",
-  "direccion",
+  "domicilio",
   "prestacion",
+  // The address's name before `domicilio`, which a template Meta approved
+  // then still carries: filled, but no new draft may use it (`whatsapp-templates.ts`).
+  "direccion",
 ] as const;
 
 export type TemplateVariable = (typeof templateVariableNames)[number];
@@ -53,8 +56,9 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
     fecha: formatDay(start, timeZone),
     hora: formatTime(start, timeZone),
     sede: appointment.officeName,
-    direccion: appointment.officeAddress,
+    domicilio: appointment.officeAddress,
     prestacion: afterPossessive(appointment.medicalServiceName),
+    direccion: appointment.officeAddress,
   };
 }
 

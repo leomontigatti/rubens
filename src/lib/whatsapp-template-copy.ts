@@ -31,8 +31,9 @@ export const variableLabels: Record<TemplateVariable, string> = {
   fecha: "Fecha",
   hora: "Hora",
   sede: "Sede",
-  direccion: "Dirección",
+  domicilio: "Domicilio",
   prestacion: "Prestación",
+  direccion: "Domicilio",
 };
 
 function count(amount: number, one: string, many: string) {

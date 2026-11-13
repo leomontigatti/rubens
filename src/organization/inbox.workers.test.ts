@@ -130,7 +130,7 @@ beforeEach(async () => {
   await submitTemplate(world.organization, confirmationId, {
     status: "APPROVED",
     metaId: "900000000000001",
-    body: "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba",
+    body: "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}). Consultorios Prueba",
   });
   await world.pickTemplates(medicalServiceId, [confirmationId]);
   await world.book({

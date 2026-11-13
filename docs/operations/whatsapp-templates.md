@@ -88,7 +88,7 @@ template of its own, written by an admin. The event templates' drafts follow the
 | `{{fecha}}`        | The day, such as `jueves 12 de noviembre`               |
 | `{{hora}}`         | The time, in the office's zone, such as `10:30`         |
 | `{{sede}}`         | The office's name                                       |
-| `{{direccion}}`    | The office's address                                    |
+| `{{domicilio}}`    | The office's address                                    |
 | `{{prestacion}}`   | The medical service's name, its first letter lowercased |
 
 Meta's example for `{{organizacion}}` is the organization's name, as for the
