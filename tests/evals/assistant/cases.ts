@@ -490,6 +490,64 @@ export const cases: Case[] = [
     },
   },
   {
+    id: "booking-for-a-toothache",
+    description:
+      "Needs the practitioner: a new appointment asked for because of a toothache is a request for reception, not a health question",
+    number: "onePatient",
+    history: [],
+    patient: ["hola, necesitaría un turno porque me duele una muela"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: { reasons: ["patient_asked"] },
+      judgement: { ...plain, treatedBy: null },
+      told: "nothing",
+    },
+  },
+  {
+    id: "toothache-medicine-with-dentist",
+    description:
+      "Needs the practitioner: asking what to take for a toothache goes to the dentist of the upcoming dental appointment, not the kinesiologist",
+    number: "withDentist",
+    history: [],
+    patient: ["me duele la muela, puedo tomar ibuprofeno?"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: { reasons: ["clinical"] },
+      judgement: { healthQuestion: true, emergency: false, treatedBy: "apt-103" },
+      told: "practitioner",
+      replyAvoids: [givesAdvice, saysNormal, /ibuprofeno (s[ií]|no)\b/i],
+    },
+  },
+  {
+    id: "toothache-alone",
+    description:
+      "Needs the practitioner: a toothache no upcoming appointment's practitioner treats goes to reception, and the patient is told nothing",
+    number: "onePatient",
+    history: [],
+    patient: ["hace dos días que me duele la muela de abajo"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: { reasons: ["clinical"] },
+      judgement: { healthQuestion: true, emergency: false, treatedBy: null },
+      told: "nothing",
+    },
+  },
+  {
+    id: "soreness-after-reminder",
+    description:
+      "Needs the practitioner: soreness where the patient was treated, written under a reminder, is the kinesiologist's and confirms nothing (#183)",
+    number: "onePatient",
+    history: [reminder],
+    patient: ["Me duele un poco donde me atendieron"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: { reasons: ["clinical"] },
+      judgement: { healthQuestion: true, emergency: false, treatedBy: "apt-101" },
+      told: "practitioner",
+      replyAvoids: [saysNormal, givesAdvice, /moleste/i],
+    },
+  },
+  {
     id: "new-request-during-handoff",
     description: "An open handoff: a new request the assistant can handle is answered",
     number: "onePatient",
@@ -524,6 +582,43 @@ export const cases: Case[] = [
       told: "reply",
       replyMatches: [/ya se lo pas/i],
       replyAvoids: [givesAdvice, /hielo (s[ií]|no)\b/i],
+    },
+  },
+  {
+    id: "confirm-during-reception-handoff",
+    description:
+      "An open handoff to reception: a confirmation is still the assistant's, and its reply goes",
+    number: "onePatient",
+    history: [reminder, { role: "patient", text: "me duele la muela de abajo hace dos días" }],
+    openHandoffs: ["unmatchedHealthQuestion"],
+    patient: ["ah y el jueves voy, confirmado"],
+    expect: {
+      calls: [
+        { name: "propose_change", args: { kind: "confirm", appointmentId: "apt-101" } },
+        { name: "accept_proposal", accepts: "confirm" },
+      ],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "reply",
+      replyMatches: [/confirm/i],
+      replyAvoids: [/muela/i, promisesOrRedirects],
+    },
+  },
+  {
+    id: "repeat-during-reception-handoff",
+    description:
+      "An open handoff to reception: asked about the handed-off toothache again, it says it passed it on and opens nothing",
+    number: "onePatient",
+    history: [{ role: "patient", text: "me duele la muela de abajo hace dos días" }],
+    openHandoffs: ["unmatchedHealthQuestion"],
+    patient: ["y entonces qué hago con la muela?"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: { healthQuestion: true, emergency: false },
+      told: "reply",
+      replyMatches: [/ya se lo pas/i],
+      replyAvoids: [givesAdvice, saysNormal, promisesOrRedirects],
     },
   },
   {

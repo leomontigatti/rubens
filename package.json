@@ -26,6 +26,7 @@
     "test:e2e": "pnpm build && node --import tsx tests/e2e/prepare.ts && playwright test",
     "eval:assistant": "node --env-file-if-exists=.env.local --import ./tests/evals/src-imports.ts tests/evals/assistant/run.ts",
     "eval:voice": "node --env-file-if-exists=.env.local --import ./tests/evals/src-imports.ts tests/evals/assistant/voice/run.ts",
+    "eval:template-review": "node --env-file-if-exists=.env.local --import ./tests/evals/src-imports.ts tests/evals/assistant/template-review.ts",
     "eval:report": "node --import ./tests/evals/src-imports.ts tests/evals/assistant/report.ts",
     "check:dependency-audit": "node scripts/check-dependency-audit.mjs",
     "check:pr-title": "node --import tsx scripts/check-pr-title.ts",

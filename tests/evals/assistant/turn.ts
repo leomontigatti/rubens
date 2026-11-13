@@ -4,6 +4,8 @@
 
 import { chat, maxIterations, type ChatMiddleware, type ModelMessage } from "@tanstack/ai";
 
+import { newMessagesMark } from "../../../src/lib/assistant.ts";
+
 import { modelOptions, textAdapter, type Candidate } from "./candidates.ts";
 import type { Case } from "./cases.ts";
 import { fakeObject, type ToolCall } from "./fake-object.ts";
@@ -20,13 +22,18 @@ export type TurnResult = {
   finishReason: string | null;
 };
 
-function conversation(evaluationCase: Case, patientMessages: string[]): ModelMessage[] {
-  const history: ModelMessage[] = evaluationCase.history.map((turn) => ({
-    role: turn.role === "patient" ? "user" : "assistant",
-    content: turn.text,
-  }));
-  // A burst of short messages is one turn, as the patient sent them.
-  return [...history, { role: "user", content: patientMessages.join("\n") }];
+// The messages as underthing sends them (`asTurnMessages`,
+// `src/organization/assistant.ts`): a run of one side's messages as one, then
+// the patient's new messages, a burst together, after the mark.
+export function turnMessages(evaluationCase: Case, patientMessages: string[]): ModelMessage[] {
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const turn of evaluationCase.history) {
+    const role = turn.role === "patient" ? "user" : "assistant";
+    const last = messages.at(-1);
+    if (last?.role === role) last.content = `${last.content}\n${turn.text}`;
+    else messages.push({ role, content: turn.text });
+  }
+  return [...messages, { role: "user", content: [newMessagesMark, ...patientMessages].join("\n") }];
 }
 
 // A provider's rate limit or overload says nothing about the model, so the turn
@@ -79,7 +86,7 @@ async function attemptTurn(
     adapter: textAdapter(candidate),
     threadId: `eval-${evaluationCase.id}`,
     systemPrompts: [systemPrompt(evaluationCase)],
-    messages: conversation(evaluationCase, patientMessages),
+    messages: turnMessages(evaluationCase, patientMessages),
     tools: assistantTools(object),
     agentLoopStrategy: maxIterations(8),
     toolExecution: "sequential",
