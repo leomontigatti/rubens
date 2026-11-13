@@ -34,7 +34,7 @@ export const getSignIn = createServerFn({ method: "GET" }).handler(async () => {
   const organization = devOrganization();
   let members = await organization.activeMembers();
   if (members.length === 0) {
-    await seedDevOrganization(organization, devOrganizationId);
+    await seedDevOrganization(organization, devOrganizationId, { qa: import.meta.env.DEV });
     members = await organization.activeMembers();
   }
   return { mode: "dev" as const, members };

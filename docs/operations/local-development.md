@@ -27,8 +27,11 @@ pnpm dev                           # http://localhost:3000, or this worktree's p
 With no Clerk key, the app signs in through the **dev sign-in**: `/ingresar` lists the
 dev organization's seeded members (`src/dev/world.ts`), and picking one signs in as
 them. The dev organization is seeded on the sign-in page's first load
-(`src/dev/seed.ts`). Its data lives in `.wrangler/state/`; deleting that folder starts
-from a fresh seed.
+(`src/dev/seed.ts`). `pnpm dev` adds the QA world on top (`src/dev/qa-world.ts`), for going
+through the screens by hand; the production build, which the browser suite drives,
+seeds the dev world alone. The seed runs only on a fresh object, so an existing
+`.wrangler/state/` keeps what it was seeded with. Its data lives in `.wrangler/state/`;
+deleting that folder starts from a fresh seed.
 
 Everything runs offline: the dev server and the built Worker start with remote
 bindings off, so Workers AI's `AI` binding, which transcribes voice notes, is not
