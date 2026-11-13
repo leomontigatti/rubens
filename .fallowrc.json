@@ -2,8 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   // `shadcn` is a CLI run by hand to add components (docs/agents/shadcn.md);
   // nothing imports it.
+  // `skills` is a CLI run by the weekly dependency task to copy the dependency
+  // skills again (docs/agents/dependency-updates.md); nothing imports it either.
   // `@shadcn/lint` is an Oxlint JS plugin `vite.config.ts` loads by name.
-  "ignoreDependencies": ["shadcn", "@shadcn/lint"],
+  "ignoreDependencies": ["shadcn", "skills", "@shadcn/lint"],
   // The repo's own Oxlint JS plugin, and the Worker the object tests run
   // against, both loaded by path from `vite.config.ts`.
   "entry": ["scripts/oxlint-ui-plugin.mjs", "src/organization/test-worker.ts"],

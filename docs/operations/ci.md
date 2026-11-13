@@ -100,11 +100,13 @@ non-zero when one failed. After a force-push, check the run id it reports agains
 ## Pins
 
 Every external tool is pinned to an exact version, and every action to a commit SHA
-with its tag in a comment. Dependabot opens weekly PRs for minor and patch updates
-of npm packages and action pins (`.github/dependabot.yml`), and majors stay a
-hand-written issue. Every `vite-plus` update is bumped by hand too; the reason is a
-comment in that file. A `vite-plus` bump moves the
-`vite` and `vitest` overrides in `pnpm-workspace.yaml` in the same commit.
+with its tag in a comment. The npm packages are bumped by a weekly T3 scheduled task,
+minor and patch within each package's major, with the `vite` and `vitest` overrides
+moved beside `vite-plus` and the dependency skills copied again
+([dependency-updates.md](../agents/dependency-updates.md)). Dependabot opens weekly
+PRs for minor and patch updates of the action pins only (`.github/dependabot.yml`).
+A major, of either, stays a hand-written issue. The other pins below are bumped by
+hand; the weekly task reports the ones behind.
 
 | Pin                                        | Where                                        | Source of the value                                 |
 | ------------------------------------------ | -------------------------------------------- | --------------------------------------------------- |

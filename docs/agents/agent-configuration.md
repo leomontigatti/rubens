@@ -30,9 +30,11 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
   shows in `pnpm permissions list`. The ones worth having are copied one by one from the installed
   package with the `skills` CLI, which writes both places and records each in `skills-lock.json`:
   `react-router` and `router-query` (`@tanstack/react-router`), `react-start`
-  (`@tanstack/react-start`) and `fallow`. A copy does not follow the package: after bumping one,
-  copy it again, with telemetry off,
-  `DISABLE_TELEMETRY=1 npx skills add ./node_modules/<package> -s <skill> -a codex -a claude-code -y`.
+  (`@tanstack/react-start`) and `fallow`. The CLI is a devDependency, run with `pnpm exec`, so its
+  version passes `minimumReleaseAge` like any other. A copy does not follow the package: the
+  weekly dependency task copies every entry again after its bump
+  ([dependency-updates.md](./dependency-updates.md#the-run)). To add one, with telemetry off,
+  `DISABLE_TELEMETRY=1 pnpm exec skills add ./node_modules/<package> -s <skill> -a codex -a claude-code -y`.
   They are kept as published, so formatting, lint, the type check and fallow skip them.
 - **A hook change is a change to the script.** Adding or removing a project hook touches both
   wiring files, which carry the same events and matchers. The scripts read either payload:

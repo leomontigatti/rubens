@@ -45,6 +45,18 @@ Status of an entry:
 - **Breaks if:** T3 gives each thread its own limit or drops the shared one; then a whole
   `pnpm test:workers` no longer competes with other threads.
 
+### scheduled-task-weekly
+
+- **Relies on:** a T3 scheduled task with a `fixed_time` schedule runs on its weekday while this
+  machine and T3 are up, with no turn active, and its run can launch a worktree thread with
+  `t3_thread_launch` (`startFromOrigin: true`), whose worktree gets the `t3.json` setup script.
+  Nothing relies on a missed run being made up later: the next run updates to the newest
+  versions anyway.
+- **Used by:** [dependency-updates.md](./dependency-updates.md) § The scheduled task
+- **Breaks if:** T3 stops running scheduled tasks unattended, a scheduled run can no longer
+  launch a thread, or a launched worktree no longer runs the setup script (the run then starts
+  with no `node_modules`). npm packages then stop being bumped, and nothing else says so.
+
 ## Watching
 
 None.
