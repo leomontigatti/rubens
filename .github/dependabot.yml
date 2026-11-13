@@ -1,38 +1,14 @@
-# Dependabot version updates: minor and patch only, one grouped PR per ecosystem a
-# week. A major stays a hand-written issue, because it needs its release notes read
-# against this repo (docs/adr/0001-stack.md for the stack choices).
+# Dependabot version updates for the action pins only: minor and patch, one grouped
+# PR a week. A pin never needs a code fix beside it, which is what Dependabot cannot
+# write. The npm packages are bumped by a weekly T3 scheduled task instead
+# (docs/agents/dependency-updates.md), and a major stays a hand-written issue.
 #
-# `cooldown` keeps a release out of a PR until it is seven days old. It has to be at
-# least the three days of `minimumReleaseAge: 4320` in pnpm-workspace.yaml, or a bump
-# PR would ask the lockfile for a version pnpm refuses to resolve; seven is zizmor's
+# `cooldown` keeps a release out of a PR until it is seven days old, zizmor's
 # `dependabot-cooldown` floor.
 #
-# `commit-message` gives each PR a title `check:pr-title` accepts: `build(deps): …`
-# for npm, `ci(deps): …` for the action pins.
+# `commit-message` gives each PR a title `check:pr-title` accepts: `ci(deps): …`.
 version: 2
 updates:
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 7
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: build
-      include: scope
-    groups:
-      npm-minor-patch:
-        update-types: [minor, patch]
-    ignore:
-      - dependency-name: "*"
-        update-types: [version-update:semver-major]
-      # A vite-plus bump has to move the `vite` and `vitest` overrides in
-      # pnpm-workspace.yaml with it, which Dependabot does not do. Bumped alone, the
-      # two Vite copies fail the type check (TS2321 in vite.config.ts) and block the
-      # whole group, so vite-plus is bumped by hand with its overrides.
-      - dependency-name: vite-plus
-
   - package-ecosystem: github-actions
     directory: /
     schedule:

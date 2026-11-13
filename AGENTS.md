@@ -53,7 +53,8 @@ and follow it. This repo keeps only its own facts, in the contract files the sha
 - **Issues**, **PRDs**, **wayfinding maps**: [issue-tracker.md](docs/agents/issue-tracker.md).
 - **Domain**: [domain.md](docs/agents/domain.md); the rules in [docs/domain/](docs/domain/README.md);
   decisions in [docs/adr/](docs/adr/README.md).
-- **CI**, **dependencies**: [ci.md](docs/operations/ci.md).
+- **CI**, **dependencies**: [ci.md](docs/operations/ci.md); the weekly npm bump:
+  [dependency-updates.md](docs/agents/dependency-updates.md).
 - **Fallow** (dead code, unused dependencies, duplication): [fallow.md](docs/agents/fallow.md).
 - **Housekeeping** (per-worktree databases): [housekeeping.md](docs/agents/housekeeping.md).
 - **Agent configuration** (skills, hooks, subagent wiring):
