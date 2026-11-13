@@ -49,7 +49,6 @@ import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/t
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
 import { Route as AppPacientesPatientIdEditarRouteImport } from './routes/_app/pacientes/$patientId_/editar'
 import { Route as AppPersonalMemberIdContrasenaRouteImport } from './routes/_app/personal/$memberId_/contrasena'
-import { Route as AppPersonalMemberIdEditarRouteImport } from './routes/_app/personal/$memberId_/editar'
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
 import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
@@ -282,12 +281,6 @@ const AppPersonalMemberIdContrasenaRoute =
     path: '/personal/$memberId/contrasena',
     getParentRoute: () => AppRoute,
   } as any)
-const AppPersonalMemberIdEditarRoute =
-  AppPersonalMemberIdEditarRouteImport.update({
-    id: '/personal/$memberId_/editar',
-    path: '/personal/$memberId/editar',
-    getParentRoute: () => AppRoute,
-  } as any)
 const AppPrestacionesPractitionerIdMedicalServiceIdRoute =
   AppPrestacionesPractitionerIdMedicalServiceIdRouteImport.update({
     id: '/prestaciones/$practitionerId_/$medicalServiceId',
@@ -472,7 +465,6 @@ export interface FileRoutesByFullPath {
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
-  '/personal/$memberId/editar': typeof AppPersonalMemberIdEditarRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
@@ -538,7 +530,6 @@ export interface FileRoutesByTo {
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
-  '/personal/$memberId/editar': typeof AppPersonalMemberIdEditarRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
@@ -606,7 +597,6 @@ export interface FileRoutesById {
   '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
   '/_app/pacientes/$patientId_/editar': typeof AppPacientesPatientIdEditarRoute
   '/_app/personal/$memberId_/contrasena': typeof AppPersonalMemberIdContrasenaRoute
-  '/_app/personal/$memberId_/editar': typeof AppPersonalMemberIdEditarRoute
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
   '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
@@ -674,7 +664,6 @@ export interface FileRouteTypes {
     | '/horarios/$practitionerId/nuevo'
     | '/pacientes/$patientId/editar'
     | '/personal/$memberId/contrasena'
-    | '/personal/$memberId/editar'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
@@ -740,7 +729,6 @@ export interface FileRouteTypes {
     | '/horarios/$practitionerId/nuevo'
     | '/pacientes/$patientId/editar'
     | '/personal/$memberId/contrasena'
-    | '/personal/$memberId/editar'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
     | '/sedes/$officeId/editar'
@@ -807,7 +795,6 @@ export interface FileRouteTypes {
     | '/_app/horarios/$practitionerId_/nuevo'
     | '/_app/pacientes/$patientId_/editar'
     | '/_app/personal/$memberId_/contrasena'
-    | '/_app/personal/$memberId_/editar'
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
     | '/_app/sedes/$officeId_/editar'
@@ -1124,13 +1111,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPersonalMemberIdContrasenaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/personal/$memberId_/editar': {
-      id: '/_app/personal/$memberId_/editar'
-      path: '/personal/$memberId/editar'
-      fullPath: '/personal/$memberId/editar'
-      preLoaderRoute: typeof AppPersonalMemberIdEditarRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/prestaciones/$practitionerId_/$medicalServiceId': {
       id: '/_app/prestaciones/$practitionerId_/$medicalServiceId'
       path: '/prestaciones/$practitionerId/$medicalServiceId'
@@ -1339,7 +1319,6 @@ interface AppRouteChildren {
   AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
   AppPacientesPatientIdEditarRoute: typeof AppPacientesPatientIdEditarRoute
   AppPersonalMemberIdContrasenaRoute: typeof AppPersonalMemberIdContrasenaRoute
-  AppPersonalMemberIdEditarRoute: typeof AppPersonalMemberIdEditarRoute
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
   AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
@@ -1402,7 +1381,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
   AppPacientesPatientIdEditarRoute: AppPacientesPatientIdEditarRoute,
   AppPersonalMemberIdContrasenaRoute: AppPersonalMemberIdContrasenaRoute,
-  AppPersonalMemberIdEditarRoute: AppPersonalMemberIdEditarRoute,
   AppPrestacionesPractitionerIdMedicalServiceIdRoute:
     AppPrestacionesPractitionerIdMedicalServiceIdRoute,
   AppPrestacionesPractitionerIdNuevaRoute:

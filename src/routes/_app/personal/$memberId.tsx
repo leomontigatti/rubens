@@ -1,147 +1,259 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { ActiveToggle, ErrorAlert } from "#/components/admin-form.tsx";
-import { PageHeader } from "#/components/page-header.tsx";
-import { Detail, RecordSection } from "#/components/record-section.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
+import { activeRecord } from "#/components/admin-form.tsx";
+import { pickedIn, useAppForm } from "#/components/app-form.tsx";
+import { ColorSwatch } from "#/components/color-swatch.tsx";
+import { fieldProblems, messageIn } from "#/components/form-problems.ts";
+import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { practitionerColorLabels } from "#/lib/practitioner-colors.ts";
-import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
-import { rolesLabel } from "#/lib/staff.ts";
-import { changeMemberActive, getMember, getMemberUpcomingCount } from "#/server/staff.functions.ts";
+import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
+import { isOneOf } from "#/lib/is-one-of.ts";
+import { memberUpdateSchema } from "#/lib/staff.ts";
+import {
+  changeMemberActive,
+  editMember,
+  getMember,
+  getMemberUpcomingCount,
+} from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
-import { ColorSwatch } from "#/components/color-swatch.tsx";
-import { RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
+import {
+  RefusalAlert,
+  roleOptions,
+  useAction,
+  useEditAction,
+} from "#/routes/_app/personal/-shared.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
-  head: ({ loaderData }) => ({
-    meta: [
-      {
-        title: loaderData?.ok ? `${loaderData.member.name} · underthing` : "Personal · underthing",
-      },
-    ],
-  }),
-  component: StaffMemberScreen,
+  head: () => ({ meta: [{ title: "Editar persona · underthing" }] }),
+  component: EditMember,
 });
 
-function StaffMemberScreen() {
-  const result = Route.useLoaderData();
+const fieldMessages: Record<string, string> = {
+  roles: "Elegí al menos un rol.",
+  displayName: "Ingresá el nombre a mostrar.",
+  specialty: "La especialidad es demasiado larga.",
+  gridMinutes: "El intervalo tiene que ser un número de minutos entre 5 y 120.",
+  color: "Elegí un color.",
+};
 
+type SettingsValues = Omit<PractitionerSettings, "specialty" | "gridMinutes" | "color"> & {
+  specialty: string;
+  gridMinutes: string;
+  color: string;
+};
+
+const noSettings: SettingsValues = {
+  displayName: "",
+  specialty: "",
+  gridMinutes: "",
+  color: practitionerColors[0],
+  keepsClinicalRecords: false,
+};
+
+/** What the form holds of the settings: the interval as typed, no specialty as empty. */
+function settingsValues(saved: PractitionerSettings | null): SettingsValues {
+  if (!saved) {
+    return noSettings;
+  }
+  return { ...saved, specialty: saved.specialty ?? "", gridMinutes: String(saved.gridMinutes) };
+}
+
+type MemberValues = SettingsValues & { roles: string[] };
+
+const colorOptions = practitionerColors.map((color) => ({
+  value: color,
+  label: practitionerColorLabels[color],
+  mark: <ColorSwatch color={color} />,
+}));
+
+const settingsKeys = [
+  "displayName",
+  "specialty",
+  "gridMinutes",
+  "color",
+  "keepsClinicalRecords",
+] as const satisfies readonly (keyof SettingsValues)[];
+
+const sameRoles = (roles: string[], saved: readonly string[]) =>
+  roles.length === saved.length && roles.every((role) => saved.includes(role));
+
+function changedSettings(values: SettingsValues, saved: PractitionerSettings | null) {
+  if (!saved) {
+    return undefined;
+  }
+  const opened = settingsValues(saved);
+  const same = settingsKeys.every((key) => values[key] === opened[key]);
+  if (same) {
+    return undefined;
+  }
+  return {
+    displayName: values.displayName,
+    specialty: values.specialty,
+    keepsClinicalRecords: values.keepsClinicalRecords,
+    gridMinutes: Number(values.gridMinutes),
+    color: isOneOf(practitionerColors, values.color) ? values.color : saved.color,
+  };
+}
+
+/**
+ * Only what the user changed, over the member as last loaded: a field they did
+ * not touch takes the loaded value, so a reload under the form (another admin's
+ * change, the header's deactivation) is never written back as theirs.
+ */
+function changesIn(
+  values: MemberValues,
+  member: StaffMember,
+  edited: (field: keyof MemberValues) => boolean,
+) {
+  const saved = shownSettings(member);
+  const loaded = settingsValues(saved);
+  const pick = <Key extends keyof SettingsValues>(key: Key) =>
+    edited(key) ? values[key] : loaded[key];
+  const settings: SettingsValues = {
+    displayName: pick("displayName"),
+    specialty: pick("specialty"),
+    gridMinutes: pick("gridMinutes"),
+    color: pick("color"),
+    keepsClinicalRecords: pick("keepsClinicalRecords"),
+  };
+  return {
+    roles: edited("roles") && !sameRoles(values.roles, member.roles) ? values.roles : undefined,
+    practitioner: changedSettings(settings, saved),
+  };
+}
+
+/** The settings the form shows: those of someone who is a practitioner now. */
+function shownSettings(member: StaffMember) {
+  return member.roles.includes("practitioner") ? member.practitioner : null;
+}
+
+function EditMember() {
+  const result = Route.useLoaderData();
   if (!result.ok) {
     return <RefusalAlert reason={result.reason} />;
   }
-  const { member } = result;
-
-  return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <MemberHeading member={member} />
-      <RolesSection member={member} />
-      {member.practitioner && member.roles.includes("practitioner") && (
-        <PractitionerSection settings={member.practitioner} />
-      )}
-      <StartingPasswordSection memberId={member.memberId} />
-    </div>
-  );
+  return <MemberForm member={result.member} />;
 }
 
-function MemberHeading({ member }: { member: StaffMember }) {
+/**
+ * The member's only page, as the list opens it: their status, the starting
+ * password and the deactivation beside the title.
+ */
+function useMemberRecord(member: StaffMember): RecordHeader {
+  const { memberId } = member;
   const toggle = useAction();
-
-  function changeActive(active: boolean) {
-    return toggle.run(() => changeMemberActive({ data: { memberId: member.memberId, active } }));
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <PageHeader
-        back={{ to: "/personal", label: "Personal" }}
-        title={member.name}
-        status={!member.active && <Badge variant="secondary">Inactivo</Badge>}
-        description={<p className="text-muted-foreground text-sm">{member.email}</p>}
-        actions={
-          <>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={
-                <Link to="/personal/$memberId/editar" params={{ memberId: member.memberId }} />
-              }
-            >
-              Editar
-            </Button>
-            <ActiveToggle
-              key={member.memberId}
-              active={member.active}
-              pending={toggle.pending}
-              onChange={(active) => void changeActive(active)}
-              deactivation={{
-                question: `¿Desactivar a ${member.name}?`,
-                countUpcoming: () =>
-                  getMemberUpcomingCount({ data: { memberId: member.memberId } }),
-              }}
-            />
-          </>
-        }
-      />
-      <ErrorAlert message={toggle.error} />
-    </div>
-  );
-}
-
-function RolesSection({ member }: { member: StaffMember }) {
-  return (
-    <RecordSection title="Roles">
-      <p>{rolesLabel(member.roles)}</p>
-    </RecordSection>
-  );
-}
-
-function PractitionerSection({ settings }: { settings: PractitionerSettings }) {
-  return (
-    <RecordSection title="Profesional">
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <Detail label="Nombre a mostrar" value={settings.displayName} />
-        <Detail label="Especialidad" value={settings.specialty} />
-        <Detail label="Intervalo de turnos" value={`${settings.gridMinutes} minutos`} />
-        <Detail label="Color en la agenda" value={<ColorName color={settings.color} />} />
-        <Detail
-          label="Lleva historias clínicas"
-          value={settings.keepsClinicalRecords ? "Sí" : "No"}
-        />
-      </dl>
-    </RecordSection>
-  );
-}
-
-function ColorName({ color }: { color: PractitionerColor }) {
-  return (
-    <span className="flex items-center gap-2">
-      {practitionerColorLabels[color]}
-      <ColorSwatch color={color} />
-    </span>
-  );
-}
-
-function StartingPasswordSection({ memberId }: { memberId: string }) {
-  return (
-    <RecordSection
-      title="Contraseña inicial"
-      action={
+  const active = activeRecord({
+    active: member.active,
+    inactiveLabel: "Inactivo",
+    toggle,
+    onChange: (next) =>
+      void toggle.run(() => changeMemberActive({ data: { memberId, active: next } })),
+    deactivation: {
+      question: `¿Desactivar a ${member.name}?`,
+      countUpcoming: () => getMemberUpcomingCount({ data: { memberId } }),
+    },
+  });
+  return {
+    ...active,
+    actions: (busy) => (
+      <>
         <Button
           variant="outline"
-          size="sm"
+          disabled={busy}
           nativeButton={false}
           render={<Link to="/personal/$memberId/contrasena" params={{ memberId }} />}
         >
-          Asignar
+          Asignar contraseña inicial
         </Button>
+        {active.actions(busy)}
+      </>
+    ),
+  };
+}
+
+function MemberForm({ member }: { member: StaffMember }) {
+  const { memberId } = member;
+  const page = useFormPage({ to: "/personal" });
+  const record = useMemberRecord(member);
+  const action = useEditAction();
+  const settings = shownSettings(member);
+  const defaultValues: MemberValues = {
+    ...settingsValues(settings),
+    roles: pickedIn(roleOptions, member.roles),
+  };
+  const form = useAppForm({
+    defaultValues,
+    onSubmit: async ({ value, formApi }) => {
+      const edited = (field: keyof MemberValues) => formApi.getFieldMeta(field)?.isDirty === true;
+      const update = { memberId, ...changesIn(value, member, edited) };
+      const parsed = memberUpdateSchema.safeParse(update);
+      if (!parsed.success) {
+        page.showProblems(fieldProblems(parsed.error.issues, messageIn(fieldMessages)));
+        return;
       }
+      const saved = await action.save(async () => {
+        const result = await editMember({ data: { ...update, roles: parsed.data.roles } });
+        // Still a practitioner, they stay the last clinical contact by the setting, not the role.
+        return !result.ok &&
+          result.reason === "lastClinicalContact" &&
+          value.roles.includes("practitioner")
+          ? { ok: false, reason: "lastClinicalContactSetting" }
+          : result;
+      });
+      if (saved) {
+        page.leave();
+      }
+    },
+  });
+
+  return (
+    <ActionFormPage
+      page={page}
+      form={form}
+      title="Editar persona"
+      description={`${member.name} · ${member.email}`}
+      submitLabel="Guardar"
+      action={action}
+      record={record}
     >
-      <p className="text-muted-foreground">
-        Reemplaza la contraseña actual. La persona la usa para ingresar y la cambia al entrar.
-      </p>
-    </RecordSection>
+      <form.AppField name="roles">
+        {(field) => <field.CheckboxGroupField legend="Roles" options={roleOptions} />}
+      </form.AppField>
+      {settings && (
+        <>
+          <h2 className="text-lg font-semibold">Profesional</h2>
+          <form.AppField name="displayName">
+            {(field) => <field.TextField label="Nombre a mostrar" required />}
+          </form.AppField>
+          <form.AppField name="specialty">
+            {(field) => <field.TextField label="Especialidad" size="half" />}
+          </form.AppField>
+          <form.AppField name="gridMinutes">
+            {(field) => (
+              <field.TextField
+                label="Intervalo de turnos (minutos)"
+                type="number"
+                min={5}
+                max={120}
+                required
+                startsRow
+                hint="Los horarios libres empiezan cada tantos minutos, contados desde la medianoche."
+              />
+            )}
+          </form.AppField>
+          <form.AppField name="color">
+            {(field) => (
+              <field.MarkedSelectField label="Color en la agenda" options={colorOptions} />
+            )}
+          </form.AppField>
+          <form.AppField name="keepsClinicalRecords">
+            {(field) => <field.CheckboxField label="Lleva historias clínicas" startsRow />}
+          </form.AppField>
+        </>
+      )}
+    </ActionFormPage>
   );
 }
