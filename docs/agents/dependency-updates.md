@@ -62,12 +62,23 @@ there are no seams to test first, only the steps below.
    `## Review` names the package, its path (`pnpm why <package>`) and whether it reaches the
    Worker or only the dev tooling, and one that reaches the Worker also gets an issue. The run adds
    no `overrides` or `audit.ignore` entry for an advisory: a person decides those.
-9. **Open the PR**, or end without one when steps 1 to 5 changed nothing. One PR titled
-   `build(deps): update the npm dependencies for the week of <date>`, written by the `pr` skill.
-   Its `## Review` record lists the packages that moved (from, to), the skills that changed, a new
-   or widened instruction in a changed skill (it is instructions agents will follow, so it is read
-   as such), the packages held back and the audit's findings. The review tier is the one
-   `review.py tier` prints. Then this thread, not the scheduled run that launched it, babysits the PR by the `babysit-pr` skill until it is ready to merge, and leaves the merge to the user.
+9. **List the pins nothing bumps.** The tools pinned by hand in
+   [ci.md](../operations/ci.md#pins) (gitleaks, actionlint, zizmor, Node, pnpm) are bumped by no
+   one, so the run reports the ones behind, without bumping them: the bump needs a checksum or a
+   second file moved with it, which ci.md § How to bump says. Their newest releases:
+   `gh release view -R gitleaks/gitleaks --json tagName` and the same for `rhysd/actionlint`;
+   `curl -s https://pypi.org/pypi/zizmor/json | jq -r .info.version`; the newest Node in the
+   `.nvmrc` major from `https://nodejs.org/dist/index.json`; `pnpm view 'pnpm@<major>' version`
+   for the major `packageManager` names. A new major of any of them is reported as one.
+10. **Open the PR**, or end without one when steps 1 to 5 changed nothing; the thread's last
+    message then carries the audit's findings and the pins behind, since there is no PR to hold
+    them. One PR titled `build(deps): update the npm dependencies for the week of <date>`, written
+    by the `pr` skill. Its `## Review` record lists the packages that moved (from, to), the skills
+    that changed, a new or widened instruction in a changed skill (it is instructions agents will
+    follow, so it is read as such), the packages held back, the audit's findings and the pins
+    behind. The review tier is the one `review.py tier` prints. Then this thread, not the
+    scheduled run that launched it, babysits the PR by the `babysit-pr` skill until it is ready to
+    merge, and leaves the merge to the user.
 
 ## What stays by hand
 

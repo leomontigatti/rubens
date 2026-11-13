@@ -105,7 +105,8 @@ minor and patch within each package's major, with the `vite` and `vitest` overri
 moved beside `vite-plus` and the dependency skills copied again
 ([dependency-updates.md](../agents/dependency-updates.md)). Dependabot opens weekly
 PRs for minor and patch updates of the action pins only (`.github/dependabot.yml`).
-A major, of either, stays a hand-written issue.
+A major, of either, stays a hand-written issue. The other pins below are bumped by
+hand; the weekly task reports the ones behind.
 
 | Pin                                        | Where                                        | Source of the value                                 |
 | ------------------------------------------ | -------------------------------------------- | --------------------------------------------------- |
