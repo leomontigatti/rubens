@@ -56,6 +56,13 @@ exits 1 on a wrong one:
 pnpm eval:template-review
 ```
 
+## Reports
+
+A run that decides something (a model choice, or the prompt after a change to the
+assistant) is written up in `reports/`, one file per run, named by its date and what it
+measured: its table beside the run it compares with, each eval id, what changed, the
+failures fixed or filed, and the verdict.
+
 ## What a turn is scored on
 
 In the order #157 ranks the criteria (`score.ts`):
