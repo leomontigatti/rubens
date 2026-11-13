@@ -27,8 +27,10 @@ on:
 permissions:
   contents: read
 
+# A skipped run gets its own group: in the shared one, a body edit right after a
+# push would cancel the run that checks the title.
 concurrency:
-  group: pr-title-${{ github.event.pull_request.number }}
+  group: pr-title-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && github.event.changes.title == null && github.event.changes.base == null && 'skip' || 'check' }}
   cancel-in-progress: true
 
 jobs:
