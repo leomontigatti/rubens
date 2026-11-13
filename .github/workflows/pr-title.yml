@@ -29,9 +29,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pr-title-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# No `concurrency`: GitHub does not order runs entering a group, so an older run
+# could cancel the newest one and leave its `pr-title` cancelled. The runs are cheap
+# enough to overlap.
 
 jobs:
   pr-title:
