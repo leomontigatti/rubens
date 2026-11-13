@@ -646,6 +646,22 @@ export const cases: Case[] = [
     },
   },
   {
+    id: "repeat-during-patient-asked-handoff",
+    description:
+      "An open handoff for a person: asked again whether someone will write, it opens nothing and says nothing itself, and underthing says a person has it",
+    number: "onePatient",
+    history: [{ role: "patient", text: "quiero hablar con alguien de la recepción" }],
+    openHandoffs: ["patientAsked"],
+    patient: ["me van a contactar?"],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "repeat",
+      replyAvoids: [promisesOrRedirects, saysHandedOff],
+    },
+  },
+  {
     id: "confirm-and-toothache",
     description:
       "A mixed burst: the confirmation is done and said; the toothache, which the kinesiology appointment's practitioner does not treat, goes to reception",

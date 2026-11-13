@@ -329,6 +329,20 @@ describe("score", () => {
     expect(repeated.handoff.reason).toBe("judged healthQuestion=true; told repeat");
   });
 
+  it("tells a repeat about a request for a person, which nothing judges, by the model's silence", () => {
+    const silent = turn("repeat-during-patient-asked-handoff", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false });
+    });
+    const answered = turn(
+      "repeat-during-patient-asked-handoff",
+      "Sí, te van a escribir pronto.",
+      (tools) => tools.run("judge_messages", { healthQuestion: false, emergency: false }),
+    );
+
+    expect(silent.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(answered.handoff.reason).toBe("told reply");
+  });
+
   it("fails a repeat about an open handoff whose reply drops the change the same turn made", () => {
     const confirmAndRepeat = (reply: string) =>
       turn("confirm-and-repeat-during-reception-handoff", reply, (tools) => {

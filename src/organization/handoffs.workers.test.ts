@@ -1263,6 +1263,29 @@ describe("a repeat about an open handoff to reception (#362)", () => {
     ]);
   });
 
+  it("tells the patient a person has it when they ask again about a request for a person, which nothing judges", async () => {
+    await bookMartina();
+    await writes("quiero hablar con alguien de la recepción");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      one.call("hand_off", { reason: "patient_asked" });
+      return "";
+    });
+    await turn();
+    await writes("me van a contactar?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      return "";
+    });
+
+    await turn();
+
+    expect((await openHandoffs()).map((one) => one.reason)).toEqual(["patientAsked"]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([
+      "Ya se lo pasé, te va a responder por acá.",
+    ]);
+  });
+
   it("says nothing of it to a number with nothing booked, whose every message reception has", async () => {
     await contactsAre(world.lucia.caller);
     await world.addPatient("Martina", martinaPhone);

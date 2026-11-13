@@ -23,6 +23,8 @@ export interface JudgedTurn extends TurnToSort {
   conversationId: string;
   read: TurnToSort["read"] & { phone: string; unjudged: { id: string; text: string | null }[] };
   judgement: Judgement;
+  /** The model's reply: empty beside an open handoff when only its topic was asked about. */
+  reply: string;
 }
 
 /**
@@ -117,7 +119,7 @@ export function settleTurn(
     const optOutAsked =
       turn.judgement.optOut && holdForOptOut(tx, turn.read.phone, optOutMessageId).length > 0;
     return {
-      settled: outcomeOf(tx, turn, { opened, wanted, optOutAsked }),
+      settled: outcomeOf(tx, turn, { opened, wanted, optOutAsked, open: open.length > 0 }),
       practitioner: opened?.practitioner ?? null,
       changed: turn.applied.length > 0,
     };
@@ -134,7 +136,13 @@ export function settleTurn(
 function outcomeOf(
   tx: Writer,
   turn: JudgedTurn,
-  settling: { opened: unknown; wanted: HandoffWanted | null; optOutAsked: boolean },
+  settling: {
+    opened: unknown;
+    wanted: HandoffWanted | null;
+    optOutAsked: boolean;
+    /** A handoff was open before the turn. */
+    open: boolean;
+  },
 ): SettledTurn["settled"] {
   const held = isHeld(tx, turn.conversationId);
   if (turn.judgement.emergency) {
@@ -159,10 +167,23 @@ function outcomeOf(
     return "unintelligible";
   }
   // The fixed reply says the team is told: only with a patient to turn off.
-  if (settling.optOutAsked) {
-    return "optOutAsked";
+  return settling.optOutAsked ? "optOutAsked" : answeredOrRepeat(turn, settling);
+}
+
+/**
+ * A turn that opened nothing: a repeat about an open handoff's topic when it
+ * wanted one the open handoff covers, or, for a topic nothing judges such as
+ * a request for a person, when the model's reply is silent beside an open
+ * handoff, as the prompt has it be about that topic.
+ */
+function answeredOrRepeat(
+  turn: JudgedTurn,
+  settling: { wanted: HandoffWanted | null; open: boolean },
+): SettledTurn["settled"] {
+  if (settling.wanted) {
+    return repeatsTopic(settling.wanted) ? "alreadyHandedOff" : "answered";
   }
-  return settling.wanted && repeatsTopic(settling.wanted) ? "alreadyHandedOff" : "answered";
+  return settling.open && turn.reply.trim() === "" ? "alreadyHandedOff" : "answered";
 }
 
 /**

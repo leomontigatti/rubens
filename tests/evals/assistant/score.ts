@@ -153,8 +153,9 @@ function opensHandoff(
 // What underthing tells the patient after the turn: a handoff to the
 // practitioner gets its fixed message, after the model's reply when the turn
 // also made a change; one to reception gets nothing unless the turn changed
-// something, whose reply goes; one an open handoff covers gets the model's
-// reply, if any, then "Ya se lo pasé"; a turn that wants none gets the reply.
+// something, whose reply goes; one an open handoff covers, or an empty reply
+// beside one, gets the model's reply, if any, then "Ya se lo pasé"; a turn
+// that wants none gets the reply.
 function toldOf(evaluationCase: Case, turn: Turn): Told {
   const applied = turn.calls.some(
     (call) => call.name === "accept_proposal" && (call.result as { ok?: boolean }).ok === true,
@@ -168,7 +169,10 @@ function toldOf(evaluationCase: Case, turn: Turn): Told {
   if (emergency) return "practitioner";
   if (opened === "practitioner") return applied ? "both" : "practitioner";
   if (opened === "reception") return applied ? "reply" : "nothing";
-  return opensHandoff(evaluationCase, turn, []) === null ? "reply" : "repeat";
+  if (opensHandoff(evaluationCase, turn, []) !== null) return "repeat";
+  // A topic nothing judges, such as a request for a person: the model's silence on it.
+  const open = (evaluationCase.openHandoffs ?? []).length > 0;
+  return open && turn.reply.trim() === "" ? "repeat" : "reply";
 }
 
 // A value a model wrote, for a problem's text: a string as is, anything else as JSON.
