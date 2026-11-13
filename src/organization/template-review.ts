@@ -26,7 +26,9 @@ export async function reviewTemplate(
   }
   const { formOfAddress, tone } = currentCommunicationRules(database);
   const recordUsage = (used: ModelUsage) =>
-    recordModelUsage(database, { ...used, purpose: "templateReview", sandbox: false });
+    database.transaction((tx) =>
+      recordModelUsage(tx, { ...used, purpose: "templateReview", sandbox: false }),
+    );
   try {
     const { notes } = await model.reviewTemplate({
       body: parsed.data.body,

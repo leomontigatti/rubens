@@ -50,7 +50,7 @@ type RuntimeEnv = WorkerEnv &
  * The object's jobs, in the order the alarm runs them. A new job is one entry
  * here; a reorder is a deliberate change of one line.
  */
-export const jobs: readonly Job[] = [
+const jobs: readonly Job[] = [
   // What is already due to patients goes first: the queued messages, then the
   // late replies the patient answered (or their writers told they did not go).
   outboxJob,

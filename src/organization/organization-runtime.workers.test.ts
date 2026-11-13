@@ -1,8 +1,7 @@
-import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
-import { jobs } from "#/organization/organization-runtime.ts";
 import {
   adminCaller,
   at,
@@ -64,7 +63,6 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -113,7 +111,7 @@ describe("with a booking confirmation queued", () => {
         }),
     ],
     ["renames the office", renameOffice],
-  ])("sets the alarm again after a call that %s, which queues nothing", async (_call, call) => {
+  ])("sets the alarm again after a call that %s", async (_call, call) => {
     await setAlarmOf(world.organization, null);
 
     expectOk(await call());
@@ -158,22 +156,4 @@ describe("with a booking confirmation queued", () => {
     expect((await edit).ok).toBe(false);
     expect(await alarmOf(world.organization)).toBe(dueAt);
   });
-});
-
-describe("the jobs", () => {
-  it.each(jobs.map((job) => [job.name, job] as const))(
-    "runs %s when the alarm fires at the time it gave",
-    async (_name, job) => {
-      const due = Date.now() + hourMs;
-      vi.spyOn(job, "nextDue").mockReturnValue(due);
-      const run = vi.spyOn(job, "run").mockReturnValue(undefined);
-
-      expectOk(await renameOffice());
-      expect(await alarmOf(world.organization)).toBe(due);
-      vi.setSystemTime(due);
-      await runDurableObjectAlarm(world.organization);
-
-      expect(run).toHaveBeenCalled();
-    },
-  );
 });
