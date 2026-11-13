@@ -42,9 +42,10 @@ PR is ready to merge. Stop only if the seams are unclear.
 
 ## Worktrees here
 
-Beyond `THREADS.md`: the `t3.json` setup script links `.env` from the main checkout
-and installs dependencies before the agent starts, and does nothing in the main
-checkout. A worktree's own dev port comes on its first `pnpm dev`
+Beyond `THREADS.md`: the `t3.json` setup script installs dependencies before the
+agent starts; a worktree needs no `.env`
+([local-development.md](../operations/local-development.md)). A worktree's own dev port
+comes on its first `pnpm dev`
 ([local-development.md](../operations/local-development.md#one-port-per-worktree)); its state stays
 inside its folder ([housekeeping.md](./housekeeping.md)).
 
