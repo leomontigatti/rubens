@@ -21,3 +21,9 @@ export const markNotificationRead = createServerFn({ method: "POST" })
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.markNotificationRead(caller, data)),
   );
+
+export const markNotificationUnread = createServerFn({ method: "POST" })
+  .validator((data: NotificationReference) => data)
+  .handler(({ data }) =>
+    withOrganization((organization, caller) => organization.markNotificationUnread(caller, data)),
+  );

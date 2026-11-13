@@ -620,6 +620,26 @@ describe("notifications", () => {
     ]);
   });
 
+  it("marks a read notification unread again for the admin who marks it only", async () => {
+    const otherAdmin = await addMember(world.organization, ["admin"]);
+    vi.setSystemTime(Date.now() + 60_000);
+    await numberTurns({ kind: "disabled" });
+    const disabledOf = async (caller: typeof adminCaller) =>
+      (await notificationsOf(caller)).find((one) => one.kind === "numberDisabled")!;
+    for (const caller of [adminCaller, otherAdmin]) {
+      const { id } = await disabledOf(caller);
+      expectOk(await world.organization.markNotificationRead(caller, { notificationId: id }));
+    }
+    const { id: notificationId, read } = await disabledOf(adminCaller);
+    expect(read).toBe(true);
+
+    expectOk(await world.organization.markNotificationUnread(adminCaller, { notificationId }));
+
+    expect(await disabledOf(adminCaller)).toMatchObject({ read: false });
+    expect(expectOk(await world.organization.countUnreadNotifications(adminCaller)).count).toBe(2);
+    expect(await disabledOf(otherAdmin)).toMatchObject({ read: true });
+  });
+
   it("lists every unread notification before the read ones, past the list's length", async () => {
     for (let index = 0; index < 50; index += 1) {
       vi.setSystemTime(Date.now() + 60_000);
@@ -643,11 +663,18 @@ describe("notifications", () => {
     const otherAdmin = await addMember(world.organization, ["admin"]);
     const [notification] = await notificationsOf(adminCaller);
 
-    expect(
-      await world.organization.markNotificationRead(otherAdmin, {
-        notificationId: notification!.id,
-      }),
-    ).toEqual({ ok: false, reason: "notFound" });
+    const notificationId = notification!.id;
+    expectOk(await world.organization.markNotificationRead(adminCaller, { notificationId }));
+
+    expect(await world.organization.markNotificationUnread(otherAdmin, { notificationId })).toEqual(
+      { ok: false, reason: "notFound" },
+    );
+    expect(await notificationsOf(adminCaller)).toEqual([expect.objectContaining({ read: true })]);
+    expectOk(await world.organization.markNotificationUnread(adminCaller, { notificationId }));
+    expect(await world.organization.markNotificationRead(otherAdmin, { notificationId })).toEqual({
+      ok: false,
+      reason: "notFound",
+    });
     expect(await notificationsOf(adminCaller)).toEqual([expect.objectContaining({ read: false })]);
   });
 
@@ -664,12 +691,13 @@ describe("notifications", () => {
         world.organization.listNotifications(caller),
         world.organization.countUnreadNotifications(caller),
         world.organization.markNotificationRead(caller, { notificationId: notification!.id }),
+        world.organization.markNotificationUnread(caller, { notificationId: notification!.id }),
       ]),
     );
 
     expect(answers.map((answer) => !answer.ok && answer.reason)).toEqual([
-      ...Array(6).fill("unauthenticated"),
-      ...Array(3).fill("mustChangePassword"),
+      ...Array(8).fill("unauthenticated"),
+      ...Array(4).fill("mustChangePassword"),
     ]);
   });
 });

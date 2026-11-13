@@ -192,6 +192,7 @@ import {
   countUnreadNotifications,
   listNotifications,
   markNotificationRead,
+  markNotificationUnread,
 } from "#/organization/notifications.ts";
 
 /**
@@ -607,6 +608,10 @@ export class Organization extends OrganizationWhatsapp {
 
   markNotificationRead(caller: Caller, input: NotificationReference) {
     return this.as(caller, "any", (acting) => markNotificationRead(this.database, acting, input));
+  }
+
+  markNotificationUnread(caller: Caller, input: NotificationReference) {
+    return this.as(caller, "any", (acting) => markNotificationUnread(this.database, acting, input));
   }
 
   // Only admins deactivate, so only they ask what a deactivation would send to the list.

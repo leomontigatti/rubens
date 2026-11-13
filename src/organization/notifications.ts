@@ -403,6 +403,27 @@ export function markNotificationRead(
   acting: Acting,
   input: NotificationReference,
 ) {
+  return markNotification(database, acting, input, Date.now());
+}
+
+/**
+ * Marks the member's own notification unread again, a resolved one too: it
+ * counts in their unread again, and nobody else's read state changes.
+ */
+export function markNotificationUnread(
+  database: Database,
+  acting: Acting,
+  input: NotificationReference,
+) {
+  return markNotification(database, acting, input, null);
+}
+
+function markNotification(
+  database: Database,
+  acting: Acting,
+  input: NotificationReference,
+  readAt: number | null,
+) {
   const parsed = notificationReferenceSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" } as const;
@@ -410,7 +431,7 @@ export function markNotificationRead(
   const marked = database.transaction((tx) =>
     tx
       .update(notification)
-      .set({ readAt: Date.now() })
+      .set({ readAt })
       .where(
         and(
           eq(notification.id, parsed.data.notificationId),
