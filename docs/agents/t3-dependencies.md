@@ -48,14 +48,16 @@ Status of an entry:
 ### scheduled-task-weekly
 
 - **Relies on:** a T3 scheduled task with a `fixed_time` schedule runs on its weekday while this
-  machine and T3 are up, with no turn active, and its run can launch a worktree thread with
-  `t3_thread_launch` (`startFromOrigin: true`), whose worktree gets the `t3.json` setup script.
-  Nothing relies on a missed run being made up later: the next run updates to the newest
-  versions anyway.
+  machine and T3 are up, with no turn active. A task bound to no thread starts each run in a new
+  thread, which `t3.json`'s `defaultThreadEnvMode: worktree` puts in its own worktree and branch,
+  set up by the `t3.json` setup script. Nothing relies on the worktree's base commit (the run
+  merges `origin/main` first), nor on a missed run being made up later: the next run updates to
+  the newest versions anyway.
 - **Used by:** [dependency-updates.md](./dependency-updates.md) § The scheduled task
-- **Breaks if:** T3 stops running scheduled tasks unattended, a scheduled run can no longer
-  launch a thread, or a launched worktree no longer runs the setup script (the run then starts
-  with no `node_modules`). npm packages then stop being bumped, and nothing else says so.
+- **Breaks if:** T3 stops running scheduled tasks unattended, starts an unbound task's run in the
+  project root instead of a worktree (the run's branch and PR then land in the main checkout), or
+  a run's worktree no longer gets the setup script (the run then starts with no `node_modules`).
+  npm packages then stop being bumped, and nothing else says so.
 
 ## Watching
 
