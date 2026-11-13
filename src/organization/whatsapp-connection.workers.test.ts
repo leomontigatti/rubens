@@ -357,14 +357,6 @@ describe("disconnecting the number", () => {
     ).toBeNull();
   });
 
-  it("connects again through signup afterwards", async () => {
-    expectOk(await organization.disconnectWhatsapp(adminCaller));
-
-    expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({ ok: true });
-
-    expect(await connection()).toMatchObject({ state: "connected" });
-  });
-
   it("refuses when no number is connected", async () => {
     expectOk(await organization.disconnectWhatsapp(adminCaller));
 
@@ -392,8 +384,9 @@ describe("connecting again", () => {
   it("registers the same number again with the PIN it was first registered with", async () => {
     expectOk(await organization.disconnectWhatsapp(adminCaller));
 
-    expectOk(await organization.connectWhatsapp(adminCaller, completion()));
+    expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({ ok: true });
 
+    expect(await connection()).toMatchObject({ state: "connected" });
     const [first, second] = registeredPins();
     expect(second).toBe(first);
   });
