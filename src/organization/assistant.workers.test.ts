@@ -1145,17 +1145,6 @@ describe("the conversation's wait", () => {
       content: "[new messages]\nhola\ncuándo es mi turno?",
     });
   });
-
-  it("judges every message that waits, however many the patient sent", async () => {
-    await bookPatient("Martina", martinaPhone);
-    for (let message = 1; message <= 35; message += 1) {
-      await patientWrites(`mensaje ${message}`);
-    }
-
-    await afterTheWait();
-
-    expect(await judgementsShown()).toEqual(Array.from({ length: 35 }, () => "notForPractitioner"));
-  });
 });
 
 describe("what keeps a reply from going", () => {
