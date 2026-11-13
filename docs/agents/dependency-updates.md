@@ -10,21 +10,22 @@ code. Dependabot still bumps the action pins ([ci.md](../operations/ci.md#pins))
 - **Where:** T3 on the user's own machine, project `rubens`, every Monday at 10:00 local time. It runs only
   while that machine and T3 are up; a missed week is caught up by the next run, since every run
   updates to the newest versions.
-- **What it does:** each run launches one worktree thread from `origin/main` with the prompt
-  "Update the npm dependencies by docs/agents/dependency-updates.md", and ends. The thread does the
-  rest. Its prompt in T3:
+- **What it does:** the task is bound to no thread, so T3 starts each run in a new thread, and
+  `t3.json`'s `defaultThreadEnvMode: worktree` gives that thread its own worktree and branch,
+  set up by the `t3.json` setup script. That thread is the run. Its prompt in T3:
 
-  > Launch one worktree thread for this project with `t3_thread_launch`, from `origin/main`
-  > (`startFromOrigin: true`), titled "Weekly dependency updates <today's date>", with the prompt
-  > "Update the npm dependencies by docs/agents/dependency-updates.md § The run. This run is
+  > Update the npm dependencies by docs/agents/dependency-updates.md § The run. This run is
   > unattended: there is no user to ask, so make every call yourself and leave the merge to the
-  > user." Do nothing else, and end with the thread's link.
+  > user.
 
 ## The run
 
 The thread runs these in its own worktree. It does not call the `implement` skill as a whole:
 there are no seams to test first, only the steps below.
 
+0. **Start from `origin/main`**: `git fetch origin && git merge --ff-only origin/main`, then
+   `pnpm install --frozen-lockfile`. The worktree T3 makes can start from a commit behind
+   `origin/main`; the install brings `node_modules` level with the lockfile the merge brought in.
 1. **Update within each range**: `pnpm update`. That moves every caret range and every transitive
    dependency, and never crosses a major (on `0.x`, never a minor). `minimumReleaseAge` in
    `pnpm-workspace.yaml` stays in force: a version too new is left for next week, and the run never
@@ -56,6 +57,9 @@ there are no seams to test first, only the steps below.
    version and into `updateConfig.ignoreDependencies` in `pnpm-workspace.yaml`, which `pnpm update`
    skips, with a comment above it: what breaks, and the issue the run opens for the fix. Step 2
    skips the packages listed there too.
+   A new lint warning is not a break: the run leaves the code alone, so the PR stays a bump, and
+   opens one issue per new rule, naming its files. Compare `pnpm lint` against `origin/main`'s, by
+   rule and file: a count alone misreads the warnings already on `main` as new.
 8. **Audit the whole tree**: `pnpm audit --audit-level high`. `check:dependency-audit` fails only
    on advisories a branch adds, so nothing else reports one published against a package already
    on `main`: Dependabot alerts are off. For each high or critical advisory still open, the PR's
@@ -72,13 +76,13 @@ there are no seams to test first, only the steps below.
    for the major `packageManager` names. A new major of any of them is reported as one.
 10. **Open the PR**, or end without one when steps 1 to 5 changed nothing; the thread's last
     message then carries the audit's findings and the pins behind, since there is no PR to hold
-    them. One PR titled `build(deps): update the npm dependencies for the week of <date>`, written
-    by the `pr` skill. Its `## Review` record lists the packages that moved (from, to), the skills
-    that changed, a new or widened instruction in a changed skill (it is instructions agents will
-    follow, so it is read as such), the packages held back, the audit's findings and the pins
-    behind. The review tier is the one `review.py tier` prints. Then this thread, not the
-    scheduled run that launched it, babysits the PR by the `babysit-pr` skill until it is ready to
-    merge, and leaves the merge to the user.
+    them. One PR titled `build(deps): update the npm dependencies for the week of <date>`,
+    written by the `pr` skill. Its `## Review` record lists the packages that moved (from, to),
+    the skills that changed, a new or widened instruction in a changed skill (it is instructions
+    agents will follow, so it is read as such), the packages held back, the audit's findings and
+    the pins behind. The review tier is the one `review.py tier` prints. Then this thread
+    babysits the PR by the `babysit-pr` skill until it is ready to merge, and leaves the merge
+    to the user.
 
 ## What stays by hand
 
