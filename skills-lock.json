@@ -4,7 +4,7 @@
     "fallow": {
       "source": "./node_modules/fallow",
       "sourceType": "local",
-      "computedHash": "c5febaa190d26b9e84e00b45c30ee535131271018aa59fd06606ca10baa48be5"
+      "computedHash": "5023e53ef11b1112b164f8e1d3241975ec76cb1ad392a58f952e332814b35e35"
     },
     "react-router": {
       "source": "./node_modules/@tanstack/react-router",
