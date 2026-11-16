@@ -23,8 +23,7 @@ import { organizationName } from "#/organization/members.ts";
 import { heldAppointmentIds } from "#/organization/opt-out-holds.ts";
 import { requeueBefore, upcomingStatuses } from "#/organization/template-messages.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
-import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
-import { storeOutgoing, whileSending } from "#/organization/whatsapp-messages.ts";
+import { reach, send } from "#/organization/sending.ts";
 import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 import type { Job } from "#/organization/jobs.ts";
 
@@ -88,7 +87,7 @@ export function requeueForPatient(tx: Writer, patientId: string) {
  * than one statement binds; `null` when none can go.
  */
 function sendableTemplates(database: Database, cloud: WhatsappCloud) {
-  if (cloud.missingSetting() || activeHold(database, Date.now())) {
+  if (!reach(database, cloud).ok) {
     return null;
   }
   return database
@@ -116,14 +115,14 @@ function notHeldByOptOut(database: Database) {
  * one waiting on a hold of the number, until the hold ends, if it ends by time.
  */
 function nextOutboxAlarm(database: Database, cloud: WhatsappCloud): number | null {
-  const hold = activeHold(database, Date.now());
-  if (hold) {
+  const reached = reach(database, cloud);
+  if (!reached.ok && reached.reason === "numberHeld") {
     const anyQueued = database
       .select({ id: outboxMessage.id })
       .from(outboxMessage)
       .where(eq(outboxMessage.state, "queued"))
       .get();
-    return anyQueued ? hold.until : null;
+    return anyQueued ? reached.until : null;
   }
   const templates = sendableTemplates(database, cloud);
   if (!templates) {
@@ -224,15 +223,18 @@ function dropReason(database: Database, queued: Queued, now: number) {
   return null;
 }
 
-/** Records a failed attempt: the message goes again later, or fails for good after its last. */
-function recordFailure(database: Database, id: string, attempts: number, error: MetaError) {
+/**
+ * Records a failed attempt, with Meta's error when Meta refused it: the
+ * message goes again later, or fails for good after its last.
+ */
+function recordFailure(database: Database, id: string, attempts: number, error: MetaError | null) {
   const next = retryAt(attempts, Date.now());
   database
     .update(outboxMessage)
     .set({
       attempts,
-      errorCode: error.code,
-      errorMessage: error.message,
+      errorCode: error?.code ?? null,
+      errorMessage: error?.message ?? null,
       ...(next === null ? { state: "failed" as const } : { dueAt: next }),
     })
     .where(eq(outboxMessage.id, id))
@@ -305,52 +307,22 @@ async function sendQueued(
     languageCode: version.language,
     parameters: filled.parameters,
   };
-  const sent = await whileSending(database, () => cloud.sendTemplate(message)).catch(
-    (error: unknown) =>
-      ({
-        ok: false,
-        metaError: { code: null, message: error instanceof Error ? error.message : "Send failed" },
-      }) as const,
+  const sent = await send(
+    database,
+    cloud,
+    { kind: "template", template: message, text: filled.text },
+    (tx, stored) => {
+      tx.update(outboxMessage)
+        .set({ state: "sent", attempts, whatsappMessageId: stored.id })
+        .where(eq(outboxMessage.id, id))
+        .run();
+    },
   );
-  if (!sent.ok) {
-    // A limit on the number holds every message, this one with no attempt spent.
-    if (!holdOnRefusal(database, sent.metaError)) {
-      recordFailure(database, id, attempts, sent.metaError);
-    }
-    return;
+  // A limit on the number holds every message, this one with no attempt spent;
+  // what a send threw stays out of its failure, since it can carry the request.
+  if (!sent.ok && (sent.reason === "refused" || sent.reason === "notReached")) {
+    recordFailure(database, id, attempts, sent.reason === "refused" ? sent.metaError : null);
   }
-  recordSent(database, id, attempts, { ...message, text: filled.text, sent });
-}
-
-/**
- * Stores what Meta accepted as an outgoing message, in the conversation of
- * the number Meta delivered it to, and marks the queued message sent.
- */
-function recordSent(
-  database: Database,
-  id: string,
-  attempts: number,
-  message: TemplateMessage & { text: string; sent: { messageId: string; waId: string | null } },
-) {
-  const { sent } = message;
-  database.transaction((tx) => {
-    const stored = storeOutgoing(database, tx, {
-      // Meta's id for the recipient is the number their replies come from.
-      phone: sent.waId ? `+${sent.waId}` : message.to,
-      whatsappId: sent.messageId,
-      type: "template",
-      text: message.text,
-      payload: JSON.stringify({
-        template: message.templateName,
-        language: message.languageCode,
-        parameters: message.parameters,
-      }),
-    });
-    tx.update(outboxMessage)
-      .set({ state: "sent", attempts, whatsappMessageId: stored.id })
-      .where(eq(outboxMessage.id, id))
-      .run();
-  });
 }
 
 /**
@@ -383,7 +355,7 @@ async function sendDueMessages(database: Database, cloud: WhatsappCloud) {
     .all();
   for (const one of due) {
     // Meta refusing the token, or limiting the number, mid-batch leaves the rest queued, not failed.
-    if (cloud.missingSetting() || activeHold(database, Date.now())) {
+    if (!reach(database, cloud).ok) {
       return;
     }
     await sendQueued(database, cloud, one);

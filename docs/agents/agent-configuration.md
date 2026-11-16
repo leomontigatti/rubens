@@ -55,7 +55,8 @@ Hooks are configuration, so they run in a headless session too. The project's tw
   `pnpm check:fallow` and `pnpm check:dupes`, and **blocks** with exit 2 while any is red, putting
   the failing output in front of the agent. Before them it blocks with a single `pnpm install --frozen-lockfile` line
   when `pnpm-lock.yaml` is newer than the installed dependencies, instead of the import errors a
-  stale `node_modules` would produce. It runs only when the working tree has a TypeScript or
+  stale `node_modules` would produce. On a `prototype/*` branch it skips the two fallow gates
+  ([verification.md](./verification.md#prototype)). It runs only when the working tree has a TypeScript or
   JavaScript file or a `package.json` or `tsconfig` change, and it reads the uncommitted tree, so
   it also reports failures in files the turn did not touch.
 

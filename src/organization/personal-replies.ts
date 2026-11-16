@@ -2,12 +2,10 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { defaultReturnAfterHours } from "#/lib/conversation-holds.ts";
 
-import type { Database, Writer } from "#/organization/database.ts";
+import type { Writer } from "#/organization/database.ts";
 import { mayAnswer, openHandoffsOf } from "#/organization/handoffs.ts";
-import { settleFailedReplies } from "#/organization/failed-replies.ts";
 import { answeredByPerson } from "#/organization/turn-retries.ts";
 import { conversation, handoff, inboxSettings } from "#/organization/whatsapp-schema.ts";
-import { storeOutgoing } from "#/organization/whatsapp-messages.ts";
 
 // A person's reply that reached the patient (docs/domain/assistant.md §
 // Inbox, § Handoff): sent inside the window from the inbox
@@ -42,38 +40,28 @@ function answeredHandoffs(
 }
 
 /**
- * Stores the reply Meta accepted, closes the open handoffs its writer may
- * answer, and runs their hold's return time again from it. A late reply
+ * Settles the reply `sending.ts` stored once Meta accepted it, in its
+ * transaction: closes the open handoffs its writer may answer, and runs
+ * their hold's return time again from it. A late reply
  * makes its writer the holder again while nobody holds it, since the patient
  * just answered them.
  */
 export function settleReply(
-  database: Database,
   tx: Writer,
   reply: {
     writtenBy: string;
     conversationId: string;
-    phone: string;
     keepsRecords: boolean;
     /** Up to when the patient's messages it answers go: when it was written or its send started. */
     since: number;
-    whatsappId: string;
-    text: string;
     /** For a late reply: when it was written. */
     writtenAt?: number;
   },
+  stored: { id: string },
 ) {
-  const { conversationId, text, writtenBy } = reply;
+  const { conversationId, writtenBy } = reply;
   // Read after the send: a handoff may have opened while Meta answered.
   const answered = answeredHandoffs(tx, conversationId, reply);
-  const stored = storeOutgoing(database, tx, {
-    phone: reply.phone,
-    whatsappId: reply.whatsappId,
-    type: "text",
-    text,
-    payload: JSON.stringify({ text }),
-    sentBy: writtenBy,
-  });
   answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
   if (answered.length > 0) {
     tx.update(handoff)
@@ -86,8 +74,6 @@ export function settleReply(
       )
       .run();
   }
-  // Meta may have reported the reply failed before its send returned.
-  settleFailedReplies(tx, [reply.whatsappId]);
   // Still theirs unless someone took it over while Meta answered.
   const theirs = eq(conversation.heldBy, writtenBy);
   tx.update(conversation)
@@ -99,5 +85,4 @@ export function settleReply(
       ),
     )
     .run();
-  return stored;
 }

@@ -22,6 +22,11 @@
 # Tests are not in it; they are the agent's to run for what it touched
 # (docs/agents/validation.md).
 #
+# On a `prototype/*` branch the two fallow gates are skipped: a prototype's
+# variants and switcher trip complexity and duplication by design, and the
+# branch never merges (docs/agents/verification.md § Prototype). Lint and types
+# still run, since the winner's markup is what the implementation copies.
+#
 # It exits early on the paths where it buys nothing:
 #
 # - `SKIP_STOP_CHECKS` set: the documented local bypass.
@@ -112,7 +117,11 @@ fi
 
 # Only fallow's own codes block: any other status (pnpm unable to start, a
 # missing script) is the launcher failing, and stays fail-open.
-if command -v pnpm >/dev/null 2>&1; then
+case "$(git branch --show-current 2>/dev/null)" in
+  prototype/*) prototype=1 ;;
+  *) prototype="" ;;
+esac
+if [ -z "$prototype" ] && command -v pnpm >/dev/null 2>&1; then
   fallow_output="$(pnpm --silent check:fallow 2>&1)"
   case $? in
     1) append "pnpm check:fallow found what this branch adds (docs/agents/fallow.md):

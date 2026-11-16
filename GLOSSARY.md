@@ -10,8 +10,8 @@ The detailed rules live in [docs/domain/](docs/domain/).
 ## People
 
 **`organization`** — ui: "Organización"
-The business that owns everything in the app. Every tenant-owned row carries its
-organization, and row-level security enforces the boundary.
+The business that owns everything in the app. Each organization's data is its own:
+nothing of one organization is read or changed from another.
 _Avoid_: tenant, account, clinic
 
 **`admin`** — ui: "Administrador"
