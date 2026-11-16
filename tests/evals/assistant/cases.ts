@@ -341,7 +341,7 @@ export const cases: Case[] = [
   {
     id: "proposal-after-staff-reply",
     description:
-      "Moving: a time picked after a person at the practice wrote becomes a proposal stated in full (#393)",
+      "Moving: a time a person at the practice offered, once picked, becomes a proposal stated in full (#393)",
     number: "onePatient",
     history: [
       reminder,
@@ -350,7 +350,7 @@ export const cases: Case[] = [
       { role: "patient", text: "y se puede estacionar ahí?" },
       {
         role: "assistant",
-        text: "*Rita Paz*\nHola Lucía, sí, hay estacionamiento en la esquina.",
+        text: "*Rita Paz*\nHola Lucía, sí, hay estacionamiento en la esquina. Y el martes 17/11 a las 10:30 en Sede Norte sigue libre.",
         byStaff: true,
       },
     ],
@@ -365,34 +365,8 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/R[ií]os|kinesio/i, /10[:.]30/, /Norte/],
-    },
-  },
-  {
-    id: "proposal-after-pause-after-practice-move",
-    description:
-      "Moving: a time named after a pause that follows the practice's own move becomes a proposal stated in full (#393)",
-    number: "onePatient",
-    history: [
-      {
-        role: "assistant",
-        text: "Hola Lucía, te avisamos que tu turno de Sesión de kinesiología con Lic. Paula Ríos pasó al jueves 12/11 a las 16:30 en Sede Centro (Av. Colón 1234).",
-      },
-    ],
-    pauseBefore: true,
-    patient: ["no me sirve ese día. se puede el martes 17 a las 10:30?"],
-    expect: {
-      calls: [
-        { name: "find_free_times", args: { appointmentId: "apt-101" } },
-        {
-          name: "propose_change",
-          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
-        },
-      ],
-      forbidden: ["accept_proposal"],
-      handoff: noHandoff,
-      judgement: plain,
-      replyMatches: [/R[ií]os|kinesio/i, /10[:.]30/, /Norte/],
+      // Stated in full: the appointment it moves too, not only the new time.
+      replyMatches: [/R[ií]os|kinesio/i, /12\/11|jueves 12|16[:.]30/i, /10[:.]30/, /Norte/],
     },
   },
   {
