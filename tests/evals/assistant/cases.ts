@@ -299,10 +299,10 @@ export const cases: Case[] = [
       { role: "patient", text: "el de Tomás" },
       {
         role: "assistant",
-        text: "Tengo el miércoles 18/11 a las 11:00 en Sede Norte con Dr. Martín Sosa. ¿Te sirve?",
+        text: "Para pasar el control de Tomás del miércoles 11/11, tengo el miércoles 18/11 a las 11:00 en Sede Norte con Dr. Martín Sosa. ¿Te sirve?",
       },
     ],
-    patient: ["el miércoles me viene bien"],
+    patient: ["el 18 a las 11 me viene bien"],
     expect: {
       calls: [
         {
