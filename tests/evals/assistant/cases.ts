@@ -397,7 +397,7 @@ export const cases: Case[] = [
       handoff: noHandoff,
       judgement: plain,
       // Names the appointment that moves by its current day or time (#393).
-      replyMatches: [/12\/11|12 de noviembre|jueves|16[:.]30/i, /9[:.]00|9 hs|9 de la mañana/i],
+      replyMatches: [/12\/11|12 de noviembre|jueves 12|16[:.]30/i, /9[:.]00|9 hs|9 de la mañana/i],
     },
   },
   {
