@@ -309,14 +309,15 @@ describe("the assistant's pace", () => {
     releaseSend();
     await alarm;
 
-    const statuses = await inStorage(world.organization, (database) =>
-      database
-        .select({ status: whatsappMessage.status })
-        .from(whatsappMessage)
-        .where(sql`${whatsappMessage.direction} = 'outgoing'`)
-        .all(),
+    const listed = expectOk(await world.organization.listConversations(adminCaller, {}));
+    const read = expectOk(
+      await world.organization.readConversation(adminCaller, {
+        conversationId: listed.conversations[0]!.id,
+      }),
     );
-    expect(statuses).toEqual([{ status: "delivered" }]);
+    expect(read.messages.filter((message) => message.direction === "outgoing")).toEqual([
+      expect.objectContaining({ text: "El lunes a las 09:00.", status: "delivered" }),
+    ]);
   });
 
   it("answers a conversation due behind another while the other's reply types, each after its own pause", async () => {

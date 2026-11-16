@@ -97,7 +97,6 @@ function callMeta(cloud: WhatsappCloud, message: OutgoingMessage): Promise<SendR
     : cloud.sendText({ to: message.phone, text: message.text });
 }
 
-/** The row `storeOutgoing` stores for `message`, which Meta accepted as `accepted`. */
 function storedAs(message: OutgoingMessage, accepted: { messageId: string; waId: string | null }) {
   if (message.kind === "template") {
     const { template } = message;

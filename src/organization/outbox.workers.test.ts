@@ -460,7 +460,7 @@ describe("sending the booking confirmation", () => {
     expect(await storedMessages()).toEqual([]);
   });
 
-  it("keeps what a send that never got Meta's answer threw out of the stored failure, retrying it", async () => {
+  it("counts a send that never got Meta's answer as an attempt, keeping what it threw out of the stored failure", async () => {
     await submitConfirmation("APPROVED");
     // Meta's accepting a message without naming it makes the client throw.
     fakeMeta.answerWith(200, {});
