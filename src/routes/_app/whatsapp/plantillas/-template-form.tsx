@@ -9,10 +9,7 @@ import type { RecordHeader } from "#/components/form-page.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { timingEntry, timingFromEntry } from "#/lib/template-timing.ts";
-import type { Timing } from "#/lib/template-timing.ts";
 import {
-  eventTemplateButtons,
-  isEventTemplate,
   ownTemplateButtonKinds,
   templateCreateSchema,
   templateVariables,
@@ -27,6 +24,12 @@ import {
   variableLabels,
 } from "#/lib/whatsapp-template-copy.ts";
 
+import {
+  buttonsShown,
+  differsFromSent,
+  settingsEntry,
+} from "#/routes/_app/whatsapp/plantillas/-template-settings.ts";
+import type { TemplateSettings } from "#/routes/_app/whatsapp/plantillas/-template-settings.ts";
 import { TemplatePreview } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
 import { TemplateReview } from "#/routes/_app/whatsapp/plantillas/-template-review.tsx";
 
@@ -55,13 +58,6 @@ export type TemplateSaveResult =
   | { ok: false; reason: "invalidTemplate"; problems: TemplateProblem[] }
   | { ok: false; reason: "metaRefused"; metaError: { message: string } }
   | { ok: false; reason: Exclude<RefusalReason, "invalidTemplate" | "metaRefused"> };
-
-/** The name, timing and buttons of one of the organization's own templates. */
-export interface TemplateSettings {
-  name: string;
-  timing: Timing;
-  buttons: (typeof ownTemplateButtonKinds)[number];
-}
 
 /** What a save sends: the text, and for the organization's own its settings. */
 export interface TemplateValues {
@@ -108,31 +104,6 @@ const settingsKept: string[] = [
   "missingBusinessAccountId",
 ];
 
-/** The form's entry for `settings`: an event template's, which has none, starts as a new one's would. */
-function settingsEntry(settings: TemplateSettings | null) {
-  return {
-    name: settings?.name ?? "",
-    timing: timingEntry(settings?.timing ?? { when: "before", hours: 24 }),
-    buttons: settings?.buttons ?? ("none" as TemplateSettings["buttons"]),
-  };
-}
-
-/** The buttons a template goes with: an event template's fixed ones, else the ones chosen. */
-function buttonsShown(templateId: string | null, chosen: TemplateButtons): TemplateButtons {
-  return templateId !== null && isEventTemplate(templateId)
-    ? eventTemplateButtons(templateId)
-    : chosen;
-}
-
-/** Whether a save submits to Meta: the text or the buttons differ from the version sent, or none was. */
-function differsFromSent(
-  sent: { body: string; buttons: TemplateButtons } | null,
-  body: string,
-  buttons: TemplateButtons,
-) {
-  return body.trim() !== sent?.body || buttons !== sent.buttons;
-}
-
 /** The body's problems, as the one problem under its field. */
 function bodyProblem(problems: TemplateProblem[]): FieldProblem[] {
   return [{ field: "body", message: problems.map(problemText).join(" ") }];
@@ -148,7 +119,8 @@ export function TemplateForm(props: {
   organizationName: string;
   title: string;
   description?: string;
-  submitLabel: (bodyChanged: boolean) => string;
+  /** The submit button's label, by whether a save submits the template to Meta. */
+  submitLabel: (submits: boolean) => string;
   /** The text and buttons of the version at Meta now, against which a change is sent; none for one never sent. */
   sent: { body: string; buttons: TemplateButtons } | null;
   record?: RecordHeader;
@@ -240,7 +212,7 @@ export function TemplateForm(props: {
     templateId,
     useStore(form.store, (state) => state.values.buttons),
   );
-  const bodyChanged = differsFromSent(props.sent, body, buttons);
+  const submits = differsFromSent(props.sent, body, buttons);
 
   const variables = {
     label: "Insertar variable",
@@ -256,7 +228,7 @@ export function TemplateForm(props: {
       form={form}
       title={props.title}
       description={props.description}
-      submitLabel={props.submitLabel(bodyChanged)}
+      submitLabel={props.submitLabel(submits)}
       submitNote={props.submitNote}
       creates={templateId === null}
       pending={action.pending}

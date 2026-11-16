@@ -5,7 +5,9 @@ import { confirmPayload } from "#/lib/button-payloads.ts";
 import {
   adminCaller,
   afterTheWait as afterWait,
+  answeringNotice,
   at,
+  auditEntriesFor,
   expectOk,
   fakeMeta,
   inStorage,
@@ -128,13 +130,34 @@ describe("a tap on `Sí, voy`", () => {
     const sent = await reminderSent();
     await tapsYes(sent);
     await afterTheWait();
+    const audited = await auditEntriesFor(world.organization, appointmentId);
 
     await tapsYes(sent);
     await afterTheWait();
 
     expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
+    expect(await auditEntriesFor(world.organization, appointmentId)).toEqual(audited);
     expect(textsSent()).toEqual(["Genial, te esperamos!", "Genial, te esperamos!"]);
     expect(scriptedModel.turns).toHaveLength(0);
+  });
+
+  it("goes to the model when the appointment went on the to-reschedule list since, confirming nothing", async () => {
+    const sent = await reminderSent();
+    expectOk(
+      await answeringNotice(false, (notice) =>
+        world.organization.createClosure(adminCaller, {
+          officeId: null,
+          entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
+          ...notice,
+        }),
+      ),
+    );
+
+    await tapsYes(sent);
+    await afterTheWait();
+
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect((await world.appointmentOf(appointmentId)).status).toBe("booked");
   });
 
   it("goes to the model with the message it answers when the appointment moved since", async () => {
@@ -190,9 +213,9 @@ describe("a tap on `Sí, voy`", () => {
 
   it("confirms and answers while a member holds the conversation", async () => {
     const sent = await reminderSent();
-    const [held] = await inStorage(world.organization, (database) =>
-      database.select({ id: conversation.id }).from(conversation).all(),
-    );
+    const [held] = expectOk(
+      await world.organization.listConversations(adminCaller, {}),
+    ).conversations;
     expectOk(
       await world.organization.takeOverConversation(world.receptionist, {
         conversationId: held!.id,
@@ -208,7 +231,7 @@ describe("a tap on `Sí, voy`", () => {
 });
 
 describe("a tap on `Necesito cambiarlo`", () => {
-  it("goes to the model as the patient's words", async () => {
+  it("goes to the model as the patient's words, with the message it answers", async () => {
     await patientTaps(world.organization, {
       from: martinaPhone,
       label: "Necesito cambiarlo",
@@ -217,6 +240,8 @@ describe("a tap on `Necesito cambiarlo`", () => {
 
     await afterTheWait();
 
-    expect(scriptedModel.turns).toHaveLength(1);
+    expect(scriptedModel.turns.map((turn) => turn.messages.at(-1)!.content)).toEqual([
+      `[new messages]\n[tocó el botón «Necesito cambiarlo» del mensaje: «${reminder}»]`,
+    ]);
   });
 });

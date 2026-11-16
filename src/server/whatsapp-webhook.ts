@@ -38,8 +38,8 @@ const metaMessage = z.looseObject({
   reaction: z.object({ message_id: z.string().min(1), emoji: z.string().optional() }).optional(),
   /** A template's quick-reply button the patient tapped: its label and the payload set when it was sent. */
   button: z.object({ text: z.string(), payload: z.string().optional() }).optional(),
-  /** The message it answers. */
-  context: z.looseObject({ id: z.string().min(1) }).optional(),
+  /** The message it answers; a forwarded message's context names none. */
+  context: z.looseObject({ id: z.string().min(1).optional() }).optional(),
 });
 
 const metaStatus = z.looseObject({
@@ -117,7 +117,7 @@ function incomingOf(message: MetaMessage): IncomingWhatsappMessage {
     text: textOf(message),
     payload: JSON.stringify(message),
     ...(message.reaction && { reactsTo: message.reaction.message_id }),
-    ...(message.context && { repliesTo: message.context.id }),
+    ...(message.context?.id !== undefined && { repliesTo: message.context.id }),
     ...(message.button?.payload !== undefined && { buttonPayload: message.button.payload }),
   };
 }

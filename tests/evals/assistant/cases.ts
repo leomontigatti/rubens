@@ -3,6 +3,7 @@
 // patient, practitioner and address comes from world.ts.
 
 import type { HandoffReason as OpenHandoffReason } from "../../../src/lib/handoffs.ts";
+import { tapLine } from "../../../src/lib/button-payloads.ts";
 import { reactionLine } from "../../../src/lib/reactions.ts";
 
 import type { NumberKey } from "./world.ts";
@@ -836,6 +837,20 @@ export const cases: Case[] = [
       forbidden: ["propose_change", "accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
+    },
+  },
+  {
+    id: "change-tap-on-reminder",
+    description:
+      "Buttons: a tap on `Necesito cambiarlo` under the reminder starts the move, asking for a day, and changes nothing yet (ADR-0014)",
+    number: "onePatient",
+    history: [reminder],
+    patient: [tapLine("Necesito cambiarlo", reminder.text)],
+    expect: {
+      forbidden: ["propose_change", "accept_proposal", "hand_off"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/(d[ií]a|horario|cu[aá]ndo)/i],
     },
   },
 ];

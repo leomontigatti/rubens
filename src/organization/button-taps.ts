@@ -9,8 +9,10 @@ import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import { hasRepliesBehind } from "#/organization/late-replies.ts";
 import { assistantActing } from "#/organization/proposals.ts";
 import { reach } from "#/organization/sending.ts";
+import { isToReschedule } from "#/organization/to-reschedule.ts";
 import { sendReply } from "#/organization/turn-replies.ts";
 import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
@@ -66,52 +68,79 @@ export function tapLinesOf(database: Database, conversationId: string) {
 /** The fixed reply a settled tap gets, or `null` for one that needs none. */
 type SettledTap = { reply: string | null };
 
+/** The tap a turn's messages are when they are one tap with a payload, else `null`. */
+function loneTap(unjudged: TapTurn["unjudged"]) {
+  const [tap, ...others] = unjudged;
+  return tap && others.length === 0 && tap.type === buttonType && tap.buttonPayload !== null
+    ? { ...tap, buttonPayload: tap.buttonPayload }
+    : null;
+}
+
 /**
- * Settles the turn's messages when they are one tap code acts on: confirms
- * the appointment `Sí, voy` names, and judges the tap. `null` when the turn
- * goes to the model instead.
+ * Confirms the appointment `Sí, voy` names, while it is upcoming, reached by
+ * `phone`, at the start the message stated and off the "to reschedule" list,
+ * whose `turno_no_disponible` the patient may have read since; one already
+ * confirmed only gets the reply.
  */
-function settleTap(
+function confirmTapped(
   database: Database,
-  turn: {
-    conversationId: string;
-    phone: string;
-    unjudged: { id: string; type: string; buttonPayload: string | null }[];
-  },
+  phone: string,
+  payload: { appointmentId: string; startsAt: number },
 ): SettledTap | null {
-  const [tap, ...others] = turn.unjudged;
-  if (!tap || others.length > 0 || tap.type !== buttonType || tap.buttonPayload === null) {
+  const upcoming = upcomingAppointments(database, phone, Date.now()).find(
+    (one) => one.id === payload.appointmentId,
+  );
+  if (
+    !upcoming ||
+    upcoming.startsAt !== payload.startsAt ||
+    isToReschedule(database, upcoming.id)
+  ) {
     return null;
   }
-  const payload = readButtonPayload(tap.buttonPayload);
-  if (!payload) {
-    return null;
-  }
-  let reply: string | null = null;
-  if (payload.kind === "confirm") {
-    const upcoming = upcomingAppointments(database, turn.phone, Date.now()).find(
-      (one) => one.id === payload.appointmentId,
-    );
-    if (!upcoming || upcoming.startsAt !== payload.startsAt) {
+  if (upcoming.status === "booked") {
+    const changed = changeAppointmentStatus(database, assistantActing, {
+      appointmentId: upcoming.id,
+      status: "confirmed",
+    });
+    if (!changed.ok) {
       return null;
     }
-    if (upcoming.status === "booked") {
-      const changed = changeAppointmentStatus(database, assistantActing, {
-        appointmentId: upcoming.id,
-        status: "confirmed",
-      });
-      if (!changed.ok) {
-        return null;
-      }
-    }
-    reply = tapConfirmedReply(currentCommunicationRules(database).formOfAddress);
   }
-  database
-    .update(whatsappMessage)
-    .set({ judgement: "notForPractitioner" })
-    .where(eq(whatsappMessage.id, tap.id))
-    .run();
-  return { reply };
+  return { reply: tapConfirmedReply(currentCommunicationRules(database).formOfAddress) };
+}
+
+interface TapTurn {
+  conversationId: string;
+  phone: string;
+  unjudged: { id: string; type: string; buttonPayload: string | null; repliesTo: string | null }[];
+}
+
+/**
+ * Settles the turn's messages when they are one tap code acts on, and judges
+ * the tap: `Sí, voy` as `confirmTapped` says, and `Ver respuesta` on a reopen
+ * template with a reply behind it, which `late-replies.ts` delivers. `null`
+ * when the turn goes to the model instead, as one whose reply was withdrawn.
+ */
+function settleTap(database: Database, turn: TapTurn): SettledTap | null {
+  const tap = loneTap(turn.unjudged);
+  const payload = tap && readButtonPayload(tap.buttonPayload);
+  if (!tap || !payload) {
+    return null;
+  }
+  const settled =
+    payload.kind === "confirm"
+      ? confirmTapped(database, turn.phone, payload)
+      : tap.repliesTo !== null && hasRepliesBehind(database, tap.repliesTo)
+        ? { reply: null }
+        : null;
+  if (settled) {
+    database
+      .update(whatsappMessage)
+      .set({ judgement: "notForPractitioner" })
+      .where(eq(whatsappMessage.id, tap.id))
+      .run();
+  }
+  return settled;
 }
 
 /**
@@ -122,7 +151,7 @@ function settleTap(
 export function answerTap(
   database: Database,
   cloud: WhatsappCloud,
-  turn: Parameters<typeof settleTap>[1],
+  turn: TapTurn,
 ): { deliver: (() => Promise<void>) | null } | null {
   const settled = settleTap(database, turn);
   if (!settled) {

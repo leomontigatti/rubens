@@ -42,6 +42,7 @@ const messageColumns = {
   text: whatsappMessage.text,
   reactsTo: whatsappMessage.reactsTo,
   buttonPayload: whatsappMessage.buttonPayload,
+  repliesTo: whatsappMessage.repliesTo,
 };
 
 /**

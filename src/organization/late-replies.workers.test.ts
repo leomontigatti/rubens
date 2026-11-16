@@ -75,6 +75,18 @@ function replyAs(caller: Caller, text = reply) {
   return world.organization.replyToConversation(caller, { conversationId, text });
 }
 
+/** Meta's id for the reopen template that went to Martina. */
+async function reopenSent() {
+  const [reopen] = await inStorage(world.organization, (database) =>
+    database
+      .select({ whatsappId: whatsappMessage.whatsappId })
+      .from(whatsappMessage)
+      .where(eq(whatsappMessage.type, "template"))
+      .all(),
+  );
+  return reopen!.whatsappId;
+}
+
 async function withdraw(caller: Caller, lateReplyId?: string) {
   const id = lateReplyId ?? (await read(caller)).lateReplies[0]!.id;
   return world.organization.withdrawLateReply(caller, { lateReplyId: id });
@@ -321,12 +333,29 @@ describe("a person's reply after the window closed", () => {
       from: martinaPhone,
       label: "Ver respuesta",
       payload: reopenPayload(),
-      repliesTo: "wamid.the-reopen-template",
+      repliesTo: await reopenSent(),
     });
     await afterTheWait(world.organization);
 
     expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Rita Paz*\n${reply}` }]);
     expect(scriptedModel.turns).toHaveLength(0);
+  });
+
+  it("goes to the model when the patient taps `Ver respuesta` after its reply was withdrawn", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    expectOk(await withdraw(world.receptionist));
+
+    await patientTaps(world.organization, {
+      from: martinaPhone,
+      label: "Ver respuesta",
+      payload: reopenPayload(),
+      repliesTo: await reopenSent(),
+    });
+    await afterTheWait(world.organization);
+
+    expect(scriptedModel.turns).toHaveLength(1);
   });
 
   it("waits behind one reopen template however many replies are written before it goes, which go in order", async () => {

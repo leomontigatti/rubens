@@ -534,6 +534,27 @@ export function reopensWithdrawn(database: Database, messageIds: string[]): Set<
 }
 
 /**
+ * Whether the message Meta knows as `whatsappId` is a reopen template with a
+ * reply behind it still waiting or delivered: what a tap on its `Ver
+ * respuesta` opens the window for (`button-taps.ts`).
+ */
+export function hasRepliesBehind(database: Database, whatsappId: string) {
+  const behind = database
+    .select({ id: lateReply.id })
+    .from(lateReply)
+    .innerJoin(outboxMessage, eq(outboxMessage.id, lateReply.reopenId))
+    .innerJoin(whatsappMessage, eq(whatsappMessage.id, outboxMessage.whatsappMessageId))
+    .where(
+      and(
+        eq(whatsappMessage.whatsappId, whatsappId),
+        inArray(lateReply.state, ["waiting", "delivered"]),
+      ),
+    )
+    .get();
+  return behind !== undefined;
+}
+
+/**
  * The late replies of `conversationId` not delivered, oldest first, as
  * the member `readerId` reads them: a delivered one is a message, a
  * withdrawn one is gone.

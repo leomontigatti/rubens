@@ -160,7 +160,7 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
       organizationName={props.organizationName}
       title="Editar plantilla"
       description={template.name}
-      submitLabel={(bodyChanged) => (bodyChanged ? "Guardar y enviar a Meta" : "Guardar")}
+      submitLabel={(submits) => (submits ? "Guardar y enviar a Meta" : "Guardar")}
       versionNote={versionNote}
       followsTrato={template.followsTrato}
       record={{

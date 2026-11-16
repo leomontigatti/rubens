@@ -288,6 +288,32 @@ describe("Meta's WhatsApp webhook", () => {
     ]);
   });
 
+  it("stores a forwarded message, whose context names no message, with the rest of its call", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    const text = (id: string, body: string, context?: object) => ({
+      from: "5493514440000",
+      id,
+      timestamp: "4071240000",
+      type: "text",
+      text: { body },
+      ...(context && { context }),
+    });
+    payload.entry[0]!.changes[0]!.value.messages = [
+      text("wamid.forwarded", "mirá esto", { forwarded: true }),
+      text("wamid.after", "¿lo viste?"),
+    ] as never;
+
+    await handleWhatsappWebhook(post(JSON.stringify(payload)), bindingsFor(organizationId));
+
+    expect(await storedMessages(organization)).toEqual(
+      expect.arrayContaining([
+        { whatsappId: "wamid.forwarded", text: "mirá esto" },
+        { whatsappId: "wamid.after", text: "¿lo viste?" },
+      ]),
+    );
+  });
+
   it("stores a template status event for the configured business account, and drops another account's", async () => {
     const { organizationId, organization } = await setUpTestOrganization();
     await addPendingTemplate(organization, "594425479261596");
