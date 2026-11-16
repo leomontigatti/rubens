@@ -252,6 +252,42 @@ describe("Meta's WhatsApp webhook", () => {
     ]);
   });
 
+  it("stores a button tap's label as its text, with its payload and the message it answers", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    payload.entry[0]!.changes[0]!.value.messages = [
+      {
+        from: "5493514440000",
+        id: "wamid.tap",
+        timestamp: "4071240000",
+        type: "button",
+        context: { from: "15550783881", id: "wamid.the-reminder" },
+        button: { text: "Sí, voy", payload: "confirm:the-outbox-message" },
+      },
+    ] as never;
+
+    await handleWhatsappWebhook(post(JSON.stringify(payload)), bindingsFor(organizationId));
+
+    expect(
+      await inStorage(organization, (database) =>
+        database
+          .select({
+            text: whatsappMessage.text,
+            buttonPayload: whatsappMessage.buttonPayload,
+            repliesTo: whatsappMessage.repliesTo,
+          })
+          .from(whatsappMessage)
+          .all(),
+      ),
+    ).toEqual([
+      {
+        text: "Sí, voy",
+        buttonPayload: "confirm:the-outbox-message",
+        repliesTo: "wamid.the-reminder",
+      },
+    ]);
+  });
+
   it("stores a template status event for the configured business account, and drops another account's", async () => {
     const { organizationId, organization } = await setUpTestOrganization();
     await addPendingTemplate(organization, "594425479261596");

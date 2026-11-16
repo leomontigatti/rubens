@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { withdrawnReplyNote } from "#/lib/assistant.ts";
+import { reopenPayload } from "#/lib/button-payloads.ts";
 import type { WhatsappNumberEvent } from "#/lib/whatsapp-messages.ts";
 
 import {
@@ -15,6 +16,7 @@ import {
   fakeMeta,
   inStorage,
   patientWrites,
+  patientTaps,
   scriptedModel,
   setUpBookingWorld,
   submitTemplate,
@@ -123,7 +125,10 @@ function templatesSent() {
           type: string;
           template?: {
             name: string;
-            components: { parameters: { parameter_name: string; text: string }[] }[];
+            components: {
+              type: string;
+              parameters: { parameter_name: string; text: string }[];
+            }[];
           };
         },
     )
@@ -131,9 +136,11 @@ function templatesSent() {
     .map((body) => ({
       to: body.to,
       name: body.template!.name,
-      parameters: body.template!.components.flatMap((one) =>
-        one.parameters.map((parameter) => [parameter.parameter_name, parameter.text]),
-      ),
+      parameters: body
+        .template!.components.filter((one) => one.type === "body")
+        .flatMap((one) =>
+          one.parameters.map((parameter) => [parameter.parameter_name, parameter.text]),
+        ),
     }));
 }
 
@@ -272,7 +279,7 @@ describe("a person's reply after the window closed", () => {
     expect((await read(world.receptionist)).queuedReopen).toEqual({
       id: expect.any(String),
       queuedAt: Date.now(),
-      text: "Hola Martina, te escribimos de Consultorios Prueba: tenemos una respuesta para vos. Respondé este mensaje para verla.",
+      text: "Hola Martina! Te escribimos de Consultorios Prueba porque tenemos una respuesta para vos. Respondé este mensaje para verla.",
     });
 
     await runDurableObjectAlarm(world.organization);
@@ -301,6 +308,25 @@ describe("a person's reply after the window closed", () => {
     });
     // The patient answered the person, who holds the conversation again: the assistant stays silent.
     expect(after.hold).toMatchObject({ mine: false, holder: "Rita Paz" });
+  });
+
+  it("goes out when the patient taps `Ver respuesta`, with no model call", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    vi.setSystemTime(Date.now() + 2 * day);
+    fakeMeta.requests = [];
+
+    await patientTaps(world.organization, {
+      from: martinaPhone,
+      label: "Ver respuesta",
+      payload: reopenPayload(),
+      repliesTo: "wamid.the-reopen-template",
+    });
+    await afterTheWait(world.organization);
+
+    expect(fakeMeta.textsSent()).toEqual([{ to: martinaTo, text: `*Rita Paz*\n${reply}` }]);
+    expect(scriptedModel.turns).toHaveLength(0);
   });
 
   it("waits behind one reopen template however many replies are written before it goes, which go in order", async () => {

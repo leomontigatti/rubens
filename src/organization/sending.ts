@@ -33,6 +33,8 @@ export type OutgoingMessage =
       rulesVersion: number;
       /** The emergency reply, which goes though a member holds the conversation. */
       emergency: boolean;
+      /** Goes though a member holds the conversation: the answer to a patient's tap (ADR-0014). */
+      whoeverHolds?: boolean;
     }
   | { kind: "person"; conversationId: string; phone: string; text: string; sentBy: string }
   | { kind: "template"; template: TemplateMessage; text: string };
@@ -87,7 +89,8 @@ function reachOf(database: Writer, cloud: WhatsappCloud, message: OutgoingMessag
   if (message.kind === "template") {
     return reach(database, cloud);
   }
-  const whoeverHolds = message.kind === "person" || message.emergency;
+  const whoeverHolds =
+    message.kind === "person" || message.emergency || message.whoeverHolds === true;
   return reach(database, cloud, { conversationId: message.conversationId, whoeverHolds });
 }
 

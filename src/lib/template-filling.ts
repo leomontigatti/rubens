@@ -15,6 +15,7 @@ const templateVariableNames = [
   "hora",
   "sede",
   "direccion",
+  "prestacion",
 ] as const;
 
 export type TemplateVariable = (typeof templateVariableNames)[number];
@@ -29,6 +30,8 @@ export interface TemplateAppointment {
   timeZone: string;
   officeName: string;
   officeAddress: string;
+  /** The appointment's medical service, by its name. */
+  medicalServiceName: string;
   /** The organization's name, which the text names instead of a sign-off. */
   organizationName: string;
 }
@@ -42,6 +45,7 @@ export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = 
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 1234, Córdoba",
+  medicalServiceName: "Limpieza",
 };
 
 /** The value of each variable for `appointment`. */
@@ -55,7 +59,17 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
     hora: formatTime(start, timeZone),
     sede: appointment.officeName,
     direccion: appointment.officeAddress,
+    prestacion: afterPossessive(appointment.medicalServiceName),
   };
+}
+
+/**
+ * A medical service's name as a text reads it after `tu` or `su`
+ * (`después de tu extracción`): its first letter lowercased, which a name
+ * starting a sentence in the list (`Extracción`) is written with.
+ */
+function afterPossessive(name: string) {
+  return name.charAt(0).toLocaleLowerCase("es") + name.slice(1);
 }
 
 const variablePattern = /\{\{([a-z_]+)\}\}/g;

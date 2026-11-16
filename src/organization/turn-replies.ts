@@ -107,7 +107,7 @@ async function showTyping(database: Database, cloud: WhatsappCloud, conversation
  * after each pause, `maySend` unless the caller checks more: once it fails,
  * the rest does not go. Says whether every message went.
  */
-async function sendReply(
+export async function sendReply(
   database: Database,
   cloud: WhatsappCloud,
   reply: {
@@ -119,6 +119,8 @@ async function sendReply(
     whole?: boolean;
     /** An emergency's reply, which goes without the typing pause and though a member holds the conversation. */
     urgent?: boolean;
+    /** Goes though a member holds the conversation, with the typing pause. */
+    whoeverHolds?: boolean;
   },
   mayGo = () => maySend(database, cloud, reply.conversationId),
 ) {

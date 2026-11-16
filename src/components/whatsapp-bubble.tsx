@@ -101,3 +101,15 @@ function Bubble(props: BubbleProps & { className: string }) {
     </div>
   );
 }
+
+/**
+ * A quick-reply button of the message above it, as WhatsApp shows it under an
+ * outgoing message: a row of its own, its label in the link colour.
+ */
+export function WhatsappReplyButton(props: { children: ReactNode }) {
+  return (
+    <p className="bg-whatsapp-outgoing text-info w-full max-w-md self-end rounded-lg px-3 py-2 text-center text-sm font-medium shadow-xs">
+      {props.children}
+    </p>
+  );
+}

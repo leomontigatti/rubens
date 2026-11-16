@@ -10,11 +10,18 @@ import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { timingEntry, timingFromEntry } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
-import { templateCreateSchema, templateVariables } from "#/lib/whatsapp-templates.ts";
-import type { TemplateProblem } from "#/lib/whatsapp-templates.ts";
+import {
+  eventTemplateButtons,
+  isEventTemplate,
+  ownTemplateButtonKinds,
+  templateCreateSchema,
+  templateVariables,
+} from "#/lib/whatsapp-templates.ts";
+import type { TemplateButtons, TemplateProblem } from "#/lib/whatsapp-templates.ts";
 
 import { maxReminders } from "#/lib/medical-services.ts";
 import {
+  buttonsLabels,
   problemText,
   templateRefusalMessages,
   variableLabels,
@@ -49,10 +56,17 @@ export type TemplateSaveResult =
   | { ok: false; reason: "metaRefused"; metaError: { message: string } }
   | { ok: false; reason: Exclude<RefusalReason, "invalidTemplate" | "metaRefused"> };
 
-/** What a save sends: the text, and for the organization's own the name and the timing. */
+/** The name, timing and buttons of one of the organization's own templates. */
+export interface TemplateSettings {
+  name: string;
+  timing: Timing;
+  buttons: (typeof ownTemplateButtonKinds)[number];
+}
+
+/** What a save sends: the text, and for the organization's own its settings. */
 export interface TemplateValues {
   body: string;
-  settings: { name: string; timing: Timing } | null;
+  settings: TemplateSettings | null;
 }
 
 const whenOptions = [
@@ -61,6 +75,9 @@ const whenOptions = [
   { value: "attended", label: "Al atender el turno" },
   { value: "after", label: "Después del turno" },
 ] as const;
+
+const buttonsHint =
+  "Confirmar asistencia agrega «Sí, voy» y «Necesito cambiarlo»: «Sí, voy» confirma el turno sin pasar por el asistente. Cambiarlos envía la plantilla a Meta de nuevo.";
 
 const sendTimeHint =
   "No escribas cuándo se envía (mañana, en 2 horas): usá {{fecha}} y {{hora}}. Sin ¿ ni ¡ de apertura y sin emojis. Hasta 1024 caracteres, sin empezar ni terminar con una variable.";
@@ -91,6 +108,31 @@ const settingsKept: string[] = [
   "missingBusinessAccountId",
 ];
 
+/** The form's entry for `settings`: an event template's, which has none, starts as a new one's would. */
+function settingsEntry(settings: TemplateSettings | null) {
+  return {
+    name: settings?.name ?? "",
+    timing: timingEntry(settings?.timing ?? { when: "before", hours: 24 }),
+    buttons: settings?.buttons ?? ("none" as TemplateSettings["buttons"]),
+  };
+}
+
+/** The buttons a template goes with: an event template's fixed ones, else the ones chosen. */
+function buttonsShown(templateId: string | null, chosen: TemplateButtons): TemplateButtons {
+  return templateId !== null && isEventTemplate(templateId)
+    ? eventTemplateButtons(templateId)
+    : chosen;
+}
+
+/** Whether a save submits to Meta: the text or the buttons differ from the version sent, or none was. */
+function differsFromSent(
+  sent: { body: string; buttons: TemplateButtons } | null,
+  body: string,
+  buttons: TemplateButtons,
+) {
+  return body.trim() !== sent?.body || buttons !== sent.buttons;
+}
+
 /** The body's problems, as the one problem under its field. */
 function bodyProblem(problems: TemplateProblem[]): FieldProblem[] {
   return [{ field: "body", message: problems.map(problemText).join(" ") }];
@@ -99,16 +141,16 @@ function bodyProblem(problems: TemplateProblem[]): FieldProblem[] {
 export function TemplateForm(props: {
   /** `null` for a new template. */
   templateId: string | null;
-  /** The name and timing it starts with; `null` for an event template, which has neither. */
-  settings: { name: string; timing: Timing } | null;
+  /** The name, timing and buttons it starts with; `null` for an event template, which has none to set. */
+  settings: TemplateSettings | null;
   body: string;
   /** Fills `{{organizacion}}` in the preview. */
   organizationName: string;
   title: string;
   description?: string;
   submitLabel: (bodyChanged: boolean) => string;
-  /** The text of the version at Meta now, against which a change is sent; none for one never sent. */
-  sentBody: string | null;
+  /** The text and buttons of the version at Meta now, against which a change is sent; none for one never sent. */
+  sent: { body: string; buttons: TemplateButtons } | null;
   record?: RecordHeader;
   lead?: ReactNode;
   /** What a save does at Meta, above the fields. */
@@ -129,10 +171,7 @@ export function TemplateForm(props: {
   });
 
   // The name and timing stored: a refused edit keeps them, and a discard goes back to them.
-  const [stored, setStored] = useState({
-    name: settings?.name ?? "",
-    timing: timingEntry(settings?.timing ?? { when: "before", hours: 24 }),
-  });
+  const [stored, setStored] = useState(() => settingsEntry(settings));
   const form = useAppForm({
     defaultValues: { ...stored, body: props.body },
     onSubmit: async ({ value }) => {
@@ -157,7 +196,8 @@ export function TemplateForm(props: {
       const saved = await action.save(async () => {
         const result = await save({
           body: value.body,
-          settings: settings && checked.success ? checked.data : null,
+          settings:
+            settings && checked.success ? { ...checked.data, buttons: value.buttons } : null,
         });
         if (!result.ok && result.reason === "invalidTemplate") {
           page.showProblems(bodyProblem(result.problems));
@@ -182,7 +222,11 @@ export function TemplateForm(props: {
         templateId && settings && checked.success && settingsKept.includes(refused.reason!);
       if (message && kept) {
         // As the server stored them: the schema's output, trimmed and in hours.
-        setStored({ name: checked.data.name, timing: timingEntry(checked.data.timing) });
+        setStored({
+          name: checked.data.name,
+          timing: timingEntry(checked.data.timing),
+          buttons: stored.buttons,
+        });
         action.setError(`${message} El nombre y cuándo se envía se guardaron.`);
       } else if (refused.metaMessage) {
         action.setError(message);
@@ -192,7 +236,11 @@ export function TemplateForm(props: {
 
   const body = useStore(form.store, (state) => state.values.body);
   const when = useStore(form.store, (state) => state.values.timing.when);
-  const bodyChanged = body.trim() !== (props.sentBody ?? null);
+  const buttons = buttonsShown(
+    templateId,
+    useStore(form.store, (state) => state.values.buttons),
+  );
+  const bodyChanged = differsFromSent(props.sent, body, buttons);
 
   const variables = {
     label: "Insertar variable",
@@ -257,6 +305,17 @@ export function TemplateForm(props: {
               </form.AppField>
             </>
           )}
+          <form.AppField name="buttons">
+            {(field) => (
+              <field.SelectField label="Botones" size="half" startsRow hint={buttonsHint}>
+                {ownTemplateButtonKinds.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {buttonsLabels[kind]}
+                  </option>
+                ))}
+              </field.SelectField>
+            )}
+          </form.AppField>
         </>
       )}
       {props.versionNote && <p className="text-muted-foreground text-sm">{props.versionNote}</p>}
@@ -275,6 +334,7 @@ export function TemplateForm(props: {
           <TemplatePreview
             templateId={templateId}
             body={body}
+            buttons={buttons}
             organizationName={props.organizationName}
           />
           {props.review && <TemplateReview body={body} review={props.review} />}

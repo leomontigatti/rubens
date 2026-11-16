@@ -13,7 +13,8 @@ import { checkReply } from "#/lib/reply-checks.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
 import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
 
-import { judgeTurn, readConversation } from "#/organization/assistant.ts";
+import { judgeTurn } from "#/organization/assistant.ts";
+import { readConversation } from "#/organization/turn-reading.ts";
 import { settleTurn } from "#/organization/turn-settling.ts";
 import type { TurnMode } from "#/organization/assistant.ts";
 import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
@@ -27,6 +28,7 @@ import { applyChange } from "#/organization/proposals.ts";
 import {
   appointment,
   guardian,
+  medicalService,
   office,
   patient,
   practitioner,
@@ -44,12 +46,12 @@ import {
   conversation,
   handoff,
   medicalServiceTemplate,
-  modelUsage,
   outboxMessage,
   proposal,
   template,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
+import { modelUsage } from "#/organization/assistant-usage-schema.ts";
 import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 
 // The assistant's sandbox (docs/domain/assistant.md § Trying it): an admin
@@ -83,6 +85,7 @@ function scenarioRows(database: Database) {
       officeName: office.name,
       officeAddress: office.address,
       timeZone: office.timeZone,
+      medicalServiceName: medicalService.name,
       medicalServiceId: appointment.medicalServiceId,
     })
     .from(appointment)
@@ -90,6 +93,7 @@ function scenarioRows(database: Database) {
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
     .innerJoin(room, eq(room.id, appointment.roomId))
     .innerJoin(office, eq(office.id, room.officeId))
+    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .leftJoin(guardian, and(eq(guardian.patientId, patient.id), eq(guardian.messageContact, true)))
     .$dynamic();
 }
@@ -168,6 +172,7 @@ function reminderOf(database: Database, scenario: NonNullable<ReturnType<typeof 
     timeZone: scenario.timeZone,
     officeName: scenario.officeName,
     officeAddress: scenario.officeAddress,
+    medicalServiceName: scenario.medicalServiceName,
     organizationName: organizationName(database),
   });
   return { templateId: reminder?.id ?? null, text: fillTemplate(body.trim(), values).text };

@@ -16,11 +16,12 @@ const appointment: TemplateAppointment = {
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 100",
+  medicalServiceName: "Extracción dental",
   organizationName: "Consultorios Prueba",
 };
 
 describe("an appointment's template values", () => {
-  it("names the patient, the organization, the practitioner, the day, the time in the office's zone and the office", () => {
+  it("names the patient, the organization, the practitioner, the day, the time in the office's zone, the office and the medical service, lowercased to follow `tu`", () => {
     expect(templateValues(appointment)).toEqual({
       paciente: "Martina",
       organizacion: "Consultorios Prueba",
@@ -29,6 +30,7 @@ describe("an appointment's template values", () => {
       hora: "09:05",
       sede: "Sede Centro",
       direccion: "Av. Colón 100",
+      prestacion: "extracción dental",
     });
   });
 

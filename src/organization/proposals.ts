@@ -36,7 +36,7 @@ import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
  * practitioner, as reception does, on the appointments of the number's
  * patients only, which the turn's tools already narrowed.
  */
-const assistantActing: Acting = { userId: assistantUserId, roles: ["receptionist"] };
+export const assistantActing: Acting = { userId: assistantUserId, roles: ["receptionist"] };
 
 /** The change as the patient reads it: the appointment, the practitioner, the date and the time. */
 function stated(kind: ProposalKind, upcoming: Upcoming) {

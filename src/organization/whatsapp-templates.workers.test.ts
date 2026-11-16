@@ -66,7 +66,7 @@ beforeEach(async () => {
 });
 
 describe("submitting an event template's text", () => {
-  it("creates it at Meta as a utility template in `es_AR`, with named variables and their examples", async () => {
+  it("creates it at Meta as a utility template in `es_AR`, with named variables, their examples and its buttons", async () => {
     fakeMeta.answerWith(200, metaCreated("594425479261596"));
 
     expectOk(await organization.editTemplate(adminCaller, confirmation));
@@ -95,9 +95,45 @@ describe("submitting an event template's text", () => {
                 ],
               },
             },
+            {
+              type: "BUTTONS",
+              buttons: [
+                { type: "QUICK_REPLY", text: "Sí, voy" },
+                { type: "QUICK_REPLY", text: "Necesito cambiarlo" },
+              ],
+            },
           ],
         },
       },
+    ]);
+  });
+
+  it("gives the reopen template its one button, and an event template that asks nothing none", async () => {
+    fakeMeta.answerNextWith(200, metaCreated("111"));
+    fakeMeta.answerNextWith(200, metaCreated("222"));
+
+    expectOk(
+      await organization.editTemplate(adminCaller, {
+        templateId: "reabrir_conversacion",
+        body: "Hola {{paciente}}, te escribimos de {{organizacion}}. Respondé este mensaje para verla.",
+        settings: null,
+      }),
+    );
+    expectOk(
+      await organization.editTemplate(adminCaller, {
+        templateId: "solicitud_no_confirmada",
+        body,
+        settings: null,
+      }),
+    );
+
+    expect(
+      fakeMeta.requests
+        .filter((request) => request.method === "POST")
+        .map((request) => (request.body as { components: { type: string }[] }).components.slice(1)),
+    ).toEqual([
+      [{ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: "Ver respuesta" }] }],
+      [],
     ]);
   });
 
@@ -126,7 +162,7 @@ describe("submitting an event template's text", () => {
       "turno_movido_v1",
       "turno_movido_v3",
       "turno_movido_extra_v9",
-      "turno_cancelado_v7",
+      "turno_no_disponible_v7",
     ];
     fakeMeta.answerWith(200, metaCreated("777"));
 
@@ -139,22 +175,22 @@ describe("submitting an event template's text", () => {
   it("reads every page Meta lists before choosing the version", async () => {
     fakeMeta.templatesPerPage = 2;
     fakeMeta.templatesAtMeta = [
-      "turno_cancelado_v1",
-      "turno_cancelado_extra_v1",
-      "turno_cancelado_extra_v2",
-      "turno_cancelado_v5",
+      "turno_no_disponible_v1",
+      "turno_no_disponible_extra_v1",
+      "turno_no_disponible_extra_v2",
+      "turno_no_disponible_v5",
     ];
     fakeMeta.answerWith(200, metaCreated("888"));
 
     expectOk(
       await organization.editTemplate(adminCaller, {
-        templateId: "turno_cancelado",
+        templateId: "turno_no_disponible",
         body,
         settings: null,
       }),
     );
 
-    expect(createdAtMeta()).toEqual(["turno_cancelado_v6"]);
+    expect(createdAtMeta()).toEqual(["turno_no_disponible_v6"]);
   });
 
   it("keeps the status Meta answers with when it decides at once", async () => {

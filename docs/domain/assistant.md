@@ -54,7 +54,9 @@ In the second release:
   confirms the booking, so it gets no booking template
   ([messages.md](./messages.md#the-organizations-templates)).
 
-Patients write in their own words; there are no buttons. A voice note is
+Patients write in their own words. The assistant's replies carry no buttons; only a
+template's quick replies do, and a tap the code does not settle reaches the
+assistant as the patient's words ([messages.md](./messages.md#to-patients)). A voice note is
 transcribed and read like text, and the inbox shows its transcript as the
 patient's words; one that cannot be understood gets a request to write it, and a
 second misunderstanding in a row is handed off. Transcription is Whisper on

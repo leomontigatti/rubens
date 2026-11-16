@@ -6,10 +6,11 @@ import type { TemplateVariable } from "#/lib/template-filling.ts";
 import { timingSchema } from "#/lib/template-timing.ts";
 
 // The templates underthing starts conversations with (`docs/operations/whatsapp-templates.md`):
-// the organization's own, which an admin creates, and the five event templates;
+// the organization's own, which an admin creates, and the four event templates;
 // and the rules a body is checked against before it is submitted to Meta
 // (#154). A template is submitted in Spanish (Argentina), in the utility
-// category, with named variables and no buttons.
+// category, with named variables, and with the quick-reply buttons its kind
+// carries (ADR-0014), whose labels are underthing's.
 
 /** Meta's code for Spanish (Argentina). */
 export const templateLanguage = "es_AR";
@@ -54,17 +55,18 @@ const appointmentVariables = [
   "hora",
   "sede",
   "direccion",
+  "prestacion",
 ] as const satisfies readonly TemplateVariable[];
 
 /**
- * The five event templates, fixed and sent on their event, each stored under
- * its event's name as its id (docs/operations/whatsapp-templates.md § Event
+ * The four event templates, fixed and sent on their event, each stored under
+ * its name as its id; `turno_no_disponible` goes for a cancellation by the
+ * business and for an appointment sent to the "to reschedule" list alike (docs/operations/whatsapp-templates.md § Event
  * templates).
  */
 export const eventTemplateIds = [
   "turno_movido",
-  "turno_cancelado",
-  "turno_a_reprogramar",
+  "turno_no_disponible",
   "solicitud_no_confirmada",
   "reabrir_conversacion",
 ] as const;
@@ -73,6 +75,35 @@ export type EventTemplateId = (typeof eventTemplateIds)[number];
 
 export function isEventTemplate(templateId: string): templateId is EventTemplateId {
   return (eventTemplateIds as readonly string[]).includes(templateId);
+}
+
+/**
+ * A template's quick-reply buttons (ADR-0014): none, the two that confirm the
+ * appointment or ask to change it, or the one that shows a reply waiting.
+ */
+export const templateButtonKinds = ["none", "confirm", "reopen"] as const;
+
+export type TemplateButtons = (typeof templateButtonKinds)[number];
+
+/** The buttons an admin may give one of the organization's own templates. */
+export const ownTemplateButtonKinds = [
+  "none",
+  "confirm",
+] as const satisfies readonly TemplateButtons[];
+
+/** Each kind's labels, in the patient's voice and the same in either `Trato`; the first is the one code acts on. */
+export const templateButtonLabels = {
+  none: [],
+  confirm: ["Sí, voy", "Necesito cambiarlo"],
+  reopen: ["Ver respuesta"],
+} as const satisfies Record<TemplateButtons, readonly string[]>;
+
+/** The buttons an event template always carries. */
+export function eventTemplateButtons(templateId: EventTemplateId): TemplateButtons {
+  if (templateId === "turno_movido") {
+    return "confirm";
+  }
+  return templateId === "reabrir_conversacion" ? "reopen" : "none";
 }
 
 /**
@@ -99,6 +130,7 @@ export const templateCreateSchema = z.object({
   name: templateNameSchema,
   timing: timingSchema,
   body: bodySchema,
+  buttons: z.enum(ownTemplateButtonKinds).default("none"),
 });
 
 /**
@@ -109,7 +141,14 @@ export const templateCreateSchema = z.object({
 export const templateEditSchema = z.object({
   templateId: z.string().min(1).max(64),
   body: bodySchema,
-  settings: z.object({ name: templateNameSchema, timing: timingSchema }).nullable(),
+  settings: z
+    .object({
+      name: templateNameSchema,
+      timing: timingSchema,
+      /** Its buttons; a change submits the text again with them. Absent keeps the ones it has. */
+      buttons: z.enum(ownTemplateButtonKinds).optional(),
+    })
+    .nullable(),
 });
 
 export const templateDeleteSchema = z.object({ templateId: z.uuid() });

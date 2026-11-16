@@ -188,6 +188,8 @@ function storeIncoming(tx: Writer, message: IncomingWhatsappMessage) {
       text: message.text,
       payload: message.payload,
       reactsTo: message.reactsTo,
+      repliesTo: message.repliesTo,
+      buttonPayload: message.buttonPayload,
       sentAt: message.sentAt,
       judgement: ignored ? "notForPractitioner" : undefined,
     })

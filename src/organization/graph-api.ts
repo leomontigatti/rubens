@@ -6,6 +6,7 @@
 
 import { fromMediaHost } from "#/organization/graph-api-media.ts";
 import type { MediaHostAnswer } from "#/organization/graph-api-media.ts";
+import { componentsToCreate, componentsToSend } from "#/organization/template-components.ts";
 
 const graphApiVersion = "v26.0";
 
@@ -62,6 +63,8 @@ export interface TemplateMessage {
   languageCode: string;
   /** The value of each named variable the template's body uses; none for a body without them. */
   parameters?: { name: string; value: string }[];
+  /** The payload of each quick-reply button that carries one, by its place among the template's buttons. */
+  buttonPayloads?: { index: number; payload: string }[];
 }
 
 /** Meta's error, as it explains a refusal. */
@@ -82,6 +85,8 @@ export interface TemplateDraft {
   languageCode: string;
   body: string;
   examples: { param_name: string; example: string }[];
+  /** Its quick-reply buttons' labels, in order; none for a template without buttons. */
+  buttons: readonly string[];
 }
 
 /** Meta's verdict on a template, in Meta's words: `PENDING`, `APPROVED`, `REJECTED`, … */
@@ -126,7 +131,7 @@ export interface WhatsappCloud {
   missingTemplateSetting(): MissingTemplateSetting | null;
   /** Meta's id for the business account the number belongs to, or `null` while none is known. */
   businessAccountId(): string | null;
-  /** Submits a utility template, with named variables and no buttons, for Meta's review. */
+  /** Submits a utility template, with named variables and its quick-reply buttons, for Meta's review. */
   createTemplate(draft: TemplateDraft): Promise<TemplateCreateResult>;
   /** Meta's current verdict on the template `templateId`. */
   readTemplate(templateId: string): Promise<TemplateReadResult>;
@@ -280,24 +285,14 @@ export function whatsappCloudFor(
   return {
     missingSetting,
     businessAccountId: () => connection.settings().WHATSAPP_BUSINESS_ACCOUNT_ID || null,
-    sendTemplate({ to, templateName, languageCode, parameters = [] }) {
+    sendTemplate({ to, templateName, languageCode, parameters = [], buttonPayloads = [] }) {
+      const components = componentsToSend(parameters, buttonPayloads);
       return sendMessage(to, {
         type: "template",
         template: {
           name: templateName,
           language: { code: languageCode },
-          ...(parameters.length > 0 && {
-            components: [
-              {
-                type: "body",
-                parameters: parameters.map(({ name, value }) => ({
-                  type: "text",
-                  parameter_name: name,
-                  text: value,
-                })),
-              },
-            ],
-          }),
+          ...(components.length > 0 && { components }),
         },
       });
     },
@@ -314,7 +309,7 @@ export function whatsappCloudFor(
     },
     openMedia,
     missingTemplateSetting,
-    async createTemplate({ name, languageCode, body, examples }) {
+    async createTemplate({ name, languageCode, body, examples, buttons }) {
       const { token, accountId } = templateSettings();
       const response = await fetcher(
         `https://graph.facebook.com/${graphApiVersion}/${encodeURIComponent(accountId)}/message_templates`,
@@ -326,14 +321,7 @@ export function whatsappCloudFor(
             language: languageCode,
             category: "UTILITY",
             parameter_format: "NAMED",
-            components: [
-              {
-                type: "BODY",
-                text: body,
-                // Meta refuses an example for a body with no variables.
-                ...(examples.length > 0 && { example: { body_text_named_params: examples } }),
-              },
-            ],
+            components: componentsToCreate(body, examples, buttons),
           }),
         },
       );
