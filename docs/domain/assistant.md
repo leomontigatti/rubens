@@ -130,9 +130,12 @@ message also names:
 - the patient, when the number stands for more than one;
 - which appointment, when the patient has several upcoming ones, unless the
   conversation is only about one;
-- enough to stand on its own when it comes after a long pause (an hour or more
-  between two messages, as long as a proposal lives) or after a person from the
-  practice replied: the model reads a note at each.
+- enough to stand on its own when a long pause (an hour or more between two
+  messages, as long as a proposal lives), or a reply from a person at the
+  practice, came after the assistant last named the appointment or offered its
+  times: the model reads a note at each. A pause before the patient answers a
+  reminder, which goes out the day before, does not count once the assistant
+  has offered times after it.
 
 Only a conversation's latest proposal can be accepted, and it expires. Accepting runs the change with the app's own
 rules, so it can still fail, for example when the time was taken meanwhile; the

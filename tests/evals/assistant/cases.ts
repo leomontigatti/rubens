@@ -160,6 +160,8 @@ export const cases: Case[] = [
     description: "Confirming: an explicit yes to a reminder is its own acceptance",
     number: "onePatient",
     history: [reminder],
+    // The reminder goes out the day before: the answer comes after a pause.
+    pauseBefore: true,
     patient: ["sí, voy. gracias!"],
     expect: {
       calls: [
@@ -242,7 +244,11 @@ export const cases: Case[] = [
     description:
       "Moving: the picked time becomes a proposal naming what changes, the office included, not yet accepted (#393)",
     number: "onePatient",
-    history: [reminder, { role: "patient", text: "lo puedo cambiar?" }, offeredSlots],
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
+      offeredSlots,
+    ],
     patient: ["el martes a las 10 y media me viene joya"],
     expect: {
       calls: [
@@ -265,7 +271,7 @@ export const cases: Case[] = [
     number: "onePatient",
     history: [
       reminder,
-      { role: "patient", text: "lo puedo cambiar?" },
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
       offeredSlots,
       { role: "patient", text: "el martes" },
       shortMoveProposal,
@@ -339,7 +345,7 @@ export const cases: Case[] = [
     number: "onePatient",
     history: [
       reminder,
-      { role: "patient", text: "lo puedo cambiar?" },
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
       offeredSlots,
       { role: "patient", text: "y se puede estacionar ahí?" },
       {
@@ -926,6 +932,8 @@ export const cases: Case[] = [
       "Reactions: a 👍 on a reminder that asks to confirm confirms, proposed and accepted in the turn (#292)",
     number: "onePatient",
     history: [reminder],
+    // The reminder goes out the day before: the answer comes after a pause.
+    pauseBefore: true,
     patient: [reactionLine("👍", reminder.text)],
     expect: {
       calls: [
@@ -942,6 +950,8 @@ export const cases: Case[] = [
       "Reactions: a message holding only 👍 after a reminder that asks to confirm confirms (#292)",
     number: "onePatient",
     history: [reminder],
+    // The reminder goes out the day before: the answer comes after a pause.
+    pauseBefore: true,
     patient: ["👍"],
     expect: {
       calls: [
