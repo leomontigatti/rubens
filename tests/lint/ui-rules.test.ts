@@ -312,6 +312,36 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(dateFormat(codes(existing("src/lib/dates.ts")))).toEqual([]);
   });
 
+  const rule = (name: string, found: string[]) => found.filter((code) => code.includes(name));
+
+  const statusColumnProbe = probe(
+    "status-column.tsx",
+    `export const columns = [\n  { id: "name", header: "Nombre" },\n  { id: "status", header: "Estado" },\n];\n`,
+  );
+
+  it("reject a `Estado` column: a state is a badge beside the name", () => {
+    expect(rule("no-status-column", codes(statusColumnProbe))).toHaveLength(1);
+  });
+
+  const badge = `import { Badge } from "#/components/ui/badge.tsx";\n\n`;
+  const activeBadgeProbe = probe(
+    "active-badge.tsx",
+    `${badge}export const States = () => (\n  <>\n    <Badge variant="success">Activa</Badge>\n    <Badge variant="secondary">\n      Inactivo\n    </Badge>\n    <Badge variant="warning">Datos incompletos</Badge>\n  </>\n);\n`,
+  );
+
+  it("reject a hand-made active state badge, not other badges", () => {
+    expect(rule("use-active-badge", codes(activeBadgeProbe))).toHaveLength(2);
+  });
+
+  const createLabelProbe = probe(
+    "create-label.tsx",
+    `const Page = (props: { creates?: boolean; submitLabel: string }) => props.submitLabel;\n\nexport const Pages = () => (\n  <>\n    <Page creates submitLabel="Guardar" />\n    <Page creates submitLabel="Crear" />\n    <Page creates submitLabel="Crear sede" />\n    <Page submitLabel="Guardar" />\n  </>\n);\n`,
+  );
+
+  it("reject a create whose submit button does not name the thing", () => {
+    expect(rule("create-names-thing", codes(createLabelProbe))).toHaveLength(2);
+  });
+
   const uiComponents = [
     existing("src/components/ui/input.tsx"),
     existing("src/components/ui/native-select.tsx"),

@@ -13,6 +13,9 @@
 // - `no-raw-form`: a `<form>` where `FormPage` belongs.
 // - `no-uncontrolled-input`: a default value where `useAppForm` holds the field.
 // - `no-raw-date-format`: a date or a time written for a person outside `src/lib/dates.ts`.
+// - `no-status-column`: a list column headed `Estado`.
+// - `use-active-badge`: a `Badge` hand-written as `Activo`, `Activa`, `Inactivo` or `Inactiva`.
+// - `create-names-thing`: a create's submit button labelled with a bare verb.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
@@ -484,10 +487,86 @@ const noRawDateFormat = {
   },
 };
 
+const noStatusColumn = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "A list has no Estado column." },
+    messages: {
+      column:
+        "Show the state as a Badge beside the name, in RowName's `status`, not in an Estado column (style guide, A state is a Badge beside the name).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      Property(node) {
+        const key = node.key?.name ?? node.key?.value;
+        if (key === "header" && node.value?.type === "Literal" && node.value.value === "Estado") {
+          context.report({ node, messageId: "column" });
+        }
+      },
+    };
+  },
+};
+
+const ACTIVE_STATES = new Set(["Activo", "Activa", "Inactivo", "Inactiva"]);
+
+const useActiveBadge = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "An active state is ActiveBadge." },
+    messages: {
+      badge:
+        "Use ActiveBadge from #/components/admin-form.tsx: it gives `Activo` its success colour and `Inactivo` its neutral one, the same in every list (style guide, A state is a Badge beside the name).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXElement(node) {
+        if (node.openingElement.name.name !== "Badge") return;
+        const words = node.children
+          .filter((child) => child.type === "JSXText")
+          .map((child) => child.value.trim())
+          .join("");
+        if (ACTIVE_STATES.has(words)) {
+          context.report({ node: node.openingElement, messageId: "badge" });
+        }
+      },
+    };
+  },
+};
+
+const BARE_VERBS = new Set(["Guardar", "Crear", "Agregar", "Registrar"]);
+
+const createNamesThing = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "A create's submit button names what it makes." },
+    messages: {
+      label:
+        "Name the thing on a create's submit button, as `Crear sede` or `Agregar cobertura`, not a bare verb (style guide, Form pages).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        const creates = node.attributes.some((item) => item.name?.name === "creates");
+        const label = stringAttribute(node, "submitLabel");
+        if (creates && BARE_VERBS.has(label)) {
+          context.report({ node, messageId: "label" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
+    "create-names-thing": createNamesThing,
     "no-bare-label": noBareLabel,
     "no-raw-date-format": noRawDateFormat,
     "no-raw-form": noRawForm,
@@ -495,8 +574,10 @@ export default {
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "no-raw-table": noRawTable,
+    "no-status-column": noStatusColumn,
     "no-uncontrolled-input": noUncontrolledInput,
     "require-no-validate": requireNoValidate,
     "require-post-method": requirePostMethod,
+    "use-active-badge": useActiveBadge,
   },
 };

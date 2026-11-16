@@ -83,6 +83,7 @@ export default defineConfig({
       "shadcn/no-inline-styles": "error",
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
+      "ui/create-names-thing": "error",
       "ui/no-bare-label": "error",
       "ui/no-raw-date-format": "error",
       "ui/no-raw-empty": "error",
@@ -90,9 +91,11 @@ export default defineConfig({
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
       "ui/no-raw-table": "error",
+      "ui/no-status-column": "error",
       "ui/no-uncontrolled-input": "error",
       "ui/require-no-validate": "error",
       "ui/require-post-method": "error",
+      "ui/use-active-badge": "error",
       "no-restricted-imports": [
         "error",
         {
