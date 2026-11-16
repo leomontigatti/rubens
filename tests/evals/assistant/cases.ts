@@ -24,7 +24,14 @@ export type HandoffReason =
   | "clinical"
   | "emergency";
 
-type HistoryMessage = { role: "patient" | "assistant"; text: string };
+// `byStaff`: a person at the practice wrote it, from the inbox. `pauseBefore`:
+// an hour or more passed before it (#393).
+type HistoryMessage = {
+  role: "patient" | "assistant";
+  text: string;
+  byStaff?: true;
+  pauseBefore?: true;
+};
 
 // An acceptance names the kind of change it must have applied: the turn's
 // latest proposal when it accepted, not any proposal the turn made.
@@ -76,6 +83,8 @@ export type Case = {
   history: HistoryMessage[];
   // The patient's new messages, answered together in one turn.
   patient: string[];
+  // An hour or more passed before the patient's new messages (#393).
+  pauseBefore?: true;
   // A proposal already stated in the history and still live.
   liveProposal?: Proposal;
   // The accepted time was taken meanwhile: accepting a move fails.
@@ -245,12 +254,14 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/10[:.]30/, /17\/11|17 de noviembre|martes/i, /Norte/],
+      replyMatches: [/10[:.]30/, /17\/11|17 de noviembre|martes 17/i, /Norte/],
+      // The conversation already named the practitioner: repeating it is the old full statement.
+      replyAvoids: [/R[ií]os/],
     },
   },
   {
     id: "short-proposal-accepted",
-    description: "Moving: a yes to a proposal that named only the new time accepts it (#393)",
+    description: "Moving: a yes to a proposal that named only what changes accepts it (#393)",
     number: "onePatient",
     history: [
       reminder,
@@ -301,6 +312,57 @@ export const cases: Case[] = [
     },
   },
   {
+    id: "proposal-after-pause",
+    description:
+      "Moving: a time picked after a long pause becomes a proposal stated in full, practitioner included (#393)",
+    number: "onePatient",
+    history: [reminder, { role: "patient", text: "lo puedo cambiar?" }, offeredSlots],
+    pauseBefore: true,
+    patient: ["perdón la demora. el martes a las 10 y media me viene bien"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/R[ií]os|kinesio/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
+    id: "proposal-after-staff-reply",
+    description:
+      "Moving: a time picked after a person at the practice wrote becomes a proposal stated in full (#393)",
+    number: "onePatient",
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?" },
+      offeredSlots,
+      { role: "patient", text: "y se puede estacionar ahí?" },
+      {
+        role: "assistant",
+        text: "*Rita Paz*\nHola Lucía, sí, hay estacionamiento en la esquina.",
+        byStaff: true,
+      },
+    ],
+    patient: ["genial. entonces el martes a las 10 y media"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/R[ií]os|kinesio/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
     id: "two-appointments-proposal",
     description:
       "Moving with two upcoming appointments in the conversation: the proposal names which one (#393)",
@@ -328,7 +390,7 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/kinesio|R[ií]os|jueves|12\/11/i, /9[:.]00|9 hs|9 de la mañana/i],
+      replyMatches: [/kinesio|R[ií]os|12\/11|16[:.]30/i, /9[:.]00|9 hs|9 de la mañana/i],
     },
   },
   {

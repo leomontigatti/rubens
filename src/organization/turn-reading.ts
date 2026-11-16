@@ -1,6 +1,13 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 
-import { newMessagesMark, withdrawnReplyNote, withoutMark } from "#/lib/assistant.ts";
+import {
+  longPauseMs,
+  longPauseNote,
+  newMessagesMark,
+  staffReplyNote,
+  withdrawnReplyNote,
+  withoutMark,
+} from "#/lib/assistant.ts";
 import { reactionType } from "#/lib/reactions.ts";
 
 import type { TurnMessage } from "#/organization/assistant-model.ts";
@@ -43,6 +50,7 @@ const messageColumns = {
   reactsTo: whatsappMessage.reactsTo,
   buttonPayload: whatsappMessage.buttonPayload,
   repliesTo: whatsappMessage.repliesTo,
+  sentBy: whatsappMessage.sentBy,
 };
 
 /**
@@ -102,7 +110,9 @@ export type TurnRead = ReturnType<typeof readConversation>;
  * per run of the same side, as WhatsApp shows a burst; then the messages the
  * turn judges together as the patient's last, so the judgement is about
  * exactly those and the turn always ends on the patient, after
- * `newMessagesMark`. A patient's own text never carries the mark.
+ * `newMessagesMark`. A patient's own text never carries the mark. A note goes
+ * before a message a person at the practice wrote, and where a long pause
+ * falls, so a proposal after either restates enough to stand on its own.
  */
 export function asTurnMessages(read: TurnRead): TurnMessage[] {
   const contentOf = (message: TurnRead["history"][number]) => {
@@ -115,7 +125,14 @@ export function asTurnMessages(read: TurnRead): TurnMessage[] {
     if (message.direction === "incoming") {
       return withoutMark(content);
     }
-    return read.withdrawn.has(message.id) ? `${content}\n${withdrawnReplyNote}` : content;
+    const written = message.sentBy ? `${staffReplyNote}\n${content}` : content;
+    return read.withdrawn.has(message.id) ? `${written}\n${withdrawnReplyNote}` : written;
+  };
+  let lastSentAt: number | null = null;
+  const pauseBefore = (message: TurnRead["history"][number]) => {
+    const paused = lastSentAt !== null && message.sentAt - lastSentAt >= longPauseMs;
+    lastSentAt = message.sentAt;
+    return paused ? `${longPauseNote}\n` : "";
   };
   const messages: TurnMessage[] = [];
   const shown = read.history.filter(
@@ -123,13 +140,14 @@ export function asTurnMessages(read: TurnRead): TurnMessage[] {
   );
   for (const message of shown) {
     const role = message.direction === "incoming" ? "user" : "assistant";
+    const content = `${pauseBefore(message)}${contentOf(message)}`;
     const last = messages.at(-1);
     if (last?.role === role) {
-      last.content = `${last.content}\n${contentOf(message)}`;
+      last.content = `${last.content}\n${content}`;
     } else {
-      messages.push({ role, content: contentOf(message) });
+      messages.push({ role, content });
     }
   }
-  const judged = [newMessagesMark, ...read.unjudged.map(contentOf)];
-  return [...messages, { role: "user", content: judged.join("\n") }];
+  const judged = read.unjudged.map((message) => `${pauseBefore(message)}${contentOf(message)}`);
+  return [...messages, { role: "user", content: [newMessagesMark, ...judged].join("\n") }];
 }

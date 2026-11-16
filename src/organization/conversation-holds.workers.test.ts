@@ -14,6 +14,7 @@ import {
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
+import { staffReplyNote } from "#/lib/assistant.ts";
 import type { Caller } from "#/organization/members.ts";
 import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
@@ -500,6 +501,20 @@ describe("giving the conversation back", () => {
     await writes("gracias");
     await turn();
     expect(fakeMeta.textsSent()).toHaveLength(1);
+  });
+
+  it("tells the model which earlier message a person at the practice wrote (#393)", async () => {
+    expectOk(await takeOver(world.receptionist));
+    expectOk(await reply(world.receptionist, "Listo, ya está."));
+    expectOk(await world.organization.returnConversation(world.receptionist, { conversationId }));
+
+    await writes("gracias");
+    await turn();
+
+    expect(scriptedModel.turns.at(-1)!.messages).toContainEqual({
+      role: "assistant",
+      content: `Hola, en qué te puedo ayudar?\n${staffReplyNote}\n*Rita Paz*\nListo, ya está.`,
+    });
   });
 
   it("is refused to a member who does not hold it", async () => {

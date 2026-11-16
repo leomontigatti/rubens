@@ -40,6 +40,23 @@ export const withdrawnReplyNote =
   "[The practice withdrew the reply this message announced: there is no reply to give.]";
 
 /**
+ * The line before an earlier message a person at the practice wrote, from the
+ * inbox or Telegram, so the model does not take it for its own: a proposal
+ * after it restates enough to stand on its own (§ Proposals).
+ */
+export const staffReplyNote = "[A person at the practice wrote the next message, not you.]";
+
+/**
+ * How long a gap between two messages is a long pause, after which a proposal
+ * restates enough to stand on its own (§ Proposals): as long as a proposal
+ * lives, decided by the owner on #393.
+ */
+export const longPauseMs = 60 * 60_000;
+
+/** The line where a long pause falls between two messages the model reads. */
+export const longPauseNote = "[More than an hour passed before the next message.]";
+
+/**
  * A patient's `text` with every bracket turned to a parenthesis, so only
  * underthing places the boundary of what the turn judges: no message, nor
  * the messages of a burst joined, can then spell the mark in any form.
@@ -223,7 +240,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "If accept_proposal fails, say plainly that the change was not made.",
     "Free times come only from find_free_times. When the patient wants another time, including in answer to a message from the practice that moved their appointment or asks them to pick another time, call find_free_times and offer some of its times.",
     "When the patient picks a free time, propose the move and ask them to confirm it; accept it only on their yes in a later message.",
-    'When you state a proposal, write as a person would, inside a conversation that already said which appointment it is: name what changes (for a move, the new day and time, and the office when it is another one) and whatever the conversation has not said yet, not every fact again, as in "Perfecto, te lo paso al martes 24 a las 10:30. Te parece bien?". The patient\'s yes must never accept something they were not shown, so also name the patient when the number stands for several patients; name which appointment (its day, or its medical service) when the patient has several upcoming ones, unless the conversation is only about one; and state it in full (appointment, practitioner, date, time and office) when the conversation has not said which appointment it is, or said it only long before.',
+    `When you state a proposal, write as a person would, inside a conversation that already said which appointment it is: name what changes (for a move, the new day and time, and the office when it is another one) and whatever the conversation has not said yet, not every fact again, as in "Perfecto, te lo paso al martes 24 a las 10:30. Te parece bien?". The patient's yes must never accept something they were not shown, so also name the patient when the number stands for several patients; name which appointment (its current day and time) when the patient has several upcoming ones, unless the conversation is only about one; and state it in full (appointment, practitioner, date, time and office) when the conversation has not said which appointment it is, or said it only before a line "${longPauseNote}", or before a message a person at the practice wrote (it follows the line "${staffReplyNote}").`,
     "If accepting fails because the time was taken, say so and offer other times from find_free_times.",
     "If find_free_times or a move refuses it (past the cutoff, or the one move already used), do not offer times and do not explain the refusal: call hand_off with reason rule_refused.",
     "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Hand a health question off instead.",

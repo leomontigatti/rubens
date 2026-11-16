@@ -130,8 +130,9 @@ message also names:
 - the patient, when the number stands for more than one;
 - which appointment, when the patient has several upcoming ones, unless the
   conversation is only about one;
-- enough to stand on its own when it comes after a long pause or after a person
-  replied. The threshold for a long pause is still to be decided.
+- enough to stand on its own when it comes after a long pause (an hour or more
+  between two messages, as long as a proposal lives) or after a person from the
+  practice replied: the model reads a note at each.
 
 Only a conversation's latest proposal can be accepted, and it expires. Accepting runs the change with the app's own
 rules, so it can still fail, for example when the time was taken meanwhile; the
