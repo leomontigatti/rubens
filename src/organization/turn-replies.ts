@@ -20,13 +20,8 @@ import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { TurnToSort } from "#/organization/turn-handoffs.ts";
 import { typingPause } from "#/organization/typing-pause.ts";
-import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
-import {
-  isHeld,
-  lastIncomingAt,
-  storeOutgoing,
-  whileSending,
-} from "#/organization/whatsapp-messages.ts";
+import { reach, send } from "#/organization/sending.ts";
+import { isHeld, lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // How a settled turn of the patient assistant (`assistant.ts`) answers the
@@ -78,62 +73,12 @@ export function says(settled: Settled): settled is Saying {
 }
 
 /**
- * Whether the assistant's free-form message may go now: no member holds the
- * conversation, the window the patient's latest message opened, read now,
- * since one may have arrived during the turn, is open, and no hold of Meta's
- * (`whatsapp-limits.ts`) keeps the number from sending.
+ * Whether the assistant's free-form message may go now (`sending.ts`): no
+ * member holds the conversation, its window, read now since the patient may
+ * have written during the turn, is open, and the number may send.
  */
 export function maySend(database: Database, cloud: WhatsappCloud, conversationId: string) {
-  return !isHeld(database, conversationId) && mayReach(database, cloud, conversationId);
-}
-
-/**
- * Whether a message may reach the patient now, whoever holds the
- * conversation: the window is open and no hold of Meta's keeps the number
- * from sending. The emergency reply needs no more.
- */
-function mayReach(database: Database, cloud: WhatsappCloud, conversationId: string) {
-  const now = Date.now();
-  return (
-    isWindowOpen(lastIncomingAt(database, conversationId), now) &&
-    !cloud.missingSetting() &&
-    !activeHold(database, now)
-  );
-}
-
-/**
- * Sends one message of a reply, and stores it with the rules' version it was
- * written under; says whether it went.
- */
-async function sendMessage(
-  database: Database,
-  cloud: WhatsappCloud,
-  message: { phone: string; text: string; rulesVersion: number },
-) {
-  // A send that did not reach Meta drops the reply, as a refusal does: the
-  // patient's messages stay judged, and their next one gets a turn of its own.
-  const sent = await whileSending(database, () =>
-    cloud.sendText({ to: message.phone, text: message.text }),
-  ).catch(() => null);
-  if (!sent) {
-    return false;
-  }
-  if (!sent.ok) {
-    // A limit on the number holds the outbox too.
-    holdOnRefusal(database, sent.metaError);
-    return false;
-  }
-  database.transaction((tx) =>
-    storeOutgoing(database, tx, {
-      phone: message.phone,
-      whatsappId: sent.messageId,
-      type: "text",
-      text: message.text,
-      payload: JSON.stringify({ text: message.text }),
-      rulesVersion: message.rulesVersion,
-    }),
-  );
-  return true;
+  return reach(database, cloud, { conversationId, whoeverHolds: false }).ok;
 }
 
 /** Marks the patient's latest message read and shows them typing; a failure only skips it. */
@@ -172,17 +117,21 @@ async function sendReply(
     rulesVersion: number;
     /** The reply holds a proposal, which stays whole in one message. */
     whole?: boolean;
-    /** An emergency's reply, which goes without the typing pause. */
+    /** An emergency's reply, which goes without the typing pause and though a member holds the conversation. */
     urgent?: boolean;
   },
   mayGo = () => maySend(database, cloud, reply.conversationId),
 ) {
+  const emergency = reply.urgent ?? false;
   for (const text of splitReply(reply.text, { whole: reply.whole ?? false })) {
     await showTyping(database, cloud, reply.conversationId);
-    if (!reply.urgent) {
+    if (!emergency) {
       await typingPause(typingPauseOf(text));
     }
-    if (!mayGo() || !(await sendMessage(database, cloud, { ...reply, text }))) {
+    // A send that did not go drops the rest: the patient's messages stay
+    // judged, and their next one gets a turn of its own.
+    const message = { ...reply, kind: "assistant" as const, text, emergency };
+    if (!mayGo() || !(await send(database, cloud, message)).ok) {
       return false;
     }
   }
@@ -433,7 +382,7 @@ export async function deliverReply(
     // a member holds the conversation.
     const mayGo =
       turn.settled === "emergency"
-        ? () => mayReach(database, cloud, conversationId)
+        ? () => reach(database, cloud, { conversationId, whoeverHolds: true }).ok
         : () => maySend(database, cloud, conversationId);
     if (!mayGo() || !(await sendReply(database, cloud, reply, mayGo))) {
       handOffClosed(database, turn);

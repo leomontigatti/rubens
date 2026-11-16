@@ -21,13 +21,9 @@ import {
   outboxMessage,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
-import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
+import { reach, send } from "#/organization/sending.ts";
 import { approvedVersion } from "#/organization/whatsapp-templates.ts";
-import {
-  lastIncomingAt,
-  patientsReachedAt,
-  whileSending,
-} from "#/organization/whatsapp-messages.ts";
+import { lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
 import type { Job } from "#/organization/jobs.ts";
 
 // A person's reply written after the conversation's window closed
@@ -265,11 +261,11 @@ function nextLateReplyAlarm(database: Database, cloud: WhatsappCloud): number | 
     if (!isWindowOpen(lastIncoming, now)) {
       return missedWindow(one, lastIncoming) ? now : chanceEndsAt(one);
     }
-    if (cloud.missingSetting()) {
-      return null;
+    const reached = reach(database, cloud);
+    if (reached.ok) {
+      return now;
     }
-    const hold = activeHold(database, now);
-    return hold ? hold.until : now;
+    return reached.reason === "numberHeld" ? reached.until : null;
   });
   const times = due.filter((at) => at !== null);
   return times.length > 0 ? Math.min(...times) : null;
@@ -390,9 +386,9 @@ function stillWaiting(database: Writer, id: string) {
 }
 
 /**
- * Sends `waiting` as its writer wrote it. A limit on the number leaves it
- * waiting for the hold to end; any other failure makes it not delivered, for
- * its writer to try again.
+ * Sends `waiting` as its writer wrote it. A limit on the number, or anything
+ * else that keeps it from going now, leaves it waiting; Meta not reached or
+ * refusing it makes it not delivered, for its writer to try again.
  */
 async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waiting) {
   if (!stillWaiting(database, waiting.id)) {
@@ -404,35 +400,25 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
     notDelivered(database, waiting, "answered");
     return;
   }
-  const sent = await whileSending(database, () =>
-    cloud.sendText({ to: waiting.phone, text: waiting.text }),
-  ).catch((error: unknown) => {
-    // The error's message can carry the request, so only its class is logged.
-    console.error(
-      `[late-reply] send to Meta threw in conversation ${waiting.conversationId}:`,
-      error instanceof Error ? error.name : typeof error,
-    );
-    return null;
-  });
-  if (!sent?.ok) {
-    if (!sent || !holdOnRefusal(database, sent.metaError)) {
-      notDelivered(database, waiting, "answered");
-    }
-    return;
-  }
-  database.transaction((tx) => {
-    const stored = settleReply(database, tx, {
-      ...waiting,
-      since: waiting.createdAt,
-      whatsappId: sent.messageId,
-      writtenAt: waiting.createdAt,
-    });
+  const message = {
+    kind: "person" as const,
+    conversationId: waiting.conversationId,
+    phone: waiting.phone,
+    text: waiting.text,
+    sentBy: waiting.writtenBy,
+  };
+  const sent = await send(database, cloud, message, (tx, stored) => {
+    const reply = { ...waiting, since: waiting.createdAt, writtenAt: waiting.createdAt };
+    settleReply(tx, reply, stored);
     tx.update(lateReply)
       .set({ state: "delivered", whatsappMessageId: stored.id })
       .where(eq(lateReply.id, waiting.id))
       .run();
     dropUnneededReopen(tx, waiting, "answered");
   });
+  if (!sent.ok && (sent.reason === "notReached" || sent.reason === "refused")) {
+    notDelivered(database, waiting, "answered");
+  }
 }
 
 /**
@@ -472,7 +458,7 @@ async function settleLateReplies(database: Database, cloud: WhatsappCloud) {
     const now = Date.now();
     const lastIncoming = lastIncomingAt(database, one.conversationId);
     if (isWindowOpen(lastIncoming, now)) {
-      if (!cloud.missingSetting() && !activeHold(database, now)) {
+      if (reach(database, cloud).ok) {
         await deliver(database, cloud, one);
       }
       continue;

@@ -80,6 +80,10 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   transactions it rolls back), and the
   object's `alarm()` is set to the earliest due item. Payload
   contents are never logged.
+- **A message sent to Meta**: through `send()` in `src/organization/sending.ts`, which checks
+  that it may go (`reach()`), calls Meta, holds the number on a limit and stores the message;
+  the sender passes its own writes for that transaction and maps each refusal to its policy.
+  Nothing else calls `sendText` or `sendTemplate`.
 - **A pure rule** (availability, formatting, state transitions): a module in `src/lib/`
   or beside its feature, tested without a database or React.
 

@@ -437,6 +437,50 @@ describe("a person's reply", () => {
     expect(await openHandoffs()).toHaveLength(1);
   });
 
+  it("keeps a status Meta reports while the reply's send is still on its way", async () => {
+    expectOk(await takeOver(world.receptionist));
+    fakeMeta.answerNextWith(200, {
+      messaging_product: "whatsapp",
+      contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
+      messages: [{ id: "wamid.person-reply" }],
+    });
+    const release = fakeMeta.holdNext();
+    const replied = reply(world.receptionist, "Hola");
+    await fakeMeta.received(1);
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: [{ whatsappId: "wamid.person-reply", status: "delivered", at: Date.now() }],
+        templateStatuses: [],
+      }),
+    );
+    release();
+    expectOk(await replied);
+
+    expect((await read()).messages.at(-1)).toMatchObject({
+      text: "*Rita Paz*\nHola",
+      status: "delivered",
+    });
+  });
+
+  it("holds the number when Meta refuses it for the number's rate limit, warning the admins, and sends nothing more while it lasts", async () => {
+    expectOk(await takeOver(world.receptionist));
+    fakeMeta.answerNextWith(400, { error: { code: 131048, message: "Spam rate limit hit" } });
+
+    expect(await reply(world.receptionist, "Hola")).toEqual({ ok: false, reason: "sendFailed" });
+    expect(await reply(world.receptionist, "Hola otra vez")).toEqual({
+      ok: false,
+      reason: "numberHeld",
+    });
+
+    expect(fakeMeta.textsSent()).toHaveLength(1);
+    const notifications = expectOk(await world.organization.listNotifications(adminCaller));
+    expect(notifications.notifications).toEqual([
+      expect.objectContaining({ kind: "numberRateLimited" }),
+    ]);
+  });
+
   it("refuses an empty reply", async () => {
     expectOk(await takeOver(world.receptionist));
     expect(await reply(world.receptionist, "   ")).toEqual({ ok: false, reason: "invalidInput" });
