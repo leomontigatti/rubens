@@ -238,6 +238,7 @@ function sendsIn(database: Database) {
 /**
  * Runs `send`, a call to Meta whose message `storeOutgoing` stores after it;
  * a status for that message that arrives during the call is kept for it.
+ * Only `sending.ts` calls the two, the one way a message leaves the number.
  */
 export async function whileSending<T>(database: Database, send: () => Promise<T>) {
   const sends = sendsIn(database);

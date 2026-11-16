@@ -460,6 +460,24 @@ describe("sending the booking confirmation", () => {
     expect(await storedMessages()).toEqual([]);
   });
 
+  it("keeps what a send that never got Meta's answer threw out of the stored failure, retrying it", async () => {
+    await submitConfirmation("APPROVED");
+    // Meta's accepting a message without naming it makes the client throw.
+    fakeMeta.answerWith(200, {});
+    await bookMartina();
+
+    await runDurableObjectAlarm(world.organization);
+
+    expect(await outbox()).toEqual([
+      expect.objectContaining({
+        state: "queued",
+        attempts: 1,
+        errorCode: null,
+        errorMessage: null,
+      }),
+    ]);
+  });
+
   it("sends a retried message once Meta accepts it", async () => {
     await submitConfirmation("APPROVED");
     fakeMeta.answerNextWith(500, { error: { code: 1, message: "Temporary" } });

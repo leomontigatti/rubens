@@ -277,6 +277,48 @@ describe("the assistant's pace", () => {
     expect(textsToMeta().map((one) => one.text)).toEqual(["Hola Martina."]);
   });
 
+  it("keeps a status Meta reports while the reply's send is still on its way", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("cuándo es mi turno?");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "El lunes a las 09:00.";
+    });
+    const releasePause = fakeMeta.holdTypingPause(0);
+    wait(8_000);
+    const alarm = runDurableObjectAlarm(world.organization);
+    await fakeMeta.typingPaused(1);
+    fakeMeta.answerNextWith(200, {
+      messaging_product: "whatsapp",
+      contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
+      messages: [{ id: "wamid.assistant-reply" }],
+    });
+    const releaseSend = fakeMeta.holdNext();
+    releasePause();
+    while (textsToMeta().length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    expectOk(
+      await world.organization.storeWhatsappEvents({
+        messages: [],
+        statuses: [{ whatsappId: "wamid.assistant-reply", status: "delivered", at: Date.now() }],
+        templateStatuses: [],
+      }),
+    );
+    releaseSend();
+    await alarm;
+
+    const statuses = await inStorage(world.organization, (database) =>
+      database
+        .select({ status: whatsappMessage.status })
+        .from(whatsappMessage)
+        .where(sql`${whatsappMessage.direction} = 'outgoing'`)
+        .all(),
+    );
+    expect(statuses).toEqual([{ status: "delivered" }]);
+  });
+
   it("answers a conversation due behind another while the other's reply types, each after its own pause", async () => {
     const lucasPhone = "+5491155551111";
     await bookPatient("Martina", martinaPhone);

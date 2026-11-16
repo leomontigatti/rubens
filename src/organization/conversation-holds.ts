@@ -7,7 +7,6 @@ import {
   withSenderName,
 } from "#/lib/conversation-holds.ts";
 import type { PersonalReply, ReturnTimeInput } from "#/lib/conversation-holds.ts";
-import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { conversationReferenceSchema } from "#/lib/whatsapp-messages.ts";
 import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
 
@@ -20,8 +19,7 @@ import { returnAfterHours, settleReply } from "#/organization/personal-replies.t
 import type { Acting } from "#/organization/members.ts";
 import { member } from "#/organization/schema.ts";
 import { conversation, inboxSettings } from "#/organization/whatsapp-schema.ts";
-import { activeHold, holdOnRefusal } from "#/organization/whatsapp-limits.ts";
-import { lastIncomingAt, whileSending } from "#/organization/whatsapp-messages.ts";
+import { reach, send } from "#/organization/sending.ts";
 import type { Job } from "#/organization/jobs.ts";
 
 // Taking a conversation over from the inbox (docs/domain/assistant.md §
@@ -124,7 +122,8 @@ export async function replyToConversation(
   if (found.heldBy !== acting.userId) {
     return { ok: false as const, reason: "notHolding" as const };
   }
-  if (cloud.missingSetting()) {
+  const reached = reach(database, cloud, { conversationId, whoeverHolds: true });
+  if (!reached.ok && reached.reason === "notConnected") {
     return { ok: false as const, reason: "notConnected" as const };
   }
   const { name } = database
@@ -136,46 +135,31 @@ export async function replyToConversation(
   if (text.length > maxReplyLength) {
     return { ok: false as const, reason: "tooLong" as const };
   }
-  const now = Date.now();
-  if (!isWindowOpen(lastIncomingAt(database, conversationId), now)) {
+  if (!reached.ok && reached.reason === "windowClosed") {
     // Held behind the reopen template, which waits out a hold of Meta's like any other.
     const writer = { userId: acting.userId, keepsRecords: found.keepsRecords };
     const queued = queueLateReply(database, writer, { conversationId, phone: found.phone, text });
     return queued.ok ? { ok: true as const, held: true } : queued;
   }
-  if (activeHold(database, now)) {
+  if (!reached.ok) {
     return { ok: false as const, reason: "numberHeld" as const };
   }
   const sendingFrom = Date.now();
-  const sent = await whileSending(database, () => cloud.sendText({ to: found.phone, text })).catch(
-    (error: unknown) => {
-      // Meta was not reached: the member is told and tries again. The error's
-      // message can carry the request, so only its class is logged.
-      console.error(
-        `[whatsapp-reply] send to Meta threw in conversation ${conversationId}:`,
-        error instanceof Error ? error.name : typeof error,
-      );
-      return null;
-    },
-  );
-  if (!sent?.ok) {
-    if (sent) {
-      // A limit on the number holds the outbox and the assistant too.
-      holdOnRefusal(database, sent.metaError);
-    }
+  const message = {
+    kind: "person" as const,
+    conversationId,
+    phone: found.phone,
+    text,
+    sentBy: acting.userId,
+  };
+  const sent = await send(database, cloud, message, (tx, stored) => {
+    const reply = { writtenBy: acting.userId, conversationId, keepsRecords: found.keepsRecords };
+    settleReply(tx, { ...reply, since: sendingFrom }, stored);
+  });
+  if (!sent.ok) {
+    // Meta was not reached or refused it: the member is told and tries again.
     return { ok: false as const, reason: "sendFailed" as const };
   }
-  database.transaction((tx) =>
-    settleReply(database, tx, {
-      writtenBy: acting.userId,
-      conversationId,
-      phone: found.phone,
-      keepsRecords: found.keepsRecords,
-      since: sendingFrom,
-      whatsappId: sent.messageId,
-      text,
-    }),
-  );
   return { ok: true as const, held: false };
 }
 
