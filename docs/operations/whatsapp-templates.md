@@ -16,8 +16,9 @@ each is sent is in [messages.md](../domain/messages.md#to-patients).
   the template. A template once sent to Meta, or a draft whose text is not one below,
   keeps its text whatever the `Trato`. The template's page says which. An organization can have several approved versions of one template;
   any approved one may go.
-- **The name, not a sign-off.** A text names the organization with `{{organizacion}}`
-  (`te escribimos de {{organizacion}}`), and carries no signature.
+- **The name, not a signature.** A text names the organization with `{{organizacion}}`
+  (`te escribimos de {{organizacion}}`), and carries no signature such as `Equipo X`;
+  a closing such as `Saludos` is not one.
 - **The assistant's fixed checks.** No opening `¿` or `¡`, and no emojis, as in the
   assistant's replies ([assistant.md](../domain/assistant.md#communication-rules)):
   the check before submitting refuses either and says why. A text greets with

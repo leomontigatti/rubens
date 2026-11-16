@@ -34,7 +34,8 @@ other route.
 
 Every message Rubens starts is a template the practice has approved in its own account,
 in the utility category, written in its voice (`vos` or `usted`, its sign-off). A
-template may have several approved versions. None has buttons: the business does not
+template may have several approved versions. (Amended 2026-11-16: ADR-0014 puts reply
+buttons on three of them.) None has buttons: the business does not
 want the first message to read like a system notice.
 
 The patient's reply opens the customer service window, and each later message from the

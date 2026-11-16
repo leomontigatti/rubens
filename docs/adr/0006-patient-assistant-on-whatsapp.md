@@ -1,7 +1,8 @@
 # ADR-0006: Patients talk to an assistant on the organization's WhatsApp number
 
 **Status**: accepted; partly superseded by
-[ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md)
+[ADR-0010](./0010-whatsapp-cloud-api-number-per-organization.md) and
+[ADR-0014](./0014-reply-buttons-on-the-happy-path.md)
 
 Date: 2026-11-04. The rules it serves are in [assistant.md](../domain/assistant.md);
 the research behind it, with sources, is in
@@ -27,7 +28,9 @@ from the prompt. Every change is a proposal stored by Rubens; the model can only
 accept the latest one, when the person said yes to it, and the change then runs
 under the app's rules. The model never writes on its own.
 
-That boundary is what allows messages without buttons. Buttons would give exact
+(Amended 2026-11-16: ADR-0014 puts reply buttons on three templates, read by code; the
+assistant's own replies stay without them.) That boundary is what allows messages
+without buttons. Buttons would give exact
 answers, but the business wants conversations that read as human, so replies are
 interpreted, and the proposal keeps an interpretation from becoming a change
 nobody agreed to.

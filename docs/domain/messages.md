@@ -43,7 +43,8 @@ does. Each has:
 The text says what the message is about and the appointment's date and time,
 never when it is sent: a message held back by Meta goes late, and `mañana` or
 `en 2 horas` would then be wrong. For the same reason it greets with `Hola`, never
-by the time of day. It names the organization instead of signing off.
+by the time of day. It names the organization and carries no signature; a closing such as `Saludos` is
+not one.
 
 Every organization starts with four drafts, worded in its `Trato` as the
 communication rules have it when they are created
@@ -67,7 +68,9 @@ it through the assistant ([assistant.md](./assistant.md#cancelling-and-moving)).
 A template sends nothing until Meta approves one of its versions. From then on
 its messages are queued as their appointments come to their timing:
 
-- **when booked**: at the booking, or at the approval of a request;
+- **when booked**: at the booking, or at the approval of a request. A booking the
+  assistant makes in the conversation (second release) gets none: its reply there
+  already confirms it;
 - **before the appointment**: at the booking, each for its time. One whose time
   has already passed is skipped, not sent late. A request gets none until it is
   approved; the same rule then applies from the approval;

@@ -22,7 +22,8 @@ by ADR-0008.
   (the channel), `0012-whatsapp-directory-durable-object.md` (finding a number's
   organization), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
   `0007-patients-words-on-telegram.md`, `0013-reception-reads-every-conversation.md`
-  (who reads a conversation)
+  (who reads a conversation), `0014-reply-buttons-on-the-happy-path.md` (reply
+  buttons read by code)
 
 ## Decisions
 
@@ -66,3 +67,8 @@ by ADR-0008.
   the one object shared across organizations, mapping each connected number and account
   to its organization for the webhook; ids only; chosen over KV (eventually consistent)
   and D1 (a database for one table).
+- [ADR-0014: Reply buttons on the happy path, read by code](./0014-reply-buttons-on-the-happy-path.md) -
+  a reminder that asks to confirm, `turno_movido` and `reabrir_conversacion`
+  carry buttons whose id code reads without a model call; the assistant's replies carry
+  none, and free words still go to the model.
+  Supersedes the no-buttons rule of ADR-0006 and ADR-0010.

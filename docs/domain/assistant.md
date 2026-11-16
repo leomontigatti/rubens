@@ -50,7 +50,9 @@ In the second release:
   offered. A medical service that requires approval books a request instead
   ([appointments.md](./appointments.md#requests)). An unknown number can book: the
   patient is registered as incomplete, with the name they give and the number, and
-  their WhatsApp consent recorded as given to the assistant.
+  their WhatsApp consent recorded as given to the assistant. The assistant's reply
+  confirms the booking, so it gets no booking template
+  ([messages.md](./messages.md#the-organizations-templates)).
 
 Patients write in their own words; there are no buttons. A voice note is
 transcribed and read like text, and the inbox shows its transcript as the
