@@ -396,7 +396,8 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/kinesio|R[ií]os|12\/11|16[:.]30/i, /9[:.]00|9 hs|9 de la mañana/i],
+      // Names the appointment that moves by its current day or time (#393).
+      replyMatches: [/12\/11|12 de noviembre|jueves|16[:.]30/i, /9[:.]00|9 hs|9 de la mañana/i],
     },
   },
   {

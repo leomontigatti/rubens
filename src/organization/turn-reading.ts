@@ -128,10 +128,12 @@ export function asTurnMessages(read: TurnRead): TurnMessage[] {
     const written = message.sentBy ? `${staffReplyNote}\n${content}` : content;
     return read.withdrawn.has(message.id) ? `${written}\n${withdrawnReplyNote}` : written;
   };
-  let lastSentAt: number | null = null;
+  // The latest message so far: the history and the new messages are read
+  // apart, so one the practice sent can fall between two new ones.
+  let latestSentAt: number | null = null;
   const pauseBefore = (message: TurnRead["history"][number]) => {
-    const paused = lastSentAt !== null && message.sentAt - lastSentAt >= longPauseMs;
-    lastSentAt = message.sentAt;
+    const paused = latestSentAt !== null && message.sentAt - latestSentAt >= longPauseMs;
+    latestSentAt = Math.max(latestSentAt ?? message.sentAt, message.sentAt);
     return paused ? `${longPauseNote}\n` : "";
   };
   const messages: TurnMessage[] = [];
