@@ -335,7 +335,33 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/R[ií]os|kinesio/i, /10[:.]30/, /Norte/],
+      replyMatches: [/R[ií]os|kinesio/i, /12\/11|jueves 12|16[:.]30/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
+    id: "proposal-after-pause-and-side-question",
+    description:
+      "Moving: a pause, then a reply that names neither the appointment nor its times, still leaves the proposal stated in full (#393)",
+    number: "onePatient",
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
+      offeredSlots,
+      { role: "patient", text: "y se puede estacionar ahí?", pauseBefore: true },
+      { role: "assistant", text: "Sí, hay estacionamiento en la esquina." },
+    ],
+    patient: ["dale. entonces el martes a las 10 y media"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/R[ií]os|kinesio/i, /12\/11|jueves 12|16[:.]30/i, /10[:.]30/, /Norte/],
     },
   },
   {
