@@ -90,7 +90,9 @@ caught only where a case's `replyAvoids` names it.
 `cases.ts` holds the written conversations, `world.ts` the organization they run
 against. Nothing in either is a real patient, number, practitioner or address. To add a
 case, give it a conversation so far, the patient's new messages and what the turn must
-and must not do; `fake-object.ts` answers its tools from `world.ts`.
+and must not do; `fake-object.ts` answers its tools from `world.ts`. A history message
+marked `byStaff` or `pauseBefore`, and a case marked `pauseBefore`, gets the note
+underthing gives the model for a person's reply or an hour's pause (#393).
 
 `prompt.ts` and `tools.ts` run the assistant's real prompt and tool schemas
 (`src/lib/assistant.ts`, `hand_off` since #171, confirming and cancelling through
