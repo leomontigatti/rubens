@@ -135,8 +135,8 @@ message also names:
   practice, came after the last message from the assistant, or automated one
   from the practice, that named the appointment or offered its times: the model
   reads a note at each. A pause before the patient answers a reminder, which
-  goes out the day before, does not count once the assistant has offered times
-  after it.
+  goes out the day before, does not count once the assistant has named the
+  appointment or offered its times after it.
 
 Only a conversation's latest proposal can be accepted, and it expires. Accepting runs the change with the app's own
 rules, so it can still fail, for example when the time was taken meanwhile; the
