@@ -228,8 +228,9 @@ role and take one over from the `assistant`.
 _Avoid_: chat, messages, handoff view
 
 **`proposal`** — ui: "Propuesta"
-A change the `assistant` states in full and a person accepts before it is made,
-such as a new time for an `appointment`.
+A change the `assistant` puts to a person, who accepts it before it is made, such
+as a new time for an `appointment`. It holds every fact of the change, though the
+`assistant`'s message names only what changes.
 _Avoid_: suggestion, draft, pending action
 
 **`handoff`** — ui: "Derivación"
