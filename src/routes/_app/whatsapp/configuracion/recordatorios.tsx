@@ -8,10 +8,12 @@ import { handoffReminderChoices } from "#/lib/hour-choices.ts";
 import { getWhatsappSettings, saveHandoffReminders } from "#/server/whatsapp.functions.ts";
 
 import { handoffRemindersHint } from "#/routes/_app/whatsapp/configuracion/-handoff-reminders.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/recordatorios")({
   head: () => ({ meta: [{ title: "Recordatorios de derivaciones · underthing" }] }),
   loader: () => getWhatsappSettings(),
+  staticData: { crumbs: fixedCrumbs("Recordatorios de derivaciones") },
   component: EditHandoffReminders,
 });
 

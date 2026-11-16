@@ -1,6 +1,5 @@
 import type { LinkProps } from "@tanstack/react-router";
 import {
-  BellIcon,
   BuildingIcon,
   CalendarDaysIcon,
   CalendarSearchIcon,
@@ -27,7 +26,7 @@ export const passwordChangePath = "/cambiar-contrasena";
 
 const toReschedulePath = "/a-reprogramar";
 
-const notificationsPath = "/notificaciones";
+export const notificationsPath = "/notificaciones";
 
 type Path = NonNullable<LinkProps["to"]>;
 
@@ -51,7 +50,6 @@ const groups: { label: string; items: (NavLink | NavFolder)[] }[] = [
     label: "Día a día",
     items: [
       { label: "Agenda", to: "/agenda", icon: CalendarDaysIcon },
-      { label: "Notificaciones", to: notificationsPath, icon: BellIcon },
       { label: "A reprogramar", to: toReschedulePath, icon: CalendarSyncIcon },
       { label: "Pacientes", to: "/pacientes", icon: UsersIcon },
       { label: "Conversaciones", to: "/conversaciones", icon: MessagesSquareIcon },
@@ -86,21 +84,13 @@ const groups: { label: string; items: (NavLink | NavFolder)[] }[] = [
   },
 ];
 
-/** What the links count: the appointments to reschedule, `null` when the member may not see the list, and their unread notifications. */
+/** What the links count: the appointments to reschedule, `null` when the member may not see the list. */
 export interface NavCounts {
   toReschedule: number | null;
-  unreadNotifications: number;
 }
 
 function countOf(item: NavLink | NavFolder, counts: NavCounts) {
-  if (!("to" in item)) {
-    return 0;
-  }
-  const { to } = item;
-  if (to === toReschedulePath) {
-    return counts.toReschedule ?? 0;
-  }
-  return to === notificationsPath ? counts.unreadNotifications : 0;
+  return "to" in item && item.to === toReschedulePath ? (counts.toReschedule ?? 0) : 0;
 }
 
 /** The links `roles` see, each with its count. */
@@ -125,4 +115,46 @@ export function isCurrentPath(pathname: string, to: string) {
 /** Whether `folder` stands open on `pathname`: the page is one of its entries, or under one. */
 export function isOpenOn(pathname: string, folder: Pick<NavFolder, "entries">) {
   return folder.entries.some((entry) => isCurrentPath(pathname, entry.to));
+}
+
+/** A step of the breadcrumbs: a label, and the page it opens unless it is a folder. */
+export interface SectionCrumb {
+  label: string;
+  to?: Path;
+}
+
+/** The pages the top bar opens rather than the menu: the bell and the account menu. */
+const outsideTheMenu = [
+  { label: "Notificaciones", to: notificationsPath },
+  { label: "Cambiar contraseña", to: passwordChangePath },
+] satisfies SectionCrumb[];
+
+/** The steps to `pathname` through `item`: its link, or its folder and the folder's entry. */
+function stepsTo(pathname: string, item: NavLink | NavFolder): SectionCrumb[] | null {
+  if ("to" in item) {
+    return isCurrentPath(pathname, item.to) ? [{ label: item.label, to: item.to }] : null;
+  }
+  const entry = item.entries.find((one) => isCurrentPath(pathname, one.to));
+  return entry ? [{ label: item.label }, { label: entry.label, to: entry.to }] : null;
+}
+
+/**
+ * The section `pathname` sits in, as the sidebar names it: its group, which is
+ * no page, then its link, or its folder and the folder's entry. Empty outside
+ * every section.
+ */
+export function sectionOf(pathname: string): SectionCrumb[] {
+  const outside = outsideTheMenu.find((page) => isCurrentPath(pathname, page.to));
+  if (outside) {
+    return [outside];
+  }
+  for (const group of groups) {
+    for (const item of group.items) {
+      const steps = stepsTo(pathname, item);
+      if (steps) {
+        return [{ label: group.label }, ...steps];
+      }
+    }
+  }
+  return [];
 }

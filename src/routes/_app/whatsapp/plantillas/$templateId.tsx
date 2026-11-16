@@ -26,10 +26,12 @@ import {
 import { TemplateForm } from "#/routes/_app/whatsapp/plantillas/-template-form.tsx";
 import { TemplateVersions } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
 import type { TemplateVersion } from "#/routes/_app/whatsapp/plantillas/-template-preview.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/plantillas/$templateId")({
   head: () => ({ meta: [{ title: "Editar plantilla · underthing" }] }),
   loader: () => getWhatsappSettings(),
+  staticData: { crumbs: Crumbs },
   component: EditTemplate,
 });
 
@@ -180,4 +182,11 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
       review={(body) => reviewTemplate({ data: { body } })}
     />
   );
+}
+
+function Crumbs() {
+  const listed = Route.useLoaderData();
+  const { templateId } = Route.useParams();
+  const template = listed.ok ? listed.templates.find((one) => one.id === templateId) : undefined;
+  return <PageCrumbs items={[{ label: template?.name ?? "Plantilla" }]} />;
 }

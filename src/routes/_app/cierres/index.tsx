@@ -2,7 +2,7 @@ import { CalendarXIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
@@ -49,14 +49,16 @@ const columns: DataTableColumn<ListedClosure>[] = [
   {
     id: "place",
     header: "Sede",
-    cell: (closure) =>
-      closure.canOpen ? (
-        <RowLink to="/cierres/$closureId" params={{ closureId: closure.id }}>
-          {closure.place}
-        </RowLink>
-      ) : (
-        closure.place
-      ),
+    cell: (closure) => (
+      <RowName
+        name={closure.place}
+        link={
+          closure.canOpen
+            ? { to: "/cierres/$closureId", params: { closureId: closure.id } }
+            : undefined
+        }
+      />
+    ),
   },
   { id: "when", header: "Cuándo", cell: (closure) => rangeEntryLabel(closure.entry) },
 ];

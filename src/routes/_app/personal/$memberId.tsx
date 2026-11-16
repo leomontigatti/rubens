@@ -24,10 +24,12 @@ import {
   useAction,
   useEditAction,
 } from "#/routes/_app/personal/-shared.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
   head: () => ({ meta: [{ title: "Editar persona · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: EditMember,
 });
 
@@ -256,4 +258,9 @@ function MemberForm({ member }: { member: StaffMember }) {
       )}
     </ActionFormPage>
   );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  return <PageCrumbs items={[{ label: result.ok ? result.member.name : "Persona" }]} />;
 }

@@ -11,10 +11,12 @@ import {
   readOfficeId,
   refusalMessages,
 } from "#/routes/_app/cierres/-closure-fields.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/cierres/nuevo")({
   head: () => ({ meta: [{ title: "Nuevo cierre · underthing" }] }),
   loader: () => getClosures(),
+  staticData: { crumbs: fixedCrumbs("Nuevo cierre") },
   component: NewClosure,
 });
 

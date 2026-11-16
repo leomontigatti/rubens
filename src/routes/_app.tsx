@@ -1,9 +1,13 @@
 import { Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 
 import { passwordChangePath } from "#/components/app-nav.ts";
+import { AppBreadcrumbs } from "#/components/app-breadcrumbs.tsx";
 import { AppSidebar } from "#/components/app-sidebar.tsx";
+import { NotificationsBell } from "#/components/notifications-bell.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { useSignOut } from "#/components/sign-in-provider.tsx";
+import { Separator } from "#/components/ui/separator.tsx";
+import { UserMenu } from "#/components/user-menu.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { useSessionGuard } from "#/hooks/use-session-guard.ts";
@@ -75,10 +79,19 @@ function AppShell() {
   return (
     <TooltipProvider>
       <SidebarProvider defaultOpen={sidebarOpen}>
-        <AppSidebar viewer={viewer} counts={counts} onSignOut={() => void signOut()} />
+        <AppSidebar viewer={viewer} counts={{ toReschedule: counts.toReschedule }} />
         <SidebarInset className="min-w-0">
-          <header className="flex items-center border-b px-4 py-2">
+          <header className="flex items-center gap-2 border-b px-4 py-2">
             <SidebarTrigger />
+            <Separator
+              orientation="vertical"
+              className="data-vertical:h-4 data-vertical:self-auto"
+            />
+            <AppBreadcrumbs />
+            <div className="ml-auto flex items-center gap-1">
+              <NotificationsBell unread={counts.unreadNotifications} />
+              <UserMenu viewer={viewer} onSignOut={() => void signOut()} />
+            </div>
           </header>
           <div className="flex flex-1 flex-col p-6 *:has-data-[slot=empty]:flex-1">
             <Outlet />

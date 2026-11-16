@@ -8,6 +8,7 @@ import {
 import type { ColumnDef, RowData, Table as TanStackTable } from "@tanstack/react-table";
 import { Link } from "@tanstack/react-router";
 import type { LinkProps } from "@tanstack/react-router";
+import { UserRoundIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
@@ -15,7 +16,9 @@ import type { ComponentProps, ReactNode } from "react";
 import { matchingRows } from "#/components/data-table-rows.ts";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
+import { RecordName } from "#/components/record-transition.tsx";
 import { SearchInput } from "#/components/search-input.tsx";
+import { Avatar, AvatarFallback } from "#/components/ui/avatar.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Table,
@@ -25,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "#/components/ui/table.tsx";
+import { initialsOf } from "#/lib/initials.ts";
 
 // Every list: a toolbar, 40 px rows and a pager. A row has no actions column:
 // its `RowLink` opens the record. `useClientDataTable` is for a list the loader
@@ -131,6 +135,47 @@ export function RowLink(props: LinkProps & { children: ReactNode }) {
       preload={false}
       className="text-primary font-medium underline-offset-4 hover:underline"
     />
+  );
+}
+
+/** A row's avatar: the name's initials, or a person's outline for a row with no name. */
+export function RowAvatar({ name }: { name: string | null }) {
+  return (
+    <Avatar size="sm">
+      <AvatarFallback>
+        {name ? initialsOf(name) : <UserRoundIcon className="size-3.5" />}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+/**
+ * Every list's first cell: the row's avatar (unless `avatar` is false), its
+ * name (the link to its page when `link` is given), its states as badges
+ * beside the name, and a `detail` line under it.
+ */
+export function RowName(props: {
+  name: string;
+  link?: LinkProps;
+  status?: ReactNode;
+  detail?: ReactNode;
+  /** The row's id, when its page's title takes the name over (`RecordName`). */
+  transitionId?: string;
+  avatar?: boolean;
+}) {
+  const { name, link, status, detail, transitionId, avatar = true } = props;
+  const label = transitionId ? <RecordName id={transitionId}>{name}</RecordName> : name;
+  return (
+    <span className="flex items-center gap-2">
+      {avatar && <RowAvatar name={name} />}
+      <span className="flex flex-col">
+        <span className="flex flex-wrap items-center gap-2">
+          {link ? <RowLink {...link}>{label}</RowLink> : label}
+          {status}
+        </span>
+        {detail && <span className="text-muted-foreground text-sm">{detail}</span>}
+      </span>
+    </span>
   );
 }
 

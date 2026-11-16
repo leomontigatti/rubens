@@ -22,15 +22,20 @@ What is settled already:
   its look: pick a `variant` or `size`, never restyle it from a screen. A case with no token
   gets a one-off class; a second case gets a variant or a component. A new token, variant or
   typeface is a product decision: ask before adding one.
-- **A state is a `Badge` beside the name**, or in the `Estado` column of a table, never
-  ` · Inactivo` in the text. It is neutral
-  unless it changes what someone does next. On the calendar, colour says which practitioner, so
-  a status there is an icon.
+- **A state is a `Badge` beside the name**, never ` · Inactivo` in the text, and a table has no
+  `Estado` column. Every list looks alike unless a screen says otherwise: its first cell is
+  `RowName` (`data-table.tsx`): the row's avatar with up to two initials (optional), its name or
+  link, its states beside the name, and an optional `detail` line under it (a template's timing). A list's rows show every row's
+  active state, active ones too (`ActiveBadge`); on a record's page, only a state worth noticing. A badge's colour means what an
+  alert's and a toast's does: `success` for an active record, `warning` and `destructive` for
+  what changes what someone does next, and neutral for the rest. On the calendar, colour says
+  which practitioner, so a status there is an icon.
 
   | State                                           | Variant       |
   | ----------------------------------------------- | ------------- |
   | `Inactivo`, `Inactiva`, `Cancelado`, `Atendido` | `secondary`   |
   | `Sobreturno`, `Principal`, `Menor de edad`      | `outline`     |
+  | `Activo`, `Activa`                              | `success`     |
   | `Datos incompletos`                             | `warning`     |
   | `Ausente`, `Turnos a reprogramar` count         | `destructive` |
 
@@ -63,13 +68,18 @@ beside it.
   guards nothing: the screen's server functions decide what a member may do.
 - **Every link has a `lucide` icon**, the only thing left when the sidebar is collapsed.
 - **Every page opens with `PageHeader`**, never its own `<h1>` (`pnpm lint` enforces it): `title`,
-  `back` on a detail page, `status` for its `Badge`, `description` for a line of detail, and
-  `actions` for the buttons that act on the whole page. A page in the sidebar has a one-line
+  `status` for its `Badge`, `description` for a line of detail, and `actions` for the buttons
+  that act on the whole page. The way up is the top bar's breadcrumbs, not a link in the header. A page in the sidebar has a one-line
   `description` saying what it is for; a detail or form page uses it for the record (an address,
   an email, a name). A page that is one card holding one form,
   `/ingresar` and `/cambiar-contrasena`, is titled by its `CardTitle` instead.
-- **A refused detail page keeps its header and back link**, above the refusal's `ErrorAlert`, so
-  the way back to its list stays where it always is: `/conversaciones/$conversationId`.
+- **A refused detail page keeps its header**, above the refusal's `ErrorAlert`, and its
+  breadcrumbs keep the way back to its list: `/conversaciones/$conversationId`.
+- **The top bar holds the breadcrumbs and the member's own things.** After the sidebar's toggle,
+  `AppBreadcrumbs` names the section as the sidebar does, then the steps a page under it declares
+  in its route's `staticData.crumbs` (`fixedCrumbs` for fixed labels, a `Crumbs` component with
+  `PageCrumbs` when a step names a record). At its end, the notifications bell with the unread
+  count, then the account menu (`UserMenu`).
 
 ## Filters
 
@@ -131,11 +141,12 @@ beside it.
   picker, whose quick registration submits apart. Its problems still show under its field.
 - **A create's submit button names the thing**: `Crear prestación`, `Agregar cobertura`, never
   a bare `Crear`.
-- **The fields sit in rows by their size, outside any card** ([Forms](#forms)). The actions
-  close the form: `Volver` on the left, `Descartar cambios` and the submit button on the right. On
-  a long form they stick to the bottom of the window. Below `sm`, as on a phone, the submit button
-  takes a row of its own, full width, under `Volver` and `Descartar cambios`: the three and a long
-  label (`Guardar y enviar a Meta`) do not fit one row at 390px.
+- **A form is one `Card`** (`FormPage` draws it): the fields in rows by their size in its
+  content ([Forms](#forms)), and the actions in its footer, which sticks to the bottom of the window
+  so a long form never hides them. The actions sit in one row: `Volver` on the left,
+  `Descartar cambios` and the submit button on the right. The right-hand buttons wrap under
+  `Volver` only when they do not fit, as the three and a long label (`Guardar y enviar a Meta`) at
+  390px.
 - **`Volver` goes where the browser's back goes**, so a list comes back with its filters and page.
 - **On an edit, `Descartar cambios` shows once something differs from what the form opened with.**
   A create has none (`FormPage`'s `creates`): with no saved values to go back to, it would only
@@ -150,16 +161,31 @@ beside it.
   opens their page. A save the page must confirm stays: the starting password's `Listo`.
 - **A record has one form for its own fields**: its page shows values in `RecordSection`s
   (`src/components/record-section.tsx`), and one `Editar` opens them all, saved together in one
-  transaction. A record of its own, such as a coverage, and a one-off action, such as a starting
-  password, keep their own page.
+  transaction, until the record's page becomes its form (below). A record of its own, such as a
+  coverage, and a one-off action, such as a starting password, keep their own page.
 - **A page of settings is `RecordSection`s**, one per setting, each showing its values; its
   `Editar` opens that setting's own form page, saved apart from the rest, and a section that
   leads elsewhere has that link as its action (`Probar`): `/whatsapp/configuracion`.
-- **When the edit page is a record's only page, its actions sit beside its title**: `Desactivar` or
-  `Reactivar`, with an `Inactiva` badge (`activeRecord`, `src/components/admin-form.tsx`), or
-  `Eliminar`, which asks first and goes back to the list (`FormPage`'s `record`). A record with a
-  page of its own, such as an office (`Sedes`), has them in that page's header beside `Editar`.
-  Its list's name cell links only for someone who may open the page, and is plain text otherwise.
+- **A record's page is its edit form**, the model being an office's (`/sedes/$officeId`); detail
+  pages move to it one by one. The list's name opens it: no detail page, no `Editar`. Its fields are
+  the create's, in the same order, so a create and an edit look alike.
+- **Its title is the record's name, with its state badge beside it**, active too (`ActiveBadge`),
+  and its actions on the right in one `Acciones` menu (`activeRecord`'s `menu`,
+  `src/components/admin-form.tsx`): a create for each of its lists first, such as `Nuevo
+  consultorio`, then, past a separator, `Desactivar` in red or `Reactivar`, or `Eliminar`. One
+  that asks first keeps asking: its dialog sits outside the menu (`useDeactivation`). The name
+  moves from the list row into the title and back (`RecordName`, through the router's view transitions); nothing else on the page animates. The
+  subtitle says what the page holds, the same for every record, never one of its fields.
+- **A record with lists of its own gets full-width `Tabs` under its header**: `Datos generales`
+  first, holding the form, then one tab per list, named by it with a count of its active rows in an
+  `outline` `Badge` (the tab list's background hides a `secondary` one). A list in a tab has no
+  heading or button of its own: its create is in `Acciones`, and again in its empty state. A
+  list page of its own keeps its create button visible in its header (`Nueva sede`).
+  The form's tab stays mounted, so an edit survives a look at another tab, and a tab switch is no
+  navigation, which would ask before discarding it. `?seccion=` only picks the tab a page
+  opens on; a list row's pages lead back to their tab with it.
+- **Who can't edit the record sees its header and its lists**, with no form and no tabs. Its
+  list's name cell links only for someone who may open the page, and is plain text otherwise.
 - **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
   `/disponibilidad`, which asks and answers.
 
@@ -209,7 +235,7 @@ carried over from en-escena.
     a checkbox whose label fits.
 - **Related fields share a row; a field that starts a new subject starts a new row**
   (`startsRow`): `Nombre` · `Apellido` · `Teléfono`, then `Tipo de documento` · `Número de
-  documento` · `Fecha de nacimiento`, then `Correo electrónico` · `Dirección`. A child that is no field (a section, an
+  documento` · `Fecha de nacimiento`, then `Correo electrónico` · `Domicilio`. A child that is no field (a section, an
   alert, a line of text) takes the whole row; a section is a `FormGrid` of its own, inside the
   form's: `/dev/patrones`, `Campos por tamaño`.
 - **An option that needs a mark, such as a colour's swatch, is a `MarkedSelectField`**, which

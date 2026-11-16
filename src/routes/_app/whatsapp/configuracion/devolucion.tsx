@@ -8,10 +8,12 @@ import { returnTimeChoices } from "#/lib/hour-choices.ts";
 import { getWhatsappSettings, saveReturnTime } from "#/server/whatsapp.functions.ts";
 
 import { returnTimeHint } from "#/routes/_app/whatsapp/configuracion/-return-time.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/devolucion")({
   head: () => ({ meta: [{ title: "Devolución al asistente · underthing" }] }),
   loader: () => getWhatsappSettings(),
+  staticData: { crumbs: fixedCrumbs("Devolución al asistente") },
   component: EditReturnTime,
 });
 

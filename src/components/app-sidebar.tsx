@@ -1,8 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronRightIcon, ChevronsUpDownIcon, CircleUserIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 
-import { isCurrentPath, isOpenOn, navFor, passwordChangePath } from "#/components/app-nav.ts";
+import { isCurrentPath, isOpenOn, navFor } from "#/components/app-nav.ts";
 import type { NavCounts } from "#/components/app-nav.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import {
@@ -11,18 +11,8 @@ import {
   CollapsibleTrigger,
 } from "#/components/ui/collapsible.tsx";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "#/components/ui/dropdown-menu.tsx";
-import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -34,7 +24,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarRail,
   useSidebar,
 } from "#/components/ui/sidebar.tsx";
 import type { Role } from "#/lib/access.ts";
@@ -145,38 +134,8 @@ function NavFolder(props: { folder: NavFolderItem; pathname: string }) {
   );
 }
 
-function UserMenu(props: { viewer: Viewer; onSignOut: () => void }) {
-  const { isMobile, setOpenMobile } = useSidebar();
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<SidebarMenuButton tooltip={props.viewer.name} />}>
-            <CircleUserIcon />
-            <span>{props.viewer.name}</span>
-            <ChevronsUpDownIcon className="ml-auto" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side={isMobile ? "top" : "right"} align="end" className="w-auto">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>{props.viewer.email}</DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              render={<Link to={passwordChangePath} onClick={() => setOpenMobile(false)} />}
-            >
-              Cambiar contraseña
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={props.onSignOut}>Cerrar sesión</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  );
-}
-
-/** The app's menu: the organization, the links by group and the member's account. */
-export function AppSidebar(props: { viewer: Viewer; counts: NavCounts; onSignOut: () => void }) {
+/** The app's menu: the organization and the links by group. */
+export function AppSidebar(props: { viewer: Viewer; counts: NavCounts }) {
   const { viewer } = props;
   const { setOpenMobile } = useSidebar();
 
@@ -200,10 +159,6 @@ export function AppSidebar(props: { viewer: Viewer; counts: NavCounts; onSignOut
       <SidebarContent>
         <NavMenu roles={viewer.roles} counts={props.counts} />
       </SidebarContent>
-      <SidebarFooter>
-        <UserMenu viewer={viewer} onSignOut={props.onSignOut} />
-      </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }

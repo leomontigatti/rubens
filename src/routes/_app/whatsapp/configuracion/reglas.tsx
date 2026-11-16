@@ -15,10 +15,12 @@ import { splitPhone } from "#/lib/phones.ts";
 import { getWhatsappSettings, saveCommunicationRules } from "#/server/whatsapp.functions.ts";
 
 import { formOfAddressLabels } from "#/routes/_app/whatsapp/configuracion/-communication-rules.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/reglas")({
   head: () => ({ meta: [{ title: "Reglas de comunicación · underthing" }] }),
   loader: () => getWhatsappSettings(),
+  staticData: { crumbs: fixedCrumbs("Reglas de comunicación") },
   component: EditCommunicationRules,
 });
 

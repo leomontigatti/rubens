@@ -1,13 +1,23 @@
 import { useRouter } from "@tanstack/react-router";
+import { EllipsisIcon, PowerIcon, PowerOffIcon } from "lucide-react";
 import { useState } from "react";
-import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
 
-import { DeactivateButton } from "#/components/confirm-dialog.tsx";
+import { DeactivateButton, useDeactivation } from "#/components/confirm-dialog.tsx";
+import type { Deactivation } from "#/components/confirm-dialog.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "#/components/ui/dropdown-menu.tsx";
 
 // The pieces the admin screens (offices and rooms, staff) share: the submit
 // step every form and button goes through, its error copy, and a record's
@@ -104,14 +114,12 @@ export function FormActions(props: {
   );
 }
 
-type Deactivation = Pick<ComponentProps<typeof DeactivateButton>, "question" | "countUpcoming">;
-
 /**
  * Deactivates or reactivates the record on its page. `deactivation` is for a
  * record whose deactivation sends appointments to the "to reschedule" list: it
  * asks first when it does.
  */
-export function ActiveToggle(props: {
+function ActiveToggle(props: {
   active: boolean;
   pending: boolean;
   onChange: (active: boolean) => void;
@@ -135,6 +143,54 @@ export function ActiveToggle(props: {
 }
 
 /**
+ * A record's actions as one `Acciones` menu beside its title: `items` first,
+ * such as a create for one of its lists, then `Desactivar` or `Reactivar`.
+ */
+function RecordActionsMenu(props: {
+  active: boolean;
+  pending: boolean;
+  onChange: (active: boolean) => void;
+  deactivation?: Deactivation;
+  items?: ReactNode;
+}) {
+  const { active, pending, deactivation } = props;
+  const deactivate = useDeactivation(
+    deactivation ?? { question: "", countUpcoming: noUpcoming },
+    () => props.onChange(false),
+  );
+  const toggle = () => (active && deactivation ? deactivate.request() : props.onChange(!active));
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="outline" disabled={pending} />}>
+          <EllipsisIcon data-icon="inline-start" />
+          Acciones
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-auto">
+          {props.items && (
+            <>
+              <DropdownMenuGroup>{props.items}</DropdownMenuGroup>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <DropdownMenuItem
+            variant={active ? "destructive" : "default"}
+            disabled={deactivate.checking}
+            onClick={toggle}
+          >
+            {active ? <PowerOffIcon /> : <PowerIcon />}
+            {active ? "Desactivar" : "Reactivar"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {deactivate.dialog}
+    </>
+  );
+}
+
+const noUpcoming = () => Promise.resolve({ ok: true as const, count: 0 });
+
+/**
  * The header of an edit page that is its record's only page: a badge saying
  * `inactiveLabel` while the record is inactive, and its `ActiveToggle`, which
  * runs through `toggle`, the page's `useFormAction`.
@@ -145,18 +201,38 @@ export function activeRecord(props: {
   toggle: { pending: boolean; error: string | null };
   onChange: (active: boolean) => void;
   deactivation?: Deactivation;
+  /** The actions as one `Acciones` menu, `items` first (`RecordActionsMenu`). */
+  menu?: { items?: ReactNode };
 }): RecordHeader {
-  const { active, toggle } = props;
+  const { active, toggle, menu } = props;
   return {
     status: !active && <Badge variant="secondary">{props.inactiveLabel}</Badge>,
-    actions: (busy) => (
-      <ActiveToggle
-        active={active}
-        pending={toggle.pending || busy}
-        onChange={props.onChange}
-        deactivation={props.deactivation}
-      />
-    ),
+    actions: (busy) =>
+      menu ? (
+        <RecordActionsMenu
+          active={active}
+          pending={toggle.pending || busy}
+          onChange={props.onChange}
+          deactivation={props.deactivation}
+          items={menu.items}
+        />
+      ) : (
+        <ActiveToggle
+          active={active}
+          pending={toggle.pending || busy}
+          onChange={props.onChange}
+          deactivation={props.deactivation}
+        />
+      ),
     error: toggle.error,
   };
+}
+
+/** A record's state in a table's `Estado` column: `Activa` or `Inactiva`, by the noun's ending. */
+export function ActiveBadge({ active, ending }: { active: boolean; ending: "a" | "o" }) {
+  return active ? (
+    <Badge variant="success">{`Activ${ending}`}</Badge>
+  ) : (
+    <Badge variant="secondary">{`Inactiv${ending}`}</Badge>
+  );
 }

@@ -67,52 +67,65 @@ export function ConfirmDialog(props: {
   );
 }
 
-/**
- * `Desactivar` for someone or a place: it asks first when that sends appointments
- * to the list, saying how many, and deactivates at once when it sends none.
- * A refused count deactivates too: the deactivation is refused the same way,
- * and shows why.
- */
-export function DeactivateButton(props: {
+export interface Deactivation {
   question: string;
-  size?: "default" | "sm";
-  pending: boolean;
   countUpcoming: () => Promise<{ ok: true; count: number } | { ok: false }>;
-  onDeactivate: () => void;
-}) {
+}
+
+/**
+ * A deactivation that asks first when it sends appointments to the list, saying
+ * how many, and deactivates at once when it sends none. A refused count
+ * deactivates too: the deactivation is refused the same way, and shows why.
+ * `dialog` goes outside whatever starts it, such as a menu that closes on a pick.
+ */
+export function useDeactivation(deactivation: Deactivation, onDeactivate: () => void) {
   const [checking, setChecking] = useState(false);
   const [upcoming, setUpcoming] = useState(0);
   const [open, setOpen] = useState(false);
 
   async function request() {
     setChecking(true);
-    const result = await props.countUpcoming().finally(() => setChecking(false));
+    const result = await deactivation.countUpcoming().finally(() => setChecking(false));
     if (result.ok && result.count > 0) {
       setUpcoming(result.count);
       setOpen(true);
     } else {
-      props.onDeactivate();
+      onDeactivate();
     }
   }
 
+  return {
+    checking,
+    request: () => void request(),
+    dialog: (
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={deactivation.question}
+        description={upcomingAppointmentsNotice(upcoming)}
+        confirmLabel="Desactivar"
+        onConfirm={onDeactivate}
+      />
+    ),
+  };
+}
+
+/** `Desactivar` for someone or a place, as a button (`useDeactivation`). */
+export function DeactivateButton(
+  props: Deactivation & { size?: "default" | "sm"; pending: boolean; onDeactivate: () => void },
+) {
+  const deactivate = useDeactivation(props, props.onDeactivate);
   return (
     <>
       <Button
         variant="outline"
         size={props.size}
-        disabled={props.pending || checking}
-        onClick={() => void request()}
+        disabled={props.pending || deactivate.checking}
+        onClick={deactivate.request}
       >
         Desactivar
       </Button>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={props.question}
-        description={upcomingAppointmentsNotice(upcoming)}
-        confirmLabel="Desactivar"
-        onConfirm={props.onDeactivate}
-      />
+      {deactivate.dialog}
     </>
   );
 }

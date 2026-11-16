@@ -51,7 +51,6 @@ import { Route as AppPacientesPatientIdEditarRouteImport } from './routes/_app/p
 import { Route as AppPersonalMemberIdContrasenaRouteImport } from './routes/_app/personal/$memberId_/contrasena'
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
-import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
 import { Route as AppWhatsappConfiguracionIndexRouteImport } from './routes/_app/whatsapp/configuracion/index'
 import { Route as AppWhatsappConfiguracionContactosRouteImport } from './routes/_app/whatsapp/configuracion/contactos'
 import { Route as AppWhatsappConfiguracionDevolucionRouteImport } from './routes/_app/whatsapp/configuracion/devolucion'
@@ -293,11 +292,6 @@ const AppPrestacionesPractitionerIdNuevaRoute =
     path: '/prestaciones/$practitionerId/nueva',
     getParentRoute: () => AppRoute,
   } as any)
-const AppSedesOfficeIdEditarRoute = AppSedesOfficeIdEditarRouteImport.update({
-  id: '/sedes/$officeId_/editar',
-  path: '/sedes/$officeId/editar',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppWhatsappConfiguracionIndexRoute =
   AppWhatsappConfiguracionIndexRouteImport.update({
     id: '/whatsapp/configuracion/',
@@ -467,7 +461,6 @@ export interface FileRoutesByFullPath {
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
-  '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
   '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
@@ -532,7 +525,6 @@ export interface FileRoutesByTo {
   '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
-  '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
   '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
@@ -599,7 +591,6 @@ export interface FileRoutesById {
   '/_app/personal/$memberId_/contrasena': typeof AppPersonalMemberIdContrasenaRoute
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
-  '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
   '/_app/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/_app/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/_app/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
@@ -666,7 +657,6 @@ export interface FileRouteTypes {
     | '/personal/$memberId/contrasena'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
-    | '/sedes/$officeId/editar'
     | '/whatsapp/configuracion/contactos'
     | '/whatsapp/configuracion/devolucion'
     | '/whatsapp/configuracion/prueba'
@@ -731,7 +721,6 @@ export interface FileRouteTypes {
     | '/personal/$memberId/contrasena'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
-    | '/sedes/$officeId/editar'
     | '/whatsapp/configuracion/contactos'
     | '/whatsapp/configuracion/devolucion'
     | '/whatsapp/configuracion/prueba'
@@ -797,7 +786,6 @@ export interface FileRouteTypes {
     | '/_app/personal/$memberId_/contrasena'
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
-    | '/_app/sedes/$officeId_/editar'
     | '/_app/whatsapp/configuracion/contactos'
     | '/_app/whatsapp/configuracion/devolucion'
     | '/_app/whatsapp/configuracion/prueba'
@@ -1125,13 +1113,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPrestacionesPractitionerIdNuevaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/sedes/$officeId_/editar': {
-      id: '/_app/sedes/$officeId_/editar'
-      path: '/sedes/$officeId/editar'
-      fullPath: '/sedes/$officeId/editar'
-      preLoaderRoute: typeof AppSedesOfficeIdEditarRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/whatsapp/configuracion/': {
       id: '/_app/whatsapp/configuracion/'
       path: '/whatsapp/configuracion'
@@ -1321,7 +1302,6 @@ interface AppRouteChildren {
   AppPersonalMemberIdContrasenaRoute: typeof AppPersonalMemberIdContrasenaRoute
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
-  AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
   AppWhatsappConfiguracionContactosRoute: typeof AppWhatsappConfiguracionContactosRoute
   AppWhatsappConfiguracionDevolucionRoute: typeof AppWhatsappConfiguracionDevolucionRoute
   AppWhatsappConfiguracionPruebaRoute: typeof AppWhatsappConfiguracionPruebaRoute
@@ -1385,7 +1365,6 @@ const AppRouteChildren: AppRouteChildren = {
     AppPrestacionesPractitionerIdMedicalServiceIdRoute,
   AppPrestacionesPractitionerIdNuevaRoute:
     AppPrestacionesPractitionerIdNuevaRoute,
-  AppSedesOfficeIdEditarRoute: AppSedesOfficeIdEditarRoute,
   AppWhatsappConfiguracionContactosRoute:
     AppWhatsappConfiguracionContactosRoute,
   AppWhatsappConfiguracionDevolucionRoute:

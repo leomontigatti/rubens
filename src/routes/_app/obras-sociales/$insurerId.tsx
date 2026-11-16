@@ -8,10 +8,12 @@ import {
   refusalMessages,
   useAction,
 } from "#/routes/_app/obras-sociales/-insurer-form.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/obras-sociales/$insurerId")({
   loader: () => getInsurers({ data: { includeInactive: true } }),
   head: () => ({ meta: [{ title: "Editar obra social o prepaga · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: EditInsurer,
 });
 
@@ -46,4 +48,11 @@ function EditInsurer() {
       onSubmit={(input) => editInsurer({ data: { ...input, insurerId } })}
     />
   );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { insurerId } = Route.useParams();
+  const insurer = result.ok ? result.insurers.find((one) => one.id === insurerId) : undefined;
+  return <PageCrumbs items={[{ label: insurer?.name ?? "Obra social o prepaga" }]} />;
 }

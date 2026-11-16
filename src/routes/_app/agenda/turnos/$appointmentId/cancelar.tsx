@@ -20,12 +20,14 @@ import {
 } from "#/routes/_app/agenda/-appointment-page.tsx";
 import type { LoadedAppointment } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { statusRefusalMessages } from "#/routes/_app/agenda/-appointment-status.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 // Cancelling an appointment: who cancels, and why if the user says.
 
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/cancelar")({
   head: () => ({ meta: [{ title: "Cancelar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
+  staticData: { crumbs: fixedCrumbs("Cancelar turno") },
   component: CancelAppointment,
 });
 

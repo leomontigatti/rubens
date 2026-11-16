@@ -1,14 +1,14 @@
 import { BuildingIcon } from "lucide-react";
+import { ActiveBadge } from "#/components/admin-form.tsx";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import * as z from "zod";
 
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
 import { getOffices } from "#/server/offices.functions.ts";
 import type { Office } from "#/organization/offices.ts";
 
@@ -52,18 +52,15 @@ const columns: DataTableColumn<Office>[] = [
     id: "name",
     header: "Nombre",
     cell: (office) => (
-      <RowLink to="/sedes/$officeId" params={{ officeId: office.id }}>
-        {office.name}
-      </RowLink>
+      <RowName
+        name={office.name}
+        link={{ to: "/sedes/$officeId", params: { officeId: office.id } }}
+        transitionId={office.id}
+        status={<ActiveBadge active={office.active} ending="a" />}
+      />
     ),
   },
-  { id: "address", header: "Dirección", cell: (office) => office.address },
-  { id: "timeZone", header: "Zona horaria", cell: (office) => office.timeZone },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (office) => !office.active && <Badge variant="secondary">Inactiva</Badge>,
-  },
+  { id: "address", header: "Domicilio", cell: (office) => office.address },
 ];
 
 function OfficeTable(props: { offices: Office[]; onlyInactive: boolean; isAdmin: boolean }) {
@@ -87,7 +84,7 @@ function OfficeTable(props: { offices: Office[]; onlyInactive: boolean; isAdmin:
         value: query,
         onChange: setQuery,
         label: "Buscar sede",
-        placeholder: "Buscar por nombre o dirección",
+        placeholder: "Buscar por nombre o domicilio",
       }}
       filters={{
         groups: [statusFilter(inactivas, { active: "Activas", all: "Todas" })],

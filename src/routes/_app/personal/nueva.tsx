@@ -8,10 +8,12 @@ import type { StaffInput } from "#/lib/staff.ts";
 import { addStaffMember, getStaff } from "#/server/staff.functions.ts";
 
 import { RefusalAlert, roleOptions, useAction } from "#/routes/_app/personal/-shared.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/personal/nueva")({
   head: () => ({ meta: [{ title: "Nueva persona · underthing" }] }),
   loader: () => getStaff(),
+  staticData: { crumbs: fixedCrumbs("Nueva persona") },
   component: NewStaffMember,
 });
 

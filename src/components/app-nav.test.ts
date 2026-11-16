@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { isCurrentPath, isOpenOn, navFor } from "#/components/app-nav.ts";
+import { isCurrentPath, isOpenOn, navFor, sectionOf } from "#/components/app-nav.ts";
 
-const counts = (toReschedule: number | null, unreadNotifications = 0) => ({
-  toReschedule,
-  unreadNotifications,
-});
+const counts = (toReschedule: number | null) => ({ toReschedule });
 
 describe("the menu a member sees", () => {
   it("leaves the admin's screens out for anyone else", () => {
@@ -27,12 +24,36 @@ describe("the menu a member sees", () => {
     expect(daily(null).some((item) => "to" in item && item.to === "/a-reprogramar")).toBe(false);
   });
 
-  it("counts the member's unread notifications on their link, for every role", () => {
-    for (const role of ["receptionist", "practitioner", "admin"] as const) {
-      const daily = navFor([role], counts(0, 2))[0]!.items;
+  it("leaves the notifications out: the top bar's bell opens them", () => {
+    const links = navFor(["admin"], counts(0)).flatMap((group) => group.items);
 
-      expect(daily.find((item) => "to" in item && item.to === "/notificaciones")?.count).toBe(2);
-    }
+    expect(links.some((item) => "to" in item && item.to === "/notificaciones")).toBe(false);
+  });
+});
+
+describe("the breadcrumbs' section", () => {
+  it("names a page outside the menu by its own label", () => {
+    expect(sectionOf("/notificaciones")).toEqual([
+      { label: "Notificaciones", to: "/notificaciones" },
+    ]);
+    expect(sectionOf("/cambiar-contrasena")).toEqual([
+      { label: "Cambiar contraseña", to: "/cambiar-contrasena" },
+    ]);
+  });
+
+  it("names a link's page under its group, which is no page", () => {
+    expect(sectionOf("/horarios/1")).toEqual([
+      { label: "Profesionales" },
+      { label: "Horarios", to: "/horarios" },
+    ]);
+  });
+
+  it("names a folder's page under its group and the folder", () => {
+    expect(sectionOf("/whatsapp/plantillas/nueva")).toEqual([
+      { label: "Administración" },
+      { label: "WhatsApp" },
+      { label: "Plantillas", to: "/whatsapp/plantillas" },
+    ]);
   });
 });
 

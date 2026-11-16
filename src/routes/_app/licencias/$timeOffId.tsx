@@ -7,10 +7,12 @@ import { timeOffUpdateSchema } from "#/lib/time-ranges.ts";
 import { editTimeOff, getTimeOff, removeTimeOff } from "#/server/time-off.functions.ts";
 
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/licencias/$timeOffId")({
   head: () => ({ meta: [{ title: "Editar licencia · underthing" }] }),
   loader: () => getTimeOff(),
+  staticData: { crumbs: fixedCrumbs("Editar licencia") },
   component: EditTimeOff,
 });
 

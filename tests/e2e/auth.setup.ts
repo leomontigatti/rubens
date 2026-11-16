@@ -13,10 +13,8 @@ for (const role of roles) {
     await page.getByLabel("Miembro").selectOption(person.userId);
     await page.getByRole("button", { name: "Ingresar" }).click();
     await expect(page).not.toHaveURL(/\/ingresar/);
-    // The account menu in the sidebar names who is signed in.
-    await expect(
-      page.getByRole("listitem").getByRole("button", { name: person.name }),
-    ).toBeVisible();
+    // The account menu at the end of the top bar names who is signed in.
+    await expect(page.locator("header").getByRole("button", { name: person.name })).toBeVisible();
     await page.context().storageState({ path: storageStateOf(role) });
   });
 }

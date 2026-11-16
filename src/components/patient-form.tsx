@@ -116,7 +116,7 @@ const fieldMessages: Record<string, string> = {
   documentNumber: "El número de documento es demasiado largo.",
   birthDate: "La fecha de nacimiento no es válida.",
   email: "El correo electrónico no es válido.",
-  address: "La dirección es demasiado larga.",
+  address: "El domicilio es demasiado largo.",
   // A guardian's.
   name: "Ingresá el nombre.",
   relationship: "Ingresá la relación con el paciente.",
@@ -235,7 +235,7 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
             )}
           </form.AppField>
           <form.AppField name="address">
-            {(field) => <field.TextField label="Dirección" size="half" />}
+            {(field) => <field.TextField label="Domicilio" size="half" />}
           </form.AppField>
         </FormGrid>
       )}

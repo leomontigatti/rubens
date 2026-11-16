@@ -21,6 +21,7 @@ import {
 } from "#/routes/_app/agenda/-appointment-page.tsx";
 import type { LoadedAppointment } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { roomFullMessage } from "#/routes/_app/agenda/-booking.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 // An appointment's own fields, saved together: its room, another of its
 // office at the same time, while it holds its time, and its reception note.
@@ -28,6 +29,7 @@ import { roomFullMessage } from "#/routes/_app/agenda/-booking.tsx";
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/editar")({
   head: () => ({ meta: [{ title: "Editar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
+  staticData: { crumbs: fixedCrumbs("Editar turno") },
   component: EditAppointment,
 });
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { useAppForm } from "#/components/app-form.tsx";
@@ -8,10 +8,12 @@ import { getMember, resetStartingPassword } from "#/server/staff.functions.ts";
 import type { StaffMember } from "#/organization/staff.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/personal/-shared.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId_/contrasena")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
   head: () => ({ meta: [{ title: "Asignar contraseña inicial · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: AssignPassword,
 });
 
@@ -70,5 +72,21 @@ function StartingPasswordForm({ member }: { member: StaffMember }) {
         )}
       </form.AppField>
     </ActionFormPage>
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { memberId } = Route.useParams();
+  return (
+    <PageCrumbs
+      items={[
+        {
+          label: result.ok ? result.member.name : "Persona",
+          link: <Link to="/personal/$memberId" params={{ memberId }} />,
+        },
+        { label: "Asignar contraseña inicial" },
+      ]}
+    />
   );
 }

@@ -27,6 +27,7 @@ import {
 } from "#/routes/_app/conversaciones/-hold.tsx";
 import type { ReplyDraft } from "#/routes/_app/conversaciones/-hold.tsx";
 import { refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 // One conversation in the inbox as a WhatsApp chat (`-chat.tsx`), with who
 // answers it and its open handoffs beside its title, where a member takes it
@@ -34,8 +35,6 @@ import { refusalMessages } from "#/routes/_app/conversaciones/-messages.tsx";
 // the reply's box to be sent or fixed, by a practitioner who keeps clinical
 // records. `mensaje` marks out the message a notification links to, as an
 // opt-out's, whose decision is under it.
-
-const backToInbox = { to: "/conversaciones", label: "Conversaciones" } as const;
 
 export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
   validateSearch: z.object({ mensaje: z.uuid().optional().catch(undefined) }),
@@ -48,6 +47,7 @@ export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
     return { conversation, handoffs };
   },
   head: () => ({ meta: [{ title: "Conversación · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: ConversationPage,
 });
 
@@ -60,7 +60,7 @@ function ConversationPage() {
   if (!result.ok) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader back={backToInbox} title="Conversación" />
+        <PageHeader title="Conversación" />
         <ErrorAlert message={refusalMessages[result.reason]} />
       </div>
     );
@@ -96,7 +96,6 @@ function ConversationPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={backToInbox}
         title={registeredName(conversation) ?? "Sin registrar"}
         status={
           <>
@@ -133,5 +132,20 @@ function ConversationPage() {
         readByReception={open.some((handoff) => handoff.forPractitioner && handoff.mayAnswer)}
       />
     </div>
+  );
+}
+
+function Crumbs() {
+  const { conversation } = Route.useLoaderData();
+  return (
+    <PageCrumbs
+      items={[
+        {
+          label: conversation.ok
+            ? (registeredName(conversation.conversation) ?? "Sin registrar")
+            : "Conversación",
+        },
+      ]}
+    />
   );
 }

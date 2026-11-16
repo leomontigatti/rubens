@@ -5,12 +5,14 @@ import {
   bookingSearchSchema,
   loadBooking,
 } from "#/routes/_app/agenda/-booking-route.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/agenda/sobreturnos/nuevo")({
   head: () => ({ meta: [{ title: "Sobreturno · underthing" }] }),
   validateSearch: bookingSearchSchema,
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => loadBooking(deps),
+  staticData: { crumbs: fixedCrumbs("Nuevo sobreturno") },
   component: NewOverbooking,
 });
 

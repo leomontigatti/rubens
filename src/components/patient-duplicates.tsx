@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
+import { ActiveBadge } from "#/components/admin-form.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
@@ -66,7 +66,7 @@ function CandidateRow(props: { candidate: DuplicateCandidate; onUse: (patient: P
       <div className="flex flex-col gap-1">
         <span className="flex items-center gap-2 font-medium">
           {patientName(patient)}
-          {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
+          {!patient.active && <ActiveBadge active={false} ending="o" />}
         </span>
         <span className="text-muted-foreground text-sm">{candidateDetails(props.candidate)}</span>
       </div>

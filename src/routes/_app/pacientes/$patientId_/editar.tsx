@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { fieldProblems } from "#/components/form-problems.ts";
@@ -16,10 +16,12 @@ import { patientName, patientUpdateSchema } from "#/lib/patients.ts";
 import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import { editPatient, getPatientDetails } from "#/server/patients.functions.ts";
 import type { Patient } from "#/organization/patients.ts";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/editar")({
   loader: ({ params }) => getPatientDetails({ data: { patientId: params.patientId } }),
   head: () => ({ meta: [{ title: "Editar paciente · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: EditPatient,
 });
 
@@ -68,5 +70,21 @@ function PatientEditForm({ patient }: { patient: Patient }) {
       />
       <PatientFields form={form} full />
     </FormPage>
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { patientId } = Route.useParams();
+  return (
+    <PageCrumbs
+      items={[
+        {
+          label: result.ok ? patientName(result.patient) : "Paciente",
+          link: <Link to="/pacientes/$patientId" params={{ patientId }} />,
+        },
+        { label: "Editar paciente" },
+      ]}
+    />
   );
 }

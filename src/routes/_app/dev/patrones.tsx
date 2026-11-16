@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { ColorSwatch } from "#/components/color-swatch.tsx";
-import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
@@ -61,7 +61,7 @@ function Pattern(props: { title: string; wide?: boolean; children: ReactNode }) 
 }
 
 const patternColumns: DataTableColumn<{ id: string; name: string; insurer: string }>[] = [
-  { id: "name", header: "Nombre", cell: (row) => row.name },
+  { id: "name", header: "Nombre", cell: (row) => <RowName name={row.name} /> },
   { id: "insurer", header: "Obra social", cell: (row) => row.insurer },
 ];
 
@@ -281,7 +281,7 @@ function PatternFieldSizes() {
         {(field) => <field.TextField label="Correo electrónico (la mitad)" size="half" startsRow />}
       </form.AppField>
       <form.AppField name="address">
-        {(field) => <field.TextField label="Dirección (la mitad)" size="half" />}
+        {(field) => <field.TextField label="Domicilio (la mitad)" size="half" />}
       </form.AppField>
       <form.AppField name="documentType">
         {(field) => (

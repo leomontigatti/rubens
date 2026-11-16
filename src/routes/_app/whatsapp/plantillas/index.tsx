@@ -3,7 +3,7 @@ import { RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { DataTable, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -57,32 +57,32 @@ const columns: DataTableColumn<TemplateRow>[] = [
     id: "name",
     header: "Plantilla",
     cell: (row) => (
-      <div className="flex flex-col">
-        <RowLink to="/whatsapp/plantillas/$templateId" params={{ templateId: row.id }}>
-          {row.name}
-        </RowLink>
-        <span className="text-muted-foreground text-sm">{row.when}</span>
-      </div>
+      <RowName
+        name={row.name}
+        link={{ to: "/whatsapp/plantillas/$templateId", params: { templateId: row.id } }}
+        status={<TemplateStates latest={row.latest} />}
+        detail={row.when}
+      />
     ),
   },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (row) =>
-      row.latest ? (
-        <div className="flex flex-wrap gap-1">
-          <Badge variant={templateStatusVariants[row.latest.status]}>
-            {templateStatusLabels[row.latest.status]}
-          </Badge>
-          {row.latest.category !== "utility" && (
-            <Badge variant="warning">{templateCategoryLabels[row.latest.category]}</Badge>
-          )}
-        </div>
-      ) : (
-        <Badge variant="secondary">{unsentLabel}</Badge>
-      ),
-  },
 ];
+
+/** A template's state in Meta, and a category Meta changed, beside its name. */
+function TemplateStates({ latest }: { latest: TemplateRow["latest"] }) {
+  if (!latest) {
+    return <Badge variant="secondary">{unsentLabel}</Badge>;
+  }
+  return (
+    <>
+      <Badge variant={templateStatusVariants[latest.status]}>
+        {templateStatusLabels[latest.status]}
+      </Badge>
+      {latest.category !== "utility" && (
+        <Badge variant="warning">{templateCategoryLabels[latest.category]}</Badge>
+      )}
+    </>
+  );
+}
 
 function Templates() {
   const settings = Route.useLoaderData();

@@ -1,11 +1,11 @@
 import { UserCogIcon } from "lucide-react";
+import { ActiveBadge } from "#/components/admin-form.tsx";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { CreateButton } from "#/components/form-page.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
 import { rolesLabel } from "#/lib/staff.ts";
 import { getStaff } from "#/server/staff.functions.ts";
 import type { StaffMember } from "#/organization/staff.ts";
@@ -46,18 +46,15 @@ const columns: DataTableColumn<StaffMember>[] = [
     id: "name",
     header: "Nombre",
     cell: (member) => (
-      <RowLink to="/personal/$memberId" params={{ memberId: member.memberId }}>
-        {member.name}
-      </RowLink>
+      <RowName
+        name={member.name}
+        link={{ to: "/personal/$memberId", params: { memberId: member.memberId } }}
+        status={<ActiveBadge active={member.active} ending="o" />}
+      />
     ),
   },
   { id: "email", header: "Correo", cell: (member) => member.email },
   { id: "roles", header: "Roles", cell: (member) => rolesLabel(member.roles) },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (member) => !member.active && <Badge variant="secondary">Inactivo</Badge>,
-  },
 ];
 
 function StaffTable(props: { staff: StaffMember[] }) {

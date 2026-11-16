@@ -204,7 +204,7 @@ const fieldLabelsInFormOrder: Record<string, string> = {
   documentNumber: "Número de documento",
   birthDate: "Fecha de nacimiento",
   email: "Correo electrónico",
-  address: "Dirección",
+  address: "Domicilio",
   whatsappConsent: "Acepta WhatsApp",
   optOutPending: "Pedido de baja sin decidir",
   active: "Activo",

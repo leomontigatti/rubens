@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { activeRecord } from "#/components/admin-form.tsx";
 import {
@@ -10,11 +10,13 @@ import {
 
 import { RoomForm } from "#/routes/_app/sedes/-room-form.tsx";
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/sedes/$officeId_/consultorios/$roomId")({
   loader: ({ params }) =>
     getOfficeWithRooms({ data: { officeId: params.officeId, includeInactive: true } }),
   head: () => ({ meta: [{ title: "Editar consultorio · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: EditRoom,
 });
 
@@ -52,6 +54,28 @@ function EditRoom() {
         },
       })}
       onSubmit={(fields) => editRoom({ data: { ...fields, roomId } })}
+    />
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { officeId } = Route.useParams();
+  return (
+    <PageCrumbs
+      items={[
+        {
+          label: result.ok ? result.office.name : "Sede",
+          link: (
+            <Link
+              to="/sedes/$officeId"
+              params={{ officeId }}
+              search={{ seccion: "consultorios" }}
+            />
+          ),
+        },
+        { label: "Editar consultorio" },
+      ]}
     />
   );
 }

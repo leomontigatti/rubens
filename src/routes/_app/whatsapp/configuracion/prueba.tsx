@@ -24,6 +24,7 @@ import {
   SandboxState,
 } from "#/routes/_app/whatsapp/configuracion/-sandbox-turn.tsx";
 import type { Played } from "#/routes/_app/whatsapp/configuracion/-sandbox-turn.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 // The assistant's sandbox (docs/domain/assistant.md § Trying it): the admin
 // picks a scenario, an upcoming appointment whose reminder was just sent, and
@@ -32,6 +33,7 @@ import type { Played } from "#/routes/_app/whatsapp/configuracion/-sandbox-turn.
 export const Route = createFileRoute("/_app/whatsapp/configuracion/prueba")({
   head: () => ({ meta: [{ title: "Prueba del asistente · underthing" }] }),
   loader: () => getSandboxScenarios(),
+  staticData: { crumbs: fixedCrumbs("Prueba del asistente") },
   component: AssistantSandbox,
 });
 

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 
 // The practitioners a screen picks from, on the way to one practitioner's page.
@@ -18,9 +18,10 @@ export function practitionerColumns(
       id: "name",
       header: "Profesional",
       cell: (practitioner) => (
-        <RowLink to={to} params={{ practitionerId: practitioner.id }}>
-          {practitioner.displayName}
-        </RowLink>
+        <RowName
+          name={practitioner.displayName}
+          link={{ to, params: { practitionerId: practitioner.id } }}
+        />
       ),
     },
   ];

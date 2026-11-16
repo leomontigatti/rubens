@@ -9,6 +9,7 @@ import { patientName } from "#/lib/patients.ts";
 import { addPatientCoverage } from "#/server/coverages.functions.ts";
 import { getInsurers } from "#/server/insurers.functions.ts";
 import { getPatientDetails } from "#/server/patients.functions.ts";
+import { PatientStepCrumbs } from "#/routes/_app/pacientes/-patient-crumbs.tsx";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/coberturas/nueva")({
   loader: async ({ params }) => {
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_app/pacientes/$patientId_/coberturas/nue
     return { details, insurers };
   },
   head: () => ({ meta: [{ title: "Agregar cobertura · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: NewCoverage,
 });
 
@@ -58,4 +60,11 @@ function NewCoverage() {
       onSubmit={(fields) => addPatientCoverage({ data: { ...fields, patientId } })}
     />
   );
+}
+
+function Crumbs() {
+  const { details } = Route.useLoaderData();
+  const { patientId } = Route.useParams();
+  const patient = details.ok ? details.patient : null;
+  return <PatientStepCrumbs patientId={patientId} patient={patient} step="Agregar cobertura" />;
 }

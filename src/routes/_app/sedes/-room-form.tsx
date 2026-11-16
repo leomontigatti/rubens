@@ -30,7 +30,11 @@ export function RoomForm(props: {
   onSubmit: (fields: RoomFields) => Promise<ActionResult>;
 }) {
   const { initial, officeId, onSubmit, ...shown } = props;
-  const page = useFormPage({ to: "/sedes/$officeId", params: { officeId } });
+  const page = useFormPage({
+    to: "/sedes/$officeId",
+    params: { officeId },
+    search: { seccion: "consultorios" },
+  });
   const action = useAction();
 
   const form = useAppForm({

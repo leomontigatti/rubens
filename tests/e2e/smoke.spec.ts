@@ -13,9 +13,9 @@ for (const role of roles) {
       await page.goto("/");
       await expect(page).toHaveURL(/\/agenda/);
       await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();
-      // The account menu in the sidebar names who is signed in.
+      // The account menu at the end of the top bar names who is signed in.
       await expect(
-        page.getByRole("listitem").getByRole("button", { name: people[role].name }),
+        page.locator("header").getByRole("button", { name: people[role].name }),
       ).toBeVisible();
     });
   });

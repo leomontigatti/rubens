@@ -1,7 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { ErrorAlert, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
+import {
+  ActiveBadge,
+  ErrorAlert,
+  RefusalMessage,
+  useFormAction,
+} from "#/components/admin-form.tsx";
 import { DeactivateButton } from "#/components/confirm-dialog.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Detail, RecordSection } from "#/components/record-section.tsx";
@@ -43,6 +48,7 @@ import {
 import type { PatientAppointment } from "#/organization/appointments.ts";
 import type { HistoryEntry } from "#/organization/patient-history.ts";
 import type { Patient } from "#/organization/patients.ts";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
   loader: async ({ params, context }) => {
@@ -65,6 +71,7 @@ export const Route = createFileRoute("/_app/pacientes/$patientId")({
       },
     ],
   }),
+  staticData: { crumbs: Crumbs },
   component: PatientScreen,
 });
 
@@ -99,9 +106,8 @@ function PatientScreen() {
 function PatientHeading({ patient, isAdmin }: { patient: Patient; isAdmin: boolean }) {
   return (
     <PageHeader
-      back={{ to: "/pacientes", label: "Pacientes" }}
       title={patientName(patient)}
-      status={!patient.active && <Badge variant="secondary">Inactivo</Badge>}
+      status={<ActiveBadge active={patient.active} ending="o" />}
       description={<PatientBadges patient={patient} />}
       actions={isAdmin && <ActiveToggle patient={patient} />}
     />
@@ -184,7 +190,7 @@ function DetailsSection({ patient }: { patient: Patient }) {
         />
         <Detail label="Teléfono" value={formatPhone(patient.phone)} />
         <Detail label="Correo electrónico" value={patient.email} />
-        <Detail label="Dirección" value={patient.address} />
+        <Detail label="Domicilio" value={patient.address} />
       </dl>
     </RecordSection>
   );
@@ -429,4 +435,9 @@ function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, 
       </ol>
     </RecordSection>
   );
+}
+
+function Crumbs() {
+  const { details } = Route.useLoaderData();
+  return <PageCrumbs items={[{ label: details.ok ? patientName(details.patient) : "Paciente" }]} />;
 }

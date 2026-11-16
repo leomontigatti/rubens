@@ -3,11 +3,11 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
-import { DataTable, RowLink, useServerDataTable } from "#/components/data-table.tsx";
+import { DataTable, RowName, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
-import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
+import { ActiveBadge, ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
@@ -159,9 +159,16 @@ const columns: DataTableColumn<ListedPatient>[] = [
     id: "name",
     header: "Nombre",
     cell: (patient) => (
-      <RowLink to="/pacientes/$patientId" params={{ patientId: patient.id }}>
-        {patientName(patient)}
-      </RowLink>
+      <RowName
+        name={patientName(patient)}
+        link={{ to: "/pacientes/$patientId", params: { patientId: patient.id } }}
+        status={
+          <>
+            <ActiveBadge active={patient.active} ending="o" />
+            {patient.incomplete && <Badge variant="warning">Datos incompletos</Badge>}
+          </>
+        }
+      />
     ),
   },
   {
@@ -171,14 +178,4 @@ const columns: DataTableColumn<ListedPatient>[] = [
   },
   { id: "phone", header: "Teléfono", cell: (patient) => formatPhone(patient.phone) },
   { id: "insurer", header: "Obra social", cell: (patient) => patient.insurerName ?? "Particular" },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (patient) => (
-      <div className="flex gap-2">
-        {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
-        {patient.incomplete && <Badge variant="warning">Datos incompletos</Badge>}
-      </div>
-    ),
-  },
 ];

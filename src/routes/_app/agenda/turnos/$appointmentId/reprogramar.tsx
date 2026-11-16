@@ -5,10 +5,12 @@ import { getAppointmentRecord } from "#/server/appointments.functions.ts";
 
 import { AppointmentPage } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { ReschedulePage } from "#/routes/_app/agenda/-reschedule.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/reprogramar")({
   head: () => ({ meta: [{ title: "Reprogramar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
+  staticData: { crumbs: fixedCrumbs("Reprogramar turno") },
   component: RescheduleAppointment,
 });
 

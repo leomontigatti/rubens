@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import type { MedicalServiceFields } from "#/lib/medical-services.ts";
@@ -6,11 +6,13 @@ import { addMedicalService, getMedicalServices } from "#/server/medical-services
 
 import { MedicalServiceForm } from "#/routes/_app/prestaciones/-medical-service-form.tsx";
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/nueva")({
   loader: ({ params }) =>
     getMedicalServices({ data: { practitionerId: params.practitionerId, includeInactive: false } }),
   head: () => ({ meta: [{ title: "Nueva prestación · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: NewMedicalService,
 });
 
@@ -42,6 +44,22 @@ function NewMedicalService() {
       onSubmit={(fields) =>
         addMedicalService({ data: { ...fields, practitionerId: practitioner.id } })
       }
+    />
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { practitionerId } = Route.useParams();
+  return (
+    <PageCrumbs
+      items={[
+        {
+          label: result.ok ? result.practitioner.displayName : "Profesional",
+          link: <Link to="/prestaciones/$practitionerId" params={{ practitionerId }} />,
+        },
+        { label: "Nueva prestación" },
+      ]}
     />
   );
 }

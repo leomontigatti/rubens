@@ -2,7 +2,7 @@ import { TreePalmIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
@@ -47,14 +47,14 @@ const columns: DataTableColumn<TimeOff>[] = [
   {
     id: "practitioner",
     header: "Profesional",
-    cell: (item) =>
-      item.canEdit ? (
-        <RowLink to="/licencias/$timeOffId" params={{ timeOffId: item.id }}>
-          {item.practitionerName}
-        </RowLink>
-      ) : (
-        item.practitionerName
-      ),
+    cell: (item) => (
+      <RowName
+        name={item.practitionerName}
+        link={
+          item.canEdit ? { to: "/licencias/$timeOffId", params: { timeOffId: item.id } } : undefined
+        }
+      />
+    ),
   },
   { id: "when", header: "Cuándo", cell: (item) => rangeEntryLabel(item.entry) },
 ];

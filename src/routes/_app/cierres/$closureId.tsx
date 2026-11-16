@@ -12,10 +12,12 @@ import {
   readOfficeId,
   refusalMessages,
 } from "#/routes/_app/cierres/-closure-fields.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/cierres/$closureId")({
   head: () => ({ meta: [{ title: "Editar cierre · underthing" }] }),
   loader: () => getClosures(),
+  staticData: { crumbs: fixedCrumbs("Editar cierre") },
   component: EditClosure,
 });
 

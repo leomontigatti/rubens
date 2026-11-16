@@ -9,10 +9,12 @@ import type { SchedulePractitioner } from "#/organization/practitioners.ts";
 import { addTimeOff, getTimeOff } from "#/server/time-off.functions.ts";
 
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/licencias/nueva")({
   head: () => ({ meta: [{ title: "Nueva licencia · underthing" }] }),
   loader: () => getTimeOff(),
+  staticData: { crumbs: fixedCrumbs("Nueva licencia") },
   component: NewTimeOff,
 });
 

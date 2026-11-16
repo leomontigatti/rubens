@@ -5,7 +5,14 @@ import { useState } from "react";
 import * as z from "zod";
 
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useServerDataTable } from "#/components/data-table.tsx";
+import {
+  DataTable,
+  NoMatches,
+  RowAvatar,
+  RowLink,
+  RowName,
+  useServerDataTable,
+} from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import type { FilterGroup } from "#/components/filter-groups.ts";
@@ -66,9 +73,18 @@ const columns: DataTableColumn<ConversationSummary>[] = [
     cell: (conversation) => {
       const name = registeredName(conversation);
       return name === null ? (
-        <span className="text-muted-foreground">Sin registrar</span>
+        <span className="flex items-center gap-2">
+          <RowAvatar name={null} />
+          <span className="text-muted-foreground">Sin registrar</span>
+        </span>
       ) : (
-        <ConversationLink conversationId={conversation.id}>{name}</ConversationLink>
+        <RowName
+          name={name}
+          link={{
+            to: "/conversaciones/$conversationId",
+            params: { conversationId: conversation.id },
+          }}
+        />
       );
     },
   },

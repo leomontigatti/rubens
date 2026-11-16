@@ -1,17 +1,17 @@
 import { StethoscopeIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { ActiveBadge, RefusalMessage } from "#/components/admin-form.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
 import type { MedicalService } from "#/organization/medical-services.ts";
 
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/prestaciones/$practitionerId")({
   loader: ({ params }) =>
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/prestaciones/$practitionerId")({
       },
     ],
   }),
+  staticData: { crumbs: Crumbs },
   component: PractitionerMedicalServices,
 });
 
@@ -41,7 +42,6 @@ function PractitionerMedicalServices() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ to: "/prestaciones", label: "Prestaciones" }}
         title={practitioner.displayName}
         description="Los tipos de consulta que ofrece, con su duración y su precio."
         actions={
@@ -74,30 +74,28 @@ const columns: DataTableColumn<ListedMedicalService>[] = [
   {
     id: "name",
     header: "Nombre",
-    cell: (medicalService) =>
-      medicalService.canOpen ? (
-        <RowLink
-          to="/prestaciones/$practitionerId/$medicalServiceId"
-          params={{
-            practitionerId: medicalService.practitionerId,
-            medicalServiceId: medicalService.id,
-          }}
-        >
-          {medicalService.name}
-        </RowLink>
-      ) : (
-        medicalService.name
-      ),
+    cell: (medicalService) => (
+      <RowName
+        name={medicalService.name}
+        link={
+          medicalService.canOpen
+            ? {
+                to: "/prestaciones/$practitionerId/$medicalServiceId",
+                params: {
+                  practitionerId: medicalService.practitionerId,
+                  medicalServiceId: medicalService.id,
+                },
+              }
+            : undefined
+        }
+        status={<ActiveBadge active={medicalService.active} ending="a" />}
+      />
+    ),
   },
   {
     id: "duration",
     header: "Duración",
     cell: (medicalService) => `${medicalService.durationMinutes} min`,
-  },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (medicalService) => !medicalService.active && <Badge variant="secondary">Inactiva</Badge>,
   },
 ];
 
@@ -149,5 +147,12 @@ function MedicalServiceTable(props: {
         )
       }
     />
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  return (
+    <PageCrumbs items={[{ label: result.ok ? result.practitioner.displayName : "Profesional" }]} />
   );
 }

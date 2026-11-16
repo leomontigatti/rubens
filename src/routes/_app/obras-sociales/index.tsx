@@ -2,14 +2,13 @@ import { ShieldIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import * as z from "zod";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { ActiveBadge, RefusalMessage } from "#/components/admin-form.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
 import { insurerKindLabels } from "#/lib/coverages.ts";
 import { getInsurers } from "#/server/insurers.functions.ts";
 import type { Insurer } from "#/organization/insurers.ts";
@@ -60,21 +59,19 @@ const columns: DataTableColumn<ListedInsurer>[] = [
   {
     id: "name",
     header: "Nombre",
-    cell: (insurer) =>
-      insurer.canOpen ? (
-        <RowLink to="/obras-sociales/$insurerId" params={{ insurerId: insurer.id }}>
-          {insurer.name}
-        </RowLink>
-      ) : (
-        insurer.name
-      ),
+    cell: (insurer) => (
+      <RowName
+        name={insurer.name}
+        link={
+          insurer.canOpen
+            ? { to: "/obras-sociales/$insurerId", params: { insurerId: insurer.id } }
+            : undefined
+        }
+        status={<ActiveBadge active={insurer.active} ending="a" />}
+      />
+    ),
   },
   { id: "kind", header: "Tipo", cell: (insurer) => insurerKindLabels[insurer.kind] },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (insurer) => !insurer.active && <Badge variant="secondary">Inactiva</Badge>,
-  },
 ];
 
 function InsurerTable(props: { insurers: Insurer[]; onlyInactive: boolean; isAdmin: boolean }) {
