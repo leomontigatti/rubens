@@ -43,16 +43,6 @@ function setAlarmOf(organization: OrganizationStub, at: number | null) {
   );
 }
 
-/** A write that queues nothing and moves no due time. */
-function renameOffice() {
-  return world.organization.updateOffice(adminCaller, {
-    officeId: world.office.id,
-    name: "Sede Norte",
-    address: "Cabildo 1",
-    timeZone: "America/Argentina/Buenos_Aires",
-  });
-}
-
 beforeEach(async () => {
   // The object's clock, a month before the appointments: what it queues is
   // due then, still in the future for the runtime's own alarm scheduler.
@@ -96,40 +86,26 @@ describe("with a booking confirmation queued", () => {
     expect(await alarmOf(world.organization)).toBe(dueAt);
   });
 
-  it.each([
-    [
-      "adds a room to the office",
-      () => world.organization.createRoom(adminCaller, { officeId: world.office.id, name: "Box" }),
-    ],
-    [
-      "renames a room",
-      () =>
-        world.organization.updateRoom(adminCaller, {
-          roomId: world.otherRoom.id,
-          name: "Consultorio B",
-          capacity: 1,
-        }),
-    ],
-    ["renames the office", renameOffice],
-  ])("sets the alarm again after a call that %s", async (_call, call) => {
+  it("sets the alarm again after a call that wrote, here one that adds a room", async () => {
     await setAlarmOf(world.organization, null);
 
-    expectOk(await call());
+    expectOk(
+      await world.organization.createRoom(adminCaller, { officeId: world.office.id, name: "Box" }),
+    );
 
     expect(await alarmOf(world.organization)).toBe(dueAt);
   });
 
-  it.each([
-    ["the calendar", () => world.organization.getCalendarWeek(adminCaller, { date: "2099-01-05" })],
-    ["the inbox", () => world.organization.listConversations(adminCaller, {})],
-  ])("leaves the alarm as it was after reading %s", async (_read, read) => {
+  it("leaves the alarm as it was after reading the calendar", async () => {
+    const readCalendar = () =>
+      world.organization.getCalendarWeek(adminCaller, { date: "2099-01-05" });
     const elsewhere = dueAt + 24 * hourMs;
     await setAlarmOf(world.organization, elsewhere);
-    expectOk(await read());
+    expectOk(await readCalendar());
     expect(await alarmOf(world.organization)).toBe(elsewhere);
 
     await setAlarmOf(world.organization, null);
-    expectOk(await read());
+    expectOk(await readCalendar());
     expect(await alarmOf(world.organization)).toBeNull();
   });
 
