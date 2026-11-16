@@ -8,7 +8,9 @@ tool. Config: `.fallowrc.json`.
 
 `pnpm check:fallow` (`fallow audit --quiet --gate-marker agent --base origin/main`)
 runs in the agent `Stop` hook ([validation.md](./validation.md#hooks-inside-the-session)),
-in `.vite-hooks/pre-commit` and in CI's `checks` job. Locally it reads the
+in `.vite-hooks/pre-commit` and in CI's `checks` job; both hooks skip it, and
+`pnpm check:dupes`, on a `prototype/*` branch ([verification.md](./verification.md#prototype)).
+Locally it reads the
 working tree, not only what is staged, the same as `pnpm typecheck`; CI judges the
 pushed branch. It fails only on what
 this branch **adds** on top of `origin/main`. Findings already on `main` are

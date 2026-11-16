@@ -53,7 +53,8 @@ a headless Chromium. Its scratch files go to `.playwright-cli/`, which is gitign
 2. Drive with `goto`, `click`, `fill`, `select`, `press`, and confirm with `snapshot` (or
    `find "<text>"`). Assert on the snapshot; it is what the page exposes.
 3. Diagnose with `console` for errors, `requests` then `request <n>` for the network.
-4. Capture with `screenshot --filename=.playwright-cli/<what>-before.png` (and `-after`).
+4. Capture with `screenshot --filename=.playwright-cli/<what>-before.png` (`-reference` for an
+   approved prototype variant, and `-after`).
 
 Quote any URL with a query string so the shell does not expand it. If `playwright-cli` is
 missing, stop and tell the user.
@@ -63,9 +64,10 @@ says; a click made through `preview_evaluate` proves nothing about the path.
 
 ## Evidence
 
-A change to what a screen looks like is shown as a before and an after image, same screen,
-account and size; a change to motion or interaction as a short recording instead. Images come
-from `playwright-cli` `screenshot`.
+A change to what a screen looks like is shown as a reference and an after image, same screen,
+account and size; a change to motion or interaction as a short recording instead. The reference
+is the approved prototype variant when the change had one (§ Prototype), else a before. Images
+come from `playwright-cli` `screenshot`.
 
 - **Approved in the thread, never uploaded.** Show the captures to the user in the reply, each
   embedded by its absolute path under `<worktree>/.playwright-cli/`, for approval before the PR
@@ -73,6 +75,20 @@ from `playwright-cli` `screenshot`.
 - **Made-up data only.** Screenshots show names and appointments: never put a real patient's data
   on screen for a capture.
 - Never commit evidence images to the repo.
+
+## Prototype
+
+How the shared `prototype` skill's UI branch runs here.
+
+- **Gates.** Lint and types run on a `prototype/*` branch as anywhere. The two fallow gates,
+  `pnpm check:fallow` and `pnpm check:dupes`, skip it in the agent `Stop` hook and the pre-commit
+  hook: variants and the switcher trip complexity and duplication by design, and the branch never
+  merges. CI runs only on PRs to `main`, and a prototype branch opens none.
+- **Reference capture.** For the implementation's evidence, add a worktree of the prototype
+  branch (`git worktree add`), launch it there (it takes its own port), and capture the approved
+  variant at the design width with the same seed member as the after. Remove the worktree after.
+- **Style overrides.** A rule of [style-guide.md](./style-guide.md) the winner breaks changes in
+  the implementation's PR, citing the winner comment.
 
 ## Cleanup
 
