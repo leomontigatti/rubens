@@ -9,11 +9,16 @@ import {
   metaTemplateName,
   templateExamples,
   templateLanguage,
+  templateButtonLabels,
   templateCategoryOf,
   templateStatusOf,
   versionOf,
 } from "#/lib/whatsapp-templates.ts";
-import type { TemplateCategory, TemplateStatus } from "#/lib/whatsapp-templates.ts";
+import type {
+  TemplateButtons,
+  TemplateCategory,
+  TemplateStatus,
+} from "#/lib/whatsapp-templates.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -54,6 +59,7 @@ const listedColumns = {
   templateId: whatsappTemplate.templateId,
   version: whatsappTemplate.version,
   body: whatsappTemplate.body,
+  buttons: whatsappTemplate.buttons,
   metaId: whatsappTemplate.metaId,
   status: whatsappTemplate.status,
   rejectionReason: whatsappTemplate.rejectionReason,
@@ -108,8 +114,8 @@ function draftOf(tx: Writer, templateId: string) {
 }
 
 /**
- * Submits `body`, already checked, to Meta as template `templateId`'s next
- * version. What Meta accepts is written by `store`, in the transaction that
+ * Submits `body`, already checked, with `buttons`, to Meta as template
+ * `templateId`'s next version. What Meta accepts is written by `store`, in the transaction that
  * stores the version and its audit entry; Meta's refusal stores nothing. The
  * caller holds the template in `submittingIn` meanwhile.
  */
@@ -117,10 +123,10 @@ export async function submitVersion(
   database: Database,
   cloud: WhatsappCloud,
   acting: Acting,
-  submission: { templateId: string; body: string },
+  submission: { templateId: string; body: string; buttons: TemplateButtons },
   store: (tx: Writer) => void,
 ) {
-  const { templateId, body } = submission;
+  const { templateId, body, buttons } = submission;
   const atMeta = await cloud.templateNamesAtMeta();
   if (!atMeta.ok) {
     return atMeta;
@@ -131,16 +137,22 @@ export async function submitVersion(
     languageCode: templateLanguage,
     body,
     examples: templateExamples(body, organizationName(database)),
+    buttons: templateButtonLabels[buttons],
   });
   if (!created.ok) {
     return created;
   }
   database.transaction((tx) => {
     store(tx);
+    tx.update(template).set({ buttons }).where(eq(template.id, templateId)).run();
     // The text it replaces, for the audit entry: the latest version before it, else the draft.
     const previous =
       tx
-        .select({ version: whatsappTemplate.version, body: whatsappTemplate.body })
+        .select({
+          version: whatsappTemplate.version,
+          body: whatsappTemplate.body,
+          buttons: whatsappTemplate.buttons,
+        })
         .from(whatsappTemplate)
         .where(eq(whatsappTemplate.templateId, templateId))
         .orderBy(desc(whatsappTemplate.version))
@@ -152,6 +164,7 @@ export async function submitVersion(
         version,
         language: templateLanguage,
         body,
+        buttons,
         metaId: created.templateId,
         status: templateStatusOf(created.status) ?? "pending",
         submittedBy: acting.userId,
@@ -169,6 +182,7 @@ export async function submitVersion(
         version,
         language: templateLanguage,
         body: row.body,
+        buttons: row.buttons,
         metaId: row.metaId,
         status: row.status,
       },
@@ -192,6 +206,7 @@ export function approvedVersion(database: Writer, templateId: string) {
         version: whatsappTemplate.version,
         language: whatsappTemplate.language,
         body: whatsappTemplate.body,
+        buttons: whatsappTemplate.buttons,
       })
       .from(whatsappTemplate)
       .where(

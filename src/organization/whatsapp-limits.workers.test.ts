@@ -33,7 +33,7 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   };
 });
 
-type TemplateKey = "confirmation" | "reminder" | "careInstructions" | "turno_cancelado";
+type TemplateKey = "confirmation" | "reminder" | "careInstructions" | "turno_no_disponible";
 
 const bodies: Record<TemplateKey, string> = {
   confirmation:
@@ -42,7 +42,7 @@ const bodies: Record<TemplateKey, string> = {
     "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé para confirmar que venís.",
   careInstructions:
     "Hola {{paciente}}, no comas por 2 horas después de tu turno con {{profesional}}. Consultorios Prueba",
-  turno_cancelado:
+  turno_no_disponible:
     "Hola {{paciente}}, tuvimos que cancelar tu turno del {{fecha}}. Respondé este mensaje. Consultorios Prueba",
 };
 
@@ -161,7 +161,7 @@ beforeEach(async () => {
     confirmation: await templateNamed(world.organization, "Confirmación del turno"),
     reminder: await templateNamed(world.organization, "Recordatorio con confirmación"),
     careInstructions: "",
-    turno_cancelado: "turno_cancelado",
+    turno_no_disponible: "turno_no_disponible",
   };
   // As a medical service starts in these tests: sending the booking confirmation.
   await setMessages({ bookingConfirmation: true });
@@ -174,7 +174,7 @@ afterEach(() => {
 describe("a template Meta stops", () => {
   it("notifies every active admin when Meta rejects it, with the template and the messages waiting", async () => {
     // An event template's message queues on its event whatever Meta said of it.
-    await submit("turno_cancelado", "PENDING", "900000000000001");
+    await submit("turno_no_disponible", "PENDING", "900000000000001");
     const appointmentId = await bookMartina();
     expectOk(
       await world.organization.cancelAppointment(adminCaller, {
@@ -197,8 +197,8 @@ describe("a template Meta stops", () => {
     const expected = [
       expect.objectContaining({
         kind: "templateRejected",
-        templateId: "turno_cancelado",
-        templateName: "Turno cancelado",
+        templateId: "turno_no_disponible",
+        templateName: "Turno no disponible",
         templateVersion: 1,
         detail: "INVALID_FORMAT",
         waiting: 1,

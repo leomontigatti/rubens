@@ -23,9 +23,9 @@ function NewTemplate() {
   return (
     <TemplateForm
       templateId={null}
-      settings={{ name: "", timing: { when: "before", hours: 24 } }}
+      settings={{ name: "", timing: { when: "before", hours: 24 }, buttons: "none" }}
       body=""
-      sentBody={null}
+      sent={null}
       organizationName={settings.organizationName}
       title="Nueva plantilla"
       description="Un mensaje de la organización a los pacientes de las prestaciones que la envíen."
@@ -41,7 +41,7 @@ function NewTemplate() {
       }
       save={async (values) => {
         const created = await createTemplate({
-          data: { body: values.body, name: values.settings!.name, timing: values.settings!.timing },
+          data: { body: values.body, ...values.settings! },
         });
         return created.ok ? { ok: true } : created;
       }}

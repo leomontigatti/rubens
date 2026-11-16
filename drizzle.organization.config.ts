@@ -6,6 +6,10 @@ import { defineConfig } from "drizzle-kit";
 export default defineConfig({
   dialect: "sqlite",
   driver: "durable-sqlite",
-  schema: ["./src/organization/schema.ts", "./src/organization/whatsapp-schema.ts"],
+  schema: [
+    "./src/organization/schema.ts",
+    "./src/organization/whatsapp-schema.ts",
+    "./src/organization/assistant-usage-schema.ts",
+  ],
   out: "./src/organization/migrations",
 });

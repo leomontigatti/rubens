@@ -255,6 +255,15 @@ export function optOutReply(formOfAddress: FormOfAddress): string {
 }
 
 /**
+ * What the patient is told when their tap on `Sí, voy` confirmed the
+ * appointment (ADR-0014): the message they tapped already stated its date and
+ * time. `usted`'s does not say `lo`/`la esperamos`, which would guess their gender.
+ */
+export function tapConfirmedReply(formOfAddress: FormOfAddress): string {
+  return formOfAddress === "usted" ? "Genial, muchas gracias!" : "Genial, te esperamos!";
+}
+
+/**
  * What the patient is told of a voice note that could not be understood: a
  * request to write it. Fixed, since no model read the note.
  */

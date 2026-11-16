@@ -2,6 +2,7 @@ import type { TemplateVariable } from "#/lib/template-filling.ts";
 import type { Timing } from "#/lib/template-timing.ts";
 import type {
   EventTemplateId,
+  TemplateButtons,
   TemplateCategory,
   TemplateProblem,
   TemplateStatus,
@@ -13,10 +14,16 @@ import type {
 /** An event template's event, which the list shows where the others show their timing. */
 export const eventLabels: Record<EventTemplateId, string> = {
   turno_movido: "Cuando la organización mueve un turno",
-  turno_cancelado: "Cuando la organización cancela un turno",
-  turno_a_reprogramar: "Cuando un turno queda para reprogramar",
+  turno_no_disponible: "Cuando la organización cancela un turno o lo deja para reprogramar",
   solicitud_no_confirmada: "Cuando no se confirma un turno pedido",
   reabrir_conversacion: "Cuando se responde con la conversación cerrada",
+};
+
+/** Each kind of buttons as the template form offers it. */
+export const buttonsLabels: Record<TemplateButtons, string> = {
+  none: "Ninguno",
+  confirm: "Confirmar asistencia",
+  reopen: "Ver respuesta",
 };
 
 /** Each variable as the template form's chips name it. */
@@ -28,6 +35,7 @@ export const variableLabels: Record<TemplateVariable, string> = {
   hora: "Hora",
   sede: "Sede",
   direccion: "Dirección",
+  prestacion: "Prestación",
 };
 
 function count(amount: number, one: string, many: string) {

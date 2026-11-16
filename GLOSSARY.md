@@ -152,7 +152,7 @@ _Avoid_: opt-in, subscription
 A message the `organization` starts, approved by Meta for its WhatsApp number and
 filled with an `appointment`'s facts. An admin creates and names the organization's
 own, each with its `templateTiming`, and a `medicalService` picks the ones its
-appointments get; the five `eventTemplate`s are fixed.
+appointments get; the four `eventTemplate`s are fixed.
 _Avoid_: fixed text, canned message, HSM, message type
 
 **`templateTiming`** — ui: "Cuándo se envía"
@@ -161,9 +161,17 @@ attended, or a number of hours or days before or after it.
 _Avoid_: schedule, delay, trigger
 
 **`eventTemplate`** — no UI term (the list shows its event as its timing)
-One of the five fixed `template`s sent when something happens to an `appointment`
+One of the four fixed `template`s sent when something happens to an `appointment`
 or a conversation, such as staff moving the appointment. No `medicalService` picks it.
+`turno_no_disponible` is the one for an appointment the business cancelled or sent to
+the "to reschedule" list.
 _Avoid_: system message, automatic template
+
+**`templateButtons`** — ui: "Botones"
+The quick-reply buttons a `template` goes with: none, `Confirmar asistencia`
+(`Sí, voy` · `Necesito cambiarlo`), or `reabrir_conversacion`'s `Ver respuesta`. A tap
+on `Sí, voy` confirms the `appointment` with no model call.
+_Avoid_: quick reply, CTA, options
 
 **`reminder`** — ui: "Recordatorio"
 A `template` timed before an `appointment`.

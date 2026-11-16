@@ -61,29 +61,54 @@ beforeEach(async () => {
 });
 
 describe("the organization's templates", () => {
-  it("start with the four drafts, unsent, in the order they go, and the event templates after them", async () => {
+  it("start with the four drafts, unsent, in the order they go, and the event templates after them, each with its buttons", async () => {
     expect(
-      (await listed()).map(({ name, event, timing, versions }) => ({
+      (await listed()).map(({ name, event, timing, versions, buttons }) => ({
         name,
         event,
         timing,
         sent: versions.length > 0,
+        buttons,
       })),
     ).toEqual([
-      { name: "Confirmación del turno", event: false, timing: { when: "booking" }, sent: false },
+      {
+        name: "Confirmación del turno",
+        event: false,
+        timing: { when: "booking" },
+        sent: false,
+        buttons: "none",
+      },
       {
         name: "Recordatorio con confirmación",
         event: false,
         timing: { when: "before", hours: 24 },
         sent: false,
+        buttons: "confirm",
       },
-      { name: "Recordatorio", event: false, timing: { when: "before", hours: 2 }, sent: false },
-      { name: "Seguimiento", event: false, timing: { when: "after", hours: 24 }, sent: false },
-      { name: "Turno movido", event: true, timing: null, sent: false },
-      { name: "Turno cancelado", event: true, timing: null, sent: false },
-      { name: "Turno a reprogramar", event: true, timing: null, sent: false },
-      { name: "Solicitud no confirmada", event: true, timing: null, sent: false },
-      { name: "Reabrir la conversación", event: true, timing: null, sent: false },
+      {
+        name: "Recordatorio",
+        event: false,
+        timing: { when: "before", hours: 2 },
+        sent: false,
+        buttons: "none",
+      },
+      {
+        name: "Seguimiento",
+        event: false,
+        timing: { when: "after", hours: 24 },
+        sent: false,
+        buttons: "none",
+      },
+      { name: "Turno movido", event: true, timing: null, sent: false, buttons: "confirm" },
+      { name: "Turno no disponible", event: true, timing: null, sent: false, buttons: "none" },
+      { name: "Solicitud no confirmada", event: true, timing: null, sent: false, buttons: "none" },
+      {
+        name: "Reabrir la conversación",
+        event: true,
+        timing: null,
+        sent: false,
+        buttons: "reopen",
+      },
     ]);
   });
 });
@@ -92,7 +117,7 @@ describe("the drafts every organization starts with", () => {
   it("name the organization, and pass the rules check as they stand", async () => {
     const drafts = (await listed()).map(({ id, draft }) => ({ id, draft: draft! }));
 
-    expect(drafts).toHaveLength(9);
+    expect(drafts).toHaveLength(8);
     for (const { id, draft } of drafts) {
       expect(variablesIn(draft)).toContain("organizacion");
       expect(checkTemplateBody(templateVariables(id), draft)).toEqual({ ok: true, body: draft });
@@ -115,13 +140,13 @@ describe("the drafts never sent, when an admin changes Trato", () => {
 
     const inUsted = await draftsByName();
     expect(inUsted["Confirmación del turno"]).toBe(
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: su turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si necesita cambiarlo, responda este mensaje.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para avisarle que su turno con {{profesional}} del {{fecha}} a las {{hora}} quedó reservado. Escríbanos por cualquier duda. Saludos!",
     );
     expect(inUsted["Reabrir la conversación"]).toBe(
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: tenemos una respuesta para usted. Responda este mensaje para verla.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} porque tenemos una respuesta para usted. Responda este mensaje para verla.",
     );
     for (const draft of Object.values(inUsted)) {
-      expect(draft).toMatch(/^Hola \{\{paciente\}\}, le escribimos de \{\{organizacion\}\}/);
+      expect(draft).toMatch(/^Hola \{\{paciente\}\}! Le escribimos de \{\{organizacion\}\}/);
     }
 
     expectOk(
@@ -157,7 +182,7 @@ describe("the drafts never sent, when an admin changes Trato", () => {
         before: { draft: inVos },
         after: {
           draft:
-            "Hola {{paciente}}, le escribimos de {{organizacion}} por su turno del {{fecha}} con {{profesional}}. Cuéntenos cómo se siente respondiendo este mensaje.",
+            "Hola {{paciente}}! Le escribimos de {{organizacion}} para saber cómo se siente después de su {{prestacion}}.",
         },
       },
     ]);
@@ -319,6 +344,40 @@ describe("editing a template", () => {
     expect((await listed()).find((one) => one.id === templateId)).toMatchObject({
       name: "Estudios previos",
       timing: { when: "after", hours: 1 },
+    });
+  });
+
+  it("submits a change of its buttons as the next version, with the text unchanged, and lists the buttons", async () => {
+    fakeMeta.answerNextWith(200, { id: "701", status: "PENDING", category: "UTILITY" });
+
+    const answer = await world.organization.editTemplate(adminCaller, {
+      templateId,
+      body,
+      settings: { name: newTemplate.name, timing: newTemplate.timing, buttons: "confirm" },
+    });
+
+    expect(answer).toEqual({ ok: true, submitted: true });
+    expect(
+      fakeMeta.requests
+        .filter((request) => request.method === "POST")
+        .map((request) => {
+          const sent = request.body as { name: string; components: { type: string }[] };
+          return [sent.name, sent.components.at(-1)];
+        }),
+    ).toEqual([
+      [
+        metaTemplateName(templateId, 2),
+        {
+          type: "BUTTONS",
+          buttons: [
+            { type: "QUICK_REPLY", text: "Sí, voy" },
+            { type: "QUICK_REPLY", text: "Necesito cambiarlo" },
+          ],
+        },
+      ],
+    ]);
+    expect((await listed()).find((one) => one.id === templateId)).toMatchObject({
+      buttons: "confirm",
     });
   });
 

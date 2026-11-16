@@ -2,54 +2,49 @@ import type { FormOfAddress } from "#/lib/communication-rules.ts";
 
 // The drafts every organization starts with, in each `Trato`, as
 // docs/operations/whatsapp-templates.md words them: the four of its own and the
-// five event templates'. The migrations insert them worded in `vos`; a draft never
+// four event templates'. The migrations insert them worded in `vos`; a draft never
 // sent that still reads as one of these follows the `Trato` an admin saves.
 
 const defaultDrafts: readonly Record<FormOfAddress, string>[] = [
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si necesitás cambiarlo, respondé este mensaje.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para avisarte que tu turno con {{profesional}} del {{fecha}} a las {{hora}} quedó reservado. Escribinos por cualquier duda. Saludos!",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: su turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si necesita cambiarlo, responda este mensaje.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para avisarle que su turno con {{profesional}} del {{fecha}} a las {{hora}} quedó reservado. Escríbanos por cualquier duda. Saludos!",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé este mensaje para confirmar que venís, o si necesitás cancelarlo o cambiarlo.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}}. Por favor, confirmanos si venís o si necesitás cambiarlo.",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}} para recordarle su turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Responda este mensaje para confirmar que viene, o si necesita cancelarlo o cambiarlo.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para recordarle su turno con {{profesional}} del {{fecha}} a las {{hora}}. Por favor, confírmenos si viene o si necesita cambiarlo.",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Te esperamos.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para recordarte que tu turno con {{profesional}} es el {{fecha}} a las {{hora}}. Te esperamos!",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: su turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Hasta pronto.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para recordarle que su turno con {{profesional}} es el {{fecha}} a las {{hora}}. Hasta pronto!",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}} por tu turno del {{fecha}} con {{profesional}}. Contanos cómo te sentís respondiendo este mensaje.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para saber cómo te sentís después de tu {{prestacion}}.",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}} por su turno del {{fecha}} con {{profesional}}. Cuéntenos cómo se siente respondiendo este mensaje.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para saber cómo se siente después de su {{prestacion}}.",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: tuvimos que mover tu turno con {{profesional}}, que ahora es el {{fecha}} a las {{hora}} en {{sede}}. Si no te queda bien, respondé este mensaje y buscamos otro horario.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para avisarte que tuvimos que mover tu turno con {{profesional}} al {{fecha}} a las {{hora}}. Por favor, confirmanos si venís o si necesitás cambiarlo.",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: tuvimos que mover su turno con {{profesional}}, que ahora es el {{fecha}} a las {{hora}} en {{sede}}. Si no le queda bien, responda este mensaje y buscamos otro horario.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para avisarle que tuvimos que mover su turno con {{profesional}} al {{fecha}} a las {{hora}}. Por favor, confírmenos si viene o si necesita cambiarlo.",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: tuvimos que cancelar tu turno con {{profesional}} del {{fecha}} a las {{hora}}. Disculpá las molestias. Respondé este mensaje y buscamos otro horario.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para avisarte que lamentablemente {{profesional}} no va a poder atenderte el {{fecha}} a las {{hora}}. Por favor, escribinos si querés sacar un turno nuevo.",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: tuvimos que cancelar su turno con {{profesional}} del {{fecha}} a las {{hora}}. Disculpe las molestias. Responda este mensaje y buscamos otro horario.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para avisarle que lamentablemente {{profesional}} no va a poder atender su turno del {{fecha}} a las {{hora}}. Por favor, escríbanos si quiere sacar un turno nuevo.",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: tuvimos que mover tu turno del {{fecha}} con {{profesional}}. Respondé este mensaje y buscamos otro horario.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} para avisarte que lamentablemente no pudimos confirmar el turno que pediste con {{profesional}} para el {{fecha}}. Por favor, escribinos si querés buscar otro horario.",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: tuvimos que mover su turno del {{fecha}} con {{profesional}}. Responda este mensaje y buscamos otro horario.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} para avisarle que lamentablemente no pudimos confirmar el turno que pidió con {{profesional}} para el {{fecha}}. Por favor, escríbanos si quiere buscar otro horario.",
   },
   {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: no pudimos confirmar el turno que pediste con {{profesional}} para el {{fecha}}. Respondé este mensaje y buscamos otro horario.",
+    vos: "Hola {{paciente}}! Te escribimos de {{organizacion}} porque tenemos una respuesta para vos. Respondé este mensaje para verla.",
     usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: no pudimos confirmar el turno que pidió con {{profesional}} para el {{fecha}}. Responda este mensaje y buscamos otro horario.",
-  },
-  {
-    vos: "Hola {{paciente}}, te escribimos de {{organizacion}}: tenemos una respuesta para vos. Respondé este mensaje para verla.",
-    usted:
-      "Hola {{paciente}}, le escribimos de {{organizacion}}: tenemos una respuesta para usted. Responda este mensaje para verla.",
+      "Hola {{paciente}}! Le escribimos de {{organizacion}} porque tenemos una respuesta para usted. Responda este mensaje para verla.",
   },
 ];
 

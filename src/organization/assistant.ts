@@ -1,28 +1,24 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, min, or } from "drizzle-orm";
+import { and, asc, eq, isNotNull, lte, min } from "drizzle-orm";
 
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import { reactionType } from "#/lib/reactions.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
-import {
-  assistantSystemPrompt,
-  assistantToolSchemas,
-  newMessagesMark,
-  withdrawnReplyNote,
-  withoutMark,
-} from "#/lib/assistant.ts";
+import { assistantSystemPrompt, assistantToolSchemas } from "#/lib/assistant.ts";
 
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
-import type { AssistantModel, AssistantTool, TurnMessage } from "#/organization/assistant-model.ts";
+import type { AssistantModel, AssistantTool } from "#/organization/assistant-model.ts";
 import { recordModelUsage } from "#/organization/assistant-usage.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
 import { answeredMessage, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { reopensWithdrawn } from "#/organization/late-replies.ts";
 import { proposalTools } from "#/organization/proposals.ts";
 import { reactionsOf } from "#/organization/reactions.ts";
+import { answerTap } from "#/organization/button-taps.ts";
+import { asTurnMessages, patientsOf, readConversation } from "#/organization/turn-reading.ts";
+import type { TurnRead } from "#/organization/turn-reading.ts";
 import {
   answeredMeanwhile,
   clearFailedTurns,
@@ -40,9 +36,7 @@ import { deliverReply, maySend, says } from "#/organization/turn-replies.ts";
 import { settleTurn } from "#/organization/turn-settling.ts";
 import { organizationName } from "#/organization/members.ts";
 import { organizationTimeZone } from "#/organization/offices.ts";
-import { patient } from "#/organization/schema.ts";
-import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
-import { patientsReachedAt } from "#/organization/whatsapp-messages.ts";
+import { conversation } from "#/organization/whatsapp-schema.ts";
 import type { Job, JobServices } from "#/organization/jobs.ts";
 
 // The patient assistant (docs/domain/assistant.md § For patients, ADR-0006):
@@ -56,9 +50,6 @@ import type { Job, JobServices } from "#/organization/jobs.ts";
 // never reaches the model, and goes to reception; a voice note reaches it as
 // its transcript (`voice-notes.ts`), and one nobody could understand does
 // not reach it. Nothing here logs a patient's words or data.
-
-/** The conversation history a turn reads, newest messages last. */
-const historyLength = 30;
 
 /** When the next turn is due, or `null` when none waits or the model cannot run. */
 function nextTurnAlarm(database: Database, { assistant }: JobServices): number | null {
@@ -95,7 +86,7 @@ interface Recorded {
  */
 function turnTools(
   database: Database,
-  turn: { conversationId: string; read: Read; appointments: Upcoming[] },
+  turn: { conversationId: string; read: TurnRead; appointments: Upcoming[] },
   recorded: Recorded,
 ): AssistantTool[] {
   const { patients } = turn.read;
@@ -170,80 +161,6 @@ function turnTools(
 }
 
 /**
- * The patients `phone` is the message contact of now, by name: read at the
- * turn, not from the conversation's links, which date from its last message.
- */
-function patientsOf(database: Database, phone: string) {
-  return database
-    .select({ id: patient.id, firstName: patient.firstName, chosenName: patient.chosenName })
-    .from(patient)
-    .where(inArray(patient.id, patientsReachedAt(database, phone)))
-    .orderBy(asc(patient.id))
-    .all()
-    .map((one) => ({ id: one.id, firstName: one.chosenName ?? one.firstName }));
-}
-
-const messageColumns = {
-  id: whatsappMessage.id,
-  sentAt: whatsappMessage.sentAt,
-  direction: whatsappMessage.direction,
-  type: whatsappMessage.type,
-  text: whatsappMessage.text,
-  reactsTo: whatsappMessage.reactsTo,
-};
-
-/**
- * The conversation as a turn reads it: its number, its patients, the
- * messages it judges (every incoming one not judged yet), and the latest
- * others as the conversation so far.
- */
-export function readConversation(database: Database, conversationId: string) {
-  const { phone, misunderstandings } = database
-    .select({ phone: conversation.phone, misunderstandings: conversation.misunderstandings })
-    .from(conversation)
-    .where(eq(conversation.id, conversationId))
-    .get()!;
-  const inConversation = eq(whatsappMessage.conversationId, conversationId);
-  const notJudged = and(
-    eq(whatsappMessage.direction, "incoming"),
-    isNull(whatsappMessage.judgement),
-  );
-  const unjudged = database
-    .select(messageColumns)
-    .from(whatsappMessage)
-    .where(and(inConversation, notJudged))
-    .orderBy(asc(whatsappMessage.sentAt))
-    .all();
-  const history = database
-    .select(messageColumns)
-    .from(whatsappMessage)
-    .where(
-      and(
-        inConversation,
-        or(eq(whatsappMessage.direction, "outgoing"), isNotNull(whatsappMessage.judgement)),
-      ),
-    )
-    .orderBy(desc(whatsappMessage.sentAt))
-    .limit(historyLength)
-    .all()
-    .reverse();
-  return {
-    phone,
-    misunderstandings,
-    patients: patientsOf(database, phone),
-    unjudged,
-    history,
-    withdrawn: reopensWithdrawn(
-      database,
-      history.map((message) => message.id),
-    ),
-    reactions: reactionsOf(database, conversationId),
-  };
-}
-
-type Read = ReturnType<typeof readConversation>;
-
-/**
  * How a turn runs: for patients, or in the sandbox (`assistant-sandbox.ts`),
  * which runs each tool through `step`, inside a transaction it rolls back,
  * and records its model runs as sandbox use.
@@ -254,43 +171,6 @@ export interface TurnMode {
 }
 
 const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run() };
-
-/**
- * The messages as the model reads them: the conversation so far, one message
- * per run of the same side, as WhatsApp shows a burst; then the messages the
- * turn judges together as the patient's last, so the judgement is about
- * exactly those and the turn always ends on the patient, after
- * `newMessagesMark`. A patient's own text never carries the mark.
- */
-function asTurnMessages(read: Read): TurnMessage[] {
-  const contentOf = (message: Read["history"][number]) => {
-    const reaction = read.reactions.lines.get(message.id);
-    if (reaction) {
-      return reaction;
-    }
-    // A voice note nobody could understand has no words.
-    const content = message.text || `[${message.type}]`;
-    if (message.direction === "incoming") {
-      return withoutMark(content);
-    }
-    return read.withdrawn.has(message.id) ? `${content}\n${withdrawnReplyNote}` : content;
-  };
-  const messages: TurnMessage[] = [];
-  const shown = read.history.filter(
-    (message) => message.type !== reactionType || read.reactions.live.has(message.id),
-  );
-  for (const message of shown) {
-    const role = message.direction === "incoming" ? "user" : "assistant";
-    const last = messages.at(-1);
-    if (last?.role === role) {
-      last.content = `${last.content}\n${contentOf(message)}`;
-    } else {
-      messages.push({ role, content: contentOf(message) });
-    }
-  }
-  const judged = [newMessagesMark, ...read.unjudged.map(contentOf)];
-  return [...messages, { role: "user", content: judged.join("\n") }];
-}
 
 /** The organization's name, and the zone its first office reads time in. */
 function promptSetting(database: Database) {
@@ -304,7 +184,7 @@ function promptSetting(database: Database) {
 export async function judgeTurn(
   database: Database,
   model: AssistantModel,
-  turn: { conversationId: string; read: Read; appointments: Upcoming[] },
+  turn: { conversationId: string; read: TurnRead; appointments: Upcoming[] },
   mode: TurnMode,
 ) {
   const rules = currentCommunicationRules(database);
@@ -365,7 +245,7 @@ export async function judgeTurn(
 function mayReply(
   database: Database,
   cloud: WhatsappCloud,
-  turn: { conversationId: string; read: Read; appointments: Upcoming[] },
+  turn: { conversationId: string; read: TurnRead; appointments: Upcoming[] },
 ) {
   const now = Date.now();
   const newerWaits = database
@@ -432,6 +312,11 @@ async function runTurn(
     // Nothing waits, as once the patient took back the only reaction a failed turn left.
     clearFailedTurns(database, conversationId);
     return null;
+  }
+  const tap = answerTap(database, cloud, { conversationId, ...read });
+  if (tap) {
+    clearFailedTurns(database, conversationId);
+    return tap.deliver;
   }
   const { transcribed } = read;
   const appointments = upcomingAppointments(database, read.phone, Date.now());
@@ -519,9 +404,9 @@ async function judgeWithoutMedia(
   model: AssistantModel,
   turn: {
     conversationId: string;
-    read: Read;
+    read: TurnRead;
     appointments: Upcoming[];
-    media: Read["unjudged"];
+    media: TurnRead["unjudged"];
     /** Every voice note among the messages has its transcript. */
     transcribed: boolean;
   },

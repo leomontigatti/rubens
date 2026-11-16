@@ -12,7 +12,7 @@ import { openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Organization } from "#/organization/organization.ts";
 import { auditLog, member } from "#/organization/schema.ts";
-import { modelUsage, transcriptionUsage } from "#/organization/whatsapp-schema.ts";
+import { modelUsage, transcriptionUsage } from "#/organization/assistant-usage-schema.ts";
 import { fakeMeta } from "#/organization/graph-api.test-support.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
@@ -612,6 +612,7 @@ export {
   afterTheWait,
   patientReacts,
   patientSends,
+  patientTaps,
   patientSpeaks,
   patientWrites,
   scriptedModel,

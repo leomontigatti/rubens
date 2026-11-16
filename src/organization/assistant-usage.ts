@@ -4,7 +4,7 @@ import { today } from "#/lib/schedules.ts";
 
 import type { ModelUsage } from "#/organization/assistant-model.ts";
 import type { Database, Writer } from "#/organization/database.ts";
-import { modelUsage, transcriptionUsage } from "#/organization/whatsapp-schema.ts";
+import { modelUsage, transcriptionUsage } from "#/organization/assistant-usage-schema.ts";
 
 // What the organization's assistant uses (docs/domain/assistant.md § Costs):
 // every run of the model, a turn's, a clinical check's or a template review's

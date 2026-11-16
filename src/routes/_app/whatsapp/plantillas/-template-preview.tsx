@@ -5,12 +5,21 @@ import { RecordSection } from "#/components/record-section.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
+import {
+  WhatsappBubble,
+  WhatsappChat,
+  WhatsappReplyButton,
+} from "#/components/whatsapp-bubble.tsx";
 import { formatDateTime, formatDay, formatTime } from "#/lib/dates.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import { fillSample, sampleAppointment } from "#/lib/template-filling.ts";
 import { mentionsSendTime } from "#/lib/template-timing.ts";
-import { checkTemplateBody, templateVariables } from "#/lib/whatsapp-templates.ts";
+import {
+  checkTemplateBody,
+  templateButtonLabels,
+  templateVariables,
+} from "#/lib/whatsapp-templates.ts";
+import type { TemplateButtons } from "#/lib/whatsapp-templates.ts";
 import type { getWhatsappSettings } from "#/server/whatsapp.functions.ts";
 
 import {
@@ -42,6 +51,8 @@ const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${formatDa
 export function TemplatePreview(props: {
   templateId: string | null;
   body: string;
+  /** The quick-reply buttons it goes with, under the message. */
+  buttons: TemplateButtons;
   /** Fills `{{organizacion}}`, as a sent message would. */
   organizationName: string;
 }) {
@@ -56,6 +67,9 @@ export function TemplatePreview(props: {
       </div>
       <WhatsappChat label="Así lo lee el paciente">
         <WhatsappBubble>{fillSample(props.body, props.organizationName) || "…"}</WhatsappBubble>
+        {templateButtonLabels[props.buttons].map((label) => (
+          <WhatsappReplyButton key={label}>{label}</WhatsappReplyButton>
+        ))}
       </WhatsappChat>
       {mentionsSendTime(props.body) && (
         <Alert variant="warning">

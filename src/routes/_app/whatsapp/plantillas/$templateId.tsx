@@ -139,7 +139,13 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
   const latest = template.versions[0];
   const deletable = !template.event && !latest && !template.picked;
   const settings =
-    template.timing && !template.event ? { name: template.name, timing: template.timing } : null;
+    template.timing && !template.event
+      ? {
+          name: template.name,
+          timing: template.timing,
+          buttons: template.buttons === "confirm" ? template.buttons : ("none" as const),
+        }
+      : null;
 
   const versionNote = latest
     ? "Si cambiás el texto, se envía a Meta como una versión nueva, que Meta revisa de nuevo."
@@ -150,11 +156,11 @@ function EditForm(props: { template: ListedTemplate; organizationName: string })
       templateId={template.id}
       settings={settings}
       body={latest?.body ?? template.draft ?? ""}
-      sentBody={latest?.body ?? null}
+      sent={latest ? { body: latest.body, buttons: latest.buttons } : null}
       organizationName={props.organizationName}
       title="Editar plantilla"
       description={template.name}
-      submitLabel={(bodyChanged) => (bodyChanged ? "Guardar y enviar a Meta" : "Guardar")}
+      submitLabel={(submits) => (submits ? "Guardar y enviar a Meta" : "Guardar")}
       versionNote={versionNote}
       followsTrato={template.followsTrato}
       record={{

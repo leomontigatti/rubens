@@ -13,6 +13,7 @@ import {
   templateNamed,
 } from "#/organization/organization.test-support.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
+import { confirmPayload } from "#/lib/button-payloads.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 
 // The messages for an appointment the organization changed: moved or
@@ -108,7 +109,7 @@ function cancel(appointmentId: string, cancelledBy: "business" | "patient") {
 }
 
 describe("telling the patient their appointment was cancelled", () => {
-  it("queues `turno_cancelado` when staff cancel it, by the business", async () => {
+  it("queues `turno_no_disponible` when staff cancel it, by the business", async () => {
     const appointmentId = await bookMartina();
 
     expectOk(await cancel(appointmentId, "business"));
@@ -277,7 +278,7 @@ describe("asking whether to tell the patients a time off or a closure sends to t
 });
 
 describe('telling patients their appointment went to the "to reschedule" list', () => {
-  it("queues `turno_a_reprogramar` for each appointment time off sends to the list", async () => {
+  it("queues `turno_no_disponible` for each appointment time off sends to the list", async () => {
     const martina = await bookMartina();
     const pedro = await bookPatient("Pedro", "+5491155550001", at("12:30"));
 
@@ -322,7 +323,7 @@ describe('telling patients their appointment went to the "to reschedule" list', 
     ]);
   });
 
-  it("drops a queued `turno_a_reprogramar` once the appointment is off the list", async () => {
+  it("drops a queued `turno_no_disponible` once the appointment is off the list", async () => {
     await bookMartina();
     const timeOff = await addTimeOff();
 
@@ -394,8 +395,7 @@ function sentTemplates() {
 describe("sending the message for the latest change", () => {
   beforeEach(async () => {
     await approveTemplate("turno_movido", "900000000000021");
-    await approveTemplate("turno_cancelado", "900000000000022");
-    await approveTemplate("turno_a_reprogramar", "900000000000023");
+    await approveTemplate("turno_no_disponible", "900000000000022");
     fakeMeta.answerWith(200, {
       messaging_product: "whatsapp",
       contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
@@ -411,6 +411,29 @@ describe("sending the message for the latest change", () => {
 
     expect(sentTemplates()).toEqual(["turno_movido_v1"]);
     expect(sentDateAndTime()).toEqual({ fecha: "lunes 12 de enero", hora: "09:00" });
+  });
+
+  it("sends `turno_movido` with its `Sí, voy` button's payload: the appointment, at its new start", async () => {
+    const appointmentId = await bookMartina();
+    expectOk(await reschedule(appointmentId));
+
+    await runDurableObjectAlarm(world.organization);
+
+    const [request] = fakeMeta.requests.filter((one) => one.url.endsWith("/messages"));
+    const { template } = request!.body as { template: { components: unknown[] } };
+    expect(template.components.slice(1)).toEqual([
+      {
+        type: "button",
+        sub_type: "quick_reply",
+        index: 0,
+        parameters: [
+          {
+            type: "payload",
+            payload: confirmPayload(appointmentId, new Date(at("12:00", "2099-01-12")).getTime()),
+          },
+        ],
+      },
+    ]);
   });
 
   it("sends nothing once a cancellation by the business is undone before the alarm fires", async () => {
@@ -433,23 +456,23 @@ describe("sending the message for the latest change", () => {
     expect(sentTemplates()).toEqual([]);
   });
 
-  it("sends `turno_a_reprogramar` while the appointment is still on the list", async () => {
+  it("sends `turno_no_disponible` while the appointment is still on the list", async () => {
     await bookMartina();
     await addTimeOff();
 
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentTemplates()).toEqual(["turno_a_reprogramar_v1"]);
+    expect(sentTemplates()).toEqual(["turno_no_disponible_v1"]);
   });
 
-  it("sends only `turno_cancelado` for an appointment moved and then cancelled before the alarm fires", async () => {
+  it("sends only `turno_no_disponible` for an appointment moved and then cancelled before the alarm fires", async () => {
     const appointmentId = await bookMartina();
     expectOk(await reschedule(appointmentId));
     expectOk(await cancel(appointmentId, "business"));
 
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentTemplates()).toEqual(["turno_cancelado_v1"]);
+    expect(sentTemplates()).toEqual(["turno_no_disponible_v1"]);
   });
 });
 

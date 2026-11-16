@@ -10,11 +10,21 @@ organization's number on Meta's Cloud API
 Every message the organization starts is a template Meta approved for the
 organization, in its own voice: the drafts are in
 [whatsapp-templates.md](../operations/whatsapp-templates.md). underthing fills in its
-facts (the date, the time, the practitioner, the office). Templates carry no
-buttons: the patient answers in their own words, or with a reaction to the
-message, and the assistant reads the answer ([assistant.md](./assistant.md)); a 👍
-or ✅ is a yes only to a reminder that asks to confirm or to the assistant's latest
-proposal ([assistant.md](./assistant.md#proposals)). The patient's answer opens the
+facts (the date, the time, the practitioner, the medical service). The patient
+answers in their own words, or with a reaction to the message, and the assistant
+reads the answer ([assistant.md](./assistant.md)); a 👍 or ✅ is a yes only to a
+reminder that asks to confirm or to the assistant's latest proposal
+([assistant.md](./assistant.md#proposals)). A template that asks to confirm also
+carries the quick-reply buttons `Sí, voy` · `Necesito cambiarlo`, and
+`reabrir_conversacion` carries `Ver respuesta`
+([ADR-0014](../adr/0014-reply-buttons-on-the-happy-path.md)): a tap on `Sí, voy`
+alone confirms the appointment the message was about, with no model call, while it
+is still upcoming, at the time the message stated and reached by the number, and
+the patient gets a fixed `Genial, te esperamos!` (`Genial, muchas gracias!` in
+`usted`), even while a person holds the conversation. A tap on `Ver respuesta` alone
+needs no turn. Any other tap, or one with other messages in the assistant's wait,
+is the patient's words: the assistant reads its label with the message it answers.
+The assistant's own replies carry no buttons. The patient's answer opens the
 conversation window ([assistant.md](./assistant.md#the-conversation-window)).
 
 Messages to patients are text, never media. What a patient sends as media, a voice
@@ -34,6 +44,8 @@ does. Each has:
   checks (no opening `¿` or `¡`, no emojis) before it is submitted. It may use every
   fact of the appointment and the organization's name. Care instructions, or what
   to bring, are written into the text of the template that carries them.
+- **Its buttons** (`Botones`): `Ninguno`, or `Confirmar asistencia` for one that
+  asks the patient to confirm. A change submits the text again with them.
 - **When it is sent** (`Cuándo se envía`): when the appointment is booked (or the
   request approved), when it is marked attended, or a number of hours or days
   before or after the appointment, up to 30 days. Before counts from the
@@ -43,7 +55,8 @@ does. Each has:
 The text says what the message is about and the appointment's date and time,
 never when it is sent: a message held back by Meta goes late, and `mañana` or
 `en 2 horas` would then be wrong. For the same reason it greets with `Hola`, never
-by the time of day. It names the organization instead of signing off.
+by the time of day. It names the organization and carries no signature; a closing such as `Saludos` is
+not one.
 
 Every organization starts with four drafts, worded in its `Trato` as the
 communication rules have it when they are created
@@ -67,7 +80,9 @@ it through the assistant ([assistant.md](./assistant.md#cancelling-and-moving)).
 A template sends nothing until Meta approves one of its versions. From then on
 its messages are queued as their appointments come to their timing:
 
-- **when booked**: at the booking, or at the approval of a request;
+- **when booked**: at the booking, or at the approval of a request. A booking the
+  assistant makes in the conversation (second release) gets none: its reply there
+  already confirms it;
 - **before the appointment**: at the booking, each for its time. One whose time
   has already passed is skipped, not sent late. A request gets none until it is
   approved; the same rule then applies from the approval;
@@ -97,7 +112,7 @@ A reply to any message can:
   times ([assistant.md](./assistant.md#cancelling-and-moving)).
 
 Which it does is the assistant's reading of the reply against the message it
-answers: no template is marked as asking to confirm.
+answers; only a tap on `Sí, voy` confirms with no reading.
 
 An answer to a message that asks how the patient feels is only sorted: plainly
 good gets a thank-you; anything else is handed off to the practitioner; an
@@ -107,9 +122,10 @@ there.
 
 ### The event templates
 
-Five templates are fixed and sent on their event, never picked by a medical
-service, never named or timed by an admin: `turno_movido`, `turno_cancelado`,
-`turno_a_reprogramar`, `solicitud_no_confirmada` and `reabrir_conversacion`
+Four templates are fixed and sent on their event, never picked by a medical
+service, never named or timed by an admin: `turno_movido`, `turno_no_disponible`
+(for a cancellation by the business and for the "to reschedule" list alike),
+`solicitud_no_confirmada` and `reabrir_conversacion`
 ([whatsapp-templates.md](../operations/whatsapp-templates.md#event-templates)).
 An admin writes and submits their text as for the others.
 
@@ -119,9 +135,9 @@ appointments to the "to reschedule" list, unless whoever saved the time off or
 the closure, asked on saving, chose not to tell them. Only the message for the latest change goes.
 No message timed before the appointment goes while it is on the list, told or
 not. The message
-says what happened and, where the appointment still needs a time, invites
-a reply, such as `Tuvimos que mover tu turno del jueves con la Dra. X. Respondé
-este mensaje y buscamos otro horario.` The assistant then offers times, except for
+says what happened and invites a reply: a move asks the patient to confirm the new
+time, and a cancellation or the list asks them to write for a new one. The
+assistant then offers times, except for
 a cancelled appointment: until booking arrives, in the second release, a reply
 asking for another time is handed off.
 

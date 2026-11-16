@@ -5,10 +5,11 @@ import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 
 import migrations from "#/organization/migrations/migrations.js";
+import * as usageSchema from "#/organization/assistant-usage-schema.ts";
 import * as coreSchema from "#/organization/schema.ts";
 import * as whatsappSchema from "#/organization/whatsapp-schema.ts";
 
-const schema = { ...coreSchema, ...whatsappSchema };
+const schema = { ...coreSchema, ...whatsappSchema, ...usageSchema };
 
 /**
  * The organization object's storage, through Drizzle. On this driver queries

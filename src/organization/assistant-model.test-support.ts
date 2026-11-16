@@ -210,6 +210,35 @@ export async function patientReacts(
   return whatsappId;
 }
 
+/** A tap from `from` on a template's quick-reply button: its label, its payload if it carries one, and the message it answers. */
+export async function patientTaps(
+  organization: DurableObjectStub<Organization>,
+  tap: { from: string; label: string; payload?: string; repliesTo: string },
+) {
+  const whatsappId = `wamid.${crypto.randomUUID()}`;
+  const { from, label, payload, repliesTo } = tap;
+  const stored = await organization.storeWhatsappEvents({
+    messages: [
+      {
+        whatsappId,
+        from,
+        sentAt: Date.now(),
+        type: "button",
+        text: label,
+        repliesTo,
+        ...(payload !== undefined && { buttonPayload: payload }),
+        payload: "{}",
+      },
+    ],
+    statuses: [],
+    templateStatuses: [],
+  });
+  if (!stored.ok) {
+    throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
+  }
+  return whatsappId;
+}
+
 /** A photo, a document or another message with no text from `from`, as Meta's webhook hands it over. */
 export async function patientSends(
   organization: DurableObjectStub<Organization>,

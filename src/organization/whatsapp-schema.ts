@@ -9,7 +9,6 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-import { modelRunPurposes } from "#/lib/assistant.ts";
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { lateReplyStates } from "#/lib/conversation-holds.ts";
 import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
@@ -23,7 +22,11 @@ import {
 } from "#/lib/whatsapp-messages.ts";
 import { connectionStates, numberHoldReasons } from "#/lib/whatsapp.ts";
 import { timingKinds } from "#/lib/template-timing.ts";
-import { templateCategories, templateStatuses } from "#/lib/whatsapp-templates.ts";
+import {
+  templateButtonKinds,
+  templateCategories,
+  templateStatuses,
+} from "#/lib/whatsapp-templates.ts";
 
 import { appointment, medicalService, member, patient } from "#/organization/schema.ts";
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
@@ -115,6 +118,10 @@ export const whatsappMessage = sqliteTable(
     payload: text("payload").notNull(),
     /** A reaction's target's WhatsApp id; its emoji is `text`, empty once taken back. */
     reactsTo: text("reacts_to"),
+    /** The WhatsApp id of the message an incoming one answers, when the patient replied to it or tapped its button. */
+    repliesTo: text("replies_to"),
+    /** A tapped button's payload, set when the template was sent (`button-payloads.ts`); its label is `text`. */
+    buttonPayload: text("button_payload"),
     /** When Meta says it was sent. */
     sentAt: instant("sent_at").notNull(),
     // An outgoing message's latest status and when Meta says it happened;
@@ -137,7 +144,7 @@ export const whatsappMessage = sqliteTable(
 /**
  * A WhatsApp template of the organization (docs/domain/messages.md § To
  * patients): one of its own, which an admin names and times, or one of the
- * five event templates, whose id is its event name (`turno_movido`) and which
+ * four event templates, whose id is its name (`turno_movido`) and which
  * has no timing. Its text is in its versions; `draft` is the text a template
  * never sent starts from.
  */
@@ -150,6 +157,8 @@ export const template = sqliteTable(
     /** Hours before or after the appointment, for those two timings. */
     timingHours: integer("timing_hours"),
     draft: text("draft"),
+    /** The buttons its next version is submitted with: an event template's are fixed (`eventTemplateButtons`). */
+    buttons: text("buttons", { enum: templateButtonKinds }).notNull().default("none"),
     ...timestamps,
   },
   (table) => [uniqueIndex("template_name_idx").on(table.name)],
@@ -190,6 +199,8 @@ export const whatsappTemplate = sqliteTable(
     /** Meta's language code, such as `es_AR`. */
     language: text("language").notNull(),
     body: text("body").notNull(),
+    /** The quick-reply buttons it was submitted with, which a message sent as it fills (ADR-0014). */
+    buttons: text("buttons", { enum: templateButtonKinds }).notNull().default("none"),
     /** Meta's id for the template. */
     metaId: text("meta_id").notNull().unique(),
     status: text("status", { enum: templateStatuses }).notNull(),
@@ -469,47 +480,6 @@ export const proposal = sqliteTable(
     ...timestamps,
   },
   (table) => [index("proposal_conversation_idx").on(table.conversationId, table.createdAt)],
-);
-
-/**
- * What one run of the assistant's model used (docs/domain/assistant.md §
- * Costs): a turn's, a clinical check's or a template review's, in the sandbox or not, on the
- * organization's day, for the practice to pay for what it uses.
- */
-export const modelUsage = sqliteTable(
-  "model_usage",
-  {
-    id: id(),
-    /** The local date of the run, in the organization's zone. */
-    day: text("day").notNull(),
-    model: text("model").notNull(),
-    purpose: text("purpose", { enum: modelRunPurposes }).notNull(),
-    sandbox: flag("sandbox").notNull(),
-    inputTokens: integer("input_tokens").notNull(),
-    outputTokens: integer("output_tokens").notNull(),
-    createdAt: timestamps.createdAt,
-  },
-  (table) => [index("model_usage_day_idx").on(table.day)],
-);
-
-/**
- * One voice note the assistant had transcribed (docs/domain/assistant.md §
- * Costs): the model and the audio's length, which Workers AI bills, on the
- * organization's day, beside the model's tokens (`model_usage`).
- */
-export const transcriptionUsage = sqliteTable(
-  "transcription_usage",
-  {
-    id: id(),
-    /** The local date of the transcription, in the organization's zone. */
-    day: text("day").notNull(),
-    model: text("model").notNull(),
-    sandbox: flag("sandbox").notNull(),
-    /** The audio's length, in milliseconds. */
-    audioMs: integer("audio_ms").notNull(),
-    createdAt: timestamps.createdAt,
-  },
-  (table) => [index("transcription_usage_day_idx").on(table.day)],
 );
 
 /**

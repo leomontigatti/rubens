@@ -439,7 +439,7 @@ describe("a number with nothing booked to talk about", () => {
 
 describe("an appointment the organization cancelled", () => {
   it("hands a request for another time to reception, not to the cancelled appointment's practitioner", async () => {
-    await approveTemplate("turno_cancelado", "900000000000022");
+    await approveTemplate("turno_no_disponible", "900000000000022");
     const appointmentId = await bookMartina();
     expectOk(
       await world.organization.cancelAppointment(adminCaller, {
@@ -465,7 +465,7 @@ describe("an appointment the organization cancelled", () => {
   });
 
   it("reaches the handoff contacts though the patient answered the cancellation before", async () => {
-    await approveTemplate("turno_cancelado", "900000000000022");
+    await approveTemplate("turno_no_disponible", "900000000000022");
     const martina = await world.addPatient("Martina", martinaPhone);
     const booking = {
       practitionerId: world.juan.practitionerId,

@@ -8,6 +8,7 @@ import { timingColumns, timingOf, timingRank } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
 import {
   checkTemplateBody,
+  eventTemplateButtons,
   eventTemplateIds,
   isEventTemplate,
   templateCreateSchema,
@@ -15,7 +16,12 @@ import {
   templateEditSchema,
   templateVariables,
 } from "#/lib/whatsapp-templates.ts";
-import type { TemplateCreate, TemplateDelete, TemplateEdit } from "#/lib/whatsapp-templates.ts";
+import type {
+  TemplateButtons,
+  TemplateCreate,
+  TemplateDelete,
+  TemplateEdit,
+} from "#/lib/whatsapp-templates.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -35,7 +41,7 @@ import {
 
 // The organization's templates as an admin manages them
 // (docs/domain/messages.md § The organization's templates): its own, which an
-// admin creates, names, times and deletes while never sent, and the five
+// admin creates, names, times and deletes while never sent, and the four
 // event templates, whose text alone the admin writes. A save sends the text
 // to Meta as a new version when it differs from the latest version's
 // (`whatsapp-templates.ts`); a name or a timing is underthing's alone, and
@@ -54,6 +60,7 @@ const templateColumns = {
   timing: template.timing,
   timingHours: template.timingHours,
   draft: template.draft,
+  buttons: template.buttons,
 };
 
 /** What holds name `name` while a new template by it waits for Meta (`submittingIn`). */
@@ -124,14 +131,29 @@ export function listTemplates(database: Database, cloud: WhatsappCloud) {
   return { missing: cloud.missingTemplateSetting(), templates };
 }
 
-/** The text of the latest version of template `templateId` submitted, whatever Meta said of it. */
-function latestBody(database: Writer, templateId: string) {
+/** The text and buttons of the latest version of template `templateId` submitted, whatever Meta said of it. */
+function latestVersion(database: Writer, templateId: string) {
   return database
-    .select({ body: whatsappTemplate.body })
+    .select({ body: whatsappTemplate.body, buttons: whatsappTemplate.buttons })
     .from(whatsappTemplate)
     .where(eq(whatsappTemplate.templateId, templateId))
     .orderBy(sql`${whatsappTemplate.version} desc`)
-    .get()?.body;
+    .get();
+}
+
+/** The buttons template `templateId` is submitted with: an event template's fixed ones, else `chosen`. */
+function buttonsToSubmit(templateId: string, chosen: TemplateButtons) {
+  return isEventTemplate(templateId) ? eventTemplateButtons(templateId) : chosen;
+}
+
+/** Whether `submission` differs from the latest version submitted, in its text or its buttons; true for one never sent. */
+function differsFromLatest(
+  database: Writer,
+  templateId: string,
+  submission: { body: string; buttons: TemplateButtons },
+) {
+  const latest = latestVersion(database, templateId);
+  return submission.body !== latest?.body || submission.buttons !== latest.buttons;
 }
 
 /** Runs `submit` while `key`, a template's id or a new one's name, is held against a second submission. */
@@ -166,7 +188,7 @@ export async function createTemplate(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { name, timing } = parsed.data;
+  const { name, timing, buttons } = parsed.data;
   const checked = checkTemplateBody(templateVariables(null), parsed.data.body);
   if (!checked.ok) {
     return { ok: false, reason: "invalidTemplate", problems: checked.problems } as const;
@@ -180,7 +202,7 @@ export async function createTemplate(
   }
   const templateId = crypto.randomUUID();
   const created = await holding(database, nameKey(name), () =>
-    submitVersion(database, cloud, acting, { templateId, body: checked.body }, (tx) => {
+    submitVersion(database, cloud, acting, { templateId, body: checked.body, buttons }, (tx) => {
       tx.insert(template)
         .values({ id: templateId, name, ...timingColumns(timing) })
         .run();
@@ -281,7 +303,7 @@ export async function editTemplate(
   }
   const { templateId, settings } = parsed.data;
   const found = database
-    .select({ id: template.id })
+    .select({ id: template.id, buttons: template.buttons })
     .from(template)
     .where(eq(template.id, templateId))
     .get();
@@ -299,7 +321,8 @@ export async function editTemplate(
     return tooManyReminders;
   }
   const body = parsed.data.body.trim();
-  const changed = body !== latestBody(database, templateId);
+  const buttons = buttonsToSubmit(templateId, settings?.buttons ?? found.buttons);
+  const changed = differsFromLatest(database, templateId, { body, buttons });
   const checked = checkTemplateBody(templateVariables(templateId), body);
   if (changed && !checked.ok) {
     return { ok: false, reason: "invalidTemplate", problems: checked.problems } as const;
@@ -313,7 +336,13 @@ export async function editTemplate(
     return { ok: false, reason: missing } as const;
   }
   const submitted = await holding(database, templateId, () =>
-    submitVersion(database, cloud, acting, { templateId, body: checked.body }, () => undefined),
+    submitVersion(
+      database,
+      cloud,
+      acting,
+      { templateId, body: checked.body, buttons },
+      () => undefined,
+    ),
   );
   return submitted.ok ? ({ ok: true, submitted: true } as const) : submitted;
 }
@@ -371,7 +400,7 @@ export function deleteTemplate(database: Database, acting: Acting, input: Templa
     if (!found) {
       return notFound;
     }
-    if (latestBody(tx, templateId) !== undefined) {
+    if (latestVersion(tx, templateId) !== undefined) {
       return { ok: false, reason: "submitted" } as const;
     }
     const pickedBy = tx

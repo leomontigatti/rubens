@@ -5,13 +5,16 @@ import type { OutboxKind } from "#/lib/outbox.ts";
 import { attendedTimings } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
 import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
+import { confirmPayload, reopenPayload } from "#/lib/button-payloads.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
+import type { TemplateButtons } from "#/lib/whatsapp-templates.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { MetaError, TemplateMessage, WhatsappCloud } from "#/organization/graph-api.ts";
 import {
   appointment,
   guardian,
+  medicalService,
   office,
   patient,
   practitioner,
@@ -163,6 +166,7 @@ function readQueued(database: Database, id: string) {
       officeName: office.name,
       officeAddress: office.address,
       timeZone: office.timeZone,
+      medicalServiceName: medicalService.name,
     })
     .from(outboxMessage)
     .innerJoin(appointment, eq(appointment.id, outboxMessage.appointmentId))
@@ -170,6 +174,7 @@ function readQueued(database: Database, id: string) {
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
     .innerJoin(room, eq(room.id, appointment.roomId))
     .innerJoin(office, eq(office.id, room.officeId))
+    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .leftJoin(guardian, and(eq(guardian.patientId, patient.id), eq(guardian.messageContact, true)))
     .where(and(eq(outboxMessage.id, id), eq(outboxMessage.state, "queued")))
     .get();
@@ -186,10 +191,10 @@ function isAttendedTiming(timing: TimingKind | null) {
  * `now`: one that has not started or been cancelled; for one queued on or
  * after its attendance, one still attended, however long ago
  * (docs/domain/messages.md § When Meta limits the number); for
- * `turno_cancelado`, one the business cancelled that has not started. A
- * message timed before the appointment goes only while it is off the "to
- * reschedule" list, which would remind the patient of a time nobody works;
- * `turno_a_reprogramar` only while it is on it.
+ * a cancellation's `turno_no_disponible`, one the business cancelled that has
+ * not started. A message timed before the appointment goes only while it is
+ * off the "to reschedule" list, which would remind the patient of a time
+ * nobody works; the list's `turno_no_disponible` only while it is on it.
  */
 function stillAbout(database: Database, queued: Queued, now: number) {
   if (queued.kind === "timed" && isAttendedTiming(queued.timing)) {
@@ -252,7 +257,9 @@ function toSend(database: Database, id: string, kind: OutboxKind) {
     const organizacion = organizationName(database);
     return (
       reopen &&
-      (reopen.drop ? reopen : { ...reopen, values: { paciente: reopen.paciente, organizacion } })
+      (reopen.drop
+        ? reopen
+        : { ...reopen, values: { paciente: reopen.paciente, organizacion }, confirm: null })
     );
   }
   const queued = readQueued(database, id);
@@ -270,9 +277,27 @@ function toSend(database: Database, id: string, kind: OutboxKind) {
     timeZone: queued.timeZone,
     officeName: queued.officeName,
     officeAddress: queued.officeAddress,
+    medicalServiceName: queued.medicalServiceName,
     organizationName: organizationName(database),
   });
-  return { drop: null, to: queued.guardianPhone ?? queued.patientPhone, values };
+  return {
+    drop: null,
+    to: queued.guardianPhone ?? queued.patientPhone,
+    values,
+    confirm: confirmPayload(queued.appointmentId, queued.startsAt),
+  };
+}
+
+/**
+ * The payload of the button code acts on, for a message sent as a version with
+ * `buttons`: `Sí, voy` names the appointment at the start the message states;
+ * `Necesito cambiarlo` carries none, since the model reads it as the patient's words.
+ */
+function buttonPayloadsFor(buttons: TemplateButtons, confirm: string | null) {
+  if (buttons === "reopen") {
+    return [{ index: 0, payload: reopenPayload() }];
+  }
+  return buttons === "confirm" && confirm ? [{ index: 0, payload: confirm }] : [];
 }
 
 /** Sends the queued message `due`, if it is still queued and may still go. */
@@ -306,6 +331,7 @@ async function sendQueued(
     templateName: metaTemplateName(templateId, version.version),
     languageCode: version.language,
     parameters: filled.parameters,
+    buttonPayloads: buttonPayloadsFor(version.buttons, prepared.confirm),
   };
   const sent = await send(
     database,

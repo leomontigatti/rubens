@@ -25,8 +25,8 @@ export type EventOutboxKind = Exclude<OutboxKind, "timed">;
 /** The event template each event's message goes as. */
 export const eventKindTemplates = {
   appointmentMoved: "turno_movido",
-  appointmentCancelled: "turno_cancelado",
-  appointmentToReschedule: "turno_a_reprogramar",
+  appointmentCancelled: "turno_no_disponible",
+  appointmentToReschedule: "turno_no_disponible",
   reopenConversation: "reabrir_conversacion",
 } as const satisfies Record<EventOutboxKind, EventTemplateId>;
 
