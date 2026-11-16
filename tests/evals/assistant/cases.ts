@@ -369,6 +369,33 @@ export const cases: Case[] = [
     },
   },
   {
+    id: "proposal-after-pause-after-practice-move",
+    description:
+      "Moving: a time named after a pause that follows the practice's own move becomes a proposal stated in full (#393)",
+    number: "onePatient",
+    history: [
+      {
+        role: "assistant",
+        text: "Hola Lucía, te avisamos que tu turno de Sesión de kinesiología con Lic. Paula Ríos pasó al jueves 12/11 a las 16:30 en Sede Centro (Av. Colón 1234).",
+      },
+    ],
+    pauseBefore: true,
+    patient: ["no me sirve ese día. se puede el martes 17 a las 10:30?"],
+    expect: {
+      calls: [
+        { name: "find_free_times", args: { appointmentId: "apt-101" } },
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/R[ií]os|kinesio/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
     id: "two-appointments-proposal",
     description:
       "Moving with two upcoming appointments in the conversation: the proposal names which one (#393)",
