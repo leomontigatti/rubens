@@ -9,7 +9,7 @@ import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { hasRepliesBehind } from "#/organization/late-replies.ts";
+import { hasRepliesBehind } from "#/organization/reopen-replies.ts";
 import { assistantActing } from "#/organization/proposals.ts";
 import { reach } from "#/organization/sending.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
@@ -112,7 +112,13 @@ function confirmTapped(
 interface TapTurn {
   conversationId: string;
   phone: string;
-  unjudged: { id: string; type: string; buttonPayload: string | null; repliesTo: string | null }[];
+  unjudged: {
+    id: string;
+    type: string;
+    sentAt: number;
+    buttonPayload: string | null;
+    repliesTo: string | null;
+  }[];
 }
 
 /**
@@ -130,7 +136,7 @@ function settleTap(database: Database, turn: TapTurn): SettledTap | null {
   const settled =
     payload.kind === "confirm"
       ? confirmTapped(database, turn.phone, payload)
-      : tap.repliesTo !== null && hasRepliesBehind(database, tap.repliesTo)
+      : tap.repliesTo !== null && hasRepliesBehind(database, tap.repliesTo, tap.sentAt)
         ? { reply: null }
         : null;
   if (settled) {

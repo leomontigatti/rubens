@@ -6,7 +6,7 @@ import { reactionType } from "#/lib/reactions.ts";
 import type { TurnMessage } from "#/organization/assistant-model.ts";
 import { tapLinesOf } from "#/organization/button-taps.ts";
 import type { Database } from "#/organization/database.ts";
-import { reopensWithdrawn } from "#/organization/late-replies.ts";
+import { reopensWithdrawn } from "#/organization/reopen-replies.ts";
 import { reactionsOf } from "#/organization/reactions.ts";
 import { patient } from "#/organization/schema.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";

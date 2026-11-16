@@ -513,48 +513,6 @@ export function withdrawnRepliesShown(
 }
 
 /**
- * The reopen templates among the messages `messageIds` that went, and whose
- * every reply behind them was withdrawn: the patient was told of a reply that
- * will not come.
- */
-export function reopensWithdrawn(database: Database, messageIds: string[]): Set<string> {
-  if (messageIds.length === 0) {
-    return new Set();
-  }
-  const rows = database
-    .select({ messageId: outboxMessage.whatsappMessageId, state: lateReply.state })
-    .from(outboxMessage)
-    .innerJoin(lateReply, eq(lateReply.reopenId, outboxMessage.id))
-    .where(inArray(outboxMessage.whatsappMessageId, messageIds))
-    .all();
-  const kept = new Set(rows.filter((row) => row.state !== "withdrawn").map((row) => row.messageId));
-  return new Set(
-    rows.flatMap((row) => (row.messageId && !kept.has(row.messageId) ? [row.messageId] : [])),
-  );
-}
-
-/**
- * Whether the message Meta knows as `whatsappId` is a reopen template with a
- * reply behind it still waiting or delivered: what a tap on its `Ver
- * respuesta` opens the window for (`button-taps.ts`).
- */
-export function hasRepliesBehind(database: Database, whatsappId: string) {
-  const behind = database
-    .select({ id: lateReply.id })
-    .from(lateReply)
-    .innerJoin(outboxMessage, eq(outboxMessage.id, lateReply.reopenId))
-    .innerJoin(whatsappMessage, eq(whatsappMessage.id, outboxMessage.whatsappMessageId))
-    .where(
-      and(
-        eq(whatsappMessage.whatsappId, whatsappId),
-        inArray(lateReply.state, ["waiting", "delivered"]),
-      ),
-    )
-    .get();
-  return behind !== undefined;
-}
-
-/**
  * The late replies of `conversationId` not delivered, oldest first, as
  * the member `readerId` reads them: a delivered one is a message, a
  * withdrawn one is gone.

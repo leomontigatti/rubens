@@ -341,6 +341,28 @@ describe("a person's reply after the window closed", () => {
     expect(scriptedModel.turns).toHaveLength(0);
   });
 
+  it("goes to the model when the patient taps `Ver respuesta` again once its reply went", async () => {
+    await handedOffThenClosed();
+    expectOk(await replyAs(world.receptionist));
+    await runDurableObjectAlarm(world.organization);
+    vi.setSystemTime(Date.now() + 2 * day);
+    const tap = async () =>
+      patientTaps(world.organization, {
+        from: martinaPhone,
+        label: "Ver respuesta",
+        payload: reopenPayload(),
+        repliesTo: await reopenSent(),
+      });
+    await tap();
+    await afterTheWait(world.organization);
+    vi.setSystemTime(Date.now() + day);
+
+    await tap();
+    await afterTheWait(world.organization);
+
+    expect(scriptedModel.turns).toHaveLength(1);
+  });
+
   it("goes to the model when the patient taps `Ver respuesta` after its reply was withdrawn", async () => {
     await handedOffThenClosed();
     expectOk(await replyAs(world.receptionist));
