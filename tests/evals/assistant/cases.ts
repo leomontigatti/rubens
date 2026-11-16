@@ -106,6 +106,13 @@ const moveProposal: HistoryMessage = {
   text: "Te propongo mover tu Sesión de kinesiología con Lic. Paula Ríos del jueves 12/11 a las 16:30 al martes 17/11 a las 10:30 en Sede Norte (Av. Rafael Núñez 4500). ¿Lo confirmo?",
 };
 
+// The same move, named as a person would inside the conversation that offered
+// it: only what changes (#393).
+const shortMoveProposal: HistoryMessage = {
+  role: "assistant",
+  text: "Perfecto, te lo paso al martes 17/11 a las 10:30 en Sede Norte. ¿Te parece bien?",
+};
+
 // A move to Tuesday the assistant proposed, still waiting on the patient.
 const movingToTuesday: HistoryMessage[] = [
   reminder,
@@ -223,7 +230,8 @@ export const cases: Case[] = [
   },
   {
     id: "move-pick-slot",
-    description: "Moving: the picked time becomes a proposal stated in full, not yet accepted",
+    description:
+      "Moving: the picked time becomes a proposal naming what changes, the office included, not yet accepted (#393)",
     number: "onePatient",
     history: [reminder, { role: "patient", text: "lo puedo cambiar?" }, offeredSlots],
     patient: ["el martes a las 10 y media me viene joya"],
@@ -237,7 +245,90 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/R[ií]os/, /10[:.]30/, /17\/11|17 de noviembre|martes/i],
+      replyMatches: [/10[:.]30/, /17\/11|17 de noviembre|martes/i, /Norte/],
+    },
+  },
+  {
+    id: "short-proposal-accepted",
+    description: "Moving: a yes to a proposal that named only the new time accepts it (#393)",
+    number: "onePatient",
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?" },
+      offeredSlots,
+      { role: "patient", text: "el martes" },
+      shortMoveProposal,
+    ],
+    patient: ["sí"],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      calls: [{ name: "accept_proposal", accepts: "move" }],
+      forbidden: ["propose_change"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "shared-number-proposal",
+    description:
+      "Moving on a number with several patients: the proposal names the patient it is about (#393)",
+    number: "guardian",
+    history: [
+      { role: "patient", text: "hola, necesito cambiar un turno" },
+      {
+        role: "assistant",
+        text: "Hola! Este número está a nombre de Tomás y de Valentina. ¿De quién es el turno?",
+      },
+      { role: "patient", text: "el de Tomás" },
+      {
+        role: "assistant",
+        text: "Tengo el miércoles 18/11 a las 11:00 en Sede Norte con Dr. Martín Sosa. ¿Te sirve?",
+      },
+    ],
+    patient: ["el miércoles me viene bien"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-201", slotId: "slot-s1" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/Tom[aá]s/, /11[:.]00/],
+      replyAvoids: [/Valentina/],
+    },
+  },
+  {
+    id: "two-appointments-proposal",
+    description:
+      "Moving with two upcoming appointments in the conversation: the proposal names which one (#393)",
+    number: "withDentist",
+    history: [
+      { role: "patient", text: "hola, qué turnos tengo?" },
+      {
+        role: "assistant",
+        text: "Hola Lucía! Tenés Sesión de kinesiología el jueves 12/11 a las 16:30 y Consulta odontológica el viernes 13/11 a las 11:00, los dos en Sede Centro.",
+      },
+      { role: "patient", text: "uno de los dos lo puedo pasar para la semana que viene?" },
+      {
+        role: "assistant",
+        text: "Para la kinesiología tengo el lunes 16/11 a las 9:00 en Sede Centro, el martes 17/11 a las 10:30 en Sede Norte o el jueves 19/11 a las 17:00 en Sede Centro. Para la odontológica, el viernes 20/11 a las 11:00 en Sede Centro. ¿Cuál te queda mejor?",
+      },
+    ],
+    patient: ["el lunes a las 9"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r1" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/kinesio|R[ií]os|jueves|12\/11/i, /9[:.]00|9 hs|9 de la mañana/i],
     },
   },
   {

@@ -26,7 +26,7 @@ import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
 
 // Proposals (docs/domain/assistant.md § Proposals, ADR-0006 § The model
 // interprets): the patient assistant's only way to change an appointment.
-// A proposal states the change in full; accepting the conversation's latest,
+// A proposal holds the change in full; accepting the conversation's latest,
 // before it expires and while the appointment is as stated, runs the
 // appointment's own change functions, so their rules hold and the change can
 // still fail.

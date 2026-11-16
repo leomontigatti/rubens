@@ -4,7 +4,8 @@ import type { assistantToolSchemas } from "#/lib/assistant.ts";
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 
 // Proposals (ui: "Propuesta", docs/domain/assistant.md § Proposals): a change
-// the assistant states in full and the patient accepts before it is made.
+// the patient accepts before it is made. It holds every fact, though the
+// assistant's message names only what changes.
 // Only a conversation's latest proposal can be accepted, until it expires.
 
 /** What a proposal changes: confirming the appointment, cancelling it by the patient, or moving it. */

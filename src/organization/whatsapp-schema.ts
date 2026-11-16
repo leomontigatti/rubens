@@ -454,7 +454,7 @@ export const handoffRecipient = sqliteTable(
 );
 
 /**
- * A change the assistant stated to the patient in full (`src/lib/proposals.ts`):
+ * A change the assistant proposed to the patient, every fact of it (`src/lib/proposals.ts`):
  * only the conversation's latest can be accepted, once, before it expires.
  * Accepting runs the appointment's own change functions. The patient's own
  * moves of an appointment are its accepted moves.

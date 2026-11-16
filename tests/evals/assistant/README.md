@@ -78,8 +78,8 @@ In the order #157 ranks the criteria (`score.ts`):
 3. **Voice notes** (`eval:voice`): the word error rate against the words spoken, at
    most 0.2, and the turn on the transcript passing 1a, 1b and 2 like the written case.
 
-The `reply content` check holds what only the words show: a proposal stated in full,
-yes when asked whether it is a bot, no advice on symptoms. Latency (p50, p95) and cost
+The `reply content` check holds what only the words show: a proposal that names what
+changes and, where the number or the appointments make it ambiguous, whose it is, yes when asked whether it is a bot, no advice on symptoms. Latency (p50, p95) and cost
 per turn come with each run; the providers' terms are in the report on #151.
 
 The availability check reads clock times only: an invented office, floor or price is
