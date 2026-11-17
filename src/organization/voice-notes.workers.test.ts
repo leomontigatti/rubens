@@ -273,6 +273,19 @@ describe("a voice note nobody can understand", () => {
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([writeItText]);
   });
 
+  it("that Whisper heard only as a video's credits is one nobody could understand", async () => {
+    scriptedTranscriber.hears("silencio", {
+      text: "Subtítulos realizados por la comunidad de Amara.org",
+      seconds: 5,
+    });
+    await speaks("silencio");
+    await turn();
+
+    expect(scriptedModel.turns).toEqual([]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual([writeItText]);
+    expect((await inboxOf(martinaPhone))[0]).toMatchObject({ type: "audio", text: "" });
+  });
+
   it("counts again from an understood message in between", async () => {
     await speaks("ruido");
     await turn();
