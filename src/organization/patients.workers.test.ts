@@ -667,6 +667,19 @@ describe("searching patients", () => {
     expect(await search("0261 15 666-7788")).toEqual(["Pedro Gómez Pereyra"]);
   });
 
+  it("puts a patient whose phone is the 10 digits typed first, a mobile stored with its 9", async () => {
+    const { organization, receptionist, search } = await searchable();
+    await register(organization, receptionist, {
+      firstName: "Ana",
+      lastName: "Álvarez",
+      phone: "0351 15 777-2222",
+      documentType: "other",
+      documentNumber: "35155512349",
+    });
+
+    expect(await search("3515551234")).toEqual(["Juan Pérez", "Ana Álvarez"]);
+  });
+
   it("puts the best match first", async () => {
     const { organization, receptionist, search } = await searchable();
     await register(organization, receptionist, {

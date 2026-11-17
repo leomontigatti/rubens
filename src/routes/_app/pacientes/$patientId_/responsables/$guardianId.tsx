@@ -4,7 +4,6 @@ import { RefusalMessage } from "#/components/admin-form.tsx";
 import { GuardianForm } from "#/components/patient-guardians.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { guardianUpdateSchema } from "#/lib/guardians.ts";
-import { formatPhone } from "#/lib/phones.ts";
 import { editGuardian, getGuardians } from "#/server/guardians.functions.ts";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/responsables/$guardianId")({
@@ -28,7 +27,7 @@ function EditGuardian() {
       patientId={patientId}
       title="Editar responsable"
       description={guardian.name}
-      initial={{ ...guardian, phone: formatPhone(guardian.phone) }}
+      initial={guardian}
       submitLabel="Guardar"
       schema={guardianUpdateSchema}
       ids={{ guardianId }}

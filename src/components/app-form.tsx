@@ -1,4 +1,4 @@
-import { createFormHook, createFormHookContexts, useStore } from "@tanstack/react-form";
+import { createFormHook, useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { SearchIcon } from "lucide-react";
 import { useRef, useState } from "react";
@@ -6,11 +6,19 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { comboboxTextChange } from "#/components/combobox-text.ts";
 import { DateInput, TimeInput } from "#/components/date-time-input.tsx";
+import {
+  FieldHint,
+  fieldContext,
+  formContext,
+  joinIds,
+  useFieldContext,
+} from "#/components/form-fields.tsx";
 import { placeAttributes } from "#/components/field-size.ts";
 import type { FieldPlace } from "#/components/field-size.ts";
 import { FieldProblemText, useFieldProblem } from "#/components/field-problem.tsx";
 import { InsertChips } from "#/components/insert-chips.tsx";
 import type { TextInserts } from "#/components/insert-chips.tsx";
+import { PhoneField } from "#/components/phone-field.tsx";
 
 import { Checkbox } from "#/components/ui/checkbox.tsx";
 import {
@@ -28,7 +36,6 @@ import {
 } from "#/components/ui/combobox.tsx";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -53,15 +60,6 @@ import { Textarea } from "#/components/ui/textarea.tsx";
 // typed: the form's schema decides what it is worth when it submits. Each
 // field takes a `size` in its form's `FormGrid` (`field-size.ts`): a quarter
 // of the row, or the whole row for what holds a list or a long text.
-
-const { fieldContext, formContext, useFieldContext } = createFormHookContexts();
-
-const joinIds = (...ids: (string | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
-
-/** The hint a field's input points at, when it has one. */
-function FieldHint(props: { id?: string; children?: string }) {
-  return props.id ? <FieldDescription id={props.id}>{props.children}</FieldDescription> : null;
-}
 
 type InputProps = Pick<
   ComponentProps<typeof Input>,
@@ -600,6 +598,7 @@ export const { useAppForm } = createFormHook({
   formContext,
   fieldComponents: {
     TextField,
+    PhoneField,
     DateField,
     TimeField,
     TextareaField,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { historyChanges, historyTitle, patientName } from "#/lib/patients.ts";
+import { historyChanges, historyTitle, patientInputSchema, patientName } from "#/lib/patients.ts";
 
 describe("patientName", () => {
   it("calls a patient by their chosen first name, with their last name", () => {
@@ -207,5 +207,25 @@ describe("historyTitle", () => {
     expect(historyTitle({ action: "delete", entityType: "appointment", appointment: null })).toBe(
       "Baja de turno",
     );
+  });
+});
+
+describe("patientInputSchema", () => {
+  const patient = { firstName: "Juan", lastName: "Pérez" };
+
+  it("stores a phone field's entry in E.164", () => {
+    const parsed = patientInputSchema.parse({
+      ...patient,
+      phone: { country: "AR", number: "3515551234" },
+    });
+    expect(parsed.phone).toBe("+5493515551234");
+  });
+
+  it("refuses a wrong entry on the phone, with its reason", () => {
+    const parsed = patientInputSchema.safeParse({
+      ...patient,
+      phone: { country: "AR", number: "0351 15 555-1234" },
+    });
+    expect(parsed.error?.issues).toMatchObject([{ path: ["phone"], message: "notDigits" }]);
   });
 });
