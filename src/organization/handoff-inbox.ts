@@ -51,11 +51,15 @@ export interface OpenHandoff {
   lastPatientMessage: InboxMessage | null;
   /** Whether the reader may answer it, and so close it without a reply. */
   mayAnswer: boolean;
-  /** Whether the reader may send or fix its held reply: a practitioner who keeps clinical records. */
+  /**
+   * Whether the reader may send or fix its held reply: for one to the
+   * practitioner, a practitioner who keeps clinical records; for one to
+   * reception, whoever may answer it.
+   */
   mayUseHeldReply: boolean;
   /** Whether the reader may pass it to the practitioner: one to reception, with none to the practitioner open beside it. */
   mayPass: boolean;
-  /** The assistant's reply the clinical check held; `null` when it holds none. */
+  /** The assistant's reply a check held; `null` when it holds none. */
   heldReply: string | null;
 }
 
@@ -134,14 +138,15 @@ export function listOpenHandoffs(
   const member = { memberId: acting.userId, keepsRecords: reader.keepsRecords };
   const handoffs: OpenHandoff[] = rows.map(({ detail, ...row }) => {
     const last = lastMessages.get(row.conversationId);
+    const answers = mayAnswer(database, row, member);
     return {
       ...row,
       media: detail?.media ?? [],
       patients: patients.get(row.conversationId) ?? [],
       recipients: recipients.get(row.id) ?? [],
       lastPatientMessage: last ? asRead(last) : null,
-      mayAnswer: mayAnswer(database, row, member),
-      mayUseHeldReply: reader.keepsRecords,
+      mayAnswer: answers,
+      mayUseHeldReply: row.forPractitioner ? reader.keepsRecords : answers,
       mayPass: !row.forPractitioner && !withPractitioner.has(row.conversationId),
     };
   });

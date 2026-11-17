@@ -34,6 +34,8 @@ export const handoffReasons = [
   "noUpcomingAppointment",
   /** The clinical check held the assistant's reply: clinical, or about another patient. */
   "heldReply",
+  /** A code check held the assistant's reply: it named something internal, or announced a silent handoff. */
+  "leakedReply",
   /** The window closed before the assistant's reply could go, so it was dropped. */
   "windowClosed",
   /** The model could not read the patient's message before the hand-off time. */

@@ -15,9 +15,10 @@ import { useInboxAction } from "#/routes/_app/conversaciones/-messages.tsx";
 // `Derivación` column, and in the header of the conversation each belongs
 // to, where whoever may answer it closes it without a reply, and whoever
 // reads one to reception passes it to the practitioner. One to the
-// practitioner is marked `Clínica`. A reply the clinical check held shows to
-// every reader: a practitioner who keeps clinical records sends it or fixes
-// it in the reply's box, and anyone drops it.
+// practitioner is marked `Clínica`. A reply a check held shows to every
+// reader: on a handoff to the practitioner, one who keeps clinical records
+// sends it or fixes it in the reply's box; on one to reception, whoever may
+// answer it does; anyone drops it.
 
 const closeRefusals = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -164,7 +165,15 @@ function CloseButton(props: { handoff: OpenHandoff; label: string }) {
   );
 }
 
-/** The replies the clinical check held on the conversation's open handoffs. */
+/** Why a held reply was not sent, and who may send it, by whether its handoff is to the practitioner. */
+const heldBecause = {
+  practitioner:
+    "No se envió porque habla de algo clínico o de otro paciente. Solo un profesional puede enviarla o corregirla.",
+  reception:
+    "No se envió porque nombra algo interno del asistente o le avisa al paciente que derivó la conversación. Revisala antes de enviarla o corregirla.",
+};
+
+/** The replies a check held on the conversation's open handoffs. */
 export function HeldReplies(props: {
   handoffs: OpenHandoff[];
   /** Puts a held reply in the reply's box. */
@@ -179,6 +188,7 @@ export function HeldReplies(props: {
             key={handoff.id}
             handoffId={handoff.id}
             text={text}
+            because={heldBecause[handoff.forPractitioner ? "practitioner" : "reception"]}
             onUse={handoff.mayUseHeldReply ? () => props.onUseReply(text) : null}
           />,
         ];
@@ -186,11 +196,15 @@ export function HeldReplies(props: {
 }
 
 /**
- * The reply the clinical check held, which a practitioner who keeps clinical
- * records sends or fixes in the reply's box (`onUse`, `null` for anyone
- * else), and anyone who reads it drops.
+ * The reply a check held, which whoever may use it sends or fixes in the
+ * reply's box (`onUse`, `null` for anyone else), and anyone who reads it drops.
  */
-function HeldReply(props: { handoffId: string; text: string; onUse: (() => void) | null }) {
+function HeldReply(props: {
+  handoffId: string;
+  text: string;
+  because: string;
+  onUse: (() => void) | null;
+}) {
   const drop = useInboxAction(closeRefusals);
   const [confirming, setConfirming] = useState(false);
   return (
@@ -200,10 +214,7 @@ function HeldReply(props: { handoffId: string; text: string; onUse: (() => void)
     >
       <div className="flex flex-col gap-1">
         <p className="font-medium">Respuesta retenida del asistente</p>
-        <p className="text-muted-foreground">
-          No se envió porque habla de algo clínico o de otro paciente. Solo un profesional puede
-          enviarla o corregirla.
-        </p>
+        <p className="text-muted-foreground">{props.because}</p>
       </div>
       <p className="whitespace-pre-wrap">{props.text}</p>
       <div className="flex flex-wrap gap-2">

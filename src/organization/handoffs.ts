@@ -32,7 +32,7 @@ export interface HandoffWanted {
   forPractitioner: boolean;
   /** The appointment it concerns; its practitioner takes it when it needs one. `null` for none. */
   appointmentId: string | null;
-  /** The assistant's reply the clinical check held, for a `heldReply` handoff. */
+  /** The assistant's reply a check held: on a `heldReply` handoff, or a `leakedReply` one or any open to reception. */
   heldReply?: string;
   /** What the turn knew of a refused move and its own changes, for the notification. */
   detail?: HandoffDetail | null;

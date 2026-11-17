@@ -378,7 +378,10 @@ describe("a sandbox conversation", () => {
 
     const played = await playPatient(await startSandbox(), "me duele un poco");
 
-    expect(played.turn.held).toBe("Ese dolor es normal después de la consulta.");
+    expect(played.turn.held).toEqual({
+      text: "Ese dolor es normal después de la consulta.",
+      for: "practitioner",
+    });
     expect(played.turn.replies).toEqual(["Le paso tu consulta al profesional."]);
     expect(played.sandbox.handoffs).toEqual([
       expect.objectContaining({ reason: "heldReply", forPractitioner: true }),
@@ -386,6 +389,24 @@ describe("a sandbox conversation", () => {
     expect(expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs).toEqual(
       [],
     );
+  });
+
+  it("shows a reply that names a tool as held for reception, and nothing told in its place", async () => {
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      return "Busqué con find_free_times y no hay lugar.";
+    });
+
+    const played = await playPatient(await startSandbox(), "hay lugar el martes?");
+
+    expect(played.turn.held).toEqual({
+      text: "Busqué con find_free_times y no hay lugar.",
+      for: "reception",
+    });
+    expect(played.turn.replies).toEqual([]);
+    expect(played.sandbox.handoffs).toEqual([
+      expect.objectContaining({ reason: "leakedReply", forPractitioner: false }),
+    ]);
   });
 
   it("shows a repeat about its open handoff as the change the turn made, then that a person has the rest", async () => {

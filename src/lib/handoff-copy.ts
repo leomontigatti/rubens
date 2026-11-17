@@ -17,6 +17,7 @@ const handoffReasonLabels: Record<HandoffReason, string> = {
   unknownNumber: "Número que no es de ningún paciente",
   noUpcomingAppointment: "Sin turnos próximos",
   heldReply: "Respuesta retenida",
+  leakedReply: "Respuesta retenida para revisar",
   windowClosed: "La ventana se cerró antes de la respuesta del asistente",
   modelUnavailable: "El asistente no pudo leer el mensaje",
   media: "Mandó una foto, un video o un archivo",

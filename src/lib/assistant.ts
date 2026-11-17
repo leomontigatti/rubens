@@ -181,6 +181,7 @@ const handoffTopics: Record<HandoffReason, string> = {
   unknownNumber: "a number that is no patient's",
   noUpcomingAppointment: "a patient with no upcoming appointment",
   heldReply: "a question for the practitioner",
+  leakedReply: "a reply of yours that a person checks before it goes",
   windowClosed: "a reply that could not go before the conversation window closed",
   modelUnavailable: "messages the assistant could not read",
   media: "a photo, a video or a file the patient sent",

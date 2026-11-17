@@ -29,6 +29,19 @@ export const sandboxOutcomeLabels = {
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;
 
+/** What an answered turn whose reply is held leads to, by whom it is held for: a handoff to them. */
+export const sandboxHeldOutcomes = {
+  practitioner: "toPractitioner",
+  reception: "handedOff",
+} as const;
+
+/** Why the sandbox would hold a reply, by whom it is held for. */
+export const sandboxHeldTitles = {
+  practitioner: "El control clínico retendría esta respuesta",
+  reception:
+    "Se retendría para recepción: nombra algo interno del asistente o avisa de la derivación",
+};
+
 export const proposalKindLabels: Record<ProposalKind, string> = {
   confirm: "Confirmar",
   cancel: "Cancelar",

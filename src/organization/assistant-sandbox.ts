@@ -35,8 +35,9 @@ import {
   room,
 } from "#/organization/schema.ts";
 import {
-  clinicalCheckHolds,
   handoffReplyText,
+  holderOf,
+  holdForReception,
   openHeldReply,
   repliesFirst,
   replyTexts,
@@ -435,8 +436,8 @@ class SandboxRun {
 /**
  * The admin's `text` as the patient's next message in the sandbox
  * conversation, and the assistant's turn on it: its tool calls, its
- * judgement, what the patient would be told, and the reply the clinical check
- * would hold.
+ * judgement, what the patient would be told, and the reply a check would
+ * hold.
  */
 export async function runSandboxTurn(
   database: Database,
@@ -493,16 +494,17 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
   if (!judged) {
     return { ...shown, outcome: "unread" as const, held: null, replies: [] };
   }
-  const { settled, practitioner, changed } = run.step(() =>
+  const { settled, practitioner, changed, toReception } = run.step(() =>
     settleTurn(database, { conversationId, appointments, answered, ...judged, read }),
   );
   const said = !says(settled)
-    ? { held: null, replies: [] }
+    ? none
     : await sandboxReply(run, model, {
         ...judged,
         settled,
         practitioner,
         changed,
+        toReception,
         answered,
         patients: read.patients.map((one) => one.firstName),
       });
@@ -512,17 +514,23 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
   return { ...shown, outcome: settled, ...said };
 }
 
+type Answered = ReturnType<typeof answeredMessage>;
+
+/** Nothing said and nothing held. */
+const none = { held: null, replies: [] };
+
 /**
  * What the patient would be told, as `deliverReply` (`turn-replies.ts`) tells
  * them but sending nothing: the fixed reply, or the model's once the clinical
- * check passes it; a reply it flags is held on a handoff to the practitioner.
+ * and code checks pass it; a reply they flag is held, with whom it is held for.
  */
 async function sandboxReply(
   run: SandboxRun,
   model: AssistantModel,
   turn: Parameters<typeof replyTexts>[0] & {
     changed: boolean;
-    answered: ReturnType<typeof answeredMessage>;
+    toReception: boolean;
+    answered: Answered;
     patients: string[];
     proposed: boolean;
   },
@@ -530,48 +538,57 @@ async function sandboxReply(
   const { conversationId } = run.state;
   const texts = replyTexts(turn);
   if (!texts) {
-    return { held: null, replies: [] };
+    return none;
   }
   const whole = { whole: turn.proposed };
   if (texts.fixed) {
-    const first = repliesFirst(turn) ? await checkedModelReply(run, model, turn) : [];
-    return { held: null, replies: [...first, ...splitReply(texts.text, whole)] };
+    const first = repliesFirst(turn) ? await checkedModelReply(run, model, turn) : none;
+    return { held: first.held, replies: [...first.replies, ...splitReply(texts.text, whole)] };
   }
   const request = { conversationId, reply: texts.text, patients: turn.patients };
-  if (!(await clinicalCheckHolds(run.database, model, request, true))) {
+  const holder = await holderOf(run.database, model, request, turn, true);
+  if (!holder) {
     return { held: null, replies: splitReply(texts.text, whole) };
   }
-  const opened = run.step(() =>
-    openHeldReply(run.database, { conversationId, answered: turn.answered, words: texts.text }),
-  );
+  const held = { conversationId, answered: turn.answered, words: texts.text };
+  const shown = { text: texts.text, for: holder };
+  if (holder === "reception") {
+    run.step(() => holdForReception(run.database, held));
+    return { held: shown, replies: [] };
+  }
+  const opened = run.step(() => openHeldReply(run.database, held));
   const text = opened && handoffReplyText(turn.rules, opened.practitioner);
-  return {
-    held: texts.text,
-    replies: text ? splitReply(text, { whole: false }) : [],
-  };
+  return { held: shown, replies: text ? splitReply(text, { whole: false }) : [] };
 }
 
 /**
  * The model's reply that goes before a fixed one, as `deliverReply` sends it:
- * once the fixed checks and the clinical check pass it, else none.
+ * once the fixed checks and the clinical and code checks pass it, else none,
+ * and held when the code checks hold it.
  */
 async function checkedModelReply(
   run: SandboxRun,
   model: AssistantModel,
-  turn: { reply: string; patients: string[]; proposed: boolean },
+  turn: { reply: string; patients: string[]; proposed: boolean; answered: Answered },
 ) {
   const checked = checkReply(turn.reply);
   if (!checked.ok) {
-    return [];
+    return none;
   }
   const request = {
     conversationId: run.state.conversationId,
     reply: checked.text,
     patients: turn.patients,
   };
-  return (await clinicalCheckHolds(run.database, model, request, true))
-    ? []
-    : splitReply(checked.text, { whole: turn.proposed });
+  const holder = await holderOf(run.database, model, request, {}, true);
+  if (holder === "reception") {
+    const held = { ...request, answered: turn.answered, words: checked.text };
+    run.step(() => holdForReception(run.database, held));
+    return { held: { text: checked.text, for: holder }, replies: [] };
+  }
+  return holder
+    ? none
+    : { held: null, replies: splitReply(checked.text, { whole: turn.proposed }) };
 }
 
 /** The turn's answer: the conversation to carry on, its window's close, and what the turn did. */
