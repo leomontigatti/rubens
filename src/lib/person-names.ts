@@ -18,7 +18,8 @@ function capitalized(word: string): string {
 }
 
 function titleCase(value: string, { leadingParticle }: { leadingParticle: boolean }): string {
-  const words = value.trim().split(/\s+/u).filter(Boolean);
+  // Composed (NFC), so a pasted decomposed accent is the same letter as a typed one.
+  const words = value.normalize("NFC").trim().split(/\s+/u).filter(Boolean);
   return words
     .map((word, index) => {
       const lower = word.toLocaleLowerCase(locale);

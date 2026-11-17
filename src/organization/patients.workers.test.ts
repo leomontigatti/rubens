@@ -316,9 +316,10 @@ describe("the patient list", () => {
     }
   }
 
-  it("orders last names as Spanish does: ignoring case and accents, with `ñ` after `n`", async () => {
+  it("orders last names as Spanish does: ignoring case and accents, `ç` too, with `ñ` after `n`", async () => {
     const { organization, receptionist } = await registry();
     const lastNames = [
+      "Çelik",
       "Zapata",
       "de la Cruz",
       "Álvarez",
@@ -341,6 +342,7 @@ describe("the patient list", () => {
     expect(listed.ok && listed.patients.map((one) => one.lastName)).toEqual([
       "Álvarez",
       "Benítez",
+      "Çelik",
       "de la Cruz",
       "Nunca",
       "Nuñez",

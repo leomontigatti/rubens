@@ -9,6 +9,10 @@ describe("toPersonName", () => {
     expect(toPersonName("josé y maría")).toBe("José y María");
   });
 
+  it("saves a decomposed accent composed, as the same letter a typed one is", () => {
+    expect(toPersonName("A\u0301lvaro")).toBe("Álvaro");
+  });
+
   it("trims the name and collapses its spaces", () => {
     expect(toPersonName("  ana    lía \t pérez ")).toBe("Ana Lía Pérez");
   });
