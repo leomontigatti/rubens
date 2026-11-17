@@ -17,6 +17,7 @@ import {
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
 import { longPauseNote } from "#/lib/assistant.ts";
+import { splitPhone } from "#/lib/phones.ts";
 import { whatsappMessage, whatsappNumberHold } from "#/organization/whatsapp-schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
@@ -456,7 +457,7 @@ describe("answering when, where and with whom", () => {
           patientId,
           name: "Laura Gómez",
           relationship: "Madre",
-          phone: martinaPhone,
+          phone: splitPhone(martinaPhone),
         }),
       );
       expectOk(
@@ -514,7 +515,7 @@ describe("a number that stopped being a patient's contact", () => {
         patientId: martina.patientId,
         name: "Laura Gómez",
         relationship: "Madre",
-        phone: martinaPhone,
+        phone: splitPhone(martinaPhone),
       }),
     );
     expectOk(
@@ -610,7 +611,7 @@ describe("the organization's voice", () => {
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "usted",
         tone: "Cordial y breve.",
-        phone: "",
+        phone: { country: "AR", number: "" },
       }),
     );
     await bookPatient("Martina", martinaPhone);

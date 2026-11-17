@@ -177,7 +177,7 @@ describe("a not-delivered late reply's text", () => {
     const patient = { id: "patient-1", name: "Marta Quiroga", phone: "+5493514000001" };
 
     expect(notificationText({ ...notDelivered, patient })).toBe(
-      "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio, al 0351 15-400-0001.",
+      "La escribiste con la ventana de conversación cerrada, y no pudimos reabrirla: el paciente no respondió a tiempo la plantilla, o no se le pudo enviar. Si sigue haciendo falta, respondele cuando vuelva a escribir o contactalo por otro medio, al 351 400-0001.",
     );
   });
 

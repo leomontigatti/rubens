@@ -46,8 +46,8 @@ async function world() {
   await booking.addSchedule({ practitionerId: juan.practitionerId });
   const juanService = await booking.addMedicalService(juan.practitionerId);
   const luciaService = await booking.addMedicalService(lucia.practitionerId);
-  const maria = await booking.addPatient("María", "0351 15 555-1234");
-  const pedro = await booking.addPatient("Pedro", "0351 15 555-9876");
+  const maria = await booking.addPatient("María", "+5493515551234");
+  const pedro = await booking.addPatient("Pedro", "+5493515559876");
 
   /** Books Juan for `patientId` at `start`, 30 minutes, warnings confirmed. */
   async function bookJuan(start = at("12:00"), patientId = maria.id, receptionNote?: string) {

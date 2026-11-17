@@ -13,6 +13,7 @@ import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, focusProblem, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
+import { phoneMessages } from "#/components/phone-field.tsx";
 import { patientSearchQueries } from "#/components/patient-search.ts";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
@@ -20,7 +21,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
-import { formatPhone } from "#/lib/phones.ts";
+import { emptyPhoneEntry, splitPhone } from "#/lib/phones.ts";
 import { addPatient } from "#/server/patients.functions.ts";
 import type { Patient } from "#/organization/patients.ts";
 
@@ -119,8 +120,7 @@ const fieldMessages: Record<string, string> = {
   name: "Ingresá el nombre.",
   relationship: "Ingresá la relación con el paciente.",
   // The phone and the document carry their own refusal as the issue's message.
-  missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.",
-  invalidPhone: "El teléfono no es válido. Si es del exterior, empezá con + y el código del país.",
+  ...phoneMessages,
   documentIncomplete: "Elegí el tipo de documento e ingresá su número.",
   invalidDni: "El DNI tiene que ser un número, con o sin puntos.",
 };
@@ -132,7 +132,7 @@ export const patientMessage = (issue: z.core.$ZodIssue) =>
 const noPatient = {
   firstName: "",
   lastName: "",
-  phone: "",
+  phone: emptyPhoneEntry,
   chosenName: "",
   documentType: "",
   documentNumber: "",
@@ -150,7 +150,7 @@ function patientValues(initial?: Patient): typeof noPatient {
     key,
     initial[key as keyof typeof noPatient] ?? "",
   ]);
-  return { ...(Object.fromEntries(held) as typeof noPatient), phone: formatPhone(initial.phone) };
+  return { ...(Object.fromEntries(held) as typeof noPatient), phone: splitPhone(initial.phone) };
 }
 
 /**
@@ -167,14 +167,6 @@ export function usePatientForm(
       onSubmit({ ...value, documentType: (value.documentType || null) as DocumentType | null }),
   });
 }
-
-/** A patient's or a guardian's phone. */
-export const phoneFieldProps = {
-  label: "Teléfono",
-  type: "tel" as const,
-  required: true,
-  hint: "Con código de área, como se dice: 0351 15 555-1234. Del exterior, con + y el código del país.",
-};
 
 export const documentTypeOptions = (
   <>
@@ -202,7 +194,7 @@ export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; 
         {(field) => <field.TextField label="Apellido" required />}
       </form.AppField>
       <form.AppField name="phone">
-        {(field) => <field.TextField {...phoneFieldProps} />}
+        {(field) => <field.PhoneField label="Teléfono" required />}
       </form.AppField>
       {props.full && (
         <FormGrid>

@@ -1,5 +1,6 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { assistantWaitMs } from "#/lib/assistant.ts";
+import { splitPhone } from "#/lib/phones.ts";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -70,7 +71,7 @@ async function makeGuardianContact(patientId: string) {
       patientId,
       name: "Laura Gómez",
       relationship: "Madre",
-      phone: martinaPhone,
+      phone: splitPhone(martinaPhone),
     }),
   );
   expectOk(

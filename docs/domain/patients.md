@@ -20,10 +20,26 @@ A patient may have a chosen name, which the app shows everywhere in place of the
 legal name (Ley 26.743). The legal name stays on documents and on the
 clinical-record copy.
 
-Phones are typed the local way ("0351 15…", "351…") and stored in international
-format, the one WhatsApp needs. A number that cannot be read as a valid Argentine
-number, or a foreign one with its country prefix, is refused when typed, because
-a misformatted mobile silently loses its reminders.
+A phone is typed as a country, Argentina by default, and the national number,
+digits only, and stored in international format (E.164), the one WhatsApp needs.
+An Argentine number is its 10 digits, the area code without its `0` and the
+number without its `15`, and the app shows it the same way (`351 555-1234`):
+only the field's hint and the refusal of a wrongly typed number name the `0`
+and the `15`. A number that is not valid for
+its country is refused when typed, because a misformatted mobile silently loses
+its reminders.
+
+Every phone the app keeps is taken to be a mobile, and every call to one is
+taken to be made from a mobile. WhatsApp reaches an Argentine mobile only as
+`+54 9 …`, so an Argentine number is stored as `+54 9` and its 10 digits. This
+holds for a patient's, a guardian's and the organization's urgent phone, which
+the emergency reply gives. The server takes a phone only as the field's country
+and number, so every Argentine phone is stored with the `9` and the duplicate
+warning, which compares phones as stored, always compares the same number
+alike. A message that comes in finds its patients under either spelling, and
+the search boxes read a phone typed any local way (`0351 15 555-1234`), so a
+number stored without the `9` before the phone field still matches; it gains the
+`9` the next time its record is saved.
 
 Allergies and medical alerts are not registration data: they are clinical and
 live in the clinical record ([clinical-records.md](./clinical-records.md)).

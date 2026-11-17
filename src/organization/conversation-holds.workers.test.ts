@@ -15,6 +15,7 @@ import {
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
 import { staffReplyNote } from "#/lib/assistant.ts";
+import { splitPhone } from "#/lib/phones.ts";
 import type { Caller } from "#/organization/members.ts";
 import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
@@ -296,7 +297,7 @@ describe("a person's reply", () => {
       await world.organization.registerPatient(adminCaller, {
         firstName: "Ana",
         lastName: "Paz",
-        phone: martinaPhone,
+        phone: splitPhone(martinaPhone),
         confirmDuplicates: true,
       }),
     );
@@ -582,7 +583,7 @@ describe("an emergency while a member holds the conversation", () => {
       await world.organization.registerPatient(adminCaller, {
         firstName: "Ana",
         lastName: "Paz",
-        phone: martinaPhone,
+        phone: splitPhone(martinaPhone),
         confirmDuplicates: true,
       }),
     );

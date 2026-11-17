@@ -2,7 +2,7 @@ import * as z from "zod";
 
 import { appointmentStatusLabels, cancellerLabels } from "#/lib/appointment-statuses.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { formatPhone, parsePhone } from "#/lib/phones.ts";
+import { formatPhone, parsePhoneEntry } from "#/lib/phones.ts";
 import { formatDateTime, formatLocalDate } from "#/lib/dates.ts";
 
 export const documentTypes = ["dni", "passport", "other"] as const;
@@ -21,9 +21,12 @@ function optionalText(max: number) {
     .transform((value) => (value ? value : null));
 }
 
-/** A typed phone, read into E.164; the issue's message is the phone's refusal. */
-export const phoneSchema = z.string().transform((value, context) => {
-  const result = parsePhone(value);
+/** What a phone field holds: a country and the national number typed for it. */
+export const phoneEntrySchema = z.object({ country: z.string(), number: z.string() });
+
+/** A phone field's entry read into E.164; the issue's message is the phone's refusal. */
+export const phoneSchema = phoneEntrySchema.transform((value, context) => {
+  const result = parsePhoneEntry(value);
   if (!result.ok) {
     context.addIssue({ code: "custom", message: result.reason });
     return z.NEVER;

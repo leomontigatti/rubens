@@ -300,7 +300,7 @@ describe("sending the booking confirmation", () => {
         patientId: patient.id,
         name: "Laura Paz",
         relationship: "Madre",
-        phone: "+5493515550000",
+        phone: { country: "AR", number: "3515550000" },
       }),
     );
     expectOk(

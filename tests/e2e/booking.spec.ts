@@ -44,7 +44,7 @@ async function pageAs(browser: Browser, role: "admin" | "receptionist") {
 test("books a new patient from the agenda and shows them on the calendar", async ({ page }) => {
   const date = nextWeek(1);
   await openBooking(page, date, "09:00");
-  await registerFromPicker(page, "Bruno", "Agenda", "0351 15 400-0201");
+  await registerFromPicker(page, "Bruno", "Agenda", "3514000201");
   await selectMedicalService(page);
   await page.getByRole("button", { name: "Dar turno" }).click();
 
@@ -62,8 +62,8 @@ test("refuses a second booking of the practitioner's same start, and offers the 
   const first = "Carla Doble";
   const second = "Diego Doble";
   for (const [name, phone] of [
-    [first, "0351 15 400-0301"],
-    [second, "0351 15 400-0302"],
+    [first, "3514000301"],
+    [second, "3514000302"],
   ] as const) {
     await openBooking(page, date, "09:00");
     const [firstName, lastName] = name.split(" ") as [string, string];
@@ -105,7 +105,7 @@ test("moves an appointment a time off left outside working time", async ({ page,
   const moveTo = nextWeek(4);
   const patient = "Elena Licencia";
   await openBooking(page, date, "10:00");
-  await registerFromPicker(page, "Elena", "Licencia", "0351 15 400-0401");
+  await registerFromPicker(page, "Elena", "Licencia", "3514000401");
   await selectMedicalService(page);
   await page.getByRole("button", { name: "Dar turno" }).click();
   await expect(appointmentCard(page, "10:00", patient)).toBeVisible();

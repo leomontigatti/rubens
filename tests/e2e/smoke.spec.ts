@@ -56,7 +56,7 @@ test.describe("as the receptionist", () => {
     await page.getByRole("button", { name: "Nuevo paciente" }).click();
     await page.getByLabel("Nombre", { exact: true }).fill(firstName);
     await page.getByLabel("Apellido").fill(lastName);
-    await page.getByLabel("Teléfono").fill("0351 15 400-0100");
+    await page.getByLabel("Teléfono").fill("3514000100");
     await page.getByRole("button", { name: "Registrar paciente" }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: `${firstName} ${lastName}` }),

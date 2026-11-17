@@ -29,11 +29,11 @@ async function world() {
   const juanService = await booking.addMedicalService(juan.practitionerId);
   const juanLongService = await booking.addMedicalService(juan.practitionerId, 60);
   const luciaService = await booking.addMedicalService(lucia.practitionerId);
-  const maria = await booking.addPatient("María", "0351 15 555-1234");
+  const maria = await booking.addPatient("María", "+5493515551234");
   let phones = 0;
   /** A patient of their own, so no patient warning stands in the way. */
   const anotherPatient = () =>
-    booking.addPatient(`Paciente ${++phones}`, `0351 15 555-${String(phones).padStart(4, "0")}`);
+    booking.addPatient(`Paciente ${++phones}`, `+549351555${String(phones).padStart(4, "0")}`);
 
   const book = (overrides: Partial<BookingInput> = {}) =>
     booking.book({

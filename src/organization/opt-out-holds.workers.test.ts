@@ -2,6 +2,7 @@ import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { splitPhone } from "#/lib/phones.ts";
 
 import {
   addStaff,
@@ -116,7 +117,7 @@ async function addThroughGuardian(firstName: string, ownPhone: string) {
       patientId: registered.id,
       name: "Laura Gómez",
       relationship: "Madre",
-      phone: numberPhone,
+      phone: splitPhone(numberPhone),
     }),
   );
   expectOk(

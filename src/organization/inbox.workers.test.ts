@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { MessageJudgement } from "#/lib/whatsapp-messages.ts";
+import { splitPhone } from "#/lib/phones.ts";
 
 import {
   addRefusedAdmin,
@@ -433,7 +434,7 @@ describe("the patients a conversation's number stands for", () => {
         patientId: martinaId,
         firstName: "Martina",
         lastName: "Paz",
-        phone: newPhone,
+        phone: splitPhone(newPhone),
       }),
     );
 
@@ -456,7 +457,7 @@ describe("the patients a conversation's number stands for", () => {
         patientId: martinaId,
         name: "Laura Paz",
         relationship: "Madre",
-        phone: guardianPhone,
+        phone: splitPhone(guardianPhone),
       }),
     ).guardian;
     const linkedPhones = async () =>
@@ -487,7 +488,7 @@ describe("the patients a conversation's number stands for", () => {
       await world.organization.addGuardian(world.receptionist, {
         ...laura,
         patientId: martinaId,
-        phone: oldPhone,
+        phone: splitPhone(oldPhone),
       }),
     ).guardian;
     expectOk(
@@ -501,7 +502,7 @@ describe("the patients a conversation's number stands for", () => {
       await world.organization.updateGuardian(world.receptionist, {
         ...laura,
         guardianId: added.id,
-        phone: newPhone,
+        phone: splitPhone(newPhone),
       }),
     );
 
