@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import * as z from "zod";
 
 import { transcriptionModelId } from "#/lib/assistant.ts";
+import { withoutWhisperCredits } from "#/lib/whisper-credits.ts";
 
 import { recordTranscription } from "#/organization/assistant-usage.ts";
 import type { CommunicationRules } from "#/organization/communication-rules.ts";
@@ -16,7 +17,8 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 // from Meta and transcribed, and its transcript stored as the message's words,
 // so the turn reads it as the same words written and the inbox shows it.
 // The audio is never stored: Meta keeps the media, and the message's payload
-// its id. A transcript with no words is a note nobody could understand
+// its id. A transcript with no words, once Whisper's credit lines are cut
+// (`whisper-credits.ts`), is a note nobody could understand
 // (`assistant.ts` asks the patient to write it). Nothing here logs a
 // patient's words.
 
@@ -96,7 +98,7 @@ export async function transcribeVoiceNotes(
     }
     database.transaction((tx) => {
       tx.update(whatsappMessage)
-        .set({ text: transcript.text.trim() })
+        .set({ text: withoutWhisperCredits(transcript.text) })
         .where(eq(whatsappMessage.id, note.id))
         .run();
       recordTranscription(tx, {
