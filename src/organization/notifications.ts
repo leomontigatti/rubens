@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import type { Role } from "#/lib/access.ts";
@@ -175,7 +175,7 @@ function firstPatientOf(database: Writer, conversationIds: string[]) {
           .from(conversationPatient)
           .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
           .where(inArray(conversationPatient.conversationId, conversationIds))
-          .orderBy(...byName(patient.lastName, patient.firstName))
+          .orderBy(...byName(patient.lastName, patient.firstName), asc(patient.id))
           .all();
   const first = new Map<string, { id: string; name: string; phone: string; only: boolean }>();
   for (const row of rows) {

@@ -215,7 +215,7 @@ export function patientsOf(database: Database, conversationIds: string[] | SQLWr
     .from(conversationPatient)
     .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
     .where(inArray(conversationPatient.conversationId, conversationIds))
-    .orderBy(...byName(patient.lastName, patient.firstName))
+    .orderBy(...byName(patient.lastName, patient.firstName), asc(patient.id))
     .all();
   const byConversation = new Map<string, { id: string; name: string }[]>();
   for (const row of rows) {
