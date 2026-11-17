@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { newMessagesMark } from "../../../src/lib/assistant.ts";
+import { longPauseNote, newMessagesMark, staffReplyNote } from "../../../src/lib/assistant.ts";
 
 import { findCandidate } from "./candidates.ts";
 import { findCase } from "./cases.ts";
@@ -34,6 +34,26 @@ describe("turnMessages", () => {
       "hola\nuna consulta",
       "Decime",
       `${newMessagesMark}\na qué hora era?`,
+    ]);
+  });
+
+  it("puts the pause and staff notes where underthing does: before their message, and after the mark (#393)", () => {
+    const messages = turnMessages(
+      {
+        ...findCase("when"),
+        history: [
+          { role: "patient", text: "hola" },
+          { role: "assistant", text: "Decime", byStaff: true, pauseBefore: true },
+        ],
+        pauseBefore: true,
+      },
+      ["a qué hora era?"],
+    );
+
+    expect(messages.map((message) => message.content)).toEqual([
+      "hola",
+      `${longPauseNote}\n${staffReplyNote}\nDecime`,
+      `${newMessagesMark}\n${longPauseNote}\na qué hora era?`,
     ]);
   });
 });

@@ -24,7 +24,14 @@ export type HandoffReason =
   | "clinical"
   | "emergency";
 
-type HistoryMessage = { role: "patient" | "assistant"; text: string };
+// `byStaff`: a person at the practice wrote it, from the inbox. `pauseBefore`:
+// an hour or more passed before it (#393).
+type HistoryMessage = {
+  role: "patient" | "assistant";
+  text: string;
+  byStaff?: true;
+  pauseBefore?: true;
+};
 
 // An acceptance names the kind of change it must have applied: the turn's
 // latest proposal when it accepted, not any proposal the turn made.
@@ -76,6 +83,8 @@ export type Case = {
   history: HistoryMessage[];
   // The patient's new messages, answered together in one turn.
   patient: string[];
+  // An hour or more passed before the patient's new messages (#393).
+  pauseBefore?: true;
   // A proposal already stated in the history and still live.
   liveProposal?: Proposal;
   // The accepted time was taken meanwhile: accepting a move fails.
@@ -104,6 +113,13 @@ const offeredSlots: HistoryMessage = {
 const moveProposal: HistoryMessage = {
   role: "assistant",
   text: "Te propongo mover tu Sesión de kinesiología con Lic. Paula Ríos del jueves 12/11 a las 16:30 al martes 17/11 a las 10:30 en Sede Norte (Av. Rafael Núñez 4500). ¿Lo confirmo?",
+};
+
+// The same move, named as a person would inside the conversation that offered
+// it: only what changes (#393).
+const shortMoveProposal: HistoryMessage = {
+  role: "assistant",
+  text: "Perfecto, te lo paso al martes 17/11 a las 10:30 en Sede Norte. ¿Te parece bien?",
 };
 
 // A move to Tuesday the assistant proposed, still waiting on the patient.
@@ -144,6 +160,8 @@ export const cases: Case[] = [
     description: "Confirming: an explicit yes to a reminder is its own acceptance",
     number: "onePatient",
     history: [reminder],
+    // The reminder goes out the day before: the answer comes after a pause.
+    pauseBefore: true,
     patient: ["sí, voy. gracias!"],
     expect: {
       calls: [
@@ -223,9 +241,14 @@ export const cases: Case[] = [
   },
   {
     id: "move-pick-slot",
-    description: "Moving: the picked time becomes a proposal stated in full, not yet accepted",
+    description:
+      "Moving: the picked time becomes a proposal naming what changes, the office included, not yet accepted (#393)",
     number: "onePatient",
-    history: [reminder, { role: "patient", text: "lo puedo cambiar?" }, offeredSlots],
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
+      offeredSlots,
+    ],
     patient: ["el martes a las 10 y media me viene joya"],
     expect: {
       calls: [
@@ -237,7 +260,171 @@ export const cases: Case[] = [
       forbidden: ["accept_proposal"],
       handoff: noHandoff,
       judgement: plain,
-      replyMatches: [/R[ií]os/, /10[:.]30/, /17\/11|17 de noviembre|martes/i],
+      replyMatches: [/10[:.]30/, /17\/11|17 de noviembre|martes 17/i, /Norte/],
+      // The conversation already named the practitioner: repeating it is the old full statement.
+      replyAvoids: [/R[ií]os/],
+    },
+  },
+  {
+    id: "short-proposal-accepted",
+    description: "Moving: a yes to a proposal that named only what changes accepts it (#393)",
+    number: "onePatient",
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
+      offeredSlots,
+      { role: "patient", text: "el martes" },
+      shortMoveProposal,
+    ],
+    patient: ["sí"],
+    liveProposal: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+    expect: {
+      calls: [{ name: "accept_proposal", accepts: "move" }],
+      forbidden: ["propose_change"],
+      handoff: noHandoff,
+      judgement: plain,
+    },
+  },
+  {
+    id: "shared-number-proposal",
+    description:
+      "Moving on a number with several patients: the proposal names the patient it is about (#393)",
+    number: "guardian",
+    history: [
+      { role: "patient", text: "hola, necesito cambiar un turno" },
+      {
+        role: "assistant",
+        text: "Hola! Este número está a nombre de Tomás y de Valentina. ¿De quién es el turno?",
+      },
+      { role: "patient", text: "el de Tomás" },
+      {
+        role: "assistant",
+        text: "Para pasar el control de Tomás del miércoles 11/11, tengo el miércoles 18/11 a las 11:00 en Sede Norte con Dr. Martín Sosa. ¿Te sirve?",
+      },
+    ],
+    patient: ["el 18 a las 11 me viene bien"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-201", slotId: "slot-s1" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/Tom[aá]s/, /11[:.]00/],
+      replyAvoids: [/Valentina/],
+    },
+  },
+  {
+    id: "proposal-after-pause",
+    description:
+      "Moving: a time picked after a long pause becomes a proposal stated in full, practitioner included (#393)",
+    number: "onePatient",
+    history: [reminder, { role: "patient", text: "lo puedo cambiar?" }, offeredSlots],
+    pauseBefore: true,
+    patient: ["perdón la demora. el martes a las 10 y media me viene bien"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/R[ií]os|kinesio/i, /12\/11|jueves 12|16[:.]30/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
+    id: "proposal-after-pause-and-side-question",
+    description:
+      "Moving: a pause, then a reply that names neither the appointment nor its times, still leaves the proposal stated in full (#393)",
+    number: "onePatient",
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
+      offeredSlots,
+      { role: "patient", text: "y se puede estacionar ahí?", pauseBefore: true },
+      { role: "assistant", text: "Sí, hay estacionamiento en la esquina." },
+    ],
+    patient: ["dale. entonces el martes a las 10 y media"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      replyMatches: [/R[ií]os|kinesio/i, /12\/11|jueves 12|16[:.]30/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
+    id: "proposal-after-staff-reply",
+    description:
+      "Moving: a time a person at the practice offered, once picked, becomes a proposal stated in full (#393)",
+    number: "onePatient",
+    history: [
+      reminder,
+      { role: "patient", text: "lo puedo cambiar?", pauseBefore: true },
+      offeredSlots,
+      { role: "patient", text: "y se puede estacionar ahí?" },
+      {
+        role: "assistant",
+        text: "*Rita Paz*\nHola Lucía, sí, hay estacionamiento en la esquina. Y el martes 17/11 a las 10:30 en Sede Norte sigue libre.",
+        byStaff: true,
+      },
+    ],
+    patient: ["genial. entonces el martes a las 10 y media"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r2" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      // Stated in full: the appointment it moves too, not only the new time.
+      replyMatches: [/R[ií]os|kinesio/i, /12\/11|jueves 12|16[:.]30/i, /10[:.]30/, /Norte/],
+    },
+  },
+  {
+    id: "two-appointments-proposal",
+    description:
+      "Moving with two upcoming appointments in the conversation: the proposal names which one (#393)",
+    number: "withDentist",
+    history: [
+      { role: "patient", text: "hola, qué turnos tengo?" },
+      {
+        role: "assistant",
+        text: "Hola Lucía! Tenés Sesión de kinesiología el jueves 12/11 a las 16:30 y Consulta odontológica el viernes 13/11 a las 11:00, los dos en Sede Centro.",
+      },
+      { role: "patient", text: "uno de los dos lo puedo pasar para la semana que viene?" },
+      {
+        role: "assistant",
+        text: "Para la kinesiología tengo el lunes 16/11 a las 9:00 en Sede Centro, el martes 17/11 a las 10:30 en Sede Norte o el jueves 19/11 a las 17:00 en Sede Centro. Para la odontológica, el viernes 20/11 a las 11:00 en Sede Centro. ¿Cuál te queda mejor?",
+      },
+    ],
+    patient: ["el lunes a las 9"],
+    expect: {
+      calls: [
+        {
+          name: "propose_change",
+          args: { kind: "move", appointmentId: "apt-101", slotId: "slot-r1" },
+        },
+      ],
+      forbidden: ["accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      // Names the appointment that moves by its current day or time (#393).
+      replyMatches: [/12\/11|12 de noviembre|jueves 12|16[:.]30/i, /9[:.]00|9 hs|9 de la mañana/i],
     },
   },
   {
@@ -773,6 +960,8 @@ export const cases: Case[] = [
       "Reactions: a 👍 on a reminder that asks to confirm confirms, proposed and accepted in the turn (#292)",
     number: "onePatient",
     history: [reminder],
+    // The reminder goes out the day before: the answer comes after a pause.
+    pauseBefore: true,
     patient: [reactionLine("👍", reminder.text)],
     expect: {
       calls: [
@@ -789,6 +978,8 @@ export const cases: Case[] = [
       "Reactions: a message holding only 👍 after a reminder that asks to confirm confirms (#292)",
     number: "onePatient",
     history: [reminder],
+    // The reminder goes out the day before: the answer comes after a pause.
+    pauseBefore: true,
     patient: ["👍"],
     expect: {
       calls: [

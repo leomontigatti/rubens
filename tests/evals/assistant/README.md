@@ -78,8 +78,8 @@ In the order #157 ranks the criteria (`score.ts`):
 3. **Voice notes** (`eval:voice`): the word error rate against the words spoken, at
    most 0.2, and the turn on the transcript passing 1a, 1b and 2 like the written case.
 
-The `reply content` check holds what only the words show: a proposal stated in full,
-yes when asked whether it is a bot, no advice on symptoms. Latency (p50, p95) and cost
+The `reply content` check holds what only the words show: a proposal that names what
+changes and, where the number or the appointments make it ambiguous, whose it is, yes when asked whether it is a bot, no advice on symptoms. Latency (p50, p95) and cost
 per turn come with each run; the providers' terms are in the report on #151.
 
 The availability check reads clock times only: an invented office, floor or price is
@@ -90,7 +90,9 @@ caught only where a case's `replyAvoids` names it.
 `cases.ts` holds the written conversations, `world.ts` the organization they run
 against. Nothing in either is a real patient, number, practitioner or address. To add a
 case, give it a conversation so far, the patient's new messages and what the turn must
-and must not do; `fake-object.ts` answers its tools from `world.ts`.
+and must not do; `fake-object.ts` answers its tools from `world.ts`. A history message
+marked `byStaff` or `pauseBefore`, and a case marked `pauseBefore`, gets the note
+underthing gives the model for a person's reply or an hour's pause (#393).
 
 `prompt.ts` and `tools.ts` run the assistant's real prompt and tool schemas
 (`src/lib/assistant.ts`, `hand_off` since #171, confirming and cancelling through

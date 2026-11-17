@@ -16,6 +16,7 @@ import {
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
+import { longPauseNote } from "#/lib/assistant.ts";
 import { whatsappMessage, whatsappNumberHold } from "#/organization/whatsapp-schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
@@ -823,6 +824,39 @@ describe("judging every patient message", () => {
       { role: "assistant", content: "Hola, en qué te puedo ayudar?" },
       { role: "user", content: "[new messages]\nme duele la muela\ngracias" },
     ]);
+  });
+});
+
+describe("the conversation so far as the model reads it", () => {
+  const hourMs = 60 * 60_000;
+
+  it("marks where an hour or more passed between two messages, so a proposal after it stands on its own (#393)", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    await afterTheWait();
+    wait(hourMs);
+    await patientWrites("me lo podés cambiar?");
+    await afterTheWait();
+
+    expect(scriptedModel.turns[1]!.messages).toEqual([
+      { role: "user", content: "hola" },
+      { role: "assistant", content: "Hola, en qué te puedo ayudar?" },
+      { role: "user", content: `[new messages]\n${longPauseNote}\nme lo podés cambiar?` },
+    ]);
+  });
+
+  it("marks no pause under an hour (#393)", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    await afterTheWait();
+    wait(hourMs - 10_000);
+    await patientWrites("me lo podés cambiar?");
+    await afterTheWait();
+
+    expect(scriptedModel.turns[1]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: "[new messages]\nme lo podés cambiar?",
+    });
   });
 });
 

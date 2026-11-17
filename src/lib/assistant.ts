@@ -40,6 +40,23 @@ export const withdrawnReplyNote =
   "[The practice withdrew the reply this message announced: there is no reply to give.]";
 
 /**
+ * The line before an earlier message a person at the practice wrote, from the
+ * inbox or Telegram, so the model does not take it for its own: a proposal
+ * after it restates enough to stand on its own (§ Proposals).
+ */
+export const staffReplyNote = "[A person at the practice wrote the next message, not you.]";
+
+/**
+ * How long a gap between two messages is a long pause, after which a proposal
+ * restates enough to stand on its own (§ Proposals): as long as a proposal
+ * lives, decided by the owner on #393.
+ */
+export const longPauseMs = 60 * 60_000;
+
+/** The line where a long pause falls between two messages the model reads. */
+export const longPauseNote = "[An hour or more passed before the next message.]";
+
+/**
  * A patient's `text` with every bracket turned to a parenthesis, so only
  * underthing places the boundary of what the turn judges: no message, nor
  * the messages of a burst joined, can then spell the mark in any form.
@@ -113,7 +130,7 @@ export const assistantToolSchemas = {
   },
   propose_change: {
     description:
-      "Stores a proposal to confirm, cancel or move an appointment, and returns it in full. It replaces any earlier proposal. Nothing changes until accept_proposal.",
+      "Stores a proposal to confirm, cancel or move an appointment, and returns what it stores. It replaces any earlier proposal. Nothing changes until accept_proposal.",
     inputSchema: z.object({
       appointmentId: z.string().describe("The appointmentId list_patients returned"),
       kind: z.enum(["confirm", "cancel", "move"]),
@@ -217,12 +234,13 @@ export function assistantSystemPrompt(context: PromptContext): string {
     'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); a health question (clinical); an emergency (emergency). Pass the appointmentId when it is about one appointment. Do what you can of the rest in the same turn, such as confirming. A person answers what you hand off, and underthing sends the patient its own message about it, or none: your reply says nothing of what you hand off. Do not answer it, do not tell the patient you passed it on or why a rule refused it, never ask whether they want a person (hand off instead), and never send them to another professional ("consultá con tu odontólogo"). If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00".',
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
-    'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A proposal stated in an earlier message is still stored: on a yes to it, call accept_proposal alone, without proposing it again. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',
+    'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A proposal stated in an earlier message is still stored, however briefly it was worded: on a yes to it, call accept_proposal alone, without proposing it again. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',
     'A line such as "[reaccionó 👍 al mensaje: «…»]" is the patient reacting to that message. 👍 or ✅ (in any skin tone) is their yes, as "sí" is, when it reacts to the message it answers or is a message of its own holding only that emoji, right after it: to your latest proposal, accept_proposal; to a reminder from the practice that asks them to confirm, only while no message from the practice or from you came after it and the appointment is not confirmed yet, propose the confirmation and accept it in the same turn, as for "sí, voy". A reaction to any other message (an older reminder, one that does not ask to confirm, a reminder of an appointment already confirmed), or with any other emoji, asks for nothing: propose and accept nothing, and answer in a few words.',
     '"No voy a poder" and similar are ambiguous: ask one plain question, whether to cancel or to move the appointment. Do not propose anything yet.',
     "If accept_proposal fails, say plainly that the change was not made.",
     "Free times come only from find_free_times. When the patient wants another time, including in answer to a message from the practice that moved their appointment or asks them to pick another time, call find_free_times and offer some of its times.",
-    "When the patient picks a free time, propose the move and ask them to confirm it, stating the appointment, practitioner, date, time and office in full; accept it only on their yes in a later message.",
+    "When the patient picks a free time, propose the move and ask them to confirm it; accept it only on their yes in a later message.",
+    `A proposal reads as a person's reply, not a form: name only what changes. For a move, that is the new day and time, and the office when it is another one, as in "Perfecto, te lo paso al martes 24 a las 10:30 en Sede Norte. Te parece bien?". Do not repeat the practitioner, the medical service or the appointment's current day and time: the stored proposal holds them. But the patient's yes must never accept something they were not shown, so always: (a) state it in full (the medical service or practitioner, the appointment's current day and time, and the new day, time and office) when the conversation has not said which appointment it is, or when a line "${longPauseNote}", or a message a person at the practice wrote (it follows the line "${staffReplyNote}"), comes after the last message from you, or automated one from the practice such as a reminder (not one a person wrote), that named the appointment or offered its times; (b) name the appointment's current day and time when the patient has several upcoming appointments and the conversation is not only about one; (c) name the patient when the number stands for several patients. Those note lines are underthing's, not messages: they never stand between a message and the one right after it.`,
     "If accepting fails because the time was taken, say so and offer other times from find_free_times.",
     "If find_free_times or a move refuses it (past the cutoff, or the one move already used), do not offer times and do not explain the refusal: call hand_off with reason rule_refused.",
     "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Hand a health question off instead.",

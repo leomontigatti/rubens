@@ -118,10 +118,27 @@ permissions as in the app:
 
 ## Proposals
 
-The assistant changes nothing on its own judgment. Every change is a proposal
-stated in full (the appointment, the practitioner, the date and the time), which
-the patient or the practitioner accepts. Only a conversation's latest proposal
-can be accepted, and it expires. Accepting runs the change with the app's own
+The assistant changes nothing on its own judgment. Every change is a proposal,
+which the patient or the practitioner accepts. The stored proposal holds every
+fact (the appointment, the practitioner, the date, the time and the office), so
+what a `sí` accepts is exact. The message that states it reads as a person's: it
+names what changes (for a move, the new day and time, and the office when it is
+another one) and whatever the conversation has not established yet, not every
+fact again. A `sí` must never accept something the patient was not shown, so the
+message also names:
+
+- the patient, when the number stands for more than one;
+- which appointment, when the patient has several upcoming ones, unless the
+  conversation is only about one;
+- enough to stand on its own when a long pause (an hour or more between two
+  messages, as long as a proposal lives), or a reply from a person at the
+  practice, came after the last message from the assistant, or automated one
+  from the practice, that named the appointment or offered its times: the model
+  reads a note at each. A pause before the patient answers a reminder, which
+  goes out the day before, does not count once the assistant has named the
+  appointment or offered its times after it.
+
+Only a conversation's latest proposal can be accepted, and it expires. Accepting runs the change with the app's own
 rules, so it can still fail, for example when the time was taken meanwhile; the
 assistant then says so and offers others.
 
