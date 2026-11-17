@@ -9,6 +9,7 @@ import { today } from "#/lib/schedules.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
+import { byName } from "#/organization/name-order.ts";
 import {
   appointment,
   member,
@@ -174,7 +175,7 @@ function firstPatientOf(database: Writer, conversationIds: string[]) {
           .from(conversationPatient)
           .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
           .where(inArray(conversationPatient.conversationId, conversationIds))
-          .orderBy(asc(patient.lastName), asc(patient.firstName))
+          .orderBy(...byName(patient.lastName, patient.firstName), asc(patient.id))
           .all();
   const first = new Map<string, { id: string; name: string; phone: string; only: boolean }>();
   for (const row of rows) {

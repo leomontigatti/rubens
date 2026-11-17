@@ -1,6 +1,19 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { historyChanges, historyTitle, patientInputSchema, patientName } from "#/lib/patients.ts";
+import { guardianInputSchema } from "#/lib/guardians.ts";
+import {
+  historyChanges,
+  historyTitle,
+  patientInputSchema,
+  patientName,
+  patientUpdateSchema,
+} from "#/lib/patients.ts";
+
+const typed = {
+  firstName: "juan",
+  lastName: "pérez",
+  phone: { country: "AR", number: "3515551234" },
+};
 
 describe("patientName", () => {
   it("calls a patient by their chosen first name, with their last name", () => {
@@ -213,6 +226,58 @@ describe("historyTitle", () => {
 describe("patientInputSchema", () => {
   const patient = { firstName: "Juan", lastName: "Pérez" };
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("saves the names in title case and the chosen name as typed", () => {
+    const input = {
+      ...typed,
+      firstName: "juan DE LA cruz",
+      lastName: "DE LA CRUZ",
+      chosenName: "juana LU",
+    };
+    expect(patientInputSchema.parse(input)).toMatchObject({
+      firstName: "Juan de la Cruz",
+      lastName: "de la Cruz",
+      chosenName: "juana LU",
+    });
+  });
+
+  it("cases an edit's names as a registration's", () => {
+    const update = { ...typed, patientId: crypto.randomUUID() };
+    expect(patientUpdateSchema.parse(update)).toMatchObject({
+      firstName: "Juan",
+      lastName: "Pérez",
+    });
+  });
+
+  function birthDateMessages(birthDate: string) {
+    const parsed = patientInputSchema.safeParse({ ...typed, birthDate });
+    return parsed.success
+      ? []
+      : parsed.error.issues.map((issue) => ({ path: issue.path, message: issue.message }));
+  }
+
+  it("refuses a birth date after today in the organization's zone, not UTC's", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // 23:00 on 16 November in Buenos Aires, already the 17th in UTC.
+    vi.setSystemTime(new Date("2026-11-17T02:00:00Z"));
+    expect(birthDateMessages("2026-11-16")).toEqual([]);
+    expect(birthDateMessages("2026-11-17")).toEqual([
+      { path: ["birthDate"], message: "futureBirthDate" },
+    ]);
+  });
+
+  it("refuses a birth date more than 100 years before today", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-17T12:00:00Z"));
+    expect(birthDateMessages("1926-11-17")).toEqual([]);
+    expect(birthDateMessages("1926-11-16")).toEqual([
+      { path: ["birthDate"], message: "birthDateTooOld" },
+    ]);
+  });
+
   it("stores a phone field's entry in E.164", () => {
     const parsed = patientInputSchema.parse({
       ...patient,
@@ -227,5 +292,17 @@ describe("patientInputSchema", () => {
       phone: { country: "AR", number: "0351 15 555-1234" },
     });
     expect(parsed.error?.issues).toMatchObject([{ path: ["phone"], message: "notDigits" }]);
+  });
+});
+
+describe("guardianInputSchema", () => {
+  it("saves a guardian's name in title case", () => {
+    const input = {
+      ...typed,
+      name: "MARÍA DEL CARMEN lópez",
+      relationship: "Madre",
+      patientId: crypto.randomUUID(),
+    };
+    expect(guardianInputSchema.parse(input).name).toBe("María del Carmen López");
   });
 });

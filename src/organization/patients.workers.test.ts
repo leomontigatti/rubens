@@ -187,6 +187,8 @@ describe("registering in full", () => {
       "a DNI that is not a number",
       { ...juan, documentType: "dni" as const, documentNumber: "ABC" },
     ],
+    ["a birth date in the future", { ...juan, birthDate: "2999-01-01" }],
+    ["a birth date more than 100 years ago", { ...juan, birthDate: "1900-01-01" }],
   ])("refuses %s as invalid input", async (_, input) => {
     const { organization, receptionist } = await registry();
 
@@ -319,6 +321,42 @@ describe("the patient list", () => {
       });
     }
   }
+
+  it("orders last names as Spanish does: ignoring case and accents, `ç` too, with `ñ` after `n`", async () => {
+    const { organization, receptionist } = await registry();
+    const lastNames = [
+      "Çelik",
+      "Zapata",
+      "de la Cruz",
+      "Álvarez",
+      "Nuzzo",
+      "Nuñez",
+      "Benítez",
+      "Nuo",
+      "Nunca",
+    ];
+    for (const [index, lastName] of lastNames.entries()) {
+      await register(organization, receptionist, {
+        firstName: "Ana",
+        lastName,
+        phone: { country: "AR", number: `351555${2000 + index}` },
+      });
+    }
+
+    const listed = await organization.listPatients(receptionist, { includeInactive: false });
+
+    expect(listed.ok && listed.patients.map((one) => one.lastName)).toEqual([
+      "Álvarez",
+      "Benítez",
+      "Çelik",
+      "de la Cruz",
+      "Nunca",
+      "Nuñez",
+      "Nuo",
+      "Nuzzo",
+      "Zapata",
+    ]);
+  });
 
   it("shows a page at a time, by last name, and says how many there are", async () => {
     const { organization, receptionist } = await registry();

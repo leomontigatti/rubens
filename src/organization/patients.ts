@@ -31,6 +31,7 @@ import { dropQueuedForPatient, requeueForPatient } from "#/organization/outbox.t
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import { coverage, insurer, patient } from "#/organization/schema.ts";
 import { relinkPatient } from "#/organization/whatsapp-messages.ts";
+import { byName } from "#/organization/name-order.ts";
 
 // The organization's patient registry. Reception, admins and practitioners
 // register and edit patients; only an admin deactivates one (the object's
@@ -212,7 +213,7 @@ function checkDuplicates(
         ),
       ),
     )
-    .orderBy(asc(patient.lastName), asc(patient.firstName))
+    .orderBy(...byName(patient.lastName, patient.firstName))
     .all()
     .map((row) => ({
       patient: toPatient(row),
@@ -265,7 +266,7 @@ export function listPatients(database: Database, options: PatientListOptions): R
   const page = Math.min(parsed.data.page, Math.max(1, Math.ceil(total / patientPageSize)));
   const rows = selectListedPatients(database)
     .where(shown)
-    .orderBy(asc(patient.lastName), asc(patient.firstName), asc(patient.id))
+    .orderBy(...byName(patient.lastName, patient.firstName), asc(patient.id))
     .limit(patientPageSize)
     .offset((page - 1) * patientPageSize)
     .all();
