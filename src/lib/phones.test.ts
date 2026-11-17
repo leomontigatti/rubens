@@ -14,26 +14,25 @@ describe("parsePhone", () => {
     ["+54 9 351 555 1234", "+5493515551234"],
     ["+5493515551234", "+5493515551234"],
   ])("reads the Argentine number %s as %s", (input, phone) => {
-    expect(parsePhone(input)).toEqual({ ok: true, phone });
+    expect(parsePhone(input)).toBe(phone);
   });
 
   it("keeps a foreign number typed with its country prefix", () => {
-    expect(parsePhone("+34 612 345 678")).toEqual({ ok: true, phone: "+34612345678" });
+    expect(parsePhone("+34 612 345 678")).toBe("+34612345678");
   });
 
-  it.each(["15 555-1234", "555-1234", "4555123"])(
-    "refuses %s, a local number with no area code",
-    (input) => {
-      expect(parsePhone(input)).toEqual({ ok: false, reason: "missingAreaCode" });
-    },
-  );
-
-  it.each(["12", "0351 12", "abc", "", "+34 12", "0351 15 555-1234-9999"])(
-    "refuses %s, which cannot be a valid number",
-    (input) => {
-      expect(parsePhone(input)).toEqual({ ok: false, reason: "invalidPhone" });
-    },
-  );
+  it.each([
+    "15 555-1234",
+    "555-1234",
+    "12",
+    "0351 12",
+    "abc",
+    "",
+    "+34 12",
+    "0351 15 555-1234-9999",
+  ])("reads %s as no phone", (input) => {
+    expect(parsePhone(input)).toBeNull();
+  });
 });
 
 describe("formatPhone", () => {

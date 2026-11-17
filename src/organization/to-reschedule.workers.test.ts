@@ -39,8 +39,8 @@ async function world() {
   await booking.addSchedule({ practitionerId: lucia.practitionerId, roomId: otherRoom.id });
   const juanService = await booking.addMedicalService(juan.practitionerId);
   const luciaService = await booking.addMedicalService(lucia.practitionerId);
-  const maria = await booking.addPatient("María", "0351 15 555-1234");
-  const pedro = await booking.addPatient("Pedro", "0351 15 555-9876");
+  const maria = await booking.addPatient("María", "+5493515551234");
+  const pedro = await booking.addPatient("Pedro", "+5493515559876");
 
   async function book(
     start: Date,

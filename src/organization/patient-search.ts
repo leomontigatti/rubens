@@ -42,7 +42,7 @@ function searchTerms(query: string) {
     return { words, digits: null, phones: [] };
   }
   const phone = parsePhone(query);
-  return { words, digits, phones: phone.ok ? phoneSpellings(phone.phone) : [] };
+  return { words, digits, phones: phone ? phoneSpellings(phone) : [] };
 }
 
 type SearchTerms = ReturnType<typeof searchTerms>;

@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { assistantWaitMs } from "#/lib/assistant.ts";
+import { splitPhone } from "#/lib/phones.ts";
 
 import {
   addMember,
@@ -103,7 +104,7 @@ async function siblingOfMartina() {
     await world.organization.registerPatient(adminCaller, {
       firstName: "Ana",
       lastName: "Paz",
-      phone: martinaPhone,
+      phone: splitPhone(martinaPhone),
       confirmDuplicates: true,
     }),
   );
@@ -596,7 +597,7 @@ describe("answering a follow-up", () => {
           patientId,
           name: "Laura Gómez",
           relationship: "Madre",
-          phone: "+5493515550009",
+          phone: { country: "AR", number: "3515550009" },
         }),
       );
       await writes("no me escriban más");

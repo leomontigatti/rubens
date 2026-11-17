@@ -31,7 +31,6 @@ const refusalMessages = {
   invalidInput: "Revisá los datos ingresados.",
   toneTooLong,
   ...phoneMessages,
-  missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 3515551234.",
 };
 
 const refusalFields: Partial<Record<keyof typeof refusalMessages, string>> = {
@@ -39,7 +38,6 @@ const refusalFields: Partial<Record<keyof typeof refusalMessages, string>> = {
   notDigits: "phone",
   wrongArgentineNumber: "phone",
   invalidPhone: "phone",
-  missingAreaCode: "phone",
 };
 
 function EditCommunicationRules() {
@@ -68,7 +66,11 @@ function RulesForm(props: { initial: Omit<CommunicationRulesInput, "phone"> & { 
         page.showProblems([{ field, message: refusalMessages[parsed.reason] }]);
         return;
       }
-      if (await action.save(() => saveCommunicationRules({ data: parsed.rules }))) {
+      if (
+        await action.save(() =>
+          saveCommunicationRules({ data: { ...parsed.rules, phone: value.phone } }),
+        )
+      ) {
         page.leave();
       }
     },

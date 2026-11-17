@@ -1,5 +1,6 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { splitPhone } from "#/lib/phones.ts";
 
 import {
   addRefusedAdmin,
@@ -346,7 +347,7 @@ describe("a handoff about no appointment on a number siblings share", () => {
       await world.organization.registerPatient(adminCaller, {
         firstName: "Ana",
         lastName: "Paz",
-        phone: martinaPhone,
+        phone: splitPhone(martinaPhone),
         confirmDuplicates: true,
       }),
     );

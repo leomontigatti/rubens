@@ -4,13 +4,10 @@ import {
   parsePhoneNumberFromString,
 } from "libphonenumber-js";
 
-// Phones are typed the local way and stored in E.164, the format WhatsApp
-// needs (docs/domain/patients.md). A number with no `+` is read as Argentine.
+// Phones are typed in the phone field, a country and its national number, and
+// stored in E.164, the format WhatsApp needs (docs/domain/patients.md).
 
 const defaultRegion = "AR";
-
-/** Why a phone typed as one text is refused. */
-export type PhoneRefusal = "missingAreaCode" | "invalidPhone";
 
 /** Why a phone field's entry is refused. */
 export type PhoneEntryRefusal =
@@ -19,38 +16,16 @@ export type PhoneEntryRefusal =
   | "wrongArgentineNumber"
   | "invalidPhone";
 
-export type PhoneResult<Refusal = PhoneRefusal> =
-  | { ok: true; phone: string }
-  | { ok: false; reason: Refusal };
+export type PhoneResult = { ok: true; phone: string } | { ok: false; reason: PhoneEntryRefusal };
 
 /**
- * Whether `input` reads as an Argentine local number typed without its area
- * code: 6 to 8 digits, after an optional `15`, and no leading `0` (which
- * starts an area code). Such a number could belong to any area, so it is
- * refused rather than guessed.
+ * The E.164 phone a search text spells, typed any local way (`0351 15 555-1234`,
+ * `3515551234`) or with its `+`; a number with no `+` is read as Argentine.
+ * Null when the text is no valid phone.
  */
-function lacksAreaCode(input: string): boolean {
-  if (input.trim().startsWith("+")) {
-    return false;
-  }
-  const digits = input.replace(/\D/g, "");
-  if (digits.startsWith("0")) {
-    return false;
-  }
-  const subscriber = digits.startsWith("15") ? digits.slice(2) : digits;
-  return subscriber.length >= 6 && subscriber.length <= 8;
-}
-
-/** Turns a typed phone into E.164, or says why it cannot. */
-export function parsePhone(input: string): PhoneResult {
+export function parsePhone(input: string): string | null {
   const parsed = parsePhoneNumberFromString(input, defaultRegion);
-  if (parsed?.isValid()) {
-    return { ok: true, phone: parsed.number };
-  }
-  if (lacksAreaCode(input)) {
-    return { ok: false, reason: "missingAreaCode" };
-  }
-  return { ok: false, reason: "invalidPhone" };
+  return parsed?.isValid() ? parsed.number : null;
 }
 
 /** A phone as the phone field holds it: a country, and the national number typed for it. */
@@ -65,7 +40,7 @@ export interface PhoneEntry {
  * stored as a mobile (`+54 9`): 10 digits do not say which it is, and the
  * phone is where WhatsApp messages go, which reach only a mobile.
  */
-export function parsePhoneEntry(entry: PhoneEntry): PhoneResult<PhoneEntryRefusal> {
+export function parsePhoneEntry(entry: PhoneEntry): PhoneResult {
   const { number } = entry;
   if (number.trim() === "") {
     return { ok: false, reason: "missingPhone" };

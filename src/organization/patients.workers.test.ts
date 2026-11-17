@@ -11,7 +11,11 @@ import {
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
 
-const juan = { firstName: "Juan", lastName: "Pérez", phone: "0351 15 555-1234" };
+const juan = {
+  firstName: "Juan",
+  lastName: "Pérez",
+  phone: { country: "AR", number: "3515551234" },
+};
 
 const complete = {
   ...juan,
@@ -131,7 +135,7 @@ describe("registering in full", () => {
     const result = await organization.registerPatient(receptionist, {
       firstName: "Otro",
       lastName: "Paciente",
-      phone: "11 5555 1234",
+      phone: { country: "AR", number: "1155551234" },
       documentType: "dni",
       documentNumber: "30123456",
     });
@@ -151,7 +155,7 @@ describe("registering in full", () => {
     const result = await organization.registerPatient(receptionist, {
       firstName: "Otro",
       lastName: "Paciente",
-      phone: "11 5555 1234",
+      phone: { country: "AR", number: "1155551234" },
       documentType: "passport",
       documentNumber: "AA123456",
     });
@@ -176,8 +180,8 @@ describe("registering in full", () => {
   });
 
   it.each([
-    ["a phone with no area code", { ...juan, phone: "555-1234" }],
-    ["an invalid phone", { ...juan, phone: "12" }],
+    ["a phone with no area code", { ...juan, phone: { country: "AR", number: "5551234" } }],
+    ["an invalid phone", { ...juan, phone: { country: "ES", number: "12" } }],
     ["a document number with no type", { ...juan, documentNumber: "123" }],
     [
       "a DNI that is not a number",
@@ -221,7 +225,9 @@ describe("editing a patient", () => {
     const { organization, receptionist } = await registry();
     const patient = await register(organization, receptionist);
 
-    await edit(organization, receptionist, patient.id, { phone: "+54 9 351 555 1234" });
+    await edit(organization, receptionist, patient.id, {
+      phone: { country: "AR", number: "3515551234" },
+    });
 
     expect(await historyOf(organization, patient.id)).toHaveLength(1);
   });
@@ -231,11 +237,11 @@ describe("editing a patient", () => {
     const holder = await register(organization, receptionist, complete);
     const other = await register(organization, receptionist, {
       ...juan,
-      phone: "011 15 4444-9876",
+      phone: { country: "AR", number: "1144449876" },
     });
 
     const result = await edit(organization, receptionist, other.id, {
-      phone: "011 15 4444-9876",
+      phone: { country: "AR", number: "1144449876" },
       documentType: "dni",
       documentNumber: "30123456",
     });
@@ -309,7 +315,7 @@ describe("the patient list", () => {
       await register(organization, caller, {
         firstName: "Ana",
         lastName: `Apellido ${String(index).padStart(2, "0")}`,
-        phone: `0351 15 555-${1000 + index}`,
+        phone: { country: "AR", number: `351555${1000 + index}` },
       });
     }
   }
@@ -358,7 +364,7 @@ describe("the patient list", () => {
     await register(organization, receptionist, {
       firstName: "Luz",
       lastName: "Pérez",
-      phone: "0351 15 555-4321",
+      phone: { country: "AR", number: "3515554321" },
     });
     const created = await organization.createInsurer(adminCaller, {
       name: "OSDE",
@@ -536,13 +542,13 @@ describe("the duplicate check", () => {
     const sameName = await organization.registerPatient(receptionist, {
       firstName: " juan ",
       lastName: "PEREZ",
-      phone: "011 15 4444-9876",
+      phone: { country: "AR", number: "1144449876" },
       birthDate: "1990-04-12",
     });
     const otherBirthDate = await organization.registerPatient(receptionist, {
       firstName: "Juan",
       lastName: "Pérez",
-      phone: "011 15 4444-9876",
+      phone: { country: "AR", number: "1144449876" },
       birthDate: "1991-04-12",
     });
 
@@ -560,7 +566,7 @@ describe("the duplicate check", () => {
     const other = await register(organization, receptionist, {
       firstName: "Ana",
       lastName: "Sosa",
-      phone: "011 15 4444-9876",
+      phone: { country: "AR", number: "1144449876" },
     });
     const ana = { firstName: "Ana", lastName: "Sosa", phone: juan.phone };
 
@@ -612,12 +618,12 @@ describe("searching patients", () => {
       firstName: "María José",
       lastName: "Núñez",
       chosenName: "Majo",
-      phone: "011 15 4444-9876",
+      phone: { country: "AR", number: "1144449876" },
     });
     await register(organization, receptionist, {
       firstName: "Pedro",
       lastName: "Gómez Pereyra",
-      phone: "0261 15 666-7788",
+      phone: { country: "AR", number: "2616667788" },
       documentType: "passport",
       documentNumber: "AB123",
     });
@@ -645,7 +651,7 @@ describe("searching patients", () => {
     await register(organization, receptionist, {
       firstName: "Rosa",
       lastName: "González",
-      phone: "0351 15 777-1111",
+      phone: { country: "AR", number: "3517771111" },
     });
 
     expect(await search("gonzales")).toEqual(["Rosa González"]);
@@ -672,7 +678,7 @@ describe("searching patients", () => {
     await register(organization, receptionist, {
       firstName: "Ana",
       lastName: "Álvarez",
-      phone: "0351 15 777-2222",
+      phone: { country: "AR", number: "3517772222" },
       documentType: "other",
       documentNumber: "35155512349",
     });
@@ -685,7 +691,7 @@ describe("searching patients", () => {
     await register(organization, receptionist, {
       firstName: "Juan",
       lastName: "Pereyra",
-      phone: "0351 15 777-0000",
+      phone: { country: "AR", number: "3517770000" },
     });
 
     expect(await search("juan pere")).toEqual(["Juan Pérez", "Juan Pereyra"]);
@@ -714,7 +720,7 @@ describe("searching patients", () => {
       await register(organization, receptionist, {
         firstName: `Ana${index}`,
         lastName: "Sosa",
-        phone: `0351 15 500-${String(1000 + index)}`,
+        phone: { country: "AR", number: `351500${1000 + index}` },
       });
     }
 
@@ -723,7 +729,7 @@ describe("searching patients", () => {
     await register(organization, receptionist, {
       firstName: "Ana20",
       lastName: "Sosa",
-      phone: "0351 15 500-1020",
+      phone: { country: "AR", number: "3515001020" },
     });
 
     expect(await searchSosa()).toEqual({ shown: 20, more: true });

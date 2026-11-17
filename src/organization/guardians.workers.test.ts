@@ -11,8 +11,16 @@ import {
 import { guardian } from "#/organization/schema.ts";
 
 const missing = "00000000-0000-4000-8000-000000000000";
-const patientFields = { firstName: "Tomás", lastName: "Pérez", phone: "0351 15 555-1234" };
-const laura = { name: "Laura Gómez", relationship: "Madre", phone: "351 4123456" };
+const patientFields = {
+  firstName: "Tomás",
+  lastName: "Pérez",
+  phone: { country: "AR", number: "3515551234" },
+};
+const laura = {
+  name: "Laura Gómez",
+  relationship: "Madre",
+  phone: { country: "AR", number: "3514123456" },
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -83,7 +91,7 @@ describe("a patient's guardians", () => {
     await add(adminCaller, {
       name: "Pedro Pérez",
       relationship: "Padre",
-      phone: "+34 612 345 678",
+      phone: { country: "ES", number: "612345678" },
     });
     await add(practitioner, { name: "Ana Pérez", relationship: "Abuela" });
 
@@ -94,21 +102,22 @@ describe("a patient's guardians", () => {
       relationship: "Madre",
       documentType: "dni",
       documentNumber: "28123456",
-      phone: "+543514123456",
+      phone: "+5493514123456",
       email: "laura@example.com",
       messageContact: false,
     });
     expect((await guardians()).map(({ name, phone }) => ({ name, phone }))).toEqual([
-      { name: "Laura Gómez", phone: "+543514123456" },
+      { name: "Laura Gómez", phone: "+5493514123456" },
       { name: "Pedro Pérez", phone: "+34612345678" },
-      { name: "Ana Pérez", phone: "+543514123456" },
+      { name: "Ana Pérez", phone: "+5493514123456" },
     ]);
   });
 
   it("refuses a phone that is not a number, or has no area code", async () => {
     const { organization, receptionist, patientId } = await patientWithGuardians();
 
-    for (const phone of ["123", "4123456"]) {
+    for (const number of ["123", "4123456"]) {
+      const phone = { country: "AR", number };
       expect(await organization.addGuardian(receptionist, { ...laura, patientId, phone })).toEqual({
         ok: false,
         reason: "invalidInput",
@@ -124,7 +133,7 @@ describe("a patient's guardians", () => {
       guardianId: added.id,
       name: "Laura Gómez",
       relationship: "Tutora",
-      phone: "0351 15 444-1111",
+      phone: { country: "AR", number: "3514441111" },
       email: "",
     });
 
@@ -202,7 +211,7 @@ describe("the message contact", () => {
     const other = await organization.registerPatient(receptionist, {
       firstName: "Lucía",
       lastName: "Paz",
-      phone: "0351 15 555-9999",
+      phone: { country: "AR", number: "3515559999" },
     });
     if (!other.ok) {
       throw new Error("registerPatient refused");
@@ -227,7 +236,7 @@ describe("the message contact", () => {
             patientId,
             name: "Otra",
             relationship: "Tía",
-            phone: "+543514123456",
+            phone: "+5493514123456",
             messageContact: true,
           })
           .run(),
@@ -284,7 +293,7 @@ describe("the audit log", () => {
       name: "Laura Gómez",
       documentType: "dni",
       documentNumber: "28123456",
-      phone: "+543514123456",
+      phone: "+5493514123456",
     };
     expect(await history("guardian")).toEqual([
       {

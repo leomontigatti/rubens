@@ -149,7 +149,7 @@ describe("the clinical check", () => {
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "vos",
         tone: "",
-        phone: "",
+        phone: { country: "AR", number: "" },
       }),
     );
     await modelAnswers("Hola Martina, tu turno es el lunes.", {
@@ -310,7 +310,7 @@ describe("an emergency", () => {
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "vos",
         tone: "",
-        phone: "0351 15 555-1234",
+        phone: { country: "AR", number: "3515551234" },
       }),
     );
   });
@@ -332,7 +332,7 @@ describe("an emergency", () => {
       await world.organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "usted",
         tone: "",
-        phone: "",
+        phone: { country: "AR", number: "" },
       }),
     );
     await writes("me desmayé");

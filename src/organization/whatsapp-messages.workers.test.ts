@@ -10,6 +10,7 @@ import {
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
+import { patient } from "#/organization/schema.ts";
 import {
   conversation,
   conversationPatient,
@@ -56,9 +57,10 @@ function linkedPatients(organization: OrganizationStub, conversationId: string) 
   );
 }
 
-/** A patient registered with `phone`, by a receptionist; returns their id. */
-async function registered(organization: OrganizationStub, firstName: string, phone: string) {
+/** A patient registered with the Argentine `number`, by a receptionist; returns their id. */
+async function registered(organization: OrganizationStub, firstName: string, number: string) {
   const receptionist = await addMember(organization, ["receptionist"]);
+  const phone = { country: "AR", number };
   const result = expectOk(
     await organization.registerPatient(receptionist, { firstName, lastName: "Pérez", phone }),
   );
@@ -126,13 +128,17 @@ describe("storing the webhook's WhatsApp events", () => {
 
   it("links a guardian's number to every patient it is the message contact of, and no one else", async () => {
     const { organization } = await setUpTestOrganization();
-    const mother = { name: "Laura Gómez", relationship: "Madre", phone: "0351 15 444-0000" };
-    const tomas = await registered(organization, "Tomás", "0351 15 555-1111");
-    const lucia = await registered(organization, "Lucía", "0351 15 555-2222");
+    const mother = {
+      name: "Laura Gómez",
+      relationship: "Madre",
+      phone: { country: "AR", number: "3514440000" },
+    };
+    const tomas = await registered(organization, "Tomás", "3515551111");
+    const lucia = await registered(organization, "Lucía", "3515552222");
     // The mother is this patient's guardian too, but his messages go to his own phone.
-    const mateo = await registered(organization, "Mateo", "0351 15 555-3333");
+    const mateo = await registered(organization, "Mateo", "3515553333");
     // This patient's own phone is the mother's, but her messages go to another guardian.
-    const sofia = await registered(organization, "Sofía", "0351 15 444-0000");
+    const sofia = await registered(organization, "Sofía", "3514440000");
     for (const { receptionist, patientId } of [tomas, lucia]) {
       const guardian = expectOk(
         await organization.addGuardian(receptionist, { patientId, ...mother }),
@@ -152,7 +158,7 @@ describe("storing the webhook's WhatsApp events", () => {
         patientId: sofia.patientId,
         name: "Juan Pérez",
         relationship: "Padre",
-        phone: "0351 15 666-0000",
+        phone: { country: "AR", number: "3516660000" },
       }),
     );
     expectOk(
@@ -177,7 +183,7 @@ describe("storing the webhook's WhatsApp events", () => {
 
   it("links a patient's own number when no guardian is their message contact", async () => {
     const { organization } = await setUpTestOrganization();
-    const tomas = await registered(organization, "Tomás", "0351 15 555-1111");
+    const tomas = await registered(organization, "Tomás", "3515551111");
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
@@ -198,7 +204,7 @@ describe("storing the webhook's WhatsApp events", () => {
         await organization.registerPatient(receptionist, {
           firstName: `Paciente ${added}`,
           lastName: "Pérez",
-          phone: "0351 15 555-1111",
+          phone: { country: "AR", number: "3515551111" },
           confirmDuplicates: true,
         }),
       );
@@ -215,10 +221,17 @@ describe("storing the webhook's WhatsApp events", () => {
     expect(await linkedPatients(organization, message!.conversationId)).toEqual(patientIds.sort());
   });
 
-  it("links an Argentine mobile typed without its 15 to the number WhatsApp sends with a 9", async () => {
+  it("links an Argentine mobile stored without its 9 to the number WhatsApp sends with it", async () => {
     const { organization } = await setUpTestOrganization();
-    // Typed without the 15, the number is stored as +54 351 …; WhatsApp sends 549 351 ….
-    const tomas = await registered(organization, "Tomás", "351 555-1111");
+    // No form stores this spelling any more; a phone saved before the phone field did.
+    const tomas = await registered(organization, "Tomás", "3515551111");
+    await inStorage(organization, (database) =>
+      database
+        .update(patient)
+        .set({ phone: "+543515551111" })
+        .where(eq(patient.id, tomas.patientId))
+        .run(),
+    );
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
@@ -232,7 +245,7 @@ describe("storing the webhook's WhatsApp events", () => {
 
   it("stores a message from a number no patient has in a conversation with no patient", async () => {
     const { organization } = await setUpTestOrganization();
-    await registered(organization, "Tomás", "0351 15 555-1111");
+    await registered(organization, "Tomás", "3515551111");
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],

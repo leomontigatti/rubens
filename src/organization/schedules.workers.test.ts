@@ -271,7 +271,7 @@ describe("a schedule saved in a room an appointment holds", () => {
       await organization.registerPatient(adminCaller, {
         firstName: "María",
         lastName: "López",
-        phone: "0351 15 400-0001",
+        phone: { country: "AR", number: "3514000001" },
         // Each appointment gets a patient of its own, all with the same name.
         confirmDuplicates: true,
       }),

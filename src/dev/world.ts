@@ -40,20 +40,20 @@ export const devMedicalService = { name: "Consulta E2E", durationMinutes: 30 };
  * records of the same edit page, and the ones the search race types for.
  */
 export const devPatients = [
-  { firstName: "Marta", lastName: "Quiroga", phone: "0351 15 400-0001" },
-  { firstName: "Nicolás", lastName: "Ferreyra", phone: "0351 15 400-0002" },
-  { firstName: "Olga", lastName: "Benítez", phone: "0351 15 400-0003" },
-  { firstName: "Osvaldo", lastName: "Bustos", phone: "0351 15 400-0004" },
+  { firstName: "Marta", lastName: "Quiroga", phone: { country: "AR", number: "3514000001" } },
+  { firstName: "Nicolás", lastName: "Ferreyra", phone: { country: "AR", number: "3514000002" } },
+  { firstName: "Olga", lastName: "Benítez", phone: { country: "AR", number: "3514000003" } },
+  { firstName: "Osvaldo", lastName: "Bustos", phone: { country: "AR", number: "3514000004" } },
 ] as const;
 
 /**
- * WhatsApp messages patients sent, as Meta's webhook hands them over, for the
+ * WhatsApp messages patients sent, as the webhook stores them, in E.164, for the
  * inbox: two from Marta, and one from a number no patient has.
  */
 export const devIncomingMessages = [
-  { from: "0351 15 400-0001", text: "Hola, quería confirmar el turno del jueves", minutesAgo: 90 },
-  { from: "0351 15 400-0001", text: "Me sigue doliendo la muela de abajo", minutesAgo: 60 },
-  { from: "0351 15 499-9999", text: "Hola, ¿atienden con obra social?", minutesAgo: 30 },
+  { from: "+5493514000001", text: "Hola, quería confirmar el turno del jueves", minutesAgo: 90 },
+  { from: "+5493514000001", text: "Me sigue doliendo la muela de abajo", minutesAgo: 60 },
+  { from: "+5493514999999", text: "Hola, ¿atienden con obra social?", minutesAgo: 30 },
 ] as const;
 
 /**

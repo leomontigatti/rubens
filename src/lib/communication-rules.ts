@@ -1,8 +1,8 @@
 import * as z from "zod";
 
 import { phoneEntrySchema } from "#/lib/patients.ts";
-import { parsePhone, parsePhoneEntry } from "#/lib/phones.ts";
-import type { PhoneEntry, PhoneEntryRefusal, PhoneRefusal, PhoneResult } from "#/lib/phones.ts";
+import { parsePhoneEntry } from "#/lib/phones.ts";
+import type { PhoneEntry, PhoneEntryRefusal, PhoneResult } from "#/lib/phones.ts";
 
 // The organization's communication rules for the assistant, as the first
 // release has them (#167): `vos` or `usted` and a short tone text, set by
@@ -21,8 +21,8 @@ export const maxToneLength = 300;
 const communicationRulesSchema = z.object({
   formOfAddress: z.enum(formsOfAddress),
   tone: z.string().trim().max(maxToneLength),
-  /** A phone field's entry, or a phone typed as one text the local way; empty for none. */
-  phone: z.union([z.string().trim(), phoneEntrySchema]),
+  /** A phone field's entry; an empty number for none. */
+  phone: phoneEntrySchema,
 });
 
 export type CommunicationRulesInput = z.input<typeof communicationRulesSchema>;
@@ -33,17 +33,10 @@ type CommunicationRules = Omit<z.output<typeof communicationRulesSchema>, "phone
 };
 
 /** What a refused save says: the text over its limit, or anything else wrong. */
-export type CommunicationRulesRefusal =
-  | "toneTooLong"
-  | PhoneRefusal
-  | PhoneEntryRefusal
-  | "invalidInput";
+export type CommunicationRulesRefusal = "toneTooLong" | PhoneEntryRefusal | "invalidInput";
 
 /** The phone to save in E.164, or empty when none was typed. */
-function rulesPhone(phone: string | PhoneEntry): PhoneResult<PhoneRefusal | PhoneEntryRefusal> {
-  if (typeof phone === "string") {
-    return phone === "" ? { ok: true, phone } : parsePhone(phone);
-  }
+function rulesPhone(phone: PhoneEntry): PhoneResult {
   return phone.number.trim() === "" ? { ok: true, phone: "" } : parsePhoneEntry(phone);
 }
 

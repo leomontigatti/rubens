@@ -76,7 +76,7 @@ export function PhoneField(
         {[
           props.hint,
           argentine
-            ? "Código de área y número, solo números."
+            ? "Código de área sin 0 y número sin 15."
             : "Solo números, sin el código del país.",
         ]
           .filter(Boolean)

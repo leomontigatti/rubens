@@ -1,5 +1,4 @@
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { parsePhone } from "#/lib/phones.ts";
 import { shiftDate, today, weekdayOf } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 
@@ -105,7 +104,7 @@ export async function seedQaData(
     await organization.storeWhatsappEvents({
       messages: qaIncomingMessages.map((message, index) => ({
         whatsappId: `wamid.qa-${index}`,
-        from: accepted("parsePhone", parsePhone(message.from)).phone,
+        from: message.from,
         sentAt: Date.now() - message.minutesAgo * 60_000,
         type: "text",
         text: message.text,

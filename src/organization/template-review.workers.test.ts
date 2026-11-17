@@ -38,7 +38,7 @@ describe("reviewing a template's text", () => {
       await organization.saveCommunicationRules(adminCaller, {
         formOfAddress: "usted",
         tone: "Cordial y breve.",
-        phone: "",
+        phone: { country: "AR", number: "" },
       }),
     );
     scriptedModel.scriptReview({ notes: ["Trata al paciente de vos: el trato es usted."] });

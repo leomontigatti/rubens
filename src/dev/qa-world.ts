@@ -1,4 +1,5 @@
 import type { InsurerKind } from "#/lib/coverages.ts";
+import type { PhoneEntry } from "#/lib/phones.ts";
 
 // What `pnpm dev` adds to the dev world (`src/dev/world.ts`) for going
 // through the screens by hand: a second practitioner and room, more medical
@@ -37,7 +38,7 @@ export const qaInsurers: readonly { name: string; kind: InsurerKind }[] = [
 interface QaPatient {
   firstName: string;
   lastName: string;
-  phone: string;
+  phone: PhoneEntry;
   chosenName?: string;
   dni?: string;
   birthDate?: string;
@@ -45,7 +46,7 @@ interface QaPatient {
   address?: string;
   /** The insurer's index in `qaInsurers`, its plan and member number. */
   coverage?: { insurer: number; plan: string | null; memberNumber: string };
-  guardian?: { name: string; relationship: string; phone: string };
+  guardian?: { name: string; relationship: string; phone: PhoneEntry };
   whatsappConsent?: false;
   /** Deactivated after registering, so it gets no appointments. */
   inactive?: true;
@@ -55,7 +56,7 @@ export const qaPatients: readonly QaPatient[] = [
   {
     firstName: "Lucía",
     lastName: "Gómez",
-    phone: "0351 15 410-0001",
+    phone: { country: "AR", number: "3514100001" },
     dni: "30111222",
     birthDate: "1984-03-12",
     email: "lucia.gomez@prueba.example.com",
@@ -65,7 +66,7 @@ export const qaPatients: readonly QaPatient[] = [
   {
     firstName: "Martín",
     lastName: "Rodríguez",
-    phone: "0351 15 410-0002",
+    phone: { country: "AR", number: "3514100002" },
     dni: "28444555",
     birthDate: "1980-07-02",
     coverage: { insurer: 2, plan: null, memberNumber: "200345678" },
@@ -73,15 +74,19 @@ export const qaPatients: readonly QaPatient[] = [
   {
     firstName: "Valentina",
     lastName: "Sosa",
-    phone: "0351 15 410-0003",
+    phone: { country: "AR", number: "3514100003" },
     birthDate: "2015-09-21",
     coverage: { insurer: 1, plan: "SMG20", memberNumber: "80012345" },
-    guardian: { name: "Carolina Sosa", relationship: "Madre", phone: "0351 15 410-0103" },
+    guardian: {
+      name: "Carolina Sosa",
+      relationship: "Madre",
+      phone: { country: "AR", number: "3514100103" },
+    },
   },
   {
     firstName: "Jorge",
     lastName: "Fernández",
-    phone: "0351 15 410-0004",
+    phone: { country: "AR", number: "3514100004" },
     dni: "12345678",
     birthDate: "1951-11-30",
     coverage: { insurer: 3, plan: null, memberNumber: "150987654321" },
@@ -89,90 +94,94 @@ export const qaPatients: readonly QaPatient[] = [
   {
     firstName: "Sofía",
     lastName: "López",
-    phone: "0351 15 410-0005",
+    phone: { country: "AR", number: "3514100005" },
     email: "sofi.lopez@prueba.example.com",
   },
   {
     firstName: "Alejandro",
     lastName: "Martínez",
     chosenName: "Ale",
-    phone: "0351 15 410-0006",
+    phone: { country: "AR", number: "3514100006" },
     dni: "35666777",
     coverage: { insurer: 0, plan: "210", memberNumber: "61234567802" },
   },
   {
     firstName: "Camila",
     lastName: "Pérez",
-    phone: "0351 15 410-0007",
+    phone: { country: "AR", number: "3514100007" },
     birthDate: "1996-01-15",
     coverage: { insurer: 2, plan: null, memberNumber: "200111222" },
   },
   {
     firstName: "Federico",
     lastName: "Díaz",
-    phone: "0351 15 410-0008",
+    phone: { country: "AR", number: "3514100008" },
     address: "Obispo Trejo 1020, 3° B",
   },
   {
     firstName: "Mariana",
     lastName: "Romero",
-    phone: "0351 15 410-0009",
+    phone: { country: "AR", number: "3514100009" },
     dni: "33222111",
     coverage: { insurer: 1, plan: "SMG30", memberNumber: "80054321" },
   },
   {
     firstName: "Tomás",
     lastName: "Álvarez",
-    phone: "0351 15 410-0010",
+    phone: { country: "AR", number: "3514100010" },
     birthDate: "2018-04-03",
-    guardian: { name: "Pablo Álvarez", relationship: "Padre", phone: "0351 15 410-0110" },
+    guardian: {
+      name: "Pablo Álvarez",
+      relationship: "Padre",
+      phone: { country: "AR", number: "3514100110" },
+    },
   },
   {
     firstName: "Gabriela",
     lastName: "Torres",
-    phone: "0351 15 410-0011",
+    phone: { country: "AR", number: "3514100011" },
     coverage: { insurer: 3, plan: null, memberNumber: "150123123123" },
   },
   {
     firstName: "Diego",
     lastName: "Ruiz",
-    phone: "0351 15 410-0012",
+    phone: { country: "AR", number: "3514100012" },
     email: "diego.ruiz@prueba.example.com",
   },
   {
     firstName: "Florencia",
     lastName: "Herrera",
-    phone: "0351 15 410-0013",
+    phone: { country: "AR", number: "3514100013" },
     coverage: { insurer: 0, plan: "410", memberNumber: "61234567803" },
   },
   {
     firstName: "Ricardo",
     lastName: "Medina",
-    phone: "0351 15 410-0014",
+    phone: { country: "AR", number: "3514100014" },
     birthDate: "1962-06-18",
   },
   {
     firstName: "Agustina",
     lastName: "Castro",
-    phone: "0351 15 410-0015",
+    phone: { country: "AR", number: "3514100015" },
     coverage: { insurer: 2, plan: null, memberNumber: "200999888" },
   },
   {
     firstName: "Hernán",
     lastName: "Vega",
-    phone: "0351 15 410-0016",
+    phone: { country: "AR", number: "3514100016" },
   },
   {
     firstName: "Paula",
     lastName: "Molina",
-    phone: "0351 15 410-0017",
+    phone: { country: "AR", number: "3514100017" },
     dni: "37888999",
     whatsappConsent: false,
   },
   {
     firstName: "Esteban",
     lastName: "Ríos",
-    phone: "0351 15 410-0018",
+    phone: { country: "AR", number: "3514100018" },
     coverage: { insurer: 1, plan: "SMG20", memberNumber: "80077777" },
     inactive: true,
   },
@@ -198,24 +207,24 @@ export const qaReceptionNotes = [
 export const qaCancellationReasons = ["Viaja por trabajo", "Reprogramación por agenda"];
 
 /**
- * WhatsApp messages patients and strangers sent, as Meta's webhook hands them
- * over: a few conversations at different ages, for the inbox.
+ * WhatsApp messages patients and strangers sent, as the webhook stores them, in
+ * E.164: a few conversations at different ages, for the inbox.
  */
 export const qaIncomingMessages = [
   {
-    from: "0351 15 410-0001",
+    from: "+5493514100001",
     text: "Buen día, ¿puedo pasar el turno a la tarde?",
     minutesAgo: 600,
   },
-  { from: "0351 15 410-0001", text: "Si no se puede no pasa nada", minutesAgo: 595 },
+  { from: "+5493514100001", text: "Si no se puede no pasa nada", minutesAgo: 595 },
   {
-    from: "0351 15 410-0004",
+    from: "+5493514100004",
     text: "Hola, ¿necesito orden de PAMI para el control?",
     minutesAgo: 240,
   },
-  { from: "0351 15 410-0103", text: "Hola! Soy la mamá de Valentina", minutesAgo: 120 },
-  { from: "0351 15 410-0103", text: "¿Tienen turno para esta semana?", minutesAgo: 119 },
-  { from: "0351 15 410-0009", text: "Gracias por la atención de ayer 🙌", minutesAgo: 45 },
-  { from: "0351 15 499-8888", text: "Hola, ¿cuánto sale la consulta particular?", minutesAgo: 15 },
-  { from: "0351 15 410-0012", text: "Estoy llegando 10 minutos tarde, perdón", minutesAgo: 3 },
+  { from: "+5493514100103", text: "Hola! Soy la mamá de Valentina", minutesAgo: 120 },
+  { from: "+5493514100103", text: "¿Tienen turno para esta semana?", minutesAgo: 119 },
+  { from: "+5493514100009", text: "Gracias por la atención de ayer 🙌", minutesAgo: 45 },
+  { from: "+5493514998888", text: "Hola, ¿cuánto sale la consulta particular?", minutesAgo: 15 },
+  { from: "+5493514100012", text: "Estoy llegando 10 minutos tarde, perdón", minutesAgo: 3 },
 ] as const;

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { splitPhone } from "#/lib/phones.ts";
 
 import {
   addStaff,
@@ -105,7 +106,7 @@ beforeEach(async () => {
     await organization.registerPatient(adminCaller, {
       firstName: "Martina",
       lastName: "Paz",
-      phone: martinaPhone,
+      phone: splitPhone(martinaPhone),
     }),
   );
 });
