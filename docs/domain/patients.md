@@ -22,6 +22,9 @@ screen and message: `juan DE LA cruz` is saved as `Juan de la Cruz`. The particl
 `de`, `del`, `la`, `las`, `los` and `y` stay in lower case inside a name, and so
 does a last name's leading one (`de la Cruz`); a part after a hyphen or an
 apostrophe is capitalised (`Ana-Lía`, `O'Brien`).
+Lists of people order them by last name, then first name, as Spanish sorts
+them: ignoring case and accents, with `ñ` after `n`, so `de la Cruz` sits
+between `Benítez` and `Díaz` and `Álvarez` among the `A`.
 
 A patient may have a chosen name, which the app shows everywhere in place of the
 legal name (Ley 26.743). It is kept as typed, since it is the person's own choice.

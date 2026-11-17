@@ -316,6 +316,40 @@ describe("the patient list", () => {
     }
   }
 
+  it("orders last names as Spanish does: ignoring case and accents, with `ñ` after `n`", async () => {
+    const { organization, receptionist } = await registry();
+    const lastNames = [
+      "Zapata",
+      "de la Cruz",
+      "Álvarez",
+      "Nuzzo",
+      "Nuñez",
+      "Benítez",
+      "Nuo",
+      "Nunca",
+    ];
+    for (const [index, lastName] of lastNames.entries()) {
+      await register(organization, receptionist, {
+        firstName: "Ana",
+        lastName,
+        phone: `0351 15 555-${2000 + index}`,
+      });
+    }
+
+    const listed = await organization.listPatients(receptionist, { includeInactive: false });
+
+    expect(listed.ok && listed.patients.map((one) => one.lastName)).toEqual([
+      "Álvarez",
+      "Benítez",
+      "de la Cruz",
+      "Nunca",
+      "Nuñez",
+      "Nuo",
+      "Nuzzo",
+      "Zapata",
+    ]);
+  });
+
   it("shows a page at a time, by last name, and says how many there are", async () => {
     const { organization, receptionist } = await registry();
     await fullPage(organization, receptionist);

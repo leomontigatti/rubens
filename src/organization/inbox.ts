@@ -44,6 +44,7 @@ import type { QueuedReopen, ShownLateReply, WithdrawnReply } from "#/organizatio
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 import { optOutsShown } from "#/organization/opt-out-holds.ts";
 import type { ShownOptOut } from "#/organization/opt-out-holds.ts";
+import { byName } from "#/organization/name-order.ts";
 
 // The inbox (ui: "Conversaciones", docs/domain/assistant.md § Inbox), read
 // only. Reception and admins read every conversation; a practitioner only
@@ -214,7 +215,7 @@ export function patientsOf(database: Database, conversationIds: string[] | SQLWr
     .from(conversationPatient)
     .innerJoin(patient, eq(patient.id, conversationPatient.patientId))
     .where(inArray(conversationPatient.conversationId, conversationIds))
-    .orderBy(asc(patient.lastName), asc(patient.firstName))
+    .orderBy(...byName(patient.lastName, patient.firstName))
     .all();
   const byConversation = new Map<string, { id: string; name: string }[]>();
   for (const row of rows) {
