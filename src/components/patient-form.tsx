@@ -123,6 +123,8 @@ const fieldMessages: Record<string, string> = {
   invalidPhone: "El teléfono no es válido. Si es del exterior, empezá con + y el código del país.",
   documentIncomplete: "Elegí el tipo de documento e ingresá su número.",
   invalidDni: "El DNI tiene que ser un número, con o sin puntos.",
+  futureBirthDate: "La fecha de nacimiento no puede ser futura.",
+  birthDateTooOld: "La fecha de nacimiento no puede ser de hace más de 100 años.",
 };
 
 /** The copy for a patient's or guardian's field: the phone and the document carry their own. */

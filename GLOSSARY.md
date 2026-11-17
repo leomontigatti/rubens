@@ -119,7 +119,8 @@ _Avoid_: client, customer, cliente, user
 
 **`chosenName`** — ui: "Nombre autopercibido"
 The name a `patient` chooses to be called by, shown in place of the legal name
-wherever the app names them.
+wherever the app names them. Kept as typed, while the legal names are saved in
+title case.
 _Avoid_: nickname, alias, preferred name
 
 **`incompletePatient`** — ui: "Datos incompletos"

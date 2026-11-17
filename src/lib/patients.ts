@@ -2,14 +2,19 @@ import * as z from "zod";
 
 import { appointmentStatusLabels, cancellerLabels } from "#/lib/appointment-statuses.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
+import { toPersonLastName, toPersonName } from "#/lib/person-names.ts";
 import { formatPhone, parsePhone } from "#/lib/phones.ts";
 import { formatDateTime, formatLocalDate } from "#/lib/dates.ts";
+import { today } from "#/lib/schedules.ts";
 
 export const documentTypes = ["dni", "passport", "other"] as const;
 
 export type DocumentType = (typeof documentTypes)[number];
 
-const name = z.string().trim().min(1).max(200);
+const nameText = z.string().trim().min(1).max(200);
+
+/** A first name, or a guardian's name. */
+export const personName = nameText.transform(toPersonName);
 
 /** An optional text field: an empty one is no value. */
 function optionalText(max: number) {
@@ -32,8 +37,8 @@ export const phoneSchema = z.string().transform((value, context) => {
 });
 
 const patientFields = z.object({
-  firstName: name,
-  lastName: name,
+  firstName: personName,
+  lastName: nameText.transform(toPersonLastName),
   phone: phoneSchema,
   chosenName: optionalText(200),
   documentType: z
@@ -45,7 +50,19 @@ const patientFields = z.object({
     .date()
     .nullish()
     .or(z.literal(""))
-    .transform((value) => (value ? value : null)),
+    .transform((value, context) => {
+      if (!value) {
+        return null;
+      }
+      // The organization's offices are all in Argentina, so its date is the
+      // default zone's, on the browser's clock and on the server's.
+      const problem = birthDateProblem(value, today(defaultTimeZone));
+      if (problem) {
+        context.addIssue({ code: "custom", message: problem });
+        return z.NEVER;
+      }
+      return value;
+    }),
   email: z
     .email()
     .max(200)
@@ -152,6 +169,22 @@ export function isMinor(birthDate: string | null, today: string): boolean {
   // comes of age on 1 March of a year with no 29th.
   const coming = `${String(Number(birthDate.slice(0, 4)) + 18).padStart(4, "0")}${birthDate.slice(4)}`;
   return today < coming;
+}
+
+/**
+ * Why `birthDate` cannot be a birth date on `today`, both local dates: it is
+ * after today, or more than 100 years before it.
+ */
+function birthDateProblem(
+  birthDate: string,
+  today: string,
+): "futureBirthDate" | "birthDateTooOld" | null {
+  if (birthDate > today) {
+    return "futureBirthDate";
+  }
+  // Zero-padded dates compare as strings, as in `isMinor`.
+  const oldest = `${String(Number(today.slice(0, 4)) - 100).padStart(4, "0")}${today.slice(4)}`;
+  return birthDate < oldest ? "birthDateTooOld" : null;
 }
 
 /** The badges a patient shows by their name. */

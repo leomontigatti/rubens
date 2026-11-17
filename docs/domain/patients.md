@@ -16,9 +16,20 @@ filled in at the first visit; the birth date is what completes the record,
 because it says whether the patient is a minor. Forcing every field up front
 only gets invented data.
 
+A patient's first and last names, and a guardian's name, are saved in Spanish
+title case whatever case they were typed in, so a name reads the same on every
+screen and message: `juan DE LA cruz` is saved as `Juan de la Cruz`. The particles
+`de`, `del`, `la`, `las`, `los` and `y` stay in lower case inside a name, and so
+does a last name's leading one (`de la Cruz`); a part after a hyphen or an
+apostrophe is capitalised (`Ana-Lía`, `O'Brien`).
+
 A patient may have a chosen name, which the app shows everywhere in place of the
-legal name (Ley 26.743). The legal name stays on documents and on the
-clinical-record copy.
+legal name (Ley 26.743). It is kept as typed, since it is the person's own choice.
+The legal name stays on documents and on the clinical-record copy.
+
+A birth date is neither after today nor more than 100 years before it, today
+being the organization's date. A patient saved earlier with a date outside those
+bounds keeps it until the next save of their record, which asks for a valid one.
 
 Phones are typed the local way ("0351 15…", "351…") and stored in international
 format, the one WhatsApp needs. A number that cannot be read as a valid Argentine

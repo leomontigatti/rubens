@@ -1,9 +1,9 @@
 import * as z from "zod";
 
-import { documentFields, normalizeDocument, phoneSchema } from "#/lib/patients.ts";
+import { documentFields, normalizeDocument, personName, phoneSchema } from "#/lib/patients.ts";
 
 const guardianFields = z.object({
-  name: z.string().trim().min(1).max(200),
+  name: personName,
   relationship: z.string().trim().min(1).max(100),
   ...documentFields,
   phone: phoneSchema,
