@@ -111,13 +111,19 @@ export function splitPhone(phone: string): PhoneEntry {
 /** An area code without its `0` (`11`, or starting with 2 or 3) and the number, 10 digits in all. */
 const argentineNumber = /^(?:11\d{8}|[23]\d{9})$/;
 
-/** An E.164 phone as staff read and dial it: Argentine numbers the local way. */
+/**
+ * An E.164 phone as people read it: an Argentine number as the 10 digits its
+ * phone field takes, spaced the local way with no `0` and no `15`; any other
+ * with its country prefix.
+ */
 export function formatPhone(phone: string): string {
   const parsed = parsePhoneNumberFromString(phone);
-  if (!parsed) {
-    return phone;
+  if (parsed?.country !== defaultRegion) {
+    return parsed ? parsed.formatInternational() : phone;
   }
-  return parsed.country === defaultRegion ? parsed.formatNational() : parsed.formatInternational();
+  const digits = splitPhone(phone).number;
+  const landline = parsePhoneNumberFromString(`+54${digits}`);
+  return landline ? landline.formatNational().replace(/^0/, "") : digits;
 }
 
 /**

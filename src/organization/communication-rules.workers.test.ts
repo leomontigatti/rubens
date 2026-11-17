@@ -108,6 +108,33 @@ describe("the organization's communication rules", () => {
     expect(await shownRules()).toMatchObject({ phone: "+5493515551234" });
   });
 
+  it("save a phone field's 10 Argentine digits as a mobile, and an empty one as none", async () => {
+    expectOk(
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: { country: "AR", number: "3515551234" },
+      }),
+    );
+    expect(await shownRules()).toMatchObject({ phone: "+5493515551234" });
+
+    expectOk(
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: { country: "AR", number: "" },
+      }),
+    );
+    expect(await shownRules()).toMatchObject({ phone: "" });
+  });
+
+  it("refuse a phone field's entry the way a patient's phone is refused", async () => {
+    expect(
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: { country: "AR", number: "03515551234" },
+      }),
+    ).toEqual({ ok: false, reason: "wrongArgentineNumber" });
+  });
+
   it("refuse a phone that is not one, saving nothing", async () => {
     expect(
       await organization.saveCommunicationRules(adminCaller, { ...usted, phone: "15 555-1234" }),

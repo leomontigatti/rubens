@@ -37,12 +37,12 @@ describe("parsePhone", () => {
 });
 
 describe("formatPhone", () => {
-  it("shows an Argentine mobile the local way, with its area code and 15", () => {
-    expect(formatPhone("+5493515551234")).toBe("0351 15-555-1234");
-  });
-
-  it("shows an Argentine landline the local way", () => {
-    expect(formatPhone("+541155551234")).toBe("011 5555-1234");
+  it.each([
+    ["+5493515551234", "351 555-1234"],
+    ["+543515551234", "351 555-1234"],
+    ["+5491155551234", "11 5555-1234"],
+  ])("shows the Argentine number %s as its 10 digits, without a 0 or a 15", (phone, shown) => {
+    expect(formatPhone(phone)).toBe(shown);
   });
 
   it("shows a foreign number with its country prefix", () => {

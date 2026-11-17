@@ -21,7 +21,8 @@ function optionalText(max: number) {
     .transform((value) => (value ? value : null));
 }
 
-const phoneEntrySchema = z.object({ country: z.string(), number: z.string() });
+/** What a phone field holds: a country and the national number typed for it. */
+export const phoneEntrySchema = z.object({ country: z.string(), number: z.string() });
 
 /**
  * A phone read into E.164: a phone field's entry, or a phone typed as one text

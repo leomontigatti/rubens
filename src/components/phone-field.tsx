@@ -1,3 +1,6 @@
+import { useRef } from "react";
+import type { RefObject } from "react";
+
 import { FieldHint, joinIds, useFieldContext } from "#/components/form-fields.tsx";
 import { placeAttributes } from "#/components/field-size.ts";
 import type { FieldPlace } from "#/components/field-size.ts";
@@ -35,8 +38,11 @@ export const phoneMessages: Record<PhoneEntryRefusal, string> = {
 
 const argentina = "AR";
 
-export function PhoneField(props: FieldPlace & { label: string; required?: boolean }) {
+export function PhoneField(
+  props: FieldPlace & { label: string; required?: boolean; hint?: string },
+) {
   const field = useFieldContext<PhoneEntry>();
+  const numberInput = useRef<HTMLInputElement>(null);
   const entry = field.state.value;
   const { problem, errorId, invalid } = useFieldProblem(field.name);
   const hintId = `${field.name}-hint`;
@@ -48,8 +54,10 @@ export function PhoneField(props: FieldPlace & { label: string; required?: boole
         <CountryPicker
           code={entry.country}
           onChange={(country) => field.handleChange({ ...entry, country })}
+          numberInput={numberInput}
         />
         <Input
+          ref={numberInput}
           id={field.name}
           name={field.name}
           type="tel"
@@ -65,27 +73,56 @@ export function PhoneField(props: FieldPlace & { label: string; required?: boole
         />
       </ButtonGroup>
       <FieldHint id={hintId}>
-        {argentine
-          ? "Código de área sin 0 y número sin 15."
-          : "Solo números, sin el código del país."}
+        {[
+          props.hint,
+          argentine
+            ? "Código de área y número, solo números."
+            : "Solo números, sin el código del país.",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       </FieldHint>
       <FieldProblemText id={errorId}>{problem}</FieldProblemText>
     </Field>
   );
 }
 
-/** The country, shown as its flag and dial code, picked by typing its name or code. */
-function CountryPicker(props: { code: string; onChange: (code: string) => void }) {
+/**
+ * The country, shown as its flag and dial code, picked by typing its name or
+ * code. Picking one moves on to the number; closing without a pick does not.
+ */
+function CountryPicker(props: {
+  code: string;
+  onChange: (code: string) => void;
+  numberInput: RefObject<HTMLInputElement | null>;
+}) {
   const picked = phoneCountries.find((country) => country.code === props.code) ?? null;
+  const justPicked = useRef(false);
   return (
     <Combobox
       items={phoneCountries}
       value={picked}
-      onValueChange={(country: PhoneCountry | null) => country && props.onChange(country.code)}
+      onValueChange={(country: PhoneCountry | null) => {
+        if (country) {
+          justPicked.current = true;
+          props.onChange(country.code);
+        }
+      }}
       itemToStringLabel={(country: PhoneCountry) => `${country.name} ${country.dialCode}`}
       isItemEqualToValue={(country, other) => country.code === other.code}
       filter={countryMatches}
       autoHighlight
+      onOpenChange={(open) => {
+        if (open) {
+          justPicked.current = false;
+        }
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open && justPicked.current) {
+          justPicked.current = false;
+          props.numberInput.current?.focus();
+        }
+      }}
     >
       <ComboboxTrigger
         render={<Button variant="outline" />}

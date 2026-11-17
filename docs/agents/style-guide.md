@@ -186,9 +186,11 @@ carried over from en-escena.
 - **A person's phone is the form kit's `PhoneField`**, never a text field: the country, shown as
   its flag and dial code (`🇦🇷 +54`, Argentina by default), picked from a list searched by name
   or dial code, beside the national number, digits only. For Argentina the number is 10 digits,
-  the area code without its `0` and the number without its `15`, with the placeholder
-  `3515551234` and the hint `Código de área sin 0 y número sin 15.`; another country's is checked
-  for that country. The form holds the country and the number apart, and `phoneSchema`
+  the area code and the number, with the placeholder `3515551234` and the hint
+  `Código de área y número, solo números.`; another country's is checked for that country. Only
+  the refusal of a wrong Argentine number names the `0` and the `15`; everywhere else,
+  `formatPhone` (`src/lib/phones.ts`) shows the 10 digits (`351 555-1234`). Picking a country
+  moves the focus to the number. The form holds the country and the number apart, and `phoneSchema`
   (`src/lib/patients.ts`) reads them into E.164.
 - **A form's fields sit in rows of up to twelve columns, by the form's own width** (`FormGrid`,
   `src/components/app-form.tsx`, which `FormPage` holds its fields in, a container query rather

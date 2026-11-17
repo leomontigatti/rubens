@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import { phoneMessages } from "#/components/phone-field.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   formsOfAddress,
@@ -10,7 +11,7 @@ import {
   parseCommunicationRules,
 } from "#/lib/communication-rules.ts";
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
-import { formatPhone } from "#/lib/phones.ts";
+import { splitPhone } from "#/lib/phones.ts";
 import { getWhatsappSettings, saveCommunicationRules } from "#/server/whatsapp.functions.ts";
 
 import { formOfAddressLabels } from "#/routes/_app/whatsapp/configuracion/-communication-rules.tsx";
@@ -29,12 +30,14 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   toneTooLong,
-  invalidPhone: "El teléfono no es válido. Si es del exterior, empezá con + y el código del país.",
-  missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.",
+  ...phoneMessages,
+  missingAreaCode: "Ingresá el teléfono con su código de área, por ejemplo 3515551234.",
 };
 
 const refusalFields: Partial<Record<keyof typeof refusalMessages, string>> = {
   toneTooLong: "tone",
+  notDigits: "phone",
+  wrongArgentineNumber: "phone",
   invalidPhone: "phone",
   missingAreaCode: "phone",
 };
@@ -47,7 +50,7 @@ function EditCommunicationRules() {
   return <RulesForm initial={settings.communicationRules} />;
 }
 
-function RulesForm(props: { initial: CommunicationRulesInput }) {
+function RulesForm(props: { initial: Omit<CommunicationRulesInput, "phone"> & { phone: string } }) {
   const { initial } = props;
   const page = useFormPage({ to: "/whatsapp/configuracion" });
   const action = useFormAction(refusalMessages, refusalFields);
@@ -56,7 +59,7 @@ function RulesForm(props: { initial: CommunicationRulesInput }) {
     defaultValues: {
       formOfAddress: initial.formOfAddress as string,
       tone: initial.tone,
-      phone: initial.phone && formatPhone(initial.phone),
+      phone: splitPhone(initial.phone),
     },
     onSubmit: async ({ value }) => {
       const parsed = parseCommunicationRules(value);
@@ -100,9 +103,8 @@ function RulesForm(props: { initial: CommunicationRulesInput }) {
       </form.AppField>
       <form.AppField name="phone">
         {(field) => (
-          <field.TextField
+          <field.PhoneField
             label="Teléfono para urgencias"
-            type="tel"
             hint="El teléfono de la organización que el asistente da, junto al 107, cuando un mensaje parece una urgencia. Sin teléfono, da solo el 107."
           />
         )}

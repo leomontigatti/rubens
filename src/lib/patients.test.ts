@@ -21,7 +21,7 @@ describe("historyChanges", () => {
         after: { phone: "+541155551234", birthDate: "2015-06-01", whatsappConsent: false },
       }),
     ).toEqual([
-      { field: "Teléfono", before: "0351 15-555-1234", after: "011 5555-1234" },
+      { field: "Teléfono", before: "351 555-1234", after: "11 5555-1234" },
       { field: "Fecha de nacimiento", before: "—", after: "01/06/2015" },
       { field: "Acepta WhatsApp", before: "Sí", after: "No" },
     ]);
@@ -74,7 +74,7 @@ describe("historyChanges", () => {
     ).toEqual([
       { field: "Nombre", before: "—", after: "Laura Gómez" },
       { field: "Relación", before: "—", after: "Madre" },
-      { field: "Teléfono", before: "—", after: "0351 412-3456" },
+      { field: "Teléfono", before: "—", after: "351 412-3456" },
     ]);
   });
 

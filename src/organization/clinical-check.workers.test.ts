@@ -296,7 +296,7 @@ describe("a held reply", () => {
 describe("an emergency", () => {
   /** What the patient is told, as `vos`, with the organization's phone. */
   const emergencyText =
-    "Si es una urgencia, llamá ahora al 107 (emergencias). También podés llamarnos al 0351 15-555-1234. Ya le pasamos tu mensaje a una persona del equipo.";
+    "Si es una urgencia, llamá ahora al 107 (emergencias). También podés llamarnos al 351 555-1234. Ya le pasamos tu mensaje a una persona del equipo.";
 
   function judgedAnEmergency() {
     scriptedModel.script((one) => {

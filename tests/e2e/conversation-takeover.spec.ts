@@ -13,7 +13,7 @@ const unknownNumber = seededIncomingMessages.at(-1)!.from;
 
 test("takes a conversation over, replies under one's name, and gives it back", async ({ page }) => {
   await page.goto("/conversaciones");
-  // The number as the inbox writes it, such as `0351 15-499-9999`.
+  // The number as the inbox writes it, such as `351 499-9999`.
   const lastDigits = unknownNumber.replace(/\D/gu, "").slice(-4);
   await page.getByRole("link", { name: new RegExp(lastDigits, "u") }).click();
 
