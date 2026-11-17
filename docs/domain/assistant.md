@@ -58,7 +58,9 @@ Patients write in their own words. The assistant's replies carry no buttons; onl
 template's quick replies do, and a tap the code does not settle reaches the
 assistant as the patient's words ([messages.md](./messages.md#to-patients)). A voice note is
 transcribed and read like text, and the inbox shows its transcript as the
-patient's words; one that cannot be understood gets a request to write it, and a
+patient's words; one that cannot be understood, including one Whisper heard only
+as a video's credits (`Subtítulos realizados por la comunidad de Amara.org`), gets a
+request to write it, and a
 second misunderstanding in a row is handed off. Transcription is Whisper on
 Workers AI, chosen by the evaluation set on Argentine Spanish. The assistant
 replies in text only, never with a voice note.
