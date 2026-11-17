@@ -14,6 +14,7 @@ const hasWords = (text: string) => /[\p{L}\p{N}]/u.test(text);
 
 /** `transcript` without Whisper's credit lines, trimmed: empty when nothing the patient said is left. */
 export function withoutWhisperCredits(transcript: string) {
-  const left = transcript.replace(amaraCredit, "").trim();
+  // Composed, so an accent written as its own mark still matches `[ií]`.
+  const left = transcript.normalize("NFC").replace(amaraCredit, "").trim();
   return hasWords(left.replace(videoCredit, "")) ? left : "";
 }

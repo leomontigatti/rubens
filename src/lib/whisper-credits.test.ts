@@ -15,6 +15,7 @@ describe("a voice note's transcript, without Whisper's credit lines", () => {
       "Gracias por ver el vídeo\nSuscríbete al canal",
       "Gracias por ver el vídeo, suscríbete al canal",
       "Subtitulado por la comunidad de Amara.org",
+      "Subtítulos realizados por la comunidad de Amara.org".normalize("NFD"),
     ]) {
       expect(withoutWhisperCredits(credits), credits).toBe("");
     }
