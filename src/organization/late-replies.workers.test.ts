@@ -181,7 +181,7 @@ async function messagesGoToGuardian() {
       patientId,
       name: "Laura Gómez",
       relationship: "Madre",
-      phone: "+5491155559999",
+      phone: { country: "AR", number: "1155559999" },
     }),
   );
   expectOk(

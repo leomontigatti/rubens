@@ -182,7 +182,16 @@ carried over from en-escena.
   `ui/no-bare-label`). The label sits above the input. A placeholder shows an example, never the
   label.
 - **A rule the user needs while typing is a hint under the field**: a `FieldDescription`, with
-  the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/patient-form.tsx`).
+  the input's `aria-describedby` pointing at it: `PhoneField` (`src/components/phone-field.tsx`).
+- **A person's phone is the form kit's `PhoneField`**, never a text field: the country, shown as
+  its flag and dial code (`🇦🇷 +54`, Argentina by default), picked from a list searched by name
+  or dial code, beside the national number, digits only. For Argentina the number is 10 digits,
+  the area code without its `0` and the number without its `15`, with the placeholder
+  `3515551234` and the hint `Código de área sin 0 y número sin 15.`; another country's is checked
+  for that country. Only the hint and the refusal of a wrong Argentine number name the `0` and the
+  `15`; everywhere else, `formatPhone` (`src/lib/phones.ts`) shows the 10 digits (`351 555-1234`). Picking a country
+  moves the focus to the number. The form holds the country and the number apart, and `phoneSchema`
+  (`src/lib/patients.ts`) reads them into E.164.
 - **A form's fields sit in rows of up to twelve columns, by the form's own width** (`FormGrid`,
   `src/components/app-form.tsx`, which `FormPage` holds its fields in, a container query rather
   than the window's breakpoints): one column below 448px, as on a phone; six from 448px, where a
@@ -228,7 +237,7 @@ carried over from en-escena.
   message is the form's own Spanish copy, never Zod's. The server parses the same schema again.
 - **An empty required field and a wrong one get different messages**: `Ingresá el nombre.` for
   the first, what is wrong and an example for the second
-  (`Ingresá el teléfono con su código de área, por ejemplo 0351 15 555-1234.`).
+  (`Ingresá 10 números: el código de área sin 0 y el número sin 15, por ejemplo 3515551234.`).
 - **A refusal keeps everything the user typed**, the fields that passed included.
 - **One record picked from a server search is the form kit's `ComboboxField`**
   (`src/components/app-form.tsx`), as booking's patient picker: it searches as [Tables](#tables)

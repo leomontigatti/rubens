@@ -258,7 +258,7 @@ function matching(database: Database, query: string): SQL | undefined {
     or(
       words.length > 0 ? exists(byName) : undefined,
       /^\d+$/.test(digits) ? like(conversation.phone, `%${digits}%`) : undefined,
-      phone.ok ? eq(conversation.phone, phone.phone) : undefined,
+      phone ? eq(conversation.phone, phone) : undefined,
     ) ?? sql`false`
   );
 }

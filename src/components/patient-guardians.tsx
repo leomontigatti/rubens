@@ -5,11 +5,7 @@ import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import {
-  documentTypeOptions,
-  patientMessage,
-  phoneFieldProps,
-} from "#/components/patient-form.tsx";
+import { documentTypeOptions, patientMessage } from "#/components/patient-form.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -18,7 +14,7 @@ import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.
 import type { GuardianInput } from "#/lib/guardians.ts";
 import { documentLabel } from "#/lib/patients.ts";
 import type { DocumentType } from "#/lib/patients.ts";
-import { formatPhone } from "#/lib/phones.ts";
+import { formatPhone, splitPhone } from "#/lib/phones.ts";
 import { changeMessageContact, deleteGuardian } from "#/server/guardians.functions.ts";
 import type { Guardian } from "#/organization/guardians.ts";
 import type { Patient } from "#/organization/patients.ts";
@@ -160,7 +156,8 @@ interface GuardianFormProps {
   patientId: string;
   title: string;
   description: string;
-  initial: GuardianFields;
+  /** The guardian's fields, the phone as stored (E.164), or empty for a new guardian. */
+  initial: Omit<GuardianFields, "phone"> & { phone: string };
   submitLabel: string;
   creates?: boolean;
   /** The schema the server function checks the input with, which the form checks first. */
@@ -170,10 +167,10 @@ interface GuardianFormProps {
   onSubmit: (fields: GuardianFields) => Promise<ActionResult>;
 }
 
-const guardianValues = (initial: GuardianFields) => ({
+const guardianValues = (initial: GuardianFormProps["initial"]) => ({
   name: initial.name,
   relationship: initial.relationship,
-  phone: initial.phone,
+  phone: splitPhone(initial.phone),
   documentType: (initial.documentType ?? "") as string,
   documentNumber: initial.documentNumber ?? "",
   email: initial.email ?? "",
@@ -220,7 +217,7 @@ export function GuardianForm(props: GuardianFormProps) {
         )}
       </form.AppField>
       <form.AppField name="phone">
-        {(field) => <field.TextField {...phoneFieldProps} />}
+        {(field) => <field.PhoneField label="Teléfono" required />}
       </form.AppField>
       <form.AppField name="documentType">
         {(field) => (

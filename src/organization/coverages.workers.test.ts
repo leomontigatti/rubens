@@ -22,7 +22,7 @@ async function patientWithInsurers() {
   const registered = await organization.registerPatient(receptionist, {
     firstName: "Juan",
     lastName: "Pérez",
-    phone: "0351 15 555-1234",
+    phone: { country: "AR", number: "3515551234" },
   });
   if (!registered.ok) {
     throw new Error(`registerPatient refused: ${registered.reason}`);

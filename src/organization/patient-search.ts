@@ -1,7 +1,7 @@
-import { and, eq, like, or, sql } from "drizzle-orm";
+import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import * as z from "zod";
 
-import { parsePhone } from "#/lib/phones.ts";
+import { parsePhone, phoneSpellings } from "#/lib/phones.ts";
 import {
   matchFragments,
   normalizeText,
@@ -32,16 +32,17 @@ export type SearchOptions = z.input<typeof searchOptionsSchema>;
 /**
  * What a typed query looks for: its words, matched against the names; and,
  * when it is only digits and separators, those digits and the phone it reads
- * as.
+ * as, in both its Argentine spellings: `3515551234` reads as a landline, and
+ * the phone field stores those digits as a mobile.
  */
 function searchTerms(query: string) {
   const words = wordsOf(normalizeText(query));
   const digits = query.replace(/[\s.()+-]/g, "");
   if (!/^\d+$/.test(digits)) {
-    return { words, digits: null, phone: null };
+    return { words, digits: null, phones: [] };
   }
   const phone = parsePhone(query);
-  return { words, digits, phone: phone.ok ? phone.phone : null };
+  return { words, digits, phones: phone ? phoneSpellings(phone) : [] };
 }
 
 type SearchTerms = ReturnType<typeof searchTerms>;
@@ -49,12 +50,12 @@ type SearchTerms = ReturnType<typeof searchTerms>;
 /** How a patient's document or phone matches the query's digits: wholly, in part, or not. */
 function digitsMatch(
   row: { documentNumber: string | null; phone: string },
-  { digits, phone }: SearchTerms,
+  { digits, phones }: SearchTerms,
 ): "exact" | "partial" | null {
   if (digits === null) {
     return null;
   }
-  if (row.documentNumber === digits || row.phone === (phone ?? digits)) {
+  if (row.documentNumber === digits || phones.includes(row.phone)) {
     return "exact";
   }
   return row.documentNumber?.includes(digits) || row.phone.includes(digits) ? "partial" : null;
@@ -77,7 +78,7 @@ export function searchPatients(
     return { ok: false, reason: "invalidInput" };
   }
   const terms = searchTerms(parsed.data.query);
-  const { words, digits, phone } = terms;
+  const { words, digits, phones } = terms;
   if (words.length === 0) {
     return { ok: true, patients: [], more: false };
   }
@@ -92,7 +93,7 @@ export function searchPatients(
     ? or(
         like(patient.documentNumber, `%${digits}%`),
         like(patient.phone, `%${digits}%`),
-        phone ? eq(patient.phone, phone) : undefined,
+        phones.length > 0 ? inArray(patient.phone, phones) : undefined,
       )
     : undefined;
   const scored = database

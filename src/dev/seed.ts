@@ -1,5 +1,4 @@
 import { defaultTimeZone } from "#/lib/offices.ts";
-import { parsePhone } from "#/lib/phones.ts";
 import { today } from "#/lib/schedules.ts";
 
 import type { Organization } from "#/organization/organization.ts";
@@ -99,7 +98,7 @@ export async function seedDevOrganization(
     await organization.storeWhatsappEvents({
       messages: devIncomingMessages.map((message, index) => ({
         whatsappId: `wamid.dev-${index}`,
-        from: accepted("parsePhone", parsePhone(message.from)).phone,
+        from: message.from,
         sentAt: Date.now() - message.minutesAgo * 60_000,
         type: "text",
         text: message.text,

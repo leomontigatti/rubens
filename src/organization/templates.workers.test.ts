@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { emptyPhoneEntry } from "#/lib/phones.ts";
 import { variablesIn } from "#/lib/template-filling.ts";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -126,7 +127,7 @@ describe("the drafts every organization starts with", () => {
 });
 
 describe("the drafts never sent, when an admin changes Trato", () => {
-  const usted = { formOfAddress: "usted", tone: "", phone: "" } as const;
+  const usted = { formOfAddress: "usted", tone: "", phone: emptyPhoneEntry } as const;
 
   /** Each template's draft by its name. */
   async function draftsByName() {

@@ -5,6 +5,7 @@ import type { Role } from "#/lib/access.ts";
 import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/appointments.ts";
 import type { ScheduleInput } from "#/lib/schedules.ts";
 import type { Timing } from "#/lib/template-timing.ts";
+import { splitPhone } from "#/lib/phones.ts";
 import type { AffectsAppointments, Notice } from "#/lib/time-ranges.ts";
 
 import type { AccountMetadata, Accounts, CreateUserResult } from "#/organization/accounts.ts";
@@ -230,7 +231,7 @@ export async function setUpBookingWorld() {
     const result = await organization.registerPatient(adminCaller, {
       firstName,
       lastName: "Paz",
-      phone,
+      phone: splitPhone(phone),
     });
     if (!result.ok) {
       throw new Error(`registerPatient refused: ${result.reason}`);
@@ -249,7 +250,7 @@ export async function setUpBookingWorld() {
         await organization.registerPatient(adminCaller, {
           firstName: `Paciente ${added}`,
           lastName: "Paz",
-          phone,
+          phone: splitPhone(phone),
           confirmDuplicates: true,
         }),
       );

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { maxToneLength } from "#/lib/communication-rules.ts";
+import { emptyPhoneEntry } from "#/lib/phones.ts";
 
 import {
   addMember,
@@ -17,8 +18,11 @@ let organization: OrganizationStub;
 const usted = {
   formOfAddress: "usted",
   tone: "Cordial y breve. Tratar a cada paciente por su nombre.",
-  phone: "",
+  phone: emptyPhoneEntry,
 } as const;
+
+/** `usted` as the settings show it once saved: no phone. */
+const savedUsted = { ...usted, phone: "" };
 
 /** The rules the WhatsApp settings show. */
 async function shownRules() {
@@ -42,11 +46,11 @@ describe("the organization's communication rules", () => {
   it("are saved by an admin, raising the version by one each save", async () => {
     expectOk(await organization.saveCommunicationRules(adminCaller, usted));
 
-    expect(await shownRules()).toEqual({ ...usted, version: 1 });
+    expect(await shownRules()).toEqual({ ...savedUsted, version: 1 });
 
     expectOk(await organization.saveCommunicationRules(adminCaller, { ...usted, tone: "Cálido." }));
 
-    expect(await shownRules()).toEqual({ ...usted, tone: "Cálido.", version: 2 });
+    expect(await shownRules()).toEqual({ ...savedUsted, tone: "Cálido.", version: 2 });
   });
 
   it("are saved without the spaces around each text", async () => {
@@ -57,7 +61,7 @@ describe("the organization's communication rules", () => {
       }),
     );
 
-    expect(await shownRules()).toEqual({ ...usted, version: 1 });
+    expect(await shownRules()).toEqual({ ...savedUsted, version: 1 });
   });
 
   it("raise the version and audit a save even when it changes nothing", async () => {
@@ -97,23 +101,36 @@ describe("the organization's communication rules", () => {
     ]);
   });
 
-  it("save the organization's phone as E.164, typed the local way", async () => {
+  it("save a phone field's 10 Argentine digits as a mobile, and an empty one as none", async () => {
     expectOk(
       await organization.saveCommunicationRules(adminCaller, {
         ...usted,
-        phone: "0351 15 555-1234",
+        phone: { country: "AR", number: "3515551234" },
       }),
     );
-
     expect(await shownRules()).toMatchObject({ phone: "+5493515551234" });
+
+    expectOk(
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: { country: "AR", number: "" },
+      }),
+    );
+    expect(await shownRules()).toMatchObject({ phone: "" });
   });
 
-  it("refuse a phone that is not one, saving nothing", async () => {
+  it("refuse a phone the way a patient's phone is refused, saving nothing", async () => {
     expect(
-      await organization.saveCommunicationRules(adminCaller, { ...usted, phone: "15 555-1234" }),
-    ).toEqual({ ok: false, reason: "missingAreaCode" });
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: { country: "AR", number: "03515551234" },
+      }),
+    ).toEqual({ ok: false, reason: "wrongArgentineNumber" });
     expect(
-      await organization.saveCommunicationRules(adminCaller, { ...usted, phone: "12" }),
+      await organization.saveCommunicationRules(adminCaller, {
+        ...usted,
+        phone: { country: "ES", number: "12" },
+      }),
     ).toEqual({ ok: false, reason: "invalidPhone" });
     expect((await shownRules()).version).toBe(0);
   });

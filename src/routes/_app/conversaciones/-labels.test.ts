@@ -22,7 +22,7 @@ describe("who a conversation is with", () => {
   });
 
   it("falls back to the number, written the local way, when it stands for no patient", () => {
-    expect(conversationName({ phone: "+5493515551234", patients: [] })).toBe("0351 15-555-1234");
+    expect(conversationName({ phone: "+5493515551234", patients: [] })).toBe("351 555-1234");
   });
 
   it("names no one in the list's contact when the number stands for no patient", () => {

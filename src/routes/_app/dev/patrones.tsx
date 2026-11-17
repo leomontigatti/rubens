@@ -36,6 +36,7 @@ import {
   WhatsappDay,
 } from "#/components/whatsapp-bubble.tsx";
 import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
+import { emptyPhoneEntry } from "#/lib/phones.ts";
 import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
 
 // Each pattern of docs/agents/style-guide.md, drawn once, so an agent or a
@@ -257,7 +258,7 @@ function PatternFieldSizes() {
     defaultValues: {
       firstName: "",
       lastName: "",
-      phone: "",
+      phone: emptyPhoneEntry,
       email: "",
       address: "",
       documentType: "",
@@ -274,7 +275,7 @@ function PatternFieldSizes() {
         {(field) => <field.TextField label="Apellido (un cuarto)" />}
       </form.AppField>
       <form.AppField name="phone">
-        {(field) => <field.TextField label="Teléfono (un cuarto)" type="tel" />}
+        {(field) => <field.PhoneField label="Teléfono (un cuarto)" />}
       </form.AppField>
       <form.AppField name="email">
         {(field) => <field.TextField label="Correo electrónico (la mitad)" size="half" startsRow />}
@@ -397,10 +398,10 @@ function Patterns() {
       </Pattern>
       <Pattern title="Campo con ayuda">
         <Field>
-          <FieldLabel htmlFor="pattern-phone">Teléfono</FieldLabel>
-          <Input id="pattern-phone" type="tel" aria-describedby="pattern-phone-hint" />
-          <FieldDescription id="pattern-phone-hint">
-            Con código de área, como se dice: 0351 15 555-1234.
+          <FieldLabel htmlFor="pattern-relationship">Relación</FieldLabel>
+          <Input id="pattern-relationship" aria-describedby="pattern-relationship-hint" />
+          <FieldDescription id="pattern-relationship-hint">
+            Por ejemplo: madre, padre, tutora.
           </FieldDescription>
         </Field>
       </Pattern>
