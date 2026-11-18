@@ -1,7 +1,9 @@
 "use client";
 
-// Local edit: the screen-reader labels are in Spanish, the UI's language.
-// Keep them on a shadcn sync.
+// Local edits: the screen-reader labels are in Spanish, the UI's language, and
+// the `style` objects that set `--sidebar-width` and `--skeleton-width` carry no
+// `as React.CSSProperties`: `src/css-custom-properties.d.ts` types those keys, and
+// lint bans the cast. Keep both on a shadcn sync.
 
 import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
@@ -126,13 +128,11 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
+        style={{
+          "--sidebar-width": SIDEBAR_WIDTH,
+          "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+          ...style,
+        }}
         className={cn(
           "group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
           className,
@@ -184,11 +184,9 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={{
+            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+          }}
           side={side}
         >
           <SheetHeader className="sr-only">
@@ -600,11 +598,9 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={{
+          "--skeleton-width": width,
+        }}
       />
     </div>
   );
