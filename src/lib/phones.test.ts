@@ -96,9 +96,15 @@ describe("parsePhoneEntry", () => {
   it.each([
     ["ES", "12"],
     ["XX", "612345678"],
-    ["DE", "0034612345678"],
   ])("refuses a number of %s that cannot be valid there: %s", (country, number) => {
     expect(parsePhoneEntry({ country, number })).toEqual({ ok: false, reason: "invalidPhone" });
+  });
+
+  it("refuses a number typed with an exit code that dials another country than the one picked", () => {
+    expect(parsePhoneEntry({ country: "DE", number: "0034612345678" })).toEqual({
+      ok: false,
+      reason: "invalidPhone",
+    });
   });
 });
 

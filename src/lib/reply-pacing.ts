@@ -1,6 +1,6 @@
 // How the assistant's replies go out on WhatsApp (docs/domain/assistant.md § Pace).
 
-const maxReplyMessages = 3;
+export const maxReplyMessages = 3;
 
 /** The shortest typing pause, in milliseconds, for a message of a word or two. */
 const shortestPause = 1_500;

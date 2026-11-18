@@ -1,7 +1,7 @@
 // The fixed choices of the fields that take a few lengths of time: a medical
 // service's duration and reschedule cutoff, and the WhatsApp settings' hours.
-// A value stored before the field became a select, or saved another way, stays
-// as one more choice in its place, so opening the form never changes it.
+// A value stored before the field became a select, or saved another way, can
+// fall outside them.
 
 interface HourChoice {
   value: string;

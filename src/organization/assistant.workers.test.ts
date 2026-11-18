@@ -302,6 +302,8 @@ describe("the assistant's pace", () => {
         messages: [],
         statuses: [{ whatsappId: "wamid.assistant-reply", status: "delivered", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
     releaseSend();

@@ -47,6 +47,10 @@ export const durationMinutesSchema = z.int().min(1).max(720);
 
 const maxWindowDays = 31;
 
+function onceTheDatesParse(payload: z.core.ParsePayload): boolean {
+  return payload.issues.length === 0;
+}
+
 /**
  * What the free-times screen asks for: a practitioner, local dates in the
  * organization's default zone (both inclusive) and a duration in minutes.
@@ -67,8 +71,7 @@ export const availabilityQuerySchema = z
   .refine((query) => query.lastDate < shiftDate(query.firstDate, maxWindowDays), {
     path: ["lastDate"],
     message: "windowTooLong",
-    // Calendar arithmetic throws on a malformed date, so it waits for the dates to parse.
-    when: (payload) => payload.issues.length === 0,
+    when: onceTheDatesParse,
   });
 
 export type AvailabilityQuery = z.input<typeof availabilityQuerySchema>;

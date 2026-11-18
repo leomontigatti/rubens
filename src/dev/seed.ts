@@ -106,6 +106,8 @@ export async function seedDevOrganization(
       })),
       statuses: [],
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
   // A restriction Meta has since lifted: the admin's warning stays, and nothing is held.
@@ -115,6 +117,7 @@ export async function seedDevOrganization(
       messages: [],
       statuses: [],
       templateStatuses: [],
+      templateCategories: [],
       numberEvents: [
         { kind: "restricted", until: Date.now() + 24 * 60 * 60_000 },
         { kind: "unrestricted" },

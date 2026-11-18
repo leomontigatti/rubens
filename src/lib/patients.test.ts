@@ -199,8 +199,7 @@ describe("historyChanges", () => {
 describe("historyTitle", () => {
   it("names an appointment's entry by its time and practitioner (#173)", () => {
     const appointment = {
-      // Thursday 12 November 2026, 13:00 UTC: 10:00 in Buenos Aires.
-      startsAt: Date.UTC(2026, 10, 12, 13, 0),
+      startsAt: Date.parse("2026-11-12T10:00:00-03:00"),
       practitioner: "Juan Prueba",
       timeZone: "America/Argentina/Buenos_Aires",
     };
@@ -261,8 +260,7 @@ describe("patientInputSchema", () => {
 
   it("refuses a birth date after today in the organization's zone, not UTC's", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    // 23:00 on 16 November in Buenos Aires, already the 17th in UTC.
-    vi.setSystemTime(new Date("2026-11-17T02:00:00Z"));
+    vi.setSystemTime(new Date("2026-11-16T23:00:00-03:00"));
     expect(birthDateMessages("2026-11-16")).toEqual([]);
     expect(birthDateMessages("2026-11-17")).toEqual([
       { path: ["birthDate"], message: "futureBirthDate" },

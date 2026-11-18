@@ -523,6 +523,45 @@ describe("Meta's WhatsApp webhook", () => {
     ]);
   });
 
+  it("stores a template's move and the number's restriction that one call carries for one organization", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    await addPendingTemplate(organization, "594425479261598");
+    const changes = [
+      {
+        field: "template_category_update",
+        value: {
+          message_template_id: 594425479261598,
+          message_template_name: "confirmacion_turno_v1",
+          message_template_language: "es_AR",
+          previous_category: "UTILITY",
+          new_category: "MARKETING",
+        },
+      },
+      {
+        field: "account_update",
+        value: {
+          event: "ACCOUNT_RESTRICTION",
+          restriction_info: [
+            { restriction_type: "RESTRICTED_BIZ_INITIATED_MESSAGING", expiration: 4071330000 },
+          ],
+        },
+      },
+    ];
+    const body = JSON.stringify({
+      object: "whatsapp_business_account",
+      entry: [{ id: businessAccountId, time: 4071240000, changes }],
+    });
+
+    await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(await notificationsOf(organization)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "templateRecategorized", detail: "MARKETING" }),
+        expect.objectContaining({ kind: "numberRestricted", until: 4071330000 * 1000 }),
+      ]),
+    );
+  });
+
   it("reads the number's new messaging limit from the business's daily limit", async () => {
     const { organizationId, organization } = await setUpTestOrganization();
     await inStorage(organization, (database) =>

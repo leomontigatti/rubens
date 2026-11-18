@@ -339,6 +339,8 @@ describe("sending the booking confirmation", () => {
         ],
         statuses: [],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -360,6 +362,8 @@ describe("sending the booking confirmation", () => {
         messages: [],
         statuses: [{ whatsappId: "wamid.confirmation", status: "delivered", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
     release();
@@ -415,6 +419,8 @@ describe("sending the booking confirmation", () => {
         messages: [],
         statuses: [],
         templateStatuses: [{ metaId: "900000000000001", status: "paused", reason: null }],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -427,6 +433,8 @@ describe("sending the booking confirmation", () => {
         messages: [],
         statuses: [],
         templateStatuses: [{ metaId: "900000000000001", status: "approved", reason: null }],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
     expect(await runDurableObjectAlarm(world.organization)).toBe(true);

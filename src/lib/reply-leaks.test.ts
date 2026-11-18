@@ -74,14 +74,24 @@ describe("announcesHandoff", () => {
     "Listo, te lo paso para el martes 10:00.",
     "La Dra. Paz te va a atender en Sede Norte.",
     "Listo, confirmado el lunes.",
-    "Confirmado el lunes. Cuando llegues, te van a llamar por tu nombre.",
     "Te paso con gusto los horarios libres: martes 10:00.",
     "Te los paso así elegís: martes 10:00 o miércoles 11:30.",
-    "Ya estás anotada. Te va a llamar la doctora.",
     "Tengo martes 10:00 o miércoles 11:30, te los paso para que elijas.",
+  ])("finds nothing in a change or a proposal: %s", (reply) => {
+    expect(announcesHandoff(reply)).toBe(false);
+  });
+
+  it.each([
     "Listo, confirmado el lunes, no hace falta que te lo pase.",
     "Listo, confirmado el lunes. ¿Querés que se lo pase a recepción?",
-  ])("finds nothing in a change or a proposal: %s", (reply) => {
+  ])("finds nothing in an offer, whose unaccented pase is the subjunctive: %s", (reply) => {
+    expect(announcesHandoff(reply)).toBe(false);
+  });
+
+  it.each([
+    "Confirmado el lunes. Cuando llegues, te van a llamar por tu nombre.",
+    "Ya estás anotada. Te va a llamar la doctora.",
+  ])("finds nothing when the practitioner calls a waiting patient in: %s", (reply) => {
     expect(announcesHandoff(reply)).toBe(false);
   });
 

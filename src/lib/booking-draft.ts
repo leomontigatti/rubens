@@ -119,7 +119,6 @@ function isWholeDate(date: string): boolean {
   return z.iso.date().safeParse(date).success;
 }
 
-/** A time input's value once it is a whole `HH:MM`: `instantOf` would roll `25:00` into the next day. */
 function isWholeTime(time: string): boolean {
   return z.iso.time({ precision: -1 }).safeParse(time).success;
 }
@@ -185,11 +184,6 @@ export function keepsOfferedStarts(changedField: string): boolean {
   return !offeredStartsReadFor.has(changedField as keyof BookingValues);
 }
 
-/**
- * Whether the booking form shows the week of free times to pick from: always
- * on "Nuevo turno"; on a page opened from a cell, once its start was dropped
- * and no free times are offered in its place, so a start can still be picked.
- */
 export function showsWeekOfStarts(form: {
   fixed: boolean;
   start: PickedStart | null;

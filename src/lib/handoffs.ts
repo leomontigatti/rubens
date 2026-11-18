@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { conversationWindowMs } from "#/lib/conversation-window.ts";
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
@@ -69,8 +70,7 @@ export interface HandoffDetail {
 
 export const handoffStates = ["open", "closed"] as const;
 
-/** The most hours before the close a reminder can go: the window lasts 24. */
-export const maxReminderHours = 23;
+export const maxReminderHours = conversationWindowMs / (60 * 60_000) - 1;
 
 export const handoffReferenceSchema = z.object({ handoffId: z.uuid() });
 

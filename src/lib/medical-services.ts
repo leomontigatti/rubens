@@ -28,8 +28,6 @@ export const medicalServiceInputSchema = medicalServiceFields.extend({
   rescheduleCutoffHours: rescheduleCutoffHoursSchema.default(24),
 });
 
-// An edit names every template it sends, so a form from before they existed is
-// refused instead of clearing them.
 export const medicalServiceUpdateSchema = medicalServiceFields.extend({
   medicalServiceId: z.uuid(),
 });

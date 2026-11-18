@@ -2,16 +2,12 @@
 
 export const conversationWindowMs = 24 * 60 * 60_000;
 
-/**
- * When the window of a conversation whose patient last wrote at
- * `lastIncomingAt` closes, by Meta's time for that message; `null` when the
- * patient never wrote, so it never opened.
- */
-export function windowClosesAt(lastIncomingAt: number | null): number | null {
-  return lastIncomingAt === null ? null : lastIncomingAt + conversationWindowMs;
+/** `null` when the patient never wrote, so the window never opened. */
+export function windowClosesAt(lastIncomingSentAt: number | null): number | null {
+  return lastIncomingSentAt === null ? null : lastIncomingSentAt + conversationWindowMs;
 }
 
-export function isWindowOpen(lastIncomingAt: number | null, now: number): boolean {
-  const closesAt = windowClosesAt(lastIncomingAt);
+export function isWindowOpen(lastIncomingSentAt: number | null, now: number): boolean {
+  const closesAt = windowClosesAt(lastIncomingSentAt);
   return closesAt !== null && now < closesAt;
 }

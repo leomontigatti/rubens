@@ -183,6 +183,8 @@ export async function patientWrites(
     messages: [{ whatsappId, from, sentAt, type: "text", text, payload: "{}" }],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
   if (!stored.ok) {
     throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
@@ -211,6 +213,8 @@ export async function patientReacts(
     ],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
   if (!stored.ok) {
     throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
@@ -240,6 +244,8 @@ export async function patientTaps(
     ],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
   if (!stored.ok) {
     throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
@@ -260,6 +266,8 @@ export async function patientSends(
     ],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
   if (!stored.ok) {
     throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);
@@ -337,6 +345,8 @@ export async function patientSpeaks(
     messages: [{ whatsappId, from, sentAt, type: "audio", text: null, payload }],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
   if (!stored.ok) {
     throw new Error(`storeWhatsappEvents refused: ${stored.reason}`);

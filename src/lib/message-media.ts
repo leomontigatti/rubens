@@ -4,11 +4,7 @@ import * as z from "zod";
 // a file), read from the payload Meta's webhook stored with it
 // (docs/domain/assistant.md § Inbox).
 
-/**
- * How long Meta keeps a patient's media after it was sent: a webhook's media
- * id downloads for 7 days.
- */
-export const mediaKeptMs = 7 * 24 * 60 * 60_000;
+export const metaMediaRetentionMs = 7 * 24 * 60 * 60_000;
 
 const mediaKinds = ["audio", "image", "video", "document"] as const;
 
@@ -38,7 +34,6 @@ export function mediaIn(type: string, payload: string) {
   try {
     message = JSON.parse(payload);
   } catch (error) {
-    // A payload the object stored itself is JSON; anything else carries no media.
     if (error instanceof SyntaxError) {
       return null;
     }
@@ -64,7 +59,7 @@ export function messageMediaOf(message: {
   return {
     kind: media.kind,
     filename: media.filename,
-    availableUntil: message.sentAt + mediaKeptMs,
+    availableUntil: message.sentAt + metaMediaRetentionMs,
   };
 }
 

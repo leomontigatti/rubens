@@ -50,8 +50,6 @@ export function parsePhoneEntry(entry: PhoneEntry): PhoneResult {
     return { ok: false, reason: "invalidPhone" };
   }
   const parsed = parsePhoneNumberFromString(number, country);
-  // The country's own dial code: a number typed with an exit code, such as
-  // `0034…` under Germany, reads as the country it dials, not the one picked.
   return parsed?.isValid() && parsed.countryCallingCode === getCountryCallingCode(country)
     ? { ok: true, phone: parsed.number }
     : { ok: false, reason: "invalidPhone" };

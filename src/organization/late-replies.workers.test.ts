@@ -110,6 +110,8 @@ function reopenStatus(status: "approved" | "paused") {
     messages: [],
     statuses: [],
     templateStatuses: [{ metaId: "900000000000031", status, reason: null }],
+    templateCategories: [],
+    numberEvents: [],
   });
 }
 
@@ -122,6 +124,7 @@ function numberTurns(event: WhatsappNumberEvent) {
     messages: [],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
     numberEvents: [event],
   });
 }
@@ -170,6 +173,8 @@ async function reopenFailed() {
       messages: [],
       statuses: [{ whatsappId: sent!.whatsappId, status: "failed", at: Date.now() }],
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
 }

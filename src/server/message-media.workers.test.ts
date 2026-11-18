@@ -77,6 +77,8 @@ async function patientSends(type: string, body: Record<string, unknown>, daysAgo
       ],
       statuses: [],
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
   const [conversation] = expectOk(

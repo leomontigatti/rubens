@@ -279,6 +279,8 @@ describe("a person's reply", () => {
         messages: [],
         statuses: [{ whatsappId: sent!.whatsappId, status: "failed", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -316,6 +318,8 @@ describe("a person's reply", () => {
         messages: [],
         statuses: [{ whatsappId: sent!.whatsappId, status: "failed", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -349,6 +353,8 @@ describe("a person's reply", () => {
           at: Date.now(),
         })),
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -373,6 +379,8 @@ describe("a person's reply", () => {
         messages: [],
         statuses: [{ whatsappId: sent!.whatsappId, status: "failed", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -409,6 +417,8 @@ describe("a person's reply", () => {
           at: Date.now(),
         })),
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -455,6 +465,8 @@ describe("a person's reply", () => {
         messages: [],
         statuses: [{ whatsappId: "wamid.person-reply", status: "delivered", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
     release();
