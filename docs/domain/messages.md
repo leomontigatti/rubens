@@ -21,7 +21,9 @@ carries the quick-reply buttons `Sí, voy` · `Necesito cambiarlo`, and
 alone confirms the appointment the message was about, with no model call, while it
 is still upcoming, at the time the message stated and reached by the number, and
 the patient gets a fixed `Genial, te esperamos!` (`Genial, muchas gracias!` in
-`usted`), even while a person holds the conversation. A tap on `Ver respuesta` alone
+`usted`), even while a person holds the conversation. It restates no date or time,
+which the message tapped already stated, and the `usted` one avoids `lo esperamos`
+and `la esperamos`, which would guess the patient's gender. A tap on `Ver respuesta` alone
 needs no turn. Any other tap, or one with other messages in the assistant's wait,
 is the patient's words: the assistant reads its label with the message it answers.
 The assistant's own replies carry no buttons. The patient's answer opens the
@@ -172,9 +174,11 @@ conversation handed off.
 Every event that staff act on is a notification in the app, read or unread:
 cancellations, reschedules, requests to approve, handoffs, replies
 not delivered because the patient never answered, warnings about the WhatsApp
-number, and replies that look like opt-outs. Reception sees all of them; a
-practitioner sees those about their own appointments and the handoffs sent to
-them. A handoff's notification says why, so its reader can answer without
+number, and replies that look like opt-outs. Meta's warnings go to every admin, a
+person's reply that was not delivered or failed goes to that person, and replies
+that look like opt-outs go to reception and the admins; a practitioner sees the
+notifications about their own appointments and the handoffs sent to them. A
+handoff's notification says why, so its reader can answer without
 reading the conversation back ([assistant.md](./assistant.md#handoff)). A notification of a
 handoff about no appointment, of a reply not delivered or failed, and of an emergency, names the
 number's patient only when the number has one: on a number siblings share, it cannot tell whose. The app holds the full

@@ -9,7 +9,6 @@ export const practitionerColors = ["color1", "color2", "color3", "color4", "colo
 
 export type PractitionerColor = (typeof practitionerColors)[number];
 
-/** The swatch class of each colour key. */
 export const practitionerColorClasses: Record<PractitionerColor, string> = {
   color1: "bg-chart-1",
   color2: "bg-chart-2",

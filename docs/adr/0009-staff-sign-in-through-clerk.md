@@ -65,3 +65,10 @@ The question came up when the production Clerk application's password minimum (1
 blocked the first password change. The application's password settings are now:
 minimum 8 characters, compromised passwords rejected, no minimum strength check
 ([infrastructure.md](../operations/infrastructure.md#the-clerk-application)).
+
+## Amended 2026-11-18: a sign-in or sign-out reloads the signed-in tabs
+
+A sign-in or a sign-out loads the app afresh in the tab that made it and in every other
+signed-in tab: what a tab holds in memory (the loader and query caches, the screen)
+belongs to whoever was signed in before, so a full page load drops it all instead of
+each cache being cleared by hand (`src/lib/session-change.ts`).

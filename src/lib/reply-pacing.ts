@@ -1,10 +1,5 @@
-// How the assistant writes on WhatsApp (docs/domain/assistant.md § Pace): a
-// reply goes out as up to three short messages, one per paragraph, each after
-// a typing pause about as long as a person would take. Each message is billed
-// (§ Costs), so splitting stops at three; a reply holding a proposal stays
-// whole, so what the patient accepts is what they read.
+// How the assistant's replies go out on WhatsApp (docs/domain/assistant.md § Pace).
 
-/** The most messages one reply goes out as. */
 const maxReplyMessages = 3;
 
 /** The shortest typing pause, in milliseconds, for a message of a word or two. */
@@ -16,11 +11,6 @@ const pausePerCharacter = 25;
 /** The longest typing pause, in milliseconds: the patient is waiting for it. */
 const longestPause = 6_000;
 
-/**
- * The messages `reply` goes out as: one per paragraph (lines apart by a blank
- * line), the paragraphs past the third joined into the third; the whole reply
- * in one when `whole` asks for it.
- */
 export function splitReply(reply: string, { whole }: { whole: boolean }): string[] {
   const paragraphs = reply
     .split(/\n[ \t]*\n/u)

@@ -10,9 +10,6 @@ import {
   toTimeRange,
 } from "#/lib/time-ranges.ts";
 
-// Time off and closures are entered as whole days or as hours, local to a zone,
-// and stored as instants.
-
 const buenosAires = "America/Argentina/Buenos_Aires";
 
 describe("turning an entry into a time range", () => {

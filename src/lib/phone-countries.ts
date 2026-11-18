@@ -20,7 +20,6 @@ const flagOf = (code: string) =>
 
 const byName = new Intl.Collator("es", { sensitivity: "base" });
 
-/** Every country `libphonenumber-js` reads numbers of, by name. */
 export const phoneCountries: PhoneCountry[] = getCountries()
   .map((code) => ({
     code,
@@ -30,18 +29,12 @@ export const phoneCountries: PhoneCountry[] = getCountries()
   }))
   .sort((one, other) => byName.compare(one.name, other.name));
 
-/** Lowercase and without accents, so `Japón` and `japon` compare alike. */
 const folded = (text: string) =>
   text
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
 
-/**
- * Whether the text typed in the country search names `country`: the start of
- * a word of its name, or its dial code, with or without the `+`. Inside a
- * word it does not match, so `uru` finds Uruguay and not Burundi.
- */
 export function countryMatches(country: PhoneCountry, query: string): boolean {
   const typed = folded(query.trim());
   if (typed === "") {

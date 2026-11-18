@@ -1,9 +1,8 @@
 import * as z from "zod";
 
 // The media of a patient's WhatsApp message (a voice note, a photo, a video or
-// a file), read from the payload Meta's webhook stored with it: what it is,
-// its media id at Meta and until when Meta keeps it (docs/domain/assistant.md
-// § Inbox). Nothing of the media itself is stored.
+// a file), read from the payload Meta's webhook stored with it
+// (docs/domain/assistant.md § Inbox).
 
 /**
  * How long Meta keeps a patient's media after it was sent: a webhook's media
@@ -11,12 +10,10 @@ import * as z from "zod";
  */
 export const mediaKeptMs = 7 * 24 * 60 * 60_000;
 
-/** Meta's message types whose media the inbox opens. */
 const mediaKinds = ["audio", "image", "video", "document"] as const;
 
 export type MediaKind = (typeof mediaKinds)[number];
 
-/** A message's media as the inbox shows it: what it is, its file name, and until when Meta has it. */
 export interface MessageMedia {
   kind: MediaKind;
   /** A file's name as the patient sent it; none for the other kinds. */
@@ -33,7 +30,6 @@ function isMediaKind(type: string): type is MediaKind {
   return (mediaKinds as readonly string[]).includes(type);
 }
 
-/** The media of a patient's message of `type`, read from Meta's `payload`; `null` for one that has none. */
 export function mediaIn(type: string, payload: string) {
   if (!isMediaKind(type)) {
     return null;
@@ -55,7 +51,6 @@ export function mediaIn(type: string, payload: string) {
   return { kind: type, mediaId: parsed.data.id, filename: parsed.data.filename ?? null };
 }
 
-/** The media of an incoming message, as the inbox shows it; `null` for one with none. */
 export function messageMediaOf(message: {
   direction: string;
   type: string;

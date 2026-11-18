@@ -37,7 +37,6 @@ export type UndoDecision =
 const sources: Record<StatusAction, readonly AppointmentStatus[]> = {
   confirmed: ["booked"],
   checkedIn: ["booked", "confirmed"],
-  // From booked or confirmed it checks in and attends in one action.
   attended: ["booked", "confirmed", "checkedIn"],
   noShow: ["booked", "confirmed"],
   cancelled: ["booked", "confirmed"],
@@ -47,7 +46,6 @@ function isOwnPractitioner(actor: StatusActor): boolean {
   return actor.roles.includes("practitioner") && actor.own;
 }
 
-/** Whether the actor's roles allow moving an appointment to `status`. */
 function mayMake(status: AppointmentStatus, actor: StatusActor): boolean {
   if (status === "checkedIn" || status === "noShow") {
     return actsForEveryone(actor);
@@ -55,7 +53,6 @@ function mayMake(status: AppointmentStatus, actor: StatusActor): boolean {
   return actsForEveryone(actor) || isOwnPractitioner(actor);
 }
 
-/** Whether the appointment, starting at `start`, may go from `status` to `target` at `now`. */
 export function decideStatusChange(
   appointment: { status: AppointmentStatus; start: Date },
   target: StatusAction,
@@ -74,7 +71,6 @@ export function decideStatusChange(
   return { ok: true, status: target };
 }
 
-/** The changes the actor may make to the appointment at `now`. */
 export function statusActionsFor(
   appointment: { status: AppointmentStatus; start: Date },
   actor: StatusActor,
@@ -125,7 +121,6 @@ export const appointmentStatusLabels: Record<AppointmentStatus, string> = {
   cancelled: "Cancelado",
 };
 
-/** The button that makes each change. */
 export const statusActionLabels: Record<StatusAction, string> = {
   confirmed: "Confirmar",
   checkedIn: "Marcar en sala",
@@ -134,13 +129,11 @@ export const statusActionLabels: Record<StatusAction, string> = {
   cancelled: "Cancelar turno",
 };
 
-/** Who cancelled, as the user reads it. */
 export const cancellerLabels: Record<"patient" | "business", string> = {
   patient: "El paciente",
   business: "La organización",
 };
 
-/** Who cancelled and why, as one line; `null` for an appointment not cancelled. */
 export function cancellationText(appointment: {
   cancelledBy: "patient" | "business" | null;
   cancellationReason: string | null;

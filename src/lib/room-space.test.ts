@@ -2,7 +2,6 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { findCrowding } from "#/lib/room-space.ts";
 
-// Instants on one day, as "HH:MM" UTC.
 function at(time: string) {
   return new Date(`2099-01-05T${time}:00Z`);
 }

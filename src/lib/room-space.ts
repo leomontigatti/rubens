@@ -1,10 +1,7 @@
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
 // Whether a room has space for one more practitioner over a span
-// (docs/domain/appointments.md § Booking): at no moment of it may the
-// distinct other practitioners present, through schedules or appointments,
-// reach the room's capacity, except where the practitioner is already
-// present and so adds no one. Pure.
+// (docs/domain/appointments.md § Booking), as a pure function.
 
 export interface Presence extends TimeRange {
   practitionerId: string;

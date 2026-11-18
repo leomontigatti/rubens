@@ -6,8 +6,7 @@ import { formatLocalDate } from "#/lib/dates.ts";
 
 // A schedule's fields and the rules on them that need no database: the
 // validation shared by the form and the services, and the collision check the
-// services run on the weekly fields (ADR-0003). Dates are local `YYYY-MM-DD`
-// strings and times local `HH:MM` strings, both in the room's office's zone.
+// services run on the weekly fields (ADR-0003).
 
 /** ISO weekdays, 1 for Monday to 7 for Sunday, with their labels. */
 export const weekdayLabels: Record<number, string> = {
@@ -24,7 +23,6 @@ const localTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const localDate = z.iso.date();
 const id = z.uuid();
 
-/** At least one weekday, deduplicated and in week order. */
 const weekdays = z
   .array(z.int().min(1).max(7))
   .min(1)
@@ -51,12 +49,10 @@ function checkRanges(
   }
 }
 
-/** A new schedule, shared by the form and the services. */
 export const scheduleInputSchema = z
   .object({ practitionerId: id, firstDate: localDate, ...fields })
   .superRefine((value, context) => checkRanges(value, value.firstDate, context));
 
-/** New fields for a schedule, from the date `from` on. */
 export const scheduleChangeSchema = z
   .object({ scheduleId: id, from: localDate, ...fields })
   .superRefine((value, context) => checkRanges(value, value.from, context));
@@ -70,7 +66,6 @@ export type ScheduleChange = z.input<typeof scheduleChangeSchema>;
 export type ScheduleEnd = z.input<typeof scheduleEndSchema>;
 export type ScheduleDelete = z.input<typeof scheduleDeleteSchema>;
 
-/** Today's date in `timeZone`, whatever the process's zone. */
 export function today(timeZone: string, now: Date = new Date()): string {
   return format(now, "yyyy-MM-dd", { in: tz(timeZone) });
 }
@@ -81,29 +76,24 @@ function utcMidnight(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
 }
 
-/** The local date `days` after `date`, counted on the calendar. */
 export function shiftDate(date: string, days: number): string {
   const shifted = utcMidnight(date);
   shifted.setUTCDate(shifted.getUTCDate() + days);
   return shifted.toISOString().slice(0, 10);
 }
 
-/** The ISO weekday of a local date. */
 export function weekdayOf(date: string): number {
   return utcMidnight(date).getUTCDay() || 7;
 }
 
-/** The first date on or after `date` that falls on `weekday`. */
 function nextWeekday(date: string, weekday: number): string {
   return shiftDate(date, (weekday - weekdayOf(date) + 7) % 7);
 }
 
-/** `HH:MM` or `HH:MM:SS`, cut to `HH:MM`. */
 export function shortTime(time: string): string {
   return time.slice(0, 5);
 }
 
-/** The weekly fields the collision check reads. */
 export interface WeeklySlot {
   weekdays: readonly number[];
   startTime: string;
@@ -118,7 +108,6 @@ function coversDate(slot: WeeklySlot, date: string): boolean {
 
 type Dates = Pick<WeeklySlot, "firstDate" | "lastDate">;
 
-/** The dates two schedules both run on, whatever their weekdays; `null` when none. */
 export function sharedDates(a: Dates, b: Dates): Dates | null {
   const firstDate = a.firstDate > b.firstDate ? a.firstDate : b.firstDate;
   const lastDate =
@@ -205,12 +194,10 @@ export function findCollision<T extends WeeklySlot>(
   return null;
 }
 
-/** The weekdays of a schedule as the screens show them: "Lunes, Miércoles". */
 export function weekdaysLabel(days: readonly number[]): string {
   return days.map((day) => weekdayLabels[day]).join(", ");
 }
 
-/** The dates a schedule applies, as its screen shows them. */
 export function validityLabel(dates: { firstDate: string; lastDate: string | null }): string {
   const from = `Desde el ${formatLocalDate(dates.firstDate)}`;
   return dates.lastDate === null
@@ -218,7 +205,6 @@ export function validityLabel(dates: { firstDate: string; lastDate: string | nul
     : `${from} hasta el ${formatLocalDate(dates.lastDate)}`;
 }
 
-/** The schedule a save collides with, told after the refusal. */
 export function collisionLabel(collision: {
   practitionerName: string;
   roomName: string;
@@ -233,7 +219,6 @@ export function collisionLabel(collision: {
   );
 }
 
-/** Another practitioner's appointment a save would crowd, told after the refusal. */
 export function appointmentCollisionLabel(collision: {
   practitionerName: string;
   roomName: string;

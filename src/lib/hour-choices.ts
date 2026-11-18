@@ -8,7 +8,6 @@ interface HourChoice {
   label: string;
 }
 
-/** `steps` with `stored` among them, in order, each labelled. */
 function choicesWith(
   steps: number[],
   stored: number,
@@ -21,7 +20,6 @@ function choicesWith(
 const range = (from: number, to: number, step: number) =>
   Array.from({ length: (to - from) / step + 1 }, (_, index) => from + index * step);
 
-/** `75` as `1 h 15 min`. */
 function minutesLabel(minutes: number) {
   const [hours, rest] = [Math.floor(minutes / 60), minutes % 60];
   if (hours === 0) {
@@ -30,7 +28,6 @@ function minutesLabel(minutes: number) {
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
 
-/** `30` hours before the appointment as `1 día y 6 h antes`. */
 function cutoffLabel(hours: number) {
   if (hours === 0) {
     return "Hasta el turno";
@@ -45,11 +42,9 @@ function cutoffLabel(hours: number) {
 
 const hoursLabel = (hours: number) => `${hours} h`;
 
-/** A medical service's duration: 15 minutes to 3 hours, in steps of 15. */
 export const durationChoices = (stored: number) =>
   choicesWith(range(15, 180, 15), stored, minutesLabel);
 
-/** Until how long before the appointment it can be moved: up to 2 days, in steps of 6 hours. */
 export const cutoffChoices = (stored: number) => choicesWith(range(0, 48, 6), stored, cutoffLabel);
 
 /** How long a conversation taken over stays with its member. */

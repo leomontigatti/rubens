@@ -4,24 +4,18 @@ import type { FormOfAddress } from "#/lib/communication-rules.ts";
 import { formatPromptNow } from "#/lib/dates.ts";
 import type { HandoffReason } from "#/lib/handoffs.ts";
 
-// The patient assistant's words to the model (docs/domain/assistant.md § For
-// patients, ADR-0006 § The model interprets, underthing decides): its system
-// prompt and its tools' schemas. Only the rules the model has to keep are
-// here; what underthing decides (who a number may hear about, when a reply
-// may go, the fixed checks) is the object's (`src/organization/assistant.ts`).
-// The evaluation set runs this same prompt and these schemas
-// (`tests/evals/assistant/`).
+// The patient assistant's words to the model: its system prompt and its tools'
+// schemas. What underthing decides is the object's
+// (`src/organization/assistant.ts`). The evaluation set runs this same prompt
+// and these schemas (`tests/evals/assistant/`).
 
-/** The model the assistant runs on, decided on #151 from the evaluation report. */
 export const assistantModelId = "claude-haiku-5-5";
 
-/** The model that transcribes patients' voice notes, on Workers AI, decided on #151 from the evaluation report. */
 export const transcriptionModelId = "@cf/openai/whisper-large-v3-turbo";
 
 /** What a run of the model is for, as the organization's usage records it (assistant.md § Costs). */
 export const modelRunPurposes = ["turn", "clinicalCheck", "templateReview"] as const;
 
-/** How long the assistant waits after a patient's message before its turn (§ Pace). */
 export const assistantWaitMs = 8_000;
 
 /**
@@ -46,14 +40,8 @@ export const withdrawnReplyNote =
  */
 export const staffReplyNote = "[A person at the practice wrote the next message, not you.]";
 
-/**
- * How long a gap between two messages is a long pause, after which a proposal
- * restates enough to stand on its own (§ Proposals): as long as a proposal
- * lives, decided by the owner on #393.
- */
 export const longPauseMs = 60 * 60_000;
 
-/** The line where a long pause falls between two messages the model reads. */
 export const longPauseNote = "[An hour or more passed before the next message.]";
 
 /**
@@ -165,10 +153,6 @@ export const assistantToolSchemas = {
 
 export type AssistantToolName = keyof typeof assistantToolSchemas;
 
-/**
- * What each open handoff is about, as the prompt tells the model: so it
- * tells a new request from the topic a person already has.
- */
 const handoffTopics: Record<HandoffReason, string> = {
   patientAsked: "the patient asked for a person, or to be contacted",
   ruleRefused: "a change the rules do not allow (past the cutoff, or the one move used)",
@@ -190,13 +174,11 @@ const handoffTopics: Record<HandoffReason, string> = {
 
 export interface PromptContext {
   organizationName: string;
-  /** Now, as the patient reads the time: in the organization's office's zone. */
   now: Date;
   timeZone: string;
   formOfAddress: FormOfAddress;
   /** The organization's tone text; empty when it set none. */
   tone: string;
-  /** Why each of the conversation's open handoffs was made; none when none is open. */
   openHandoffs: HandoffReason[];
 }
 
@@ -211,7 +193,6 @@ export function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
     : "Ya se lo pasé, te va a responder por acá.";
 }
 
-/** The rule on the conversation's open handoffs, or none while none is open. */
 function openHandoffRule(context: PromptContext) {
   if (context.openHandoffs.length === 0) {
     return [];
@@ -273,18 +254,13 @@ export function optOutReply(formOfAddress: FormOfAddress): string {
     : "Entendido. Le avisamos al equipo para que no te enviemos más mensajes por WhatsApp.";
 }
 
-/**
- * What the patient is told when their tap on `Sí, voy` confirmed the
- * appointment (ADR-0014): the message they tapped already stated its date and
- * time. `usted`'s does not say `lo`/`la esperamos`, which would guess their gender.
- */
 export function tapConfirmedReply(formOfAddress: FormOfAddress): string {
   return formOfAddress === "usted" ? "Genial, muchas gracias!" : "Genial, te esperamos!";
 }
 
 /**
  * What the patient is told of a voice note that could not be understood: a
- * request to write it. Fixed, since no model read the note.
+ * request to write it. Fixed, since the assistant's model never read the note.
  */
 export function unintelligibleVoiceReply(formOfAddress: FormOfAddress): string {
   return formOfAddress === "usted"
@@ -307,7 +283,6 @@ export function practitionerHandoffReply(
   return `Le paso ${consultation} ${practitioner ? `a ${practitioner}` : "al profesional"}.`;
 }
 
-/** The number the emergency reply gives: Argentina's medical emergencies (SAME). */
 const emergencyNumber = "107";
 
 /**
@@ -325,7 +300,6 @@ export function emergencyReply(formOfAddress: FormOfAddress, formattedPhone: str
   return `${call}${phone} Ya le pasamos ${usted ? "su" : "tu"} mensaje a una persona del equipo.`;
 }
 
-/** What the clinical check finds in a reply the model wrote (§ Rules it always keeps). */
 export const clinicalCheckSchema = z.object({
   clinical: z
     .boolean()
@@ -339,10 +313,6 @@ export const clinicalCheckSchema = z.object({
     ),
 });
 
-/**
- * The clinical check's instructions: it reads one reply, never the
- * conversation, so nothing the patient wrote can steer it.
- */
 export function clinicalCheckPrompt(patients: string[]): string {
   const listed = patients.length > 0 ? patients.join(", ") : "none";
   return `You check one WhatsApp reply that a health practice's automated assistant wrote to a patient, before it is sent. The assistant may speak only of appointments: when, where, with which practitioner, confirming, cancelling or moving them.

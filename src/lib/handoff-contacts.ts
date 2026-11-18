@@ -1,7 +1,6 @@
 import * as z from "zod";
 
-// The organization's handoff contacts, as an admin picks them in the WhatsApp
-// settings: the whole set, saved at once, shared by the form and the object.
+// The organization's handoff contacts (docs/domain/assistant.md § Handoff).
 
 export const handoffContactsSchema = z.object({
   memberIds: z

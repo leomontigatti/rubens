@@ -32,14 +32,12 @@ export interface TimeRange {
   end: Date;
 }
 
-/** The instant a local `YYYY-MM-DD` date at `HH:MM` falls on in `timeZone`. */
 export function instantOf(date: string, time: string, timeZone: string): Date {
   const [year, month, day] = date.split("-").map(Number);
   const [hours, minutes] = time.split(":").map(Number);
   return new Date(+new TZDate(year!, month! - 1, day!, hours!, minutes!, timeZone));
 }
 
-/** An entry as instants: whole days run from local midnight to the midnight after the last. */
 export function toTimeRange(entry: RangeEntry, timeZone: string): TimeRange {
   if (entry.kind === "days") {
     return {
@@ -55,7 +53,6 @@ export function toTimeRange(entry: RangeEntry, timeZone: string): TimeRange {
   };
 }
 
-/** A time range as the entry that gives it: whole days when both ends are local midnights. */
 export function toRangeEntry(range: TimeRange, timeZone: string): RangeEntry {
   const local = (instant: Date) => format(instant, "yyyy-MM-dd'T'HH:mm", { in: tz(timeZone) });
   const start = local(range.start);
@@ -70,7 +67,6 @@ export function toRangeEntry(range: TimeRange, timeZone: string): RangeEntry {
   return { kind: "hours", start, end };
 }
 
-/** An entry as the screens show it: "25/12/2026", "06/11/2026 de 14:00 a 18:00". */
 export function rangeEntryLabel(entry: RangeEntry): string {
   if (entry.kind === "days") {
     const first = formatLocalDate(entry.firstDate);
@@ -88,18 +84,11 @@ export function rangeEntryLabel(entry: RangeEntry): string {
 
 const id = z.uuid();
 
-/**
- * Whether to tell by WhatsApp the patients a time off or a closure sends to
- * the "to reschedule" list, and how many they were told it sends
- * (docs/domain/scheduling.md § Time off and closures). A save that sends
- * some is refused with the count until both are given and the count holds.
- */
 const notice = {
   tellPatients: z.boolean().optional(),
   affected: z.int().positive().optional(),
 };
 
-/** A save refused until whoever saves decides whether to tell the `affected` patients. */
 export interface AffectsAppointments {
   ok: false;
   reason: "affectsAppointments";
@@ -108,7 +97,6 @@ export interface AffectsAppointments {
 
 export type Notice = Partial<{ tellPatients: boolean; affected: number }>;
 
-/** Time off for a practitioner, shared by the form and the services. */
 export const timeOffInputSchema = z.object({
   practitionerId: id,
   entry: rangeEntrySchema,

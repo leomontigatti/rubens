@@ -16,7 +16,6 @@ const nameText = z.string().trim().min(1).max(200);
 /** A first name, or a guardian's name. */
 export const personName = nameText.transform(toPersonName);
 
-/** An optional text field: an empty one is no value. */
 function optionalText(max: number) {
   return z
     .string()
@@ -26,7 +25,6 @@ function optionalText(max: number) {
     .transform((value) => (value ? value : null));
 }
 
-/** What a phone field holds: a country and the national number typed for it. */
 export const phoneEntrySchema = z.object({ country: z.string(), number: z.string() });
 
 /** A phone field's entry read into E.164; the issue's message is the phone's refusal. */
@@ -75,7 +73,6 @@ const patientFields = z.object({
   address: optionalText(500),
 });
 
-/** An optional document's fields: a patient's, or a guardian's. */
 export const documentFields = {
   documentType: patientFields.shape.documentType,
   documentNumber: patientFields.shape.documentNumber,
@@ -86,11 +83,6 @@ interface DocumentFields {
   documentNumber: string | null;
 }
 
-/**
- * A document is a type and a number together, or neither. A number is kept
- * without separators and in capitals, so "30.123.456" and "30123456", or
- * "aa 123.456" and "AA123456", are the same document; a DNI is only digits.
- */
 export function normalizeDocument<T extends DocumentFields>(
   fields: T,
   context: z.RefinementCtx,
@@ -114,10 +106,6 @@ export function normalizeDocument<T extends DocumentFields>(
   return { ...fields, documentNumber };
 }
 
-/**
- * A patient's registration data, shared by the form and the services. Only the
- * names and the phone are required: the rest is completed at the first visit.
- */
 export const patientInputSchema = patientFields.transform(normalizeDocument);
 
 export const patientUpdateSchema = patientFields
@@ -138,10 +126,6 @@ export const patientReferenceSchema = patientActiveChangeSchema.pick({ id: true 
 
 export type PatientInput = z.input<typeof patientInputSchema>;
 
-/**
- * Sent with a registration or an edit to save it although the duplicate check
- * warned of a likely duplicate, as siblings sharing a phone are.
- */
 export interface DuplicateConfirmation {
   confirmDuplicates?: boolean;
 }
@@ -151,10 +135,6 @@ export type OptOutDecision = z.input<typeof optOutDecisionSchema>;
 export type PatientActiveChange = z.input<typeof patientActiveChangeSchema>;
 export type PatientReference = z.input<typeof patientReferenceSchema>;
 
-/**
- * The name the app calls a patient by: their chosen first name in place of the
- * legal one when they have one, the "nombre de pila adoptado" of Ley 26.743.
- */
 export function patientName(patient: {
   firstName: string;
   lastName: string;
@@ -163,7 +143,6 @@ export function patientName(patient: {
   return `${patient.chosenName ?? patient.firstName} ${patient.lastName}`;
 }
 
-/** Whether a patient born on `birthDate` is under 18 on `today`, both local dates. */
 export function isMinor(birthDate: string | null, today: string): boolean {
   if (birthDate === null) {
     return false;
@@ -174,10 +153,6 @@ export function isMinor(birthDate: string | null, today: string): boolean {
   return today < coming;
 }
 
-/**
- * Why `birthDate` cannot be a birth date on `today`, both local dates: it is
- * after today, or more than 100 years before it.
- */
 function birthDateProblem(
   birthDate: string,
   today: string,
@@ -185,12 +160,10 @@ function birthDateProblem(
   if (birthDate > today) {
     return "futureBirthDate";
   }
-  // Zero-padded dates compare as strings, as in `isMinor`.
   const oldest = `${String(Number(today.slice(0, 4)) - 100).padStart(4, "0")}${today.slice(4)}`;
   return birthDate < oldest ? "birthDateTooOld" : null;
 }
 
-/** The badges a patient shows by their name. */
 export function patientBadges(patient: { incomplete: boolean; minor: boolean }) {
   return [
     ...(patient.incomplete ? [{ label: "Datos incompletos", variant: "warning" as const }] : []),
@@ -198,12 +171,10 @@ export function patientBadges(patient: { incomplete: boolean; minor: boolean }) 
   ];
 }
 
-/** The legal name, for the patient's details and documents. */
 export function legalName(patient: { firstName: string; lastName: string }): string {
   return `${patient.firstName} ${patient.lastName}`;
 }
 
-/** How many patients the list shows at a time. */
 export const patientPageSize = 25;
 
 export const documentTypeLabels: Record<DocumentType, string> = {
@@ -212,7 +183,6 @@ export const documentTypeLabels: Record<DocumentType, string> = {
   other: "Otro",
 };
 
-/** A patient's document as the patient page shows it: "DNI 30123456". */
 export function documentLabel(patient: {
   documentType: DocumentType | null;
   documentNumber: string | null;
@@ -241,13 +211,11 @@ const fieldLabels: Record<string, string> = {
   whatsappConsent: "Acepta WhatsApp",
   optOutPending: "Pedido de baja sin decidir",
   active: "Activo",
-  // A coverage's, in its form's order.
   insurer: "Obra social / prepaga",
   plan: "Plan",
   memberNumber: "Número de afiliado",
   primary: "Principal",
   messageContact: "Recibe los mensajes",
-  // An appointment's: its times, who, what and where, then its state.
   start: "Inicio",
   end: "Fin",
   practitionerId: "Profesional",
@@ -262,7 +230,6 @@ const fieldLabels: Record<string, string> = {
 
 const fieldOrder = Object.keys(fieldLabels);
 
-/** A field's place in the form; one the form lacks goes last. */
 function fieldRank(field: string): number {
   const rank = fieldOrder.indexOf(field);
   return rank === -1 ? fieldOrder.length : rank;
@@ -270,7 +237,6 @@ function fieldRank(field: string): number {
 
 type HistoryValue = string | number | boolean | null | undefined;
 
-/** What an entry's values point at: names by id, and the zone of its times. */
 interface HistoryContext {
   names: Readonly<Record<string, string>>;
   timeZone: string;
@@ -281,7 +247,6 @@ const byName = (id: string, context: HistoryContext) => context.names[id] ?? "De
 const localDateTime = (instant: string, context: HistoryContext) =>
   formatDateTime(new Date(instant), context.timeZone);
 
-// How the change history shows a field's value, when not as written.
 const formatters: Record<string, (text: string, context: HistoryContext) => string> = {
   phone: formatPhone,
   birthDate: formatLocalDate,
@@ -297,7 +262,6 @@ const formatters: Record<string, (text: string, context: HistoryContext) => stri
 
 function formatValue(field: string, value: HistoryValue, context: HistoryContext): string {
   if (field === "messageContact") {
-    // The guardian messages go to, by name; none is the patient.
     return value === null || value === undefined ? "El paciente" : String(value);
   }
   if (value === null || value === undefined) {
@@ -354,7 +318,6 @@ const actionLabels = {
   reactivate: "Reactivación",
 } as const;
 
-/** What an entry is about, after its action: nothing for the patient's own. */
 const entityLabels: Record<string, string> = {
   appointment: " de turno",
   coverage: " de cobertura",

@@ -1,11 +1,7 @@
 import * as z from "zod";
 
-// Taking a conversation over from the inbox (docs/domain/assistant.md §
-// Inbox): a member holds it while the assistant stays silent in it, replies
-// to the patient under their own name, and the conversation goes back to the
-// assistant when they return it or after the admin's return time.
+// Taking a conversation over from the inbox (docs/domain/assistant.md § Inbox).
 
-/** How long a member holds a conversation before it goes back to the assistant, until an admin sets it (#151). */
 export const defaultReturnAfterHours = 4;
 
 export const maxReturnAfterHours = 24;
@@ -40,7 +36,6 @@ export const lateReplyReferenceSchema = z.object({ lateReplyId: z.uuid() });
 
 export type LateReplyReference = z.input<typeof lateReplyReferenceSchema>;
 
-/** How long a late reply waits for the patient's answer after the reopen template went, before it is not delivered (#151). */
 export const lateReplyChanceMs = 7 * 24 * 60 * 60_000;
 
 /** A person's reply as the patient reads it on WhatsApp: under their name, in bold. */

@@ -23,7 +23,6 @@ export const timingSchema = z.discriminatedUnion("when", [
 
 export type Timing = z.output<typeof timingSchema>;
 
-/** The timings queued when an appointment is booked, and those when it is marked attended. */
 export const bookingTimings = ["booking", "before"] as const satisfies TimingKind[];
 export const attendedTimings = ["attended", "after"] as const satisfies TimingKind[];
 
@@ -42,16 +41,10 @@ export function timingOf(row: { timing: TimingKind | null; timingHours: number |
   }
 }
 
-/** The columns `timing` is stored in. */
 export function timingColumns(timing: Timing) {
   return { timing: timing.when, timingHours: "hours" in timing ? timing.hours : null };
 }
 
-/**
- * When a message timed `timing` goes for an appointment of `[startsAt, endsAt)`:
- * hours before its start or after its end; at once, `now`, on its booking or
- * its attendance.
- */
 export function timingDueAt(
   timing: Timing,
   appointment: { startsAt: number; endsAt: number },
@@ -67,7 +60,6 @@ export function timingDueAt(
   }
 }
 
-/** Where a timing sorts in a list: in the order its messages go around one appointment. */
 export function timingRank(timing: Timing | null): [number, number] {
   switch (timing?.when) {
     case "booking":
@@ -92,19 +84,16 @@ const sendTimeWords = new RegExp(
   "iu",
 );
 
-/** Whether `body` says when it is sent instead of naming the date and time. */
 export function mentionsSendTime(body: string) {
   return sendTimeWords.test(body);
 }
 
-/** A timing as the template's form holds it: an amount of hours or of days, as typed. */
 export interface TimingEntry {
   when: TimingKind;
   amount: string;
   unit: "hours" | "days";
 }
 
-/** How the form shows `timing`: whole days in days, anything else in hours. */
 export function timingEntry(timing: Timing): TimingEntry {
   if (!("hours" in timing)) {
     return { when: timing.when, amount: "", unit: "days" };

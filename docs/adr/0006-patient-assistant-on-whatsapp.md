@@ -66,3 +66,8 @@ settings' sandbox ([assistant.md](../domain/assistant.md#trying-it)).
   under Ley 25.326, so the model gets only what the conversation needs, providers
   are chosen for no-training and retention terms, and the transfer is for counsel
   to confirm before go-live.
+
+## Amended 2026-11-18: the model the evaluation chose
+
+The evaluation of #151 chose Claude Haiku 5.5 (`claude-haiku-5-5`) for the assistant,
+and Whisper on Workers AI for voice notes.

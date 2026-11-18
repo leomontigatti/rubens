@@ -13,7 +13,6 @@ export type AuditValue = string | number | boolean | null;
 
 export type AuditValues = Record<string, AuditValue>;
 
-/** An entity's fields, as the code that changes it reads them. */
 type Fields = Record<string, AuditValue | Date | undefined>;
 
 function comparable(value: AuditValue | Date | undefined): AuditValue {
@@ -43,7 +42,6 @@ export function changedFields(
   };
 }
 
-/** The fields a new entity was created with: those holding a value. */
 export function createdFields(values: Fields): AuditValues {
   return Object.fromEntries(
     Object.entries(values)

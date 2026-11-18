@@ -16,8 +16,9 @@ export const appointmentStatuses = [
 export type AppointmentStatus = (typeof appointmentStatuses)[number];
 
 /**
- * The statuses that hold the practitioner's time: the exclusion constraint
- * (migration 0013) and the free times count them.
+ * The statuses that hold the practitioner's time: the overlap checks
+ * (`src/organization/appointment-placement.ts`, `src/organization/appointment-changes.ts`)
+ * and the free times count them.
  */
 export const activeAppointmentStatuses = [
   "booked",
@@ -30,13 +31,11 @@ export function isActiveStatus(status: AppointmentStatus): boolean {
   return (activeAppointmentStatuses as readonly AppointmentStatus[]).includes(status);
 }
 
-/** Who cancelled an appointment. */
 export const appointmentCancellers = ["patient", "business"] as const;
 
 /** The longest reception note: a practical line, never clinical text. */
 export const receptionNoteMaxLength = 200;
 
-/** A reception note: blank is none. */
 const receptionNoteSchema = z
   .string()
   .trim()
@@ -84,13 +83,11 @@ export const calendarWeekQuerySchema = z.object({
   date: z.iso.date(),
   practitionerId: z.uuid().optional(),
   medicalServiceId: z.uuid().optional(),
-  /** Cancelled and no-show appointments are hidden unless asked for. */
   includeCancelledAndNoShow: z.boolean().default(false),
 });
 
 export type CalendarWeekQuery = z.input<typeof calendarWeekQuerySchema>;
 
-/** The Monday of the week a local date falls in. */
 export function mondayOf(date: string): string {
   return shiftDate(date, 1 - weekdayOf(date));
 }
@@ -103,10 +100,8 @@ export const statusChangeSchema = z.object({
 
 export type StatusChangeInput = z.input<typeof statusChangeSchema>;
 
-/** The longest cancellation reason. */
 export const cancellationReasonMaxLength = 200;
 
-/** Cancelling: who cancelled, the patient or the business, and an optional reason. */
 export const cancellationSchema = z.object({
   appointmentId: z.uuid(),
   cancelledBy: z.enum(appointmentCancellers),
@@ -134,7 +129,6 @@ export const appointmentUpdateSchema = z.object({
 
 export type AppointmentUpdate = z.input<typeof appointmentUpdateSchema>;
 
-/** One appointment, named by its id. */
 export const appointmentIdSchema = z.object({ appointmentId: z.uuid() });
 
 export type AppointmentIdInput = z.input<typeof appointmentIdSchema>;

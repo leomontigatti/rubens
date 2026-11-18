@@ -5,10 +5,7 @@ import { proposalKinds } from "#/lib/proposals.ts";
 import { messageJudgements } from "#/lib/whatsapp-messages.ts";
 
 // The assistant's sandbox in the WhatsApp settings (docs/domain/assistant.md §
-// Trying it): an admin plays the patient against the real assistant, from a
-// scenario, and the object discards every write. Its conversation lives in the
-// page, not in the object: each turn sends it back, and the object replays it
-// inside a transaction it rolls back (`src/organization/assistant-sandbox.ts`).
+// Trying it): the conversation the page carries between turns, and its limits.
 
 /** The model calls the sandbox may make in an hour, per organization: about fifty turns. */
 export const sandboxModelCallsPerHour = 200;
@@ -16,7 +13,6 @@ export const sandboxModelCallsPerHour = 200;
 /** The longest message the admin may write as the patient, as WhatsApp allows it. */
 const maxSandboxTextLength = 4096;
 
-/** The messages a sandbox conversation holds, the reminder included. */
 const maxSandboxMessages = 120;
 
 /** The proposals or handoffs it holds: a turn can make several, so far more than its messages. */
@@ -71,7 +67,6 @@ export type SandboxState = z.output<typeof sandboxStateSchema>;
 /** The messages one turn adds: the patient's, and a reply of up to three. */
 const messagesPerTurn = 4;
 
-/** Whether the conversation has no room for another turn, which the admin then starts again. */
 export function isFull(state: SandboxState) {
   return state.messages.length + messagesPerTurn > maxSandboxMessages;
 }
@@ -80,7 +75,6 @@ export const sandboxStartSchema = z.object({ appointmentId: id });
 
 export type SandboxStart = z.input<typeof sandboxStartSchema>;
 
-/** One message the admin writes as the patient, in the conversation so far. */
 export const sandboxTurnSchema = z.object({
   state: sandboxStateSchema,
   text: z.string().trim().min(1).max(maxSandboxTextLength),

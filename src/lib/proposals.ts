@@ -3,28 +3,19 @@ import type * as z from "zod";
 import type { assistantToolSchemas } from "#/lib/assistant.ts";
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 
-// Proposals (ui: "Propuesta", docs/domain/assistant.md § Proposals): a change
-// the patient accepts before it is made. It holds every fact, though the
-// assistant's message names only what changes.
-// Only a conversation's latest proposal can be accepted, until it expires.
+// Proposals (ui: "Propuesta", docs/domain/assistant.md § Proposals).
 
 /** What a proposal changes: confirming the appointment, cancelling it by the patient, or moving it. */
 export type ProposalKind = z.output<typeof assistantToolSchemas.propose_change.inputSchema>["kind"];
 
-/** The kinds as the proposal table stores them: those the model's tool proposes. */
 export const proposalKinds = [
   "confirm",
   "cancel",
   "move",
 ] as const satisfies readonly ProposalKind[];
 
-/** How long a proposal stays open to its yes (#151's defaults). */
 const proposalLifetimeMs = 60 * 60_000;
 
-/**
- * When a proposal made at `now` expires: an hour later, or when the window
- * the patient's last message opened closes, whichever comes first.
- */
 export function proposalExpiresAt(now: number, lastIncomingAt: number | null): number {
   const closesAt = windowClosesAt(lastIncomingAt) ?? now;
   return Math.min(now + proposalLifetimeMs, closesAt);

@@ -61,7 +61,10 @@ transcribed and read like text, and the inbox shows its transcript as the
 patient's words; one that cannot be understood, including one Whisper heard only
 as a video's credits (`Subtítulos realizados por la comunidad de Amara.org`), gets a
 request to write it, and a
-second misunderstanding in a row is handed off. Transcription is Whisper on
+second misunderstanding in a row is handed off. The Amara line is cut wherever it
+stands, even run on after the patient's words, since no patient says it; a video's
+credit phrases (`Gracias por ver el video`) are words a patient could say, so beside
+other words they are kept as heard. Transcription is Whisper on
 Workers AI, chosen by the evaluation set on Argentine Spanish. The assistant
 replies in text only, never with a voice note.
 
@@ -140,7 +143,8 @@ message also names:
   goes out the day before, does not count once the assistant has named the
   appointment or offered its times after it.
 
-Only a conversation's latest proposal can be accepted, and it expires. Accepting runs the change with the app's own
+Only a conversation's latest proposal can be accepted, and it expires an hour after
+it is made, or when the conversation window closes, whichever comes first. Accepting runs the change with the app's own
 rules, so it can still fail, for example when the time was taken meanwhile; the
 assistant then says so and offers others.
 
@@ -198,7 +202,8 @@ No organization can edit or override these:
   included, else on a new one, and the patient is told nothing. Whoever may
   answer that handoff sends or fixes it, and anyone who reads it drops it. A
   reply both kinds of check hold goes to the practitioner. The app says which
-  check held a reply.
+  check held a reply. The code checks are a cheap match: the prompt stays the
+  first guard, and they only catch what slips past it.
 - A health question is not answered: it is handed off, to the practitioner who
   treats it or to reception. A photo, a
   video or a file never reaches the model: it goes to reception as an ordinary
@@ -299,7 +304,8 @@ contact can neither be removed nor deactivated, as the last admin
 A handoff's notification says why, so its reader can answer without reading the
 conversation back: `Marta Quiroga quiere pasar el turno del jueves 10:00 y falta
 menos de 24 h`, and what the same turn did anyway, such as another appointment it
-moved. The handoff arrives on Telegram with the patient's own words
+moved. That reason, in the app and in the notification, never quotes the patient;
+the handoff arrives on Telegram with the patient's own words
 ([ADR-0007](../adr/0007-patients-words-on-telegram.md)) and in the inbox. The
 person replies in Telegram or in the app, and the reply reaches the patient on
 WhatsApp under their name. The reply box of a practitioner answering a handoff
@@ -400,7 +406,8 @@ How the assistant writes is set in three layers, the higher one winning:
 
 A rule is either written in words, which the assistant follows as an instruction,
 or one of a few checks applied to every reply, which always hold: no opening `¿`
-and `¡`, no emojis, a maximum length. A rule can change how the assistant writes,
+and `¡`, no emojis, a maximum length. A reply that breaks one of the first two is
+corrected, with the opening marks and the emojis taken out. A rule can change how the assistant writes,
 never what it may do.
 
 Staff can correct a reply the assistant sent, or mark one as good; it becomes a
@@ -431,7 +438,8 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
   with its real tools and the real agenda, starting from a scenario. It shows what
   the turn did, the proposals, whether the clinical or code checks would hold a reply, and for whom, the
   window's countdown and the number of messages. It runs the organization's real
-  object methods with their writes discarded, so it never writes, never reaches
+  object methods with their writes discarded (the conversation lives in the page,
+  and each turn sends it back), so it never writes, never reaches
   WhatsApp, is rate-limited, and counts in the
   organization's use. A rule's author tries a change here before saving it.
 - **Saved scenarios** (second release): sandbox conversations run again on every

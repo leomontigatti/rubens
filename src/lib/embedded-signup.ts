@@ -28,7 +28,6 @@ function text(value: unknown) {
   return typeof value === "string" && value ? value : null;
 }
 
-/** The signup's event in a window message, or `null` for any other message. */
 export function signupEventOf(origin: string, data: unknown): SignupEvent | null {
   if (!isFacebook(origin) || typeof data !== "string") {
     return null;

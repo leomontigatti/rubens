@@ -6,7 +6,7 @@ import { practitionerColors } from "#/lib/practitioner-colors.ts";
 
 const roleSchema = z.enum(["admin", "receptionist", "practitioner"] satisfies Role[]);
 
-/** At least one role, deduplicated and in the order `roles` declares them. */
+/** At least one role, deduplicated and in the order `roleNames` (`access.ts`) declares them. */
 const rolesSchema = z
   .array(roleSchema)
   .min(1)
@@ -36,7 +36,6 @@ export const staffInputSchema = z.object({
   roles: rolesSchema,
 });
 
-/** A practitioner's settings; an empty specialty is stored as none. */
 const practitionerSettingsSchema = z.object({
   displayName: z.string().trim().min(1).max(200),
   specialty: z
@@ -47,7 +46,6 @@ const practitionerSettingsSchema = z.object({
   keepsClinicalRecords: z.boolean(),
   /** Free times start every this many minutes, counted from local midnight. */
   gridMinutes: z.int().min(5).max(120),
-  /** The colour of their appointments on the calendar. */
   color: z.enum(practitionerColors),
 });
 

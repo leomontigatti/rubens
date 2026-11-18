@@ -12,7 +12,6 @@ import type { TimeRange } from "#/lib/time-ranges.ts";
 // everything that blocks them (docs/domain/scheduling.md § Availability). Pure:
 // every local time is read in its office's zone, never the process's.
 
-/** A schedule with where it is: its office's zone, office and room. */
 export interface AvailabilitySchedule extends WeeklySlot {
   officeId: string;
   roomId: string;
@@ -28,7 +27,6 @@ export interface AvailabilityClosure {
 export interface AvailabilityInput {
   schedules: readonly AvailabilitySchedule[];
   timeOff: readonly TimeRange[];
-  /** The closures of the practitioner's offices and of the whole organization. */
   closures: readonly AvailabilityClosure[];
   /** The practitioner's active appointments, overbookings included. */
   busy: readonly TimeRange[];
@@ -45,10 +43,8 @@ export interface FreeStart {
   roomId: string;
 }
 
-/** An appointment's length in minutes: any whole number, the grid sets none. */
 export const durationMinutesSchema = z.int().min(1).max(720);
 
-/** The most days one query covers; the screens ask for a day or a week. */
 const maxWindowDays = 31;
 
 /**
@@ -79,7 +75,6 @@ export type AvailabilityQuery = z.input<typeof availabilityQuerySchema>;
 
 const defaultDuration = 30;
 
-/** What the free-times screen's URL asks for, each value already parsed. */
 export interface AvailabilitySearch {
   profesional?: string;
   fecha?: string;
@@ -87,7 +82,6 @@ export interface AvailabilitySearch {
   duracion?: number;
 }
 
-/** The query form's message for what it is missing, `null` when it can be viewed. */
 export function availabilitySearchProblem(search: AvailabilitySearch): string | null {
   if (!search.profesional) {
     return "Elegí un profesional.";
@@ -101,7 +95,6 @@ export function availabilitySearchProblem(search: AvailabilitySearch): string | 
   return null;
 }
 
-/** What the screen shows, with its defaults: the only practitioner, today, a day, 30 minutes. */
 export function availabilityViewOf(
   search: AvailabilitySearch,
   practitioners: readonly { id: string }[],
@@ -118,7 +111,6 @@ export function availabilityViewOf(
 
 export type AvailabilityView = ReturnType<typeof availabilityViewOf>;
 
-/** The service's query for a view, once a practitioner is chosen. */
 export function freeTimesQueryOf(view: AvailabilityView): AvailabilityQuery | null {
   const { practitionerId, firstDate, durationMinutes } = view;
   if (!practitionerId) {
@@ -148,7 +140,6 @@ function intersects(a: TimeRange, b: TimeRange): boolean {
   return a.start < b.end && b.start < a.end;
 }
 
-/** The local dates in `timeZone` that the window touches. */
 function datesIn(window: TimeRange, timeZone: string): string[] {
   const last = localDate(window.end, timeZone);
   const dates: string[] = [];
@@ -166,7 +157,6 @@ function appliesOn(schedule: WeeklySlot, date: string): boolean {
   );
 }
 
-/** The occurrences of `schedule` that meet `span`, as instants in its office's zone. */
 export function occurrencesDuring(
   schedule: WeeklySlot & { timeZone: string },
   span: TimeRange,
@@ -180,7 +170,6 @@ export function occurrencesDuring(
     .filter((occurrence) => intersects(occurrence, span));
 }
 
-/** The first schedule one of whose occurrences holds the whole of `span`. */
 export function coveringSchedule<T extends AvailabilitySchedule>(
   schedules: readonly T[],
   span: TimeRange,
@@ -192,18 +181,14 @@ export function coveringSchedule<T extends AvailabilitySchedule>(
   );
 }
 
-/** What decides whether a practitioner's span is working time. */
 export interface WorkingTime {
   schedules: readonly AvailabilitySchedule[];
   timeOff: readonly TimeRange[];
-  /** The closures of the span's office and of the whole organization; others are ignored. */
   closures: readonly AvailabilityClosure[];
 }
 
-/** Why a span is outside working time. */
 export type OutsideWorkingTime = "timeOff" | "closure" | "outsideSchedules";
 
-/** Whether time off or a closure of the office or the organization meets `span`. */
 function blockedBy(span: TimeRange, officeId: string, workingTime: WorkingTime) {
   if (workingTime.timeOff.some((range) => intersects(range, span))) {
     return "timeOff";
@@ -216,11 +201,6 @@ function blockedBy(span: TimeRange, officeId: string, workingTime: WorkingTime) 
   return closed ? "closure" : null;
 }
 
-/**
- * Why `span`, in the office `officeId`, is outside working time; `null` when
- * it is inside: one occurrence of a schedule in that office holds it whole,
- * and it meets no time off and no closure of the office or the organization.
- */
 export function outsideWorkingTime(
   span: TimeRange,
   officeId: string,
@@ -263,10 +243,6 @@ export function outsideWorkingTimeWithin(workingTime: WorkingTime, reach: TimeRa
   };
 }
 
-/**
- * The spans of `durationMinutes` that start on the grid inside one occurrence
- * of `schedule`, on `date`, and end by its end.
- */
 function gridSpans(
   schedule: AvailabilitySchedule,
   date: string,
@@ -323,7 +299,6 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
     .sort((a, b) => +a.start - +b.start);
 }
 
-/** A free start as the screen receives it: where, and in which zone to show it. */
 interface PlacedStart {
   start: Date;
   timeZone: string;

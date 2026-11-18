@@ -13,16 +13,14 @@ import { shiftDate } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 
 // The booking form's values, from either entry (docs/domain/appointments.md §
-// Booking), and what they book: pure, so the form only renders them.
+// Booking), and what they book.
 
-/** A start picked for the booking, with where it is and how to show it. */
 export interface PickedStart {
   start: Date;
   roomName: string;
   timeZone: string;
 }
 
-/** A free start offered to pick from, with its office. */
 export interface OfferedStart extends PickedStart {
   officeName: string;
 }
@@ -35,7 +33,6 @@ export interface BookingWarning {
   timeZone: string;
 }
 
-/** The patient picked, with the name the form shows. */
 export interface PickedPatient {
   id: string;
   name: string;
@@ -66,11 +63,6 @@ export interface BookingStart extends PickedStart {
   medicalService?: { id: string; durationMinutes: number } | null;
 }
 
-/**
- * A new form, among `practitionerIds`, the only one when there is one. From a
- * clicked free cell, its start and the medical service the calendar is
- * narrowed to; for an overbooking, the start's local date and time.
- */
 export function initialBookingValues(
   from: BookingStart | null,
   practitionerIds: readonly string[],
@@ -94,7 +86,6 @@ export function initialBookingValues(
   };
 }
 
-/** What the form books but the start and the room, as the booking schemas read it. */
 function partialInputOf(values: BookingValues) {
   return {
     patientId: values.patient?.id,
@@ -105,12 +96,10 @@ function partialInputOf(values: BookingValues) {
   };
 }
 
-/** What the form books at a free start, or what the booking schema refused. */
 export function bookingRequestOf(values: BookingValues) {
   return bookingInputSchema.safeParse({ ...partialInputOf(values), start: values.start?.start });
 }
 
-/** What an overbooking books, its local date and time read in `timeZone`, or what was refused. */
 export function overbookingRequestOf(values: BookingValues, timeZone: string) {
   return overbookingInputSchema.safeParse({
     ...partialInputOf(values),
@@ -122,13 +111,10 @@ export function overbookingRequestOf(values: BookingValues, timeZone: string) {
   });
 }
 
-/** The form's field for each input the booking schemas name otherwise. */
 export const bookingFieldNames = { patientId: "patient" };
 
-/** An overbooking's start is typed in its time. */
 export const overbookingFieldNames = { patientId: "patient", start: "time" };
 
-/** A date input's value once it is a whole date: cleared, or half typed, it is none. */
 function isWholeDate(date: string): boolean {
   return z.iso.date().safeParse(date).success;
 }
@@ -138,10 +124,6 @@ function isWholeTime(time: string): boolean {
   return z.iso.time({ precision: -1 }).safeParse(time).success;
 }
 
-/**
- * "Nuevo turno"'s free-times query: the week from `freeFrom`, once the form
- * has a practitioner, a medical service and a valid duration.
- */
 export function freeStartsQueryOf(values: BookingValues): AvailabilityQuery | null {
   const duration = durationMinutesSchema.safeParse(Number(values.durationMinutes));
   const ready = values.practitionerId && values.medicalServiceId && isWholeDate(values.freeFrom);
@@ -156,11 +138,6 @@ export function freeStartsQueryOf(values: BookingValues): AvailabilityQuery | nu
   };
 }
 
-/**
- * Rescheduling's free starts for the practitioner and duration, a week from a
- * date, with the appointment's own time counted free; `null` while the
- * duration is not a valid one.
- */
 export function rescheduleQueryOf(
   appointment: { id: string; practitionerId: string },
   firstDate: string,
@@ -179,14 +156,12 @@ export function rescheduleQueryOf(
   };
 }
 
-/** The reschedule form's values: the duration as typed, and a free start from the week from `freeFrom`. */
 export interface RescheduleValues {
   durationMinutes: string;
   freeFrom: string;
   start: PickedStart | null;
 }
 
-/** Where the reschedule form moves the appointment, or what the reschedule schema refused. */
 export function rescheduleRequestOf(values: RescheduleValues, appointmentId: string) {
   return rescheduleSchema.safeParse({
     appointmentId,
@@ -195,10 +170,6 @@ export function rescheduleRequestOf(values: RescheduleValues, appointmentId: str
   });
 }
 
-/**
- * The fields the free times offered after a refusal were read for: the
- * practitioner, the medical service, the duration and the day.
- */
 const offeredStartsReadFor = new Set<keyof BookingValues>([
   "practitionerId",
   "medicalServiceId",

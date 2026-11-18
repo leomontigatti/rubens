@@ -92,7 +92,8 @@ requested ──► booked ──► confirmed ──► checkedIn ──► att
 - **Requested**: a patient's booking waiting for approval. It is never a no-show.
 - **Confirmed**: the patient confirmed, from a reminder or by phone to reception.
 - **Checked in**: reception marked the patient as arrived.
-- **Attended**: marked by the practitioner or reception.
+- **Attended**: marked by the practitioner or reception. From booked or confirmed,
+  marking it checks the patient in and attends them in one action.
 - **No-show** is marked by reception by hand, and only after the start time.
 - **Cancelled** records who cancelled, the patient or the business, and an
   optional reason. Anyone who can book can cancel, and the time is free at once.

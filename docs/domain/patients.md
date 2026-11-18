@@ -50,7 +50,9 @@ holds for a patient's, a guardian's and the organization's urgent phone, which
 the emergency reply gives. The server takes a phone only as the field's country
 and number, so every Argentine phone is stored with the `9` and the duplicate
 warning, which compares phones as stored, always compares the same number
-alike. A message that comes in finds its patients under either spelling, and
+alike. A message that comes in finds its patients under either spelling (`+54 9 …`
+and `+54 …`: a landline shares a mobile's national numbers, so the two never name
+different lines), and
 the search boxes read a phone typed any local way (`0351 15 555-1234`), so a
 number stored without the `9` before the phone field still matches; it gains the
 `9` the next time its record is saved.
@@ -68,7 +70,10 @@ is primary. A patient with none is private (`Particular`).
 
 A patient has an optional identity document: a type (DNI, passport, other) and a
 number, unique within the organization when present. It is optional so a baby
-without a DNI yet, or a foreign patient, can still be registered.
+without a DNI yet, or a foreign patient, can still be registered. The type and the
+number are given together or not at all. The number is saved without dots, spaces
+or hyphens and in capitals, so `30.123.456` and `30123456` are the same document;
+a DNI is 6 to 9 digits only.
 
 Reception finds a patient from one search box: by name, ignoring accents, case
 and word order (`perez juan` finds `Juan Pérez`), by document number, or by phone
