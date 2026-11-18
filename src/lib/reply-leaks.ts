@@ -50,12 +50,12 @@ const announcements = [
   word(String.raw`deriv(?:é|e|amos|o|ó|ado|ada|ar|ando)`),
   // `Ya se lo pasé`, `se lo pasé así te responden`, and `se lo pasé para que…`,
   // whose `que` ends the clause (`announcesHandoff`): done, and to them. Not
-  // `te los paso para que elijas`, the patient's options, nor `no hace falta
-  // que te lo pase`.
-  word(String.raw`se\s+l[oa]s?\s+pas(?:é|e|amos)`) +
+  // `te los paso para que elijas`, the patient's options, nor `querés que se
+  // lo pase`, an offer: an unaccented `pase` is the subjunctive.
+  word(String.raw`se\s+l[oa]s?\s+pas(?:é|amos)`) +
     String.raw`(?=\s*$|\s+para\s*$|\s+as[ií](?!\p{L}))`,
   // `Se lo pasé al equipo`, but not `te lo paso al martes` nor `para el martes`, a move.
-  word(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|e|amos|o)`) +
+  word(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|amos|o)`) +
     String.raw`(?=\s+(?:a|al|a la|con)\s+${word(person)})`,
   // `Pasé tu consulta`, `le pasé su mensaje`.
   word(String.raw`pas(?:é|e|amos|o)\s+(?:tu|su)\s+(?:consulta|mensaje|pedido|caso|pregunta)`),
