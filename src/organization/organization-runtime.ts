@@ -18,7 +18,7 @@ import {
   metaSignupFor,
   whatsappCloudFor,
 } from "#/organization/graph-api.ts";
-import type { GraphApiSettings, SignupSettings, WhatsappCloud } from "#/organization/graph-api.ts";
+import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Job, JobServices } from "#/organization/jobs.ts";
 import { optOutRemindersJob } from "#/organization/opt-out-holds.ts";
 import { outboxJob } from "#/organization/outbox.ts";
@@ -28,23 +28,7 @@ import type { EmailsInFlight } from "#/organization/staff.ts";
 import { transcriberFor } from "#/organization/transcription.ts";
 import type { Transcriber } from "#/organization/transcription.ts";
 import { organizationIdIn, WhatsappNumber } from "#/organization/whatsapp-connection.ts";
-import type { WorkerEnv } from "#/server/caller.ts";
 import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
-
-type RuntimeEnv = WorkerEnv &
-  GraphApiSettings &
-  SignupSettings & {
-    CLERK_SECRET_KEY?: string;
-    ORGANIZATION_ENCRYPTION_KEY?: string;
-    /** A secret: the assistant's model's API key (`src/organization/assistant-model.ts`). */
-    ANTHROPIC_API_KEY?: string;
-    /** Workers AI, which transcribes voice notes (`src/organization/transcription.ts`). */
-    AI?: Ai;
-    /** `"true"` answers Meta's calls inside the Worker, for the browser suite (`src/dev/fake-meta.ts`). */
-    WHATSAPP_FAKE_META?: string;
-    /** `"true"` fakes the assistant's model inside the Worker, for a browser check (`src/dev/fake-model.ts`). */
-    ASSISTANT_FAKE_MODEL?: string;
-  };
 
 /**
  * The object's jobs, in the order the alarm runs them. A new job is one entry
@@ -93,32 +77,31 @@ export abstract class OrganizationRuntime extends DurableObject {
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
-    const workerEnv = env as unknown as RuntimeEnv;
     this.database = openDatabase(ctx.storage, () => this.#transactionsOpened++);
-    this.accounts = accountsFor(workerEnv);
-    this.assistant = fakesModel(workerEnv) ? fakeModel : assistantModelFor(workerEnv);
-    this.transcriber = transcriberFor(workerEnv);
-    const directory = workerEnv.WHATSAPP_DIRECTORY.get(
-      workerEnv.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
+    this.accounts = accountsFor(env);
+    this.assistant = fakesModel(env) ? fakeModel : assistantModelFor(env);
+    this.transcriber = transcriberFor(env);
+    const directory = env.WHATSAPP_DIRECTORY.get(
+      env.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
     );
     this.number = new WhatsappNumber(this.database, {
-      signup: metaSignupFor(workerEnv),
+      signup: metaSignupFor(env),
       directory: {
         check: (entry) => directory.check(entry),
         claim: (entry) => directory.claim(entry),
         release: (organizationId) => directory.release(organizationId),
       },
       cipher: (organizationId) =>
-        organizationCipher(workerEnv.ORGANIZATION_ENCRYPTION_KEY, organizationId),
+        organizationCipher(env.ORGANIZATION_ENCRYPTION_KEY, organizationId),
     });
     this.whatsapp = whatsappCloudFor(
       {
         settings: () =>
           this.number.settings() ??
-          configuredWhatsappSettings(workerEnv, organizationIdIn(this.database)),
+          configuredWhatsappSettings(env, organizationIdIn(this.database)),
         tokenRefused: (error, token) => this.number.tokenRefused(error, token),
       },
-      fakesMeta(workerEnv) ? fakeMetaFetch : undefined,
+      fakesMeta(env) ? fakeMetaFetch : undefined,
     );
     void ctx.blockConcurrencyWhile(async () => {
       await migrateDatabase(this.database);

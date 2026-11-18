@@ -11,7 +11,7 @@ vi.mock(import("#/organization/accounts.ts"), async (original) => ({
   accountsFor: () => fakeAccounts,
 }));
 
-const bindings = { ...(env as unknown as WorkerEnv), SETUP_SECRET: "the-setup-secret" };
+const bindings: WorkerEnv = { ...env, SETUP_SECRET: "the-setup-secret" };
 
 function setupRequest(organizationName: string, authorization = "Bearer the-setup-secret") {
   return new Request("https://underthing.test/api/setup", {
