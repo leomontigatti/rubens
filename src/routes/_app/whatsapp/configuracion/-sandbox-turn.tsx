@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
-
 import { Detail, RecordSection } from "#/components/record-section.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
+import { useNow } from "#/hooks/use-now.ts";
 import {
   proposalKindLabels,
   proposalState,
@@ -21,16 +20,6 @@ import type { playSandboxTurn } from "#/server/whatsapp.functions.ts";
 export type Played = Extract<Awaited<ReturnType<typeof playSandboxTurn>>, { ok: true }>;
 
 type Turn = Played["turn"];
-
-/** The current time, read again every `everyMs`, for a countdown. */
-function useNow(everyMs: number) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), everyMs);
-    return () => clearInterval(timer);
-  }, [everyMs]);
-  return now;
-}
 
 export function SandboxState(props: { sandbox: Played["sandbox"]; windowClosesAt: number | null }) {
   const now = useNow(30_000);

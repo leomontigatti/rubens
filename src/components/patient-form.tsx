@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type * as z from "zod";
 
@@ -10,7 +10,7 @@ import { FormProblemsContext } from "#/components/field-problem.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { FieldDescription, FieldLegend } from "#/components/ui/field.tsx";
 import type { FieldProblem } from "#/components/form-problems.ts";
-import { FormPage, focusProblem, useFormPage } from "#/components/form-page.tsx";
+import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
 import { initialSaveState, saveReducer } from "#/components/patient-save.ts";
 import { phoneMessages } from "#/components/phone-field.tsx";
@@ -19,6 +19,7 @@ import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 import { emptyPhoneEntry, splitPhone } from "#/lib/phones.ts";
@@ -295,10 +296,7 @@ export function PatientRegistrationForm(props: {
   const element = useRef<HTMLFormElement>(null);
   const alert = useRef<HTMLDivElement>(null);
 
-  useEffect(
-    () => focusProblem(element.current, alert.current),
-    [problems, save.holder, save.error],
-  );
+  useFocusProblem(element, alert, [problems, save.holder, save.error]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

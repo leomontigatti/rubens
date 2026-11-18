@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useFormAction } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
@@ -57,15 +57,19 @@ const refusalMessages = {
 type Reason = keyof typeof refusalMessages;
 
 /** Runs Embedded Signup and completes it on the server; Meta's own words, when it gave some, replace the refusal's copy. */
-function useConnect(signup: Signup | null, canConnect: boolean) {
+function useConnect(signup: Signup | null) {
   const action = useFormAction(refusalMessages);
+  const appId = signup?.appId;
 
-  useEffect(() => {
-    if (signup && canConnect) {
-      // Loaded ahead, so the click opens the popup at once. A failure shows on the click.
-      loadFacebookSdk(signup.appId).catch(() => undefined);
-    }
-  }, [signup, canConnect]);
+  /** The connect button's ref: the SDK loads once it shows, so the click opens the popup at once. A failure shows on the click. */
+  const loadAhead = useCallback(
+    (button: HTMLButtonElement | null) => {
+      if (button && appId) {
+        loadFacebookSdk(appId).catch(() => undefined);
+      }
+    },
+    [appId],
+  );
 
   async function signUp(found: Signup) {
     const outcome = await runEmbeddedSignup(
@@ -98,13 +102,13 @@ function useConnect(signup: Signup | null, canConnect: boolean) {
     }
   }
 
-  return { action, connect };
+  return { action, connect, loadAhead };
 }
 
 export function NumberSection({ settings }: { settings: Settings }) {
   const { connection, signup } = settings;
   const connected = connection?.state === "connected";
-  const { action, connect } = useConnect(signup, Boolean(signup) && !connected);
+  const { action, connect, loadAhead } = useConnect(signup);
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -116,7 +120,11 @@ export function NumberSection({ settings }: { settings: Settings }) {
             Desconectar
           </Button>
         ) : (
-          <Button disabled={!signup || action.pending} onClick={() => void connect()}>
+          <Button
+            ref={loadAhead}
+            disabled={!signup || action.pending}
+            onClick={() => void connect()}
+          >
             {action.pending && <Spinner data-icon="inline-start" aria-hidden />}
             {connection ? "Conectar de nuevo" : "Conectar número"}
           </Button>

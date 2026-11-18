@@ -92,6 +92,19 @@ export default defineConfig({
       "ui/no-uncontrolled-input": "error",
       "ui/require-no-validate": "error",
       "ui/require-post-method": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              importNames: ["useEffect", "useLayoutEffect", "useInsertionEffect", "default"],
+              message:
+                "An effect hides a transition: put it in an event handler, in derived state, in a loader, or in a named hook in src/hooks (docs/agents/coding-standards.md#react).",
+            },
+          ],
+        },
+      ],
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
       "import/no-cycle": "error",
@@ -148,6 +161,13 @@ export default defineConfig({
         rules: {
           "ui/no-raw-form": "off",
           "ui/no-uncontrolled-input": "off",
+        },
+      },
+      {
+        // The one home of an effect: a hook with a name. shadcn's own components keep theirs.
+        files: ["src/hooks/**", "src/components/ui/**"],
+        rules: {
+          "no-restricted-imports": "off",
         },
       },
       {
