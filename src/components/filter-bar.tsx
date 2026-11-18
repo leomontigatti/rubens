@@ -31,8 +31,7 @@ export function FilterBar(props: {
 }) {
   const applied = appliedGroups(props.groups);
   const add = useRef<HTMLButtonElement | null>(null);
-  // Set when a filter is removed while every filter is applied: the add button
-  // comes back with the change, and takes the focus as it does.
+  // With every filter applied there is no add button yet: it takes the focus as it comes back.
   const focusAddOnReturn = useRef(false);
 
   function attachAdd(button: HTMLButtonElement | null) {
