@@ -3,8 +3,7 @@ import * as z from "zod";
 import type { TemplateStatus } from "#/lib/whatsapp-templates.ts";
 
 // WhatsApp messages as the organization's object stores them (ADR-0010), in
-// the shape the webhook hands them over: Meta's payload is read in
-// `src/server/whatsapp-webhook.ts`, never here.
+// the shape the webhook hands them over.
 
 export const whatsappMessageDirections = ["incoming", "outgoing"] as const;
 
@@ -13,24 +12,14 @@ export const whatsappMessageStatuses = ["sent", "delivered", "read", "failed"] a
 
 export type WhatsappMessageStatus = (typeof whatsappMessageStatuses)[number];
 
-/**
- * The assistant's judgement of a patient's message, whether it needs the
- * practitioner (docs/domain/assistant.md § Handoff); a message it has not
- * judged yet has none.
- */
 export const messageJudgements = ["forPractitioner", "notForPractitioner"] as const;
 
 export type MessageJudgement = (typeof messageJudgements)[number];
 
-/**
- * Meta's types of what a patient sends as media (a photo, a study, a
- * receipt): never passed to the model, but handed to reception.
- */
 export const mediaTypes = ["image", "document", "video"] as const;
 
 export type MediaType = (typeof mediaTypes)[number];
 
-/** A message a patient's number sent the organization's number. */
 export interface IncomingWhatsappMessage {
   /** Meta's message id (`wamid.…`). */
   whatsappId: string;
@@ -48,11 +37,9 @@ export interface IncomingWhatsappMessage {
   reactsTo?: string;
   /** The WhatsApp id of the message it answers, when the patient replied to one or tapped its button. */
   repliesTo?: string;
-  /** A tapped button's payload; the button's label is `text`. */
   buttonPayload?: string;
 }
 
-/** Meta's news about a message the organization's number sent. */
 export interface WhatsappStatusUpdate {
   whatsappId: string;
   status: WhatsappMessageStatus;
@@ -60,9 +47,7 @@ export interface WhatsappStatusUpdate {
   at: number;
 }
 
-/** Meta's news about a template the organization submitted. */
 export interface WhatsappTemplateStatusUpdate {
-  /** Meta's id for the template. */
   metaId: string;
   status: TemplateStatus;
   /** Meta's reason for a rejection, such as `INVALID_FORMAT`. */
@@ -83,18 +68,15 @@ export const conversationReferenceSchema = z.object({ conversationId: z.uuid() }
 
 export type ConversationReference = z.input<typeof conversationReferenceSchema>;
 
-/** A message of a conversation, as the inbox opens its media by. */
 export const messageReferenceSchema = conversationReferenceSchema.extend({ messageId: z.uuid() });
 
 export type MessageReference = z.input<typeof messageReferenceSchema>;
 
 export const conversationPageSize = 25;
 
-/** A page of the inbox, and what the search box holds; the search text stays out of the URL. */
 export const conversationListSchema = z.object({
   page: z.number().int().positive().default(1),
   query: z.string().trim().max(200).default(""),
-  /** Only the conversations with an open handoff. */
   withHandoff: z.boolean().default(false),
 });
 

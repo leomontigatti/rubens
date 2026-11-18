@@ -10,8 +10,6 @@ import {
   validityLabel,
 } from "#/lib/schedules.ts";
 
-// What a schedule's screen offers depends on where today falls in its dates.
-
 const open = { firstDate: "2026-11-02", lastDate: null };
 
 describe("a schedule's state on a given day", () => {

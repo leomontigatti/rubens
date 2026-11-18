@@ -116,7 +116,8 @@ beside it.
 - **The footer counts:** `25 de 36 registros`, on the left, with the pager on the right when there
   is more than one page. A patient search has no count: it stops at its 20 best matches, and when
   more patients match, a muted line under the results says so and asks for more text.
-- **A list page takes the full width.** Patient search text stays out of the URL.
+- **A list page takes the full width.** Search text stays out of the URL, the patients' and the
+  inbox's alike.
 - **A short fixed list has no search or filters**, only the table and its count: `DataTable`
   with no `search`, as `/whatsapp/plantillas`, whose set of templates never changes.
 
@@ -221,7 +222,9 @@ carried over from en-escena.
 - **A date is a `DateField` and a time a `TimeField`**, two fields side by side, never
   `type="date"`, `type="time"` or `datetime-local`: the browser draws those in its own language
   and clock. They are typed as `dd/mm/aaaa` and `HH:mm` (`src/components/date-time-input.tsx`).
-  A date or a time shown to a person is written by `src/lib/dates.ts`, and `pnpm lint` keeps
+  A date or a time shown to a person is written by `src/lib/dates.ts`: day first, on a
+  24-hour clock, with Spanish names, in the zone the caller passes, never the process's
+  or the browser's. `pnpm lint` keeps
   hand-written formats out (`ui/no-raw-date-format`).
 - **A required field is said in words when the context needs it**, never by an asterisk alone.
 - **Every `<form>` takes `method="post"`.** Submitted before the page hydrates, the browser sends

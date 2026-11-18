@@ -9,7 +9,6 @@ export const insurerKindLabels: Record<InsurerKind, string> = {
   prepaga: "Prepaga",
 };
 
-/** An insurer's fields, shared by the form and the services. */
 export const insurerInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
   kind: z.enum(insurerKinds),
@@ -51,10 +50,8 @@ export type CoverageInput = z.input<typeof coverageInputSchema>;
 export type CoverageUpdate = z.input<typeof coverageUpdateSchema>;
 export type CoverageId = z.input<typeof coverageIdSchema>;
 
-/** What a patient with no coverage shows: they pay privately. */
 export const privateCoverageLabel = "Particular";
 
-/** A coverage as a line of the patient page: "OSDE · 310". */
 export function coverageLabel(coverage: { insurerName: string; plan: string | null }): string {
   return coverage.plan ? `${coverage.insurerName} · ${coverage.plan}` : coverage.insurerName;
 }

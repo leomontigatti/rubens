@@ -43,7 +43,6 @@ function input(overrides: Partial<AvailabilityInput>): AvailabilityInput {
   };
 }
 
-/** The free starts as ISO instants, for compact assertions. */
 function starts(overrides: Partial<AvailabilityInput>): string[] {
   return findFreeStarts(input(overrides)).map((free) => free.start.toISOString());
 }
@@ -403,7 +402,6 @@ describe("a schedule's occurrences during a span", () => {
   });
 });
 
-/** A month around the spans below, for the many-spans form. */
 const month = { start: new Date("2099-01-01T00:00:00Z"), end: new Date("2099-02-01T00:00:00Z") };
 
 describe.each([

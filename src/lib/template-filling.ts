@@ -20,27 +20,22 @@ const templateVariableNames = [
 
 export type TemplateVariable = (typeof templateVariableNames)[number];
 
-/** What a template is filled from: an appointment, joined to its patient, practitioner and office. */
 export interface TemplateAppointment {
   patient: { firstName: string; chosenName: string | null };
   /** The practitioner, as the practitioner's rules name them. */
   practitionerName: string;
   start: Date;
-  /** The office's IANA zone, where the day and the time are read. */
   timeZone: string;
   officeName: string;
   officeAddress: string;
-  /** The appointment's medical service, by its name. */
   medicalServiceName: string;
   /** The organization's name, which the text names instead of a sign-off. */
   organizationName: string;
 }
 
-/** The appointment the template preview and Meta's examples are filled from. */
 export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = {
   patient: { firstName: "Lucía", chosenName: null },
   practitionerName: "la Dra. Sofía Méndez",
-  // A Thursday, at 10:30 in Buenos Aires.
   start: new Date("2026-11-12T13:30:00Z"),
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
@@ -48,7 +43,6 @@ export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = 
   medicalServiceName: "Limpieza",
 };
 
-/** The value of each variable for `appointment`. */
 export function templateValues(appointment: TemplateAppointment): Record<TemplateVariable, string> {
   const { patient, start, timeZone } = appointment;
   return {
@@ -78,7 +72,6 @@ function isTemplateVariable(name: string): name is TemplateVariable {
   return (templateVariableNames as readonly string[]).includes(name);
 }
 
-/** The variables `body` uses, once each, in the order they first appear. */
 export function variablesIn(body: string): TemplateVariable[] {
   const used = new Set<TemplateVariable>();
   for (const [, name] of body.matchAll(variablePattern)) {

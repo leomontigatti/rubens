@@ -9,7 +9,6 @@ import {
 
 const defaultRegion = "AR";
 
-/** Why a phone field's entry is refused. */
 export type PhoneEntryRefusal =
   | "missingPhone"
   | "notDigits"
@@ -28,18 +27,11 @@ export function parsePhone(input: string): string | null {
   return parsed?.isValid() ? parsed.number : null;
 }
 
-/** A phone as the phone field holds it: a country, and the national number typed for it. */
 export interface PhoneEntry {
   country: string;
   number: string;
 }
 
-/**
- * Turns a phone field's entry into E.164. An Argentine number is its 10
- * digits, area code without its `0` and number without its `15`, and is
- * stored as a mobile (`+54 9`): 10 digits do not say which it is, and the
- * phone is where WhatsApp messages go, which reach only a mobile.
- */
 export function parsePhoneEntry(entry: PhoneEntry): PhoneResult {
   const { number } = entry;
   if (number.trim() === "") {
@@ -65,7 +57,6 @@ export function parsePhoneEntry(entry: PhoneEntry): PhoneResult {
     : { ok: false, reason: "invalidPhone" };
 }
 
-/** What an empty phone field holds: Argentina, and no number yet. */
 export const emptyPhoneEntry: PhoneEntry = { country: defaultRegion, number: "" };
 
 /**
@@ -83,7 +74,6 @@ export function splitPhone(phone: string): PhoneEntry {
   return { country: parsed.country, number };
 }
 
-/** An area code without its `0` (`11`, or starting with 2 or 3) and the number, 10 digits in all. */
 const argentineNumber = /^(?:11\d{8}|[23]\d{9})$/;
 
 /**
@@ -101,12 +91,6 @@ export function formatPhone(phone: string): string {
   return landline ? landline.formatNational().replace(/^0/, "") : digits;
 }
 
-/**
- * The E.164 spellings of one number. An Argentine mobile is `+54 9 …` when
- * typed with its `15` and `+54 …` without it (a landline shares the same
- * national numbers, so the two never name different lines), while WhatsApp
- * always sends a mobile with the `9`.
- */
 export function phoneSpellings(phone: string): string[] {
   const argentine = /^\+54(9?)(\d+)$/.exec(phone);
   if (!argentine) {

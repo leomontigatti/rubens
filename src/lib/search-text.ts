@@ -1,13 +1,10 @@
 // How the patient search compares text (`src/organization/patient-search.ts`):
-// without accents, case or extra spaces, and by trigrams, as Postgres's
-// `pg_trgm` did before the port (#135), so a near miss still matches.
+// without accents, case or extra spaces, and by trigrams, so a near miss still matches.
 
-/** `value` without accents, in lower case, its spaces collapsed: "  Núñez " is "nunez". */
 export function normalizeText(value: string): string {
   return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-/** The words of normalized text: its runs of letters and digits. */
 export function wordsOf(text: string): string[] {
   return text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 }

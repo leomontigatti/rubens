@@ -8,7 +8,6 @@ import {
   visibleWeekHours,
 } from "#/lib/calendar-layout.ts";
 
-// A day from 08:00 to 20:00 UTC; blocks are given as "HH:MM" on that day.
 const day = { start: at("08:00"), end: at("20:00") };
 
 function at(time: string) {
@@ -52,7 +51,6 @@ describe("laying out one column's day", () => {
   });
 
   it("reuses a freed lane in a chain of overlaps, which all share the chain's width", () => {
-    // a overlaps b, b overlaps c, but a ends before c starts: c takes a's lane.
     const placed = layoutColumn(
       [block("a", "09:00", "09:30"), block("b", "09:15", "10:00"), block("c", "09:45", "10:15")],
       day,
@@ -111,7 +109,6 @@ describe("laying out one column's day", () => {
 
 describe("the hours a day view shows", () => {
   const zone = "America/Argentina/Buenos_Aires";
-  // 09:00 in Buenos Aires is 12:00Z.
   const local = (time: string) => new Date(`2099-01-05T${time}:00-03:00`);
 
   it("shows 08:00 to 20:00 when nothing falls outside them", () => {

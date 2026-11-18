@@ -2,33 +2,24 @@ import { TZDate, tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-// How the app writes a date or a time a user reads: day first, a 24-hour
-// clock, Spanish names. An instant is written in the zone passed, never the
-// process's or the browser's, so the caller decides which zone a screen
-// shows. Formats a person, or the assistant, reads are written here only; the
-// `ui/no-raw-date-format` lint rule keeps them out of the other files. The
-// hours a message waits for are read on the same clock.
+// How the app writes a date or a time a person or the assistant reads.
 
 type Instant = Date | number;
 
 const inZone = (timeZone: string) => ({ in: tz(timeZone), locale: es });
 
-/** `08/11/2026`. */
 export function formatDate(instant: Instant, timeZone: string): string {
   return format(instant, "dd/MM/yyyy", inZone(timeZone));
 }
 
-/** `09:05`, on a 24-hour clock. */
 export function formatTime(instant: Instant, timeZone: string): string {
   return format(instant, "HH:mm", inZone(timeZone));
 }
 
-/** `08/11/2026 09:05`. */
 export function formatDateTime(instant: Instant, timeZone: string): string {
   return format(instant, "dd/MM/yyyy HH:mm", inZone(timeZone));
 }
 
-/** `domingo 8 de noviembre`, inside a sentence. */
 export function formatDay(instant: Instant, timeZone: string): string {
   return format(instant, "EEEE d 'de' MMMM", inZone(timeZone));
 }
@@ -40,12 +31,10 @@ export function formatShortDay(instant: Instant, timeZone: string): string {
 
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** `Domingo 8 de noviembre`, over the day's entries. */
 export function formatDayHeading(instant: Instant, timeZone: string): string {
   return capitalized(formatDay(instant, timeZone));
 }
 
-/** `Domingo 8 de noviembre de 2026`, over the entries of a day in another year. */
 export function formatDayHeadingWithYear(instant: Instant, timeZone: string): string {
   return capitalized(format(instant, "EEEE d 'de' MMMM 'de' yyyy", inZone(timeZone)));
 }
@@ -56,7 +45,6 @@ export function formatLocalDate(date: string): string {
   return `${day}/${month}/${year}`;
 }
 
-/** A calendar month, `2098-12`, as `diciembre de 2098`. */
 export function formatMonth(month: string): string {
   // Noon UTC of the first, so no zone moves it to another month.
   return format(new Date(`${month}-01T12:00:00Z`), "MMMM 'de' yyyy", inZone("UTC"));

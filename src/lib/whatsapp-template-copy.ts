@@ -11,7 +11,6 @@ import type {
 // What the WhatsApp settings say about templates: when each goes, its status
 // at Meta, and what to fix in a body.
 
-/** An event template's event, which the list shows where the others show their timing. */
 export const eventLabels: Record<EventTemplateId, string> = {
   turno_movido: "Cuando la organización mueve un turno",
   turno_no_disponible: "Cuando la organización cancela un turno o lo deja para reprogramar",
@@ -19,14 +18,12 @@ export const eventLabels: Record<EventTemplateId, string> = {
   reabrir_conversacion: "Cuando se responde con la conversación cerrada",
 };
 
-/** Each kind of buttons as the template form offers it. */
 export const buttonsLabels: Record<TemplateButtons, string> = {
   none: "Ninguno",
   confirm: "Confirmar asistencia",
   reopen: "Ver respuesta",
 };
 
-/** Each variable as the template form's chips name it. */
 export const variableLabels: Record<TemplateVariable, string> = {
   paciente: "Paciente",
   organizacion: "Organización",
@@ -42,12 +39,10 @@ function count(amount: number, one: string, many: string) {
   return `${amount} ${amount === 1 ? one : many}`;
 }
 
-/** A span of hours as the admin set it: in days when it is whole days. */
 function timingSpan(hours: number) {
   return hours % 24 === 0 ? count(hours / 24, "día", "días") : count(hours, "hora", "horas");
 }
 
-/** When a template goes, as the list and the medical service's form say it. */
 export function timingLabel(timing: Timing): string {
   switch (timing.when) {
     case "booking":
@@ -86,7 +81,6 @@ export const templateStatusVariants = {
   disabled: "destructive",
 } as const satisfies Record<TemplateStatus, string>;
 
-// Meta's codes for a rejection; one with no copy here shows as Meta wrote it.
 const rejectionLabels: Record<string, string> = {
   ABUSIVE_CONTENT: "Meta lo consideró contenido abusivo.",
   INCORRECT_CATEGORY: "Meta considera que no es de la categoría de utilidad.",
@@ -125,7 +119,6 @@ export const templateReviewRefusals = {
 
 const variable = (name: string) => "{{" + name + "}}";
 
-/** What to fix, for each problem the rules check found. */
 export function problemText(problem: TemplateProblem): string {
   switch (problem.kind) {
     case "empty":

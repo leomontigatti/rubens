@@ -5,19 +5,13 @@ import { durationMinutesSchema } from "#/lib/availability.ts";
 /** The most reminders a medical service sends: templates timed before the appointment. */
 export const maxReminders = 5;
 
-/** The longest reschedule cutoff: 30 days. */
 const maxCutoffHours = 720;
 
-/**
- * The organization's templates its appointments get (docs/domain/messages.md
- * § The organization's templates), each once.
- */
 const templateIdsSchema = z
   .array(z.uuid())
   .max(50)
   .transform((ids) => [...new Set(ids)]);
 
-/** Until how many hours before the appointment the patient can move it through the assistant. */
 const rescheduleCutoffHoursSchema = z.int().min(0).max(maxCutoffHours);
 
 const medicalServiceFields = z.object({

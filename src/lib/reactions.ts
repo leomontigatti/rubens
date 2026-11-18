@@ -2,8 +2,7 @@ import { withoutMark } from "#/lib/assistant.ts";
 
 // A patient's WhatsApp reactions (docs/domain/assistant.md § Proposals): each
 // is a message of its own, Meta's `reaction`, whose `text` is the emoji and
-// whose `reactsTo` is the message it reacts to. A later reaction to the same
-// message replaces it, and one with no emoji takes it back, as WhatsApp shows.
+// whose `reactsTo` is the message it reacts to.
 
 interface Reacting {
   type: string;
@@ -37,7 +36,6 @@ export function liveReactions<Message extends Reacting>(messages: Message[]) {
   return live;
 }
 
-/** What every reaction's line starts with, as the model reads it. */
 export const reactionMark = "[reaccionó";
 
 /**

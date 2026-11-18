@@ -3,7 +3,6 @@ export const roleNames = ["admin", "receptionist", "practitioner"] as const;
 
 export type Role = (typeof roleNames)[number];
 
-/** The roles in a `member.role` value; unknown names are dropped. */
 export function parseRoles(value: string): Role[] {
   const names = value.split(",").map((name) => name.trim());
   return roleNames.filter((role) => names.includes(role));

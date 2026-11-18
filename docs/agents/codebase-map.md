@@ -12,7 +12,8 @@ src/
 │   │                  `_app/whatsapp/` holds two pages, `configuracion/` (the settings and the
 │   │                  form page of each) and `plantillas/` (the templates and each one's edit page)
 │   └── api/           `setup.ts` (creates an organization, behind SETUP_SECRET),
-│                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature),
+│                      `whatsapp.ts` (Meta's WhatsApp webhook, behind Meta's signature; its body is parsed
+│                      only in `src/server/whatsapp-webhook.ts`),
 │                      `conversaciones/…/mensajes/$messageId.ts` (a patient's media, streamed from Meta)
 ├── components/        shared pieces: `app-form.tsx` (`useAppForm` and its field components),
 │   │                  `date-time-input.tsx` and `date-time-text.ts` (a date typed as `dd/mm/aaaa`, a time as `HH:mm`),

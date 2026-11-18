@@ -3,7 +3,6 @@ import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 // What the app says about a handoff (ui: "Derivación"): why the assistant
 // passed the conversation to a person, in the inbox and in its notification.
-// It names the reason only, never the patient's words.
 
 const handoffReasonLabels: Record<HandoffReason, string> = {
   patientAsked: "Pidió hablar con una persona",

@@ -84,7 +84,6 @@ function layoutLanes(
   return placed;
 }
 
-/** The calendar's row: every day is a stack of cells this many minutes long. */
 export const cellMinutes = 30;
 
 export interface CalendarCell<T> {

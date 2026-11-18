@@ -1,9 +1,7 @@
 import type { FormOfAddress } from "#/lib/communication-rules.ts";
 
 // The drafts every organization starts with, in each `Trato`, as
-// docs/operations/whatsapp-templates.md words them: the four of its own and the
-// four event templates'. The migrations insert them worded in `vos`; a draft never
-// sent that still reads as one of these follows the `Trato` an admin saves.
+// docs/operations/whatsapp-templates.md words them.
 
 const defaultDrafts: readonly Record<FormOfAddress, string>[] = [
   {
@@ -52,15 +50,10 @@ function defaultDraftOf(draft: string) {
   return defaultDrafts.find((one) => one.vos === draft || one.usted === draft);
 }
 
-/** Whether `draft` is one of the default drafts, in either `Trato`. */
 export function isDefaultDraft(draft: string) {
   return defaultDraftOf(draft) !== undefined;
 }
 
-/**
- * `draft` worded in `formOfAddress`, when it is one of the default drafts in
- * either `Trato`; `null` for a text the organization wrote.
- */
 export function defaultDraftIn(formOfAddress: FormOfAddress, draft: string): string | null {
   return defaultDraftOf(draft)?.[formOfAddress] ?? null;
 }

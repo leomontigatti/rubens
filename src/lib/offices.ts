@@ -25,7 +25,6 @@ const name = z.string().trim().min(1).max(200);
 const timeZone = z.string().trim().refine(isTimeZone);
 const capacity = z.int().min(1).max(100);
 
-/** An office's fields, shared by the form and the services. */
 export const officeInputSchema = z.object({
   name,
   address: z.string().trim().min(1).max(500),
@@ -38,7 +37,6 @@ export const officeUpdateSchema = officeInputSchema.extend({
   timeZone: timeZone.optional(),
 });
 
-/** A room's fields, shared by the form and the services. */
 export const roomInputSchema = z.object({
   officeId: z.uuid(),
   name,
@@ -54,7 +52,6 @@ export const activeChangeSchema = z.object({ id: z.uuid(), active: z.boolean() }
 
 export const placeReferenceSchema = activeChangeSchema.pick({ id: true });
 
-/** How many practitioners a room's capacity lets work in it at once. */
 export function capacityLabel(capacity: number): string {
   return capacity === 1 ? "1 profesional a la vez" : `${capacity} profesionales a la vez`;
 }

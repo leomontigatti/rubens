@@ -11,7 +11,6 @@ import type { TemplateAppointment } from "#/lib/template-filling.ts";
 const appointment: TemplateAppointment = {
   patient: { firstName: "Martina", chosenName: null },
   practitionerName: "Dr. Juan Gómez",
-  // 09:05 in Buenos Aires, on a Monday.
   start: new Date("2099-01-05T12:05:00Z"),
   timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
@@ -41,7 +40,6 @@ describe("an appointment's template values", () => {
   });
 
   it("reads the day and the time in the office's zone, not in UTC", () => {
-    // 01:30 UTC on Tuesday is 22:30 on Monday in Buenos Aires.
     const late = { ...appointment, start: new Date("2099-01-06T01:30:00Z") };
     const madrid = { ...appointment, timeZone: "Europe/Madrid" };
 
@@ -96,7 +94,6 @@ describe("the sample appointment", () => {
   });
 
   it("fills a body as the template preview shows it, the time read in the office's zone", () => {
-    // 13:30 UTC is 10:30 in Buenos Aires.
     expect(
       fillSample(
         "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n",

@@ -17,7 +17,6 @@ export const sandboxRefusalMessages = {
   conversationFull: "La conversación de prueba llegó a su largo máximo. Empezá de nuevo.",
 };
 
-/** What the assistant did with the patient's message. */
 export const sandboxOutcomeLabels = {
   answered: "Respondió.",
   handedOff: "Derivó la conversación a recepción: al paciente no le dice nada de eso.",
@@ -30,17 +29,12 @@ export const sandboxOutcomeLabels = {
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;
 
-/**
- * What an answered turn whose reply is held leads to, by the check that held
- * it: a handoff to the practitioner for the clinical check, else to reception.
- */
 export const sandboxHeldOutcomes = {
   clinical: "toPractitioner",
   internals: "handedOff",
   announcedHandoff: "handedOff",
 } as const satisfies Record<HeldReplyCheck, keyof typeof sandboxOutcomeLabels>;
 
-/** Why the sandbox would hold a reply, by the check that held it. */
 export const sandboxHeldTitles: Record<HeldReplyCheck, string> = {
   clinical: "El control clínico retendría esta respuesta",
   internals: "Se retendría para recepción: nombra algo interno del asistente",
@@ -53,14 +47,12 @@ export const proposalKindLabels: Record<ProposalKind, string> = {
   move: "Mover",
 };
 
-/** A proposal's statement as the patient read it: the appointment, then a move's new time. */
 export function proposalStatement(statement: Record<string, string>) {
   const { medicalService, practitioner, date, time, newDate, newTime } = statement;
   const appointment = `${medicalService} con ${practitioner}, ${date} a las ${time}`;
   return newDate ? `${appointment}, al ${newDate} a las ${newTime}` : appointment;
 }
 
-/** A scenario as the picker lists it: the patient, the day and time, the practitioner. */
 export function scenarioLabel(scenario: {
   patient: string;
   startsAt: number;
@@ -72,7 +64,6 @@ export function scenarioLabel(scenario: {
   return `${scenario.patient} · ${when} · ${scenario.practitioner}`;
 }
 
-/** The time from `now` to `at`, rounded up to the minute, such as `23 h 05 min`; `null` once it passed. */
 function timeLeft(at: number, now: number) {
   const left = at - now;
   if (left <= 0) {
@@ -82,7 +73,6 @@ function timeLeft(at: number, now: number) {
   return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")} min`;
 }
 
-/** How long the window has left at `now`, such as `Cierra en 23 h 05 min`; `Cerrada` once it closed. */
 export function windowCountdown(closesAt: number | null, now: number) {
   if (closesAt === null) {
     return "Sin abrir: el paciente todavía no escribió.";
@@ -91,7 +81,6 @@ export function windowCountdown(closesAt: number | null, now: number) {
   return left ? `Cierra en ${left}` : "Cerrada";
 }
 
-/** A proposal's state at `now`: accepted, expired, or how long it waits for its yes. */
 export function proposalState(
   proposal: { acceptedAt: number | null; expiresAt: number },
   now: number,

@@ -1,10 +1,7 @@
 import * as z from "zod";
 
 // The payloads underthing sets on a template's quick-reply buttons when it sends
-// one (ADR-0014). Meta sends the payload back with a tap, so code reads which
-// button was tapped, and for which appointment at which start, without reading
-// the patient's words. Anything else reads as no payload of underthing's, and
-// the tap goes to the model as the patient's words.
+// one (ADR-0014), and reading them back from a tap.
 
 export type ButtonPayload =
   | { kind: "confirm"; appointmentId: string; startsAt: number }
@@ -36,7 +33,6 @@ export function tapLine(label: string, target: string | null) {
     : `[tocó el botón «${label}» del mensaje: «${target}»]`;
 }
 
-/** The button `payload` names, or `null` for one underthing did not set. */
 export function readButtonPayload(payload: string): ButtonPayload | null {
   if (payload === reopenPayload()) {
     return { kind: "reopen" };

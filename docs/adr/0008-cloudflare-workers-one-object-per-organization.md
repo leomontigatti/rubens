@@ -115,3 +115,10 @@ Rejected: **render signed-in pages in the browser** (TanStack Start's selective 
   to US East.
 - Every later feature, such as the app-level encryption of notes and files and the
   WhatsApp assistant in the object's alarms, would be designed against 10 ms.
+
+## Amended 2026-11-18: patient search without `pg_trgm`
+
+Patient search's near-miss matching, which Postgres's `pg_trgm` did, is code in the
+object (`src/lib/search-text.ts`, #135): it pads each word's trigrams as `pg_trgm` pads
+them and matches a query word to a stored word on a trigram threshold, so a near miss
+still matches.

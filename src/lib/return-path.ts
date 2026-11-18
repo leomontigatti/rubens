@@ -7,7 +7,6 @@
 
 const placeholderOrigin = "https://underthing.invalid";
 
-/** Whether `value` holds a character from U+0000 to U+0020 (control and space) or U+007F. */
 function hasControlOrSpace(value: string): boolean {
   for (let index = 0; index < value.length; index++) {
     const code = value.charCodeAt(index);
@@ -18,7 +17,6 @@ function hasControlOrSpace(value: string): boolean {
   return false;
 }
 
-/** `value` as a path of this app (pathname, search and hash), or undefined when it is not one. */
 export function returnPath(value: string): string | undefined {
   if (!value.startsWith("/") || hasControlOrSpace(value)) {
     return undefined;

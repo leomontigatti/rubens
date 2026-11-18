@@ -12,15 +12,13 @@ import { reactionMark } from "#/lib/reactions.ts";
 // reply that names one of the assistant's tools or holds one of the prompt's
 // marks or notes, and, in a turn whose handoff the patient is told nothing
 // about, one that says it passed the conversation on. Either is held
-// (`turn-replies.ts`). Each is a cheap match, so the prompt stays the first
-// guard and these only catch what slips past it.
+// (`turn-replies.ts`).
 
 const toolNames = new RegExp(
   `(?<!\\w)(?:${Object.keys(assistantToolSchemas).join("|")})(?!\\w)`,
   "iu",
 );
 
-/** What the prompt's marks and notes start with, as the model reads them: none ever reaches a patient. */
 const marks = [
   newMessagesMark,
   withdrawnReplyNote,
@@ -29,7 +27,6 @@ const marks = [
   reactionMark,
 ].map((mark) => mark.toLowerCase());
 
-/** Whether `reply` names one of the assistant's tools or holds one of the prompt's marks or notes. */
 export function leaksInternals(reply: string) {
   const lower = reply.toLowerCase();
   return toolNames.test(reply) || marks.some((mark) => lower.includes(mark));
@@ -41,12 +38,9 @@ const word = (source: string) => `(?<!\\p{L})(?:${source})(?!\\p{L})`;
 /** Whom a conversation is passed to, as a reply names them, but for the practitioner. */
 const staff = String.raw`una persona|alguien|(?:el |nuestro )?equipo|(?:la )?recepci[oó]n|(?:la )?secretar[ií]a`;
 
-/** Whom a conversation is passed to, as a reply names them. */
 const person = String.raw`${staff}|(?:el |la )?(?:profesional|doctora?|dra?\.?)`;
 
-/** What a reply says when it passed the conversation on, in `vos` or `usted`. */
 const announcements = [
-  // `Lo derivé`, `derivé tu consulta`, `te voy a derivar`.
   word(String.raw`deriv(?:é|e|amos|o|ó|ado|ada|ar|ando)`),
   // `Ya se lo pasé`, `se lo pasé así te responden`, and `se lo pasé para que…`,
   // whose `que` ends the clause (`announcesHandoff`): done, and to them. Not
@@ -54,14 +48,10 @@ const announcements = [
   // lo pase`, an offer: an unaccented `pase` is the subjunctive.
   word(String.raw`se\s+l[oa]s?\s+pas(?:é|amos)`) +
     String.raw`(?=\s*$|\s+para\s*$|\s+as[ií](?!\p{L}))`,
-  // `Se lo pasé al equipo`, but not `te lo paso al martes` nor `para el martes`, a move.
   word(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|amos|o)`) +
     String.raw`(?=\s+(?:a|al|a la|con)\s+${word(person)})`,
-  // `Pasé tu consulta`, `le pasé su mensaje`.
   word(String.raw`pas(?:é|e|amos|o)\s+(?:tu|su)\s+(?:consulta|mensaje|pedido|caso|pregunta)`),
-  // `Te paso con recepción`.
   word(String.raw`(?:te|le|lo|la)\s+pas(?:é|e|amos|o)\s+con`) + String.raw`\s+${word(person)}`,
-  // `Te va a contactar alguien`, `le van a escribir`.
   word(
     String.raw`(?:te|le|lo|la|los|las)\s+(?:va|van)\s+a\s+(?:contactar|escribir|responder|comunicar)`,
   ),
@@ -69,18 +59,13 @@ const announcements = [
   // nor `te va a llamar la doctora`, who calls a waiting patient in.
   word(String.raw`(?:te|le|lo|la)\s+(?:va|van)\s+a\s+llamar`) +
     String.raw`\s+(?:(?:de|del|desde)\s+)?${word(`${staff}|(?:el )?consultorio`)}`,
-  // A bare `te van a llamar.`: someone at the practice, unnamed.
   word(String.raw`(?:te|le|lo|la)\s+van\s+a\s+llamar`) + String.raw`(?=\s*$)`,
-  // `Se van a comunicar con vos`.
   word(String.raw`se\s+(?:va|van)\s+a\s+(?:comunicar|contactar|poner\s+en\s+contacto)`),
-  // `Le avisé al equipo`.
   word(String.raw`avis(?:é|e|amos)\s+(?:a|al|a la)`) + String.raw`\s+${word(person)}`,
 ].map((source) => new RegExp(source, "iu"));
 
-/** A word that negates what follows it in its clause: `no te va a contactar nadie` announces nothing. */
 const negation = new RegExp(word("no|nunca|tampoco|nadie|ni"), "iu");
 
-/** Whether `pattern` matches `clause` with no negation before the match. */
 function saysUnnegated(clause: string, pattern: RegExp) {
   const found = pattern.exec(clause);
   return found !== null && !negation.test(clause.slice(0, found.index));
