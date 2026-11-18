@@ -1,5 +1,6 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import {
   adminCaller,
@@ -373,12 +374,25 @@ function approveTemplate(templateId: string, metaId: string) {
   return submitTemplate(world.organization, templateId, { status: "APPROVED", metaId });
 }
 
+/**
+ * A template message's body: its body component fills in named parameters, and a
+ * button's carries a payload instead.
+ */
+const filledTemplate = z.object({
+  template: z.object({
+    components: z.array(
+      z.object({
+        parameters: z.array(
+          z.object({ parameter_name: z.string().optional(), text: z.string().optional() }),
+        ),
+      }),
+    ),
+  }),
+});
+
 /** The date and time Meta was sent to fill in the one message the object sent. */
 function sentDateAndTime() {
-  const [request] = fakeMeta.requests.filter((one) => one.url.endsWith("/messages"));
-  const { template } = request!.body as {
-    template: { components: { parameters: { parameter_name: string; text: string }[] }[] };
-  };
+  const { template } = fakeMeta.sentBodies("/messages", filledTemplate)[0]!;
   const filled = new Map(
     template.components[0]!.parameters.map((one) => [one.parameter_name, one.text]),
   );
@@ -387,9 +401,9 @@ function sentDateAndTime() {
 
 /** The template of each message the object sent Meta, in order. */
 function sentTemplates() {
-  return fakeMeta.requests
-    .filter((request) => request.url.endsWith("/messages"))
-    .map((request) => (request.body as { template: { name: string } }).template.name);
+  return fakeMeta
+    .sentBodies("/messages", z.object({ template: z.object({ name: z.string() }) }))
+    .map((body) => body.template.name);
 }
 
 describe("sending the message for the latest change", () => {
@@ -419,8 +433,10 @@ describe("sending the message for the latest change", () => {
 
     await runDurableObjectAlarm(world.organization);
 
-    const [request] = fakeMeta.requests.filter((one) => one.url.endsWith("/messages"));
-    const { template } = request!.body as { template: { components: unknown[] } };
+    const { template } = fakeMeta.sentBodies(
+      "/messages",
+      z.object({ template: z.object({ components: z.array(z.unknown()) }) }),
+    )[0]!;
     expect(template.components.slice(1)).toEqual([
       {
         type: "button",

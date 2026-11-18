@@ -1,5 +1,6 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import type { WhatsappNumberEvent, WhatsappTemplateStatusUpdate } from "#/lib/whatsapp-messages.ts";
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
@@ -127,9 +128,9 @@ function numberTurns(event: WhatsappNumberEvent) {
 
 /** The template name of each message the object sent Meta, in order. */
 function sentTemplates() {
-  return fakeMeta.requests
-    .filter((request) => request.url.endsWith("/messages"))
-    .map((request) => (request.body as { template: { name: string } }).template.name);
+  return fakeMeta
+    .sentBodies("/messages", z.object({ template: z.object({ name: z.string() }) }))
+    .map((body) => body.template.name);
 }
 
 function outbox() {

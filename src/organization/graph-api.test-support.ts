@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { GraphApiSettings, SignupSettings } from "#/organization/graph-api.ts";
 import type { Organization } from "#/organization/organization.ts";
 
@@ -80,13 +82,13 @@ function freshMetaId() {
 }
 
 /** The body of a call to a number's `/messages`: a message, or a read receipt with typing. */
-interface MessageBody {
-  to?: string;
-  type?: string;
-  text?: { body: string };
-  status?: string;
-  message_id?: string;
-}
+const messageBody = z.object({
+  to: z.string().optional(),
+  type: z.string().optional(),
+  text: z.object({ body: z.string() }).optional(),
+  status: z.string().optional(),
+  message_id: z.string().optional(),
+});
 
 /** A request the object made to Meta's Graph API, as the fake received it. */
 interface MetaRequest {
@@ -254,11 +256,19 @@ class FakeMeta {
     return this.#waits.until(organization, () => this.textsSent().length >= count);
   }
 
+  /**
+   * The bodies the object sent to a Graph API path ending in `path`, in order,
+   * each read with `schema`: a body of another shape fails the test.
+   */
+  sentBodies<T>(path: string, schema: z.ZodType<T>): T[] {
+    return this.requests
+      .filter((request) => request.body !== null && new URL(request.url).pathname.endsWith(path))
+      .map((request) => schema.parse(request.body));
+  }
+
   /** The free-form texts the object sent through Meta, to whom, in order. */
   textsSent() {
-    return this.requests
-      .filter((request) => request.url.endsWith("/messages"))
-      .map((request) => request.body as { to: string; type: string; text?: { body: string } })
+    return this.sentBodies("/messages", messageBody)
       .filter((body) => body.type === "text")
       .map((body) => ({ to: body.to, text: body.text?.body }));
   }
@@ -268,14 +278,11 @@ class FakeMeta {
    * indicator, which also marks read the patient's message it names.
    */
   sendsInOrder() {
-    return this.requests
-      .filter((request) => request.url.endsWith("/messages"))
-      .map((request) => request.body as MessageBody)
-      .map((body) =>
-        body.status === "read"
-          ? { typingAfter: body.message_id }
-          : { to: body.to, type: body.type, text: body.text?.body },
-      );
+    return this.sentBodies("/messages", messageBody).map((body) =>
+      body.status === "read"
+        ? { typingAfter: body.message_id }
+        : { to: body.to, type: body.type, text: body.text?.body },
+    );
   }
 
   /** Meta's answer to the next request only, before those `answerWith` set; queued in order. */
@@ -323,7 +330,7 @@ class FakeMeta {
       return Response.json({ data, paging: { cursors: { after: String(next) }, next: url.href } });
     }
     // A typing indicator always succeeds: the answers a test sets are for sends.
-    if ((body as MessageBody | null)?.status === "read") {
+    if (messageBody.safeParse(body).data?.status === "read") {
       return Response.json({ success: true });
     }
     const answer = this.#nextAnswers.shift() ?? this.#answer;

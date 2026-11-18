@@ -1,6 +1,7 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import { withdrawnReplyNote } from "#/lib/assistant.ts";
 import { reopenPayload } from "#/lib/button-payloads.ts";
@@ -129,34 +130,39 @@ function numberTurns(event: WhatsappNumberEvent) {
   });
 }
 
+/** A message the object sent: a template's body components fill in named parameters. */
+const sentMessage = z.object({
+  to: z.string().optional(),
+  template: z
+    .object({
+      name: z.string(),
+      components: z.array(
+        z.object({
+          type: z.string(),
+          parameters: z.array(
+            z.object({ parameter_name: z.string().optional(), text: z.string().optional() }),
+          ),
+        }),
+      ),
+    })
+    .optional(),
+});
+
 /** The templates the object sent Meta, each with its parameters, in order. */
 function templatesSent() {
-  return fakeMeta.requests
-    .filter((request) => request.url.endsWith("/messages"))
-    .map(
-      (request) =>
-        request.body as {
-          to: string;
-          type: string;
-          template?: {
-            name: string;
-            components: {
-              type: string;
-              parameters: { parameter_name: string; text: string }[];
-            }[];
-          };
-        },
-    )
-    .filter((body) => body.type === "template")
-    .map((body) => ({
-      to: body.to,
-      name: body.template!.name,
-      parameters: body
-        .template!.components.filter((one) => one.type === "body")
-        .flatMap((one) =>
-          one.parameters.map((parameter) => [parameter.parameter_name, parameter.text]),
-        ),
-    }));
+  return fakeMeta.sentBodies("/messages", sentMessage).flatMap(({ to, template }) =>
+    template
+      ? {
+          to,
+          name: template.name,
+          parameters: template.components
+            .filter((one) => one.type === "body")
+            .flatMap((one) =>
+              one.parameters.map((parameter) => [parameter.parameter_name, parameter.text]),
+            ),
+        }
+      : [],
+  );
 }
 
 /** Meta reports the reopen template that went as failed: the patient blocked the number, say. */

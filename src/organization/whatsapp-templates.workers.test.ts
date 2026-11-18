@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import {
   addMember,
@@ -40,9 +41,9 @@ function metaCreated(id: string, status = "PENDING") {
 
 /** The templates the object created at Meta: its `POST`s, by the name each asked for. */
 function createdAtMeta() {
-  return fakeMeta.requests
-    .filter((request) => request.method === "POST")
-    .map((request) => (request.body as { name: string }).name);
+  return fakeMeta
+    .sentBodies("/message_templates", z.object({ name: z.string() }))
+    .map((body) => body.name);
 }
 
 /** The versions the settings list for template `templateId`, newest first. */
@@ -130,9 +131,9 @@ describe("submitting an event template's text", () => {
     );
 
     expect(
-      fakeMeta.requests
-        .filter((request) => request.method === "POST")
-        .map((request) => (request.body as { components: { type: string }[] }).components.slice(1)),
+      fakeMeta
+        .sentBodies("/message_templates", z.object({ components: z.array(z.unknown()) }))
+        .map((body) => body.components.slice(1)),
     ).toEqual([
       [{ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: "Ver respuesta" }] }],
       [],
