@@ -171,6 +171,17 @@ describe("disable comments", () => {
     expect(findDisableComments(source)).toEqual([]);
   });
 
+  test("reads a line comment after a glob as its own line, not a block comment", () => {
+    const source = [
+      `const glob = "scripts/**"; ${["// eslint", "disable-next-line"].join("-")}`,
+      "const a = 1;",
+      `const glob2 = "scripts/**"; ${["// eslint", "disable-line"].join("-")} no-debugger`,
+      `const rule = "${ruleName}";`,
+    ].join("\n");
+
+    expect(findDisableComments(source)).toEqual([1]);
+  });
+
   test("passes one that names only other rules", () => {
     expect(
       findDisableComments(`${disable("disable-next-line")} jsx-a11y/media-has-caption -- why`),

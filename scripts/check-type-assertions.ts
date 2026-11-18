@@ -155,7 +155,10 @@ function directiveAt(lines: string[], index: number): string {
   const start = text.search(directive);
   if (start === -1) return "";
   const rest = text.slice(start);
-  if (text.lastIndexOf("/*", start) === -1 || rest.includes("*/")) return rest;
+  const opened = text.lastIndexOf("/*", start);
+  const inBlock =
+    opened > text.lastIndexOf("//", start) && !text.slice(opened, start).includes("*/");
+  if (!inBlock || rest.includes("*/")) return rest;
   const following = lines.slice(index + 1);
   const closing = following.findIndex((line) => line.includes("*/"));
   const comment = [rest, ...(closing === -1 ? following : following.slice(0, closing + 1))].join(
