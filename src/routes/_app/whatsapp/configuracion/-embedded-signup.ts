@@ -1,11 +1,14 @@
+import { preload } from "react-dom";
+
 import { signupEventOf, signupOutcomeOf } from "#/lib/embedded-signup.ts";
 import type { SignupEvent, SignupOutcome } from "#/lib/embedded-signup.ts";
 
 // Meta's Embedded Signup v4, launched from the WhatsApp settings through
 // Facebook's JavaScript SDK
 // (https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/implementation).
-// The SDK is loaded when the page shows the button, so the click opens the
-// popup at once: a popup opened after an await is blocked by the browser.
+// The SDK is fetched when the page shows the button, and run once the pointer or
+// the focus reaches it, so the click opens the popup at once: a popup opened
+// after an await is blocked by the browser.
 
 interface LoginResponse {
   authResponse?: { code?: string } | null;
@@ -41,6 +44,13 @@ const sdkVersion = "v26.0";
 /** How long to wait for the popup's message once `FB.login` returned the code, which lasts 30 seconds. */
 const messageWait = 10_000;
 
+const sdkUrl = "https://connect.facebook.net/en_US/sdk.js";
+
+/** Fetches Facebook's SDK ahead, from the render that shows the connect button. */
+export function preloadFacebookSdk() {
+  preload(sdkUrl, { as: "script", crossOrigin: "anonymous" });
+}
+
 let loading: Promise<FacebookSdk> | null = null;
 
 /** Loads Facebook's SDK once, initialized with underthing's app. */
@@ -56,7 +66,7 @@ export function loadFacebookSdk(appId: string): Promise<FacebookSdk> {
       resolve(sdk);
     };
     const script = document.createElement("script");
-    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.src = sdkUrl;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onerror = () => {

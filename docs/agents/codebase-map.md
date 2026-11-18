@@ -26,7 +26,7 @@ src/
 │   │                  `app-nav.ts` and `app-sidebar.tsx` (the shell's menu), `page-header.tsx`
 │   │                  (every page's title)
 │   └── ui/            shadcn/ui components (see shadcn.md); add with the CLI, edit by hand
-├── hooks/             shared React hooks; shadcn's `use-mobile.ts`
+├── hooks/             every effect outside `ui/`, each in a named hook (coding-standards.md § React); shadcn's `use-mobile.ts`
 ├── organization/      the organization's Durable Object (ADR-0008): `organization.ts` (the class, one
 │   │                  RPC method per operation) over `organization-whatsapp.ts` (its WhatsApp
 │   │                  methods) over `organization-runtime.ts` (its storage, services, alarm and

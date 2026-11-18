@@ -176,6 +176,19 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   which every object applies on start. A migration on `main` has run in deployed
   objects: it is never edited, and a schema change adds a new one.
 
+## React
+
+An effect lives in a named hook in `src/hooks`, never inline in a component or a
+route. What an effect would do usually belongs elsewhere: in the event handler that
+caused it, in state derived during render, in the route's loader, or, for markup
+that must exist first, in a ref callback or `autoFocus`. What is left (a
+subscription, a timer, focus after a render the code cannot reach from a handler)
+is a hook with a name that says what it is for, in `src/hooks`. The lint rule
+`no-restricted-imports` in `vite.config.ts` rejects `useEffect`, `useLayoutEffect`,
+`useInsertionEffect` and React's default and namespace imports, which reach them,
+everywhere but `src/hooks/` and shadcn's `src/components/ui/`. It takes no disable
+comment.
+
 ## Stack notes
 
 - Imports use the `#/` alias for `src/` and carry explicit `.ts` or `.tsx`

@@ -10,7 +10,7 @@ import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import type { FilterGroup } from "#/components/filter-groups.ts";
 import { PageHeader } from "#/components/page-header.tsx";
-import { useDebounced } from "#/components/use-debounced.ts";
+import { useDebounced } from "#/hooks/use-debounced.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { conversationPageSize } from "#/lib/whatsapp-messages.ts";
 import { findConversations, getConversations } from "#/server/inbox.functions.ts";

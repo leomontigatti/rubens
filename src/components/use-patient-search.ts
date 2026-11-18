@@ -7,7 +7,7 @@ import {
   patientSearchState,
 } from "#/components/patient-search.ts";
 import type { PatientSearchState } from "#/components/patient-search.ts";
-import { useDebounced } from "#/components/use-debounced.ts";
+import { useDebounced } from "#/hooks/use-debounced.ts";
 import { findPatients } from "#/server/patients.functions.ts";
 
 const searchDelay = 300;

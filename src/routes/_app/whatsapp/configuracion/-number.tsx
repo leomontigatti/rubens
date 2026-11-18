@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useFormAction } from "#/components/admin-form.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
@@ -16,6 +16,7 @@ import { formatDateTime } from "#/lib/dates.ts";
 
 import {
   loadFacebookSdk,
+  preloadFacebookSdk,
   runEmbeddedSignup,
 } from "#/routes/_app/whatsapp/configuracion/-embedded-signup.ts";
 
@@ -60,12 +61,16 @@ type Reason = keyof typeof refusalMessages;
 function useConnect(signup: Signup | null, canConnect: boolean) {
   const action = useFormAction(refusalMessages);
 
-  useEffect(() => {
-    if (signup && canConnect) {
-      // Loaded ahead, so the click opens the popup at once. A failure shows on the click.
+  if (signup && canConnect) {
+    preloadFacebookSdk();
+  }
+
+  /** Runs the SDK ahead, as the pointer or the focus reaches the button. A failure shows on the click. */
+  function prepare() {
+    if (signup) {
       loadFacebookSdk(signup.appId).catch(() => undefined);
     }
-  }, [signup, canConnect]);
+  }
 
   async function signUp(found: Signup) {
     const outcome = await runEmbeddedSignup(
@@ -98,13 +103,13 @@ function useConnect(signup: Signup | null, canConnect: boolean) {
     }
   }
 
-  return { action, connect };
+  return { action, connect, prepare };
 }
 
 export function NumberSection({ settings }: { settings: Settings }) {
   const { connection, signup } = settings;
   const connected = connection?.state === "connected";
-  const { action, connect } = useConnect(signup, Boolean(signup) && !connected);
+  const { action, connect, prepare } = useConnect(signup, Boolean(signup) && !connected);
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -116,7 +121,12 @@ export function NumberSection({ settings }: { settings: Settings }) {
             Desconectar
           </Button>
         ) : (
-          <Button disabled={!signup || action.pending} onClick={() => void connect()}>
+          <Button
+            disabled={!signup || action.pending}
+            onPointerEnter={prepare}
+            onFocus={prepare}
+            onClick={() => void connect()}
+          >
             {action.pending && <Spinner data-icon="inline-start" aria-hidden />}
             {connection ? "Conectar de nuevo" : "Conectar número"}
           </Button>
