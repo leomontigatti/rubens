@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { ZapIcon } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
 import { layoutCells, layoutColumn, layoutDay } from "#/lib/calendar-layout.ts";
@@ -54,15 +54,12 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
   return (
     <div className="w-14 shrink-0 border-r">
       <div className="h-10 border-b" />
-      <div
-        className="relative h-(--height)"
-        style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
-      >
+      <div className="relative h-(--height)" style={{ "--height": px(offsetOf(view.end, view)) }}>
         {layoutCells(view, []).map((row) => (
           <span
             key={row.top}
             className="text-muted-foreground bg-background absolute top-(--top) right-2 -translate-y-1/2 px-0.5 text-xs tabular-nums"
-            style={{ "--top": px(row.top) } as CSSProperties}
+            style={{ "--top": px(row.top) }}
           >
             {formatTime(row.start, props.timeZone)}
           </span>
@@ -78,10 +75,7 @@ export function WeekGridFrame(props: { view: TimeRange }) {
   return (
     <div className="rounded-xl border">
       <div className="h-10 border-b" />
-      <div
-        className="h-(--height)"
-        style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
-      />
+      <div className="h-(--height)" style={{ "--height": px(offsetOf(view.end, view)) }} />
     </div>
   );
 }
@@ -116,10 +110,7 @@ export function DayColumn(props: {
   return (
     <div className="min-w-28 flex-1 border-r last:border-r-0">
       <div className="flex h-10 items-center border-b px-2 text-sm font-medium">{props.title}</div>
-      <div
-        className="relative h-(--height)"
-        style={{ "--height": px(offsetOf(view.end, view)) } as CSSProperties}
-      >
+      <div className="relative h-(--height)" style={{ "--height": px(offsetOf(view.end, view)) }}>
         {placed.cells.map(({ start, top, height, free, lane, lanes }) => (
           <div
             key={top}
@@ -127,18 +118,16 @@ export function DayColumn(props: {
               "absolute inset-x-0 top-(--top) h-(--height) border-t",
               free.length > 0 ? "bg-background" : "bg-sidebar",
             )}
-            style={{ "--top": px(top), "--height": px(height) } as CSSProperties}
+            style={{ "--top": px(top), "--height": px(height) }}
           >
             {free.length > 0 && (
               <Button
                 variant="ghost"
                 className="absolute left-(--left) h-full w-(--width)"
-                style={
-                  {
-                    "--left": laneLeft({ lane, lanes }),
-                    "--width": laneWidth({ lane, lanes }),
-                  } as CSSProperties
-                }
+                style={{
+                  "--left": laneLeft({ lane, lanes }),
+                  "--width": laneWidth({ lane, lanes }),
+                }}
                 aria-label={`Dar turno el ${dateLabel} a las ${formatTime(start, timeZone)}`}
                 onClick={() =>
                   props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
@@ -190,14 +179,12 @@ function AppointmentCard(props: {
         card.overbooking && "border-dashed",
         !activeStatuses.includes(card.status) && "opacity-50",
       )}
-      style={
-        {
-          "--top": px(block.top),
-          "--height": px(block.height),
-          "--left": laneLeft(block),
-          "--width": laneWidth(block),
-        } as CSSProperties
-      }
+      style={{
+        "--top": px(block.top),
+        "--height": px(block.height),
+        "--left": laneLeft(block),
+        "--width": laneWidth(block),
+      }}
       title={card.receptionNote ?? undefined}
     >
       <div className={cn("w-1 shrink-0", practitionerColorClasses[card.color])} />
@@ -243,14 +230,12 @@ function BusyCard(props: { block: PlacedBlock; busy: BusyBlock; timeZone: string
   return (
     <div
       className="bg-muted text-muted-foreground absolute top-(--top) left-(--left) h-(--height) w-(--width) truncate rounded-md border px-1.5 py-0.5 text-xs"
-      style={
-        {
-          "--top": px(block.top),
-          "--height": px(block.height),
-          "--left": laneLeft(block),
-          "--width": laneWidth(block),
-        } as CSSProperties
-      }
+      style={{
+        "--top": px(block.top),
+        "--height": px(block.height),
+        "--left": laneLeft(block),
+        "--width": laneWidth(block),
+      }}
     >
       {formatTime(busy.start, props.timeZone)} {busy.practitionerName}
     </div>
