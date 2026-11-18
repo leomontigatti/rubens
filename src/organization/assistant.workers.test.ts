@@ -1,6 +1,7 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import {
   addOffice,
@@ -483,14 +484,15 @@ describe("answering when, where and with whom", () => {
   });
 
   it("returns nothing about a patient whose contact is another number", async () => {
+    const patientIds = z.object({ patients: z.array(z.object({ patientId: z.string() })) });
     await bookPatient("Martina", martinaPhone);
     const other = await bookPatient("Lucía", "+5493515559999", at("12:30"));
     await patientWrites("cuándo es el turno de Lucía?");
-    let listed: { patients: { patientId: string }[] } | undefined;
+    let listed: z.infer<typeof patientIds> | undefined;
     let read: unknown;
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
-      listed = turn.call("list_patients") as typeof listed;
+      listed = patientIds.parse(turn.call("list_patients"));
       read = turn.call("get_appointment", { appointmentId: other.appointmentId });
       return "No tengo ese dato.";
     });

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import { sandboxModelCallsPerHour } from "#/lib/assistant-sandbox.ts";
 import type { SandboxState } from "#/lib/assistant-sandbox.ts";
@@ -58,12 +59,17 @@ async function playPatient(state: SandboxState, text: string) {
   return expectOk(await world.organization.sandboxTurn(adminCaller, { state, text }));
 }
 
+const fromJson = (text: string): unknown => JSON.parse(text);
+
+/** The free times find_free_times returns, by the id a proposal takes. */
+const freeTimes = z.object({ slots: z.array(z.object({ slotId: z.string() })) });
+
 /** A turn's tool calls as the sandbox shows them: each one's name, what it was asked and what it returned. */
 function toolCalls(played: Awaited<ReturnType<typeof playPatient>>) {
   return played.turn.toolCalls.map((call) => ({
     name: call.name,
-    args: JSON.parse(call.args) as unknown,
-    result: JSON.parse(call.result) as unknown,
+    args: fromJson(call.args),
+    result: fromJson(call.result),
   }));
 }
 
@@ -177,9 +183,7 @@ describe("a sandbox conversation", () => {
   it("shows a move it proposed, from the free times it found", async () => {
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
-      const found = turn.call("find_free_times", { appointmentId }) as {
-        slots: { slotId: string }[];
-      };
+      const found = freeTimes.parse(turn.call("find_free_times", { appointmentId }));
       turn.call("propose_change", { appointmentId, kind: "move", slotId: found.slots[0]!.slotId });
       return "Te lo paso al lunes 5 de enero a las 09:30. Te lo cambio?";
     });
@@ -201,9 +205,7 @@ describe("a sandbox conversation", () => {
   it("keeps a move it accepted in its next turns, at the new time", async () => {
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
-      const found = turn.call("find_free_times", { appointmentId }) as {
-        slots: { slotId: string }[];
-      };
+      const found = freeTimes.parse(turn.call("find_free_times", { appointmentId }));
       turn.call("propose_change", { appointmentId, kind: "move", slotId: found.slots[0]!.slotId });
       turn.call("accept_proposal");
       return "Listo, lo pasé.";
@@ -229,9 +231,7 @@ describe("a sandbox conversation", () => {
     let slotId = "";
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
-      const found = turn.call("find_free_times", { appointmentId }) as {
-        slots: { slotId: string }[];
-      };
+      const found = freeTimes.parse(turn.call("find_free_times", { appointmentId }));
       slotId = found.slots[0]!.slotId;
       turn.call("propose_change", { appointmentId, kind: "move", slotId });
       turn.call("accept_proposal");
