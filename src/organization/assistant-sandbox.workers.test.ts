@@ -384,7 +384,11 @@ describe("a sandbox conversation", () => {
     });
     expect(played.turn.replies).toEqual(["Le paso tu consulta al profesional."]);
     expect(played.sandbox.handoffs).toEqual([
-      expect.objectContaining({ reason: "heldReply", forPractitioner: true }),
+      expect.objectContaining({
+        reason: "heldReply",
+        forPractitioner: true,
+        heldBecause: "clinical",
+      }),
     ]);
     expect(expectOk(await world.organization.listOpenHandoffs(adminCaller, {})).handoffs).toEqual(
       [],
@@ -405,7 +409,11 @@ describe("a sandbox conversation", () => {
     });
     expect(played.turn.replies).toEqual([]);
     expect(played.sandbox.handoffs).toEqual([
-      expect.objectContaining({ reason: "leakedReply", forPractitioner: false }),
+      expect.objectContaining({
+        reason: "leakedReply",
+        forPractitioner: false,
+        heldBecause: "internals",
+      }),
     ]);
   });
 

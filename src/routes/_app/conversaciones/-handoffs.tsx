@@ -185,14 +185,14 @@ export function HeldReplies(props: {
   return props.handoffs.flatMap((handoff) => {
     const text = handoff.heldReply;
     const because = handoff.heldBecause;
-    return text === null || because === null
+    return text === null
       ? []
       : [
           <HeldReply
             key={handoff.id}
             handoffId={handoff.id}
             text={text}
-            because={heldBecause[because]}
+            because={because && heldBecause[because]}
             onUse={handoff.mayUseHeldReply ? () => props.onUseReply(text) : null}
           />,
         ];
@@ -206,7 +206,8 @@ export function HeldReplies(props: {
 function HeldReply(props: {
   handoffId: string;
   text: string;
-  because: string;
+  /** Why it was not sent; `null` when the check that held it is not known. */
+  because: string | null;
   onUse: (() => void) | null;
 }) {
   const drop = useInboxAction(closeRefusals);
@@ -218,7 +219,7 @@ function HeldReply(props: {
     >
       <div className="flex flex-col gap-1">
         <p className="font-medium">Respuesta retenida del asistente</p>
-        <p className="text-muted-foreground">{props.because}</p>
+        {props.because && <p className="text-muted-foreground">{props.because}</p>}
       </div>
       <p className="whitespace-pre-wrap">{props.text}</p>
       <div className="flex flex-wrap gap-2">

@@ -416,6 +416,7 @@ class SandboxRun {
         forPractitioner: handoff.forPractitioner,
         appointmentId: handoff.appointmentId,
         heldReply: handoff.heldReply,
+        heldBecause: handoff.heldBecause,
       })
       .from(handoff)
       .where(and(eq(handoff.conversationId, conversationId), eq(handoff.state, "open")))
