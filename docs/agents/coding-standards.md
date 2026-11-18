@@ -77,6 +77,30 @@ own. Lint rejects the global `fetch` anywhere else (`no-restricted-globals` and
 `no-restricted-properties`); the boundary modules and `scripts/` are the override
 that turns both off in `vite.config.ts`, and a new boundary module is added there.
 
+## Type assertions
+
+An assertion (`value as T`, `<T>value`) tells the type checker to stop checking, so
+a wrong shape gets through silently. Narrow instead: a type guard (`value is T`), a
+schema parse where data enters from outside, or a typed helper that keeps the one
+check every caller needs. `as const` is not an assertion and stays.
+
+Lint rejects assertions (`typescript/consistent-type-assertions`, `never`) everywhere
+but the files in `scripts/type-assertion-allowlist.json`, each with the count it may
+hold; `vite.config.ts` builds the override that turns the rule off from that list. It
+has two parts, held to their counts alike:
+
+- `sharedUtilities`: the files that exist to hold a cast for their callers, today
+  only `src/dev/accepted.ts`.
+- `files`: every other file that held assertions when the rule landed.
+
+The list only falls. `pnpm check:type-assertions` (pre-commit and CI) fails when a
+file's count differs from its entry, when an entry is new or higher than on
+`origin/main`, when the override names any other file, and on a disable comment that
+names the rule or no rule; the rule takes none. So a helper that needs a cast to
+remove many keeps it in a file already on the list, within that file's entry. To
+lower an entry, remove the assertions and run `pnpm check:type-assertions --write` in
+the same change: it rewrites the counts from the tree and drops a file at zero.
+
 ## Style
 
 Clarity over cleverness: explicit control flow over dense conditionals and nested

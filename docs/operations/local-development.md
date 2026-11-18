@@ -89,8 +89,8 @@ a new one.
    `vite.config.ts`), and re-stages what it fixed;
 3. `pnpm typecheck` over the whole project;
 4. `pnpm check:fallow`, against `origin/main` ([fallow.md](../agents/fallow.md));
-5. the whole-tree checks CI also runs, each under two seconds: `pnpm check:comment-language`,
-   `pnpm check:labels` and `pnpm check:file-tokens`.
+5. the whole-tree checks CI also runs, each a few seconds at most: `pnpm check:comment-language`,
+   `pnpm check:labels`, `pnpm check:file-tokens` and `pnpm check:type-assertions`.
 
 Any failure stops the commit. To check that the hook is installed in this clone:
 

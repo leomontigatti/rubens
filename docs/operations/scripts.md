@@ -54,6 +54,12 @@ Scripts that call `scripts/*.ts` run under `tsx`.
 - `check:file-tokens`: fails on a tracked `.ts`/`.tsx` file under `src/` above
   5,500 estimated tokens (bytes / 4). Tests and generated files are exempt. CI
   runs it.
+- `check:type-assertions`: the ratchet on type assertions. Fails when a file's count
+  differs from its entry in `scripts/type-assertion-allowlist.json`, when an entry is
+  new or higher than on `origin/main`, when the lint override does not name exactly
+  the listed files, and on a disable comment for the rule; it fails closed when it
+  cannot read `origin/main`'s list. `--write` rewrites the list from the tree, to
+  lower an entry. CI runs it.
 
 ## Repository
 
