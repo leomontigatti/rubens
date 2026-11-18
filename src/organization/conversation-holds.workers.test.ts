@@ -448,7 +448,7 @@ describe("a person's reply", () => {
     });
     const release = fakeMeta.holdNext();
     const replied = reply(world.receptionist, "Hola");
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
 
     expectOk(
       await world.organization.storeWhatsappEvents({

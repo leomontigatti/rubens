@@ -51,7 +51,12 @@ export default defineConfig({
     plugins: ["react", "import", "typescript"],
     // The style guide's mechanical rules: `@shadcn/lint`, and `ui` for what it
     // does not cover. It reads the components and the theme from components.json.
-    jsPlugins: ["@shadcn/lint", "./scripts/oxlint-ui-plugin.mjs"],
+    // `tests` holds the testing rules, which the test-code override turns on.
+    jsPlugins: [
+      "@shadcn/lint",
+      "./scripts/oxlint-ui-plugin.mjs",
+      "./scripts/oxlint-tests-plugin.mjs",
+    ],
     settings: {
       shadcn: {
         note: "A colour, radius or state comes from a token or a variant; className is for layout (docs/agents/style-guide.md). A new token or variant is a product decision: ask before adding one.",
@@ -150,6 +155,13 @@ export default defineConfig({
         files: ["src/components/page-header.tsx"],
         rules: {
           "ui/no-raw-page-title": "off",
+        },
+      },
+      {
+        // Test code: the tests, their support files and the browser suite.
+        files: ["**/*.test.{ts,tsx}", "**/*.test-support.ts", "tests/e2e/**"],
+        rules: {
+          "tests/no-sleep-poll": "error",
         },
       },
       {

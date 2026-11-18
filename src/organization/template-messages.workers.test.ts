@@ -253,7 +253,7 @@ describe("a change of a template's timing", () => {
       body: "Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}. Consultorios Prueba",
       settings: { name: "Recordatorio del día", timing: { when: "before", hours: 24 } },
     });
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
 
     await retime(drafts.dayBefore, { when: "before", hours: 48 });
     release();

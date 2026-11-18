@@ -412,7 +412,7 @@ describe("connecting again", () => {
   it("refuses a second change while one is still waiting on Meta", async () => {
     const release = fakeMeta.holdNext();
     const first = organization.connectWhatsapp(adminCaller, completion());
-    await fakeMeta.received(fakeMeta.requests.length + 1);
+    await fakeMeta.received(organization, fakeMeta.requests.length + 1);
 
     expect(await organization.disconnectWhatsapp(adminCaller)).toEqual({
       ok: false,
@@ -434,7 +434,7 @@ describe("connecting again", () => {
     const release = fakeMeta.holdNext();
     fakeMeta.answerNextWith(401, { error: { message: "Token expired", code: 190 } });
     const lateCall = organization.refreshWhatsappTemplates(adminCaller);
-    await fakeMeta.received(1);
+    await fakeMeta.received(organization, 1);
     fakeMeta.businessToken = "a-newer-business-token";
     expectOk(await organization.connectWhatsapp(adminCaller, completion()));
 
@@ -454,7 +454,7 @@ describe("connecting again", () => {
     const before = fakeMeta.requests.length;
     const connecting = organization.connectWhatsapp(adminCaller, completion());
     // Exchange, the account's numbers, the number, register: subscribing is the fifth.
-    await fakeMeta.received(before + 5);
+    await fakeMeta.received(organization, before + 5);
 
     expect(await whatsappDirectory().organizationForNumber("555")).toBe(organizationId);
     release();

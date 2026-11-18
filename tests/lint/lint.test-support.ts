@@ -21,6 +21,8 @@ export interface Diagnostic {
   message: string;
   help?: string;
   filename: string;
+  /** Where the finding is, its 1-based line first. */
+  labels: { span: { line: number } }[];
 }
 
 // Oxlint puts a rule's custom message in `help`, beside its generic `message`.

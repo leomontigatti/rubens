@@ -15,7 +15,7 @@ import type {
 } from "#/organization/assistant-model.ts";
 import type { Organization } from "#/organization/organization.ts";
 import type { Transcriber, Transcript } from "#/organization/transcription.ts";
-import { fakeMeta } from "#/organization/graph-api.test-support.ts";
+import { fakeMeta, Waits } from "#/organization/graph-api.test-support.ts";
 
 // The assistant's model scripted, for the organization object's tests
 // (`docs/agents/tdd-db.md`): a test writes what the model does in a turn,
@@ -72,6 +72,7 @@ class ScriptedModel implements AssistantModel {
   #checkTokens: Tokens | null = null;
   #reviewScripts: ReviewScript[] = [];
   #reviewTokens: Tokens | null = null;
+  #waits = new Waits();
 
   reset() {
     this.turns = [];
@@ -84,6 +85,12 @@ class ScriptedModel implements AssistantModel {
     this.#checkTokens = null;
     this.#reviewScripts = [];
     this.#reviewTokens = null;
+    this.#waits = new Waits();
+  }
+
+  /** Resolves once `organization` has started `count` turns since the last reset. */
+  turnsStarted(organization: DurableObjectStub<Organization>, count: number) {
+    return this.#waits.until(organization, () => this.turns.length >= count);
   }
 
   /** The tokens every template review reports from now on; none until a test says. */
@@ -141,6 +148,7 @@ class ScriptedModel implements AssistantModel {
 
   async runTurn(turn: ModelTurn) {
     this.turns.push(turn);
+    this.#waits.changed();
     const script = this.#scripts.shift() ?? plainTurn;
     const call = (name: AssistantToolName, args: Record<string, unknown> = {}) => {
       const tool = turn.tools.find((one) => one.name === name);

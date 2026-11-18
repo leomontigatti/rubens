@@ -502,7 +502,7 @@ describe("a hold on the number and what changes it", () => {
       phoneNumberId: fakeMeta.signupNumber.phoneNumberId,
       businessAccountId: fakeMeta.signupNumber.businessAccountId,
     });
-    await fakeMeta.received(before + 5);
+    await fakeMeta.received(world.organization, before + 5);
 
     await numberTurns({ kind: "disabled" });
     release();
@@ -519,7 +519,7 @@ describe("a hold on the number and what changes it", () => {
     const release = fakeMeta.holdNext();
     fakeMeta.answerNextWith(400, { error: { code: 131031, message: "Account locked" } });
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
 
     await numberTurns({ kind: "disabled" });
     release();

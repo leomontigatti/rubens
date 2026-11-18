@@ -19,6 +19,10 @@ Prefer real storage for data behaviour: `*.workers.test.ts` runs the organizatio
 object's methods in the Workers runtime, on the object's own SQLite, through the
 same calls the server functions make.
 
+A test that waits for something the code under test does awaits a promise
+resolved on the event, never a timer polled in a loop: the lint rule
+`tests/no-sleep-poll` rejects the loop in test code.
+
 Every test names the bug it catches: the wrong implementation that would make it
 fail. Tests that cannot name one are not written. The anti-patterns (tautological,
 pass-through, restating text, implementation-coupled) and the rules on fixtures and

@@ -522,9 +522,7 @@ describe("sandbox use", () => {
       state: played.sandbox,
       text: "¿estás?",
     });
-    while (scriptedModel.turns.length < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await scriptedModel.turnsStarted(world.organization, 2);
 
     const meanwhile = await world.organization.sandboxTurn(adminCaller, {
       state: played.sandbox,

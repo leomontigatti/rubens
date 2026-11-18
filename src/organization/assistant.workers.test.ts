@@ -117,9 +117,7 @@ function holdingTurn() {
 /** Starts the alarm and waits until the model is writing; `alarm` is the alarm's run. */
 async function alarmUntilTurn() {
   const alarm = runDurableObjectAlarm(world.organization);
-  while (scriptedModel.turns.length === 0) {
-    await new Promise((resolve) => setTimeout(resolve, 1));
-  }
+  await scriptedModel.turnsStarted(world.organization, 1);
   return { alarm };
 }
 
@@ -266,7 +264,7 @@ describe("the assistant's pace", () => {
     const release = fakeMeta.holdTypingPause(1);
     wait(8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.typingPaused(2);
+    await fakeMeta.typingPaused(world.organization, 2);
     const listed = expectOk(await world.organization.listConversations(adminCaller, {}));
     expectOk(
       await world.organization.takeOverConversation(world.receptionist, {
@@ -289,7 +287,7 @@ describe("the assistant's pace", () => {
     const releasePause = fakeMeta.holdTypingPause(0);
     wait(8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.typingPaused(1);
+    await fakeMeta.typingPaused(world.organization, 1);
     fakeMeta.answerNextWith(200, {
       messaging_product: "whatsapp",
       contacts: [{ input: "5491155550000", wa_id: "5491155550000" }],
@@ -297,9 +295,7 @@ describe("the assistant's pace", () => {
     });
     const releaseSend = fakeMeta.holdNext();
     releasePause();
-    while (textsToMeta().length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await fakeMeta.textsReceived(world.organization, 1);
 
     expectOk(
       await world.organization.storeWhatsappEvents({
@@ -340,9 +336,7 @@ describe("the assistant's pace", () => {
     const release = fakeMeta.holdTypingPause(0);
     wait(8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    while (textsToMeta().length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await fakeMeta.textsReceived(world.organization, 1);
 
     // Martina's first message still types; Lucas's turn ran and its reply went.
     expect(textsToMeta()).toEqual([{ to: "5491155551111", text: "A las 10:00." }]);
@@ -367,7 +361,7 @@ describe("the assistant's pace", () => {
     const release = fakeMeta.holdTypingPause(0);
     wait(8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.typingPaused(1);
+    await fakeMeta.typingPaused(world.organization, 1);
     await patientWrites("y dónde?");
     release();
     await alarm;
@@ -390,7 +384,7 @@ describe("the assistant's pace", () => {
     const release = fakeMeta.holdTypingPause(0);
     wait(8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.typingPaused(1);
+    await fakeMeta.typingPaused(world.organization, 1);
     wait(60_000);
     release();
     await alarm;
@@ -1046,9 +1040,7 @@ describe("a message the model could not read", () => {
     });
     wait(minuteMs);
     const alarm = runDurableObjectAlarm(world.organization);
-    while (scriptedModel.turns.length < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await scriptedModel.turnsStarted(world.organization, 2);
 
     expectOk(
       await world.organization.closeHandoff(world.receptionist, { handoffId: photoHandoff!.id }),
@@ -1108,9 +1100,7 @@ describe("a message the model could not read", () => {
       conversationId: listed!.id,
       text: "Martina, ya le aviso a Juan.",
     });
-    while (textsToMeta().length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await fakeMeta.textsReceived(world.organization, 1);
     wait(1_000);
     await patientWrites("también se me hinchó la cara");
     const { released, release } = holdingTurn();
@@ -1121,9 +1111,7 @@ describe("a message the model could not read", () => {
     });
     wait(8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    while (scriptedModel.turns.length < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await scriptedModel.turnsStarted(world.organization, 2);
 
     metaAnswers();
     expectOk(await replied);

@@ -63,9 +63,7 @@ async function alarmUntilTurn() {
   const turns = scriptedModel.turns.length;
   vi.setSystemTime(Date.now() + assistantWaitMs);
   const alarm = runDurableObjectAlarm(world.organization);
-  while (scriptedModel.turns.length === turns) {
-    await new Promise((resolve) => setTimeout(resolve, 1));
-  }
+  await scriptedModel.turnsStarted(world.organization, turns + 1);
   return { alarm };
 }
 
@@ -413,9 +411,7 @@ describe("the patient's reactions", () => {
     const turns = scriptedModel.turns.length;
     vi.setSystemTime(Date.now() + 60_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    while (scriptedModel.turns.length === turns) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+    await scriptedModel.turnsStarted(world.organization, turns + 1);
 
     expectOk(await world.organization.closeHandoff(world.receptionist, { handoffId: handoff!.id }));
     release();

@@ -1,4 +1,5 @@
 import type { GraphApiSettings, SignupSettings } from "#/organization/graph-api.ts";
+import type { Organization } from "#/organization/organization.ts";
 
 // Meta's Graph API faked at its HTTP boundary, for the organization object's
 // tests (`docs/agents/tdd-db.md`); `organization.test-support.ts` re-exports it.
@@ -30,6 +31,44 @@ function signupStepOf(request: Request): SignupStep | null {
   }
   const fields = new URL(request.url).searchParams.get("fields") ?? "";
   return fields.includes("messaging_limit") ? "number" : null;
+}
+
+/**
+ * The waits a fake's tests hold on its record: each resolves once its
+ * condition holds, rechecked whenever the fake calls `changed` after the
+ * record grows. A test awaits the event itself, never a timer.
+ *
+ * The wait runs inside `organization`, the object the event happens in: a
+ * promise the object resolves resumes the code awaiting it in the object's
+ * I/O context, where the test's own stub cannot be called, so the wait
+ * returns to the test through the object's RPC instead. `cloudflare:test` is
+ * imported only then: the `workers` setup file loads this module before a
+ * test file's `vi.mock` calls, and importing it that early loads the Worker
+ * with the real modules.
+ */
+export class Waits {
+  #pending: { holds: () => boolean; resolve: () => void }[] = [];
+
+  /** Resolves once `holds` returns true. */
+  async until(organization: DurableObjectStub<Organization>, holds: () => boolean) {
+    const { runInDurableObject } = await import("cloudflare:test");
+    return runInDurableObject(organization, () => {
+      if (holds()) {
+        return;
+      }
+      return new Promise<void>((resolve) => this.#pending.push({ holds, resolve }));
+    });
+  }
+
+  changed() {
+    this.#pending = this.#pending.filter((wait) => {
+      if (!wait.holds()) {
+        return true;
+      }
+      wait.resolve();
+      return false;
+    });
+  }
 }
 
 /** Where Meta serves the bytes of a message's media. */
@@ -80,6 +119,7 @@ class FakeMeta {
   /** The typing pauses the assistant waited, in milliseconds, in order (`typing-pause.test-support.ts`). */
   typingPauses: number[] = [];
   #heldPause: { index: number; until: Promise<void> } | null = null;
+  #waits = new Waits();
   /** How many templates Meta lists per page. */
   templatesPerPage = 100;
   /** The media Meta holds, by media id: the bytes of each, which the object downloads. */
@@ -108,6 +148,7 @@ class FakeMeta {
     this.requests = [];
     this.typingPauses = [];
     this.#heldPause = null;
+    this.#waits = new Waits();
     this.#nextAnswers = [];
     this.#hold = null;
     this.#heldStep = null;
@@ -192,23 +233,25 @@ class FakeMeta {
   /** The assistant's typing pause of `ms`, as the object's tests run it. */
   async typingPause(ms: number) {
     this.typingPauses.push(ms);
+    this.#waits.changed();
     if (this.#heldPause?.index === this.typingPauses.length - 1) {
       await this.#heldPause.until;
     }
   }
 
-  /** Resolves once the assistant has started `count` typing pauses. */
-  async typingPaused(count: number) {
-    while (this.typingPauses.length < count) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+  /** Resolves once the assistant in `organization` has started `count` typing pauses. */
+  typingPaused(organization: DurableObjectStub<Organization>, count: number) {
+    return this.#waits.until(organization, () => this.typingPauses.length >= count);
   }
 
-  /** Resolves once Meta has received `count` requests. */
-  async received(count: number) {
-    while (this.requests.length < count) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-    }
+  /** Resolves once Meta has received `count` requests; `organization` is the object sending them. */
+  received(organization: DurableObjectStub<Organization>, count: number) {
+    return this.#waits.until(organization, () => this.requests.length >= count);
+  }
+
+  /** Resolves once `organization` has sent `count` free-form texts through Meta. */
+  textsReceived(organization: DurableObjectStub<Organization>, count: number) {
+    return this.#waits.until(organization, () => this.textsSent().length >= count);
   }
 
   /** The free-form texts the object sent through Meta, to whom, in order. */
@@ -250,6 +293,7 @@ class FakeMeta {
       range: request.headers.get("range") ?? undefined,
       body,
     });
+    this.#waits.changed();
     const held = this.#hold;
     this.#hold = null;
     await held;
