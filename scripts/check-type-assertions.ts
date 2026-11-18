@@ -144,36 +144,48 @@ export function ratchetProblems(input: RatchetInput): string[] {
 }
 
 const directive = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/;
-const namesTheRule =
-  /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b[\s\S]*consistent-type-assertions/;
-const namesNoRule = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\s*(?:\*\/|--|$)/;
 
-// The directive on `lines[index]` with its rule list: the rest of the line, or, in
-// a block comment still open at the line's end, the comment through its `*/`.
-function directiveAt(lines: string[], index: number): string {
-  const text = lines[index] ?? "";
-  const start = text.search(directive);
-  if (start === -1) return "";
-  const rest = text.slice(start);
-  const opened = text.lastIndexOf("/*", start);
-  const inBlock =
-    opened > text.lastIndexOf("//", start) && !text.slice(opened, start).includes("*/");
-  if (!inBlock || rest.includes("*/")) return rest;
-  const following = lines.slice(index + 1);
-  const closing = following.findIndex((line) => line.includes("*/"));
-  const comment = [rest, ...(closing === -1 ? following : following.slice(0, closing + 1))].join(
-    "\n",
-  );
-  const end = comment.indexOf("*/");
-  return end === -1 ? comment : comment.slice(0, end + 2);
+// Where the string or template literal opening at `start` ends. A line break ends
+// a quoted string that lacks its closing quote, so one stray quote hides one line.
+function literalEnd(source: string, start: number): number {
+  const quote = source[start];
+  for (let at = start + 1; at < source.length; at++) {
+    if (source[at] === "\\") at++;
+    else if (source[at] === quote) return at + 1;
+    else if (quote !== "`" && source[at] === "\n") return at + 1;
+  }
+  return source.length;
 }
 
-/** The 1-based lines of `source` where a comment that would silence the rule starts. */
+/** Every `//` and `/* *\/` comment in `source`, outside strings: where its text starts, and the text. */
+function commentsOf(source: string): { start: number; text: string }[] {
+  const comments: { start: number; text: string }[] = [];
+  let at = 0;
+  while (at < source.length) {
+    const pair = source.slice(at, at + 2);
+    if (pair === "//" || pair === "/*") {
+      const close = pair === "//" ? "\n" : "*/";
+      const found = source.indexOf(close, at + 2);
+      const end = found === -1 ? source.length : found;
+      comments.push({ start: at + 2, text: source.slice(at + 2, end) });
+      at = end + close.length;
+    } else if (source[at] === '"' || source[at] === "'" || source[at] === "`") {
+      at = literalEnd(source, at);
+    } else {
+      at++;
+    }
+  }
+  return comments;
+}
+
+/** The 1-based lines of `source` where a comment that would silence the rule has its directive. */
 export function findDisableComments(source: string): number[] {
-  const lines = source.split("\n");
-  return lines.flatMap((_, index) => {
-    const text = directiveAt(lines, index);
-    return namesTheRule.test(text) || namesNoRule.test(text) ? [index + 1] : [];
+  return commentsOf(source).flatMap(({ start, text }) => {
+    const found = directive.exec(text);
+    if (!found) return [];
+    const rules = text.slice(found.index + found[0].length);
+    const silences = rules.includes("consistent-type-assertions") || /^\s*(?:--|$)/.test(rules);
+    return silences ? [source.slice(0, start + found.index).split("\n").length] : [];
   });
 }
 

@@ -182,6 +182,24 @@ describe("disable comments", () => {
     expect(findDisableComments(source)).toEqual([1]);
   });
 
+  test("finds a directive that starts on the line after its block comment opens", () => {
+    const source = [
+      "/*",
+      `   ${["eslint", "disable"].join("-")} no-debugger,`,
+      `   ${ruleName}`,
+      " */",
+      "const a = 1;",
+    ].join("\n");
+
+    expect(findDisableComments(source)).toEqual([2]);
+  });
+
+  test("reads a block comment's rules only up to its end, not the code after it", () => {
+    const source = `/* ${["eslint", "disable"].join("-")} no-debugger */ const rule = "${ruleName}";`;
+
+    expect(findDisableComments(source)).toEqual([]);
+  });
+
   test("passes one that names only other rules", () => {
     expect(
       findDisableComments(`${disable("disable-next-line")} jsx-a11y/media-has-caption -- why`),
