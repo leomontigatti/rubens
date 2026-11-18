@@ -6,7 +6,7 @@
 // The change is written to local storage, and other tabs hear it through the
 // `storage` event, which never fires in the tab that wrote it. A tab that was
 // still loading misses the event; the signed-in layout catches it by asking the
-// server who is signed in once it mounts (`useSessionGuard` in `src/routes/_app.tsx`).
+// server who is signed in once it mounts (`useSessionGuard` in `src/hooks/use-session-guard.ts`).
 
 const storageKey = "underthing-session-changed";
 

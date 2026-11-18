@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon, ListFilterPlusIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
+import { useRef, useState } from "react";
+import type { Ref } from "react";
 
 import {
   addableGroups,
@@ -30,16 +30,27 @@ export function FilterBar(props: {
   onRemove: (groupId: string) => void;
 }) {
   const applied = appliedGroups(props.groups);
-  const addRef = useRef<HTMLButtonElement>(null);
-  const appliedCount = useRef(applied.length);
+  const add = useRef<HTMLButtonElement | null>(null);
+  // With every filter applied there is no add button yet: it takes the focus as it comes back.
+  const focusAddOnReturn = useRef(false);
+
+  function attachAdd(button: HTMLButtonElement | null) {
+    add.current = button;
+    if (button && focusAddOnReturn.current) {
+      focusAddOnReturn.current = false;
+      button.focus();
+    }
+  }
 
   // A removed filter takes its focused trash button with it.
-  useEffect(() => {
-    if (applied.length < appliedCount.current && document.activeElement === document.body) {
-      addRef.current?.focus();
+  function remove(groupId: string) {
+    props.onRemove(groupId);
+    if (add.current) {
+      add.current.focus();
+    } else {
+      focusAddOnReturn.current = true;
     }
-    appliedCount.current = applied.length;
-  }, [applied.length]);
+  }
 
   return (
     <>
@@ -48,10 +59,10 @@ export function FilterBar(props: {
           key={group.id}
           group={group}
           onPick={(value) => props.onPick(group.id, value)}
-          onRemove={() => props.onRemove(group.id)}
+          onRemove={() => remove(group.id)}
         />
       ))}
-      <AddFilter ref={addRef} groups={addableGroups(props.groups)} onPick={props.onPick} />
+      <AddFilter ref={attachAdd} groups={addableGroups(props.groups)} onPick={props.onPick} />
     </>
   );
 }
@@ -111,7 +122,7 @@ function AddFilter({
   groups,
   onPick,
 }: {
-  ref: RefObject<HTMLButtonElement | null>;
+  ref: Ref<HTMLButtonElement>;
   groups: FilterGroup[];
   onPick: (groupId: string, value: string) => void;
 }) {
@@ -184,18 +195,9 @@ const searchableOptionCount = 7;
 function FilterOptionList(props: { group: FilterGroup; onPick: (value: string) => void }) {
   const { group } = props;
   const [query, setQuery] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
   const hasSearch = group.options.length > searchableOptionCount;
   const options = matchingOptions(group.options, query);
   const searchLabel = `Buscar ${group.label.toLocaleLowerCase("es")}`;
-
-  // The button that led here is gone, so focus would fall to the page: with no
-  // search box to take it, the first value does.
-  useEffect(() => {
-    if (!hasSearch) {
-      listRef.current?.querySelector("button")?.focus();
-    }
-  }, [hasSearch]);
 
   return (
     <>
@@ -208,10 +210,13 @@ function FilterOptionList(props: { group: FilterGroup; onPick: (value: string) =
           onChange={(event) => setQuery(event.target.value)}
         />
       )}
-      <div ref={listRef} className="flex max-h-72 flex-col overflow-y-auto">
-        {options.map((option) => (
+      <div className="flex max-h-72 flex-col overflow-y-auto">
+        {options.map((option, index) => (
           <Button
             key={option.value}
+            // The button that led here is gone, so focus would fall to the page:
+            // with no search box to take it, the first value does.
+            autoFocus={!hasSearch && index === 0}
             variant="ghost"
             size="sm"
             className="justify-start"

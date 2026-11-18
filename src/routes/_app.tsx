@@ -1,5 +1,4 @@
 import { Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
 
 import { passwordChangePath } from "#/components/app-nav.ts";
 import { AppSidebar } from "#/components/app-sidebar.tsx";
@@ -7,12 +6,8 @@ import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { useSignOut } from "#/components/sign-in-provider.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
-import {
-  isSignedInAs,
-  reloadForNewSession,
-  reloadOnSessionChange,
-  startNewSession,
-} from "#/lib/session-change.ts";
+import { useSessionGuard } from "#/hooks/use-session-guard.ts";
+import { startNewSession } from "#/lib/session-change.ts";
 import { sidebarStartsOpen } from "#/lib/sidebar-state.ts";
 import { getViewer } from "#/server/account.functions.ts";
 import { getToRescheduleCount } from "#/server/appointments.functions.ts";
@@ -58,53 +53,6 @@ export const Route = createFileRoute("/_app")({
   headers: () => ({ "Cache-Control": "no-store" }),
   component: AppShell,
 });
-
-const recheckMs = 5000;
-
-/**
- * Reloads the page once its screen and caches belong to a user other than the
- * one now signed in: when another tab signs in or out, when a link click finds
- * another user signed in, and, for a page that was still loading when another
- * tab's message went out, when a check after mounting says so. A failed check
- * is retried rather than reloaded, so a failing server causes no reload loop.
- */
-function useSessionGuard(userId: string) {
-  const loadedAs = useRef(userId);
-
-  useEffect(() => reloadOnSessionChange(), []);
-
-  useEffect(() => {
-    if (userId !== loadedAs.current) {
-      reloadForNewSession();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    let stopped = false;
-    let retry: ReturnType<typeof setTimeout> | undefined;
-    async function check() {
-      const result = await getViewer().catch((error: unknown) => {
-        console.warn("[session-guard] could not check who is signed in; retrying", error);
-        return null;
-      });
-      if (stopped) {
-        return;
-      }
-      if (result === null) {
-        retry = setTimeout(() => void check(), recheckMs);
-        return;
-      }
-      if (!isSignedInAs(result, loadedAs.current)) {
-        reloadForNewSession();
-      }
-    }
-    void check();
-    return () => {
-      stopped = true;
-      clearTimeout(retry);
-    };
-  }, []);
-}
 
 function AppShell() {
   const { viewer } = Route.useRouteContext();

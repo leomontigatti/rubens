@@ -10,7 +10,7 @@ import type { NavigateOptions } from "@tanstack/react-router";
 import { useStore } from "@tanstack/react-form";
 import type { AnyFormApi } from "@tanstack/react-form";
 import { CheckIcon, ChevronLeftIcon, PlusIcon, Undo2Icon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode, Ref } from "react";
 
 import { ErrorAlert } from "#/components/admin-form.tsx";
@@ -22,12 +22,15 @@ import type { FieldProblem } from "#/components/form-problems.ts";
 import { PageHeader } from "#/components/page-header.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
+import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
+import { useMountedRef } from "#/hooks/use-mounted-ref.ts";
 import { isSessionChanging } from "#/lib/session-change.ts";
 
 /**
  * A form page's way out: `Volver` goes where the browser's back goes, so a list
  * comes back with its filters and page, or to `back` when the page was opened
- * from a link. Leaving with unsaved changes asks first, by any way out.
+ * from a link. Leaving with unsaved changes asks first, by any way out: the
+ * question is `FormPage`'s, which knows whether the form differs.
  */
 export function useFormPage(back: NavigateOptions) {
   const router = useRouter();
@@ -37,26 +40,13 @@ export function useFormPage(back: NavigateOptions) {
   const shown = useRouterState({
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
-  const [dirty, setDirty] = useState(false);
   const [version, setVersion] = useState(0);
   const [discarding, setDiscarding] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [problems, setProblems] = useState<FieldProblem[]>([]);
   const [problemsShown, setProblemsShown] = useState(0);
   const released = useRef(false);
-  const mounted = useRef(false);
-  const blocker = useBlocker({
-    shouldBlockFn: () => dirty && !released.current,
-    enableBeforeUnload: () => dirty && !isSessionChanging(),
-    withResolver: true,
-  });
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
+  const mounted = useMountedRef();
 
   function goBack() {
     if (canGoBack) {
@@ -110,8 +100,6 @@ export function useFormPage(back: NavigateOptions) {
   }
 
   return {
-    dirty,
-    setDirty,
     version,
     leaving,
     problems,
@@ -127,18 +115,12 @@ export function useFormPage(back: NavigateOptions) {
     /** The page this render shows, and whether the user has left it since. */
     shown,
     left: userLeft,
-    /** The question before discarding or leaving, open for either. */
-    asking: discarding || blocker.status === "blocked",
+    /** Whether `leave` has started: the page goes without asking. */
+    released: () => released.current,
+    discarding,
     askToDiscard: () => setDiscarding(true),
-    keepEditing() {
-      setDiscarding(false);
-      blocker.reset?.();
-    },
+    keepEditing: () => setDiscarding(false),
     discard() {
-      if (blocker.status === "blocked") {
-        blocker.proceed();
-        return;
-      }
       setDiscarding(false);
       setVersion(version + 1);
     },
@@ -219,14 +201,11 @@ export function FormPage(props: {
   const alert = useRef<HTMLDivElement>(null);
   // Going back waits for the page's data, and nothing here may run again meanwhile.
   const pending = props.pending || page.leaving;
-  const unchanged = useStore(form.store, (state) => state.isDefaultValue);
-  const { setDirty } = page;
-
-  useEffect(() => setDirty(!unchanged), [setDirty, unchanged]);
+  const dirty = !useStore(form.store, (state) => state.isDefaultValue);
+  const question = useLeaveQuestion(page, dirty);
 
   // Whichever way the problems arrived.
-  const refused = refusalText(refusals);
-  useEffect(() => focusProblem(content.current, alert.current), [page.problemsShown, refused]);
+  useFocusProblem(content, alert, [page.problemsShown, refusalText(refusals)]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -255,14 +234,14 @@ export function FormPage(props: {
               pending={pending}
               submitLabel={props.submitLabel}
               submitNote={props.submitNote}
-              discardable={!props.creates}
+              discardable={!props.creates && dirty}
             />
           </form>
         </div>
       </FormProblemsContext.Provider>
       <ConfirmDialog
-        open={page.asking}
-        onOpenChange={(open) => !open && page.keepEditing()}
+        open={question.open}
+        onOpenChange={(open) => !open && question.keepEditing()}
         title="¿Descartar los cambios?"
         description="Lo que cambiaste en este formulario no se guarda."
         cancelLabel="Seguir editando"
@@ -271,7 +250,7 @@ export function FormPage(props: {
           form.reset();
           page.clearProblems();
           props.onClear();
-          page.discard();
+          question.discard();
         }}
       />
     </div>
@@ -279,6 +258,33 @@ export function FormPage(props: {
 }
 
 const noRecord: RecordHeader = { actions: () => null, error: null };
+
+/**
+ * The question before discarding the changes or leaving with them, open for
+ * either: leaving asks while the form differs, unless the page leaves by `leave`.
+ */
+function useLeaveQuestion(page: FormPageControl, dirty: boolean) {
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty && !page.released(),
+    enableBeforeUnload: () => dirty && !isSessionChanging(),
+    withResolver: true,
+  });
+  const blocked = blocker.status === "blocked";
+  return {
+    open: page.discarding || blocked,
+    keepEditing() {
+      page.keepEditing();
+      blocker.reset?.();
+    },
+    discard() {
+      if (blocked) {
+        blocker.proceed();
+        return;
+      }
+      page.discard();
+    },
+  };
+}
 
 /** The page's title, with its record's status and actions, which wait while it saves or leaves. */
 function FormPageHeader(props: {
@@ -301,14 +307,6 @@ function FormPageHeader(props: {
       <ErrorAlert message={record.error} />
     </>
   );
-}
-
-/**
- * Takes the user to what was refused: the first refused field in `content`, or
- * `alert` for a refusal about no field.
- */
-export function focusProblem(content: HTMLElement | null, alert: HTMLElement | null) {
-  (content?.querySelector<HTMLElement>("[aria-invalid=true]") ?? alert)?.focus();
 }
 
 /** The one error above the form: a refusal about no field. */
@@ -341,6 +339,7 @@ function FormPageActions(props: {
   pending: boolean;
   submitLabel: string;
   submitNote?: string;
+  /** Whether `Descartar cambios` shows: an edit whose form differs from what it opened with. */
   discardable: boolean;
 }) {
   const { page, pending } = props;
@@ -363,7 +362,7 @@ function FormPageActions(props: {
       )}
       {/* Below `sm`, its buttons sit in the bar's own rows. */}
       <div className="contents sm:flex sm:items-center sm:gap-3">
-        {props.discardable && page.dirty && (
+        {props.discardable && (
           <Button
             type="button"
             variant="outline"
