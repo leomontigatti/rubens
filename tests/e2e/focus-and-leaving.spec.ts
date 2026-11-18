@@ -104,8 +104,9 @@ test("the booking's quick registration focuses the first refused field", async (
 });
 
 test("the assistant's sandbox focuses a refused message", async ({ page }) => {
-  // The sandbox starts from an upcoming appointment: this spec books its own.
-  await openBooking(page, nextWeek(3), "12:00");
+  // The sandbox starts from an upcoming appointment: this spec books its own, on
+  // a day no other spec books or puts a time off on.
+  await openBooking(page, nextWeek(6), "12:00");
   await fillBooking(page, fullName(patient));
   await page.getByRole("button", { name: "Dar turno" }).click();
   await expect(appointmentCard(page, "12:00", fullName(patient))).toBeVisible();
