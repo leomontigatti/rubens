@@ -143,17 +143,35 @@ export function ratchetProblems(input: RatchetInput): string[] {
   ];
 }
 
+const directive = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/;
 const namesTheRule =
-  /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b[^\n]*consistent-type-assertions/;
+  /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b[\s\S]*consistent-type-assertions/;
 const namesNoRule = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\s*(?:\*\/|--|$)/;
 
-/** The 1-based lines of `source` with a comment that would silence the rule. */
+// The directive on `lines[index]` with its rule list: the rest of the line, or, in
+// a block comment still open at the line's end, the comment through its `*/`.
+function directiveAt(lines: string[], index: number): string {
+  const text = lines[index] ?? "";
+  const start = text.search(directive);
+  if (start === -1) return "";
+  const rest = text.slice(start);
+  if (text.lastIndexOf("/*", start) === -1 || rest.includes("*/")) return rest;
+  const following = lines.slice(index + 1);
+  const closing = following.findIndex((line) => line.includes("*/"));
+  const comment = [rest, ...(closing === -1 ? following : following.slice(0, closing + 1))].join(
+    "\n",
+  );
+  const end = comment.indexOf("*/");
+  return end === -1 ? comment : comment.slice(0, end + 2);
+}
+
+/** The 1-based lines of `source` where a comment that would silence the rule starts. */
 export function findDisableComments(source: string): number[] {
-  return source
-    .split("\n")
-    .flatMap((text, index) =>
-      namesTheRule.test(text) || namesNoRule.test(text) ? [index + 1] : [],
-    );
+  const lines = source.split("\n");
+  return lines.flatMap((_, index) => {
+    const text = directiveAt(lines, index);
+    return namesTheRule.test(text) || namesNoRule.test(text) ? [index + 1] : [];
+  });
 }
 
 function run(command: string, args: string[]) {

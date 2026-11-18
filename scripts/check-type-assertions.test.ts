@@ -150,6 +150,27 @@ describe("disable comments", () => {
     expect(findDisableComments(source)).toEqual([1, 3, 4, 5]);
   });
 
+  test("finds a block comment that names the rule on a later line", () => {
+    const source = [
+      "const a = 1;",
+      `/* ${["eslint", "disable"].join("-")} no-debugger,`,
+      `   ${ruleName} */`,
+      "const b = 2;",
+    ].join("\n");
+
+    expect(findDisableComments(source)).toEqual([2]);
+  });
+
+  test("passes a block comment that names only other rules over several lines", () => {
+    const source = [
+      `/* ${["eslint", "disable"].join("-")} no-debugger,`,
+      "   no-console */",
+      `const rule = "${ruleName}";`,
+    ].join("\n");
+
+    expect(findDisableComments(source)).toEqual([]);
+  });
+
   test("passes one that names only other rules", () => {
     expect(
       findDisableComments(`${disable("disable-next-line")} jsx-a11y/media-has-caption -- why`),
