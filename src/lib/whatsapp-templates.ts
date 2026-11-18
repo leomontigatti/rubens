@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { hasEmoji, hasOpeningMark } from "#/lib/reply-checks.ts";
 import { sampleAppointment, templateValues, variablesIn } from "#/lib/template-filling.ts";
 import type { TemplateVariable } from "#/lib/template-filling.ts";
@@ -22,16 +23,12 @@ export type TemplateCategory = (typeof templateCategories)[number];
 
 export function templateCategoryOf(metaCategory: string): TemplateCategory | null {
   const category = metaCategory.toLowerCase();
-  return (templateCategories as readonly string[]).includes(category)
-    ? (category as TemplateCategory)
-    : null;
+  return isOneOf(templateCategories, category) ? category : null;
 }
 
 export function templateStatusOf(metaStatus: string): TemplateStatus | null {
   const status = metaStatus.toLowerCase();
-  return (templateStatuses as readonly string[]).includes(status)
-    ? (status as TemplateStatus)
-    : null;
+  return isOneOf(templateStatuses, status) ? status : null;
 }
 
 const maxTemplateBodyLength = 1024;
@@ -57,7 +54,7 @@ export const eventTemplateIds = [
 export type EventTemplateId = (typeof eventTemplateIds)[number];
 
 export function isEventTemplate(templateId: string): templateId is EventTemplateId {
-  return (eventTemplateIds as readonly string[]).includes(templateId);
+  return isOneOf(eventTemplateIds, templateId);
 }
 
 /**
@@ -171,9 +168,7 @@ function variableProblem(
   if (!variableName.test(variable)) {
     return { kind: "invalidVariable", variable };
   }
-  return (allowed as readonly string[]).includes(variable)
-    ? null
-    : { kind: "unknownVariable", variable };
+  return isOneOf(allowed, variable) ? null : { kind: "unknownVariable", variable };
 }
 
 export function checkTemplateBody(

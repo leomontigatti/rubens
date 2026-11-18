@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNotNull, lt, notInArray } from "drizzle-orm";
 import type { SQLWrapper } from "drizzle-orm";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { reactionType } from "#/lib/reactions.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
@@ -169,7 +170,7 @@ function answeredKind(kind: string | null, timing: TimingKind | null) {
   if (kind === "appointmentCancelled") {
     return "appointmentCancelled" as const;
   }
-  if (kind === "timed" && timing && (attendedTimings as readonly TimingKind[]).includes(timing)) {
+  if (kind === "timed" && timing && isOneOf(attendedTimings, timing)) {
     return "followUp" as const;
   }
   return null;

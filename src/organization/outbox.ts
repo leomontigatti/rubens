@@ -1,5 +1,6 @@
 import { and, asc, eq, gt, inArray, isNull, lte, min, notInArray, or } from "drizzle-orm";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { retryAt } from "#/lib/outbox.ts";
 import type { OutboxKind } from "#/lib/outbox.ts";
 import { attendedTimings } from "#/lib/template-timing.ts";
@@ -183,7 +184,7 @@ function readQueued(database: Database, id: string) {
 type Queued = NonNullable<ReturnType<typeof readQueued>>;
 
 function isAttendedTiming(timing: TimingKind | null) {
-  return timing !== null && (attendedTimings as readonly TimingKind[]).includes(timing);
+  return timing !== null && isOneOf(attendedTimings, timing);
 }
 
 /**

@@ -1,5 +1,6 @@
 import { and, asc, eq, isNotNull, lte, min } from "drizzle-orm";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import { reactionType } from "#/lib/reactions.ts";
@@ -324,9 +325,7 @@ async function runTurn(
   // reply is checked against the state its own change left.
   const view = [...appointments];
   const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
-  const media = read.unjudged.filter((message) =>
-    (mediaTypes as readonly string[]).includes(message.type),
-  );
+  const media = read.unjudged.filter((message) => isOneOf(mediaTypes, message.type));
   const startedAt = Date.now();
   const { turn, unread } = await judgeWithoutMedia(database, model, {
     conversationId,

@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
   IncomingWhatsappMessage,
@@ -123,7 +124,7 @@ function incomingOf(message: MetaMessage): IncomingWhatsappMessage {
 }
 
 function isKnownStatus(status: string): status is WhatsappStatusUpdate["status"] {
-  return (whatsappMessageStatuses as readonly string[]).includes(status);
+  return isOneOf(whatsappMessageStatuses, status);
 }
 
 type MetaPayload = z.infer<typeof metaWebhook>;
