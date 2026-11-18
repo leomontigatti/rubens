@@ -4,6 +4,18 @@
 // never leaves this module: no result, error or log line carries it, the
 // business token Embedded Signup returns included.
 
+import {
+  asFields,
+  errorAnswer,
+  fieldsOf,
+  mediaAnswer,
+  messagesAnswer,
+  phoneNumberAnswer,
+  phoneNumbersAnswer,
+  templateAnswer,
+  templateListAnswer,
+  tokenAnswer,
+} from "#/organization/graph-api-answers.ts";
 import { fromMediaHost } from "#/organization/graph-api-media.ts";
 import type { MediaHostAnswer } from "#/organization/graph-api-media.ts";
 import { componentsToCreate, componentsToSend } from "#/organization/template-components.ts";
@@ -139,33 +151,8 @@ export interface WhatsappCloud {
   templateNamesAtMeta(): Promise<TemplateNamesResult>;
 }
 
-interface GraphApiError {
-  error?: { message?: unknown; code?: unknown };
-}
-
-interface MessagesAnswer {
-  contacts?: { wa_id?: unknown }[];
-  messages?: { id?: unknown }[];
-}
-
-interface TemplateListAnswer {
-  data?: { name?: unknown }[];
-  paging?: { next?: unknown };
-}
-
-interface MediaAnswer {
-  url?: unknown;
-  mime_type?: unknown;
-}
-
 /** What a boundary module calls instead of the global `fetch`, so its tests inject one. */
 export type Fetcher = typeof fetch;
-
-interface TemplateAnswer {
-  id?: unknown;
-  status?: unknown;
-  rejected_reason?: unknown;
-}
 
 /** Meta's codes for a token it no longer accepts: expired or invalidated (190), or a user who blocked the app (0). */
 const refusedTokenCodes = new Set([0, 190]);
@@ -201,8 +188,8 @@ export function whatsappCloudFor(
     if (!described.ok) {
       return described;
     }
-    const { url, mime_type: mimeType } = described.body as MediaAnswer;
-    if (typeof url !== "string" || typeof mimeType !== "string") {
+    const { url, mime_type: mimeType } = fieldsOf(mediaAnswer, described.body);
+    if (url === null || mimeType === null) {
       throw new Error("The Graph API described a media without its link and type");
     }
     return { ok: true, mimeType, ...(await fromMediaHost(fetcher, url, authorization, range)) };
@@ -276,13 +263,12 @@ export function whatsappCloudFor(
     if (!answer.ok) {
       return answer;
     }
-    const { messages, contacts } = answer.body as MessagesAnswer;
-    const messageId = messages?.[0]?.id;
+    const { messages: message, contacts: contact } = fieldsOf(messagesAnswer, answer.body);
+    const messageId = message?.id;
     if (typeof messageId !== "string") {
       throw new Error("The Graph API accepted a message without returning its id");
     }
-    const waId = contacts?.[0]?.wa_id;
-    return { ok: true, messageId, waId: typeof waId === "string" ? waId : null };
+    return { ok: true, messageId, waId: contact?.wa_id ?? null };
   }
 
   return {
@@ -332,8 +318,8 @@ export function whatsappCloudFor(
       if (!answer.ok) {
         return answer;
       }
-      const { id, status } = answer.body as TemplateAnswer;
-      if (typeof id !== "string" || typeof status !== "string") {
+      const { id, status } = fieldsOf(templateAnswer, answer.body);
+      if (id === null || status === null) {
         throw new Error("The Graph API accepted a template without returning its id and status");
       }
       return { ok: true, templateId: id, status };
@@ -349,11 +335,11 @@ export function whatsappCloudFor(
       if (!answer.ok) {
         return answer;
       }
-      const { status, rejected_reason: reason } = answer.body as TemplateAnswer;
-      if (typeof status !== "string") {
+      const { status, rejected_reason: reason } = fieldsOf(templateAnswer, answer.body);
+      if (status === null) {
         throw new Error("The Graph API returned a template without its status");
       }
-      const rejectedReason = typeof reason === "string" && reason !== "NONE" ? reason : null;
+      const rejectedReason = reason !== "NONE" ? reason : null;
       return { ok: true, status, rejectedReason };
     },
     async templateNamesAtMeta() {
@@ -369,12 +355,12 @@ export function whatsappCloudFor(
         if (!answer.ok) {
           return answer;
         }
-        const { data, paging } = answer.body as TemplateListAnswer;
-        if (!Array.isArray(data)) {
+        const { data, paging } = fieldsOf(templateListAnswer, answer.body);
+        if (data === null) {
           throw new Error("The Graph API listed templates without their data");
         }
         for (const template of data) {
-          if (typeof template.name === "string") {
+          if (typeof template?.name === "string") {
             names.push(template.name);
           }
         }
@@ -424,12 +410,6 @@ export interface MetaSignup {
   subscribeApp(token: string, businessAccountId: string): Promise<MetaDone>;
 }
 
-interface PhoneNumberAnswer {
-  id?: unknown;
-  display_phone_number?: unknown;
-  whatsapp_business_manager_messaging_limit?: unknown;
-}
-
 export function metaSignupFor(
   settings: SignupSettings,
   fetcher: Fetcher = (input, init) => fetch(input, init),
@@ -468,8 +448,8 @@ export function metaSignupFor(
       if (!answer.ok) {
         return answer;
       }
-      const token = (answer.body as { access_token?: unknown }).access_token;
-      if (typeof token !== "string") {
+      const { access_token: token } = fieldsOf(tokenAnswer, answer.body);
+      if (token === null) {
         throw new Error("The Graph API exchanged the code without returning a token");
       }
       return { ok: true, token };
@@ -485,8 +465,11 @@ export function metaSignupFor(
       if (!listed.ok) {
         return listed;
       }
-      const numbers = (listed.body as { data?: PhoneNumberAnswer[] }).data ?? [];
-      const listedNumber = numbers.find((number) => number.id === phoneNumberId);
+      const numbers = phoneNumbersAnswer.safeParse(asFields(listed.body));
+      if (!numbers.success) {
+        throw new Error("The Graph API listed the account's numbers without a list of them");
+      }
+      const listedNumber = (numbers.data.data ?? []).find((number) => number?.id === phoneNumberId);
       if (typeof listedNumber?.display_phone_number !== "string") {
         return { ok: true, number: null };
       }
@@ -499,12 +482,15 @@ export function metaSignupFor(
       if (!read.ok) {
         return read;
       }
-      const limit = (read.body as PhoneNumberAnswer).whatsapp_business_manager_messaging_limit;
+      const { whatsapp_business_manager_messaging_limit: limit } = fieldsOf(
+        phoneNumberAnswer,
+        read.body,
+      );
       return {
         ok: true,
         number: {
           displayNumber: listedNumber.display_phone_number,
-          messagingLimit: typeof limit === "string" ? limit : null,
+          messagingLimit: limit,
         },
       };
     },
@@ -539,10 +525,13 @@ async function metaAnswerOf(
   if (response.ok) {
     return { ok: true, body: answer ?? {} };
   }
-  const error = (answer as GraphApiError | null)?.error;
+  const { error } = fieldsOf(errorAnswer, answer);
   if (typeof error?.message !== "string") {
     throw new Error(`The Graph API answered ${response.status} without an error`);
   }
-  const code = typeof error.code === "number" ? error.code : null;
-  return { ok: false, reason: "metaRefused", metaError: { code, message: error.message } };
+  return {
+    ok: false,
+    reason: "metaRefused",
+    metaError: { code: error.code, message: error.message },
+  };
 }

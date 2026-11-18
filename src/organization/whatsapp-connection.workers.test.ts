@@ -195,6 +195,15 @@ describe("connecting the organization's number", () => {
     },
   );
 
+  it("fails with a clear error when Meta lists the account's numbers without a list", async () => {
+    fakeMeta.signupRefusals.numbers = { status: 200, body: { data: "not a list" } };
+    const { phoneNumberId, businessAccountId } = completion();
+
+    await expect(
+      metaSignupFor({}).readNumber("business-token", businessAccountId, phoneNumberId),
+    ).rejects.toThrow("The Graph API listed the account's numbers without a list of them");
+  });
+
   it("keeps the number it had connected when connecting another fails", async () => {
     expectOk(await organization.connectWhatsapp(adminCaller, completion()));
     const first = { ...fakeMeta.signupNumber };
