@@ -70,6 +70,13 @@ maps to copy. The service itself says nothing a user reads.
 Accept dependencies instead of constructing external ones inside a module. Return
 values rather than hiding behaviour behind side effects.
 
+A network call goes through the module that owns its boundary, which takes a
+`Fetcher` its tests inject: Meta's Graph API through `src/organization/graph-api.ts`
+(`whatsappCloudFor`, `metaSignupFor`). A new external service gets a module of its
+own. Lint rejects the global `fetch` anywhere else (`no-restricted-globals` and
+`no-restricted-properties`); the boundary modules and `scripts/` are the override
+that turns both off in `vite.config.ts`, and a new boundary module is added there.
+
 ## Style
 
 Clarity over cleverness: explicit control flow over dense conditionals and nested
