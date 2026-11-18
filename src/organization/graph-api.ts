@@ -158,6 +158,9 @@ interface MediaAnswer {
   mime_type?: unknown;
 }
 
+/** What a boundary module calls instead of the global `fetch`, so its tests inject one. */
+export type Fetcher = typeof fetch;
+
 interface TemplateAnswer {
   id?: unknown;
   status?: unknown;
@@ -169,7 +172,7 @@ const refusedTokenCodes = new Set([0, 190]);
 
 export function whatsappCloudFor(
   connection: CloudConnection,
-  fetcher: typeof fetch = (input, init) => fetch(input, init),
+  fetcher: Fetcher = (input, init) => fetch(input, init),
 ): WhatsappCloud {
   /** Meta's answer to a call made with `token`, which is reported when Meta refused it. */
   async function answerOf(response: Response, token: string) {
@@ -429,7 +432,7 @@ interface PhoneNumberAnswer {
 
 export function metaSignupFor(
   settings: SignupSettings,
-  fetcher: typeof fetch = (input, init) => fetch(input, init),
+  fetcher: Fetcher = (input, init) => fetch(input, init),
 ): MetaSignup {
   const graph = `https://graph.facebook.com/${graphApiVersion}`;
   const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
