@@ -1,6 +1,7 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import { metaTemplateName } from "#/lib/whatsapp-templates.ts";
 import {
@@ -287,7 +288,9 @@ describe("sending the booking confirmation", () => {
     await runDurableObjectAlarm(world.organization);
 
     expect(
-      sentToMeta().map((request) => (request.body as { template: { name: string } }).template.name),
+      fakeMeta
+        .sentBodies("/messages", z.object({ template: z.object({ name: z.string() }) }))
+        .map((body) => body.template.name),
     ).toEqual([metaTemplateName(confirmationId, 2)]);
   });
 
@@ -312,9 +315,9 @@ describe("sending the booking confirmation", () => {
 
     await runDurableObjectAlarm(world.organization);
 
-    expect(sentToMeta().map((request) => (request.body as { to: string }).to)).toEqual([
-      "5493515550000",
-    ]);
+    expect(
+      fakeMeta.sentBodies("/messages", z.object({ to: z.string() })).map((body) => body.to),
+    ).toEqual(["5493515550000"]);
     expect(await storedMessages()).toEqual([expect.objectContaining({ phone: "+5493515550000" })]);
   });
 

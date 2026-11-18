@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import type { Role } from "#/lib/access.ts";
 
@@ -379,9 +380,7 @@ describe("connecting again", () => {
 
   /** The PIN each registration of the number sent, in order. */
   function registeredPins() {
-    return fakeMeta.requests
-      .filter((request) => request.url.endsWith("/register"))
-      .map((request) => (request.body as { pin: string }).pin);
+    return fakeMeta.sentBodies("/register", z.object({ pin: z.string() })).map((body) => body.pin);
   }
 
   it("registers the same number again with the PIN it was first registered with", async () => {

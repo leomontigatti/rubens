@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
+
 import { emptyPhoneEntry } from "#/lib/phones.ts";
 import { variablesIn } from "#/lib/template-filling.ts";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -51,9 +53,9 @@ async function listed() {
 
 /** The names the object created at Meta, in order. */
 function createdAtMeta() {
-  return fakeMeta.requests
-    .filter((request) => request.method === "POST")
-    .map((request) => (request.body as { name: string }).name);
+  return fakeMeta
+    .sentBodies("/message_templates", z.object({ name: z.string() }))
+    .map((body) => body.name);
 }
 
 beforeEach(async () => {
@@ -359,12 +361,12 @@ describe("editing a template", () => {
 
     expect(answer).toEqual({ ok: true, submitted: true });
     expect(
-      fakeMeta.requests
-        .filter((request) => request.method === "POST")
-        .map((request) => {
-          const sent = request.body as { name: string; components: { type: string }[] };
-          return [sent.name, sent.components.at(-1)];
-        }),
+      fakeMeta
+        .sentBodies(
+          "/message_templates",
+          z.object({ name: z.string(), components: z.array(z.unknown()) }),
+        )
+        .map((sent) => [sent.name, sent.components.at(-1)]),
     ).toEqual([
       [
         metaTemplateName(templateId, 2),

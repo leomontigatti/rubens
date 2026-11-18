@@ -2,6 +2,8 @@ import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
+
 import { splitPhone } from "#/lib/phones.ts";
 
 import {
@@ -156,11 +158,15 @@ function outboxOf(appointmentId: string) {
 
 /** The templates the object sent Meta, by name. */
 function templatesSent() {
-  return fakeMeta.requests
-    .filter((request) => request.url.endsWith("/messages"))
-    .map((request) => request.body as { type: string; template?: { name: string } })
-    .filter((body) => body.type === "template")
-    .map((body) => body.template!.name);
+  return fakeMeta
+    .sentBodies(
+      "/messages",
+      z.object({
+        type: z.string().optional(),
+        template: z.object({ name: z.string() }).optional(),
+      }),
+    )
+    .flatMap((body) => (body.type === "template" && body.template ? [body.template.name] : []));
 }
 
 /** How many of `caller`'s notifications of `kind` there are. */
