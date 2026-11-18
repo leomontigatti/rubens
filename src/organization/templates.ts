@@ -91,11 +91,11 @@ function byListOrder(
   b: { id: string; name: string; timing: Timing | null },
 ) {
   const [x, y] = [timingRank(a.timing), timingRank(b.timing)];
-  const events = eventTemplateIds as readonly string[];
+  const eventRank = (id: string) => eventTemplateIds.findIndex((event) => event === id);
   return (
     x[0] - y[0] ||
     x[1] - y[1] ||
-    events.indexOf(a.id) - events.indexOf(b.id) ||
+    eventRank(a.id) - eventRank(b.id) ||
     a.name.localeCompare(b.name, "es")
   );
 }

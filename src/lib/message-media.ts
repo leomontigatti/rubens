@@ -1,5 +1,7 @@
 import * as z from "zod";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
+
 // The media of a patient's WhatsApp message (a voice note, a photo, a video or
 // a file), read from the payload Meta's webhook stored with it
 // (docs/domain/assistant.md § Inbox).
@@ -23,7 +25,7 @@ const mediaPayloadSchema = z.object({
 });
 
 function isMediaKind(type: string): type is MediaKind {
-  return (mediaKinds as readonly string[]).includes(type);
+  return isOneOf(mediaKinds, type);
 }
 
 export function mediaIn(type: string, payload: string) {

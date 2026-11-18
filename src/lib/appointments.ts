@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import { shiftDate, weekdayOf } from "#/lib/schedules.ts";
 
@@ -28,7 +29,7 @@ export const activeAppointmentStatuses = [
 ] as const satisfies readonly AppointmentStatus[];
 
 export function isActiveStatus(status: AppointmentStatus): boolean {
-  return (activeAppointmentStatuses as readonly AppointmentStatus[]).includes(status);
+  return isOneOf(activeAppointmentStatuses, status);
 }
 
 export const appointmentCancellers = ["patient", "business"] as const;

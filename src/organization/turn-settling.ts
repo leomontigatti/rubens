@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
+import { isOneOf } from "#/lib/is-one-of.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 import { boundAsOne } from "#/organization/database.ts";
@@ -173,7 +174,7 @@ function outcomeOf(
  * no repeat.
  */
 function repeatsTopic(wanted: HandoffWanted) {
-  return !(unansweredReasons as readonly string[]).includes(wanted.reason);
+  return !isOneOf(unansweredReasons, wanted.reason);
 }
 
 /** The member who holds `conversationId`, or `null` while the assistant does. */

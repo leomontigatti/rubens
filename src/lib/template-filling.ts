@@ -1,3 +1,4 @@
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { formatDay, formatTime } from "#/lib/dates.ts";
 
 // Filling a WhatsApp template from an appointment
@@ -69,7 +70,7 @@ function afterPossessive(name: string) {
 const variablePattern = /\{\{([a-z_]+)\}\}/g;
 
 function isTemplateVariable(name: string): name is TemplateVariable {
-  return (templateVariableNames as readonly string[]).includes(name);
+  return isOneOf(templateVariableNames, name);
 }
 
 export function variablesIn(body: string): TemplateVariable[] {
