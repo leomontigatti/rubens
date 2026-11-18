@@ -120,6 +120,7 @@ export function settleTurn(
       settled: outcomeOf(tx, turn, { opened, wanted, optOutAsked }),
       practitioner: opened?.practitioner ?? null,
       changed: turn.applied.length > 0,
+      toReception: opened !== null && wanted?.forPractitioner === false,
     };
   });
 }

@@ -4,7 +4,7 @@ import type { SQLWrapper } from "drizzle-orm";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { reactionType } from "#/lib/reactions.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
-import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
+import type { HandoffDetail, HandoffReason, HeldReplyCheck } from "#/lib/handoffs.ts";
 import { attendedTimings } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
 
@@ -32,8 +32,10 @@ export interface HandoffWanted {
   forPractitioner: boolean;
   /** The appointment it concerns; its practitioner takes it when it needs one. `null` for none. */
   appointmentId: string | null;
-  /** The assistant's reply the clinical check held, for a `heldReply` handoff. */
+  /** The assistant's reply a check held: on a `heldReply` handoff, or a `leakedReply` one or any open to reception. */
   heldReply?: string;
+  /** The check that held `heldReply`. */
+  heldBecause?: HeldReplyCheck;
   /** What the turn knew of a refused move and its own changes, for the notification. */
   detail?: HandoffDetail | null;
 }

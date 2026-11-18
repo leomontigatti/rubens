@@ -244,10 +244,12 @@ patient or a person closes it.
 _Avoid_: escalation, transfer, takeover
 
 **`heldReply`** — ui: "Respuesta retenida"
-A reply of the `assistant` that the clinical check kept from the patient, because it
-says something clinical or about another `patient`. It waits on a `handoff` to the
-`practitioner`: a practitioner sends it or fixes it, and anyone who reads the
-conversation drops it.
+A reply of the `assistant` that a check kept from the patient. The clinical check holds
+one that says something clinical or about another `patient`: it waits on a `handoff` to
+the `practitioner`, and a practitioner sends it or fixes it. The code checks hold one
+that names something internal or announces a handoff to reception: it waits on a
+`handoff` to reception, and whoever may answer that handoff sends it or fixes it.
+Anyone who reads the conversation drops it.
 _Avoid_: draft, blocked message, pending reply
 
 **`lateReply`** — ui: "Respuesta en espera"

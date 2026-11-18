@@ -10,6 +10,7 @@ import {
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
+import { announcesHandoff, leaksInternals } from "#/lib/reply-leaks.ts";
 import { splitReply, typingPauseOf } from "#/lib/reply-pacing.ts";
 
 import type { AssistantModel, ModelUsage, ReplyToCheck } from "#/organization/assistant-model.ts";
@@ -17,22 +18,26 @@ import { recordModelUsage } from "#/organization/assistant-usage.ts";
 import type { CommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import type { HeldReplyCheck } from "#/lib/handoffs.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { TurnToSort } from "#/organization/turn-handoffs.ts";
 import { typingPause } from "#/organization/typing-pause.ts";
 import { reach, send } from "#/organization/sending.ts";
 import { isHeld, lastIncomingAt } from "#/organization/whatsapp-messages.ts";
-import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
+import { handoff, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // How a settled turn of the patient assistant (`assistant.ts`) answers the
 // patient (docs/domain/assistant.md § Rules it always keeps): a fixed reply
 // for a handoff to the practitioner, an opt-out, an emergency, a voice note
 // nobody understood or a repeat about an open handoff's topic, and nothing for
 // a handoff to reception; otherwise the
-// model's own, which goes out only once the fixed checks pass and the
-// clinical check finds nothing clinical in it and nothing about a patient the
-// number may not hear about. A reply the check flags is held on a handoff to
-// the practitioner, who sends or fixes it. A reply whose window closed before it could
+// model's own, which goes out only once the fixed checks pass, the clinical
+// check finds nothing clinical in it and nothing about a patient the number
+// may not hear about, and the code checks (`reply-leaks.ts`) find nothing
+// internal in it nor, in a turn that handed off to reception, a word of the
+// handoff. A reply the clinical check flags is held on a handoff to the
+// practitioner, who sends or fixes it; one the code checks flag, on a handoff
+// to reception. A reply whose window closed before it could
 // go is dropped and the conversation handed off (docs/domain/messages.md §
 // When Meta limits the number). Nothing here logs a patient's words.
 
@@ -62,6 +67,8 @@ export interface SettledTurn {
    * about an open handoff sends the model's reply first whether or not it did.
    */
   changed: boolean;
+  /** The turn opened a handoff to reception, which the patient is told nothing about. */
+  toReception: boolean;
 }
 
 /** What a settled turn says something with: none for a member's hold or a handoff to reception. */
@@ -186,7 +193,7 @@ function fixedReply(
  * Whether the clinical check holds the reply: clinical, about a patient the
  * number may not hear about, or unchecked because the check failed.
  */
-export async function clinicalCheckHolds(
+async function clinicalCheckHolds(
   database: Database,
   model: AssistantModel,
   request: Omit<ReplyToCheck, "recordUsage">,
@@ -207,6 +214,61 @@ export async function clinicalCheckHolds(
 }
 
 /**
+ * The check that holds the model's reply, or `null` when it may go: the
+ * clinical one, whose hold goes to the practitioner; else, for reception, the
+ * one that finds something internal named or, in a turn whose handoff to
+ * reception the patient is told nothing about, the one that finds it says it
+ * passed the conversation on. The clinical check runs first, so a reply both
+ * flag goes where clinical words may.
+ */
+export async function checkThatHolds(
+  database: Database,
+  model: AssistantModel,
+  request: Omit<ReplyToCheck, "recordUsage">,
+  turn: { toReception?: boolean },
+  sandbox: boolean,
+): Promise<HeldReplyCheck | null> {
+  if (await clinicalCheckHolds(database, model, request, sandbox)) {
+    return "clinical";
+  }
+  const { reply } = request;
+  if (leaksInternals(reply)) {
+    return "internals";
+  }
+  return turn.toReception === true && announcesHandoff(reply) ? "announcedHandoff" : null;
+}
+
+/**
+ * Holds the reply a code check flagged for reception, which tells the
+ * patient nothing: on the conversation's open handoff to reception, such as
+ * the one the turn opened, else on a new one.
+ */
+export function holdForReception(
+  database: Database,
+  held: {
+    conversationId: string;
+    answered: TurnToSort["answered"];
+    words: string;
+    because: HeldReplyCheck;
+  },
+) {
+  const kept = { heldReply: held.words, heldBecause: held.because };
+  database.transaction((tx) => {
+    const open = openHandoffsOf(tx, held.conversationId).find((one) => !one.forPractitioner);
+    if (open) {
+      tx.update(handoff).set(kept).where(eq(handoff.id, open.id)).run();
+      return;
+    }
+    openHandoff(tx, held.conversationId, {
+      reason: "leakedReply",
+      forPractitioner: false,
+      appointmentId: held.answered?.appointmentId ?? null,
+      ...kept,
+    });
+  });
+}
+
+/**
  * Opens the handoff to the practitioner that holds `held.words`, unless one
  * is open already; says the handoff opened, with the practitioner it went to
  * by the name patients read, or `null` when none did.
@@ -222,6 +284,7 @@ export function openHeldReply(
       forPractitioner: true,
       appointmentId: held.answered?.appointmentId ?? null,
       heldReply: held.words,
+      heldBecause: "clinical" as const,
     };
     return addsToOpen(open, wanted) ? openHandoff(tx, held.conversationId, wanted) : null;
   });
@@ -283,8 +346,10 @@ export function handoffReplyText(rules: CommunicationRules, practitioner: string
 }
 
 /**
- * Sends the model's `text` once the fixed checks and the clinical check pass
- * it and `mayReply` still holds; says whether it went.
+ * Sends the model's `text` once the fixed checks and the clinical and code
+ * checks pass it and `mayReply` still holds. A person has the conversation
+ * already: a reply the clinical check holds is dropped, and one the code
+ * checks hold is held for reception.
  */
 async function sendCheckedReply(
   database: Database,
@@ -297,20 +362,25 @@ async function sendCheckedReply(
     text: string;
     rules: CommunicationRules;
     proposed: boolean;
+    answered: TurnToSort["answered"];
     mayReply: () => boolean;
   },
 ) {
   const checked = checkReply(turn.text);
   if (!checked.ok || !turn.mayReply()) {
-    return false;
+    return;
   }
   const request = {
     conversationId: turn.conversationId,
     reply: checked.text,
     patients: turn.patients,
   };
-  if (await clinicalCheckHolds(database, model, request, false)) {
-    return false;
+  const because = await checkThatHolds(database, model, request, {}, false);
+  if (because && because !== "clinical") {
+    holdForReception(database, { ...turn, words: checked.text, because });
+  }
+  if (because) {
+    return;
   }
   const reply = {
     conversationId: turn.conversationId,
@@ -319,7 +389,7 @@ async function sendCheckedReply(
     rulesVersion: turn.rules.version,
     whole: turn.proposed,
   };
-  return sendReply(database, cloud, reply, turn.mayReply);
+  await sendReply(database, cloud, reply, turn.mayReply);
 }
 
 /**
@@ -333,7 +403,7 @@ export function repliesFirst(turn: { settled: Saying; changed?: boolean }) {
 
 /**
  * Answers the settled turn: its fixed reply when the number may send, or the
- * model's reply once the fixed checks and the clinical check pass and
+ * model's reply once the fixed checks, the clinical check and the code checks pass and
  * `mayReply` still holds, read again after the check.
  */
 export async function deliverReply(
@@ -350,6 +420,8 @@ export async function deliverReply(
     practitioner: string | null;
     /** The turn also made a change, which the model's reply states before a handoff's fixed reply. */
     changed?: boolean;
+    /** The turn opened a handoff to reception, which the model's reply may not announce. */
+    toReception?: boolean;
     reply: string;
     rules: CommunicationRules;
     /** The turn proposed a change, which its reply states: it goes out whole. */
@@ -374,8 +446,7 @@ export async function deliverReply(
   };
   if (fixed && repliesFirst(turn)) {
     // The easy part of a mixed burst is answered before the part a person
-    // has: the model's words about it, checked, and a reply the check holds
-    // is dropped, since a person has the conversation already.
+    // has: the model's words about it, checked first.
     await sendCheckedReply(database, cloud, model, { ...turn, text: turn.reply });
   }
   if (fixed) {
@@ -396,8 +467,11 @@ export async function deliverReply(
     return;
   }
   const request = { conversationId, reply: text, patients: turn.patients };
-  if (await clinicalCheckHolds(database, model, request, false)) {
+  const because = await checkThatHolds(database, model, request, turn, false);
+  if (because === "clinical") {
     await holdReply(database, cloud, { ...turn, words: text });
+  } else if (because) {
+    holdForReception(database, { ...turn, words: text, because });
   } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
     // Read again after each typing pause: a message or a change may have come
     // while the check ran or the reply typed.

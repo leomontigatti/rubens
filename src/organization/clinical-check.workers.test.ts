@@ -259,7 +259,7 @@ describe("a held reply", () => {
     expectOk(await world.organization.dropHeldReply(world.juan.caller, { handoffId: held!.id }));
 
     expect(await openHandoffs(world.juan.caller)).toMatchObject([
-      { id: held!.id, heldReply: null },
+      { id: held!.id, heldReply: null, heldBecause: null },
     ]);
     expect(await auditEntriesFor(world.organization, held!.id)).toMatchObject([
       { entityType: "handoff", before: { heldReply: "held" }, after: { heldReply: null } },

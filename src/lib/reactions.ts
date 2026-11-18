@@ -37,12 +37,15 @@ export function liveReactions<Message extends Reacting>(messages: Message[]) {
   return live;
 }
 
+/** What every reaction's line starts with, as the model reads it. */
+export const reactionMark = "[reaccionó";
+
 /**
  * A reaction as the model reads it, with the words of the message it reacts
  * to, or `null` when it cannot quote them (one not stored, or with no words).
  */
 export function reactionLine(emoji: string, target: string | null) {
   return target === null
-    ? `[reaccionó ${withoutMark(emoji)} a un mensaje]`
-    : `[reaccionó ${withoutMark(emoji)} al mensaje: «${withoutMark(target)}»]`;
+    ? `${reactionMark} ${withoutMark(emoji)} a un mensaje]`
+    : `${reactionMark} ${withoutMark(emoji)} al mensaje: «${withoutMark(target)}»]`;
 }

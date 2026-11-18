@@ -188,6 +188,17 @@ No organization can edit or override these:
   records sends or fixes it, and anyone who reads it drops it. Telegram gets the
   handoff without it. The check is a model call of its own that reads the reply
   alone, never the conversation.
+- Two code checks run on every reply the clinical check passes. One that names
+  one of the assistant's tools (`find_free_times`) or holds one of the prompt's
+  marks or notes (`[new messages]`), or one that says it passed the
+  conversation on (`ya se lo pasé`, `lo derivé`, `te va a contactar alguien`,
+  but not a negated `no te va a contactar nadie`) in the turn that makes a
+  handoff to reception, is held unsent the same way, but for reception: it
+  waits on the conversation's open handoff to reception, the one the turn made
+  included, else on a new one, and the patient is told nothing. Whoever may
+  answer that handoff sends or fixes it, and anyone who reads it drops it. A
+  reply both kinds of check hold goes to the practitioner. The app says which
+  check held a reply.
 - A health question is not answered: it is handed off, to the practitioner who
   treats it or to reception. A photo, a
   video or a file never reaches the model: it goes to reception as an ordinary
@@ -260,7 +271,8 @@ The assistant hands a conversation to a person when:
 - the model could not read a message well before the window closes.
 
 A handoff that needs the practitioner (a question the practitioner of an
-upcoming appointment treats, a follow-up's answer, an emergency, a held reply)
+upcoming appointment treats, a follow-up's answer, an emergency, a reply the
+clinical check held)
 goes to the practitioner of the appointment it concerns, when they keep
 clinical records, else to the handoff contacts who do,
 members an admin picks, else to every active practitioner who does while none is
@@ -303,7 +315,8 @@ What the patient is told:
   (`consultá con tu odontólogo`), and never says it passed anything on; a person replies, and a message unanswered overnight waits
   for office hours. When the same turn also made a change, its reply states only
   that change (`Listo, te pasé el turno del jueves al viernes 10:00`), after the
-  clinical check. That silence is for the turn that makes the handoff: asked again
+  clinical and code checks; one that also says it passed the rest on is held for
+  reception ([above](#rules-it-always-keeps)). That silence is for the turn that makes the handoff: asked again
   about any open handoff, reception's included, it says `Ya se lo pasé` ([below](#handoff)).
 - **A burst that mixes both**, such as `quería confirmar el turno del jueves` and
   `me sigue doliendo la muela`: the assistant does its part, and its reply about
@@ -416,7 +429,7 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
   demand.
 - **Sandbox** (first release): staff play the patient against the real assistant,
   with its real tools and the real agenda, starting from a scenario. It shows what
-  the turn did, the proposals, whether the clinical check would hold a reply, the
+  the turn did, the proposals, whether the clinical or code checks would hold a reply, and for whom, the
   window's countdown and the number of messages. It runs the organization's real
   object methods with their writes discarded, so it never writes, never reaches
   WhatsApp, is rate-limited, and counts in the

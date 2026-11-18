@@ -360,7 +360,7 @@ async function runTurn(
     turnForTheRest(database, conversationId);
     return null;
   }
-  const { settled, practitioner, changed } = settleTurn(database, {
+  const { settled, practitioner, changed, toReception } = settleTurn(database, {
     conversationId,
     appointments,
     answered,
@@ -380,6 +380,7 @@ async function runTurn(
       settled,
       practitioner,
       changed,
+      toReception,
       reply: turn.reply,
       rules: turn.rules,
       proposed: turn.proposed,

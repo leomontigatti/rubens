@@ -65,7 +65,13 @@ export function settleReply(
   answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
   if (answered.length > 0) {
     tx.update(handoff)
-      .set({ state: "closed", closedAt: Date.now(), heldReply: null, answeredBy: stored.id })
+      .set({
+        state: "closed",
+        closedAt: Date.now(),
+        heldReply: null,
+        heldBecause: null,
+        answeredBy: stored.id,
+      })
       .where(
         inArray(
           handoff.id,

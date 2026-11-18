@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { handoffReasons } from "#/lib/handoffs.ts";
+import { handoffReasons, heldReplyChecks } from "#/lib/handoffs.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
 import { messageJudgements } from "#/lib/whatsapp-messages.ts";
 
@@ -49,6 +49,7 @@ const sandboxHandoffSchema = z.object({
   forPractitioner: z.boolean(),
   appointmentId: id.nullable(),
   heldReply: z.string().max(maxSandboxTextLength).nullable(),
+  heldBecause: z.enum(heldReplyChecks).nullable(),
 });
 
 /**

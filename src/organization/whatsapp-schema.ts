@@ -11,7 +11,12 @@ import {
 
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { lateReplyStates } from "#/lib/conversation-holds.ts";
-import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
+import {
+  defaultHandoffReminders,
+  handoffReasons,
+  handoffStates,
+  heldReplyChecks,
+} from "#/lib/handoffs.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
@@ -414,12 +419,14 @@ export const handoff = sqliteTable(
     /** The person's reply that closed it, which reopens it if Meta reports it failed. */
     answeredBy: text("answered_by").references(() => whatsappMessage.id),
     /**
-     * The assistant's reply the clinical check held unsent, for a
-     * practitioner who keeps clinical records to send or fix, and anyone who
-     * reads it to drop; none once dropped or the handoff closed, and for
-     * other reasons.
+     * The assistant's reply a check held unsent: on a handoff to the
+     * practitioner, for one who keeps clinical records to send or fix; on one
+     * to reception, for whoever may answer it; for anyone who reads it to
+     * drop. None once dropped or the handoff closed, nor while none was held.
      */
     heldReply: text("held_reply"),
+    /** The check that held `heldReply`; none while none is held. */
+    heldBecause: text("held_because", { enum: heldReplyChecks }),
     /** What the turn that made it knew of a refused move and its own changes, for the notification. */
     detail: text("detail", { mode: "json" }).$type<HandoffDetail>(),
     /**

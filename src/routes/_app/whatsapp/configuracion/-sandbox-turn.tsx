@@ -7,6 +7,8 @@ import {
   proposalKindLabels,
   proposalState,
   proposalStatement,
+  sandboxHeldOutcomes,
+  sandboxHeldTitles,
   sandboxOutcomeLabels,
   windowCountdown,
 } from "#/lib/assistant-sandbox-copy.ts";
@@ -14,7 +16,7 @@ import type { playSandboxTurn } from "#/server/whatsapp.functions.ts";
 
 // What the sandbox shows beside its conversation (docs/domain/assistant.md §
 // Trying it): the window's countdown, the number of messages, the proposals,
-// and the last turn's outcome and clinical check.
+// and the last turn's outcome and the reply a check would hold.
 
 export type Played = Extract<Awaited<ReturnType<typeof playSandboxTurn>>, { ok: true }>;
 
@@ -68,13 +70,18 @@ export function SandboxLastTurn({ turn }: { turn: Turn }) {
     <RecordSection title="Último turno">
       <div className="flex flex-col gap-4">
         <p className="text-sm">
-          {/* A held reply opens a handoff to the practitioner, which the patient is told. */}
-          {sandboxOutcomeLabels[turn.held === null ? turn.outcome : "toPractitioner"]}
+          {
+            sandboxOutcomeLabels[
+              turn.held === null || turn.outcome !== "answered"
+                ? turn.outcome
+                : sandboxHeldOutcomes[turn.held.for]
+            ]
+          }
         </p>
         {turn.held !== null && (
           <Alert variant="warning">
-            <AlertTitle>El control clínico retendría esta respuesta</AlertTitle>
-            <AlertDescription className="whitespace-pre-wrap">{turn.held}</AlertDescription>
+            <AlertTitle>{sandboxHeldTitles[turn.held.for]}</AlertTitle>
+            <AlertDescription className="whitespace-pre-wrap">{turn.held.text}</AlertDescription>
           </Alert>
         )}
       </div>
