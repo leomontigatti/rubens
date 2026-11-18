@@ -60,6 +60,8 @@ describe("announcesHandoff", () => {
     "Se van a comunicar con vos.",
     "Se va a comunicar con usted alguien de recepción.",
     "Le avisé al equipo.",
+    "Listo, confirmado el lunes. Te van a llamar.",
+    "Ya se lo pasé así te responden.",
   ])("finds an announced handoff: %s", (reply) => {
     expect(announcesHandoff(reply)).toBe(true);
   });
@@ -75,6 +77,9 @@ describe("announcesHandoff", () => {
     "Confirmado el lunes. Cuando llegues, te van a llamar por tu nombre.",
     "Te paso con gusto los horarios libres: martes 10:00.",
     "Te los paso así elegís: martes 10:00 o miércoles 11:30.",
+    "Ya estás anotada. Te va a llamar la doctora cuando sea tu turno.",
+    "Tengo martes 10:00 y miércoles 11:30, te los paso para que elijas.",
+    "Listo, confirmado el lunes, no hace falta que te lo pase.",
   ])("finds nothing in a change or a proposal: %s", (reply) => {
     expect(announcesHandoff(reply)).toBe(false);
   });

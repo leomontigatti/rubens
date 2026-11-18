@@ -380,7 +380,7 @@ describe("a sandbox conversation", () => {
 
     expect(played.turn.held).toEqual({
       text: "Ese dolor es normal después de la consulta.",
-      for: "practitioner",
+      because: "clinical",
     });
     expect(played.turn.replies).toEqual(["Le paso tu consulta al profesional."]);
     expect(played.sandbox.handoffs).toEqual([
@@ -405,7 +405,7 @@ describe("a sandbox conversation", () => {
 
     expect(played.turn.held).toEqual({
       text: "Busqué con find_free_times y no hay lugar.",
-      for: "reception",
+      because: "internals",
     });
     expect(played.turn.replies).toEqual([]);
     expect(played.sandbox.handoffs).toEqual([

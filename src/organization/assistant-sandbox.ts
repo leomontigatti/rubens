@@ -523,7 +523,7 @@ const none = { held: null, replies: [] };
 /**
  * What the patient would be told, as `deliverReply` (`turn-replies.ts`) tells
  * them but sending nothing: the fixed reply, or the model's once the clinical
- * and code checks pass it; a reply they flag is held, with whom it is held for.
+ * and code checks pass it; a reply they flag is held, with the check that held it.
  */
 async function sandboxReply(
   run: SandboxRun,
@@ -552,12 +552,8 @@ async function sandboxReply(
     return { held: null, replies: splitReply(texts.text, whole) };
   }
   const held = { conversationId, answered: turn.answered, words: texts.text, because };
-  const clinical = because === "clinical";
-  const shown = {
-    text: texts.text,
-    for: clinical ? ("practitioner" as const) : ("reception" as const),
-  };
-  if (!clinical) {
+  const shown = { text: texts.text, because };
+  if (because !== "clinical") {
     run.step(() => holdForReception(run.database, held));
     return { held: shown, replies: [] };
   }
@@ -589,7 +585,7 @@ async function checkedModelReply(
   if (because && because !== "clinical") {
     const held = { ...request, answered: turn.answered, words: checked.text, because };
     run.step(() => holdForReception(run.database, held));
-    return { held: { text: checked.text, for: "reception" as const }, replies: [] };
+    return { held: { text: checked.text, because }, replies: [] };
   }
   return because
     ? none
