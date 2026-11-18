@@ -269,7 +269,7 @@ describe("creating a template", () => {
     fakeMeta.answerWith(200, { id: "700", status: "PENDING", category: "UTILITY" });
     const release = fakeMeta.holdNext();
     const first = world.organization.createTemplate(adminCaller, newTemplate);
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
 
     const second = await world.organization.createTemplate(adminCaller, {
       ...newTemplate,

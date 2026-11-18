@@ -123,7 +123,7 @@ describe("with a booking confirmation queued", () => {
       body: `${listed.draft ?? ""} Gracias.`,
       settings: { name: listed.name, timing: listed.timing! },
     });
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
 
     expectOk(await world.organization.getCalendarWeek(adminCaller, { date: "2099-01-05" }));
     expect(await alarmOf(world.organization)).toBe(elsewhere);

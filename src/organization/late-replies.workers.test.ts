@@ -816,7 +816,7 @@ describe("withdrawing a late reply", () => {
     await writes("sí, decime");
     const release = fakeMeta.holdNext();
     const settling = runDurableObjectAlarm(world.organization);
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
     expectOk(await withdraw(world.receptionist, luciasReply));
     await patientWrites(world.organization, "hola de nuevo", luciaPhone);
     release();

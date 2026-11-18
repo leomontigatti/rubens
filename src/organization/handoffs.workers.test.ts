@@ -612,9 +612,7 @@ describe("answering a follow-up", () => {
       });
       vi.setSystemTime(Date.now() + assistantWaitMs);
       const alarm = runDurableObjectAlarm(world.organization);
-      while (scriptedModel.turns.length === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 1));
-      }
+      await scriptedModel.turnsStarted(world.organization, 1);
       expectOk(
         await world.organization.setMessageContact(adminCaller, {
           patientId,

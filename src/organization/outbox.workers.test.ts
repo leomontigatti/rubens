@@ -353,7 +353,7 @@ describe("sending the booking confirmation", () => {
     await bookMartina();
     const release = fakeMeta.holdNext();
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
 
     expectOk(
       await world.organization.storeWhatsappEvents({

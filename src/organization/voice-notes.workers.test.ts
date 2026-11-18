@@ -165,7 +165,7 @@ describe("a message that arrives while a voice note is transcribed", () => {
     const release = fakeMeta.holdNext();
     vi.setSystemTime(Date.now() + 8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
     await speaks("a qué hora es mi turno");
     release();
     await alarm;
@@ -188,7 +188,7 @@ describe("a message that arrives while a voice note is transcribed", () => {
     const release = fakeMeta.holdNext();
     vi.setSystemTime(Date.now() + 8_000);
     const alarm = runDurableObjectAlarm(world.organization);
-    await fakeMeta.received(1);
+    await fakeMeta.received(world.organization, 1);
     await patientWrites(world.organization, "a qué hora es mi turno", martinaPhone);
     release();
     await alarm;

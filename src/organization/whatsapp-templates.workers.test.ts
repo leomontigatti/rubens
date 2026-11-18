@@ -225,7 +225,7 @@ describe("submitting an event template's text", () => {
     const release = fakeMeta.holdNext();
 
     const first = organization.editTemplate(adminCaller, confirmation);
-    await fakeMeta.received(1);
+    await fakeMeta.received(organization, 1);
     const second = await organization.editTemplate(adminCaller, confirmation);
     release();
 
@@ -370,7 +370,7 @@ describe("a template's status", () => {
 
     const refresh = organization.refreshWhatsappTemplates(adminCaller);
     // The submission made two requests: the list of names, and the create.
-    await fakeMeta.received(3);
+    await fakeMeta.received(organization, 3);
     await organization.storeWhatsappEvents(statusEvent("555", "approved"));
     release();
     expectOk(await refresh);
@@ -383,7 +383,7 @@ describe("a template's status", () => {
     const release = fakeMeta.holdNext();
 
     const refresh = organization.refreshWhatsappTemplates(adminCaller);
-    await fakeMeta.received(3);
+    await fakeMeta.received(organization, 3);
     await organization.storeWhatsappEvents(statusEvent("555", "approved"));
     await organization.storeWhatsappEvents(statusEvent("555", "pending"));
     release();

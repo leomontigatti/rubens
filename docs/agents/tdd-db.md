@@ -35,6 +35,9 @@ organization's data: the organization object's methods and the area modules in
   assistant's typing pause (`src/organization/typing-pause.ts`) is mocked for every test file
   by the `workers` project's setup file: it returns at once, `typingPauses` lists the pauses,
   and `holdTypingPause` keeps one going for a test to act meanwhile.
+  A test that acts while the object is mid-call awaits the event, never a timer
+  (`tests/no-sleep-poll`): `fakeMeta.received`, `textsReceived` and `typingPaused`, and
+  `scriptedModel.turnsStarted`, take the object and resolve once the count is reached.
   The factory reads `fakeMeta` only inside the functions it returns: `vi.mock` is hoisted
   above the imports. The Worker's WhatsApp directory is real: `whatsappDirectory()`
   reads what an object wrote, and `freshWhatsappDirectory()` is one of a test's own.
