@@ -12,7 +12,7 @@ protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
   `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
-  `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm check:dupes`, `pnpm test:unit`, `pnpm test:workers`
+  `pnpm check:type-assertions`, `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm check:dupes`, `pnpm test:unit`, `pnpm test:workers`
   and `pnpm build`. No database service: `test:workers` runs the organization object in
   Miniflare.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
@@ -66,15 +66,17 @@ current `main`.
    tree ([coding-standards.md](../agents/coding-standards.md#code-language)).
 8. **`pnpm check:file-tokens`**: no source file under `src/` above the
    estimated-token ceiling.
-9. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
-   branch introduces, compared with `origin/main`.
-10. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+9. **`pnpm check:type-assertions`**: the type-assertion ratchet, whose allowlist
+   only falls ([coding-standards.md](../agents/coding-standards.md#type-assertions)).
+10. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+    branch introduces, compared with `origin/main`.
+11. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
     branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
     run) fails the job too.
-11. **`pnpm check:dupes`**: the whole codebase's duplicated lines against the 3%
+12. **`pnpm check:dupes`**: the whole codebase's duplicated lines against the 3%
     ceiling ([fallow.md](../agents/fallow.md#the-gate)).
-12. **`pnpm test:unit`** and **`pnpm test:workers`**.
-13. **`pnpm build`**: the production build a deploy ships
+13. **`pnpm test:unit`** and **`pnpm test:workers`**.
+14. **`pnpm build`**: the production build a deploy ships
     ([infrastructure.md](./infrastructure.md#deploy)).
 
 ## What `e2e` does, in order

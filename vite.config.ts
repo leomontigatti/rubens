@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
 import type { Plugin } from "vite-plus";
 
+import typeAssertionAllowlist from "./scripts/type-assertion-allowlist.json" with { type: "json" };
 import { devPort } from "./scripts/worktree-port.ts";
 
 // A worktree's `.env.local` (`scripts/worktree-port.ts`) holds its own PORT. Strict, so
@@ -105,6 +106,7 @@ export default defineConfig({
           ],
         },
       ],
+      "typescript/consistent-type-assertions": ["error", { assertionStyle: "never" }],
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
       "import/no-cycle": "error",
@@ -121,6 +123,18 @@ export default defineConfig({
       ],
     },
     overrides: [
+      {
+        // The type assertions the ratchet still allows, and the shared utilities that
+        // exist to hold one: `pnpm check:type-assertions` keeps this list and the
+        // tree in step (docs/agents/coding-standards.md#type-assertions).
+        files: [
+          ...Object.keys(typeAssertionAllowlist.sharedUtilities),
+          ...Object.keys(typeAssertionAllowlist.files),
+        ],
+        rules: {
+          "typescript/consistent-type-assertions": "off",
+        },
+      },
       {
         // The modules that own a network boundary, and the operator's scripts.
         files: ["src/organization/graph-api.ts", "scripts/**"],

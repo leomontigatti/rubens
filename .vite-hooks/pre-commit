@@ -36,8 +36,10 @@ case "$(git branch --show-current)" in
     pnpm check:dupes
     ;;
 esac
-# Whole-tree checks CI's `checks` job runs, each under two seconds, so a commit
-# catches what would otherwise fail only after a push. CI still runs them all.
+# Whole-tree checks CI's `checks` job runs, each a few seconds at most, so a commit
+# catches what would otherwise fail only after a push. CI still runs them all. The
+# type-assertion ratchet reads origin/main's allowlist and fails closed without it.
 pnpm check:comment-language
 pnpm check:labels
 pnpm check:file-tokens
+pnpm check:type-assertions

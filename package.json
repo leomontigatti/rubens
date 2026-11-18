@@ -33,6 +33,7 @@
     "check:labels": "node --import tsx scripts/check-labels.ts",
     "check:comment-language": "node --import tsx scripts/check-comment-language.ts",
     "check:file-tokens": "node --import tsx scripts/check-file-tokens.ts",
+    "check:type-assertions": "node --import tsx scripts/check-type-assertions.ts",
     "check:fallow": "fallow audit --quiet --gate-marker agent --base origin/main",
     "check:dupes": "fallow dupes --quiet",
     "labels:sync": "node --import tsx scripts/sync-labels.ts",

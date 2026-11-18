@@ -117,6 +117,10 @@ jobs:
       # No source file under `src/` above the estimated-token ceiling an agent can
       # read whole.
       - run: pnpm check:file-tokens
+      # Type assertions only fall: each file's count matches its allowlist entry, no
+      # entry rises above origin/main's, and the lint override names exactly the
+      # listed files (docs/agents/coding-standards.md § Type assertions).
+      - run: pnpm check:type-assertions
       # Dependency hygiene: `pnpm audit --prod` over this branch's tree and over
       # main's, failing only on the high and critical advisories the branch
       # introduces. Auditing the whole tree would redden every open PR the day a CVE
