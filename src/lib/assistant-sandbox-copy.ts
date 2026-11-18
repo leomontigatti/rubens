@@ -1,3 +1,4 @@
+import type { HeldReplyCheck } from "#/lib/handoffs.ts";
 import type { ProposalKind } from "#/lib/proposals.ts";
 import { formatDay, formatTime } from "#/lib/dates.ts";
 
@@ -29,17 +30,21 @@ export const sandboxOutcomeLabels = {
   unread: "El modelo no pudo leer el mensaje. Escribilo de nuevo.",
 } as const;
 
-/** What an answered turn whose reply is held leads to, by whom it is held for: a handoff to them. */
+/**
+ * What an answered turn whose reply is held leads to, by the check that held
+ * it: a handoff to the practitioner for the clinical check, else to reception.
+ */
 export const sandboxHeldOutcomes = {
-  practitioner: "toPractitioner",
-  reception: "handedOff",
-} as const;
+  clinical: "toPractitioner",
+  internals: "handedOff",
+  announcedHandoff: "handedOff",
+} as const satisfies Record<HeldReplyCheck, keyof typeof sandboxOutcomeLabels>;
 
-/** Why the sandbox would hold a reply, by whom it is held for. */
-export const sandboxHeldTitles = {
-  practitioner: "El control clínico retendría esta respuesta",
-  reception:
-    "Se retendría para recepción: nombra algo interno del asistente o avisa de la derivación",
+/** Why the sandbox would hold a reply, by the check that held it. */
+export const sandboxHeldTitles: Record<HeldReplyCheck, string> = {
+  clinical: "El control clínico retendría esta respuesta",
+  internals: "Se retendría para recepción: nombra algo interno del asistente",
+  announcedHandoff: "Se retendría para recepción: le avisa al paciente que derivó la conversación",
 };
 
 export const proposalKindLabels: Record<ProposalKind, string> = {

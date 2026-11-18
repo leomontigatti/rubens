@@ -38,17 +38,25 @@ export function leaksInternals(reply: string) {
 /** `source` as a whole word or phrase: no letter right before or after it. */
 const word = (source: string) => `(?<!\\p{L})(?:${source})(?!\\p{L})`;
 
+/** Whom a conversation is passed to, as a reply names them, but for the practitioner. */
+const staff = String.raw`una persona|alguien|(?:el |nuestro )?equipo|(?:la )?recepci[oó]n|(?:la )?secretar[ií]a`;
+
 /** Whom a conversation is passed to, as a reply names them. */
-const person = String.raw`una persona|alguien|(?:el |nuestro )?equipo|(?:la )?recepci[oó]n|(?:la )?secretar[ií]a|(?:el |la )?(?:profesional|doctora?|dra?\.?)`;
+const person = String.raw`${staff}|(?:el |la )?(?:profesional|doctora?|dra?\.?)`;
 
 /** What a reply says when it passed the conversation on, in `vos` or `usted`. */
 const announcements = [
   // `Lo derivé`, `derivé tu consulta`, `te voy a derivar`.
   word(String.raw`deriv(?:é|e|amos|o|ó|ado|ada|ar|ando)`),
-  // `Ya se lo pasé`, `se lo pasé al equipo`, `se lo pasé para que…`, but not
-  // `te lo paso al martes` nor `para el martes`, a move.
-  word(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|e|amos|o)`) +
-    String.raw`(?=\s*$|\s+para\s*$|\s+(?:a|al|a la|con)\s+${word(person)})`,
+  // `Ya se lo pasé`, `se lo pasé así te responden`, and `se lo pasé para que…`,
+  // whose `que` ends the clause (`announcesHandoff`): done, and to them. Not
+  // `te los paso para que elijas`, the patient's options, nor `querés que se
+  // lo pase`, an offer: an unaccented `pase` is the subjunctive.
+  word(String.raw`se\s+l[oa]s?\s+pas(?:é|amos)`) +
+    String.raw`(?=\s*$|\s+para\s*$|\s+as[ií](?!\p{L}))`,
+  // `Se lo pasé al equipo`, but not `te lo paso al martes` nor `para el martes`, a move.
+  word(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|amos|o)`) +
+    String.raw`(?=\s+(?:a|al|a la|con)\s+${word(person)})`,
   // `Pasé tu consulta`, `le pasé su mensaje`.
   word(String.raw`pas(?:é|e|amos|o)\s+(?:tu|su)\s+(?:consulta|mensaje|pedido|caso|pregunta)`),
   // `Te paso con recepción`.
@@ -57,9 +65,12 @@ const announcements = [
   word(
     String.raw`(?:te|le|lo|la|los|las)\s+(?:va|van)\s+a\s+(?:contactar|escribir|responder|comunicar)`,
   ),
-  // `Te van a llamar desde recepción`, but not `te van a llamar por tu nombre`.
+  // `Te van a llamar desde recepción`, but not `te van a llamar por tu nombre`
+  // nor `te va a llamar la doctora`, who calls a waiting patient in.
   word(String.raw`(?:te|le|lo|la)\s+(?:va|van)\s+a\s+llamar`) +
-    String.raw`\s+(?:(?:de|del|desde)\s+)?${word(`${person}|(?:el )?consultorio`)}`,
+    String.raw`\s+(?:(?:de|del|desde)\s+)?${word(`${staff}|(?:el )?consultorio`)}`,
+  // A bare `te van a llamar.`: someone at the practice, unnamed.
+  word(String.raw`(?:te|le|lo|la)\s+van\s+a\s+llamar`) + String.raw`(?=\s*$)`,
   // `Se van a comunicar con vos`.
   word(String.raw`se\s+(?:va|van)\s+a\s+(?:comunicar|contactar|poner\s+en\s+contacto)`),
   // `Le avisé al equipo`.

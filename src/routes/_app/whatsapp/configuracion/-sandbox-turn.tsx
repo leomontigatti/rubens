@@ -74,13 +74,13 @@ export function SandboxLastTurn({ turn }: { turn: Turn }) {
             sandboxOutcomeLabels[
               turn.held === null || turn.outcome !== "answered"
                 ? turn.outcome
-                : sandboxHeldOutcomes[turn.held.for]
+                : sandboxHeldOutcomes[turn.held.because]
             ]
           }
         </p>
         {turn.held !== null && (
           <Alert variant="warning">
-            <AlertTitle>{sandboxHeldTitles[turn.held.for]}</AlertTitle>
+            <AlertTitle>{sandboxHeldTitles[turn.held.because]}</AlertTitle>
             <AlertDescription className="whitespace-pre-wrap">{turn.held.text}</AlertDescription>
           </Alert>
         )}
