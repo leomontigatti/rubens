@@ -36,7 +36,7 @@ import {
 } from "#/organization/schema.ts";
 import {
   handoffReplyText,
-  holderOf,
+  checkThatHolds,
   holdForReception,
   openHeldReply,
   repliesFirst,
@@ -546,13 +546,17 @@ async function sandboxReply(
     return { held: first.held, replies: [...first.replies, ...splitReply(texts.text, whole)] };
   }
   const request = { conversationId, reply: texts.text, patients: turn.patients };
-  const holder = await holderOf(run.database, model, request, turn, true);
-  if (!holder) {
+  const because = await checkThatHolds(run.database, model, request, turn, true);
+  if (!because) {
     return { held: null, replies: splitReply(texts.text, whole) };
   }
-  const held = { conversationId, answered: turn.answered, words: texts.text };
-  const shown = { text: texts.text, for: holder };
-  if (holder === "reception") {
+  const held = { conversationId, answered: turn.answered, words: texts.text, because };
+  const clinical = because === "clinical";
+  const shown = {
+    text: texts.text,
+    for: clinical ? ("practitioner" as const) : ("reception" as const),
+  };
+  if (!clinical) {
     run.step(() => holdForReception(run.database, held));
     return { held: shown, replies: [] };
   }
@@ -580,13 +584,13 @@ async function checkedModelReply(
     reply: checked.text,
     patients: turn.patients,
   };
-  const holder = await holderOf(run.database, model, request, {}, true);
-  if (holder === "reception") {
-    const held = { ...request, answered: turn.answered, words: checked.text };
+  const because = await checkThatHolds(run.database, model, request, {}, true);
+  if (because && because !== "clinical") {
+    const held = { ...request, answered: turn.answered, words: checked.text, because };
     run.step(() => holdForReception(run.database, held));
-    return { held: { text: checked.text, for: holder }, replies: [] };
+    return { held: { text: checked.text, for: "reception" as const }, replies: [] };
   }
-  return holder
+  return because
     ? none
     : { held: null, replies: splitReply(checked.text, { whole: turn.proposed }) };
 }

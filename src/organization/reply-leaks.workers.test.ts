@@ -107,7 +107,13 @@ describe("a reply that names something internal", () => {
 
       expect(fakeMeta.textsSent()).toEqual([]);
       expect(await openHandoffs(world.receptionist)).toMatchObject([
-        { reason: "leakedReply", forPractitioner: false, heldReply: reply, mayUseHeldReply: true },
+        {
+          reason: "leakedReply",
+          forPractitioner: false,
+          heldReply: reply,
+          heldBecause: "internals",
+          mayUseHeldReply: true,
+        },
       ]);
     },
   );
@@ -123,7 +129,7 @@ describe("a reply that names something internal", () => {
     await afterTheWait(world.organization);
 
     expect(await openHandoffs()).toMatchObject([
-      { reason: "heldReply", forPractitioner: true, heldReply: reply },
+      { reason: "heldReply", forPractitioner: true, heldReply: reply, heldBecause: "clinical" },
     ]);
   });
 });
@@ -136,7 +142,13 @@ describe("a reply that says it passed the conversation on", () => {
     expect((await world.appointmentOf(appointmentId)).status).toBe("confirmed");
     expect(fakeMeta.textsSent()).toEqual([]);
     expect(await openHandoffs(world.receptionist)).toMatchObject([
-      { reason: "patientAsked", forPractitioner: false, heldReply: reply, mayUseHeldReply: true },
+      {
+        reason: "patientAsked",
+        forPractitioner: false,
+        heldReply: reply,
+        heldBecause: "announcedHandoff",
+        mayUseHeldReply: true,
+      },
     ]);
   });
 
@@ -144,7 +156,9 @@ describe("a reply that says it passed the conversation on", () => {
     await confirmsAndHandsOff("Listo, confirmado el lunes.");
 
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual(["Listo, confirmado el lunes."]);
-    expect(await openHandoffs()).toMatchObject([{ reason: "patientAsked", heldReply: null }]);
+    expect(await openHandoffs()).toMatchObject([
+      { reason: "patientAsked", heldReply: null, heldBecause: null },
+    ]);
   });
 
   it("is held on the open handoff to reception when it comes before the reply that a person has it", async () => {
@@ -162,7 +176,9 @@ describe("a reply that says it passed the conversation on", () => {
       "Listo, confirmado el lunes.",
       "Ya se lo pasé, te va a responder por acá.",
     ]);
-    expect(await openHandoffs()).toMatchObject([{ reason: "patientAsked", heldReply: reply }]);
+    expect(await openHandoffs()).toMatchObject([
+      { reason: "patientAsked", heldReply: reply, heldBecause: "internals" },
+    ]);
   });
 
   it("goes when the turn handed nothing off", async () => {

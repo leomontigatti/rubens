@@ -11,7 +11,12 @@ import {
 
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { lateReplyStates } from "#/lib/conversation-holds.ts";
-import { defaultHandoffReminders, handoffReasons, handoffStates } from "#/lib/handoffs.ts";
+import {
+  defaultHandoffReminders,
+  handoffReasons,
+  handoffStates,
+  heldReplyChecks,
+} from "#/lib/handoffs.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
@@ -420,6 +425,8 @@ export const handoff = sqliteTable(
      * drop. None once dropped or the handoff closed, nor while none was held.
      */
     heldReply: text("held_reply"),
+    /** The check that held `heldReply`; none while none is held. */
+    heldBecause: text("held_because", { enum: heldReplyChecks }),
     /** What the turn that made it knew of a refused move and its own changes, for the notification. */
     detail: text("detail", { mode: "json" }).$type<HandoffDetail>(),
     /**

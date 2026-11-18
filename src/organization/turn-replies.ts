@@ -18,6 +18,7 @@ import { recordModelUsage } from "#/organization/assistant-usage.ts";
 import type { CommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
+import type { HeldReplyCheck } from "#/lib/handoffs.ts";
 import { addsToOpen, openHandoff, openHandoffsOf } from "#/organization/handoffs.ts";
 import type { TurnToSort } from "#/organization/turn-handoffs.ts";
 import { typingPause } from "#/organization/typing-pause.ts";
@@ -212,29 +213,29 @@ async function clinicalCheckHolds(
   return !found || found.clinical || found.otherPatient;
 }
 
-/** Who holds the model's reply: the practitioner, reception, or nobody when it may go. */
-export type Holder = "practitioner" | "reception" | null;
-
 /**
- * Who a check holds the model's reply for: the practitioner when the
- * clinical check holds it, reception when it names something internal or, in
- * a turn whose handoff to reception the patient is told nothing about, says
- * it passed the conversation on; else nobody. The clinical check runs first,
- * so a reply both checks flag goes where clinical words may.
+ * The check that holds the model's reply, or `null` when it may go: the
+ * clinical one, whose hold goes to the practitioner; else, for reception, the
+ * one that finds something internal named or, in a turn whose handoff to
+ * reception the patient is told nothing about, the one that finds it says it
+ * passed the conversation on. The clinical check runs first, so a reply both
+ * flag goes where clinical words may.
  */
-export async function holderOf(
+export async function checkThatHolds(
   database: Database,
   model: AssistantModel,
   request: Omit<ReplyToCheck, "recordUsage">,
   turn: { toReception?: boolean },
   sandbox: boolean,
-): Promise<Holder> {
+): Promise<HeldReplyCheck | null> {
   if (await clinicalCheckHolds(database, model, request, sandbox)) {
-    return "practitioner";
+    return "clinical";
   }
   const { reply } = request;
-  const leaks = leaksInternals(reply) || (turn.toReception === true && announcesHandoff(reply));
-  return leaks ? "reception" : null;
+  if (leaksInternals(reply)) {
+    return "internals";
+  }
+  return turn.toReception === true && announcesHandoff(reply) ? "announcedHandoff" : null;
 }
 
 /**
@@ -244,19 +245,25 @@ export async function holderOf(
  */
 export function holdForReception(
   database: Database,
-  held: { conversationId: string; answered: TurnToSort["answered"]; words: string },
+  held: {
+    conversationId: string;
+    answered: TurnToSort["answered"];
+    words: string;
+    because: HeldReplyCheck;
+  },
 ) {
+  const kept = { heldReply: held.words, heldBecause: held.because };
   database.transaction((tx) => {
     const open = openHandoffsOf(tx, held.conversationId).find((one) => !one.forPractitioner);
     if (open) {
-      tx.update(handoff).set({ heldReply: held.words }).where(eq(handoff.id, open.id)).run();
+      tx.update(handoff).set(kept).where(eq(handoff.id, open.id)).run();
       return;
     }
     openHandoff(tx, held.conversationId, {
       reason: "leakedReply",
       forPractitioner: false,
       appointmentId: held.answered?.appointmentId ?? null,
-      heldReply: held.words,
+      ...kept,
     });
   });
 }
@@ -277,6 +284,7 @@ export function openHeldReply(
       forPractitioner: true,
       appointmentId: held.answered?.appointmentId ?? null,
       heldReply: held.words,
+      heldBecause: "clinical" as const,
     };
     return addsToOpen(open, wanted) ? openHandoff(tx, held.conversationId, wanted) : null;
   });
@@ -367,11 +375,11 @@ async function sendCheckedReply(
     reply: checked.text,
     patients: turn.patients,
   };
-  const holder = await holderOf(database, model, request, {}, false);
-  if (holder === "reception") {
-    holdForReception(database, { ...turn, words: checked.text });
+  const because = await checkThatHolds(database, model, request, {}, false);
+  if (because && because !== "clinical") {
+    holdForReception(database, { ...turn, words: checked.text, because });
   }
-  if (holder) {
+  if (because) {
     return;
   }
   const reply = {
@@ -459,11 +467,11 @@ export async function deliverReply(
     return;
   }
   const request = { conversationId, reply: text, patients: turn.patients };
-  const holder = await holderOf(database, model, request, turn, false);
-  if (holder === "practitioner") {
+  const because = await checkThatHolds(database, model, request, turn, false);
+  if (because === "clinical") {
     await holdReply(database, cloud, { ...turn, words: text });
-  } else if (holder === "reception") {
-    holdForReception(database, { ...turn, words: text });
+  } else if (because) {
+    holdForReception(database, { ...turn, words: text, because });
   } else if (!(await sendReply(database, cloud, reply, turn.mayReply))) {
     // Read again after each typing pause: a message or a change may have come
     // while the check ran or the reply typed.

@@ -5,6 +5,7 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
+import type { HeldReplyCheck } from "#/lib/handoffs.ts";
 import { closeHandoff, dropHeldReply, passToPractitioner } from "#/server/inbox.functions.ts";
 import type { OpenHandoff } from "#/organization/handoff-inbox.ts";
 import type { ListedHandoff } from "#/organization/inbox.ts";
@@ -165,12 +166,14 @@ function CloseButton(props: { handoff: OpenHandoff; label: string }) {
   );
 }
 
-/** Why a held reply was not sent, and who may send it, by whether its handoff is to the practitioner. */
-const heldBecause = {
-  practitioner:
+/** Why a held reply was not sent, and who may send it, by the check that held it. */
+const heldBecause: Record<HeldReplyCheck, string> = {
+  clinical:
     "No se envió porque habla de algo clínico o de otro paciente. Solo un profesional puede enviarla o corregirla.",
-  reception:
-    "No se envió porque nombra algo interno del asistente o le avisa al paciente que derivó la conversación. Revisala antes de enviarla o corregirla.",
+  internals:
+    "No se envió porque nombra algo interno del asistente. Revisala antes de enviarla o corregirla.",
+  announcedHandoff:
+    "No se envió porque le avisa al paciente que derivó la conversación. Revisala antes de enviarla o corregirla.",
 };
 
 /** The replies a check held on the conversation's open handoffs. */
@@ -181,14 +184,15 @@ export function HeldReplies(props: {
 }) {
   return props.handoffs.flatMap((handoff) => {
     const text = handoff.heldReply;
-    return text === null
+    const because = handoff.heldBecause;
+    return text === null || because === null
       ? []
       : [
           <HeldReply
             key={handoff.id}
             handoffId={handoff.id}
             text={text}
-            because={heldBecause[handoff.forPractitioner ? "practitioner" : "reception"]}
+            because={heldBecause[because]}
             onUse={handoff.mayUseHeldReply ? () => props.onUseReply(text) : null}
           />,
         ];

@@ -3,7 +3,12 @@ import type { SQLWrapper } from "drizzle-orm";
 
 import { reactionType } from "#/lib/reactions.ts";
 import { handoffReferenceSchema, openHandoffListSchema } from "#/lib/handoffs.ts";
-import type { HandoffReason, HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
+import type {
+  HandoffReason,
+  HandoffReference,
+  HeldReplyCheck,
+  OpenHandoffListOptions,
+} from "#/lib/handoffs.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
@@ -61,6 +66,8 @@ export interface OpenHandoff {
   mayPass: boolean;
   /** The assistant's reply a check held; `null` when it holds none. */
   heldReply: string | null;
+  /** The check that held `heldReply`; `null` when it holds none. */
+  heldBecause: HeldReplyCheck | null;
 }
 
 /** The latest message from the patient in each of `conversationIds`, a subquery. */
@@ -121,6 +128,7 @@ export function listOpenHandoffs(
       forPractitioner: handoff.forPractitioner,
       createdAt: handoff.createdAt,
       heldReply: handoff.heldReply,
+      heldBecause: handoff.heldBecause,
       detail: handoff.detail,
     })
     .from(handoff)
@@ -204,7 +212,13 @@ export function closeHandoffWithoutReply(
       return { ok: false as const, reason: "forbidden" as const };
     }
     tx.update(handoff)
-      .set({ state: "closed", closedAt: Date.now(), closedBy: acting.userId, heldReply: null })
+      .set({
+        state: "closed",
+        closedAt: Date.now(),
+        closedBy: acting.userId,
+        heldReply: null,
+        heldBecause: null,
+      })
       .where(eq(handoff.id, found.id))
       .run();
     // Closed with nothing left to answer: the words it saw are answered.
@@ -280,7 +294,7 @@ export function dropHandoffHeldReply(database: Database, acting: Acting, input: 
       found &&
       tx
         .update(handoff)
-        .set({ heldReply: null })
+        .set({ heldReply: null, heldBecause: null })
         .where(and(eq(handoff.id, found.id), isNotNull(handoff.heldReply)))
         .returning({ id: handoff.id })
         .get();

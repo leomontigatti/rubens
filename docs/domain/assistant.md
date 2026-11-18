@@ -197,7 +197,8 @@ No organization can edit or override these:
   waits on the conversation's open handoff to reception, the one the turn made
   included, else on a new one, and the patient is told nothing. Whoever may
   answer that handoff sends or fixes it, and anyone who reads it drops it. A
-  reply both kinds of check hold goes to the practitioner.
+  reply both kinds of check hold goes to the practitioner. The app says which
+  check held a reply.
 - A health question is not answered: it is handed off, to the practitioner who
   treats it or to reception. A photo, a
   video or a file never reaches the model: it goes to reception as an ordinary

@@ -48,6 +48,18 @@ export const handoffReasons = [
 
 export type HandoffReason = (typeof handoffReasons)[number];
 
+/** Which check held the assistant's reply on a handoff. */
+export const heldReplyChecks = [
+  /** The clinical check: clinical, about another patient, or unchecked. */
+  "clinical",
+  /** It named a tool, or one of the prompt's marks or notes. */
+  "internals",
+  /** It told the patient it passed the conversation on, in a turn that tells them nothing. */
+  "announcedHandoff",
+] as const;
+
+export type HeldReplyCheck = (typeof heldReplyChecks)[number];
+
 /**
  * What the turn that made a handoff to reception knew, for its notification
  * to say why without the conversation read back: the move a rule refused,
