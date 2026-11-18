@@ -2,6 +2,7 @@ import * as z from "zod";
 
 import { handoffReasons, heldReplyChecks } from "#/lib/handoffs.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
+import { maxReplyMessages } from "#/lib/reply-pacing.ts";
 import { messageJudgements } from "#/lib/whatsapp-messages.ts";
 
 // The assistant's sandbox in the WhatsApp settings (docs/domain/assistant.md §
@@ -64,8 +65,7 @@ const sandboxStateSchema = z.object({
 
 export type SandboxState = z.output<typeof sandboxStateSchema>;
 
-/** The messages one turn adds: the patient's, and a reply of up to three. */
-const messagesPerTurn = 4;
+const messagesPerTurn = 1 + maxReplyMessages;
 
 export function isFull(state: SandboxState) {
   return state.messages.length + messagesPerTurn > maxSandboxMessages;

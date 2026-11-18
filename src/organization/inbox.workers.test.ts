@@ -53,6 +53,8 @@ async function patientWrites(text: string, from = martinaPhone) {
       messages: [{ whatsappId, from, sentAt, type: "text", text, payload: "{}" }],
       statuses: [],
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
   return whatsappId;
@@ -302,6 +304,8 @@ describe("reading a conversation in the inbox", () => {
         messages: [],
         statuses: [{ whatsappId: "wamid.test-message", status: "delivered", at: Date.now() }],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 
@@ -353,6 +357,8 @@ describe("reading a conversation in the inbox", () => {
         })),
         statuses: [],
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
       }),
     );
 

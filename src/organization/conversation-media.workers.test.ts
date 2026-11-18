@@ -62,6 +62,8 @@ async function patientSends(
       ],
       statuses: [],
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
   const listed = expectOk(await world.organization.listConversations(world.receptionist, {}));

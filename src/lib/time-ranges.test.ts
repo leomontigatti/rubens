@@ -35,10 +35,10 @@ describe("turning an entry into a time range", () => {
   });
 
   it("follows the zone's daylight-saving change across whole days", () => {
-    // Madrid moves from +02:00 to +01:00 on 2026-10-25.
+    const madridSummerTimeEnds = "2026-10-25";
     expect(
       toTimeRange(
-        { kind: "days", firstDate: "2026-10-24", lastDate: "2026-10-25" },
+        { kind: "days", firstDate: "2026-10-24", lastDate: madridSummerTimeEnds },
         "Europe/Madrid",
       ),
     ).toEqual({

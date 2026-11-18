@@ -13,13 +13,13 @@ import {
 import type { BookingValues } from "#/lib/booking-draft.ts";
 
 const zone = "America/Argentina/Buenos_Aires";
-// Ids are uuids, as the booking schemas read them.
-const juan = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a01";
-const lucia = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a02";
-const maria = { id: "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a04", name: "María Fernández" };
-const room3 = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a05";
+const uuid = (n: number) => `6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a${String(n).padStart(2, "0")}`;
+const juan = uuid(1);
+const lucia = uuid(2);
+const maria = { id: uuid(4), name: "María Fernández" };
+const room3 = uuid(5);
 const nine = { start: new Date("2099-01-05T12:00:00Z"), roomName: "Consultorio 1", timeZone: zone };
-const consulta = { id: "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a03", durationMinutes: 40 };
+const consulta = { id: uuid(3), durationMinutes: 40 };
 
 describe("a new booking form", () => {
   it("starts from a clicked free cell with its start, and its only free practitioner", () => {
@@ -111,8 +111,14 @@ describe("what an overbooking form books", () => {
     expect(refusedPaths(overbookingRequestOf({ ...typed, time: "" }, zone))).toEqual(["start"]);
   });
 
+  it("refuses 25:00 rather than rolling it into the next day", () => {
+    expect(refusedPaths(overbookingRequestOf({ ...typed, time: "25:00" }, zone))).toEqual([
+      "start",
+    ]);
+  });
+
   it("refuses a time or a date that is half typed or names none, rather than booking another time", () => {
-    for (const time of ["10:", "10:3", "25:00", "23:75"]) {
+    for (const time of ["10:", "10:3", "23:75"]) {
       expect(refusedPaths(overbookingRequestOf({ ...typed, time }, zone))).toEqual(["start"]);
     }
     for (const date of ["05/01/20", "31/02/2099"]) {
@@ -171,7 +177,7 @@ describe("the reschedule picker's query", () => {
 });
 
 describe("what a reschedule form moves", () => {
-  const appointmentId = "6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a06";
+  const appointmentId = uuid(6);
 
   it("moves the appointment to the start picked, for the duration typed", () => {
     expect(
@@ -237,7 +243,7 @@ describe("whether the booking form shows the week of free times", () => {
     expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: offered })).toBe(false);
   });
 
-  it("shows it on a page opened from a cell once its start was dropped and none are offered", () => {
+  it("shows it on a page opened from a cell once its start was dropped and none are offered, so a start can still be picked", () => {
     expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: null })).toBe(true);
     expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: [] })).toBe(true);
   });

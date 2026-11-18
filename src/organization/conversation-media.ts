@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { byteRangeOf, mediaIn, mediaKeptMs } from "#/lib/message-media.ts";
+import { byteRangeOf, mediaIn, metaMediaRetentionMs } from "#/lib/message-media.ts";
 import { messageReferenceSchema } from "#/lib/whatsapp-messages.ts";
 import type { MessageReference } from "#/lib/whatsapp-messages.ts";
 
@@ -37,7 +37,7 @@ export async function openMessageMedia(
   if (!found) {
     return { ok: false, reason: "notFound" } as const;
   }
-  if (Date.now() >= found.sentAt + mediaKeptMs) {
+  if (Date.now() >= found.sentAt + metaMediaRetentionMs) {
     return { ok: false, reason: "expired" } as const;
   }
   const opened = await fromMeta(cloud, found.media.mediaId, byteRangeOf(range), input.messageId);

@@ -122,10 +122,6 @@ export const closureUpdateSchema = closureInputSchema.extend({ closureId: id });
 
 export const closureDeleteSchema = z.object({ closureId: id });
 
-/**
- * The offices a closure's form offers: the active ones, plus the closure's own
- * office when it has since been deactivated, so editing keeps it.
- */
 export function closureOfficeOptions<T extends { id: string; name: string }>(
   activeOffices: readonly T[],
   editing: { officeId: string | null; officeName: string | null },

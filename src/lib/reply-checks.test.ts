@@ -26,17 +26,12 @@ describe("the fixed checks on an assistant reply", () => {
       ok: true,
       text: "Opciones: martes, jueves a las 10",
     });
-    // The flag of England: a black flag followed by its invisible tag characters.
-    const england = String.fromCodePoint(
-      0x1f3f4,
-      0xe0067,
-      0xe0062,
-      0xe0065,
-      0xe006e,
-      0xe0067,
-      0xe007f,
-    );
-    expect(checkReply(`1️⃣ ${england}`)).toEqual({
+    const blackFlag = 0x1f3f4;
+    const cancelTag = 0xe007f;
+    const tags = (letters: string) =>
+      letters.split("").map((letter) => 0xe0000 + letter.charCodeAt(0));
+    const englandFlag = String.fromCodePoint(blackFlag, ...tags("gbeng"), cancelTag);
+    expect(checkReply(`1️⃣ ${englandFlag}`)).toEqual({
       ok: false,
       reason: "empty",
       text: "",
@@ -64,8 +59,8 @@ describe("the fixed checks on an assistant reply", () => {
   });
 
   it("strips a sequence built on a bare pictograph, and keeps a symbol asked to show as text", () => {
-    // A heart on fire with no variation selector after the heart.
-    expect(checkReply("Hola \u2764\u200D\u{1F525}")).toEqual({ ok: true, text: "Hola" });
+    const heartOnFireWithoutSelector = "\u2764\u200D\u{1F525}";
+    expect(checkReply(`Hola ${heartOnFireWithoutSelector}`)).toEqual({ ok: true, text: "Hola" });
     expect(checkReply("Marca\u00AE\uFE0E")).toEqual({ ok: true, text: "Marca®" });
   });
 
@@ -96,7 +91,7 @@ describe("the fixed checks on an assistant reply", () => {
     });
   });
 
-  it("strips a run of keycaps whole", () => {
+  it("strips a run of keycaps whole, leaving no digit as text", () => {
     expect(checkReply("1️⃣2️⃣")).toEqual({ ok: false, reason: "empty", text: "", length: 0 });
   });
 
@@ -119,7 +114,9 @@ describe("the fixed checks on an assistant reply", () => {
       text: long,
       length: maxReplyLength + 1,
     });
-    // What the corrections remove does not count.
+  });
+
+  it("does not count what the corrections remove toward the maximum length", () => {
     expect(checkReply(`¿${"a".repeat(maxReplyLength - 1)}? 😊`)).toEqual({
       ok: true,
       text: `${"a".repeat(maxReplyLength - 1)}?`,

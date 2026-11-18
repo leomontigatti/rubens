@@ -338,7 +338,13 @@ describe("the patient's reactions", () => {
       reactsTo: await sentId(proposal),
       payload: "{}",
     };
-    const call = { messages: [thumbsUp], statuses: [], templateStatuses: [] };
+    const call = {
+      messages: [thumbsUp],
+      statuses: [],
+      templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
+    };
 
     expectOk(await world.organization.storeWhatsappEvents(call));
     expectOk(await world.organization.storeWhatsappEvents(call));
@@ -358,7 +364,13 @@ describe("the patient's reactions", () => {
       reactsTo: address,
       payload: "{}",
     };
-    const call = { messages: [thumbsUp], statuses: [], templateStatuses: [] };
+    const call = {
+      messages: [thumbsUp],
+      statuses: [],
+      templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
+    };
     expectOk(await world.organization.storeWhatsappEvents(call));
     await reacts(address, "❤️", thumbsUp.sentAt);
 

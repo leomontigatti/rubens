@@ -49,10 +49,7 @@ const practitionerSettingsSchema = z.object({
   color: z.enum(practitionerColors),
 });
 
-/**
- * What changed on a member: their roles, their practitioner settings, or both.
- * A part left out stays as it is, so a stale form cannot restore one it did not touch.
- */
+/** What changed on a member: their roles, their practitioner settings, or both. */
 export const memberUpdateSchema = z.object({
   memberId,
   roles: rolesSchema.optional(),

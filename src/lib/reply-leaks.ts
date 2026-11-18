@@ -32,39 +32,36 @@ export function leaksInternals(reply: string) {
   return toolNames.test(reply) || marks.some((mark) => lower.includes(mark));
 }
 
-/** `source` as a whole word or phrase: no letter right before or after it. */
-const word = (source: string) => `(?<!\\p{L})(?:${source})(?!\\p{L})`;
+const wholeWord = (source: string) => `(?<!\\p{L})(?:${source})(?!\\p{L})`;
 
-/** Whom a conversation is passed to, as a reply names them, but for the practitioner. */
-const staff = String.raw`una persona|alguien|(?:el |nuestro )?equipo|(?:la )?recepci[oó]n|(?:la )?secretar[ií]a`;
+const nonPractitionerStaff = String.raw`una persona|alguien|(?:el |nuestro )?equipo|(?:la )?recepci[oó]n|(?:la )?secretar[ií]a`;
 
-const person = String.raw`${staff}|(?:el |la )?(?:profesional|doctora?|dra?\.?)`;
+const person = String.raw`${nonPractitionerStaff}|(?:el |la )?(?:profesional|doctora?|dra?\.?)`;
+
+// `para que…` reaches it as a clause ending in `para`: `announcesHandoff` splits at `que`.
+const pastPassOn =
+  wholeWord(String.raw`se\s+l[oa]s?\s+pas(?:é|amos)`) +
+  String.raw`(?=\s*$|\s+para\s*$|\s+as[ií](?!\p{L}))`;
 
 const announcements = [
-  word(String.raw`deriv(?:é|e|amos|o|ó|ado|ada|ar|ando)`),
-  // `Ya se lo pasé`, `se lo pasé así te responden`, and `se lo pasé para que…`,
-  // whose `que` ends the clause (`announcesHandoff`): done, and to them. Not
-  // `te los paso para que elijas`, the patient's options, nor `querés que se
-  // lo pase`, an offer: an unaccented `pase` is the subjunctive.
-  word(String.raw`se\s+l[oa]s?\s+pas(?:é|amos)`) +
-    String.raw`(?=\s*$|\s+para\s*$|\s+as[ií](?!\p{L}))`,
-  word(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|amos|o)`) +
-    String.raw`(?=\s+(?:a|al|a la|con)\s+${word(person)})`,
-  word(String.raw`pas(?:é|e|amos|o)\s+(?:tu|su)\s+(?:consulta|mensaje|pedido|caso|pregunta)`),
-  word(String.raw`(?:te|le|lo|la)\s+pas(?:é|e|amos|o)\s+con`) + String.raw`\s+${word(person)}`,
-  word(
+  wholeWord(String.raw`deriv(?:é|e|amos|o|ó|ado|ada|ar|ando)`),
+  pastPassOn,
+  wholeWord(String.raw`(?:se|te|le)\s+l[oa]s?\s+pas(?:é|amos|o)`) +
+    String.raw`(?=\s+(?:a|al|a la|con)\s+${wholeWord(person)})`,
+  wholeWord(String.raw`pas(?:é|e|amos|o)\s+(?:tu|su)\s+(?:consulta|mensaje|pedido|caso|pregunta)`),
+  wholeWord(String.raw`(?:te|le|lo|la)\s+pas(?:é|e|amos|o)\s+con`) +
+    String.raw`\s+${wholeWord(person)}`,
+  wholeWord(
     String.raw`(?:te|le|lo|la|los|las)\s+(?:va|van)\s+a\s+(?:contactar|escribir|responder|comunicar)`,
   ),
-  // `Te van a llamar desde recepción`, but not `te van a llamar por tu nombre`
-  // nor `te va a llamar la doctora`, who calls a waiting patient in.
-  word(String.raw`(?:te|le|lo|la)\s+(?:va|van)\s+a\s+llamar`) +
-    String.raw`\s+(?:(?:de|del|desde)\s+)?${word(`${staff}|(?:el )?consultorio`)}`,
-  word(String.raw`(?:te|le|lo|la)\s+van\s+a\s+llamar`) + String.raw`(?=\s*$)`,
-  word(String.raw`se\s+(?:va|van)\s+a\s+(?:comunicar|contactar|poner\s+en\s+contacto)`),
-  word(String.raw`avis(?:é|e|amos)\s+(?:a|al|a la)`) + String.raw`\s+${word(person)}`,
+  wholeWord(String.raw`(?:te|le|lo|la)\s+(?:va|van)\s+a\s+llamar`) +
+    String.raw`\s+(?:(?:de|del|desde)\s+)?${wholeWord(`${nonPractitionerStaff}|(?:el )?consultorio`)}`,
+  wholeWord(String.raw`(?:te|le|lo|la)\s+van\s+a\s+llamar`) + String.raw`(?=\s*$)`,
+  wholeWord(String.raw`se\s+(?:va|van)\s+a\s+(?:comunicar|contactar|poner\s+en\s+contacto)`),
+  wholeWord(String.raw`avis(?:é|e|amos)\s+(?:a|al|a la)`) + String.raw`\s+${wholeWord(person)}`,
 ].map((source) => new RegExp(source, "iu"));
 
-const negation = new RegExp(word("no|nunca|tampoco|nadie|ni"), "iu");
+const negation = new RegExp(wholeWord("no|nunca|tampoco|nadie|ni"), "iu");
 
 function saysUnnegated(clause: string, pattern: RegExp) {
   const found = pattern.exec(clause);

@@ -483,9 +483,7 @@ describe.each([
   });
 });
 
-// The query form's own check, since noValidate turns off the browser's: without
-// it an incomplete query navigates and silently falls back to the defaults.
-describe("availabilitySearchProblem", () => {
+describe("the query form's own check", () => {
   const complete = { profesional: "p", fecha: "2099-01-05", duracion: 30 };
 
   it("accepts a complete query", () => {

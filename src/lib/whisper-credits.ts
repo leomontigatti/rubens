@@ -9,7 +9,6 @@ const videoCredit = /gracias\s+por\s+ver\s+el\s+v[ií]deo|suscr[ií]bete\s+al\s+
 const hasWords = (text: string) => /[\p{L}\p{N}]/u.test(text);
 
 export function withoutWhisperCredits(transcript: string) {
-  // Composed, so an accent written as its own mark still matches `[ií]`.
   const left = transcript.normalize("NFC").replace(amaraCredit, "").trim();
   return hasWords(left.replace(videoCredit, "")) ? left : "";
 }

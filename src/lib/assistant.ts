@@ -44,11 +44,6 @@ export const longPauseMs = 60 * 60_000;
 
 export const longPauseNote = "[An hour or more passed before the next message.]";
 
-/**
- * A patient's `text` with every bracket turned to a parenthesis, so only
- * underthing places the boundary of what the turn judges: no message, nor
- * the messages of a burst joined, can then spell the mark in any form.
- */
 export function withoutMark(text: string): string {
   return text.replaceAll("[", "(").replaceAll("]", ")");
 }

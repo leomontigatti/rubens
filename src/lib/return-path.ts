@@ -1,9 +1,5 @@
 // The page asked for before signing in (`volver`), which signing in lands on.
-// It comes from a link anyone can write, so only a path of this app passes:
-// the browser resolves it against this origin, and anything that resolves
-// elsewhere is refused. A control or whitespace character is refused outright,
-// since the URL parser drops some of them (`/\t/evil.example` is
-// `//evil.example`, another site).
+// It comes from a link anyone can write, so only a path of this app passes.
 
 const placeholderOrigin = "https://underthing.invalid";
 
@@ -30,8 +26,6 @@ export function returnPath(value: string): string | undefined {
   if (url.origin !== placeholderOrigin) {
     return undefined;
   }
-  // Normalizing can make another site of a path: `/a/..//evil.example`
-  // becomes `//evil.example`. What is returned is checked too.
   const path = `${url.pathname}${url.search}${url.hash}`;
   if (path.startsWith("//") || new URL(path, placeholderOrigin).origin !== placeholderOrigin) {
     return undefined;

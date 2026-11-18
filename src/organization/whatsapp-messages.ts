@@ -364,13 +364,13 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
         .filter((update, index) => update.status === "failed" && stored.statuses[index]!.updated)
         .map((update) => update.whatsappId),
     );
-    for (const update of events.templateCategories ?? []) {
+    for (const update of events.templateCategories) {
       const changed = storeTemplateCategory(tx, update);
       if (changed) {
         warnOfRecategorizedTemplate(tx, changed);
       }
     }
-    for (const event of events.numberEvents ?? []) {
+    for (const event of events.numberEvents) {
       storeNumberEvent(tx, event);
     }
     return stored;

@@ -9,14 +9,13 @@ export function wordsOf(text: string): string[] {
   return text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 }
 
-/**
- * The trigrams of each word, padded as `pg_trgm` pads them: two spaces before
- * the word and one after, so a word's start weighs more than its end.
- */
+/** A word's start weighs more than its end. */
+const padLikePgTrgm = (word: string) => `  ${word} `;
+
 function trigrams(text: string): Set<string> {
   const found = new Set<string>();
   for (const word of wordsOf(text)) {
-    const padded = `  ${word} `;
+    const padded = padLikePgTrgm(word);
     for (let index = 0; index + 3 <= padded.length; index += 1) {
       found.add(padded.slice(index, index + 3));
     }
@@ -48,8 +47,7 @@ export function similarityTo(query: string): (text: string) => number {
   };
 }
 
-// `pg_trgm`'s default `word_similarity_threshold`.
-const nearMissThreshold = 0.6;
+const pgTrgmWordSimilarityThreshold = 0.6;
 
 /**
  * Whether normalized `word` is in normalized `text`: inside it, or close to one
@@ -62,7 +60,8 @@ export function wordMatches(word: string, text: string): boolean {
   }
   const wanted = trigrams(word);
   return wordsOf(text).some(
-    (candidate) => shared(wanted, trigrams(candidate)) / wanted.size >= nearMissThreshold,
+    (candidate) =>
+      shared(wanted, trigrams(candidate)) / wanted.size >= pgTrgmWordSimilarityThreshold,
   );
 }
 

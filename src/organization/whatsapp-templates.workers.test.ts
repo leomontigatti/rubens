@@ -57,6 +57,8 @@ function statusEvent(metaId: string, status: string, reason: string | null = nul
     messages: [],
     statuses: [],
     templateStatuses: [{ metaId, status, reason }],
+    templateCategories: [],
+    numberEvents: [],
   } as Parameters<OrganizationStub["storeWhatsappEvents"]>[0];
 }
 
