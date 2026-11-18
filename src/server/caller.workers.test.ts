@@ -11,7 +11,7 @@ import {
 } from "#/server/caller.ts";
 import type { VerifySession, WorkerEnv } from "#/server/caller.ts";
 
-const bindings = env as unknown as WorkerEnv;
+const bindings: WorkerEnv = env;
 
 const idOf = (organizationId: string) =>
   bindings.ORGANIZATION.idFromName(organizationId).toString();

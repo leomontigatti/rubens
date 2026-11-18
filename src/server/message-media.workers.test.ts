@@ -29,7 +29,7 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   };
 });
 
-const bindings = env as unknown as WorkerEnv;
+const bindings: WorkerEnv = env;
 const martinaPhone = "+5491155550000";
 const now = Date.UTC(2098, 11, 1, 12);
 const dayMs = 24 * 60 * 60_000;

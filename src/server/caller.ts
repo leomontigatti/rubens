@@ -1,6 +1,7 @@
 import { createClerkClient } from "@clerk/backend";
 import type { RequestState } from "@clerk/backend/internal";
 
+import type { GraphApiSettings, SignupSettings } from "#/organization/graph-api.ts";
 import type { Caller } from "#/organization/members.ts";
 import type { Organization } from "#/organization/organization.ts";
 import type { WhatsappDirectory } from "#/server/whatsapp-directory.ts";
@@ -10,8 +11,13 @@ import type { WhatsappDirectory } from "#/server/whatsapp-directory.ts";
 // session token's `org` claim, or in dev from the fixed dev organization;
 // nothing the browser sends (a header, a parameter, a body) can name another.
 
-/** The Worker's bindings, vars and secrets (`wrangler.jsonc`). */
-export interface WorkerEnv {
+/**
+ * The Worker's bindings, vars and secrets, for the request side and the
+ * organization's object alike: `Cloudflare.Env`, the type of every `env`
+ * (`src/worker-env.d.ts`). Written by hand: nothing checks it against
+ * `wrangler.jsonc` or the secrets a deploy sets.
+ */
+export interface WorkerEnv extends Omit<GraphApiSettings, "connectionFailed">, SignupSettings {
   ORGANIZATION: DurableObjectNamespace<Organization>;
   /** The one object mapping each connected WhatsApp number to its organization (ADR-0012). */
   WHATSAPP_DIRECTORY: DurableObjectNamespace<WhatsappDirectory>;
@@ -34,6 +40,15 @@ export interface WorkerEnv {
   WHATSAPP_BUSINESS_ACCOUNT_ID?: string;
   /** The organization whose object the test number's messages are stored in. */
   WHATSAPP_ORGANIZATION_ID?: string;
+  ORGANIZATION_ENCRYPTION_KEY?: string;
+  /** A secret: the assistant's model's API key (`src/organization/assistant-model.ts`). */
+  ANTHROPIC_API_KEY?: string;
+  /** Workers AI, which transcribes voice notes (`src/organization/transcription.ts`). */
+  AI?: Ai;
+  /** `"true"` answers Meta's calls inside the Worker, for the browser suite (`src/dev/fake-meta.ts`). */
+  WHATSAPP_FAKE_META?: string;
+  /** `"true"` fakes the assistant's model inside the Worker, for a browser check (`src/dev/fake-model.ts`). */
+  ASSISTANT_FAKE_MODEL?: string;
 }
 
 /** `clerk` with a Clerk secret; `dev`, the sign-in that picks a seeded member, otherwise. */

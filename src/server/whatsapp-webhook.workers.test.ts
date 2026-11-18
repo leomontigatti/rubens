@@ -27,7 +27,7 @@ const businessAccountId = "102290129340398";
 /** The Worker's bindings, with the test number mapped to `organizationId`. */
 function bindingsFor(organizationId: string): WorkerEnv {
   return {
-    ...(env as unknown as WorkerEnv),
+    ...env,
     META_APP_SECRET: appSecret,
     WHATSAPP_VERIFY_TOKEN: verifyToken,
     WHATSAPP_PHONE_NUMBER_ID: phoneNumberId,
@@ -39,7 +39,7 @@ function bindingsFor(organizationId: string): WorkerEnv {
 /** The Worker's bindings with no configured test number: each number found in the directory. */
 function directoryBindings(): WorkerEnv {
   return {
-    ...(env as unknown as WorkerEnv),
+    ...env,
     META_APP_SECRET: appSecret,
     WHATSAPP_VERIFY_TOKEN: verifyToken,
   };

@@ -6,7 +6,7 @@ import type { Organization } from "#/organization/organization.ts";
 import { authMode, clerkSession, resolveCaller } from "#/server/caller.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 
-export const workerEnv = env as unknown as WorkerEnv;
+export const workerEnv: WorkerEnv = env;
 
 /** Which sign-in this Worker serves (`authMode`). */
 export function currentAuthMode() {

@@ -21,7 +21,7 @@ import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
 // Fixtures for the organization object's tests (`*.workers.test.ts`): a fresh
 // object per call, set up with its first admin, and members by role.
 
-const bindings = env as unknown as WorkerEnv;
+const bindings: WorkerEnv = env;
 
 export type OrganizationStub = DurableObjectStub<Organization>;
 
