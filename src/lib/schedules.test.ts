@@ -98,28 +98,30 @@ describe("whether two time zones keep the same clock", () => {
     expect(sameClock("America/Argentina/Buenos_Aires", "Europe/Madrid", nextYear, day)).toBe(false);
   });
 
-  it("tells apart zones that share a clock only part of the year", () => {
-    // Accra keeps London's winter clock all year, but not its summer one.
+  it("tells apart zones that share a clock only part of the year, as Accra keeps only London's winter", () => {
     expect(sameClock("Europe/London", "Europe/Lisbon", nextYear, day)).toBe(true);
     expect(sameClock("Europe/London", "Africa/Accra", nextYear, day)).toBe(false);
   });
 
   it("compares the clocks only over the dates given", () => {
-    // Santiago keeps Buenos Aires' clock in its summer only.
     const zones = ["America/Santiago", "America/Argentina/Buenos_Aires"] as const;
-    const summer = { firstDate: "2026-11-02", lastDate: "2027-03-15" };
+    const santiagoSummer = { firstDate: "2026-11-02", lastDate: "2027-03-15" };
 
-    expect(sameClock(...zones, summer, day)).toBe(true);
+    expect(sameClock(...zones, santiagoSummer, day)).toBe(true);
     expect(sameClock(...zones, nextYear, day)).toBe(false);
   });
 
   it("compares every week between the ends of a range", () => {
-    // Both ends fall in Santiago's summer, its winter in between.
-    const yearRound = { firstDate: "2026-11-02", lastDate: "2027-10-04" };
+    const endsInSummerWinterBetween = { firstDate: "2026-11-02", lastDate: "2027-10-04" };
 
-    expect(sameClock("America/Santiago", "America/Argentina/Buenos_Aires", yearRound, day)).toBe(
-      false,
-    );
+    expect(
+      sameClock(
+        "America/Santiago",
+        "America/Argentina/Buenos_Aires",
+        endsInSummerWinterBetween,
+        day,
+      ),
+    ).toBe(false);
   });
 
   it("compares a far range only through a year past today, up to the last date accepted", () => {
@@ -135,20 +137,26 @@ describe("whether two time zones keep the same clock", () => {
   });
 
   it("compares the clocks from today on, since past dates never collide again", () => {
-    // Cordoba kept a clock of its own until 1991, and Moscow left Samara's in October 2014.
-    const moscow = ["Europe/Moscow", "Europe/Samara"] as const;
+    const apartUntil1991 = ["America/Argentina/Cordoba", "America/Argentina/Buenos_Aires"] as const;
+    const apartSinceOctober2014 = ["Europe/Moscow", "Europe/Samara"] as const;
     const sinceYearOne = { firstDate: "0001-01-01", lastDate: null };
 
+    expect(sameClock(...apartUntil1991, sinceYearOne, day)).toBe(true);
     expect(
-      sameClock("America/Argentina/Cordoba", "America/Argentina/Buenos_Aires", sinceYearOne, day),
+      sameClock(...apartSinceOctober2014, { firstDate: "2012-01-02", lastDate: "2015-01-05" }, day),
     ).toBe(true);
-    expect(sameClock(...moscow, { firstDate: "2012-01-02", lastDate: "2015-01-05" }, day)).toBe(
-      true,
-    );
-    expect(sameClock(...moscow, { firstDate: "2012-01-02", lastDate: null }, day)).toBe(false);
-    expect(sameClock(...moscow, { firstDate: "2014-11-03", lastDate: day }, day)).toBe(false);
     expect(
-      sameClock(...moscow, { firstDate: "2014-11-03", lastDate: shiftDate(day, -1) }, day),
+      sameClock(...apartSinceOctober2014, { firstDate: "2012-01-02", lastDate: null }, day),
+    ).toBe(false);
+    expect(
+      sameClock(...apartSinceOctober2014, { firstDate: "2014-11-03", lastDate: day }, day),
+    ).toBe(false);
+    expect(
+      sameClock(
+        ...apartSinceOctober2014,
+        { firstDate: "2014-11-03", lastDate: shiftDate(day, -1) },
+        day,
+      ),
     ).toBe(true);
   });
 

@@ -51,6 +51,8 @@ async function metaTurns(metaId: string, status: "approved" | "paused") {
       messages: [],
       statuses: [],
       templateStatuses: [{ metaId, status, reason: null }],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
 }

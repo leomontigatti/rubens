@@ -64,6 +64,8 @@ async function sent(type: "template" | "text", sentAt: number, status: WhatsappM
     messages: [],
     statuses: [{ whatsappId, status, at: sentAt + 1_000 }],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
 }
 
@@ -82,6 +84,8 @@ async function received(sentAt: number) {
     ],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
+    numberEvents: [],
   });
 }
 

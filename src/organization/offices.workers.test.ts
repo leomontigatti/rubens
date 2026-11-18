@@ -63,12 +63,17 @@ describe("offices", () => {
   it("refuses a time zone that is not an IANA zone", async () => {
     const { organization } = await setUpTestOrganization();
 
-    for (const timeZone of ["Buenos Aires", "-03:00"]) {
-      expect(await organization.createOffice(adminCaller, { ...centro, timeZone })).toEqual({
-        ok: false,
-        reason: "invalidInput",
-      });
-    }
+    expect(
+      await organization.createOffice(adminCaller, { ...centro, timeZone: "Buenos Aires" }),
+    ).toEqual({ ok: false, reason: "invalidInput" });
+  });
+
+  it("refuses an offset such as -03:00, which Intl accepts but which follows no daylight-saving rules", async () => {
+    const { organization } = await setUpTestOrganization();
+
+    expect(await organization.createOffice(adminCaller, { ...centro, timeZone: "-03:00" })).toEqual(
+      { ok: false, reason: "invalidInput" },
+    );
   });
 
   it("edits an office", async () => {

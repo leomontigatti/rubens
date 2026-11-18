@@ -364,7 +364,7 @@ describe("changing roles", () => {
     });
   });
 
-  it("leaves the roles as they are when a save carries none, and asks Clerk for nothing", async () => {
+  it("leaves the roles as they are when a save carries none, so a stale form cannot restore them, and asks Clerk for nothing", async () => {
     const created = await newMember(["practitioner", "receptionist"]);
     fakeAccounts.reset();
 

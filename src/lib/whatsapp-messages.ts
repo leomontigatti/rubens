@@ -59,9 +59,8 @@ export interface WhatsappEvents {
   messages: IncomingWhatsappMessage[];
   statuses: WhatsappStatusUpdate[];
   templateStatuses: WhatsappTemplateStatusUpdate[];
-  /** Absent from a call that carries none, as from the dev seed. */
-  templateCategories?: WhatsappTemplateCategoryUpdate[];
-  numberEvents?: WhatsappNumberEvent[];
+  templateCategories: WhatsappTemplateCategoryUpdate[];
+  numberEvents: WhatsappNumberEvent[];
 }
 
 export const conversationReferenceSchema = z.object({ conversationId: z.uuid() });

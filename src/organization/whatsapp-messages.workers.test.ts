@@ -100,11 +100,15 @@ describe("storing the webhook's WhatsApp events", () => {
 
     const first = await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [message],
       statuses: [],
     });
     const second = await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [message],
       statuses: [],
     });
@@ -170,6 +174,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [incoming("+5493514440000"), incoming("+5493514440000")],
       statuses: [],
     });
@@ -187,6 +193,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [incoming("+5493515551111")],
       statuses: [],
     });
@@ -213,6 +221,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [incoming("+5493515551111")],
       statuses: [],
     });
@@ -235,6 +245,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [incoming("+5493515551111")],
       statuses: [],
     });
@@ -249,6 +261,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [incoming("+5491199990000")],
       statuses: [],
     });
@@ -265,6 +279,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     const result = await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [],
       statuses: [
         { whatsappId, status: "delivered", at: sentAt + minute },
@@ -291,12 +307,16 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [],
       statuses: [{ whatsappId, status: "read", at: sentAt + 2 * minute }],
     });
     const late = expectOk(
       await organization.storeWhatsappEvents({
         templateStatuses: [],
+        templateCategories: [],
+        numberEvents: [],
         messages: [],
         statuses: [{ whatsappId, status: "delivered", at: sentAt + minute }],
       }),
@@ -313,6 +333,8 @@ describe("storing the webhook's WhatsApp events", () => {
 
     await organization.storeWhatsappEvents({
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
       messages: [],
       statuses: [
         { whatsappId, status: "read", at },

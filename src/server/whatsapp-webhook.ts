@@ -177,7 +177,13 @@ function organizationFinder(env: WorkerEnv) {
 
 type MetaChange = z.infer<typeof metaChange>;
 
-const noEvents = (): WhatsappEvents => ({ messages: [], statuses: [], templateStatuses: [] });
+const noEvents = (): WhatsappEvents => ({
+  messages: [],
+  statuses: [],
+  templateStatuses: [],
+  templateCategories: [],
+  numberEvents: [],
+});
 
 /** A `messages` change's messages and statuses. A status underthing does not store (such as `deleted`) is skipped. */
 function messageEventsOf(value: MetaChange["value"]): WhatsappEvents {
@@ -289,8 +295,8 @@ function isEmpty(events: WhatsappEvents) {
     events.messages,
     events.statuses,
     events.templateStatuses,
-    events.templateCategories ?? [],
-    events.numberEvents ?? [],
+    events.templateCategories,
+    events.numberEvents,
   ].every((list) => list.length === 0);
 }
 
@@ -308,11 +314,8 @@ function addEvents(
   ours.messages.push(...events.messages);
   ours.statuses.push(...events.statuses);
   ours.templateStatuses.push(...events.templateStatuses);
-  ours.templateCategories = [
-    ...(ours.templateCategories ?? []),
-    ...(events.templateCategories ?? []),
-  ];
-  ours.numberEvents = [...(ours.numberEvents ?? []), ...(events.numberEvents ?? [])];
+  ours.templateCategories.push(...events.templateCategories);
+  ours.numberEvents.push(...events.numberEvents);
 }
 
 /**

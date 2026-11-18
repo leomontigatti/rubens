@@ -4,31 +4,33 @@
 /** The longest reply the assistant sends, in characters, before it is split into messages. */
 export const maxReplyLength = 600;
 
-// One piece of an emoji: a keycap (a digit, `#` or `*` with its enclosing
-// mark), taken whole so its digit goes too; any pictograph but `©`, `®`, `™`
-// and the arrows, which are text symbols too; and the pieces emojis are built
-// from (joiners, variation selectors, skin tones, a flag's letters and tags).
-const emojiPiece = String.raw`[0-9#*]\p{Variation_Selector}?\p{Me}|(?![©®™←-⇿➡⬅-⬇])\p{Extended_Pictographic}|[\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Regional_Indicator}\p{Join_Control}\p{Variation_Selector}\p{Me}\u{E0020}-\u{E007F}]`;
+const variationSelector = String.raw`\p{Variation_Selector}`;
+const enclosingMark = String.raw`\p{Me}`;
+const keycap = String.raw`[0-9#*]${variationSelector}?${enclosingMark}`;
+
+const pictographsAlsoText = "©®™←-⇿➡⬅-⬇";
+const emojiPictograph = String.raw`(?![${pictographsAlsoText}])\p{Extended_Pictographic}`;
+
+const emojiPresentation = String.raw`\p{Emoji_Presentation}`;
+const skinTone = String.raw`\p{Emoji_Modifier}`;
+const flagLetter = String.raw`\p{Regional_Indicator}`;
+const joiner = String.raw`\p{Join_Control}`;
+const flagTag = String.raw`\u{E0020}-\u{E007F}`;
+const emojiBuildingBlock = `[${emojiPresentation}${skinTone}${flagLetter}${joiner}${variationSelector}${enclosingMark}${flagTag}]`;
+
+const emojiPiece = [keycap, emojiPictograph, emojiBuildingBlock].join("|");
 
 const emojiRun = new RegExp(`(?:${emojiPiece})+`, "gu");
 
-// What can end the text before an emoji run that a space must follow: a
-// letter, a digit, an accent's combining mark, closing punctuation, the end of
-// a sentence or `%`, followed by any straight quotes or WhatsApp marks (`*`,
-// `_`, `~`), which then close a span. Those marks after a space, the start or
-// an opening bracket open one, and take no space.
-const endsText = /[\p{L}\p{N}\p{M}\p{Pe}\p{Pf}.,;:!?…%]["'*_~]*$/u;
+const lastCharacterOfText = String.raw`[\p{L}\p{N}\p{M}\p{Pe}\p{Pf}.,;:!?…%]`;
+const straightQuoteOrWhatsAppMark = `["'*_~]`;
+const endsText = new RegExp(`${lastCharacterOfText}${straightQuoteOrWhatsAppMark}*$`, "u");
 
-/**
- * What takes an emoji run's place: a space when it sat between the end of
- * some text and a letter or digit, which it kept apart, and nothing
- * otherwise. Each run is matched whole from the left, so a keycap's digit is
- * never read as text.
- */
+// Bounded, so a long reply with many emojis is not scanned again per run.
+const codeUnitsBeforeRun = 16;
+
 function inPlaceOf(run: string, at: number, text: string) {
-  // A few code units are enough for a character and the marks after it, and
-  // keep a long reply with many emojis from being scanned again per run.
-  const endsBefore = endsText.test(text.slice(Math.max(0, at - 16), at));
+  const endsBefore = endsText.test(text.slice(Math.max(0, at - codeUnitsBeforeRun), at));
   const startsText = /^[\p{L}\p{N}]/u.test(text.slice(at + run.length));
   const between = endsBefore && startsText;
   return between ? " " : "";

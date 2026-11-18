@@ -27,7 +27,6 @@ export function templateCategoryOf(metaCategory: string): TemplateCategory | nul
     : null;
 }
 
-/** Our status for Meta's word for it; a word with no status here (`FLAGGED`, `IN_APPEAL`, …) has none. */
 export function templateStatusOf(metaStatus: string): TemplateStatus | null {
   const status = metaStatus.toLowerCase();
   return (templateStatuses as readonly string[]).includes(status)
@@ -155,7 +154,6 @@ export type TemplateProblem =
   | { kind: "openingMark" }
   | { kind: "emoji" };
 
-// Across lines too: Meta reads a variable split by a line break as one.
 const variablePattern = /\{\{([\s\S]*?)\}\}/g;
 
 const variableName = /^[a-z][a-z_]*$/;

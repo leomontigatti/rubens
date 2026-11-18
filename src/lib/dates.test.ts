@@ -13,48 +13,47 @@ import {
 } from "#/lib/dates.ts";
 
 const buenosAires = "America/Argentina/Buenos_Aires";
-// 02:30 UTC on 9 November is still 8 November, 23:30, in Buenos Aires.
-const lateSunday = new Date("2026-11-09T02:30:00Z");
+const lateSundayInBuenosAires = new Date("2026-11-08T23:30:00-03:00");
 
 describe("formatDate", () => {
   it("writes the day the instant falls on in the zone passed, not the process's", () => {
-    expect(formatDate(lateSunday, buenosAires)).toBe("08/11/2026");
-    expect(formatDate(lateSunday, "UTC")).toBe("09/11/2026");
+    expect(formatDate(lateSundayInBuenosAires, buenosAires)).toBe("08/11/2026");
+    expect(formatDate(lateSundayInBuenosAires, "UTC")).toBe("09/11/2026");
   });
 });
 
 describe("formatTime", () => {
   it("writes a 24-hour clock in the zone passed", () => {
-    expect(formatTime(lateSunday, buenosAires)).toBe("23:30");
+    expect(formatTime(lateSundayInBuenosAires, buenosAires)).toBe("23:30");
     expect(formatTime(new Date("2026-11-09T12:05:00Z"), buenosAires)).toBe("09:05");
   });
 });
 
 describe("formatDateTime", () => {
   it("writes the date and the 24-hour time in the zone passed", () => {
-    expect(formatDateTime(lateSunday, buenosAires)).toBe("08/11/2026 23:30");
+    expect(formatDateTime(lateSundayInBuenosAires, buenosAires)).toBe("08/11/2026 23:30");
   });
 
   it("takes the epoch milliseconds the stored rows hold", () => {
-    expect(formatDateTime(lateSunday.getTime(), "UTC")).toBe("09/11/2026 02:30");
+    expect(formatDateTime(lateSundayInBuenosAires.getTime(), "UTC")).toBe("09/11/2026 02:30");
   });
 });
 
 describe("formatDay", () => {
   it("writes the weekday and the month in Spanish, in lower case, for running text", () => {
-    expect(formatDay(lateSunday, buenosAires)).toBe("domingo 8 de noviembre");
+    expect(formatDay(lateSundayInBuenosAires, buenosAires)).toBe("domingo 8 de noviembre");
   });
 });
 
 describe("formatDayHeading", () => {
   it("starts with a capital, as a heading over the day", () => {
-    expect(formatDayHeading(lateSunday, buenosAires)).toBe("Domingo 8 de noviembre");
+    expect(formatDayHeading(lateSundayInBuenosAires, buenosAires)).toBe("Domingo 8 de noviembre");
   });
 });
 
 describe("formatDayHeadingWithYear", () => {
   it("adds the year, for a day in another year than this one", () => {
-    expect(formatDayHeadingWithYear(lateSunday, buenosAires)).toBe(
+    expect(formatDayHeadingWithYear(lateSundayInBuenosAires, buenosAires)).toBe(
       "Domingo 8 de noviembre de 2026",
     );
   });
@@ -75,6 +74,6 @@ describe("formatMonth", () => {
 
 describe("formatPromptNow", () => {
   it("writes the English weekday and the ISO date and time in the zone passed", () => {
-    expect(formatPromptNow(lateSunday, buenosAires)).toBe("Sunday 2026-11-08 23:30");
+    expect(formatPromptNow(lateSundayInBuenosAires, buenosAires)).toBe("Sunday 2026-11-08 23:30");
   });
 });

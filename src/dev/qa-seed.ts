@@ -112,6 +112,8 @@ export async function seedQaData(
       })),
       statuses: [],
       templateStatuses: [],
+      templateCategories: [],
+      numberEvents: [],
     }),
   );
 }

@@ -14,9 +14,13 @@ export interface PhoneCountry {
 
 const names = new Intl.DisplayNames("es", { type: "region" });
 
-/** The flag emoji: each letter of the code as its regional indicator symbol. */
+const regionalIndicatorA = 0x1f1e6;
+const letterA = "A".charCodeAt(0);
+
 const flagOf = (code: string) =>
-  String.fromCodePoint(...code.split("").map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65));
+  String.fromCodePoint(
+    ...code.split("").map((letter) => regionalIndicatorA + letter.charCodeAt(0) - letterA),
+  );
 
 const byName = new Intl.Collator("es", { sensitivity: "base" });
 

@@ -58,7 +58,7 @@ describe("a timing as the admin reads it", () => {
 });
 
 describe("a text that says when it is sent", () => {
-  it("is one with `mañana`, `hoy` or `en N horas`, in any case", () => {
+  it("flags `mañana`, `hoy` or `en N horas`, in any case, which a late message would make wrong", () => {
     expect(mentionsSendTime("Te esperamos mañana a las {{hora}}.")).toBe(true);
     expect(mentionsSendTime("Hoy es tu turno.")).toBe(true);
     expect(mentionsSendTime("Tu turno es en 2 horas.")).toBe(true);

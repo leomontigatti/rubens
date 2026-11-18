@@ -9,8 +9,6 @@ import {
 import type { StatusActor } from "#/lib/appointment-statuses.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 
-// The office is in Buenos Aires (UTC-3): 09:00 there is 12:00Z, and its day
-// ends at 03:00Z the next day.
 const timeZone = "America/Argentina/Buenos_Aires";
 
 function at(instant: string) {
@@ -107,17 +105,18 @@ describe("undo", () => {
     statusChangedAt: at("12:05"),
     timeZone,
   };
+  const lastMinuteOfLocalDay = new Date("2099-01-06T02:59:00Z");
+  const firstMinuteOfNextLocalDay = new Date("2099-01-06T03:00:00Z");
 
   it("restores the previous status on the same local day", () => {
-    // 02:59Z the next day is still 23:59 on the 5th in Buenos Aires.
-    expect(decideUndo(confirmedToday, reception, new Date("2099-01-06T02:59:00Z"))).toEqual({
+    expect(decideUndo(confirmedToday, reception, lastMinuteOfLocalDay)).toEqual({
       ok: true,
       status: "confirmed",
     });
   });
 
   it("refuses the next local day", () => {
-    expect(decideUndo(confirmedToday, reception, new Date("2099-01-06T03:00:00Z"))).toEqual({
+    expect(decideUndo(confirmedToday, reception, firstMinuteOfNextLocalDay)).toEqual({
       ok: false,
       reason: "tooLate",
     });

@@ -33,8 +33,6 @@ export function startNewSession(path: string): void {
   try {
     localStorage.setItem(storageKey, crypto.randomUUID());
   } catch (error) {
-    // Storage blocked or full: the other tabs go untold, but this one still
-    // leaves the previous user's screen.
     console.warn("[session-change] could not tell other tabs", error);
   }
   changing = true;

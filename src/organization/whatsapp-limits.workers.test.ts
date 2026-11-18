@@ -110,6 +110,8 @@ function templateTurns(update: WhatsappTemplateStatusUpdate) {
     messages: [],
     statuses: [],
     templateStatuses: [update],
+    templateCategories: [],
+    numberEvents: [],
   });
 }
 
@@ -118,6 +120,7 @@ function numberTurns(event: WhatsappNumberEvent) {
     messages: [],
     statuses: [],
     templateStatuses: [],
+    templateCategories: [],
     numberEvents: [event],
   });
 }
@@ -278,6 +281,7 @@ describe("a template Meta stops", () => {
         messages: [],
         statuses: [],
         templateStatuses: [],
+        numberEvents: [],
         templateCategories: [{ metaId: "900000000000001", category: "MARKETING" }],
       }),
     );

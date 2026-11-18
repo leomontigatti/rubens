@@ -4,6 +4,7 @@ import {
   checkTemplateBody,
   metaTemplateName,
   templateExamples,
+  templateStatusOf,
   templateVariables,
   versionOf,
 } from "#/lib/whatsapp-templates.ts";
@@ -55,11 +56,14 @@ describe("the template rules check", () => {
     });
   });
 
-  it("refuses a variable split across lines, and a brace left open or closed alone", () => {
+  it("reads a variable split across lines as one, as Meta does", () => {
     expect(checkTemplateBody(own, "Hola {{PACIENTE\n}}, nos vemos.")).toEqual({
       ok: false,
       problems: [{ kind: "invalidVariable", variable: "PACIENTE\n" }],
     });
+  });
+
+  it("refuses a brace left open or closed alone", () => {
     expect(checkTemplateBody(own, "Hola {{paciente, nos vemos.")).toEqual({
       ok: false,
       problems: [{ kind: "strayBraces" }],
@@ -145,5 +149,13 @@ describe("a template's name at Meta", () => {
     expect(metaTemplateName(id, 2)).toBe("t_0b7e6c3a5a1f4b8e9d2c1f2e3d4c5b6a_v2");
     expect(versionOf(id, "t_0b7e6c3a5a1f4b8e9d2c1f2e3d4c5b6a_v2")).toBe(2);
     expect(versionOf(id, "turno_movido_v2")).toBeNull();
+  });
+});
+
+describe("Meta's template status words", () => {
+  it("reads APPROVED, and has no status for FLAGGED or IN_APPEAL", () => {
+    expect(templateStatusOf("APPROVED")).toBe("approved");
+    expect(templateStatusOf("FLAGGED")).toBeNull();
+    expect(templateStatusOf("IN_APPEAL")).toBeNull();
   });
 });

@@ -147,8 +147,7 @@ export function isMinor(birthDate: string | null, today: string): boolean {
   if (birthDate === null) {
     return false;
   }
-  // Zero-padded dates compare as strings. Born on 29 February, a patient
-  // comes of age on 1 March of a year with no 29th.
+  // Zero-padded dates compare as strings.
   const coming = `${String(Number(birthDate.slice(0, 4)) + 18).padStart(4, "0")}${birthDate.slice(4)}`;
   return today < coming;
 }
@@ -193,10 +192,8 @@ export function documentLabel(patient: {
   return `${documentTypeLabels[patient.documentType]} ${patient.documentNumber}`;
 }
 
-// In the registration form's order, which the change history follows, then a
-// coverage's, then an appointment's. A guardian's name and relationship come
-// first: its other fields are a patient's.
-const fieldLabels: Record<string, string> = {
+// A guardian's name and relationship come first: its other fields are a patient's.
+const fieldLabelsInFormOrder: Record<string, string> = {
   name: "Nombre",
   relationship: "Relación",
   firstName: "Nombre",
@@ -228,7 +225,7 @@ const fieldLabels: Record<string, string> = {
   receptionNote: "Nota de recepción",
 };
 
-const fieldOrder = Object.keys(fieldLabels);
+const fieldOrder = Object.keys(fieldLabelsInFormOrder);
 
 function fieldRank(field: string): number {
   const rank = fieldOrder.indexOf(field);
@@ -299,12 +296,11 @@ export function historyChanges(
 ): FieldChange[] {
   const before = { names, timeZone: entry.timeZones?.before ?? defaultTimeZone };
   const after = { names, timeZone: entry.timeZones?.after ?? defaultTimeZone };
-  // The log's JSON keeps no key order, so the form's order is restored here.
   const fields = Object.keys({ ...entry.before, ...entry.after })
     .filter((field) => !hiddenFields.has(field))
     .sort((a, b) => fieldRank(a) - fieldRank(b));
   return fields.map((field) => ({
-    field: fieldLabels[field] ?? field,
+    field: fieldLabelsInFormOrder[field] ?? field,
     before: formatValue(field, entry.before?.[field], before),
     after: formatValue(field, entry.after?.[field], after),
   }));

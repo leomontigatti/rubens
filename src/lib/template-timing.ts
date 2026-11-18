@@ -9,8 +9,7 @@ export const timingKinds = ["booking", "attended", "before", "after"] as const;
 
 export type TimingKind = (typeof timingKinds)[number];
 
-/** The furthest a template goes before or after its appointment: 30 days. */
-const maxTimingHours = 720;
+const maxTimingHours = 30 * 24;
 
 const hoursSchema = z.int().min(1).max(maxTimingHours);
 
@@ -77,15 +76,13 @@ export function timingRank(timing: Timing | null): [number, number] {
 
 const letter = String.raw`\p{L}`;
 
-// Words that say when a message goes, which a late message would make wrong:
-// `mañana`, `hoy`, `en 2 horas`.
-const sendTimeWords = new RegExp(
+const relativeSendTimeWords = new RegExp(
   `(?<!${letter})(?:mañana|hoy|en\\s+\\d+\\s+horas?)(?!${letter})`,
   "iu",
 );
 
 export function mentionsSendTime(body: string) {
-  return sendTimeWords.test(body);
+  return relativeSendTimeWords.test(body);
 }
 
 export interface TimingEntry {

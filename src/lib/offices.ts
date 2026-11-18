@@ -2,11 +2,7 @@ import * as z from "zod";
 
 export const defaultTimeZone = "America/Argentina/Buenos_Aires";
 
-/**
- * Whether `value` names an IANA time zone. `Intl` also accepts offsets such as
- * `-03:00`, which follow no daylight-saving rules, so they are refused.
- */
-function isTimeZone(value: string): boolean {
+function isIanaTimeZone(value: string): boolean {
   if (/^[+-]/.test(value)) {
     return false;
   }
@@ -22,7 +18,7 @@ function isTimeZone(value: string): boolean {
 }
 
 const name = z.string().trim().min(1).max(200);
-const timeZone = z.string().trim().refine(isTimeZone);
+const timeZone = z.string().trim().refine(isIanaTimeZone);
 const capacity = z.int().min(1).max(100);
 
 export const officeInputSchema = z.object({
@@ -31,7 +27,6 @@ export const officeInputSchema = z.object({
   timeZone: timeZone.default(defaultTimeZone),
 });
 
-// An update leaves out what it does not change, so its fields carry no defaults.
 export const officeUpdateSchema = officeInputSchema.extend({
   officeId: z.uuid(),
   timeZone: timeZone.optional(),
