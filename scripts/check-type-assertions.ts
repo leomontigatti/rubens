@@ -6,6 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { parseSync } from "oxc-parser";
 import { z } from "zod";
 
 // The ban on type assertions, held by a ratchet.
@@ -143,17 +144,22 @@ export function ratchetProblems(input: RatchetInput): string[] {
   ];
 }
 
-const namesTheRule =
-  /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b[^\n]*consistent-type-assertions/;
-const namesNoRule = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\s*(?:\*\/|--|$)/;
+const directive = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/;
 
-/** The 1-based lines of `source` with a comment that would silence the rule. */
-export function findDisableComments(source: string): number[] {
-  return source
-    .split("\n")
-    .flatMap((text, index) =>
-      namesTheRule.test(text) || namesNoRule.test(text) ? [index + 1] : [],
-    );
+/**
+ * The 1-based lines of `source` where a comment that would silence the rule has its
+ * directive. Comments come from oxc's parser, the one oxlint reads them with, so a
+ * comment ends where oxlint's does; `file` picks the language (`.tsx` parses JSX).
+ */
+export function findDisableComments(source: string, file: string): number[] {
+  return parseSync(file, source).comments.flatMap(({ value, start }) => {
+    const found = directive.exec(value);
+    if (!found) return [];
+    const rules = value.slice(found.index + found[0].length);
+    const silences = rules.includes("consistent-type-assertions") || /^\s*(?:--|$)/.test(rules);
+    // `start` is the comment's opening `//` or `/*`, two characters before `value`.
+    return silences ? [source.slice(0, start + 2 + found.index).split("\n").length] : [];
+  });
 }
 
 function run(command: string, args: string[]) {
@@ -265,7 +271,7 @@ function countAssertions(files: string[]): Record<string, number> {
 
 const findAllDisableComments = (files: string[]) =>
   files.flatMap((file) =>
-    findDisableComments(readFileSync(file, "utf8")).map((line) => ({ file, line })),
+    findDisableComments(readFileSync(file, "utf8"), file).map((line) => ({ file, line })),
   );
 
 function writeAllowlist(allowlist: Allowlist, counts: Record<string, number>): void {

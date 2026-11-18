@@ -133,6 +133,7 @@ function numberTurns(event: WhatsappNumberEvent) {
 /** A message the object sent: a template's body components fill in named parameters. */
 const sentMessage = z.object({
   to: z.string().optional(),
+  type: z.string().optional(),
   template: z
     .object({
       name: z.string(),
@@ -150,8 +151,8 @@ const sentMessage = z.object({
 
 /** The templates the object sent Meta, each with its parameters, in order. */
 function templatesSent() {
-  return fakeMeta.sentBodies("/messages", sentMessage).flatMap(({ to, template }) =>
-    template
+  return fakeMeta.sentBodies("/messages", sentMessage).flatMap(({ to, type, template }) =>
+    type === "template" && template
       ? {
           to,
           name: template.name,
