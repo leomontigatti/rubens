@@ -6,6 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { parseSync } from "oxc-parser";
 import { z } from "zod";
 
 // The ban on type assertions, held by a ratchet.
@@ -145,47 +146,19 @@ export function ratchetProblems(input: RatchetInput): string[] {
 
 const directive = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/;
 
-// Where the string or template literal opening at `start` ends. A line break ends
-// a quoted string that lacks its closing quote, so one stray quote hides one line.
-function literalEnd(source: string, start: number): number {
-  const quote = source[start];
-  for (let at = start + 1; at < source.length; at++) {
-    if (source[at] === "\\") at++;
-    else if (source[at] === quote) return at + 1;
-    else if (quote !== "`" && source[at] === "\n") return at + 1;
-  }
-  return source.length;
-}
-
-/** Every `//` and `/* *\/` comment in `source`, outside strings: where its text starts, and the text. */
-function commentsOf(source: string): { start: number; text: string }[] {
-  const comments: { start: number; text: string }[] = [];
-  let at = 0;
-  while (at < source.length) {
-    const pair = source.slice(at, at + 2);
-    if (pair === "//" || pair === "/*") {
-      const close = pair === "//" ? "\n" : "*/";
-      const found = source.indexOf(close, at + 2);
-      const end = found === -1 ? source.length : found;
-      comments.push({ start: at + 2, text: source.slice(at + 2, end) });
-      at = end + close.length;
-    } else if (source[at] === '"' || source[at] === "'" || source[at] === "`") {
-      at = literalEnd(source, at);
-    } else {
-      at++;
-    }
-  }
-  return comments;
-}
-
-/** The 1-based lines of `source` where a comment that would silence the rule has its directive. */
-export function findDisableComments(source: string): number[] {
-  return commentsOf(source).flatMap(({ start, text }) => {
-    const found = directive.exec(text);
+/**
+ * The 1-based lines of `source` where a comment that would silence the rule has its
+ * directive. Comments come from oxc's parser, the one oxlint reads them with, so a
+ * comment ends where oxlint's does; `file` picks the language (`.tsx` parses JSX).
+ */
+export function findDisableComments(source: string, file: string): number[] {
+  return parseSync(file, source).comments.flatMap(({ value, start }) => {
+    const found = directive.exec(value);
     if (!found) return [];
-    const rules = text.slice(found.index + found[0].length);
+    const rules = value.slice(found.index + found[0].length);
     const silences = rules.includes("consistent-type-assertions") || /^\s*(?:--|$)/.test(rules);
-    return silences ? [source.slice(0, start + found.index).split("\n").length] : [];
+    // `start` is the comment's opening `//` or `/*`, two characters before `value`.
+    return silences ? [source.slice(0, start + 2 + found.index).split("\n").length] : [];
   });
 }
 
@@ -298,7 +271,7 @@ function countAssertions(files: string[]): Record<string, number> {
 
 const findAllDisableComments = (files: string[]) =>
   files.flatMap((file) =>
-    findDisableComments(readFileSync(file, "utf8")).map((line) => ({ file, line })),
+    findDisableComments(readFileSync(file, "utf8"), file).map((line) => ({ file, line })),
   );
 
 function writeAllowlist(allowlist: Allowlist, counts: Record<string, number>): void {

@@ -147,7 +147,7 @@ describe("disable comments", () => {
       `/* ${["eslint", "disable"].join("-")} */`,
     ].join("\n");
 
-    expect(findDisableComments(source)).toEqual([1, 3, 4, 5]);
+    expect(findDisableComments(source, "probe.ts")).toEqual([1, 3, 4, 5]);
   });
 
   test("finds a block comment that names the rule on a later line", () => {
@@ -158,7 +158,7 @@ describe("disable comments", () => {
       "const b = 2;",
     ].join("\n");
 
-    expect(findDisableComments(source)).toEqual([2]);
+    expect(findDisableComments(source, "probe.ts")).toEqual([2]);
   });
 
   test("passes a block comment that names only other rules over several lines", () => {
@@ -168,7 +168,7 @@ describe("disable comments", () => {
       `const rule = "${ruleName}";`,
     ].join("\n");
 
-    expect(findDisableComments(source)).toEqual([]);
+    expect(findDisableComments(source, "probe.ts")).toEqual([]);
   });
 
   test("reads a line comment after a glob as its own line, not a block comment", () => {
@@ -179,7 +179,7 @@ describe("disable comments", () => {
       `const rule = "${ruleName}";`,
     ].join("\n");
 
-    expect(findDisableComments(source)).toEqual([1]);
+    expect(findDisableComments(source, "probe.ts")).toEqual([1]);
   });
 
   test("finds a directive that starts on the line after its block comment opens", () => {
@@ -191,18 +191,38 @@ describe("disable comments", () => {
       "const a = 1;",
     ].join("\n");
 
-    expect(findDisableComments(source)).toEqual([2]);
+    expect(findDisableComments(source, "probe.ts")).toEqual([2]);
   });
 
   test("reads a block comment's rules only up to its end, not the code after it", () => {
     const source = `/* ${["eslint", "disable"].join("-")} no-debugger */ const rule = "${ruleName}";`;
 
-    expect(findDisableComments(source)).toEqual([]);
+    expect(findDisableComments(source, "probe.ts")).toEqual([]);
+  });
+
+  test("finds a directive inside a template literal's expression", () => {
+    const source = [
+      "export const x = `${",
+      `${["// eslint", "disable-next-line"].join("-")} ${ruleName}`,
+      "(value as string)",
+      "}`;",
+    ].join("\n");
+
+    expect(findDisableComments(source, "probe.ts")).toEqual([2]);
+  });
+
+  test("finds a directive in JSX after an apostrophe in the text", () => {
+    const source = `export const x = <div>Don't {/* ${["eslint", "disable"].join("-")} ${ruleName} */}{value as string}</div>;`;
+
+    expect(findDisableComments(source, "probe.tsx")).toEqual([1]);
   });
 
   test("passes one that names only other rules", () => {
     expect(
-      findDisableComments(`${disable("disable-next-line")} jsx-a11y/media-has-caption -- why`),
+      findDisableComments(
+        `${disable("disable-next-line")} jsx-a11y/media-has-caption -- why`,
+        "probe.ts",
+      ),
     ).toEqual([]);
   });
 });
