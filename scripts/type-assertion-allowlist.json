@@ -30,7 +30,6 @@
     "src/organization/closures.workers.test.ts": 1,
     "src/organization/conversation-holds.ts": 1,
     "src/organization/graph-api.test-support.ts": 1,
-    "src/organization/graph-api.ts": 9,
     "src/organization/medical-services.workers.test.ts": 1,
     "src/organization/organization.test-support.ts": 6,
     "src/organization/patient-history.ts": 1,
