@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import {
   addOffice,
@@ -69,6 +70,16 @@ function slot(day: number, time: string) {
   };
 }
 
+/** What find_free_times returns: the free times, or why it found none. */
+const freeTimes = z.looseObject({
+  ok: z.boolean(),
+  reason: z.string().optional(),
+  slots: z.array(z.looseObject({ slotId: z.string() })).optional(),
+});
+
+/** What a tool that changes the appointment returns: done, or why not. */
+const outcome = z.looseObject({ ok: z.boolean(), reason: z.string().optional() });
+
 /** Runs a turn that asks for the free times, and returns what find_free_times gave. */
 async function freeTimesAsked(text = "lo puedo cambiar?") {
   await writes(text);
@@ -79,7 +90,7 @@ async function freeTimesAsked(text = "lo puedo cambiar?") {
     return "Tengo estos horarios.";
   });
   await turn();
-  return found as { ok: boolean; reason?: string; slots?: ReturnType<typeof slot>[] };
+  return freeTimes.parse(found);
 }
 
 /** Proposes the move to `slotId` in one turn and accepts it on the patient's yes in the next. */
@@ -99,7 +110,7 @@ async function patientMoves(slotId: string) {
     return "Listo, quedó movido.";
   });
   await turn();
-  return accepted as { ok: boolean; reason?: string };
+  return outcome.parse(accepted);
 }
 
 /** What the handoff notifications an admin got say of why, without the conversation read back. */
@@ -358,7 +369,7 @@ describe("moving on the patient's yes", () => {
     scriptedModel.script((one) => {
       one.call("judge_messages", notClinical);
       accepted = one.call("accept_proposal");
-      others = one.call("find_free_times", { appointmentId }) as typeof others;
+      others = freeTimes.parse(one.call("find_free_times", { appointmentId }));
       return "Ese horario se ocupó. Tengo estos otros.";
     });
     await turn();
