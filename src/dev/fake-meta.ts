@@ -1,4 +1,5 @@
 import { fakeMediaAnswer } from "#/dev/fake-meta-media.ts";
+import type { Fetcher } from "#/organization/graph-api.ts";
 
 // Meta's Graph API answered inside the Worker, for the browser suite, which
 // drives the production build with no Meta account (`playwright.config.ts`):
@@ -12,7 +13,7 @@ export function fakesMeta(env: { WHATSAPP_FAKE_META?: string; CLERK_SECRET_KEY?:
   return env.WHATSAPP_FAKE_META === "true" && !env.CLERK_SECRET_KEY;
 }
 
-export const fakeMetaFetch: typeof fetch = async (input, init) => {
+export const fakeMetaFetch: Fetcher = async (input, init) => {
   const request = new Request(input, init);
   const media = await fakeMediaAnswer(request);
   if (media) {

@@ -17,6 +17,10 @@ const generated = ["src/routeTree.gen.ts", "src/organization/migrations/**"];
 // to them: theirs, kept as published.
 const vendoredSkills = [".agents/skills/**", ".claude/skills/**"];
 
+// Where a network call belongs, for the ban on the global `fetch` below.
+const fetchBan =
+  "A network call goes through the module that owns its boundary, where tests inject a fetcher: Meta's Graph API through src/organization/graph-api.ts (whatsappCloudFor, metaSignupFor), typed with its Fetcher. A new external service gets a module of its own, added to this rule's override in vite.config.ts.";
+
 // The organization object's migrations are `.sql` files its generated index
 // imports (`src/organization/migrations/migrations.js`): each loads as its text.
 const sqlAsText: Plugin = {
@@ -88,13 +92,43 @@ export default defineConfig({
       "ui/no-uncontrolled-input": "error",
       "ui/require-no-validate": "error",
       "ui/require-post-method": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              importNames: ["useEffect", "useLayoutEffect", "useInsertionEffect", "default"],
+              message:
+                "An effect hides a transition: put it in an event handler, in derived state, in a loader, or in a named hook in src/hooks (docs/agents/coding-standards.md#react).",
+            },
+          ],
+        },
+      ],
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
       "import/no-cycle": "error",
       "typescript/no-floating-promises": ["error", { checkThenables: true }],
       "typescript/no-misused-promises": ["error", { checksVoidReturn: { attributes: false } }],
+      "no-restricted-globals": ["error", { name: "fetch", message: fetchBan }],
+      "no-restricted-properties": [
+        "error",
+        ...["globalThis", "window", "self"].map((object) => ({
+          object,
+          property: "fetch",
+          message: fetchBan,
+        })),
+      ],
     },
     overrides: [
+      {
+        // The modules that own a network boundary, and the operator's scripts.
+        files: ["src/organization/graph-api.ts", "scripts/**"],
+        rules: {
+          "no-restricted-globals": "off",
+          "no-restricted-properties": "off",
+        },
+      },
       {
         // The components own their look, so they style themselves (base-nova
         // writes arbitrary values) and wrap the raw elements.
@@ -127,6 +161,13 @@ export default defineConfig({
         rules: {
           "ui/no-raw-form": "off",
           "ui/no-uncontrolled-input": "off",
+        },
+      },
+      {
+        // The one home of an effect: a hook with a name. shadcn's own components keep theirs.
+        files: ["src/hooks/**", "src/components/ui/**"],
+        rules: {
+          "no-restricted-imports": "off",
         },
       },
       {

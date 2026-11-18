@@ -70,6 +70,13 @@ maps to copy. The service itself says nothing a user reads.
 Accept dependencies instead of constructing external ones inside a module. Return
 values rather than hiding behaviour behind side effects.
 
+A network call goes through the module that owns its boundary, which takes a
+`Fetcher` its tests inject: Meta's Graph API through `src/organization/graph-api.ts`
+(`whatsappCloudFor`, `metaSignupFor`). A new external service gets a module of its
+own. Lint rejects the global `fetch` anywhere else (`no-restricted-globals` and
+`no-restricted-properties`); the boundary modules and `scripts/` are the override
+that turns both off in `vite.config.ts`, and a new boundary module is added there.
+
 ## Style
 
 Clarity over cleverness: explicit control flow over dense conditionals and nested
@@ -168,6 +175,19 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   generated from it (`pnpm organization:generate`) into `src/organization/migrations/`,
   which every object applies on start. A migration on `main` has run in deployed
   objects: it is never edited, and a schema change adds a new one.
+
+## React
+
+An effect lives in a named hook in `src/hooks`, never inline in a component or a
+route. What an effect would do usually belongs elsewhere: in the event handler that
+caused it, in state derived during render, in the route's loader, or, for markup
+that must exist first, in a ref callback or `autoFocus`. What is left (a
+subscription, a timer, focus after a render the code cannot reach from a handler)
+is a hook with a name that says what it is for, in `src/hooks`. The lint rule
+`no-restricted-imports` in `vite.config.ts` rejects `useEffect`, `useLayoutEffect`,
+`useInsertionEffect` and React's default and namespace imports, which reach them,
+everywhere but `src/hooks/` and shadcn's `src/components/ui/`. It takes no disable
+comment.
 
 ## Stack notes
 

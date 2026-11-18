@@ -111,7 +111,7 @@ Open `/`, at 1440 and 1280, light and dark; no console error.
 
 ### Sign-in and app shell
 
-Paths: `ingresar.tsx`, `_app.tsx`, `_app/index.tsx`, `src/server/caller.ts`, `src/server/sign-in.functions.ts`, `src/components/sign-in-provider.tsx`.
+Paths: `ingresar.tsx`, `_app.tsx`, `_app/index.tsx`, `src/server/caller.ts`, `src/server/sign-in.functions.ts`, `src/components/sign-in-provider.tsx`, `src/hooks/use-session-guard.ts`.
 
 Signed out, `/` lands on `/ingresar`, and another page (`/pacientes?inactivos=true`) on `/ingresar?volver=…`, where signing in opens the page asked for; a `volver` naming another site (`/ingresar?volver=%2F%09%2Fevil.example`) lands on `/` instead. With Clerk, a page loaded after a minute idle (its session token expired) passes through Clerk's handshake and stays on its page, and an account Clerk signs in but underthing refuses (a deactivated member) gets `Sin acceso a underthing` with `Cerrar sesión` on `/ingresar`, not a redirect loop; an empty `Ingresar` shows `Ingresá tu correo y tu contraseña.`, with no browser popup. Sign in as an admin from `setup:organization`: held on `/cambiar-contrasena` until the starting password is replaced, then `/` opens `/agenda`, with the organization name atop the sidebar. The sidebar links group as `Día a día`, `Profesionales` and `Administración`, the current page marked, with `Obras sociales` and `Personal` for admins only; the trigger collapses it to icons with tooltips, and at 390 wide it opens over the page and closes on a link. The user menu at its foot changes the password and signs out: every other open tab of the app reloads onto `/ingresar`, and Back shows no signed-in page. `curl` `POST /api/auth/sign-up/email` is refused.
 

@@ -1,18 +1,18 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { CalendarIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { FormProblemsContext } from "#/components/field-problem.tsx";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { EmptyState } from "#/components/empty-state.tsx";
-import { focusProblem } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { RecordSection } from "#/components/record-section.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { PatientBubble, WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
 import { sandboxRefusalMessages, scenarioLabel } from "#/lib/assistant-sandbox-copy.ts";
@@ -79,11 +79,7 @@ function Sandbox({ scenarios }: { scenarios: Scenario[] }) {
   const started = useRef<string | null>(null);
   const alert = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (shownRefusals > 0) {
-      focusProblem(content.current, alert.current);
-    }
-  }, [shownRefusals]);
+  useFocusProblem(content, alert, [shownRefusals]);
 
   function refuse(next: { error?: string; problems?: FieldProblem[] }) {
     setError(next.error ?? null);

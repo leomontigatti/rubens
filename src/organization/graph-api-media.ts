@@ -1,3 +1,5 @@
+import type { Fetcher } from "#/organization/graph-api.ts";
+
 // Meta's media host, the second half of a media download through the Graph
 // API (`graph-api.ts`): the Graph API describes a patient's media with a link
 // that lasts five minutes, and the bytes come from that link, streamed, with
@@ -30,7 +32,7 @@ function mediaUrl(url: string) {
 
 /** The bytes at Meta's link `url`, all of them or the byte `range`; throws when the host fails. */
 export async function fromMediaHost(
-  fetcher: typeof fetch,
+  fetcher: Fetcher,
   url: string,
   authorization: string,
   range: string | null,
