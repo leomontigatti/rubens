@@ -47,7 +47,9 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
 
 ## Session hooks
 
-Hooks are configuration, so they run in a headless session too. The project's two:
+Hooks are configuration, so they run in a headless Claude Code or Codex session too. A Capy
+thread runs none of them and does their work itself ([validation.md](./validation.md#hooks-inside-the-session)).
+The project's two:
 
 - **`PostToolUse` on `Write|Edit`**: `format-edited-file.sh` runs `vp fmt` on each file the
   tool just wrote, silently, for the extensions Oxfmt formats.
