@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import {
   useBlocker,
   useCanGoBack,
@@ -390,7 +391,12 @@ function FormPageActions(props: {
   const { page, pending } = props;
   return (
     <CardFooter className="sticky bottom-0">
-      <div className="flex w-full flex-wrap items-center justify-between gap-3">
+      <div
+        className={cn(
+          "flex w-full flex-wrap items-center justify-between gap-3",
+          !props.submitNote && "sm:flex-nowrap",
+        )}
+      >
         <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
           <ChevronLeftIcon data-icon="inline-start" aria-hidden />
           Volver
@@ -401,14 +407,21 @@ function FormPageActions(props: {
             {props.submitNote}
           </p>
         )}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+        {/* Below `sm`, its buttons sit in the bar's own rows: the submit on one of its own. */}
+        <div className="contents sm:flex sm:items-center sm:gap-3">
           {props.discardable && (
-            <Button type="button" variant="outline" disabled={pending} onClick={page.askToDiscard}>
+            <Button
+              type="button"
+              variant="outline"
+              className="ml-auto sm:ml-0"
+              disabled={pending}
+              onClick={page.askToDiscard}
+            >
               <Undo2Icon data-icon="inline-start" aria-hidden />
               Descartar cambios
             </Button>
           )}
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" className="basis-full sm:basis-auto" disabled={pending}>
             {pending ? (
               <Spinner data-icon="inline-start" aria-hidden />
             ) : (
