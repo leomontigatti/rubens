@@ -28,8 +28,9 @@ describe("an appointment's template values", () => {
       fecha: "lunes 5 de enero",
       hora: "09:05",
       sede: "Sede Centro",
-      direccion: "Av. Colón 100",
+      domicilio: "Av. Colón 100",
       prestacion: "extracción dental",
+      direccion: "Av. Colón 100",
     });
   });
 
@@ -65,7 +66,7 @@ describe("filling a template", () => {
 
   it("fills the practitioner, date, time and office from the sample appointment, the time in its office's zone", () => {
     const body =
-      "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}).";
+      "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}).";
 
     expect(
       fillTemplate(
@@ -106,5 +107,17 @@ describe("the sample appointment", () => {
     expect(fillSample("Hola {{nombre}}, en {{sede}}.", "Consultorios Prueba")).toBe(
       "Hola {{nombre}}, en Sede Centro.",
     );
+  });
+
+  it("still fills the address of a template approved under its old name, {{direccion}}", () => {
+    const body = "Te esperamos en {{sede}} ({{direccion}}).";
+
+    expect(fillTemplate(body, templateValues(appointment))).toEqual({
+      text: "Te esperamos en Sede Centro (Av. Colón 100).",
+      parameters: [
+        { name: "sede", value: "Sede Centro" },
+        { name: "direccion", value: "Av. Colón 100" },
+      ],
+    });
   });
 });

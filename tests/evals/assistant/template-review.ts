@@ -19,7 +19,7 @@ const texts = [
   {
     name: "clean",
     wantsNotes: false,
-    body: "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Si no podés venir, respondé este mensaje.",
+    body: "Hola {{paciente}}, te recordamos tu turno con {{profesional}} el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}). Si no podés venir, respondé este mensaje.",
   },
 ];
 

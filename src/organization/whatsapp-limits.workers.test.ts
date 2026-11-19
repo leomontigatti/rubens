@@ -38,7 +38,7 @@ type TemplateKey = "confirmation" | "reminder" | "careInstructions" | "turno_no_
 
 const bodies: Record<TemplateKey, string> = {
   confirmation:
-    "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{direccion}}). Consultorios Prueba",
+    "Hola {{paciente}}, tu turno con {{profesional}} quedó reservado para el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}). Consultorios Prueba",
   reminder:
     "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé para confirmar que venís.",
   careInstructions:
