@@ -6,7 +6,7 @@ import type { DuplicateCandidate, DuplicateRefusal, Patient } from "#/organizati
 /** The copy for every refusal the patient server functions return. */
 export const patientRefusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
-  forbidden: "Solo un administrador puede desactivar pacientes y ver su historial de cambios.",
+  forbidden: "Solo un administrador puede archivar pacientes y ver su historial de cambios.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos ese paciente.",

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { pickOption } from "./steps.test-support.ts";
 import { fullName, people, roles, seededPatients, storageStateOf } from "./world.test-support.ts";
 
 // The app serves, each role is signed in and reaches the agenda, and what only
@@ -32,7 +33,8 @@ test.describe("as the admin", () => {
     await expect(page.getByRole("link", { name: "Personal" })).toBeVisible();
     await page.getByRole("link", { name: patientName }).click();
     await expect(page.getByRole("heading", { level: 1, name: patientName })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Desactivar" })).toBeVisible();
+    await page.getByRole("button", { name: "Acciones" }).click();
+    await expect(page.getByRole("menuitem", { name: "Archivar" })).toBeVisible();
   });
 });
 
@@ -43,9 +45,12 @@ test.describe("as the receptionist", () => {
     await page.goto("/pacientes");
     await page.getByRole("link", { name: patientName }).click();
     await expect(page.getByRole("heading", { level: 1, name: patientName })).toBeVisible();
-    // Present for an admin on the same page (the test above), absent here.
-    await expect(page.getByRole("button", { name: "Editar" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Desactivar" })).toHaveCount(0);
+    // The page is the patient's form for every member; the deactivation, in
+    // `Acciones` for an admin (the test above), is absent here.
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
+    await page.getByRole("button", { name: "Acciones" }).click();
+    await expect(page.getByRole("menuitem", { name: "Agregar cobertura" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Archivar" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Personal" })).toHaveCount(0);
   });
 
@@ -76,12 +81,12 @@ test.describe("as the receptionist", () => {
 
 test.describe("signed out", () => {
   test("signs in on the page asked for", async ({ page }) => {
-    await page.goto("/pacientes?inactivos=true");
+    await page.goto("/pacientes?archivados=true");
     await expect(page).toHaveURL(/\/ingresar\?volver=/);
-    await page.getByLabel("Miembro").selectOption(people.receptionist.userId);
+    await pickOption(page, "Miembro", new RegExp(`^${people.receptionist.name} \\(`));
     await page.getByRole("button", { name: "Ingresar" }).click();
 
-    await expect(page).toHaveURL(/\/pacientes\?inactivos=true$/);
+    await expect(page).toHaveURL(/\/pacientes\?archivados=true$/);
   });
 
   test("signs in on this app's start when the page asked for is another site", async ({
@@ -90,7 +95,7 @@ test.describe("signed out", () => {
   }) => {
     // The URL parser drops the tab: `/\t/evil.example` would be https://evil.example/.
     await page.goto("/ingresar?volver=%2F%09%2Fevil.example");
-    await page.getByLabel("Miembro").selectOption(people.receptionist.userId);
+    await pickOption(page, "Miembro", new RegExp(`^${people.receptionist.name} \\(`));
     await page.getByRole("button", { name: "Ingresar" }).click();
 
     await expect(page).toHaveURL(new RegExp(`^${baseURL}/agenda`));

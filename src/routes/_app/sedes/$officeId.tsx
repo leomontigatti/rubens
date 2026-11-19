@@ -1,14 +1,13 @@
-import { BuildingIcon, PlusIcon } from "lucide-react";
+import { BuildingIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ReactNode } from "react";
 import * as z from "zod";
 
-import { ActiveBadge, activeRecord } from "#/components/admin-form.tsx";
+import { ArchivedAlert, ArchivedBadge, activeRecord } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
-import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
+import { includesArchivedPick, archivedFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { RecordName } from "#/components/record-transition.tsx";
@@ -25,6 +24,7 @@ import {
 import type { Office, Room } from "#/organization/offices.ts";
 
 import { OfficeForm } from "#/routes/_app/sedes/-office-form.tsx";
+import { useRoomDialog } from "#/routes/_app/sedes/-room-form.tsx";
 import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
 import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
@@ -37,10 +37,10 @@ type Section = (typeof sections)[number];
 
 export const Route = createFileRoute("/_app/sedes/$officeId")({
   validateSearch: z.object({
-    inactivos: z.boolean().optional().catch(undefined),
+    archivados: z.boolean().optional().catch(undefined),
     seccion: z.enum(sections).optional().catch(undefined),
   }),
-  loaderDeps: ({ search }) => ({ includeInactive: search.inactivos ?? false }),
+  loaderDeps: ({ search }) => ({ includeInactive: search.archivados ?? false }),
   loader: ({ params, deps }) =>
     getOfficeWithRooms({ data: { officeId: params.officeId, ...deps } }),
   head: ({ loaderData }) => ({
@@ -60,78 +60,54 @@ function OfficePage() {
   if (!result.ok) {
     return <RefusalAlert reason={result.reason} />;
   }
-  const rooms = <OfficeRooms office={result.office} rooms={result} isAdmin={isAdmin} />;
   if (!isAdmin) {
     return (
       <div className="flex flex-col gap-6">
         <OfficeHeading office={result.office} />
-        {rooms}
+        <RoomTable
+          officeId={result.office.id}
+          rooms={result.rooms}
+          onlyInactive={result.onlyInactive}
+        />
       </div>
     );
   }
-  const activeRooms = result.rooms.filter((room) => room.active).length;
-  return <EditOffice office={result.office} rooms={rooms} activeRooms={activeRooms} />;
-}
-
-/** The office's rooms list; an admin creates one from the page's `Acciones`. */
-function OfficeRooms(props: {
-  office: Office;
-  rooms: { rooms: Room[]; onlyInactive: boolean };
-  isAdmin: boolean;
-}) {
-  const { office, isAdmin } = props;
   return (
-    <RoomTable
-      officeId={office.id}
-      rooms={props.rooms.rooms}
-      onlyInactive={props.rooms.onlyInactive}
-      isAdmin={isAdmin}
-      canAdd={isAdmin && office.active}
-    />
+    <EditOffice office={result.office} rooms={result.rooms} onlyInactive={result.onlyInactive} />
   );
 }
 
 /**
  * An admin's office page: titled by the office, with its state and
  * deactivation beside the name, and two tabs, the same form as a new
- * office's and its rooms.
+ * office's and its rooms, which open in a dialog over it.
  */
-function EditOffice(props: { office: Office; rooms: ReactNode; activeRooms: number }) {
+function EditOffice(props: { office: Office; rooms: Room[]; onlyInactive: boolean }) {
   const { office, rooms } = props;
   const toggle = useAction();
+  const roomDialog = useRoomDialog(office.id, rooms);
+  const activeRooms = rooms.filter((room) => room.active).length;
   // The URL picks the tab a page opens on (a room's pages come back to
   // `Consultorios`); a click switches it here, since a navigation would ask
   // before discarding an unsaved edit.
   const { seccion = "datos" } = Route.useSearch();
   const [section, setSection] = useState<Section>(seccion);
-  const active = activeRecord({
+  const record = activeRecord({
     active: office.active,
-    inactiveLabel: "Inactiva",
+    ending: "a",
+    archived: archivedOffice,
+    transitionId: office.id,
     toggle,
     onChange: (next) =>
       void toggle.run(() => changeOfficeActive({ data: { id: office.id, active: next } })),
     deactivation: {
-      question: `¿Desactivar ${office.name}?`,
+      question: `¿Archivar ${office.name}?`,
       countUpcoming: () => getOfficeUpcomingCount({ data: { id: office.id } }),
     },
-    menu: {
-      items: office.active && (
-        <DropdownMenuItem
-          render={
-            <Link to="/sedes/$officeId/consultorios/nuevo" params={{ officeId: office.id }} />
-          }
-        >
-          <PlusIcon />
-          Nuevo consultorio
-        </DropdownMenuItem>
-      ),
-    },
+    items: office.active && (
+      <DropdownMenuItem onClick={roomDialog.create}>Nuevo consultorio</DropdownMenuItem>
+    ),
   });
-  const record = {
-    ...active,
-    status: <ActiveBadge active={office.active} ending="a" />,
-    transitionId: office.id,
-  };
   return (
     <OfficeForm
       key={office.id}
@@ -141,38 +117,59 @@ function EditOffice(props: { office: Office; rooms: ReactNode; activeRooms: numb
       submitLabel="Guardar"
       record={record}
       frame={(form) => (
-        <Tabs value={section} onValueChange={(value: Section) => setSection(value)}>
-          <TabsList className="w-full">
-            <TabsTrigger value="datos">Datos generales</TabsTrigger>
-            <TabsTrigger value="consultorios">
-              Consultorios
-              <Badge variant="outline">{props.activeRooms}</Badge>
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="datos" keepMounted>
-            {form}
-          </TabsContent>
-          <TabsContent value="consultorios">{rooms}</TabsContent>
-        </Tabs>
+        <>
+          <Tabs value={section} onValueChange={(value: Section) => setSection(value)}>
+            <TabsList className="w-full">
+              <TabsTrigger value="datos">Datos generales</TabsTrigger>
+              <TabsTrigger value="consultorios">
+                Consultorios
+                <Badge variant="outline">{activeRooms}</Badge>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="datos" keepMounted>
+              {form}
+            </TabsContent>
+            <TabsContent value="consultorios">
+              <RoomTable
+                officeId={office.id}
+                rooms={rooms}
+                onlyInactive={props.onlyInactive}
+                onOpen={roomDialog.edit}
+                onCreate={office.active ? roomDialog.create : undefined}
+              />
+            </TabsContent>
+          </Tabs>
+          {/* Outside the tabs: `Acciones` opens it from either. */}
+          {roomDialog.dialog}
+        </>
       )}
       onSubmit={(input) => editOffice({ data: { ...input, officeId: office.id } })}
     />
   );
 }
 
+/** What an archived office's page says about it. */
+const archivedOffice = {
+  title: "Sede archivada",
+  consequence: "No aparece en las listas, y no se dan turnos en sus consultorios.",
+};
+
 /** The office's name and address, for those who can't change it. */
 function OfficeHeading({ office }: { office: Office }) {
   return (
-    <PageHeader
-      title={<RecordName id={office.id}>{office.name}</RecordName>}
-      status={<ActiveBadge active={office.active} ending="a" />}
-      description={officeDescription}
-    />
+    <>
+      <PageHeader
+        title={<RecordName id={office.id}>{office.name}</RecordName>}
+        status={<ArchivedBadge active={office.active} ending="a" />}
+        description={officeDescription}
+      />
+      {!office.active && <ArchivedAlert notice={archivedOffice} ending="a" />}
+    </>
   );
 }
 
-/** A room in the list, and whether the viewer may open its page. */
-type ListedRoom = Room & { canOpen: boolean };
+/** A room in the list, and how it opens for whoever may edit it. */
+type ListedRoom = Room & { open?: () => void };
 
 const columns: DataTableColumn<ListedRoom>[] = [
   {
@@ -181,39 +178,36 @@ const columns: DataTableColumn<ListedRoom>[] = [
     cell: (room) => (
       <RowName
         name={room.name}
-        link={
-          room.canOpen
-            ? {
-                to: "/sedes/$officeId/consultorios/$roomId",
-                params: { officeId: room.officeId, roomId: room.id },
-              }
-            : undefined
-        }
-        status={<ActiveBadge active={room.active} ending="o" />}
+        onOpen={room.open}
+        status={<ArchivedBadge active={room.active} ending="o" />}
       />
     ),
   },
   { id: "capacity", header: "Capacidad", cell: (room) => capacityLabel(room.capacity) },
 ];
 
+/**
+ * The office's rooms: for an admin, a name opens the room's dialog
+ * (`onOpen`), and `onCreate`, on an active office, a new one's.
+ */
 function RoomTable(props: {
   officeId: string;
   rooms: Room[];
   onlyInactive: boolean;
-  isAdmin: boolean;
-  canAdd: boolean;
+  onOpen?: (room: Room) => void;
+  onCreate?: () => void;
 }) {
-  const { rooms, isAdmin } = props;
-  const { inactivos } = Route.useSearch();
+  const { rooms, onOpen } = props;
+  const { archivados } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { table, pager, query, setQuery } = useClientDataTable({
-    rows: rooms.map((room) => ({ ...room, canOpen: isAdmin })),
+    rows: rooms.map((room) => ({ ...room, open: onOpen && (() => onOpen(room)) })),
     columns,
     getRowId: (room) => room.id,
     searchText: (room) => room.name,
   });
   const changeStatus = (value: string | null) =>
-    void navigate({ search: (prev) => ({ ...prev, inactivos: showsAllPick(value) }) });
+    void navigate({ search: (prev) => ({ ...prev, archivados: includesArchivedPick(value) }) });
 
   return (
     <DataTable
@@ -226,7 +220,7 @@ function RoomTable(props: {
         placeholder: "Buscar por nombre",
       }}
       filters={{
-        groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
+        groups: [archivedFilter(archivados, { group: "Archivados", included: "Incluidos" })],
         onPick: (_id, value) => changeStatus(value),
         onRemove: () => changeStatus(null),
       }}
@@ -236,7 +230,7 @@ function RoomTable(props: {
           <NoRooms
             officeId={props.officeId}
             onlyInactive={props.onlyInactive}
-            canAdd={props.canAdd}
+            onCreate={props.onCreate}
           />
         ) : (
           <NoMatches icon={BuildingIcon} />
@@ -247,38 +241,31 @@ function RoomTable(props: {
 }
 
 /** The office's room list with no records, or none active. */
-function NoRooms(props: { officeId: string; onlyInactive: boolean; canAdd: boolean }) {
+function NoRooms(props: { officeId: string; onlyInactive: boolean; onCreate?: () => void }) {
+  const canAdd = Boolean(props.onCreate);
   return (
     <EmptyState
       icon={BuildingIcon}
       title={props.onlyInactive ? "Sin consultorios activos" : "Sin consultorios"}
       description={
         props.onlyInactive
-          ? `No hay consultorios activos. ${props.canAdd ? "Empezá creando uno, o mirá" : "Mirá"} los inactivos.`
-          : `Todavía no hay consultorios.${props.canAdd ? " Empezá creando el primero." : ""}`
+          ? `No hay consultorios activos. ${canAdd ? "Empezá creando uno, o mirá" : "Mirá"} los archivados.`
+          : `Todavía no hay consultorios.${canAdd ? " Empezá creando el primero." : ""}`
       }
     >
-      {props.canAdd && (
-        <CreateButton
-          link={
-            <Link to="/sedes/$officeId/consultorios/nuevo" params={{ officeId: props.officeId }} />
-          }
-        >
-          Nuevo consultorio
-        </CreateButton>
-      )}
+      {props.onCreate && <CreateButton onClick={props.onCreate}>Nuevo consultorio</CreateButton>}
       {props.onlyInactive && (
         <EmptyStateLink
-          variant={props.canAdd ? "outline" : "default"}
+          variant={canAdd ? "outline" : "default"}
           link={
             <Link
               to="/sedes/$officeId"
               params={{ officeId: props.officeId }}
-              search={{ inactivos: true, seccion: "consultorios" }}
+              search={{ archivados: true, seccion: "consultorios" }}
             />
           }
         >
-          Ver inactivos
+          Ver archivados
         </EmptyStateLink>
       )}
     </EmptyState>

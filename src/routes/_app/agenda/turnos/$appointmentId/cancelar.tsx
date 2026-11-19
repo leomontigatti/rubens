@@ -4,7 +4,6 @@ import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { cancellerLabels } from "#/lib/appointment-statuses.ts";
 import {
   appointmentCancellers,
@@ -82,13 +81,14 @@ function CancelForm({ loaded }: { loaded: LoadedAppointment }) {
     >
       <form.AppField name="cancelledBy">
         {(field) => (
-          <field.SelectField label="¿Quién cancela?" required>
-            {appointmentCancellers.map((canceller) => (
-              <NativeSelectOption key={canceller} value={canceller}>
-                {cancellerLabels[canceller]}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="¿Quién cancela?"
+            required
+            options={appointmentCancellers.map((canceller) => ({
+              value: canceller,
+              label: cancellerLabels[canceller],
+            }))}
+          />
         )}
       </form.AppField>
       <form.AppField name="reason">

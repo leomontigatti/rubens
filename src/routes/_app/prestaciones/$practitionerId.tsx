@@ -1,7 +1,7 @@
 import { StethoscopeIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { ActiveBadge, RefusalMessage } from "#/components/admin-form.tsx";
+import { ArchivedBadge, RefusalMessage } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
@@ -77,6 +77,7 @@ const columns: DataTableColumn<ListedMedicalService>[] = [
     cell: (medicalService) => (
       <RowName
         name={medicalService.name}
+        transitionId={medicalService.id}
         link={
           medicalService.canOpen
             ? {
@@ -88,7 +89,7 @@ const columns: DataTableColumn<ListedMedicalService>[] = [
               }
             : undefined
         }
-        status={<ActiveBadge active={medicalService.active} ending="a" />}
+        status={<ArchivedBadge active={medicalService.active} ending="a" />}
       />
     ),
   },

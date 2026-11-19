@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ComponentType } from "react";
 
-import type { ComboboxFieldProps, ComboboxSearch } from "#/components/app-form.tsx";
+import type { ComboboxFieldProps, ComboboxSearch } from "#/components/combobox-fields.tsx";
 import { PatientRegistrationForm } from "#/components/patient-form.tsx";
 import {
   patientSearchMatches,

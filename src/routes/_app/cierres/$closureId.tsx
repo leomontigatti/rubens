@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { pageHead } from "#/lib/page-title.ts";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { readRangeEntry } from "#/components/range-entry-values.ts";
@@ -15,7 +16,12 @@ import {
 import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/cierres/$closureId")({
-  head: () => ({ meta: [{ title: "Editar cierre · underthing" }] }),
+  head: ({ loaderData, params }) => {
+    const closure = loaderData?.ok
+      ? loaderData.closures.find((one) => one.id === params.closureId)
+      : undefined;
+    return pageHead(closure ? closurePlace(closure) : "Cierre");
+  },
   loader: () => getClosures(),
   staticData: { crumbs: fixedCrumbs("Editar cierre") },
   component: EditClosure,
@@ -37,8 +43,9 @@ function EditClosure() {
   return (
     <EntryForm
       back={{ to: "/cierres" }}
-      title="Editar cierre"
-      description={closurePlace(closure)}
+      title={closurePlace(closure)}
+      description="Los días u horas en que la sede, o toda la organización, no atiende."
+      transitionId={closureId}
       subject="closure"
       initial={closure.entry}
       submitLabel="Guardar"

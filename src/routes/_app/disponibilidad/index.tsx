@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { OptionSelect } from "#/components/option-select.tsx";
 import { EmptyState, NoPractitioners } from "#/components/empty-state.tsx";
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
@@ -12,7 +13,6 @@ import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   availabilitySearchProblem,
   availabilityViewOf,
@@ -142,21 +142,17 @@ function QueryForm(props: {
           )}
           <Field>
             <FieldLabel htmlFor="practitionerId">Profesional</FieldLabel>
-            <NativeSelect
+            <OptionSelect
               id="practitionerId"
               name="practitionerId"
               defaultValue={query.practitionerId ?? ""}
               required
-            >
-              <NativeSelectOption value="" disabled>
-                Elegí un profesional
-              </NativeSelectOption>
-              {props.practitioners.map((practitioner) => (
-                <NativeSelectOption key={practitioner.id} value={practitioner.id}>
-                  {practitioner.displayName}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+              placeholder="Elegí un profesional"
+              options={props.practitioners.map((practitioner) => ({
+                value: practitioner.id,
+                label: practitioner.displayName,
+              }))}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="firstDate">Fecha</FieldLabel>
@@ -170,10 +166,15 @@ function QueryForm(props: {
           </Field>
           <Field>
             <FieldLabel htmlFor="view">Ver</FieldLabel>
-            <NativeSelect id="view" name="view" defaultValue={query.week ? "semana" : "dia"}>
-              <NativeSelectOption value="dia">El día</NativeSelectOption>
-              <NativeSelectOption value="semana">7 días desde la fecha</NativeSelectOption>
-            </NativeSelect>
+            <OptionSelect
+              id="view"
+              name="view"
+              defaultValue={query.week ? "semana" : "dia"}
+              options={[
+                { value: "dia", label: "El día" },
+                { value: "semana", label: "7 días desde la fecha" },
+              ]}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="durationMinutes">Duración (minutos)</FieldLabel>

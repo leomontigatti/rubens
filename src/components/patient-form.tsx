@@ -1,14 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useStore } from "@tanstack/react-form";
 import { useRouter } from "@tanstack/react-router";
 import { useReducer, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import type * as z from "zod";
 
 import { ErrorAlert, FormActions } from "#/components/admin-form.tsx";
 import { FormGrid, useAppForm } from "#/components/app-form.tsx";
+import type { SelectOption } from "#/components/option-select.tsx";
 import { FormProblemsContext } from "#/components/field-problem.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
-import { FieldDescription, FieldLegend } from "#/components/ui/field.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { DocumentTakenAlert, DuplicateWarning } from "#/components/patient-duplicates.tsx";
@@ -18,8 +20,8 @@ import { patientSearchQueries } from "#/components/patient-search.ts";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import type { RefusalState, SaveResult } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
+import { isOneOf } from "#/lib/is-one-of.ts";
 import { documentTypeLabels, documentTypes, patientInputSchema } from "#/lib/patients.ts";
 import type { DocumentType, DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 import { emptyPhoneEntry, splitPhone } from "#/lib/phones.ts";
@@ -111,7 +113,7 @@ const documentTaken = "Ese documento ya está registrado.";
 const fieldMessages: Record<string, string> = {
   firstName: "Ingresá el nombre.",
   lastName: "Ingresá el apellido.",
-  chosenName: "El nombre autopercibido es demasiado largo.",
+  chosenName: "El apodo es demasiado largo.",
   documentType: "Elegí el tipo de documento.",
   documentNumber: "El número de documento es demasiado largo.",
   birthDate: "La fecha de nacimiento no es válida.",
@@ -171,75 +173,170 @@ export function usePatientForm(
   });
 }
 
-export const documentTypeOptions = (
-  <>
-    <NativeSelectOption value="">Sin documento</NativeSelectOption>
-    {documentTypes.map((type) => (
-      <NativeSelectOption key={type} value={type}>
-        {documentTypeLabels[type]}
-      </NativeSelectOption>
-    ))}
-  </>
-);
+/** An example number for each document type, as its field's placeholder: none until one is picked. */
+export function documentNumberPlaceholder(type: string): string | undefined {
+  return isOneOf(documentTypes, type) ? documentNumberExamples[type] : undefined;
+}
+
+const documentNumberExamples: Record<DocumentType, string> = {
+  dni: "30123456",
+  passport: "AAA123456",
+  other: "A1234567",
+};
+
+/** The email field's example. */
+export const emailPlaceholder = "nombre@ejemplo.com";
+
+export const documentTypeOptions: SelectOption[] = [
+  { value: "", label: "Sin documento" },
+  ...documentTypes.map((type) => ({ value: type, label: documentTypeLabels[type] })),
+];
+
+/** Where a patient's page holds a field: its `Datos generales` tab or its `Contacto` tab. */
+export type PatientFieldTab = "datos" | "contacto";
+
+/** The fields a patient's `Contacto` tab holds; every other one is in `Datos generales`. */
+export const contactFields = new Set(["email", "address", "phone"]);
 
 /**
  * The registration inputs: the names and the phone always, the rest when
- * `full`. They are rows of a `FormGrid`.
+ * `full`, in rows: the names; the chosen name and the birth date; the
+ * document; the email and the address; the phone, on a row of its own. A
+ * patient's page shows one `tab` of them at a time (`contactFields`); the
+ * form holds every value either way. They are rows of a `FormGrid`.
  */
-export function PatientFields(props: { form: ReturnType<typeof usePatientForm>; full: boolean }) {
-  const { form } = props;
+export function PatientFields(props: {
+  form: PatientForm;
+  full: boolean;
+  tab?: PatientFieldTab;
+  /** After the phone's number: the patient's `Ver conversación`. */
+  phoneAction?: ReactNode;
+}) {
+  const { form, tab } = props;
+  if (!props.full) {
+    return (
+      <>
+        <NameFields form={form} size={undefined} />
+        <PhoneRow form={form} full={false} />
+      </>
+    );
+  }
+  return (
+    <>
+      {tab !== "contacto" && <GeneralFields form={form} />}
+      {tab !== "datos" && <ContactFields form={form} phoneAction={props.phoneAction} />}
+    </>
+  );
+}
+
+type PatientForm = ReturnType<typeof usePatientForm>;
+
+function NameFields(props: { form: PatientForm; size: "half" | undefined }) {
+  const { form, size } = props;
   return (
     <>
       <form.AppField name="firstName">
-        {(field) => <field.TextField label="Nombre" required />}
+        {(field) => <field.TextField label="Nombre" size={size} required />}
       </form.AppField>
       <form.AppField name="lastName">
-        {(field) => <field.TextField label="Apellido" required />}
+        {(field) => <field.TextField label="Apellido" size={size} required />}
       </form.AppField>
-      <form.AppField name="phone">
-        {(field) => <field.PhoneField label="Teléfono" required />}
-      </form.AppField>
-      {props.full && (
-        <FormGrid>
-          <div className="flex flex-col gap-1">
-            <FieldLegend className="mb-0">Datos para completar</FieldLegend>
-            <FieldDescription>
-              Se pueden cargar ahora o en la primera visita. Mientras falte la fecha de nacimiento,
-              el paciente figura con datos incompletos.
-            </FieldDescription>
-          </div>
-          <form.AppField name="chosenName">
-            {(field) => (
-              <field.TextField
-                label="Nombre autopercibido"
-                hint="Si la persona usa otro nombre, la app la llama así."
-              />
-            )}
-          </form.AppField>
-          <form.AppField name="documentType">
-            {(field) => (
-              <field.SelectField label="Tipo de documento" startsRow>
-                {documentTypeOptions}
-              </field.SelectField>
-            )}
-          </form.AppField>
-          <form.AppField name="documentNumber">
-            {(field) => <field.TextField label="Número de documento" />}
-          </form.AppField>
-          <form.AppField name="birthDate">
-            {(field) => <field.DateField label="Fecha de nacimiento" />}
-          </form.AppField>
-          <form.AppField name="email">
-            {(field) => (
-              <field.TextField label="Correo electrónico" type="email" size="half" startsRow />
-            )}
-          </form.AppField>
-          <form.AppField name="address">
-            {(field) => <field.TextField label="Domicilio" size="half" />}
-          </form.AppField>
-        </FormGrid>
-      )}
     </>
+  );
+}
+
+/** `Datos generales`: the names; the chosen name and the birth date; the document. */
+function GeneralFields({ form }: { form: PatientForm }) {
+  const documentType = useStore(form.store, (state) => state.values.documentType);
+  return (
+    <>
+      <NameFields form={form} size="half" />
+      <form.AppField name="chosenName">
+        {(field) => <field.TextField label="Apodo" size="half" startsRow />}
+      </form.AppField>
+      <form.AppField name="birthDate">
+        {(field) => <field.DateField label="Fecha de nacimiento" size="half" />}
+      </form.AppField>
+      <form.AppField name="documentType">
+        {(field) => (
+          <field.SelectField
+            label="Tipo de documento"
+            size="half"
+            startsRow
+            options={documentTypeOptions}
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="documentNumber">
+        {(field) => (
+          <field.TextField
+            label="Número de documento"
+            size="half"
+            placeholder={documentNumberPlaceholder(documentType)}
+          />
+        )}
+      </form.AppField>
+    </>
+  );
+}
+
+/** `Contacto`: the email and the address; the phone on a row of its own. */
+function ContactFields(props: { form: PatientForm; phoneAction?: ReactNode }) {
+  const { form } = props;
+  return (
+    <>
+      <form.AppField name="email">
+        {(field) => (
+          <field.TextField
+            label="Correo electrónico"
+            type="email"
+            size="half"
+            startsRow
+            placeholder={emailPlaceholder}
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="address">
+        {(field) => (
+          <field.TextField label="Domicilio" size="half" placeholder="Av. Colón 1234, Córdoba" />
+        )}
+      </form.AppField>
+      <PhoneRow form={form} full action={props.phoneAction} />
+    </>
+  );
+}
+
+function PhoneRow(props: { form: PatientForm; full: boolean; action?: ReactNode }) {
+  const { form, full } = props;
+  return (
+    <form.AppField name="phone">
+      {(field) => (
+        <field.PhoneField
+          label="Teléfono"
+          required
+          size={full ? "half" : undefined}
+          startsRow={full}
+          action={props.action}
+        />
+      )}
+    </form.AppField>
+  );
+}
+
+/** Whether the form has no birth date, which leaves the patient incomplete. */
+export function useBirthDateMissing(form: ReturnType<typeof usePatientForm>) {
+  return useStore(form.store, (state) => state.values.birthDate === "");
+}
+
+/** Above a patient's form while it has no birth date: what that means for the record. */
+export function IncompleteAlert() {
+  return (
+    <Alert variant="warning">
+      <AlertTitle>Paciente incompleto</AlertTitle>
+      <AlertDescription>
+        Falta la fecha de nacimiento para completar la información básica del paciente.
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -333,11 +430,14 @@ export function PatientRegistrationPage() {
   const showPatient = (patient: Patient) =>
     page.leave({ to: "/pacientes/$patientId", params: { patientId: patient.id } });
   const { save, form } = usePatientRegistration(showPatient, page.showProblems);
+  const birthDateMissing = useBirthDateMissing(form);
   return (
     <FormPage
       page={page}
       form={form}
+      alerts={birthDateMissing && <IncompleteAlert />}
       title="Nuevo paciente"
+      description="Alguien que se atiende en la organización: con nombre y teléfono alcanza para darle un turno."
       submitLabel="Registrar paciente"
       creates
       pending={save.pending}

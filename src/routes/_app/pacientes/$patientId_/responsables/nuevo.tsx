@@ -1,13 +1,12 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { GuardianForm } from "#/components/patient-guardians.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { guardianInputSchema } from "#/lib/guardians.ts";
-import { patientName } from "#/lib/patients.ts";
 import { addPatientGuardian } from "#/server/guardians.functions.ts";
 import { getPatientDetails } from "#/server/patients.functions.ts";
-import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
+import { PatientStepCrumbs } from "#/routes/_app/pacientes/-patient-crumbs.tsx";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/responsables/nuevo")({
   loader: ({ params }) => getPatientDetails({ data: { patientId: params.patientId } }),
@@ -26,7 +25,7 @@ function NewGuardian() {
     <GuardianForm
       patientId={patientId}
       title="Agregar responsable"
-      description={patientName(result.patient)}
+      description="Quien acompaña al paciente y puede recibir sus mensajes."
       initial={{ name: "", relationship: "", phone: "" }}
       submitLabel="Agregar responsable"
       creates
@@ -40,15 +39,13 @@ function NewGuardian() {
 function Crumbs() {
   const result = Route.useLoaderData();
   const { patientId } = Route.useParams();
+  const patient = result.ok ? result.patient : null;
   return (
-    <PageCrumbs
-      items={[
-        {
-          label: result.ok ? patientName(result.patient) : "Paciente",
-          link: <Link to="/pacientes/$patientId" params={{ patientId }} />,
-        },
-        { label: "Agregar responsable" },
-      ]}
+    <PatientStepCrumbs
+      patientId={patientId}
+      patient={patient}
+      step="Agregar responsable"
+      section="responsables"
     />
   );
 }

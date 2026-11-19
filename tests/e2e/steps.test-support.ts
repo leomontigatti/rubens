@@ -40,12 +40,19 @@ export async function openBooking(page: Page, date: string, time: string) {
   await page.getByRole("combobox", { name: "Paciente" }).waitFor();
 }
 
+/**
+ * Picks `option` in a select (shadcn's `Select`, whose list opens in a popup
+ * outside the box), found by its label.
+ */
+export async function pickOption(page: Page, label: string, option: string | RegExp) {
+  await page.getByRole("combobox", { name: label }).click();
+  await page.getByRole("option", { name: option }).click();
+}
+
 /** Picks the seeded medical service in the booking form. */
 export async function selectMedicalService(page: Page) {
-  const select = page.getByRole("combobox", { name: "Prestación" });
   // The option names the service and its duration; the spec knows the name.
-  const option = select.getByRole("option", { name: new RegExp(medicalServiceName) });
-  await select.selectOption({ label: (await option.innerText()).trim() });
+  await pickOption(page, "Prestación", new RegExp(medicalServiceName));
 }
 
 /** Picks `patient` in the booking's patient box, and the medical service. */

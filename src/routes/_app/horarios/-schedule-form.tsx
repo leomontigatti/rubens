@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import type * as z from "zod";
 
-import { pickedIn, useAppForm } from "#/components/app-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
+import { pickedIn } from "#/components/form-fields.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { scheduleState, today, weekdayLabels } from "#/lib/schedules.ts";
 import type { ScheduleChange, ScheduleInput } from "#/lib/schedules.ts";
 import type { getSchedules } from "#/server/schedules.functions.ts";
@@ -136,16 +136,16 @@ export function ScheduleForm(props: {
       </form.AppField>
       <form.AppField name="roomId">
         {(field) => (
-          <field.SelectField label="Consultorio" startsRow required>
-            <NativeSelectOption value="" disabled>
-              Elegí un consultorio
-            </NativeSelectOption>
-            {props.rooms.map((room) => (
-              <NativeSelectOption key={room.id} value={room.id}>
-                {room.name} · {room.officeName}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="Consultorio"
+            startsRow
+            required
+            placeholder="Elegí un consultorio"
+            options={props.rooms.map((room) => ({
+              value: room.id,
+              label: `${room.name} · ${room.officeName}`,
+            }))}
+          />
         )}
       </form.AppField>
       <form.AppField name="date">

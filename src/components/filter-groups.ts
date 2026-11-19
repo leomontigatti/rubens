@@ -1,4 +1,4 @@
-import { CircleDotIcon } from "lucide-react";
+import { ArchiveIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // What `FilterBar` shows: which groups are applied, which can be added, and how
@@ -57,25 +57,23 @@ export function optionSections(options: FilterOption[]) {
 }
 
 /**
- * The `Estado` filter of a list that hides inactive records until asked: its
- * active ones, or all of them. `labels` agree with the records' gender.
+ * The `Archivados` filter of a list that hides archived records until asked:
+ * not applied, the list shows the active ones; applied, the archived ones too.
+ * `labels` agree with the records' gender (`Archivadas`, `Incluidas`).
  */
-export function statusFilter(
-  showsAll: boolean | undefined,
-  labels: { active: string; all: string },
+export function archivedFilter(
+  included: boolean | undefined,
+  labels: { group: string; included: string },
 ): FilterGroup {
   return {
-    id: "estado",
-    label: "Estado",
-    icon: CircleDotIcon,
-    required: true,
-    value: showsAll ? "todos" : "activos",
-    options: [
-      { value: "activos", label: labels.active },
-      { value: "todos", label: labels.all },
-    ],
+    id: "archivados",
+    label: labels.group,
+    icon: ArchiveIcon,
+    value: included ? "incluidos" : null,
+    options: [{ value: "incluidos", label: labels.included }],
   };
 }
 
-/** The search value a status filter's pick puts in the address: set only to show all. */
-export const showsAllPick = (value: string | null) => (value === "todos" ? true : undefined);
+/** The search value an archived filter's pick puts in the address: set only to include them. */
+export const includesArchivedPick = (value: string | null) =>
+  value === "incluidos" ? true : undefined;

@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "#/components/ui/alert-dialog.tsx";
-import { Button } from "#/components/ui/button.tsx";
 import { upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
 /**
@@ -76,7 +75,8 @@ export interface Deactivation {
  * A deactivation that asks first when it sends appointments to the list, saying
  * how many, and deactivates at once when it sends none. A refused count
  * deactivates too: the deactivation is refused the same way, and shows why.
- * `dialog` goes outside whatever starts it, such as a menu that closes on a pick.
+ * `dialog` goes outside whatever starts it, such as a menu that closes on a pick;
+ * a dialog that starts it asks `question` itself.
  */
 export function useDeactivation(deactivation: Deactivation, onDeactivate: () => void) {
   const [checking, setChecking] = useState(false);
@@ -97,35 +97,31 @@ export function useDeactivation(deactivation: Deactivation, onDeactivate: () => 
   return {
     checking,
     request: () => void request(),
+    /**
+     * The same question, for a dialog that asks it in place of its own
+     * content (`FormDialog`'s `question`) instead of stacking `dialog` on it.
+     */
+    question: open
+      ? {
+          title: deactivation.question,
+          description: upcomingAppointmentsNotice(upcoming),
+          confirmLabel: "Archivar",
+          onConfirm: () => {
+            setOpen(false);
+            onDeactivate();
+          },
+          onCancel: () => setOpen(false),
+        }
+      : null,
     dialog: (
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
         title={deactivation.question}
         description={upcomingAppointmentsNotice(upcoming)}
-        confirmLabel="Desactivar"
+        confirmLabel="Archivar"
         onConfirm={onDeactivate}
       />
     ),
   };
-}
-
-/** `Desactivar` for someone or a place, as a button (`useDeactivation`). */
-export function DeactivateButton(
-  props: Deactivation & { size?: "default" | "sm"; pending: boolean; onDeactivate: () => void },
-) {
-  const deactivate = useDeactivation(props, props.onDeactivate);
-  return (
-    <>
-      <Button
-        variant="outline"
-        size={props.size}
-        disabled={props.pending || deactivate.checking}
-        onClick={deactivate.request}
-      >
-        Desactivar
-      </Button>
-      {deactivate.dialog}
-    </>
-  );
 }

@@ -28,7 +28,6 @@ import {
   FieldSet,
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   PatientBubble,
   WhatsappBubble,
@@ -285,9 +284,10 @@ function PatternFieldSizes() {
       </form.AppField>
       <form.AppField name="documentType">
         {(field) => (
-          <field.SelectField label="Tipo de documento (un cuarto)">
-            <NativeSelectOption value="">Sin documento</NativeSelectOption>
-          </field.SelectField>
+          <field.SelectField
+            label="Tipo de documento (un cuarto)"
+            options={[{ value: "", label: "Sin documento" }]}
+          />
         )}
       </form.AppField>
       <form.AppField name="documentNumber">
@@ -308,7 +308,11 @@ function PatternRecordFormPage() {
       title="Editar prestación"
       record={activeRecord({
         active,
-        inactiveLabel: "Inactiva",
+        ending: "a",
+        archived: {
+          title: "Sede archivada",
+          consequence: "No aparece en las listas, y no se dan turnos en sus consultorios.",
+        },
         toggle: { pending: false, error: null },
         onChange: setActive,
       })}
@@ -451,14 +455,14 @@ function Patterns() {
         <EmptyState
           icon={BuildingIcon}
           title="Sin sedes activas"
-          description="No hay sedes activas. Empezá creando una, o mirá las inactivas."
+          description="No hay sedes activas. Empezá creando una, o mirá las archivadas."
         >
           <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>
           <EmptyStateLink
             variant="outline"
-            link={<Link to="/sedes" search={{ inactivas: true }} />}
+            link={<Link to="/sedes" search={{ archivadas: true }} />}
           >
-            Ver inactivas
+            Ver archivadas
           </EmptyStateLink>
         </EmptyState>
       </Pattern>

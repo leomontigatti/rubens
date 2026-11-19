@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Browser, Page } from "@playwright/test";
 
 import {
+  pickOption,
   appointmentCard,
   fillBooking,
   freeCell,
@@ -113,9 +114,7 @@ test("moves an appointment a time off left outside working time", async ({ page,
   // The admin adds a time off over the practitioner's whole day, telling nobody.
   const admin = await pageAs(browser, "admin");
   await admin.goto("/licencias/nueva");
-  await admin
-    .getByRole("combobox", { name: "Profesional" })
-    .selectOption({ label: people.practitioner.name });
+  await pickOption(admin, "Profesional", people.practitioner.name);
   await admin.getByLabel("Desde").fill(formatLocalDate(date));
   await admin.getByLabel("Hasta (inclusive)").fill(formatLocalDate(date));
   await admin.getByRole("button", { name: "Crear licencia" }).click();

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { SelectOptions, useAppForm } from "#/components/app-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { returnTimeSchema } from "#/lib/conversation-holds.ts";
 import { returnTimeChoices } from "#/lib/hour-choices.ts";
@@ -69,9 +69,11 @@ function ReturnTimeForm(props: { hours: number }) {
     >
       <form.AppField name="hours">
         {(field) => (
-          <field.SelectField label="Vuelve al asistente después de" required>
-            <SelectOptions options={returnTimeChoices(props.hours)} />
-          </field.SelectField>
+          <field.SelectField
+            label="Vuelve al asistente después de"
+            required
+            options={returnTimeChoices(props.hours)}
+          />
         )}
       </form.AppField>
     </ActionFormPage>

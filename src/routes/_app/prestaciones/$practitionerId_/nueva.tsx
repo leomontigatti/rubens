@@ -36,7 +36,7 @@ function NewMedicalService() {
     <MedicalServiceForm
       practitionerId={practitioner.id}
       title="Nueva prestación"
-      description={practitioner.displayName}
+      description="Un servicio del profesional, su duración y los mensajes de WhatsApp que envía."
       initial={newMedicalService}
       templates={result.templates}
       submitLabel="Crear prestación"

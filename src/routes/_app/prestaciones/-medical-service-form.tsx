@@ -1,5 +1,5 @@
 import { useFormAction } from "#/components/admin-form.tsx";
-import { SelectOptions, useAppForm } from "#/components/app-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
@@ -79,9 +79,12 @@ export function MedicalServiceForm(props: {
       </form.AppField>
       <form.AppField name="durationMinutes">
         {(field) => (
-          <field.SelectField label="Duración" size="quarter" required>
-            <SelectOptions options={durationChoices(initial.durationMinutes)} />
-          </field.SelectField>
+          <field.SelectField
+            label="Duración"
+            size="quarter"
+            required
+            options={durationChoices(initial.durationMinutes)}
+          />
         )}
       </form.AppField>
       <form.AppField name="templateIds">
@@ -103,9 +106,8 @@ export function MedicalServiceForm(props: {
             size="quarter"
             startsRow
             required
-          >
-            <SelectOptions options={cutoffChoices(cutoffHours)} />
-          </field.SelectField>
+            options={cutoffChoices(cutoffHours)}
+          />
         )}
       </form.AppField>
     </ActionFormPage>

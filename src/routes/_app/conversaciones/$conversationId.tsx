@@ -12,6 +12,7 @@ import {
 } from "#/server/inbox.functions.ts";
 
 import { ConversationChat } from "#/routes/_app/conversaciones/-chat.tsx";
+import { pageHead } from "#/lib/page-title.ts";
 import { registeredName } from "#/routes/_app/conversaciones/-labels.ts";
 import {
   HandoffActions,
@@ -46,7 +47,12 @@ export const Route = createFileRoute("/_app/conversaciones/$conversationId")({
     ]);
     return { conversation, handoffs };
   },
-  head: () => ({ meta: [{ title: "Conversación · underthing" }] }),
+  head: ({ loaderData }) =>
+    pageHead(
+      loaderData?.conversation.ok
+        ? (registeredName(loaderData.conversation.conversation) ?? "Sin registrar")
+        : "Conversación",
+    ),
   staticData: { crumbs: Crumbs },
   component: ConversationPage,
 });

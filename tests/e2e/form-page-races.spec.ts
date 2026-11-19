@@ -19,8 +19,10 @@ const [first, second] = seededPatients;
 
 async function openEdit(page: Page, patient: (typeof seededPatients)[number]) {
   await page.getByRole("link", { name: fullName(patient) }).click();
+  // A patient's page is their edit form.
   await expect(page.getByRole("heading", { level: 1, name: fullName(patient) })).toBeVisible();
-  await page.getByRole("button", { name: "Editar" }).click();
+  // The address is in the form's `Contacto` tab.
+  await page.getByRole("tab", { name: "Contacto" }).click();
   await expect(page.getByLabel("Domicilio")).toBeEditable();
 }
 
@@ -117,7 +119,7 @@ test("#109: a history jump to another record's edit page during a save stays the
 
   const save = await startHeldSave(page, "Calle Historia 109");
   const shown = addressesFrom(page);
-  await page.evaluate(() => history.go(-3));
+  await page.evaluate(() => history.go(-2));
   await discardChanges(page);
   await save.ended;
   await settle(page);

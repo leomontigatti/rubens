@@ -163,17 +163,21 @@ function birthDateProblem(
   return birthDate < oldest ? "birthDateTooOld" : null;
 }
 
-export function patientBadges(patient: { incomplete: boolean; minor: boolean }) {
+/** The badges a patient shows by their name. */
+export function patientBadges(patient: {
+  incomplete: boolean;
+  minor: boolean;
+  whatsappConsent: boolean;
+}) {
   return [
-    ...(patient.incomplete ? [{ label: "Datos incompletos", variant: "warning" as const }] : []),
+    ...(patient.incomplete ? [{ label: "Incompleto", variant: "warning" as const }] : []),
     ...(patient.minor ? [{ label: "Menor de edad", variant: "outline" as const }] : []),
+    // `info`, like the alert its page shows.
+    ...(patient.whatsappConsent ? [] : [{ label: "Sin WhatsApp", variant: "info" as const }]),
   ];
 }
 
-export function legalName(patient: { firstName: string; lastName: string }): string {
-  return `${patient.firstName} ${patient.lastName}`;
-}
-
+/** How many patients the list shows at a time. */
 export const patientPageSize = 25;
 
 export const documentTypeLabels: Record<DocumentType, string> = {
@@ -199,7 +203,7 @@ const fieldLabelsInFormOrder: Record<string, string> = {
   firstName: "Nombre",
   lastName: "Apellido",
   phone: "Teléfono",
-  chosenName: "Nombre autopercibido",
+  chosenName: "Apodo",
   documentType: "Tipo de documento",
   documentNumber: "Número de documento",
   birthDate: "Fecha de nacimiento",
@@ -207,7 +211,7 @@ const fieldLabelsInFormOrder: Record<string, string> = {
   address: "Domicilio",
   whatsappConsent: "Acepta WhatsApp",
   optOutPending: "Pedido de baja sin decidir",
-  active: "Activo",
+  // A coverage's, in its form's order.
   insurer: "Obra social / prepaga",
   plan: "Plan",
   memberNumber: "Número de afiliado",
@@ -279,7 +283,8 @@ export interface FieldChange {
 
 // Recorded for the log, not shown: a coverage's insurer shows by its name, and
 // an appointment's patient is the page's.
-const hiddenFields = new Set(["insurerId", "patientId"]);
+// `active` too: an archive's or a restore's entry already says so in its action.
+const hiddenFields = new Set(["insurerId", "patientId", "active"]);
 
 /**
  * An audit entry's changed fields, labelled and formatted for the change
@@ -310,8 +315,8 @@ const actionLabels = {
   create: "Alta",
   update: "Cambio",
   delete: "Baja",
-  deactivate: "Desactivación",
-  reactivate: "Reactivación",
+  deactivate: "Archivado",
+  reactivate: "Restauración",
 } as const;
 
 const entityLabels: Record<string, string> = {

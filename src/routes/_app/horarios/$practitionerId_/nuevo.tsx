@@ -37,7 +37,7 @@ function NewSchedule() {
     <ScheduleForm
       practitionerId={practitioner.id}
       title="Nuevo horario"
-      description={practitioner.displayName}
+      description="Los días y horas en que el profesional atiende, y en qué consultorio."
       rooms={rooms}
       initial={emptyInitial}
       dateLabel="Desde"

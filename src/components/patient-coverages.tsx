@@ -1,12 +1,18 @@
-import { Link } from "@tanstack/react-router";
+import { ShieldIcon } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 
-import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
+import { ActionsMenu, ArchivedBadge, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { DataTable, RowName, useClientDataTable } from "#/components/data-table.tsx";
+import type { DataTableColumn } from "#/components/data-table.tsx";
+import { EmptyState } from "#/components/empty-state.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
-import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import { ActionFormPage, CreateButton, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { DropdownMenuItem, DropdownMenuSeparator } from "#/components/ui/dropdown-menu.tsx";
 import {
   coverageInputSchema,
   coverageLabel,
@@ -27,7 +33,7 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos esa cobertura.",
-  insurerInactive: "Esa obra social o prepaga está desactivada. Elegí otra.",
+  insurerInactive: "Esa obra social o prepaga está archivada. Elegí otra.",
 };
 
 type ActionResult = { ok: true } | { ok: false; reason: keyof typeof refusalMessages };
@@ -50,26 +56,125 @@ function useAction() {
   return useFormAction(refusalMessages);
 }
 
+/** A coverage in the patient's list, with the patient its page hangs off. */
+type ListedCoverage = Coverage & { patientId: string };
+
+const coverageColumns: DataTableColumn<ListedCoverage>[] = [
+  {
+    id: "name",
+    header: "Obra social o prepaga",
+    cell: (coverage) => (
+      <RowName
+        name={coverageLabel(coverage)}
+        link={{
+          to: "/pacientes/$patientId/coberturas/$coverageId",
+          params: { patientId: coverage.patientId, coverageId: coverage.id },
+        }}
+        status={
+          <>
+            {coverage.primary && <Badge variant="outline">Principal</Badge>}
+            <ArchivedBadge active={coverage.insurerActive} ending="a" />
+          </>
+        }
+      />
+    ),
+  },
+  {
+    id: "kind",
+    header: "Tipo",
+    cell: (coverage) => insurerKindLabels[coverage.insurerKind],
+  },
+  { id: "plan", header: "Plan", cell: (coverage) => coverage.plan },
+  { id: "member", header: "N.º de afiliado", cell: (coverage) => coverage.memberNumber },
+];
+
+/** The patient's coverages, in the patient page's `Coberturas` tab: a row's name opens its page. */
 export function CoverageList(props: { patientId: string; coverages: Coverage[] }) {
-  if (props.coverages.length === 0) {
-    return <p>{privateCoverageLabel}</p>;
-  }
+  const { table } = useClientDataTable({
+    rows: props.coverages.map((coverage) => ({ ...coverage, patientId: props.patientId })),
+    columns: coverageColumns,
+    getRowId: (coverage) => coverage.id,
+  });
   return (
-    <ul className="flex flex-col gap-4">
-      {props.coverages.map((coverage) => (
-        <li key={coverage.id} className="flex flex-wrap items-start justify-between gap-4">
-          <CoverageSummary coverage={coverage} />
-          <CoverageControls patientId={props.patientId} coverage={coverage} />
-        </li>
-      ))}
-    </ul>
+    <DataTable
+      table={table}
+      noRecords={props.coverages.length === 0}
+      empty={
+        <EmptyState
+          icon={ShieldIcon}
+          title="Sin coberturas"
+          description={`${privateCoverageLabel}: no tiene obra social ni prepaga cargada.`}
+        >
+          <CreateButton
+            link={
+              <Link
+                to="/pacientes/$patientId/coberturas/nueva"
+                params={{ patientId: props.patientId }}
+              />
+            }
+          >
+            Agregar cobertura
+          </CreateButton>
+        </EmptyState>
+      }
+    />
   );
 }
 
 /**
- * The insurers a coverage's form offers: the active ones, and the coverage's
- * own when it was deactivated since, so an edit can keep it.
+ * A coverage's page's `Acciones`: `Hacer principal` while it is not, then
+ * `Quitar`, which asks first and goes back to the patient's coverages.
  */
+export function useCoverageRecord(patientId: string, coverage: Coverage): RecordHeader {
+  const action = useAction();
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const data = { coverageId: coverage.id };
+  const back = () =>
+    void navigate({
+      to: "/pacientes/$patientId",
+      params: { patientId },
+      search: { seccion: "coberturas" },
+    });
+  return {
+    status: coverage.primary && <Badge variant="outline">Principal</Badge>,
+    actions: (busy) => (
+      <>
+        <ActionsMenu disabled={action.pending || busy}>
+          {!coverage.primary && (
+            <>
+              <DropdownMenuItem
+                onClick={() => void action.run(() => changePrimaryCoverage({ data }))}
+              >
+                Hacer principal
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
+            Quitar
+          </DropdownMenuItem>
+        </ActionsMenu>
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title="¿Quitar esta cobertura?"
+          description={
+            coverage.primary
+              ? "El paciente deja de tenerla, y la siguiente que tenga pasa a ser la principal."
+              : "El paciente deja de tenerla."
+          }
+          confirmLabel="Quitar"
+          onConfirm={() =>
+            void action.save(() => deleteCoverage({ data })).then((removed) => removed && back())
+          }
+        />
+      </>
+    ),
+    error: action.error,
+  };
+}
+
 export function offeredInsurers(insurers: Insurer[], coverage: Coverage): Insurer[] {
   if (coverage.insurerActive) {
     return insurers;
@@ -83,64 +188,6 @@ export function offeredInsurers(insurers: Insurer[], coverage: Coverage): Insure
   return [own, ...insurers];
 }
 
-function CoverageSummary({ coverage }: { coverage: Coverage }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{coverageLabel(coverage)}</span>
-        {coverage.primary && <Badge variant="outline">Principal</Badge>}
-      </p>
-      <p className="text-muted-foreground text-sm">
-        {insurerKindLabels[coverage.insurerKind]}
-        {!coverage.insurerActive && " (desactivada)"} · N.º de afiliado {coverage.memberNumber}
-      </p>
-    </div>
-  );
-}
-
-function CoverageControls({ patientId, coverage }: { patientId: string; coverage: Coverage }) {
-  const action = useAction();
-  const data = { coverageId: coverage.id };
-  return (
-    <div className="flex flex-col items-end gap-3">
-      <div className="flex flex-wrap gap-2">
-        {!coverage.primary && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={action.pending}
-            onClick={() => void action.run(() => changePrimaryCoverage({ data }))}
-          >
-            Hacer principal
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={
-            <Link
-              to="/pacientes/$patientId/coberturas/$coverageId"
-              params={{ patientId, coverageId: coverage.id }}
-            />
-          }
-        >
-          Editar
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={action.pending}
-          onClick={() => void action.run(() => deleteCoverage({ data }))}
-        >
-          Quitar
-        </Button>
-      </div>
-      <ErrorAlert message={action.error} />
-    </div>
-  );
-}
-
 export function CoverageForm(props: {
   patientId: string;
   title: string;
@@ -149,10 +196,16 @@ export function CoverageForm(props: {
   insurers: Insurer[];
   submitLabel: string;
   creates?: boolean;
+  /** An existing coverage's `Acciones` (`useCoverageRecord`). */
+  record?: RecordHeader;
   onSubmit: (fields: CoverageFields) => Promise<ActionResult>;
 }) {
   const { patientId, initial } = props;
-  const page = useFormPage({ to: "/pacientes/$patientId", params: { patientId } });
+  const page = useFormPage({
+    to: "/pacientes/$patientId",
+    params: { patientId },
+    search: { seccion: "coberturas" },
+  });
   const action = useAction();
   const form = useAppForm({
     defaultValues: {
@@ -180,20 +233,17 @@ export function CoverageForm(props: {
       description={props.description}
       submitLabel={props.submitLabel}
       creates={props.creates}
+      record={props.record}
       action={action}
     >
       <form.AppField name="insurerId">
         {(field) => (
-          <field.SelectField label="Obra social / prepaga" required>
-            <NativeSelectOption value="" disabled>
-              Elegí una
-            </NativeSelectOption>
-            {props.insurers.map((insurer) => (
-              <NativeSelectOption key={insurer.id} value={insurer.id}>
-                {insurer.name}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="Obra social / prepaga"
+            required
+            placeholder="Elegí una"
+            options={props.insurers.map((insurer) => ({ value: insurer.id, label: insurer.name }))}
+          />
         )}
       </form.AppField>
       <form.AppField name="plan">{(field) => <field.TextField label="Plan" />}</form.AppField>

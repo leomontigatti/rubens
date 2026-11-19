@@ -25,7 +25,7 @@ import {
 import { isEventTemplate } from "#/lib/whatsapp-templates.ts";
 
 export const Route = createFileRoute("/_app/whatsapp/plantillas/")({
-  head: () => ({ meta: [{ title: "Plantillas de WhatsApp · underthing" }] }),
+  head: () => ({ meta: [{ title: "Plantillas · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: Templates,
 });

@@ -52,6 +52,7 @@ const columns: DataTableColumn<ListedClosure>[] = [
     cell: (closure) => (
       <RowName
         name={closure.place}
+        transitionId={closure.id}
         link={
           closure.canOpen
             ? { to: "/cierres/$closureId", params: { closureId: closure.id } }

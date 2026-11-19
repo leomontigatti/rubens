@@ -50,6 +50,7 @@ const columns: DataTableColumn<TimeOff>[] = [
     cell: (item) => (
       <RowName
         name={item.practitionerName}
+        transitionId={item.id}
         link={
           item.canEdit ? { to: "/licencias/$timeOffId", params: { timeOffId: item.id } } : undefined
         }

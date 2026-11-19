@@ -54,6 +54,7 @@ function StaffForm() {
       page={page}
       form={form}
       title="Nueva persona"
+      description="Alguien que entra a la organización, con sus roles y su acceso."
       submitLabel="Crear cuenta"
       creates
       action={action}

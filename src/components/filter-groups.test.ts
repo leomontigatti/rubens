@@ -5,8 +5,8 @@ import {
   appliedGroups,
   matchingOptions,
   optionSections,
-  showsAllPick,
-  statusFilter,
+  includesArchivedPick,
+  archivedFilter,
 } from "#/components/filter-groups.ts";
 import type { FilterGroup } from "#/components/filter-groups.ts";
 
@@ -72,16 +72,15 @@ describe("filter groups", () => {
     expect(optionSections(options)).toEqual([{ name: undefined, options }]);
   });
 
-  it("show a list's active records until all are asked for", () => {
-    const labels = { active: "Activas", all: "Todas" };
+  it("leave the archived filter off until archived records are asked for", () => {
+    const labels = { group: "Archivadas", included: "Incluidas" };
 
-    expect(appliedGroups([statusFilter(undefined, labels)])[0]?.selected.label).toBe("Activas");
-    expect(appliedGroups([statusFilter(true, labels)])[0]?.selected.label).toBe("Todas");
+    expect(appliedGroups([archivedFilter(undefined, labels)])).toEqual([]);
+    expect(appliedGroups([archivedFilter(true, labels)])[0]?.selected.label).toBe("Incluidas");
   });
 
-  it("put only a pick of all records in the address", () => {
-    expect(showsAllPick("todos")).toBe(true);
-    expect(showsAllPick("activos")).toBeUndefined();
-    expect(showsAllPick(null)).toBeUndefined();
+  it("put only the inclusion of archived records in the address", () => {
+    expect(includesArchivedPick("incluidos")).toBe(true);
+    expect(includesArchivedPick(null)).toBeUndefined();
   });
 });

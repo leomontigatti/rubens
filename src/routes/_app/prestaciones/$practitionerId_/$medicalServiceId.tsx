@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import { recordHead } from "#/lib/page-title.ts";
 import { activeRecord, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import {
   changeMedicalServiceActive,
@@ -14,7 +15,13 @@ import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/$medicalServiceId")({
   loader: ({ params }) =>
     getMedicalServices({ data: { practitionerId: params.practitionerId, includeInactive: true } }),
-  head: () => ({ meta: [{ title: "Editar prestación · underthing" }] }),
+  head: ({ loaderData, params }) =>
+    recordHead(
+      loaderData?.ok ? loaderData.medicalServices : undefined,
+      params.medicalServiceId,
+      (one) => one.name,
+      "Prestación",
+    ),
   staticData: { crumbs: Crumbs },
   component: EditMedicalService,
 });
@@ -36,14 +43,19 @@ function EditMedicalService() {
   return (
     <MedicalServiceForm
       practitionerId={result.practitioner.id}
-      title="Editar prestación"
-      description={medicalService.name}
+      title={medicalService.name}
+      description="Los datos de la prestación y los mensajes de WhatsApp que envía."
       initial={medicalService}
       templates={result.templates}
       submitLabel="Guardar"
       record={activeRecord({
         active: medicalService.active,
-        inactiveLabel: "Inactiva",
+        ending: "a",
+        archived: {
+          title: "Prestación archivada",
+          consequence: "No se pueden dar turnos con ella.",
+        },
+        transitionId: medicalServiceId,
         toggle,
         onChange: (active) =>
           void toggle.run(() =>

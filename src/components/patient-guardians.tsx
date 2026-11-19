@@ -1,16 +1,29 @@
-import { Link } from "@tanstack/react-router";
+import { UsersIcon } from "lucide-react";
+import { useStore } from "@tanstack/react-form";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import type * as z from "zod";
 
-import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
+import { OptionSelect } from "#/components/option-select.tsx";
+import { ActionsMenu, ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
+import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
+import { DataTable, RowName, useClientDataTable } from "#/components/data-table.tsx";
+import type { DataTableColumn } from "#/components/data-table.tsx";
+import { EmptyState } from "#/components/empty-state.tsx";
 import { fieldProblems } from "#/components/form-problems.ts";
-import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { documentTypeOptions, patientMessage } from "#/components/patient-form.tsx";
+import { ActionFormPage, CreateButton, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
+import {
+  documentNumberPlaceholder,
+  documentTypeOptions,
+  emailPlaceholder,
+  patientMessage,
+} from "#/components/patient-form.tsx";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
-import { Button } from "#/components/ui/button.tsx";
+import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import type { GuardianInput } from "#/lib/guardians.ts";
 import { documentLabel } from "#/lib/patients.ts";
 import type { DocumentType } from "#/lib/patients.ts";
@@ -52,68 +65,104 @@ export function MinorPrompt(props: { patient: Patient; guardians: Guardian[] }) 
   );
 }
 
+/** A guardian in the patient's list, with the patient its page hangs off. */
+type ListedGuardian = Guardian & { patientId: string };
+
+const guardianColumns: DataTableColumn<ListedGuardian>[] = [
+  {
+    id: "name",
+    header: "Nombre",
+    cell: (guardian) => (
+      <RowName
+        name={guardian.name}
+        link={{
+          to: "/pacientes/$patientId/responsables/$guardianId",
+          params: { patientId: guardian.patientId, guardianId: guardian.id },
+        }}
+        status={guardian.messageContact && <Badge variant="outline">Recibe los mensajes</Badge>}
+      />
+    ),
+  },
+  { id: "relationship", header: "Relación", cell: (guardian) => guardian.relationship },
+  { id: "phone", header: "Teléfono", cell: (guardian) => formatPhone(guardian.phone) },
+  { id: "document", header: "Documento", cell: (guardian) => documentLabel(guardian) },
+  { id: "email", header: "Correo electrónico", cell: (guardian) => guardian.email },
+];
+
+/** The patient's guardians, in the patient page's `Responsables` tab: a row's name opens its page. */
 export function GuardianList(props: { patientId: string; guardians: Guardian[] }) {
-  if (props.guardians.length === 0) {
-    return <p className="text-muted-foreground">Sin responsables.</p>;
-  }
+  const { table } = useClientDataTable({
+    rows: props.guardians.map((guardian) => ({ ...guardian, patientId: props.patientId })),
+    columns: guardianColumns,
+    getRowId: (guardian) => guardian.id,
+  });
   return (
-    <ul className="flex flex-col gap-4">
-      {props.guardians.map((guardian) => (
-        <li key={guardian.id} className="flex flex-wrap items-start justify-between gap-4">
-          <GuardianSummary guardian={guardian} />
-          <GuardianControls patientId={props.patientId} guardian={guardian} />
-        </li>
-      ))}
-    </ul>
+    <DataTable
+      table={table}
+      noRecords={props.guardians.length === 0}
+      empty={
+        <EmptyState
+          icon={UsersIcon}
+          title="Sin responsables"
+          description="Los mensajes van al paciente."
+        >
+          <CreateButton
+            link={
+              <Link
+                to="/pacientes/$patientId/responsables/nuevo"
+                params={{ patientId: props.patientId }}
+              />
+            }
+          >
+            Agregar responsable
+          </CreateButton>
+        </EmptyState>
+      }
+    />
   );
 }
 
-function GuardianSummary({ guardian }: { guardian: Guardian }) {
-  const details = [formatPhone(guardian.phone), documentLabel(guardian), guardian.email];
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{guardian.name}</span>
-        <span className="text-muted-foreground">· {guardian.relationship}</span>
-        {guardian.messageContact && <Badge variant="outline">Recibe los mensajes</Badge>}
-      </p>
-      <p className="text-muted-foreground text-sm">{details.filter(Boolean).join(" · ")}</p>
-    </div>
-  );
-}
-
-function GuardianControls({ patientId, guardian }: { patientId: string; guardian: Guardian }) {
+/** A guardian's page's `Acciones`: `Quitar`, which asks first and goes back to the patient's guardians. */
+export function useGuardianRecord(patientId: string, guardian: Guardian): RecordHeader {
   const action = useAction();
-  return (
-    <div className="flex flex-col items-end gap-3">
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={
-            <Link
-              to="/pacientes/$patientId/responsables/$guardianId"
-              params={{ patientId, guardianId: guardian.id }}
-            />
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  return {
+    actions: (busy) => (
+      <>
+        <ActionsMenu disabled={action.pending || busy}>
+          <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
+            Quitar
+          </DropdownMenuItem>
+        </ActionsMenu>
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title="¿Quitar este responsable?"
+          description={
+            guardian.messageContact
+              ? "Deja de estar a cargo del paciente, y los mensajes vuelven a ir al paciente."
+              : "Deja de estar a cargo del paciente."
           }
-        >
-          Editar
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={action.pending}
-          onClick={() =>
-            void action.run(() => deleteGuardian({ data: { guardianId: guardian.id } }))
+          confirmLabel="Quitar"
+          onConfirm={() =>
+            void action
+              .save(() => deleteGuardian({ data: { guardianId: guardian.id } }))
+              .then(
+                (removed) =>
+                  removed &&
+                  void navigate({
+                    to: "/pacientes/$patientId",
+                    params: { patientId },
+                    search: { seccion: "responsables" },
+                  }),
+              )
           }
-        >
-          Quitar
-        </Button>
-      </div>
-      <ErrorAlert message={action.error} />
-    </div>
-  );
+        />
+      </>
+    ),
+    error: action.error,
+  };
 }
 
 /** Who messages go to: the patient, the default, or one of their guardians. */
@@ -127,26 +176,24 @@ export function MessageContactChoice(props: { patient: Patient; guardians: Guard
   return (
     <Field>
       <FieldLabel htmlFor={id}>Los mensajes van a</FieldLabel>
-      <NativeSelect
+      <OptionSelect
         id={id}
         value={current?.id ?? ""}
         disabled={action.pending}
-        onChange={(event) => {
-          const guardianId = event.currentTarget.value || null;
+        onValueChange={(value) => {
+          const guardianId = value || null;
           void action.run(() =>
             changeMessageContact({ data: { patientId: props.patient.id, guardianId } }),
           );
         }}
-      >
-        <NativeSelectOption value="">
-          El paciente ({formatPhone(props.patient.phone)})
-        </NativeSelectOption>
-        {props.guardians.map((guardian) => (
-          <NativeSelectOption key={guardian.id} value={guardian.id}>
-            {guardian.name} ({formatPhone(guardian.phone)})
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+        options={[
+          { value: "", label: `El paciente (${formatPhone(props.patient.phone)})` },
+          ...props.guardians.map((guardian) => ({
+            value: guardian.id,
+            label: `${guardian.name} (${formatPhone(guardian.phone)})`,
+          })),
+        ]}
+      />
       <ErrorAlert message={action.error} />
     </Field>
   );
@@ -164,6 +211,8 @@ interface GuardianFormProps {
   schema: z.ZodType;
   /** The ids the input carries beside the fields, for `schema`. */
   ids: Record<string, string>;
+  /** An existing guardian's `Acciones` (`useGuardianRecord`). */
+  record?: RecordHeader;
   onSubmit: (fields: GuardianFields) => Promise<ActionResult>;
 }
 
@@ -178,7 +227,11 @@ const guardianValues = (initial: GuardianFormProps["initial"]) => ({
 
 export function GuardianForm(props: GuardianFormProps) {
   const { patientId } = props;
-  const page = useFormPage({ to: "/pacientes/$patientId", params: { patientId } });
+  const page = useFormPage({
+    to: "/pacientes/$patientId",
+    params: { patientId },
+    search: { seccion: "responsables" },
+  });
   const action = useAction();
   const form = useAppForm({
     defaultValues: guardianValues(props.initial),
@@ -198,6 +251,8 @@ export function GuardianForm(props: GuardianFormProps) {
     },
   });
 
+  const documentType = useStore(form.store, (state) => state.values.documentType);
+
   return (
     <ActionFormPage
       page={page}
@@ -206,6 +261,7 @@ export function GuardianForm(props: GuardianFormProps) {
       description={props.description}
       submitLabel={props.submitLabel}
       creates={props.creates}
+      record={props.record}
       action={action}
     >
       <form.AppField name="name">
@@ -221,17 +277,26 @@ export function GuardianForm(props: GuardianFormProps) {
       </form.AppField>
       <form.AppField name="documentType">
         {(field) => (
-          <field.SelectField label="Tipo de documento" startsRow>
-            {documentTypeOptions}
-          </field.SelectField>
+          <field.SelectField label="Tipo de documento" startsRow options={documentTypeOptions} />
         )}
       </form.AppField>
       <form.AppField name="documentNumber">
-        {(field) => <field.TextField label="Número de documento" />}
+        {(field) => (
+          <field.TextField
+            label="Número de documento"
+            placeholder={documentNumberPlaceholder(documentType)}
+          />
+        )}
       </form.AppField>
       <form.AppField name="email">
         {(field) => (
-          <field.TextField label="Correo electrónico" type="email" size="half" startsRow />
+          <field.TextField
+            label="Correo electrónico"
+            type="email"
+            size="half"
+            startsRow
+            placeholder={emailPlaceholder}
+          />
         )}
       </form.AppField>
     </ActionFormPage>

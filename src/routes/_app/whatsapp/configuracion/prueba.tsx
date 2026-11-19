@@ -11,7 +11,6 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { RecordSection } from "#/components/record-section.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { PatientBubble, WhatsappBubble, WhatsappChat } from "#/components/whatsapp-bubble.tsx";
@@ -157,13 +156,11 @@ function Sandbox({ scenarios }: { scenarios: Scenario[] }) {
               <field.SelectField
                 label="Turno"
                 hint="La conversación empieza con el recordatorio de este turno, recién enviado."
-              >
-                {scenarios.map((scenario) => (
-                  <NativeSelectOption key={scenario.appointmentId} value={scenario.appointmentId}>
-                    {scenarioLabel(scenario)}
-                  </NativeSelectOption>
-                ))}
-              </field.SelectField>
+                options={scenarios.map((scenario) => ({
+                  value: scenario.appointmentId,
+                  label: scenarioLabel(scenario),
+                }))}
+              />
             )}
           </scenarioForm.AppField>
           <scenarioForm.Subscribe selector={(state) => state.isSubmitting}>

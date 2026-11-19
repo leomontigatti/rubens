@@ -18,6 +18,7 @@ import { FormProblemsContext } from "#/components/field-problem.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { isStillOn } from "#/components/form-page-location.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
+import { AlertStack } from "#/components/alert-stack.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { RecordName } from "#/components/record-transition.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -142,19 +143,36 @@ export interface RecordHeader {
   /** The actions, disabled while `busy`: the form saves, or the page leaves. */
   actions: (busy: boolean) => ReactNode;
   error: string | null;
+  /** The record's own alert, first in the page's `AlertStack`: an archived one's (`ArchivedAlert`). */
+  alert?: ReactNode;
 }
 
 /**
- * The button that opens a create's page, for whoever may create: in the page
- * header's `actions`, and again in the list's `EmptyState`. `link` is its `Link`.
+ * The button that opens a create, for whoever may create: in the page
+ * header's `actions`, and again in the list's `EmptyState`. `link` is the
+ * `Link` to its page; `onClick` opens its dialog instead (`FormDialog`).
  */
-export function CreateButton(props: { can?: boolean; link: ReactElement; children: ReactNode }) {
+export function CreateButton(
+  props: { can?: boolean; children: ReactNode } & (
+    | { link: ReactElement; onClick?: never }
+    | { onClick: () => void; link?: never }
+  ),
+) {
   if (props.can === false) {
     return null;
   }
+  const icon = <PlusIcon data-icon="inline-start" aria-hidden />;
+  if (props.onClick) {
+    return (
+      <Button onClick={props.onClick}>
+        {icon}
+        {props.children}
+      </Button>
+    );
+  }
   return (
     <Button nativeButton={false} render={props.link}>
-      <PlusIcon data-icon="inline-start" aria-hidden />
+      {icon}
       {props.children}
     </Button>
   );
@@ -198,6 +216,8 @@ export function FormPage(props: {
   record?: RecordHeader;
   /** What the form sits in below the title, such as a tab beside the record's other parts. */
   frame?: (content: ReactNode) => ReactNode;
+  /** The page's alerts, in its `AlertStack` under the header: why a field is locked, for one. */
+  alerts?: ReactNode;
   children: ReactNode;
 }) {
   const { page, form, record = noRecord, refusals = noRefusals, frame = unframed } = props;
@@ -225,6 +245,7 @@ export function FormPage(props: {
         title={props.title}
         description={props.description}
         record={record}
+        alerts={props.alerts}
         pending={pending}
       />
       <FormProblemsContext.Provider value={problems}>
@@ -304,6 +325,7 @@ function FormPageHeader(props: {
   title: string;
   description?: string;
   record: RecordHeader;
+  alerts?: ReactNode;
   pending: boolean;
 }) {
   const { record } = props;
@@ -323,7 +345,11 @@ function FormPageHeader(props: {
         }
         actions={record.actions(props.pending)}
       />
-      <ErrorAlert message={record.error} />
+      <AlertStack>
+        {record.error && <ErrorAlert message={record.error} />}
+        {record.alert}
+        {props.alerts}
+      </AlertStack>
     </>
   );
 }
@@ -406,6 +432,7 @@ export function ActionFormPage(props: {
   creates?: boolean;
   record?: RecordHeader;
   frame?: (content: ReactNode) => ReactNode;
+  alerts?: ReactNode;
   action: {
     pending: boolean;
     error: string | null;

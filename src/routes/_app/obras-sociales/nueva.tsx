@@ -23,6 +23,7 @@ function NewInsurer() {
   return (
     <InsurerForm
       title="Nueva obra social o prepaga"
+      description="Una cobertura que se puede cargar en los pacientes."
       initial={newInsurer}
       submitLabel="Crear obra social"
       creates

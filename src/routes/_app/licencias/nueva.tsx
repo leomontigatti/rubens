@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { readRangeEntry } from "#/components/range-entry-values.ts";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { timeOffInputSchema } from "#/lib/time-ranges.ts";
 import type { SchedulePractitioner } from "#/organization/practitioners.ts";
 import { addTimeOff, getTimeOff } from "#/server/time-off.functions.ts";
@@ -30,6 +29,7 @@ function NewTimeOff() {
     <EntryForm
       back={{ to: "/licencias" }}
       title="Nueva licencia"
+      description="Los días u horas en que un profesional no atiende."
       subject="timeOff"
       initial={null}
       submitLabel="Crear licencia"
@@ -54,17 +54,10 @@ function practitionerField(practitioners: SchedulePractitioner[]) {
     label: "Profesional",
     required: true,
     initial: practitioners.length === 1 ? practitioners[0]!.id : "",
-    options: (
-      <>
-        <NativeSelectOption value="" disabled>
-          Elegí un profesional
-        </NativeSelectOption>
-        {practitioners.map((practitioner) => (
-          <NativeSelectOption key={practitioner.id} value={practitioner.id}>
-            {practitioner.displayName}
-          </NativeSelectOption>
-        ))}
-      </>
-    ),
+    placeholder: "Elegí un profesional",
+    options: practitioners.map((practitioner) => ({
+      value: practitioner.id,
+      label: practitioner.displayName,
+    })),
   };
 }

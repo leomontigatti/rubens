@@ -6,7 +6,6 @@ import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
 import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   appointmentUpdateSchema,
   isActiveStatus,
@@ -39,10 +38,10 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos ese turno, o ya no ocupa su horario: volvé a abrirlo.",
-  practitionerInactive: "Ese profesional está inactivo.",
+  practitionerInactive: "Ese profesional está archivado.",
   otherOffice: "Ese consultorio es de otra sede.",
-  roomInactive: "Ese consultorio está desactivado.",
-  officeInactive: "La sede de ese consultorio está desactivada.",
+  roomInactive: "Ese consultorio está archivado.",
+  officeInactive: "La sede de ese consultorio está archivada.",
 };
 
 const roomRefusals: readonly string[] = ["otherOffice", "roomInactive", "officeInactive"];
@@ -124,13 +123,11 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
       {isActiveStatus(appointment.status) && (
         <form.AppField name="roomId">
           {(field) => (
-            <field.SelectField label="Consultorio" required>
-              {office.rooms.map((room) => (
-                <NativeSelectOption key={room.id} value={room.id}>
-                  {room.name}
-                </NativeSelectOption>
-              ))}
-            </field.SelectField>
+            <field.SelectField
+              label="Consultorio"
+              required
+              options={office.rooms.map((room) => ({ value: room.id, label: room.name }))}
+            />
           )}
         </form.AppField>
       )}

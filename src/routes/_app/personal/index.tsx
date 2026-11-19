@@ -1,5 +1,5 @@
 import { UserCogIcon } from "lucide-react";
-import { ActiveBadge } from "#/components/admin-form.tsx";
+import { ArchivedBadge } from "#/components/admin-form.tsx";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { CreateButton } from "#/components/form-page.tsx";
@@ -48,8 +48,9 @@ const columns: DataTableColumn<StaffMember>[] = [
     cell: (member) => (
       <RowName
         name={member.name}
+        transitionId={member.memberId}
         link={{ to: "/personal/$memberId", params: { memberId: member.memberId } }}
-        status={<ActiveBadge active={member.active} ending="o" />}
+        status={<ArchivedBadge active={member.active} ending="o" />}
       />
     ),
   },

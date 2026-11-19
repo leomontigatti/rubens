@@ -32,6 +32,7 @@ function NewClosure() {
     <EntryForm
       back={{ to: "/cierres" }}
       title="Nuevo cierre"
+      description="Los días u horas en que una sede, o toda la organización, no atiende."
       subject="closure"
       initial={null}
       submitLabel="Crear cierre"

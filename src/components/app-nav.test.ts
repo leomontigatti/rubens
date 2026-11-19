@@ -24,7 +24,7 @@ describe("the menu a member sees", () => {
     expect(daily(null).some((item) => "to" in item && item.to === "/a-reprogramar")).toBe(false);
   });
 
-  it("leaves the notifications out: the top bar's bell opens them", () => {
+  it("leaves the notifications out of the sidebar", () => {
     const links = navFor(["admin"], counts(0)).flatMap((group) => group.items);
 
     expect(links.some((item) => "to" in item && item.to === "/notificaciones")).toBe(false);

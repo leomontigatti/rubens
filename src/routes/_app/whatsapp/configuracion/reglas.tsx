@@ -4,7 +4,6 @@ import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { phoneMessages } from "#/components/phone-field.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   formsOfAddress,
   maxToneLength,
@@ -88,13 +87,11 @@ function RulesForm(props: { initial: Omit<CommunicationRulesInput, "phone"> & { 
     >
       <form.AppField name="formOfAddress">
         {(field) => (
-          <field.SelectField label="Trato" required>
-            {formsOfAddress.map((one) => (
-              <NativeSelectOption key={one} value={one}>
-                {formOfAddressLabels[one]}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="Trato"
+            required
+            options={formsOfAddress.map((one) => ({ value: one, label: formOfAddressLabels[one] }))}
+          />
         )}
       </form.AppField>
       <form.AppField name="tone">

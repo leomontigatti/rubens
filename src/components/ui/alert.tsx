@@ -7,6 +7,10 @@ import { CircleAlertIcon, CircleCheckIcon, InfoIcon, TriangleAlertIcon } from "l
 // `variant` is required and has no `default`, and `Alert` draws that variant's
 // one icon itself, so a message reads the same everywhere (style guide, Alerts).
 // Toasts take the same colors and icons from `alertTones` and `alertIcons`.
+// `AlertAction` sits centred on the alert's right edge, not in its top corner,
+// so a one-line action lines up with a two-line message, and the text keeps
+// clear of it (`pr-28`, room for a `sm` button such as `Restaurar`). Its button
+// takes the alert's colour, so a `link` action reads as part of the message.
 
 /** Each kind of message's colors, shared by alerts and toasts. */
 const alertTones = {
@@ -17,7 +21,7 @@ const alertTones = {
 };
 
 const alertVariants = cva(
-  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-28 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -87,7 +91,14 @@ function AlertDescription({ className, ...props }: React.ComponentProps<"div">) 
 
 function AlertAction({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div data-slot="alert-action" className={cn("absolute top-2 right-2", className)} {...props} />
+    <div
+      data-slot="alert-action"
+      className={cn(
+        "absolute top-1/2 right-3 -translate-y-1/2 *:data-[slot=button]:text-current",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 

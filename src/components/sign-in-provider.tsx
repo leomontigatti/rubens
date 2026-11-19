@@ -73,8 +73,8 @@ function RefusedAccount() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm">
-          Tu cuenta no tiene acceso a underthing, o fue desactivada. Cerrá la sesión para ingresar
-          con otra cuenta.
+          Tu cuenta no tiene acceso a underthing, o fue archivada. Cerrá la sesión para ingresar con
+          otra cuenta.
         </p>
         <Button type="button" disabled={pending} onClick={() => void handleSignOut()}>
           Cerrar sesión
