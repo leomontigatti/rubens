@@ -46,7 +46,7 @@ pnpm test:unit <path>           # or `pnpm test:workers <path>`: the one test fi
 | Command or gate                     | Owns                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `pnpm check`                        | Formatting check, lint and type check, in one pass. `pnpm check:fix` writes the fixes it can.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `pnpm format` / `pnpm format:check` | Oxfmt over the tree. The `PostToolUse` hook formats each file the agent writes, so a session rarely needs them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `pnpm format` / `pnpm format:check` | Oxfmt over the tree. Where the session hooks run, they format each file the agent writes (§ Hooks inside the session).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `pnpm lint`                         | Oxlint, type-aware (`oxlint-tsgolint`): React hooks, import cycles, floating and misused promises, and the style guide's mechanical rules (`@shadcn/lint` and the `ui` plugin, [style-guide.md](./style-guide.md)), the ban on the global `fetch` outside a boundary module ([coding-standards.md](./coding-standards.md#interface-design)), the ban on type assertions outside the ratchet's allowlist ([coding-standards.md](./coding-standards.md#type-assertions)), and in test code the `tests` plugin's testing rules. Its rules are in `vite.config.ts`; the custom ones are tested in `tests/lint/`. |
 | `pnpm typecheck`                    | The TypeScript check on its own.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `pnpm test:unit`                    | Vitest, the `unit` project: `src/**/*.test.{ts,tsx}`, `scripts/**/*.test.ts` and `tests/lint/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -69,7 +69,13 @@ exist in `package.json` or in that index; check before running a guessed one.
 ## Hooks inside the session
 
 The project's agent hooks ([agent-configuration.md](./agent-configuration.md#session-hooks))
-run three of these checks for you:
+run only in the harnesses that wire them, Claude Code and Codex. A Capy thread runs none
+of them, so there the session does their work itself: format each file it writes with
+`pnpm exec vp fmt <file>...`, run `pnpm install --frozen-lockfile` when `pnpm-lock.yaml`
+changed, and before it ends run `pnpm check`, `pnpm check:fallow` and `pnpm check:dupes`,
+reading the last two by exit code as [fallow.md](./fallow.md) says.
+
+Where they do run, they run three of these checks for you:
 
 - every file the agent writes is formatted;
 - the end of a turn is blocked while `pnpm check`'s lint or type check is red, or
@@ -80,8 +86,9 @@ run three of these checks for you:
   newer than the installed dependencies: run `pnpm install --frozen-lockfile`, not a
   lint fix.
 
-The shared workflow's hooks, installed at user level, add one more: `pkill -f` is
-refused, in favour of `pnpm dev:stop` ([verification.md](./verification.md#cleanup)).
+The shared workflow's hooks, installed at user level and run in the same harnesses, add one
+more: `pkill -f` is refused, in favour of `pnpm dev:stop`
+([verification.md](./verification.md#cleanup)).
 
 The `Stop` hook is a backstop, not a substitute for running `pnpm check` yourself.
 `SKIP_STOP_CHECKS=1` turns it off for local work, never to get a red branch

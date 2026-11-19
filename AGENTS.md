@@ -5,10 +5,10 @@ first section applies to every task; a line in the second applies when its leadi
 word matches the task.
 
 The skills, agent briefs and shared hooks are the shared workflow in
-`leomontigatti/agent-workflow`, installed at `~/.agents/workflow`; Claude Code and Codex
-load them from the user's home ([agent-configuration.md](docs/agents/agent-configuration.md)).
-In Codex, "call the Skill tool with X" means open `~/.agents/workflow/skills/X/SKILL.md`
-and follow it. This repo keeps only its own facts, in the contract files the shared
+`leomontigatti/agent-workflow`, installed at `~/.agents/workflow`; every harness loads them
+from the user's home ([agent-configuration.md](docs/agents/agent-configuration.md)), and on a
+Capy machine the project's Setup installs them. "Use the X skill" means read
+`~/.agents/skills/X/SKILL.md` and follow it in full, whatever the harness. This repo keeps only its own facts, in the contract files the shared
 `contract.md` lists: this file, [GLOSSARY.md](GLOSSARY.md), [docs/adr/](docs/adr/README.md),
 `t3.json`, `.agents/required-tools`, and under `docs/agents/`:
 [validation.md](docs/agents/validation.md), [verification.md](docs/agents/verification.md),
@@ -25,8 +25,8 @@ and follow it. This repo keeps only its own facts, in the contract files the sha
   force-pushing, changing anything outside this repository. When a rule in these docs
   fights the task, say so and get a sign-off before breaking it. End a run with what
   needs the user first, then what changed, then what was found in this run.
-- **Implementing** (a feature, a fix, any code change): call the Skill tool with
-  "implement" before editing. Where work starts: [workflows.md](docs/agents/workflows.md);
+- **Implementing** (a feature, a fix, any code change): use the `implement` skill
+  before editing. Where work starts: [workflows.md](docs/agents/workflows.md);
   investigating before editing, and the thread's branch and worktree: the `implement`
   skill's `THREADS.md`.
 - **Validation**: [validation.md](docs/agents/validation.md) is the whole surface. Run
