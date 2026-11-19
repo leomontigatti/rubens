@@ -125,7 +125,7 @@ As an admin, `/sedes` creates an office (time zone prefilled with Buenos Aires);
 
 Paths: `_app/personal/`, `src/organization/staff.ts`, `src/organization/accounts.ts`, `src/server/staff.functions.ts`.
 
-As an admin, `/personal` lists the staff with roles and `Inactivo`; create a member with several roles, sign in as them with the starting password (held on `/cambiar-contrasena`). On a member's page: change roles (practitioner settings appear with the role), edit the practitioner settings (`Color en la agenda` with its swatch beside the picker; a new practitioner gets the palette's next colour), set a new starting password, deactivate (their open session ends, sign-in refused) and reactivate. Removing the last admin's role or deactivating them shows the refusal. A non-admin sees no `Personal` link and `/personal` refuses.
+As an admin, `/personal` lists the staff with roles and `Inactivo`; create a member with several roles, sign in as them with the starting password (held on `/cambiar-contrasena`). A row opens the member's edit form, their only page: change roles (practitioner settings appear with the role), edit the practitioner settings (`Color en la agenda` with its swatch beside the picker; a new practitioner gets the palette's next colour), from its header set a new starting password, deactivate (their open session ends, sign-in refused) and reactivate. Removing the last admin's role or deactivating them shows the refusal. A non-admin sees no `Personal` link and `/personal` refuses.
 
 ### Schedules
 

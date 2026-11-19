@@ -40,7 +40,6 @@
     "src/routes/_app/agenda/-filters.tsx": 1,
     "src/routes/_app/dev/patrones.tsx": 2,
     "src/routes/_app/obras-sociales/-insurer-form.tsx": 1,
-    "src/routes/_app/personal/$memberId_/editar.tsx": 2,
     "src/routes/_app/personal/nueva.tsx": 1,
     "src/routes/_app/whatsapp/configuracion/-number.tsx": 1,
     "src/routes/_app/whatsapp/configuracion/reglas.tsx": 1,
