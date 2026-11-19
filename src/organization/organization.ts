@@ -375,7 +375,7 @@ export class Organization extends OrganizationWhatsapp {
   }
 
   getPatient(caller: Caller, input: { patientId: string }) {
-    return this.as(caller, patientEditors, () => getPatient(this.database, input));
+    return this.as(caller, patientEditors, (acting) => getPatient(this.database, acting, input));
   }
 
   getPatientHistory(caller: Caller, input: { patientId: string }) {

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { patientName, patientPageSize } from "#/lib/patients.ts";
 import type { DuplicateConfirmation, PatientInput } from "#/lib/patients.ts";
 
+import { patientWrites } from "#/organization/assistant-model.test-support.ts";
+
 import {
   addMember,
   adminCaller,
@@ -432,6 +434,36 @@ describe("the patient list", () => {
         ["Luz", null],
       ]);
     }
+  });
+});
+
+describe("a patient's conversation", () => {
+  it("names the conversation their number writes in, and none before it writes", async () => {
+    const { organization, receptionist } = await registry();
+    const patient = await register(organization, receptionist);
+    await patientWrites(organization, "Hola", "+5493515550000");
+
+    const before = await organization.getPatient(receptionist, { patientId: patient.id });
+    await patientWrites(organization, "Hola", "+5493515551234");
+    const after = await organization.getPatient(receptionist, { patientId: patient.id });
+    const listed = await organization.listConversations(receptionist, { query: "Pérez" });
+
+    expect(before).toMatchObject({ ok: true, conversationId: null });
+    expect(listed).toMatchObject({ ok: true, conversations: [{}] });
+    expect(after).toMatchObject({
+      ok: true,
+      conversationId: listed.ok ? listed.conversations[0]!.id : "",
+    });
+  });
+
+  it("names none to a practitioner it was not handed to", async () => {
+    const { organization, receptionist, practitioner } = await registry();
+    const patient = await register(organization, receptionist);
+    await patientWrites(organization, "Hola", "+5493515551234");
+
+    const read = await organization.getPatient(practitioner, { patientId: patient.id });
+
+    expect(read).toMatchObject({ ok: true, conversationId: null });
   });
 });
 

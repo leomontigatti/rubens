@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, max, ne, or } from "drizzle-orm";
 import * as z from "zod";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
@@ -12,6 +12,7 @@ import {
   whatsappConsentChangeSchema,
   optOutDecisionSchema,
 } from "#/lib/patients.ts";
+import { phoneSpellings } from "#/lib/phones.ts";
 import { today } from "#/lib/schedules.ts";
 import type {
   DocumentType,
@@ -29,7 +30,9 @@ import type { Acting } from "#/organization/members.ts";
 import { isHeldUnder, liftOptOutHold, optOutPendingSince } from "#/organization/opt-out-holds.ts";
 import { dropQueuedForPatient, requeueForPatient } from "#/organization/outbox.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
-import { coverage, insurer, patient } from "#/organization/schema.ts";
+import { coverage, guardian, insurer, patient } from "#/organization/schema.ts";
+import { readerOf } from "#/organization/inbox.ts";
+import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { relinkPatient } from "#/organization/whatsapp-messages.ts";
 import { byName } from "#/organization/name-order.ts";
 
@@ -57,7 +60,7 @@ export interface Patient {
   whatsappConsentAt: number;
   whatsappConsentBy: string;
   active: boolean;
-  /** No birth date yet (ui: "Datos incompletos"). */
+  /** No birth date yet (ui: "Incompleto"). */
   incomplete: boolean;
   /** Under 18 today in the organization's time zone; never with no birth date. */
   minor: boolean;
@@ -279,8 +282,9 @@ export function listPatients(database: Database, options: PatientListOptions): R
 
 export function getPatient(
   database: Database,
+  acting: Acting,
   input: { patientId: string },
-): Result<{ patient: Patient; optOutPendingSince: number | null }> {
+): Result<{ patient: Patient; optOutPendingSince: number | null; conversationId: string | null }> {
   const patientId = patientIdSchema.safeParse(input.patientId);
   if (!patientId.success) {
     return notFound;
@@ -289,8 +293,40 @@ export function getPatient(
   if (!found) {
     return notFound;
   }
-  const optOutPending = optOutPendingSince(database, found.id);
-  return { ok: true, patient: toPatient(found), optOutPendingSince: optOutPending };
+  return {
+    ok: true,
+    patient: toPatient(found),
+    optOutPendingSince: optOutPendingSince(database, found.id),
+    conversationId: conversationOf(database, acting, found),
+  };
+}
+
+/**
+ * The conversation the patient's messages go to, as `acting` may open it: that
+ * of the number they reach the patient at (their contact guardian's, or their
+ * own), under either of its spellings, the one written in last when both have
+ * one. An outgoing reminder alone starts it too; none before any message.
+ */
+function conversationOf(database: Database, acting: Acting, found: { id: string; phone: string }) {
+  const contact = database
+    .select({ phone: guardian.phone })
+    .from(guardian)
+    .where(and(eq(guardian.patientId, found.id), eq(guardian.messageContact, true)))
+    .get();
+  const row = database
+    .select({ id: conversation.id })
+    .from(conversation)
+    .leftJoin(whatsappMessage, eq(whatsappMessage.conversationId, conversation.id))
+    .where(
+      and(
+        inArray(conversation.phone, phoneSpellings(contact?.phone ?? found.phone)),
+        readerOf(database, acting).visible,
+      ),
+    )
+    .groupBy(conversation.id)
+    .orderBy(desc(max(whatsappMessage.sentAt)))
+    .get();
+  return row?.id ?? null;
 }
 
 export function registerPatient(
