@@ -85,8 +85,8 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   `tests/evals/assistant/` on the named model candidates, under plain Node. Calls the
   providers' APIs and costs money, so it runs on demand with their keys, never in CI
   ([tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)). The unit
-  test `tests/evals/loads.test.ts` loads every eval module under plain Node in CI, so one
-  that stops loading fails before a paid run.
+  test `tests/evals/loads.test.ts` loads every module the eval entry points import, under
+  plain Node in CI, so one that stops loading fails before a paid run.
 - `eval:voice`: the voice notes through each transcription option, then the transcript
   through one candidate. On demand, like `eval:assistant`.
 - `eval:template-review`: the template review (#345) on the real model, through the app's
