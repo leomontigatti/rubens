@@ -11,7 +11,11 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { toast } from "#/components/ui/toast.tsx";
-import { getNotifications, markNotificationRead } from "#/server/notifications.functions.ts";
+import {
+  getNotifications,
+  markNotificationRead,
+  markNotificationUnread,
+} from "#/server/notifications.functions.ts";
 
 import {
   localTime,
@@ -50,16 +54,19 @@ const refusalMessages = {
 type Loaded = Extract<Awaited<ReturnType<typeof getNotifications>>, { ok: true }>;
 type Notification = Loaded["notifications"][number];
 
-/** Marks one notification read, the one in progress shown on its row; a refusal is a toast, since no form holds it. */
+/** Marks one notification read or unread, the one in progress shown on its row; a refusal is a toast, since no form holds it. */
 function useMarkRead() {
   const router = useRouter();
   const [marking, setMarking] = useState<string | null>(null);
 
-  async function markRead(notificationId: string) {
+  async function mark(notificationId: string, read: boolean) {
     setMarking(notificationId);
     try {
-      const result = await serverAnswer("mark-notification-read", shownPath(router), () =>
-        markNotificationRead({ data: { notificationId } }),
+      const data = { notificationId };
+      const result = await serverAnswer(
+        read ? "mark-notification-read" : "mark-notification-unread",
+        shownPath(router),
+        () => (read ? markNotificationRead({ data }) : markNotificationUnread({ data })),
       );
       if (result?.ok) {
         await router.invalidate();
@@ -71,12 +78,12 @@ function useMarkRead() {
     }
   }
 
-  return { marking, markRead };
+  return { marking, mark };
 }
 
 function NotificationList() {
   const result = Route.useLoaderData();
-  const { marking, markRead } = useMarkRead();
+  const { marking, mark } = useMarkRead();
 
   if (!result.ok) {
     return <RefusalMessage message={refusalMessages[result.reason]} />;
@@ -100,7 +107,7 @@ function NotificationList() {
               key={notification.id}
               notification={notification}
               marking={marking === notification.id}
-              onRead={() => void markRead(notification.id)}
+              onMark={(read) => void mark(notification.id, read)}
             />
           ))}
         </ul>
@@ -112,7 +119,7 @@ function NotificationList() {
 function NotificationRow(props: {
   notification: Notification;
   marking: boolean;
-  onRead: () => void;
+  onMark: (read: boolean) => void;
 }) {
   const { notification } = props;
   const waiting = waitingText(notification.waiting);
@@ -132,12 +139,15 @@ function NotificationRow(props: {
       </div>
       <div className="flex gap-2">
         <NotificationLink notification={notification} />
-        {!notification.read && (
-          <Button variant="outline" size="sm" disabled={props.marking} onClick={props.onRead}>
-            {props.marking && <Spinner data-icon="inline-start" aria-hidden />}
-            Marcar como leída
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={props.marking}
+          onClick={() => props.onMark(!notification.read)}
+        >
+          {props.marking && <Spinner data-icon="inline-start" aria-hidden />}
+          {notification.read ? "Marcar como no leída" : "Marcar como leída"}
+        </Button>
       </div>
     </li>
   );

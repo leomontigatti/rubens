@@ -549,6 +549,34 @@ describe("the opt-out under its message in the conversation", () => {
     }
   });
 
+  it("marks a resolved notification unread for its reader, still resolved", async () => {
+    const martina = await world.addPatient("Martina", numberPhone);
+    await numberOptsOut();
+    const message = await optOutMessage();
+    expectOk(
+      await world.organization.decideOptOut(world.receptionist, {
+        messageId: message.id,
+        patientId: martina.id,
+        whatsappConsent: true,
+      }),
+    );
+    const notificationOf = async (caller: typeof adminCaller) =>
+      expectOk(await world.organization.listNotifications(caller)).notifications.find(
+        (one) => one.patient?.id === martina.id,
+      );
+    const resolved = await notificationOf(world.receptionist);
+    expect(resolved).toMatchObject({ resolved: true, read: true });
+
+    expectOk(
+      await world.organization.markNotificationUnread(world.receptionist, {
+        notificationId: resolved!.id,
+      }),
+    );
+
+    expect(await notificationOf(world.receptionist)).toMatchObject({ resolved: true, read: false });
+    expect(await notificationOf(adminCaller)).toMatchObject({ resolved: true, read: true });
+  });
+
   it("turns a patient off: their consent goes, and the line says so", async () => {
     const martina = await world.addPatient("Martina", numberPhone);
     await numberOptsOut();
