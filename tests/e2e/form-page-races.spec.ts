@@ -19,9 +19,11 @@ const [first, second] = seededPatients;
 
 async function openEdit(page: Page, patient: (typeof seededPatients)[number]) {
   await page.getByRole("link", { name: fullName(patient) }).click();
+  // A patient's page is their edit form.
   await expect(page.getByRole("heading", { level: 1, name: fullName(patient) })).toBeVisible();
-  await page.getByRole("button", { name: "Editar" }).click();
-  await expect(page.getByLabel("Dirección")).toBeEditable();
+  // The address is in the form's `Contacto` tab.
+  await page.getByRole("tab", { name: "Contacto" }).click();
+  await expect(page.getByLabel("Domicilio")).toBeEditable();
 }
 
 function sidebarLink(page: Page, name: string) {
@@ -51,7 +53,7 @@ const isSave = (request: Request) =>
  * since an async function returning a promise would wait for it.
  */
 async function startHeldSave(page: Page, address: string) {
-  await page.getByLabel("Dirección").fill(`${address} ${Date.now()}`);
+  await page.getByLabel("Domicilio").fill(`${address} ${Date.now()}`);
   await holdServerFunctions(page, held, saveHeld);
   const sent = page.waitForRequest(isSave);
   const saved = page.waitForResponse((response) => isSave(response.request()));
@@ -79,15 +81,14 @@ async function settle(page: Page) {
 
 // #106: before the fix, a save ending while a sidebar link's page was still
 // loading sent the user back to the form, or to the list, stuck with a spinner.
-// On an office's edit page, whose save leaves as soon as the server answers: a
+// On an office's page, an admin's edit form, whose save leaves as soon as the server answers: a
 // patient's save first reloads the page's data, and by then the link's page has
 // loaded, which hides the race.
 test("#106: a sidebar link clicked during a save opens its page, and stays", async ({ page }) => {
   await page.goto("/sedes");
   await page.getByRole("link", { name: officeName }).click();
   await expect(page.getByRole("heading", { level: 1, name: officeName })).toBeVisible();
-  await page.getByRole("button", { name: "Editar" }).click();
-  await expect(page.getByLabel("Dirección")).toBeEditable();
+  await expect(page.getByLabel("Domicilio")).toBeEditable();
   const save = await startHeldSave(page, "Calle Sidebar 106");
   const shown = addressesFrom(page);
   await sidebarLink(page, "Agenda").click();
@@ -118,7 +119,7 @@ test("#109: a history jump to another record's edit page during a save stays the
 
   const save = await startHeldSave(page, "Calle Historia 109");
   const shown = addressesFrom(page);
-  await page.evaluate(() => history.go(-3));
+  await page.evaluate(() => history.go(-2));
   await discardChanges(page);
   await save.ended;
   await settle(page);

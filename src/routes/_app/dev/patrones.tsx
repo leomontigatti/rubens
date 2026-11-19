@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { ColorSwatch } from "#/components/color-swatch.tsx";
-import { DataTable, NoMatches, useClientDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
@@ -28,7 +28,6 @@ import {
   FieldSet,
 } from "#/components/ui/field.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import {
   PatientBubble,
   WhatsappBubble,
@@ -61,7 +60,7 @@ function Pattern(props: { title: string; wide?: boolean; children: ReactNode }) 
 }
 
 const patternColumns: DataTableColumn<{ id: string; name: string; insurer: string }>[] = [
-  { id: "name", header: "Nombre", cell: (row) => row.name },
+  { id: "name", header: "Nombre", cell: (row) => <RowName name={row.name} /> },
   { id: "insurer", header: "Obra social", cell: (row) => row.insurer },
 ];
 
@@ -281,13 +280,14 @@ function PatternFieldSizes() {
         {(field) => <field.TextField label="Correo electrónico (la mitad)" size="half" startsRow />}
       </form.AppField>
       <form.AppField name="address">
-        {(field) => <field.TextField label="Dirección (la mitad)" size="half" />}
+        {(field) => <field.TextField label="Domicilio (la mitad)" size="half" />}
       </form.AppField>
       <form.AppField name="documentType">
         {(field) => (
-          <field.SelectField label="Tipo de documento (un cuarto)">
-            <NativeSelectOption value="">Sin documento</NativeSelectOption>
-          </field.SelectField>
+          <field.SelectField
+            label="Tipo de documento (un cuarto)"
+            options={[{ value: "", label: "Sin documento" }]}
+          />
         )}
       </form.AppField>
       <form.AppField name="documentNumber">
@@ -308,7 +308,11 @@ function PatternRecordFormPage() {
       title="Editar prestación"
       record={activeRecord({
         active,
-        inactiveLabel: "Inactiva",
+        ending: "a",
+        archived: {
+          title: "Sede archivada",
+          consequence: "No aparece en las listas, y no se dan turnos en sus consultorios.",
+        },
         toggle: { pending: false, error: null },
         onChange: setActive,
       })}
@@ -451,14 +455,14 @@ function Patterns() {
         <EmptyState
           icon={BuildingIcon}
           title="Sin sedes activas"
-          description="No hay sedes activas. Empezá creando una, o mirá las inactivas."
+          description="No hay sedes activas. Empezá creando una, o mirá las archivadas."
         >
           <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>
           <EmptyStateLink
             variant="outline"
-            link={<Link to="/sedes" search={{ inactivas: true }} />}
+            link={<Link to="/sedes" search={{ archivadas: true }} />}
           >
-            Ver inactivas
+            Ver archivadas
           </EmptyStateLink>
         </EmptyState>
       </Pattern>

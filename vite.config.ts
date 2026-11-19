@@ -83,16 +83,21 @@ export default defineConfig({
       "shadcn/no-inline-styles": "error",
       "shadcn/require-static-classes": "error",
       "ui/alert-structure": "error",
+      "ui/create-names-thing": "error",
       "ui/no-bare-label": "error",
+      "ui/no-menu-item-icon": "error",
       "ui/no-raw-date-format": "error",
       "ui/no-raw-empty": "error",
       "ui/no-raw-form": "error",
       "ui/no-raw-form-element": "error",
       "ui/no-raw-page-title": "error",
       "ui/no-raw-table": "error",
+      "ui/no-status-column": "error",
       "ui/no-uncontrolled-input": "error",
       "ui/require-no-validate": "error",
       "ui/require-post-method": "error",
+      "ui/use-archived-badge": "error",
+      "ui/use-option-select": "error",
       "no-restricted-imports": [
         "error",
         {
@@ -158,12 +163,13 @@ export default defineConfig({
         },
       },
       {
-        // The one place a form is drawn; the pages that are only their form, with
+        // The two places a form is drawn, a page's and a dialog's; the pages that are only their form, with
         // no list to return to; the patient's quick registration, a form of its
         // own inside booking; the reply to a patient, under the conversation it answers;
         // and the sandbox's scenario and patient's message, around its conversation.
         files: [
           "src/components/form-page.tsx",
+          "src/components/form-dialog.tsx",
           "src/components/patient-form.tsx",
           "src/routes/ingresar.tsx",
           "src/routes/_app/cambiar-contrasena.tsx",
@@ -185,10 +191,25 @@ export default defineConfig({
         },
       },
       {
+        // The select every form uses, which passes a default value through for
+        // the forms above that the browser submits.
+        files: ["src/components/option-select.tsx"],
+        rules: {
+          "ui/no-uncontrolled-input": "off",
+        },
+      },
+      {
         // The one place a date is written for a person.
         files: ["src/lib/dates.ts"],
         rules: {
           "ui/no-raw-date-format": "off",
+        },
+      },
+      {
+        // The one place a choice from a list is drawn, and the form kit's marked one.
+        files: ["src/components/option-select.tsx", "src/components/app-form.tsx"],
+        rules: {
+          "ui/use-option-select": "off",
         },
       },
       {

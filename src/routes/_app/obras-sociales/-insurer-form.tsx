@@ -3,7 +3,6 @@ import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { insurerInputSchema, insurerKindLabels, insurerKinds } from "#/lib/coverages.ts";
 import type { InsurerInput } from "#/lib/coverages.ts";
 
@@ -62,13 +61,10 @@ export function InsurerForm(props: {
       </form.AppField>
       <form.AppField name="kind">
         {(field) => (
-          <field.SelectField label="Tipo">
-            {insurerKinds.map((kind) => (
-              <NativeSelectOption key={kind} value={kind}>
-                {insurerKindLabels[kind]}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="Tipo"
+            options={insurerKinds.map((kind) => ({ value: kind, label: insurerKindLabels[kind] }))}
+          />
         )}
       </form.AppField>
     </ActionFormPage>

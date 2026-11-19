@@ -7,10 +7,12 @@ import { createTemplate, getWhatsappSettings } from "#/server/whatsapp.functions
 import { templateRefusalMessages } from "#/lib/whatsapp-template-copy.ts";
 
 import { TemplateForm } from "#/routes/_app/whatsapp/plantillas/-template-form.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/plantillas/nueva")({
   head: () => ({ meta: [{ title: "Nueva plantilla · underthing" }] }),
   loader: () => getWhatsappSettings(),
+  staticData: { crumbs: fixedCrumbs("Nueva plantilla") },
   component: NewTemplate,
 });
 

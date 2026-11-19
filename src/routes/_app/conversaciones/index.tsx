@@ -5,7 +5,7 @@ import { useState } from "react";
 import * as z from "zod";
 
 import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useServerDataTable } from "#/components/data-table.tsx";
+import { DataTable, NoMatches, RowName, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState } from "#/components/empty-state.tsx";
 import type { FilterGroup } from "#/components/filter-groups.ts";
@@ -49,13 +49,8 @@ const searchRefusalMessages = {
   invalidInput: "La búsqueda es demasiado larga. Escribí menos para buscar.",
 };
 
-function ConversationLink(props: { conversationId: string; children: string }) {
-  return (
-    <RowLink to="/conversaciones/$conversationId" params={{ conversationId: props.conversationId }}>
-      {props.children}
-    </RowLink>
-  );
-}
+const conversationLink = (conversationId: string) =>
+  ({ to: "/conversaciones/$conversationId", params: { conversationId } }) as const;
 
 // A number that stands for no patient is named by its phone, so the phone
 // opens its conversation.
@@ -68,7 +63,7 @@ const columns: DataTableColumn<ConversationSummary>[] = [
       return name === null ? (
         <span className="text-muted-foreground">Sin registrar</span>
       ) : (
-        <ConversationLink conversationId={conversation.id}>{name}</ConversationLink>
+        <RowName name={name} link={conversationLink(conversation.id)} />
       );
     },
   },
@@ -77,9 +72,7 @@ const columns: DataTableColumn<ConversationSummary>[] = [
     header: "Teléfono",
     cell: (conversation) =>
       registeredName(conversation) === null ? (
-        <ConversationLink conversationId={conversation.id}>
-          {formatPhone(conversation.phone)}
-        </ConversationLink>
+        <RowName name={formatPhone(conversation.phone)} link={conversationLink(conversation.id)} />
       ) : (
         formatPhone(conversation.phone)
       ),

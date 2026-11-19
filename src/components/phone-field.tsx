@@ -1,10 +1,10 @@
 import { useRef } from "react";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { FieldHint, joinIds, useFieldContext } from "#/components/form-fields.tsx";
 import { placeAttributes } from "#/components/field-size.ts";
 import type { FieldPlace } from "#/components/field-size.ts";
-import { FieldProblemText, useFieldProblem } from "#/components/field-problem.tsx";
+import { FieldProblemText, useFieldId, useFieldProblem } from "#/components/field-problem.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { ButtonGroup } from "#/components/ui/button-group.tsx";
 import {
@@ -39,17 +39,24 @@ export const phoneMessages: Record<PhoneEntryRefusal, string> = {
 const argentina = "AR";
 
 export function PhoneField(
-  props: FieldPlace & { label: string; required?: boolean; hint?: string },
+  props: FieldPlace & {
+    label: string;
+    required?: boolean;
+    hint?: string;
+    /** A button after the number, such as a patient's `Ver conversación`. */
+    action?: ReactNode;
+  },
 ) {
   const field = useFieldContext<PhoneEntry>();
   const numberInput = useRef<HTMLInputElement>(null);
   const entry = field.state.value;
   const { problem, errorId, invalid } = useFieldProblem(field.name);
-  const hintId = `${field.name}-hint`;
+  const id = useFieldId(field.name);
+  const hintId = `${id}-hint`;
   const argentine = entry.country === argentina;
   return (
     <Field {...placeAttributes(props, "quarter")} data-invalid={invalid}>
-      <FieldLabel htmlFor={field.name}>{props.label}</FieldLabel>
+      <FieldLabel htmlFor={id}>{props.label}</FieldLabel>
       <ButtonGroup className="w-full">
         <CountryPicker
           code={entry.country}
@@ -58,7 +65,7 @@ export function PhoneField(
         />
         <Input
           ref={numberInput}
-          id={field.name}
+          id={id}
           name={field.name}
           type="tel"
           inputMode="numeric"
@@ -71,6 +78,7 @@ export function PhoneField(
           aria-invalid={invalid}
           aria-describedby={joinIds(hintId, errorId)}
         />
+        {props.action}
       </ButtonGroup>
       <FieldHint id={hintId}>
         {[

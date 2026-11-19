@@ -1,12 +1,15 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { pageHead } from "#/lib/page-title.ts";
 
 import { activeRecord } from "#/components/admin-form.tsx";
-import { pickedIn, useAppForm } from "#/components/app-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
+import { pickedIn } from "#/components/form-fields.tsx";
 import { ColorSwatch } from "#/components/color-swatch.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
-import { Button } from "#/components/ui/button.tsx";
+import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
+import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import { practitionerColorLabels, practitionerColors } from "#/lib/practitioner-colors.ts";
 import { isOneOf } from "#/lib/is-one-of.ts";
 import { memberUpdateSchema } from "#/lib/staff.ts";
@@ -18,16 +21,19 @@ import {
 } from "#/server/staff.functions.ts";
 import type { PractitionerSettings, StaffMember } from "#/organization/staff.ts";
 
+import { useStartingPasswordDialog } from "#/routes/_app/personal/-starting-password.tsx";
 import {
   RefusalAlert,
   roleOptions,
   useAction,
   useEditAction,
 } from "#/routes/_app/personal/-shared.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/personal/$memberId")({
   loader: ({ params }) => getMember({ data: { memberId: params.memberId } }),
-  head: () => ({ meta: [{ title: "Editar persona · underthing" }] }),
+  head: ({ loaderData }) => pageHead(loaderData?.ok ? loaderData.member.name : "Persona"),
+  staticData: { crumbs: Crumbs },
   component: EditMember,
 });
 
@@ -61,7 +67,8 @@ function settingsValues(saved: PractitionerSettings | null): SettingsValues {
   return { ...saved, specialty: saved.specialty ?? "", gridMinutes: String(saved.gridMinutes) };
 }
 
-type MemberValues = SettingsValues & { roles: string[] };
+/** The form's values; the name and the email show as on `Nueva persona`, but cannot change. */
+type MemberValues = SettingsValues & { roles: string[]; name: string; email: string };
 
 const colorOptions = practitionerColors.map((color) => ({
   value: color,
@@ -139,36 +146,37 @@ function EditMember() {
 }
 
 /**
- * The member's only page, as the list opens it: their status, the starting
- * password and the deactivation beside the title.
+ * The member's page, as the list opens it: their state beside the name, and
+ * `Acciones` with the starting password before the deactivation.
  */
 function useMemberRecord(member: StaffMember): RecordHeader {
   const { memberId } = member;
   const toggle = useAction();
-  const active = activeRecord({
+  const password = useStartingPasswordDialog(member);
+  const record = activeRecord({
     active: member.active,
-    inactiveLabel: "Inactivo",
+    ending: "o",
+    archived: {
+      title: "Persona archivada",
+      consequence: "No puede ingresar a underthing y, si atiende, no se le dan turnos.",
+    },
+    transitionId: memberId,
     toggle,
     onChange: (next) =>
       void toggle.run(() => changeMemberActive({ data: { memberId, active: next } })),
     deactivation: {
-      question: `¿Desactivar a ${member.name}?`,
+      question: `¿Archivar a ${member.name}?`,
       countUpcoming: () => getMemberUpcomingCount({ data: { memberId } }),
     },
+    items: <DropdownMenuItem onClick={password.open}>Asignar contraseña inicial</DropdownMenuItem>,
   });
+  // The dialog sits beside the menu, which closes on the pick.
   return {
-    ...active,
+    ...record,
     actions: (busy) => (
       <>
-        <Button
-          variant="outline"
-          disabled={busy}
-          nativeButton={false}
-          render={<Link to="/personal/$memberId/contrasena" params={{ memberId }} />}
-        >
-          Asignar contraseña inicial
-        </Button>
-        {active.actions(busy)}
+        {record.actions(busy)}
+        {password.dialog}
       </>
     ),
   };
@@ -183,6 +191,8 @@ function MemberForm({ member }: { member: StaffMember }) {
   const defaultValues: MemberValues = {
     ...settingsValues(settings),
     roles: pickedIn(roleOptions, member.roles),
+    name: member.name,
+    email: member.email,
   };
   const form = useAppForm({
     defaultValues,
@@ -213,12 +223,24 @@ function MemberForm({ member }: { member: StaffMember }) {
     <ActionFormPage
       page={page}
       form={form}
-      title="Editar persona"
-      description={`${member.name} · ${member.email}`}
+      title={member.name}
+      description="Los roles de la persona y, si atiende, sus datos como profesional."
       submitLabel="Guardar"
       action={action}
       record={record}
+      alerts={
+        <Alert variant="info">
+          <AlertTitle>El nombre y el correo son los de su cuenta</AlertTitle>
+          <AlertDescription>Con ellos ingresa, así que no se cambian desde acá.</AlertDescription>
+        </Alert>
+      }
     >
+      <form.AppField name="name">
+        {(field) => <field.TextField label="Nombre" readOnly />}
+      </form.AppField>
+      <form.AppField name="email">
+        {(field) => <field.TextField label="Correo" type="email" size="half" readOnly />}
+      </form.AppField>
       <form.AppField name="roles">
         {(field) => <field.CheckboxGroupField legend="Roles" options={roleOptions} />}
       </form.AppField>
@@ -256,4 +278,9 @@ function MemberForm({ member }: { member: StaffMember }) {
       )}
     </ActionFormPage>
   );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  return <PageCrumbs items={[{ label: result.ok ? result.member.name : "Persona" }]} />;
 }

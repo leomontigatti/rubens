@@ -160,7 +160,7 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
 
     expect(found).toHaveLength(5);
     const messages = found.map(text).join("\n");
-    for (const component of ["Input", "Checkbox", "NativeSelect", "Textarea", "Button"]) {
+    for (const component of ["Input", "Checkbox", "Select", "Textarea", "Button"]) {
       expect(messages).toContain(component);
     }
   });
@@ -312,9 +312,69 @@ describe("UI lint rules", { timeout: 30_000 }, () => {
     expect(dateFormat(codes(existing("src/lib/dates.ts")))).toEqual([]);
   });
 
+  const rule = (name: string, found: string[]) => found.filter((code) => code.includes(name));
+
+  const statusColumnProbe = probe(
+    "status-column.tsx",
+    `export const columns = [\n  { id: "name", header: "Nombre" },\n  { id: "status", header: "Estado" },\n];\n`,
+  );
+
+  it("reject a `Estado` column: a state is a badge beside the name", () => {
+    expect(rule("no-status-column", codes(statusColumnProbe))).toHaveLength(1);
+  });
+
+  const badge = `import { Badge } from "#/components/ui/badge.tsx";\n\n`;
+  const activeBadgeProbe = probe(
+    "active-badge.tsx",
+    `${badge}export const States = () => (\n  <>\n    <Badge variant="secondary">Archivada</Badge>\n    <Badge variant="secondary">\n      Inactivo\n    </Badge>\n    <Badge variant="warning">Datos incompletos</Badge>\n  </>\n);\n`,
+  );
+
+  it("reject a hand-made archived or active state badge, not other badges", () => {
+    expect(rule("use-archived-badge", codes(activeBadgeProbe))).toHaveLength(2);
+  });
+
+  const createLabelProbe = probe(
+    "create-label.tsx",
+    `const Page = (props: { creates?: boolean; submitLabel: string }) => props.submitLabel;\n\nexport const Pages = () => (\n  <>\n    <Page creates submitLabel="Guardar" />\n    <Page creates submitLabel="Crear" />\n    <Page creates submitLabel="Crear sede" />\n    <Page submitLabel="Guardar" />\n  </>\n);\n`,
+  );
+
+  it("reject a create whose submit button does not name the thing", () => {
+    expect(rule("create-names-thing", codes(createLabelProbe))).toHaveLength(2);
+  });
+
+  const rawSelectProbe = probe(
+    "raw-select.tsx",
+    `import { Select, SelectContent, SelectTrigger } from "#/components/ui/select.tsx";\n\nexport const Kind = () => (\n  <Select>\n    <SelectTrigger />\n    <SelectContent />\n  </Select>\n);\n`,
+  );
+
+  it("reject shadcn's Select outside OptionSelect", () => {
+    const found = lint(rawSelectProbe).filter((d) => d.code.includes("use-option-select"));
+
+    expect(found).toHaveLength(1);
+    expect(found.map(text).join()).toContain("OptionSelect");
+  });
+
+  it("allow shadcn's Select in OptionSelect and the form kit", () => {
+    const kit = [
+      existing("src/components/option-select.tsx"),
+      existing("src/components/app-form.tsx"),
+    ];
+
+    expect(codes(...kit)).not.toContain("ui(use-option-select)");
+  });
+
+  const menuIconProbe = probe(
+    "menu-icon.tsx",
+    `import { ArchiveIcon } from "lucide-react";\n\nimport { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";\n\nexport const Items = () => (\n  <>\n    <DropdownMenuItem>\n      <ArchiveIcon />\n      Archivar\n    </DropdownMenuItem>\n    <DropdownMenuItem>Restaurar</DropdownMenuItem>\n  </>\n);\n`,
+  );
+
+  it("reject an icon in a menu item: its items are text only", () => {
+    expect(rule("no-menu-item-icon", codes(menuIconProbe))).toHaveLength(1);
+  });
+
   const uiComponents = [
     existing("src/components/ui/input.tsx"),
-    existing("src/components/ui/native-select.tsx"),
+    existing("src/components/ui/select.tsx"),
   ];
 
   it("leave src/components/ui alone: its components own the raw elements", () => {

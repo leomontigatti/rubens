@@ -7,6 +7,14 @@ Spanish term the user sees. How to read it is in
 [docs/agents/coding-standards.md](docs/agents/coding-standards.md#code-language).
 The detailed rules live in [docs/domain/](docs/domain/).
 
+## Records
+
+**`inactive`** — ui: "Archivado", "Archivada"
+A record taken out of use without being deleted: lists hide it until their
+`Archivados` filter includes it, and it keeps its history. `deactivate` is
+"Archivar" and `reactivate` "Restaurar".
+_Avoid_: desactivado, inactivo, desactivar, reactivar, borrado
+
 ## People
 
 **`organization`** — ui: "Organización"
@@ -105,8 +113,8 @@ _Avoid_: comment, observation, reason, motivo
 
 **`toReschedule`** — ui: "Turnos a reprogramar"
 The `appointment`s a new `timeOff`, `closure` or `schedule` change left outside
-working time, those of a deactivated `practitioner` or `patient`, and those in a
-deactivated `room` or `office`, listed for reception to move or cancel. They are
+working time, those of an `inactive` `practitioner` or `patient`, and those in an
+`inactive` `room` or `office`, listed for reception to move or cancel. They are
 never cancelled on their own.
 _Avoid_: conflicts, affected appointments
 
@@ -114,16 +122,15 @@ _Avoid_: conflicts, affected appointments
 
 **`patient`** — ui: "Paciente"
 A person the `practitioner`s of an `organization` see, in one registry shared by
-the whole organization. A patient is deactivated, never deleted.
+the whole organization. A patient is archived (`inactive`), never deleted.
 _Avoid_: client, customer, cliente, user
 
-**`chosenName`** — ui: "Nombre autopercibido"
-The name a `patient` chooses to be called by, shown in place of the legal name
-wherever the app names them. Kept as typed, while the legal names are saved in
-title case.
-_Avoid_: nickname, alias, preferred name
+**`chosenName`** — ui: "Apodo"
+The name a `patient` goes by, shown in place of their first name wherever the
+app names them. Kept as typed, while the legal names are saved in title case.
+_Avoid_: alias, preferred name, nombre autopercibido
 
-**`incompletePatient`** — ui: "Datos incompletos"
+**`incompletePatient`** — ui: "Incompleto"
 A `patient` registered with only a name and a phone, missing at least their birth
 date, to be completed at the first visit.
 _Avoid_: draft patient, pending patient, quick patient
@@ -142,9 +149,10 @@ An adult responsible for a `patient`, usually a minor's parent. A guardian can b
 the patient's contact for messages and signs a minor's `consentForm`s.
 _Avoid_: tutor, parent, contact person
 
-**`whatsappConsent`** — ui: "Acepta WhatsApp"
+**`whatsappConsent`** — ui: "Acepta WhatsApp"; off, "Sin WhatsApp"
 Whether a `patient` may be messaged by WhatsApp. It is on from registration and is
-turned off only when the patient asks.
+turned off only when the patient asks: `Dejar de enviar por WhatsApp`, and back on
+with `Volver a enviar por WhatsApp`.
 _Avoid_: opt-in, subscription
 
 ## Messages

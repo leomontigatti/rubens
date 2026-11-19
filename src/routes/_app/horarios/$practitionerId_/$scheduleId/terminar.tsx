@@ -8,10 +8,12 @@ import type { Schedule } from "#/organization/schedules.ts";
 
 import { EditableSchedule } from "#/routes/_app/horarios/-schedule-form.tsx";
 import { useAction } from "#/routes/_app/horarios/-shared.tsx";
+import { PractitionerStepCrumbs } from "#/routes/_app/horarios/-practitioner-crumbs.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/$scheduleId/terminar")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
   head: () => ({ meta: [{ title: "Terminar horario · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: EndSchedule,
 });
 
@@ -57,5 +59,14 @@ function EndForm(props: { schedule: Schedule; initial: string }) {
         {(field) => <field.DateField label="Último día" required />}
       </form.AppField>
     </ActionFormPage>
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { practitionerId } = Route.useParams();
+  const name = result.ok ? result.practitioner.displayName : null;
+  return (
+    <PractitionerStepCrumbs practitionerId={practitionerId} name={name} step="Terminar horario" />
   );
 }

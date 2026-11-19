@@ -1,4 +1,3 @@
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import type { OfficeOption } from "#/organization/closures.ts";
 
 /** The copy for every refusal the closure server functions return. */
@@ -24,15 +23,9 @@ export function officeField(offices: OfficeOption[], initial: string | null) {
   return {
     label: "Sede",
     initial: initial ?? "",
-    options: (
-      <>
-        <NativeSelectOption value="">{wholeOrganization}</NativeSelectOption>
-        {offices.map((office) => (
-          <NativeSelectOption key={office.id} value={office.id}>
-            {office.name}
-          </NativeSelectOption>
-        ))}
-      </>
-    ),
+    options: [
+      { value: "", label: wholeOrganization },
+      ...offices.map((office) => ({ value: office.id, label: office.name })),
+    ],
   };
 }

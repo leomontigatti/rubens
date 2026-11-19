@@ -3,11 +3,11 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
-import { DataTable, RowLink, useServerDataTable } from "#/components/data-table.tsx";
+import { DataTable, RowName, useServerDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
-import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
-import { ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
+import { includesArchivedPick, archivedFilter } from "#/components/filter-groups.ts";
+import { ArchivedBadge, ErrorAlert, RefusalMessage } from "#/components/admin-form.tsx";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
@@ -26,10 +26,13 @@ export const Route = createFileRoute("/_app/pacientes/")({
   // The search text stays out of the address: a URL ends up in proxy logs and
   // the browser's history, and patient data must not.
   validateSearch: z.object({
-    inactivos: z.boolean().optional().catch(undefined),
+    archivados: z.boolean().optional().catch(undefined),
     pagina: z.number().int().positive().optional().catch(undefined),
   }),
-  loaderDeps: ({ search }) => ({ includeInactive: search.inactivos ?? false, page: search.pagina }),
+  loaderDeps: ({ search }) => ({
+    includeInactive: search.archivados ?? false,
+    page: search.pagina,
+  }),
   loader: ({ deps }) => getPatients({ data: deps }),
   component: Patients,
 });
@@ -51,10 +54,10 @@ function shownPatients(listed: PatientPage, { searching, found }: PatientSearch)
 }
 
 function Registry({ listed }: { listed: PatientPage }) {
-  const { inactivos } = Route.useSearch();
+  const { archivados } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [query, setQuery] = useState("");
-  const search = usePatientSearch(query, inactivos === true);
+  const search = usePatientSearch(query, archivados === true);
   const table = useServerDataTable({
     rows: shownPatients(listed, search),
     columns,
@@ -68,7 +71,7 @@ function Registry({ listed }: { listed: PatientPage }) {
       void navigate({ search: (previous) => ({ ...previous, pagina }) }),
   };
   const changeStatus = (value: string | null) =>
-    void navigate({ search: { inactivos: showsAllPick(value) } });
+    void navigate({ search: { archivados: includesArchivedPick(value) } });
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,14 +95,18 @@ function Registry({ listed }: { listed: PatientPage }) {
             loading: search.waiting,
           }}
           filters={{
-            groups: [statusFilter(inactivos, { active: "Activos", all: "Todos" })],
+            groups: [archivedFilter(archivados, { group: "Archivados", included: "Incluidos" })],
             onPick: (_id, value) => changeStatus(value),
             onRemove: () => changeStatus(null),
           }}
           pager={search.searching ? undefined : pager}
           noRecords={!search.searching && listed.total === 0}
           empty={
-            <NoPatients search={search} inactivos={inactivos} onlyInactive={listed.onlyInactive} />
+            <NoPatients
+              search={search}
+              archivados={archivados}
+              onlyInactive={listed.onlyInactive}
+            />
           }
         />
         <MorePatientMatches search={search} />
@@ -108,20 +115,20 @@ function Registry({ listed }: { listed: PatientPage }) {
   );
 }
 
-function NoPatients(props: { search: PatientSearch; inactivos?: boolean; onlyInactive: boolean }) {
-  const { search, inactivos } = props;
+function NoPatients(props: { search: PatientSearch; archivados?: boolean; onlyInactive: boolean }) {
+  const { search, archivados } = props;
   const problem = patientSearchProblem(search);
   if (problem) {
     return <ErrorAlert message={problem} />;
   }
   // Beside "Nuevo paciente" it is the second action, so outline; alone, the main one.
   const showInactive = (variant: "default" | "outline") =>
-    !inactivos && (
+    !archivados && (
       <EmptyStateLink
         variant={variant}
-        link={<Link to="/pacientes" search={{ inactivos: true }} />}
+        link={<Link to="/pacientes" search={{ archivados: true }} />}
       >
-        Ver inactivos
+        Ver archivados
       </EmptyStateLink>
     );
   if (!search.searching) {
@@ -131,7 +138,7 @@ function NoPatients(props: { search: PatientSearch; inactivos?: boolean; onlyIna
         title={props.onlyInactive ? "Sin pacientes activos" : "Sin pacientes"}
         description={
           props.onlyInactive
-            ? "No hay pacientes activos. Empezá registrando uno, o mirá los inactivos."
+            ? "No hay pacientes activos. Empezá registrando uno, o mirá los archivados."
             : "Todavía no hay pacientes. Empezá registrando el primero."
         }
       >
@@ -159,9 +166,17 @@ const columns: DataTableColumn<ListedPatient>[] = [
     id: "name",
     header: "Nombre",
     cell: (patient) => (
-      <RowLink to="/pacientes/$patientId" params={{ patientId: patient.id }}>
-        {patientName(patient)}
-      </RowLink>
+      <RowName
+        name={patientName(patient)}
+        link={{ to: "/pacientes/$patientId", params: { patientId: patient.id } }}
+        status={
+          <>
+            <ArchivedBadge active={patient.active} ending="o" />
+            {patient.incomplete && <Badge variant="warning">Incompleto</Badge>}
+            {!patient.whatsappConsent && <Badge variant="info">Sin WhatsApp</Badge>}
+          </>
+        }
+      />
     ),
   },
   {
@@ -171,14 +186,4 @@ const columns: DataTableColumn<ListedPatient>[] = [
   },
   { id: "phone", header: "Teléfono", cell: (patient) => formatPhone(patient.phone) },
   { id: "insurer", header: "Obra social", cell: (patient) => patient.insurerName ?? "Particular" },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (patient) => (
-      <div className="flex gap-2">
-        {!patient.active && <Badge variant="secondary">Inactivo</Badge>}
-        {patient.incomplete && <Badge variant="warning">Datos incompletos</Badge>}
-      </div>
-    ),
-  },
 ];

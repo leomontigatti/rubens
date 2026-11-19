@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
+import { recordHead } from "#/lib/page-title.ts";
 import { activeRecord, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import {
   changeMedicalServiceActive,
@@ -9,11 +10,19 @@ import {
 
 import { MedicalServiceForm } from "#/routes/_app/prestaciones/-medical-service-form.tsx";
 import { refusalMessages } from "#/routes/_app/prestaciones/-shared.ts";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/prestaciones/$practitionerId_/$medicalServiceId")({
   loader: ({ params }) =>
     getMedicalServices({ data: { practitionerId: params.practitionerId, includeInactive: true } }),
-  head: () => ({ meta: [{ title: "Editar prestación · underthing" }] }),
+  head: ({ loaderData, params }) =>
+    recordHead(
+      loaderData?.ok ? loaderData.medicalServices : undefined,
+      params.medicalServiceId,
+      (one) => one.name,
+      "Prestación",
+    ),
+  staticData: { crumbs: Crumbs },
   component: EditMedicalService,
 });
 
@@ -34,14 +43,19 @@ function EditMedicalService() {
   return (
     <MedicalServiceForm
       practitionerId={result.practitioner.id}
-      title="Editar prestación"
-      description={medicalService.name}
+      title={medicalService.name}
+      description="Los datos de la prestación y los mensajes de WhatsApp que envía."
       initial={medicalService}
       templates={result.templates}
       submitLabel="Guardar"
       record={activeRecord({
         active: medicalService.active,
-        inactiveLabel: "Inactiva",
+        ending: "a",
+        archived: {
+          title: "Prestación archivada",
+          consequence: "No se pueden dar turnos con ella.",
+        },
+        transitionId: medicalServiceId,
         toggle,
         onChange: (active) =>
           void toggle.run(() =>
@@ -49,6 +63,22 @@ function EditMedicalService() {
           ),
       })}
       onSubmit={(fields) => editMedicalService({ data: { ...fields, medicalServiceId } })}
+    />
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { practitionerId } = Route.useParams();
+  return (
+    <PageCrumbs
+      items={[
+        {
+          label: result.ok ? result.practitioner.displayName : "Profesional",
+          link: <Link to="/prestaciones/$practitionerId" params={{ practitionerId }} />,
+        },
+        { label: "Editar prestación" },
+      ]}
     />
   );
 }

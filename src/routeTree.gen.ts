@@ -47,11 +47,8 @@ import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
 import { Route as AppHorariosPractitionerIdNuevoRouteImport } from './routes/_app/horarios/$practitionerId_/nuevo'
-import { Route as AppPacientesPatientIdEditarRouteImport } from './routes/_app/pacientes/$patientId_/editar'
-import { Route as AppPersonalMemberIdContrasenaRouteImport } from './routes/_app/personal/$memberId_/contrasena'
 import { Route as AppPrestacionesPractitionerIdMedicalServiceIdRouteImport } from './routes/_app/prestaciones/$practitionerId_/$medicalServiceId'
 import { Route as AppPrestacionesPractitionerIdNuevaRouteImport } from './routes/_app/prestaciones/$practitionerId_/nueva'
-import { Route as AppSedesOfficeIdEditarRouteImport } from './routes/_app/sedes/$officeId_/editar'
 import { Route as AppWhatsappConfiguracionIndexRouteImport } from './routes/_app/whatsapp/configuracion/index'
 import { Route as AppWhatsappConfiguracionContactosRouteImport } from './routes/_app/whatsapp/configuracion/contactos'
 import { Route as AppWhatsappConfiguracionDevolucionRouteImport } from './routes/_app/whatsapp/configuracion/devolucion'
@@ -70,8 +67,6 @@ import { Route as AppPacientesPatientIdCoberturasCoverageIdRouteImport } from '.
 import { Route as AppPacientesPatientIdCoberturasNuevaRouteImport } from './routes/_app/pacientes/$patientId_/coberturas/nueva'
 import { Route as AppPacientesPatientIdResponsablesGuardianIdRouteImport } from './routes/_app/pacientes/$patientId_/responsables/$guardianId'
 import { Route as AppPacientesPatientIdResponsablesNuevoRouteImport } from './routes/_app/pacientes/$patientId_/responsables/nuevo'
-import { Route as AppSedesOfficeIdConsultoriosRoomIdRouteImport } from './routes/_app/sedes/$officeId_/consultorios/$roomId'
-import { Route as AppSedesOfficeIdConsultoriosNuevoRouteImport } from './routes/_app/sedes/$officeId_/consultorios/nuevo'
 import { Route as ApiConversacionesConversationIdMensajesMessageIdRouteImport } from './routes/api/conversaciones/$conversationId/mensajes/$messageId'
 
 const AppRoute = AppRouteImport.update({
@@ -269,18 +264,6 @@ const AppHorariosPractitionerIdNuevoRoute =
     path: '/horarios/$practitionerId/nuevo',
     getParentRoute: () => AppRoute,
   } as any)
-const AppPacientesPatientIdEditarRoute =
-  AppPacientesPatientIdEditarRouteImport.update({
-    id: '/pacientes/$patientId_/editar',
-    path: '/pacientes/$patientId/editar',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppPersonalMemberIdContrasenaRoute =
-  AppPersonalMemberIdContrasenaRouteImport.update({
-    id: '/personal/$memberId_/contrasena',
-    path: '/personal/$memberId/contrasena',
-    getParentRoute: () => AppRoute,
-  } as any)
 const AppPrestacionesPractitionerIdMedicalServiceIdRoute =
   AppPrestacionesPractitionerIdMedicalServiceIdRouteImport.update({
     id: '/prestaciones/$practitionerId_/$medicalServiceId',
@@ -293,11 +276,6 @@ const AppPrestacionesPractitionerIdNuevaRoute =
     path: '/prestaciones/$practitionerId/nueva',
     getParentRoute: () => AppRoute,
   } as any)
-const AppSedesOfficeIdEditarRoute = AppSedesOfficeIdEditarRouteImport.update({
-  id: '/sedes/$officeId_/editar',
-  path: '/sedes/$officeId/editar',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppWhatsappConfiguracionIndexRoute =
   AppWhatsappConfiguracionIndexRouteImport.update({
     id: '/whatsapp/configuracion/',
@@ -406,18 +384,6 @@ const AppPacientesPatientIdResponsablesNuevoRoute =
     path: '/pacientes/$patientId/responsables/nuevo',
     getParentRoute: () => AppRoute,
   } as any)
-const AppSedesOfficeIdConsultoriosRoomIdRoute =
-  AppSedesOfficeIdConsultoriosRoomIdRouteImport.update({
-    id: '/sedes/$officeId_/consultorios/$roomId',
-    path: '/sedes/$officeId/consultorios/$roomId',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppSedesOfficeIdConsultoriosNuevoRoute =
-  AppSedesOfficeIdConsultoriosNuevoRouteImport.update({
-    id: '/sedes/$officeId_/consultorios/nuevo',
-    path: '/sedes/$officeId/consultorios/nuevo',
-    getParentRoute: () => AppRoute,
-  } as any)
 const ApiConversacionesConversationIdMensajesMessageIdRoute =
   ApiConversacionesConversationIdMensajesMessageIdRouteImport.update({
     id: '/api/conversaciones/$conversationId/mensajes/$messageId',
@@ -463,11 +429,8 @@ export interface FileRoutesByFullPath {
   '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
-  '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
-  '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
-  '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
   '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
@@ -486,8 +449,6 @@ export interface FileRoutesByFullPath {
   '/pacientes/$patientId/coberturas/nueva': typeof AppPacientesPatientIdCoberturasNuevaRoute
   '/pacientes/$patientId/responsables/$guardianId': typeof AppPacientesPatientIdResponsablesGuardianIdRoute
   '/pacientes/$patientId/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
-  '/sedes/$officeId/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
-  '/sedes/$officeId/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
   '/api/conversaciones/$conversationId/mensajes/$messageId': typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 export interface FileRoutesByTo {
@@ -528,11 +489,8 @@ export interface FileRoutesByTo {
   '/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/horarios/$practitionerId/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
-  '/pacientes/$patientId/editar': typeof AppPacientesPatientIdEditarRoute
-  '/personal/$memberId/contrasena': typeof AppPersonalMemberIdContrasenaRoute
   '/prestaciones/$practitionerId/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/prestaciones/$practitionerId/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
-  '/sedes/$officeId/editar': typeof AppSedesOfficeIdEditarRoute
   '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
@@ -551,8 +509,6 @@ export interface FileRoutesByTo {
   '/pacientes/$patientId/coberturas/nueva': typeof AppPacientesPatientIdCoberturasNuevaRoute
   '/pacientes/$patientId/responsables/$guardianId': typeof AppPacientesPatientIdResponsablesGuardianIdRoute
   '/pacientes/$patientId/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
-  '/sedes/$officeId/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
-  '/sedes/$officeId/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
   '/api/conversaciones/$conversationId/mensajes/$messageId': typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 export interface FileRoutesById {
@@ -595,11 +551,8 @@ export interface FileRoutesById {
   '/_app/agenda/sobreturnos/nuevo': typeof AppAgendaSobreturnosNuevoRoute
   '/_app/agenda/turnos/nuevo': typeof AppAgendaTurnosNuevoRoute
   '/_app/horarios/$practitionerId_/nuevo': typeof AppHorariosPractitionerIdNuevoRoute
-  '/_app/pacientes/$patientId_/editar': typeof AppPacientesPatientIdEditarRoute
-  '/_app/personal/$memberId_/contrasena': typeof AppPersonalMemberIdContrasenaRoute
   '/_app/prestaciones/$practitionerId_/$medicalServiceId': typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   '/_app/prestaciones/$practitionerId_/nueva': typeof AppPrestacionesPractitionerIdNuevaRoute
-  '/_app/sedes/$officeId_/editar': typeof AppSedesOfficeIdEditarRoute
   '/_app/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/_app/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/_app/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
@@ -618,8 +571,6 @@ export interface FileRoutesById {
   '/_app/pacientes/$patientId_/coberturas/nueva': typeof AppPacientesPatientIdCoberturasNuevaRoute
   '/_app/pacientes/$patientId_/responsables/$guardianId': typeof AppPacientesPatientIdResponsablesGuardianIdRoute
   '/_app/pacientes/$patientId_/responsables/nuevo': typeof AppPacientesPatientIdResponsablesNuevoRoute
-  '/_app/sedes/$officeId_/consultorios/$roomId': typeof AppSedesOfficeIdConsultoriosRoomIdRoute
-  '/_app/sedes/$officeId_/consultorios/nuevo': typeof AppSedesOfficeIdConsultoriosNuevoRoute
   '/api/conversaciones/$conversationId/mensajes/$messageId': typeof ApiConversacionesConversationIdMensajesMessageIdRoute
 }
 export interface FileRouteTypes {
@@ -662,11 +613,8 @@ export interface FileRouteTypes {
     | '/agenda/sobreturnos/nuevo'
     | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
-    | '/pacientes/$patientId/editar'
-    | '/personal/$memberId/contrasena'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
-    | '/sedes/$officeId/editar'
     | '/whatsapp/configuracion/contactos'
     | '/whatsapp/configuracion/devolucion'
     | '/whatsapp/configuracion/prueba'
@@ -685,8 +633,6 @@ export interface FileRouteTypes {
     | '/pacientes/$patientId/coberturas/nueva'
     | '/pacientes/$patientId/responsables/$guardianId'
     | '/pacientes/$patientId/responsables/nuevo'
-    | '/sedes/$officeId/consultorios/$roomId'
-    | '/sedes/$officeId/consultorios/nuevo'
     | '/api/conversaciones/$conversationId/mensajes/$messageId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -727,11 +673,8 @@ export interface FileRouteTypes {
     | '/agenda/sobreturnos/nuevo'
     | '/agenda/turnos/nuevo'
     | '/horarios/$practitionerId/nuevo'
-    | '/pacientes/$patientId/editar'
-    | '/personal/$memberId/contrasena'
     | '/prestaciones/$practitionerId/$medicalServiceId'
     | '/prestaciones/$practitionerId/nueva'
-    | '/sedes/$officeId/editar'
     | '/whatsapp/configuracion/contactos'
     | '/whatsapp/configuracion/devolucion'
     | '/whatsapp/configuracion/prueba'
@@ -750,8 +693,6 @@ export interface FileRouteTypes {
     | '/pacientes/$patientId/coberturas/nueva'
     | '/pacientes/$patientId/responsables/$guardianId'
     | '/pacientes/$patientId/responsables/nuevo'
-    | '/sedes/$officeId/consultorios/$roomId'
-    | '/sedes/$officeId/consultorios/nuevo'
     | '/api/conversaciones/$conversationId/mensajes/$messageId'
   id:
     | '__root__'
@@ -793,11 +734,8 @@ export interface FileRouteTypes {
     | '/_app/agenda/sobreturnos/nuevo'
     | '/_app/agenda/turnos/nuevo'
     | '/_app/horarios/$practitionerId_/nuevo'
-    | '/_app/pacientes/$patientId_/editar'
-    | '/_app/personal/$memberId_/contrasena'
     | '/_app/prestaciones/$practitionerId_/$medicalServiceId'
     | '/_app/prestaciones/$practitionerId_/nueva'
-    | '/_app/sedes/$officeId_/editar'
     | '/_app/whatsapp/configuracion/contactos'
     | '/_app/whatsapp/configuracion/devolucion'
     | '/_app/whatsapp/configuracion/prueba'
@@ -816,8 +754,6 @@ export interface FileRouteTypes {
     | '/_app/pacientes/$patientId_/coberturas/nueva'
     | '/_app/pacientes/$patientId_/responsables/$guardianId'
     | '/_app/pacientes/$patientId_/responsables/nuevo'
-    | '/_app/sedes/$officeId_/consultorios/$roomId'
-    | '/_app/sedes/$officeId_/consultorios/nuevo'
     | '/api/conversaciones/$conversationId/mensajes/$messageId'
   fileRoutesById: FileRoutesById
 }
@@ -1097,20 +1033,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHorariosPractitionerIdNuevoRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/pacientes/$patientId_/editar': {
-      id: '/_app/pacientes/$patientId_/editar'
-      path: '/pacientes/$patientId/editar'
-      fullPath: '/pacientes/$patientId/editar'
-      preLoaderRoute: typeof AppPacientesPatientIdEditarRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/personal/$memberId_/contrasena': {
-      id: '/_app/personal/$memberId_/contrasena'
-      path: '/personal/$memberId/contrasena'
-      fullPath: '/personal/$memberId/contrasena'
-      preLoaderRoute: typeof AppPersonalMemberIdContrasenaRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/prestaciones/$practitionerId_/$medicalServiceId': {
       id: '/_app/prestaciones/$practitionerId_/$medicalServiceId'
       path: '/prestaciones/$practitionerId/$medicalServiceId'
@@ -1123,13 +1045,6 @@ declare module '@tanstack/react-router' {
       path: '/prestaciones/$practitionerId/nueva'
       fullPath: '/prestaciones/$practitionerId/nueva'
       preLoaderRoute: typeof AppPrestacionesPractitionerIdNuevaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/sedes/$officeId_/editar': {
-      id: '/_app/sedes/$officeId_/editar'
-      path: '/sedes/$officeId/editar'
-      fullPath: '/sedes/$officeId/editar'
-      preLoaderRoute: typeof AppSedesOfficeIdEditarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/whatsapp/configuracion/': {
@@ -1258,20 +1173,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPacientesPatientIdResponsablesNuevoRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/sedes/$officeId_/consultorios/$roomId': {
-      id: '/_app/sedes/$officeId_/consultorios/$roomId'
-      path: '/sedes/$officeId/consultorios/$roomId'
-      fullPath: '/sedes/$officeId/consultorios/$roomId'
-      preLoaderRoute: typeof AppSedesOfficeIdConsultoriosRoomIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/sedes/$officeId_/consultorios/nuevo': {
-      id: '/_app/sedes/$officeId_/consultorios/nuevo'
-      path: '/sedes/$officeId/consultorios/nuevo'
-      fullPath: '/sedes/$officeId/consultorios/nuevo'
-      preLoaderRoute: typeof AppSedesOfficeIdConsultoriosNuevoRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/api/conversaciones/$conversationId/mensajes/$messageId': {
       id: '/api/conversaciones/$conversationId/mensajes/$messageId'
       path: '/api/conversaciones/$conversationId/mensajes/$messageId'
@@ -1317,11 +1218,8 @@ interface AppRouteChildren {
   AppAgendaSobreturnosNuevoRoute: typeof AppAgendaSobreturnosNuevoRoute
   AppAgendaTurnosNuevoRoute: typeof AppAgendaTurnosNuevoRoute
   AppHorariosPractitionerIdNuevoRoute: typeof AppHorariosPractitionerIdNuevoRoute
-  AppPacientesPatientIdEditarRoute: typeof AppPacientesPatientIdEditarRoute
-  AppPersonalMemberIdContrasenaRoute: typeof AppPersonalMemberIdContrasenaRoute
   AppPrestacionesPractitionerIdMedicalServiceIdRoute: typeof AppPrestacionesPractitionerIdMedicalServiceIdRoute
   AppPrestacionesPractitionerIdNuevaRoute: typeof AppPrestacionesPractitionerIdNuevaRoute
-  AppSedesOfficeIdEditarRoute: typeof AppSedesOfficeIdEditarRoute
   AppWhatsappConfiguracionContactosRoute: typeof AppWhatsappConfiguracionContactosRoute
   AppWhatsappConfiguracionDevolucionRoute: typeof AppWhatsappConfiguracionDevolucionRoute
   AppWhatsappConfiguracionPruebaRoute: typeof AppWhatsappConfiguracionPruebaRoute
@@ -1340,8 +1238,6 @@ interface AppRouteChildren {
   AppPacientesPatientIdCoberturasNuevaRoute: typeof AppPacientesPatientIdCoberturasNuevaRoute
   AppPacientesPatientIdResponsablesGuardianIdRoute: typeof AppPacientesPatientIdResponsablesGuardianIdRoute
   AppPacientesPatientIdResponsablesNuevoRoute: typeof AppPacientesPatientIdResponsablesNuevoRoute
-  AppSedesOfficeIdConsultoriosRoomIdRoute: typeof AppSedesOfficeIdConsultoriosRoomIdRoute
-  AppSedesOfficeIdConsultoriosNuevoRoute: typeof AppSedesOfficeIdConsultoriosNuevoRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1379,13 +1275,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaSobreturnosNuevoRoute: AppAgendaSobreturnosNuevoRoute,
   AppAgendaTurnosNuevoRoute: AppAgendaTurnosNuevoRoute,
   AppHorariosPractitionerIdNuevoRoute: AppHorariosPractitionerIdNuevoRoute,
-  AppPacientesPatientIdEditarRoute: AppPacientesPatientIdEditarRoute,
-  AppPersonalMemberIdContrasenaRoute: AppPersonalMemberIdContrasenaRoute,
   AppPrestacionesPractitionerIdMedicalServiceIdRoute:
     AppPrestacionesPractitionerIdMedicalServiceIdRoute,
   AppPrestacionesPractitionerIdNuevaRoute:
     AppPrestacionesPractitionerIdNuevaRoute,
-  AppSedesOfficeIdEditarRoute: AppSedesOfficeIdEditarRoute,
   AppWhatsappConfiguracionContactosRoute:
     AppWhatsappConfiguracionContactosRoute,
   AppWhatsappConfiguracionDevolucionRoute:
@@ -1416,10 +1309,6 @@ const AppRouteChildren: AppRouteChildren = {
     AppPacientesPatientIdResponsablesGuardianIdRoute,
   AppPacientesPatientIdResponsablesNuevoRoute:
     AppPacientesPatientIdResponsablesNuevoRoute,
-  AppSedesOfficeIdConsultoriosRoomIdRoute:
-    AppSedesOfficeIdConsultoriosRoomIdRoute,
-  AppSedesOfficeIdConsultoriosNuevoRoute:
-    AppSedesOfficeIdConsultoriosNuevoRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

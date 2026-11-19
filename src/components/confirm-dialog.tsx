@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "#/components/ui/alert-dialog.tsx";
-import { Button } from "#/components/ui/button.tsx";
 import { upcomingAppointmentsNotice } from "#/lib/appointments.ts";
 
 /**
@@ -67,52 +66,62 @@ export function ConfirmDialog(props: {
   );
 }
 
-/**
- * `Desactivar` for someone or a place: it asks first when that sends appointments
- * to the list, saying how many, and deactivates at once when it sends none.
- * A refused count deactivates too: the deactivation is refused the same way,
- * and shows why.
- */
-export function DeactivateButton(props: {
+export interface Deactivation {
   question: string;
-  size?: "default" | "sm";
-  pending: boolean;
   countUpcoming: () => Promise<{ ok: true; count: number } | { ok: false }>;
-  onDeactivate: () => void;
-}) {
+}
+
+/**
+ * A deactivation that asks first when it sends appointments to the list, saying
+ * how many, and deactivates at once when it sends none. A refused count
+ * deactivates too: the deactivation is refused the same way, and shows why.
+ * `dialog` goes outside whatever starts it, such as a menu that closes on a pick;
+ * a dialog that starts it asks `question` itself.
+ */
+export function useDeactivation(deactivation: Deactivation, onDeactivate: () => void) {
   const [checking, setChecking] = useState(false);
   const [upcoming, setUpcoming] = useState(0);
   const [open, setOpen] = useState(false);
 
   async function request() {
     setChecking(true);
-    const result = await props.countUpcoming().finally(() => setChecking(false));
+    const result = await deactivation.countUpcoming().finally(() => setChecking(false));
     if (result.ok && result.count > 0) {
       setUpcoming(result.count);
       setOpen(true);
     } else {
-      props.onDeactivate();
+      onDeactivate();
     }
   }
 
-  return (
-    <>
-      <Button
-        variant="outline"
-        size={props.size}
-        disabled={props.pending || checking}
-        onClick={() => void request()}
-      >
-        Desactivar
-      </Button>
+  return {
+    checking,
+    request: () => void request(),
+    /**
+     * The same question, for a dialog that asks it in place of its own
+     * content (`FormDialog`'s `question`) instead of stacking `dialog` on it.
+     */
+    question: open
+      ? {
+          title: deactivation.question,
+          description: upcomingAppointmentsNotice(upcoming),
+          confirmLabel: "Archivar",
+          onConfirm: () => {
+            setOpen(false);
+            onDeactivate();
+          },
+          onCancel: () => setOpen(false),
+        }
+      : null,
+    dialog: (
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title={props.question}
+        title={deactivation.question}
         description={upcomingAppointmentsNotice(upcoming)}
-        confirmLabel="Desactivar"
-        onConfirm={props.onDeactivate}
+        confirmLabel="Archivar"
+        onConfirm={onDeactivate}
       />
-    </>
-  );
+    ),
+  };
 }

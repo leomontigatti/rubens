@@ -4,7 +4,6 @@ import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { cancellerLabels } from "#/lib/appointment-statuses.ts";
 import {
   appointmentCancellers,
@@ -20,12 +19,14 @@ import {
 } from "#/routes/_app/agenda/-appointment-page.tsx";
 import type { LoadedAppointment } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { statusRefusalMessages } from "#/routes/_app/agenda/-appointment-status.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 // Cancelling an appointment: who cancels, and why if the user says.
 
 export const Route = createFileRoute("/_app/agenda/turnos/$appointmentId/cancelar")({
   head: () => ({ meta: [{ title: "Cancelar turno · underthing" }] }),
   loader: ({ params }) => getAppointmentRecord({ data: { appointmentId: params.appointmentId } }),
+  staticData: { crumbs: fixedCrumbs("Cancelar turno") },
   component: CancelAppointment,
 });
 
@@ -80,13 +81,14 @@ function CancelForm({ loaded }: { loaded: LoadedAppointment }) {
     >
       <form.AppField name="cancelledBy">
         {(field) => (
-          <field.SelectField label="¿Quién cancela?" required>
-            {appointmentCancellers.map((canceller) => (
-              <NativeSelectOption key={canceller} value={canceller}>
-                {cancellerLabels[canceller]}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="¿Quién cancela?"
+            required
+            options={appointmentCancellers.map((canceller) => ({
+              value: canceller,
+              label: cancellerLabels[canceller],
+            }))}
+          />
         )}
       </form.AppField>
       <form.AppField name="reason">

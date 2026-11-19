@@ -15,6 +15,7 @@ import { getSchedules, removeSchedule } from "#/server/schedules.functions.ts";
 import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/_app/horarios/$practitionerId")({
       },
     ],
   }),
+  staticData: { crumbs: Crumbs },
   component: PractitionerSchedules,
 });
 
@@ -42,7 +44,6 @@ function PractitionerSchedules() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader
-        back={{ to: "/horarios", label: "Horarios" }}
         title={practitioner.displayName}
         description="Qué días y en qué consultorio atiende cada semana."
         actions={
@@ -203,5 +204,12 @@ function ScheduleActions(props: { schedule: Schedule; deletable: boolean }) {
         }
       />
     </div>
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  return (
+    <PageCrumbs items={[{ label: result.ok ? result.practitioner.displayName : "Profesional" }]} />
   );
 }

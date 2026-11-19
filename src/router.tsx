@@ -15,6 +15,10 @@ export function getRouter() {
     defaultPreloadStaleTime: 0,
     // Back from a save waits for the fresh data: a saved form never shows the old row.
     defaultStaleReloadMode: "blocking",
+    // Every navigation, back and forward too, carries a record's name between
+    // its list row and its page's title (`RecordName`); the page itself swaps
+    // with no crossfade (`styles.css`).
+    defaultViewTransition: true,
   });
 
   setupRouterSsrQueryIntegration({ router, queryClient });

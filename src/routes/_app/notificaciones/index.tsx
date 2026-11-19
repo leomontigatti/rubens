@@ -54,6 +54,12 @@ const refusalMessages = {
 type Loaded = Extract<Awaited<ReturnType<typeof getNotifications>>, { ok: true }>;
 type Notification = Loaded["notifications"][number];
 
+/** The server call that marks a notification read, and the one that marks it unread. */
+const markers = {
+  read: { name: "mark-notification-read", run: markNotificationRead },
+  unread: { name: "mark-notification-unread", run: markNotificationUnread },
+};
+
 /** Marks one notification read or unread, the one in progress shown on its row; a refusal is a toast, since no form holds it. */
 function useMarkRead() {
   const router = useRouter();
@@ -62,11 +68,9 @@ function useMarkRead() {
   async function mark(notificationId: string, read: boolean) {
     setMarking(notificationId);
     try {
-      const data = { notificationId };
-      const result = await serverAnswer(
-        read ? "mark-notification-read" : "mark-notification-unread",
-        shownPath(router),
-        () => (read ? markNotificationRead({ data }) : markNotificationUnread({ data })),
+      const marker = read ? markers.read : markers.unread;
+      const result = await serverAnswer(marker.name, shownPath(router), () =>
+        marker.run({ data: { notificationId } }),
       );
       if (result?.ok) {
         await router.invalidate();

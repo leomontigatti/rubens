@@ -57,9 +57,10 @@ test.describe("the filter bar", () => {
 async function openEdit(page: Page) {
   await page.goto("/pacientes");
   await page.getByRole("link", { name: fullName(patient) }).click();
+  // A patient's page is their edit form, the address in its `Contacto` tab.
   await expect(page.getByRole("heading", { level: 1, name: fullName(patient) })).toBeVisible();
-  await page.getByRole("button", { name: "Editar" }).click();
-  await expect(page.getByLabel("Dirección")).toBeEditable();
+  await page.getByRole("tab", { name: "Contacto" }).click();
+  await expect(page.getByLabel("Domicilio")).toBeEditable();
 }
 
 test.describe("a form page", () => {
@@ -67,7 +68,7 @@ test.describe("a form page", () => {
     page,
   }) => {
     await openEdit(page);
-    const address = page.getByLabel("Dirección");
+    const address = page.getByLabel("Domicilio");
     const discard = page.getByRole("button", { name: "Descartar cambios" });
     const saved = await address.inputValue();
     await expect(discard).toHaveCount(0);
@@ -85,12 +86,14 @@ test.describe("a form page", () => {
     const question = page.getByRole("alertdialog");
     await question.getByRole("button", { name: "Seguir editando" }).click();
     await expect(address).toHaveValue(`${saved} 3`);
-    await expect(page).toHaveURL(/\/editar$/);
+    await expect(page).toHaveURL(/\/pacientes\/[^/]+$/);
   });
 
-  test("focuses the first refused field", async ({ page }) => {
+  test("focuses the first refused field, opening the tab it is in", async ({ page }) => {
     await openEdit(page);
+    await page.getByRole("tab", { name: "Datos generales" }).click();
     await page.getByLabel("Nombre", { exact: true }).fill("");
+    await page.getByRole("tab", { name: "Contacto" }).click();
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByLabel("Nombre", { exact: true })).toBeFocused();
   });

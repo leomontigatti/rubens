@@ -11,7 +11,6 @@ import { FormPage, useFormPage } from "#/components/form-page.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { receptionNoteMaxLength } from "#/lib/appointments.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
 import {
@@ -52,15 +51,15 @@ const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos el paciente, el profesional o la prestación.",
-  practitionerInactive: "Ese profesional está inactivo.",
-  patientInactive: "Ese paciente está inactivo.",
-  medicalServiceInactive: "Esa prestación está desactivada.",
+  practitionerInactive: "Ese profesional está archivado.",
+  patientInactive: "Ese paciente está archivado.",
+  medicalServiceInactive: "Esa prestación está archivada.",
   notFree: "Ese horario ya no está libre para esa duración. Elegí otro.",
   roomRequired: "Ese horario está fuera de los horarios del profesional: elegí un consultorio.",
   timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",
   closed: "La sede está cerrada a esa hora.",
-  roomInactive: "Ese consultorio está desactivado.",
-  officeInactive: "La sede de ese consultorio está desactivada.",
+  roomInactive: "Ese consultorio está archivado.",
+  officeInactive: "La sede de ese consultorio está archivada.",
 };
 
 type RefusalReason = keyof typeof refusalMessages;
@@ -361,16 +360,15 @@ function PractitionerField(props: {
       }}
     >
       {(field) => (
-        <field.SelectField label="Profesional" required>
-          <NativeSelectOption value="" disabled>
-            Elegí un profesional
-          </NativeSelectOption>
-          {props.practitioners.map((practitioner) => (
-            <NativeSelectOption key={practitioner.id} value={practitioner.id}>
-              {practitioner.displayName}
-            </NativeSelectOption>
-          ))}
-        </field.SelectField>
+        <field.SelectField
+          label="Profesional"
+          required
+          placeholder="Elegí un profesional"
+          options={props.practitioners.map((practitioner) => ({
+            value: practitioner.id,
+            label: practitioner.displayName,
+          }))}
+        />
       )}
     </form.AppField>
   );
@@ -410,16 +408,17 @@ function TypeAndDuration({ form }: { form: BookingForm }) {
         }}
       >
         {(field) => (
-          <field.SelectField label="Prestación" size="half" startsRow required>
-            <NativeSelectOption value="" disabled>
-              {servicePlaceholder(data)}
-            </NativeSelectOption>
-            {options.map((option) => (
-              <NativeSelectOption key={option.id} value={option.id}>
-                {option.name} ({option.durationMinutes} min)
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+          <field.SelectField
+            label="Prestación"
+            size="half"
+            startsRow
+            required
+            placeholder={servicePlaceholder(data)}
+            options={options.map((option) => ({
+              value: option.id,
+              label: `${option.name} (${option.durationMinutes} min)`,
+            }))}
+          />
         )}
       </form.AppField>
       <form.AppField name="durationMinutes">
@@ -489,14 +488,11 @@ function OverbookingFields(props: { form: BookingForm; rooms: { id: string; name
           <field.SelectField
             label="Consultorio"
             hint="Fuera de los horarios del profesional, elegí un consultorio con lugar a esa hora."
-          >
-            <NativeSelectOption value="">El del horario del profesional</NativeSelectOption>
-            {props.rooms.map((room) => (
-              <NativeSelectOption key={room.id} value={room.id}>
-                {room.name}
-              </NativeSelectOption>
-            ))}
-          </field.SelectField>
+            options={[
+              { value: "", label: "El del horario del profesional" },
+              ...props.rooms.map((room) => ({ value: room.id, label: room.name })),
+            ]}
+          />
         )}
       </form.AppField>
     </>

@@ -1,3 +1,4 @@
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import {
   FlexRender,
   createPaginatedRowModel,
@@ -15,7 +16,9 @@ import type { ComponentProps, ReactNode } from "react";
 import { matchingRows } from "#/components/data-table-rows.ts";
 import { EmptyState } from "#/components/empty-state.tsx";
 import { FilterBar } from "#/components/filter-bar.tsx";
+import { RecordName } from "#/components/record-transition.tsx";
 import { SearchInput } from "#/components/search-input.tsx";
+import { Avatar, AvatarFallback } from "#/components/ui/avatar.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Table,
@@ -25,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "#/components/ui/table.tsx";
+import { initialsOf } from "#/lib/initials.ts";
 
 // Every list: a toolbar, 40 px rows and a pager. A row has no actions column:
 // its `RowLink` opens the record. `useClientDataTable` is for a list the loader
@@ -124,7 +128,7 @@ export function useServerDataTable<Row extends RowData>(options: DataTableOption
  * `Button`: a real link, which a screen reader names as one and a reader can
  * select. It does not preload: pointing down a list would read each record.
  */
-export function RowLink(props: LinkProps & { children: ReactNode }) {
+function RowLink(props: LinkProps & { children: ReactNode }) {
   return (
     <Link
       {...props}
@@ -132,6 +136,76 @@ export function RowLink(props: LinkProps & { children: ReactNode }) {
       className="text-primary font-medium underline-offset-4 hover:underline"
     />
   );
+}
+
+/**
+ * A row's name that opens its dialog: a button that looks like `RowLink`, so
+ * Base UI's unstyled one, not the ui `Button`, whose look is a button's.
+ */
+function RowButton(props: { onClick: () => void; children: ReactNode }) {
+  return (
+    <ButtonPrimitive
+      onClick={props.onClick}
+      className="text-primary cursor-pointer text-left font-medium underline-offset-4 hover:underline"
+    >
+      {props.children}
+    </ButtonPrimitive>
+  );
+}
+
+/** A row's avatar: its name's initials. */
+function RowAvatar({ name }: { name: string }) {
+  return (
+    <Avatar size="sm">
+      <AvatarFallback>{initialsOf(name)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+/**
+ * Every list's first cell, and the only way a list links a row: its name (the
+ * link to its page when `link` is given), its states as badges beside the
+ * name, and, each a deliberate choice, an `avatar` with its initials and a
+ * `detail` line under it.
+ */
+export function RowName(props: {
+  name: string;
+  link?: LinkProps;
+  status?: ReactNode;
+  detail?: ReactNode;
+  /** Opens the row's dialog (`FormDialog`), for a row with no page of its own. */
+  onOpen?: () => void;
+  /** The row's id, when its page's title takes the name over (`RecordName`). */
+  transitionId?: string;
+  avatar?: boolean;
+}) {
+  const { name, link, onOpen, status, detail, transitionId, avatar = false } = props;
+  const label = transitionId ? <RecordName id={transitionId}>{name}</RecordName> : name;
+  return (
+    <span className="flex items-center gap-2">
+      {avatar && <RowAvatar name={name} />}
+      <span className="flex flex-col">
+        <span className="flex flex-wrap items-center gap-2">
+          <RowLabel link={link} onOpen={onOpen}>
+            {label}
+          </RowLabel>
+          {status}
+        </span>
+        {detail && <span className="text-muted-foreground text-sm">{detail}</span>}
+      </span>
+    </span>
+  );
+}
+
+/** The row's name: the link to its page, the button that opens its dialog, or plain text. */
+function RowLabel(props: { link?: LinkProps; onOpen?: () => void; children: ReactNode }) {
+  if (props.link) {
+    return <RowLink {...props.link}>{props.children}</RowLink>;
+  }
+  if (props.onOpen) {
+    return <RowButton onClick={props.onOpen}>{props.children}</RowButton>;
+  }
+  return props.children;
 }
 
 export function DataTable<Row extends RowData>(props: {

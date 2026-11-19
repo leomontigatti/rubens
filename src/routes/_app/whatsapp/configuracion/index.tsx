@@ -14,7 +14,7 @@ import { ReturnTimeSection } from "#/routes/_app/whatsapp/configuracion/-return-
 import { SandboxSection } from "#/routes/_app/whatsapp/configuracion/-sandbox.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/")({
-  head: () => ({ meta: [{ title: "Configuración de WhatsApp · underthing" }] }),
+  head: () => ({ meta: [{ title: "Configuración · underthing" }] }),
   loader: () => getWhatsappSettings(),
   component: WhatsappSettings,
 });

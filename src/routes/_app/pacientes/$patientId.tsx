@@ -1,10 +1,32 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import type { ReactNode } from "react";
+import * as z from "zod";
 
-import { ErrorAlert, RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { DeactivateButton } from "#/components/confirm-dialog.tsx";
-import { PageHeader } from "#/components/page-header.tsx";
-import { Detail, RecordSection } from "#/components/record-section.tsx";
+import {
+  ActionsMenu,
+  activeRecord,
+  ArchivedAlert,
+  RefusalMessage,
+} from "#/components/admin-form.tsx";
+import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
+import { fieldProblems } from "#/components/form-problems.ts";
+import type { FieldProblem } from "#/components/form-problems.ts";
+import { FormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
+import {
+  contactFields,
+  IncompleteAlert,
+  PatientFields,
+  useBirthDateMissing,
+  PatientSaveFeedback,
+  patientMessage,
+  patientRefusals,
+  usePatientForm,
+  usePatientSave,
+} from "#/components/patient-form.tsx";
+import type { PatientFieldTab } from "#/components/patient-form.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { CoverageList } from "#/components/patient-coverages.tsx";
 import {
@@ -13,38 +35,50 @@ import {
   MinorPrompt,
 } from "#/components/patient-guardians.tsx";
 import { patientSearchQueries } from "#/components/patient-search.ts";
-import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import { defaultTimeZone } from "#/lib/offices.ts";
 import {
-  documentLabel,
-  historyChanges,
-  historyTitle,
-  legalName,
-  patientBadges,
-  patientName,
-} from "#/lib/patients.ts";
-import { assistantUserId } from "#/lib/audit-fields.ts";
-import { formatPhone } from "#/lib/phones.ts";
-import { formatDateTime, formatLocalDate } from "#/lib/dates.ts";
-import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-statuses.ts";
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "#/components/ui/dropdown-menu.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.tsx";
+import { useRevealProblem } from "#/hooks/use-reveal-problem.ts";
+import { patientBadges, patientName, patientUpdateSchema } from "#/lib/patients.ts";
+import type { DuplicateConfirmation, PatientUpdate } from "#/lib/patients.ts";
 import { getPatientAppointments } from "#/server/appointments.functions.ts";
 import { getCoverages } from "#/server/coverages.functions.ts";
 import { getGuardians } from "#/server/guardians.functions.ts";
+import type { Coverage } from "#/organization/coverages.ts";
 import type { Guardian } from "#/organization/guardians.ts";
 import {
   changePatientActive,
-  changeWhatsappConsent,
+  editPatient,
   getPatientChanges,
   getPatientDetails,
   getPatientUpcomingCount,
 } from "#/server/patients.functions.ts";
-import type { PatientAppointment } from "#/organization/appointments.ts";
-import type { HistoryEntry } from "#/organization/patient-history.ts";
 import type { Patient } from "#/organization/patients.ts";
 
+import { ActivityTab } from "#/routes/_app/pacientes/-patient-activity.tsx";
+import {
+  ConversationButton,
+  useWhatsappConsent,
+  WhatsappAlert,
+  WhatsappMenuItem,
+} from "#/routes/_app/pacientes/-patient-whatsapp.tsx";
+
+/**
+ * The page's tabs: the patient's own data, in two, then what hangs off them;
+ * `Coberturas` and `Responsables` only once there is one (`Acciones` adds the
+ * first).
+ */
+const sections = ["datos", "contacto", "coberturas", "responsables", "actividad"] as const;
+type Section = (typeof sections)[number];
+
 export const Route = createFileRoute("/_app/pacientes/$patientId")({
+  validateSearch: z.object({
+    seccion: z.enum(sections).optional().catch(undefined),
+  }),
   loader: async ({ params, context }) => {
     const data = { patientId: params.patientId };
     const [details, coverages, guardians, history, appointments] = await Promise.all([
@@ -65,73 +99,250 @@ export const Route = createFileRoute("/_app/pacientes/$patientId")({
       },
     ],
   }),
+  staticData: { crumbs: Crumbs },
   component: PatientScreen,
 });
 
-function useAction() {
-  return useFormAction(patientRefusalMessages);
-}
-
 function PatientScreen() {
-  const { viewer } = Route.useRouteContext();
-  const { details, coverages, guardians, history, appointments } = Route.useLoaderData();
-
+  const { details } = Route.useLoaderData();
   if (!details.ok) {
     return <RefusalMessage message={patientRefusalMessages[details.reason]} />;
   }
-  const { patient } = details;
-
   // Keyed by patient: a link to another patient stays on this route, and must
-  // not carry one patient's messages over.
-  return (
-    <div key={patient.id} className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PatientHeading patient={patient} isAdmin={viewer.roles.includes("admin")} />
-      <DetailsSection patient={patient} />
-      <CoverageSection patientId={patient.id} coverages={coverages} />
-      <GuardianSection patient={patient} guardians={guardians} />
-      <WhatsappSection patient={patient} optOutPendingSince={details.optOutPendingSince} />
-      <AppointmentsSection appointments={appointments} />
-      {history?.ok && <HistorySection entries={history.entries} names={history.names} />}
-    </div>
-  );
+  // not carry one patient's form or messages over.
+  return <PatientPage key={details.patient.id} patient={details.patient} />;
 }
 
-function PatientHeading({ patient, isAdmin }: { patient: Patient; isAdmin: boolean }) {
+/**
+ * The patient's page, which is their edit form: titled by their name with
+ * their states, `Acciones` beside it, and tabs for the form and what hangs off
+ * the patient. Every member edits a patient; only an admin deactivates one.
+ */
+function PatientPage({ patient }: { patient: Patient }) {
+  const { viewer } = Route.useRouteContext();
+  const loaded = Route.useLoaderData();
+  const page = useFormPage({ to: "/pacientes" });
+  const { save, form } = usePatientEdit(patient, page);
+  const consent = useWhatsappConsent(patient.id);
+  const record = usePatientRecord(patient, viewer.roles.includes("admin"), consent);
+  const lists = {
+    coverages: loaded.coverages.ok ? loaded.coverages.coverages : [],
+    guardians: loaded.guardians.ok ? loaded.guardians.guardians : [],
+  };
+  const tabs = usePatientTabs(lists);
+  const details = loaded.details.ok ? loaded.details : null;
+  useProblemTab(page, patientRefusals(save), tabs.setSection);
+
   return (
-    <PageHeader
-      back={{ to: "/pacientes", label: "Pacientes" }}
+    <FormPage
+      page={page}
+      form={form}
       title={patientName(patient)}
-      status={!patient.active && <Badge variant="secondary">Inactivo</Badge>}
-      description={<PatientBadges patient={patient} />}
-      actions={isAdmin && <ActiveToggle patient={patient} />}
-    />
+      description="Los datos del paciente, cómo contactarlo, sus coberturas, responsables y actividad."
+      submitLabel="Guardar"
+      pending={save.pending}
+      refusals={patientRefusals(save)}
+      onClear={save.dismiss}
+      record={record}
+      alerts={
+        <PatientAlerts
+          patient={patient}
+          form={form}
+          consent={consent}
+          guardians={loaded.guardians.ok ? loaded.guardians.guardians : null}
+          optOutPendingSince={details?.optOutPendingSince ?? null}
+        />
+      }
+      frame={(content) => (
+        <PatientTabs patient={patient} tabs={tabs} lists={lists} activity={loaded}>
+          {content}
+        </PatientTabs>
+      )}
+    >
+      <PatientSaveFeedback
+        save={save}
+        confirmLabel="Guardar igual"
+        onUse={(other) =>
+          page.leave({ to: "/pacientes/$patientId", params: { patientId: other.id } })
+        }
+      />
+      <PatientFields
+        form={form}
+        full
+        tab={tabs.formTab}
+        phoneAction={
+          details?.conversationId && <ConversationButton conversationId={details.conversationId} />
+        }
+      />
+    </FormPage>
   );
 }
 
-function PatientBadges({ patient }: { patient: Patient }) {
-  const badges = patientBadges(patient);
-  if (badges.length === 0) {
+/** The patient's form, and its save, which goes back to the list once done. */
+function usePatientEdit(patient: Patient, page: ReturnType<typeof useFormPage>) {
+  const save = usePatientSave(
+    (data: PatientUpdate & DuplicateConfirmation) => editPatient({ data }),
+    () => page.leave(),
+  );
+  const form = usePatientForm(patient, async (input) => {
+    const update = { ...input, patientId: patient.id };
+    const parsed = patientUpdateSchema.safeParse(update);
+    if (!parsed.success) {
+      page.showProblems(fieldProblems(parsed.error.issues, patientMessage));
+      return;
+    }
+    await save.submit(update);
+  });
+  return { save, form };
+}
+
+interface PatientLists {
+  coverages: Coverage[];
+  guardians: Guardian[];
+}
+
+/**
+ * The open tab. The URL picks the one a page opens on (a coverage's or
+ * guardian's pages come back to theirs); a click switches it here, since a
+ * navigation would ask before discarding an unsaved edit. A tab gone, such as
+ * `Coberturas` after the last one is removed, opens `Datos generales`.
+ */
+function usePatientTabs(lists: PatientLists) {
+  const { seccion = "datos" } = Route.useSearch();
+  const [chosen, setSection] = useState<Section>(seccion);
+  const gone =
+    (chosen === "coberturas" && lists.coverages.length === 0) ||
+    (chosen === "responsables" && lists.guardians.length === 0);
+  const section = gone ? "datos" : chosen;
+  const formTab: PatientFieldTab = section === "contacto" ? "contacto" : "datos";
+  return { section, setSection, formTab };
+}
+
+/** The alerts above the form: missing data, a minor's guardian, the WhatsApp. */
+function PatientAlerts(props: {
+  patient: Patient;
+  form: ReturnType<typeof usePatientForm>;
+  consent: ReturnType<typeof useWhatsappConsent>;
+  guardians: Guardian[] | null;
+  optOutPendingSince: number | null;
+}) {
+  const { patient, consent } = props;
+  const birthDateMissing = useBirthDateMissing(props.form);
+  return (
+    <>
+      {birthDateMissing && <IncompleteAlert />}
+      {props.guardians && <MinorPrompt patient={patient} guardians={props.guardians} />}
+      <WhatsappAlert
+        patient={patient}
+        optOutPendingSince={props.optOutPendingSince}
+        consent={consent}
+      />
+    </>
+  );
+}
+
+/**
+ * The tabs: the form, `children`, across `Datos generales` and `Contacto`;
+ * `Coberturas` and `Responsables` once there is one; `Actividad`.
+ */
+function PatientTabs(props: {
+  patient: Patient;
+  tabs: ReturnType<typeof usePatientTabs>;
+  lists: PatientLists;
+  activity: Pick<ReturnType<typeof Route.useLoaderData>, "appointments" | "history">;
+  children: ReactNode;
+}) {
+  const { patient, tabs, lists } = props;
+  const { appointments, history } = props.activity;
+  return (
+    <Tabs value={tabs.section} onValueChange={(value: Section) => tabs.setSection(value)}>
+      <TabsList className="w-full">
+        <TabsTrigger value="datos">Datos generales</TabsTrigger>
+        <TabsTrigger value="contacto">Contacto</TabsTrigger>
+        <CountedTab value="coberturas" label="Coberturas" count={lists.coverages.length} />
+        <CountedTab value="responsables" label="Responsables" count={lists.guardians.length} />
+        <TabsTrigger value="actividad">Actividad</TabsTrigger>
+      </TabsList>
+      {/* One form across both tabs: its panel follows the tab it shows. */}
+      <TabsContent value={tabs.formTab} keepMounted>
+        {props.children}
+      </TabsContent>
+      <TabsContent value="coberturas">
+        <CoverageList patientId={patient.id} coverages={lists.coverages} />
+      </TabsContent>
+      <TabsContent value="responsables">
+        <GuardiansTab patient={patient} guardians={lists.guardians} />
+      </TabsContent>
+      <TabsContent value="actividad">
+        <ActivityTab
+          appointments={appointments.ok ? appointments : null}
+          history={history?.ok ? history : null}
+        />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+/** A tab with its count, shown only once there is one. */
+function CountedTab(props: { value: Section; label: string; count: number }) {
+  if (props.count === 0) {
     return null;
   }
   return (
-    <div className="flex flex-wrap gap-2">
-      {badges.map((badge) => (
-        <Badge key={badge.label} variant={badge.variant}>
-          {badge.label}
-        </Badge>
-      ))}
-    </div>
+    <TabsTrigger value={props.value}>
+      {props.label}
+      <Badge variant="outline">{props.count}</Badge>
+    </TabsTrigger>
   );
 }
 
-/** The admin's deactivate or reactivate button. */
-function ActiveToggle({ patient }: { patient: Patient }) {
-  const toggle = useAction();
+const tabOfField = (field: string): Section => (contactFields.has(field) ? "contacto" : "datos");
+
+/**
+ * A refusal for a field the open tab does not show opens the tab that does,
+ * and focuses the field there.
+ */
+function useProblemTab(
+  page: ReturnType<typeof useFormPage>,
+  refusals: FieldProblem[],
+  setSection: (section: Section) => void,
+) {
+  const field = [...page.problems, ...refusals].find((one) => one.field)?.field;
+  useRevealProblem(field, page.problemsShown, tabOfField, setSection);
+}
+
+/**
+ * The patient's header: their state and what else to notice beside the name,
+ * and `Acciones` with the creates for their coverages and guardians, then, for
+ * an admin, the archive; and, while they are archived, the alert that says so,
+ * with `Restaurar` for an admin only.
+ */
+function usePatientRecord(
+  patient: Patient,
+  isAdmin: boolean,
+  consent: ReturnType<typeof useWhatsappConsent>,
+): RecordHeader {
+  const toggle = consent.action;
   const queryClient = useQueryClient();
+  const patientId = patient.id;
+  const items = (
+    <>
+      <DropdownMenuItem
+        render={<Link to="/pacientes/$patientId/coberturas/nueva" params={{ patientId }} />}
+      >
+        Agregar cobertura
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        render={<Link to="/pacientes/$patientId/responsables/nuevo" params={{ patientId }} />}
+      >
+        Agregar responsable
+      </DropdownMenuItem>
+    </>
+  );
 
   async function changeActive(active: boolean) {
     const changed = await toggle.run(() =>
-      changePatientActive({ data: { id: patient.id, active } }),
+      changePatientActive({ data: { id: patientId, active } }),
     );
     if (changed) {
       // A search cached before the change would still list the patient as they were.
@@ -139,294 +350,68 @@ function ActiveToggle({ patient }: { patient: Patient }) {
     }
   }
 
+  const record = activeRecord({
+    active: patient.active,
+    ending: "o",
+    archived: archivedPatient,
+    transitionId: patientId,
+    toggle,
+    onChange: (active) => void changeActive(active),
+    deactivation: {
+      question: `¿Archivar a ${patientName(patient)}?`,
+      countUpcoming: () => getPatientUpcomingCount({ data: { id: patientId } }),
+    },
+    items,
+    states: <WhatsappMenuItem patient={patient} consent={consent} />,
+  });
+  const status = (
+    <>
+      {record.status}
+      <PatientBadges patient={patient} />
+    </>
+  );
+  if (isAdmin) {
+    return { ...record, status };
+  }
+  return {
+    status,
+    transitionId: patientId,
+    actions: (busy) => (
+      <ActionsMenu disabled={busy}>
+        <DropdownMenuGroup>{items}</DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <WhatsappMenuItem patient={patient} consent={consent} />
+      </ActionsMenu>
+    ),
+    error: toggle.error,
+    alert: patient.active ? undefined : <ArchivedAlert notice={archivedPatient} ending="o" />,
+  };
+}
+
+const archivedPatient = {
+  title: "Paciente archivado",
+  consequence: "No aparece en las listas ni se le pueden dar turnos.",
+};
+
+/** What else to notice about the patient, beside their state: missing data, a minor without a guardian. */
+function PatientBadges({ patient }: { patient: Patient }) {
+  return patientBadges(patient).map((badge) => (
+    <Badge key={badge.label} variant={badge.variant}>
+      {badge.label}
+    </Badge>
+  ));
+}
+
+function GuardiansTab(props: { patient: Patient; guardians: Guardian[] }) {
   return (
-    <div className="flex flex-col items-end gap-3">
-      {patient.active ? (
-        <DeactivateButton
-          key={patient.id}
-          question={`¿Desactivar a ${patientName(patient)}?`}
-          pending={toggle.pending}
-          countUpcoming={() => getPatientUpcomingCount({ data: { id: patient.id } })}
-          onDeactivate={() => void changeActive(false)}
-        />
-      ) : (
-        <Button variant="outline" disabled={toggle.pending} onClick={() => void changeActive(true)}>
-          Reactivar
-        </Button>
-      )}
-      <ErrorAlert message={toggle.error} />
+    <div className="flex flex-col gap-6">
+      <GuardianList patientId={props.patient.id} guardians={props.guardians} />
+      <MessageContactChoice patient={props.patient} guardians={props.guardians} />
     </div>
   );
 }
 
-function DetailsSection({ patient }: { patient: Patient }) {
-  return (
-    <RecordSection
-      title="Datos"
-      action={
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<Link to="/pacientes/$patientId/editar" params={{ patientId: patient.id }} />}
-        >
-          Editar
-        </Button>
-      }
-    >
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <Detail label="Nombre legal" value={legalName(patient)} />
-        <Detail label="Nombre autopercibido" value={patient.chosenName} />
-        <Detail label="Documento" value={documentLabel(patient)} />
-        <Detail
-          label="Fecha de nacimiento"
-          value={patient.birthDate && formatLocalDate(patient.birthDate)}
-        />
-        <Detail label="Teléfono" value={formatPhone(patient.phone)} />
-        <Detail label="Correo electrónico" value={patient.email} />
-        <Detail label="Dirección" value={patient.address} />
-      </dl>
-    </RecordSection>
-  );
-}
-
-type LoaderData = ReturnType<typeof Route.useLoaderData>;
-
-/** The coverages section, left out when the list was refused. */
-function CoverageSection(props: { patientId: string; coverages: LoaderData["coverages"] }) {
-  const { patientId } = props;
-  if (!props.coverages.ok) {
-    return null;
-  }
-  return (
-    <RecordSection
-      title="Coberturas"
-      action={
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<Link to="/pacientes/$patientId/coberturas/nueva" params={{ patientId }} />}
-        >
-          Agregar cobertura
-        </Button>
-      }
-    >
-      <CoverageList patientId={patientId} coverages={props.coverages.coverages} />
-    </RecordSection>
-  );
-}
-
-/** The guardians section, left out when the list was refused. */
-function GuardianSection(props: { patient: Patient; guardians: LoaderData["guardians"] }) {
-  if (!props.guardians.ok) {
-    return null;
-  }
-  return <GuardianCard patient={props.patient} guardians={props.guardians.guardians} />;
-}
-
-function GuardianCard(props: { patient: Patient; guardians: Guardian[] }) {
-  const patientId = props.patient.id;
-  return (
-    <RecordSection
-      title="Responsables"
-      action={
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<Link to="/pacientes/$patientId/responsables/nuevo" params={{ patientId }} />}
-        >
-          Agregar responsable
-        </Button>
-      }
-    >
-      <div className="flex flex-col gap-6">
-        <MinorPrompt patient={props.patient} guardians={props.guardians} />
-        <GuardianList patientId={patientId} guardians={props.guardians} />
-        <MessageContactChoice patient={props.patient} guardians={props.guardians} />
-      </div>
-    </RecordSection>
-  );
-}
-
-/**
- * The patient's WhatsApp consent, turned off or back on here. While an
- * opt-out-looking reply holds them, what the organization starts waits until
- * a person turns them off or keeps them.
- */
-function WhatsappSection({
-  patient,
-  optOutPendingSince,
-}: {
-  patient: Patient;
-  optOutPendingSince: number | null;
-}) {
-  const action = useAction();
-  const setConsent = (whatsappConsent: boolean) =>
-    void action.run(() =>
-      changeWhatsappConsent({ data: { patientId: patient.id, whatsappConsent } }),
-    );
-  if (optOutPendingSince !== null) {
-    return (
-      <RecordSection title="WhatsApp">
-        <div className="flex flex-col gap-4">
-          <ErrorAlert message={action.error} />
-          <Alert variant="warning">
-            <AlertTitle>Pidió no recibir más mensajes</AlertTitle>
-            <AlertDescription>
-              {`El ${formatDateTime(optOutPendingSince, defaultTimeZone)} su número respondió algo que parece un pedido de baja. Sus recordatorios y avisos quedan en espera hasta que decidas.`}
-            </AlertDescription>
-          </Alert>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={action.pending}
-              onClick={() => setConsent(false)}
-            >
-              Dejar de enviar por WhatsApp
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={action.pending}
-              onClick={() => setConsent(true)}
-            >
-              Seguir enviando
-            </Button>
-          </div>
-        </div>
-      </RecordSection>
-    );
-  }
-  const consent = !patient.whatsappConsent;
-  return (
-    <RecordSection title="WhatsApp">
-      <div className="flex flex-col gap-4">
-        <ErrorAlert message={action.error} />
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p>
-            {patient.whatsappConsent
-              ? `Acepta WhatsApp desde el ${formatDateTime(patient.whatsappConsentAt, defaultTimeZone)}.`
-              : "No acepta WhatsApp: no se le envían mensajes."}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={action.pending}
-            onClick={() => setConsent(consent)}
-          >
-            {consent ? "Volver a aceptar WhatsApp" : "Dejar de enviar por WhatsApp"}
-          </Button>
-        </div>
-      </div>
-    </RecordSection>
-  );
-}
-
-/** The patient's appointments, upcoming then past, with their statuses. */
-function AppointmentsSection({ appointments }: { appointments: LoaderData["appointments"] }) {
-  if (!appointments.ok) {
-    return null;
-  }
-  return (
-    <RecordSection title="Turnos">
-      <div className="flex flex-col gap-6">
-        <AppointmentList
-          title="Próximos"
-          appointments={appointments.upcoming}
-          empty="No tiene turnos próximos."
-        />
-        <AppointmentList
-          title="Anteriores"
-          appointments={appointments.past}
-          empty="No tiene turnos anteriores."
-        />
-      </div>
-    </RecordSection>
-  );
-}
-
-function AppointmentList(props: {
-  title: string;
-  appointments: PatientAppointment[];
-  empty: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-medium">{props.title}</h3>
-      {props.appointments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{props.empty}</p>
-      ) : (
-        <ol className="flex flex-col gap-3">
-          {props.appointments.map((appointment) => (
-            <AppointmentItem key={appointment.id} appointment={appointment} />
-          ))}
-        </ol>
-      )}
-    </div>
-  );
-}
-
-function AppointmentItem({ appointment }: { appointment: PatientAppointment }) {
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-col gap-0.5 text-sm">
-        <p>
-          <span className="font-medium">
-            {formatDateTime(appointment.start, appointment.timeZone)}
-          </span>{" "}
-          · {appointment.practitionerName} · {appointment.medicalServiceName}
-        </p>
-        <p className="text-muted-foreground">
-          {[`${appointment.officeName}, ${appointment.roomName}`, cancellationText(appointment)]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-      </div>
-      <div className="flex gap-1">
-        {appointment.overbooking && <Badge variant="outline">Sobreturno</Badge>}
-        <Badge variant={appointment.status === "noShow" ? "destructive" : "secondary"}>
-          {appointmentStatusLabels[appointment.status]}
-        </Badge>
-      </div>
-    </li>
-  );
-}
-
-/** Who made an entry's change: a member, the assistant on a patient's yes, or a member since removed. */
-function authorOf(entry: HistoryEntry) {
-  if (entry.userId === assistantUserId) {
-    return "Asistente";
-  }
-  return entry.userName ?? "Usuario eliminado";
-}
-
-function HistorySection(props: { entries: HistoryEntry[]; names: Record<string, string> }) {
-  const { entries, names } = props;
-  return (
-    <RecordSection title="Historial de cambios">
-      <ol className="flex flex-col gap-4">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex flex-col gap-1">
-            <p className="text-sm">
-              <span className="font-medium">{historyTitle(entry)}</span>
-              <span className="text-muted-foreground">
-                {" · "}
-                {formatDateTime(entry.createdAt, defaultTimeZone)} · {authorOf(entry)}
-              </span>
-            </p>
-            <ul className="text-muted-foreground text-sm">
-              {historyChanges(entry, names).map((change) => (
-                <li key={change.field}>
-                  {change.field}: {change.before} → {change.after}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ol>
-    </RecordSection>
-  );
+function Crumbs() {
+  const { details } = Route.useLoaderData();
+  return <PageCrumbs items={[{ label: details.ok ? patientName(details.patient) : "Paciente" }]} />;
 }

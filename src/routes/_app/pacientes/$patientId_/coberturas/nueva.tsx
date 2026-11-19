@@ -5,10 +5,10 @@ import { PageHeader } from "#/components/page-header.tsx";
 import { CoverageForm } from "#/components/patient-coverages.tsx";
 import { patientRefusalMessages } from "#/components/patient-save.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { patientName } from "#/lib/patients.ts";
 import { addPatientCoverage } from "#/server/coverages.functions.ts";
 import { getInsurers } from "#/server/insurers.functions.ts";
 import { getPatientDetails } from "#/server/patients.functions.ts";
+import { PatientStepCrumbs } from "#/routes/_app/pacientes/-patient-crumbs.tsx";
 
 export const Route = createFileRoute("/_app/pacientes/$patientId_/coberturas/nueva")({
   loader: async ({ params }) => {
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_app/pacientes/$patientId_/coberturas/nue
     return { details, insurers };
   },
   head: () => ({ meta: [{ title: "Agregar cobertura · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: NewCoverage,
 });
 
@@ -39,7 +40,13 @@ function NewCoverage() {
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link to="/pacientes/$patientId" params={{ patientId }} />}
+          render={
+            <Link
+              to="/pacientes/$patientId"
+              params={{ patientId }}
+              search={{ seccion: "coberturas" }}
+            />
+          }
         >
           Volver
         </Button>
@@ -50,12 +57,26 @@ function NewCoverage() {
     <CoverageForm
       patientId={patientId}
       title="Agregar cobertura"
-      description={patientName(details.patient)}
+      description="La obra social o prepaga del paciente y su número de afiliado."
       initial={{ insurerId: "", plan: null, memberNumber: "" }}
       insurers={insurers.insurers}
       submitLabel="Agregar cobertura"
       creates
       onSubmit={(fields) => addPatientCoverage({ data: { ...fields, patientId } })}
+    />
+  );
+}
+
+function Crumbs() {
+  const { details } = Route.useLoaderData();
+  const { patientId } = Route.useParams();
+  const patient = details.ok ? details.patient : null;
+  return (
+    <PatientStepCrumbs
+      patientId={patientId}
+      patient={patient}
+      step="Agregar cobertura"
+      section="coberturas"
     />
   );
 }

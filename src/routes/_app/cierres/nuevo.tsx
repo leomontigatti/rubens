@@ -11,10 +11,12 @@ import {
   readOfficeId,
   refusalMessages,
 } from "#/routes/_app/cierres/-closure-fields.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/cierres/nuevo")({
   head: () => ({ meta: [{ title: "Nuevo cierre · underthing" }] }),
   loader: () => getClosures(),
+  staticData: { crumbs: fixedCrumbs("Nuevo cierre") },
   component: NewClosure,
 });
 
@@ -30,6 +32,7 @@ function NewClosure() {
     <EntryForm
       back={{ to: "/cierres" }}
       title="Nuevo cierre"
+      description="Los días u horas en que una sede, o toda la organización, no atiende."
       subject="closure"
       initial={null}
       submitLabel="Crear cierre"

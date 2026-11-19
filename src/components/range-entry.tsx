@@ -1,9 +1,9 @@
 import type { NavigateOptions } from "@tanstack/react-router";
 import { useState } from "react";
-import type { ReactNode } from "react";
 import type * as z from "zod";
 
-import { useFormAction } from "#/components/admin-form.tsx";
+import { ActionsMenu, useFormAction } from "#/components/admin-form.tsx";
+import type { SelectOption } from "#/components/option-select.tsx";
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
@@ -13,8 +13,7 @@ import { answering, questionAfter, questionText } from "#/components/range-entry
 import type { NoticeQuestion, QuestionSubject } from "#/components/range-entry-question.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
-import { Button } from "#/components/ui/button.tsx";
-import { NativeSelectOption } from "#/components/ui/native-select.tsx";
+import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import type { AffectsAppointments, Notice, RangeEntry } from "#/lib/time-ranges.ts";
 
 // The pieces the time-off and closure screens share: a form whose fields say
@@ -64,12 +63,20 @@ export function EntryForm<R extends string>(props: {
   description?: string;
   subject: QuestionSubject;
   initial: RangeEntry | null;
-  owner?: { label: string; initial: string; required?: boolean; options: ReactNode };
+  owner?: {
+    label: string;
+    initial: string;
+    required?: boolean;
+    options: SelectOption[];
+    placeholder?: string;
+  };
   submitLabel: string;
   creates?: boolean;
   messages: Record<R, string>;
   /** On an edit: the entry's delete, its only page being this one. */
   deletion?: Deletion<R>;
+  /** The entry's id, so its name moves from the list row into the title (`RecordName`). */
+  transitionId?: string;
   onSubmit: (
     values: EntryValues,
     notice: Notice,
@@ -135,24 +142,31 @@ export function EntryForm<R extends string>(props: {
       description={props.description}
       submitLabel={props.submitLabel}
       creates={props.creates}
-      record={record}
+      record={record && { ...record, transitionId: props.transitionId }}
       action={action}
     >
       {owner && (
         <form.AppField name="owner">
           {(field) => (
-            <field.SelectField label={owner.label} required={owner.required}>
-              {owner.options}
-            </field.SelectField>
+            <field.SelectField
+              label={owner.label}
+              required={owner.required}
+              options={owner.options}
+              placeholder={owner.placeholder}
+            />
           )}
         </form.AppField>
       )}
       <form.AppField name="kind">
         {(field) => (
-          <field.SelectField label="Duración" startsRow>
-            <NativeSelectOption value="days">Días completos</NativeSelectOption>
-            <NativeSelectOption value="hours">Por horas</NativeSelectOption>
-          </field.SelectField>
+          <field.SelectField
+            label="Duración"
+            startsRow
+            options={[
+              { value: "days", label: "Días completos" },
+              { value: "hours", label: "Por horas" },
+            ]}
+          />
         )}
       </form.AppField>
       <form.Subscribe selector={(state) => state.values.kind}>
@@ -202,13 +216,11 @@ function useDeletion<R extends string>(
   return {
     actions: (busy) => (
       <>
-        <Button
-          variant="outline"
-          disabled={remove.pending || busy}
-          onClick={() => setConfirming(true)}
-        >
-          Eliminar
-        </Button>
+        <ActionsMenu disabled={remove.pending || busy}>
+          <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
+            Eliminar
+          </DropdownMenuItem>
+        </ActionsMenu>
         <ConfirmDialog
           open={confirming}
           onOpenChange={setConfirming}

@@ -5,9 +5,11 @@ import type { InsurerInput } from "#/lib/coverages.ts";
 import { addInsurer } from "#/server/insurers.functions.ts";
 
 import { InsurerForm, refusalMessages } from "#/routes/_app/obras-sociales/-insurer-form.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/obras-sociales/nueva")({
   head: () => ({ meta: [{ title: "Nueva obra social o prepaga · underthing" }] }),
+  staticData: { crumbs: fixedCrumbs("Nueva obra social o prepaga") },
   component: NewInsurer,
 });
 
@@ -21,6 +23,7 @@ function NewInsurer() {
   return (
     <InsurerForm
       title="Nueva obra social o prepaga"
+      description="Una cobertura que se puede cargar en los pacientes."
       initial={newInsurer}
       submitLabel="Crear obra social"
       creates

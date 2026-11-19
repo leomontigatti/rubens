@@ -6,10 +6,12 @@ import { addSchedule, getSchedules } from "#/server/schedules.functions.ts";
 import { ScheduleForm } from "#/routes/_app/horarios/-schedule-form.tsx";
 import type { Initial } from "#/routes/_app/horarios/-schedule-form.tsx";
 import { RefusalAlert } from "#/routes/_app/horarios/-shared.tsx";
+import { PractitionerStepCrumbs } from "#/routes/_app/horarios/-practitioner-crumbs.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/nuevo")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
   head: () => ({ meta: [{ title: "Nuevo horario · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: NewSchedule,
 });
 
@@ -35,7 +37,7 @@ function NewSchedule() {
     <ScheduleForm
       practitionerId={practitioner.id}
       title="Nuevo horario"
-      description={practitioner.displayName}
+      description="Los días y horas en que el profesional atiende, y en qué consultorio."
       rooms={rooms}
       initial={emptyInitial}
       dateLabel="Desde"
@@ -50,5 +52,14 @@ function NewSchedule() {
         return input.success ? addSchedule({ data: input.data }) : input.error;
       }}
     />
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { practitionerId } = Route.useParams();
+  const name = result.ok ? result.practitioner.displayName : null;
+  return (
+    <PractitionerStepCrumbs practitionerId={practitionerId} name={name} step="Nuevo horario" />
   );
 }

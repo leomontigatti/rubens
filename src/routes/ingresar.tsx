@@ -3,13 +3,13 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import * as z from "zod";
 
+import { OptionSelect } from "#/components/option-select.tsx";
 import { ErrorAlert } from "#/components/admin-form.tsx";
 import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { ClerkSignIn } from "#/components/sign-in-provider.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.tsx";
 import { Field, FieldLabel } from "#/components/ui/field.tsx";
-import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select.tsx";
 import { returnPath } from "#/lib/return-path.ts";
 import { signInArrival } from "#/lib/sign-in-arrival.ts";
 import { rolesLabel } from "#/lib/staff.ts";
@@ -101,18 +101,15 @@ function DevSignIn(props: {
       <ErrorAlert message={error} />
       <Field>
         <FieldLabel htmlFor="member">Miembro</FieldLabel>
-        <NativeSelect
+        <OptionSelect
           id="member"
-          className="w-full"
           value={userId}
-          onChange={(event) => setUserId(event.target.value)}
-        >
-          {props.members.map((member) => (
-            <NativeSelectOption key={member.userId} value={member.userId}>
-              {`${member.name} (${rolesLabel(member.roles)})`}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          onValueChange={setUserId}
+          options={props.members.map((member) => ({
+            value: member.userId,
+            label: `${member.name} (${rolesLabel(member.roles)})`,
+          }))}
+        />
       </Field>
       <Button type="submit" disabled={pending || !userId}>
         Ingresar

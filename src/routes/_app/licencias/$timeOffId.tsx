@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { recordHead } from "#/lib/page-title.ts";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { readRangeEntry } from "#/components/range-entry-values.ts";
@@ -7,10 +8,18 @@ import { timeOffUpdateSchema } from "#/lib/time-ranges.ts";
 import { editTimeOff, getTimeOff, removeTimeOff } from "#/server/time-off.functions.ts";
 
 import { refusalMessages } from "#/routes/_app/licencias/-shared.ts";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/licencias/$timeOffId")({
-  head: () => ({ meta: [{ title: "Editar licencia · underthing" }] }),
+  head: ({ loaderData, params }) =>
+    recordHead(
+      loaderData?.ok ? loaderData.timeOff : undefined,
+      params.timeOffId,
+      (one) => one.practitionerName,
+      "Licencia",
+    ),
   loader: () => getTimeOff(),
+  staticData: { crumbs: fixedCrumbs("Editar licencia") },
   component: EditTimeOff,
 });
 
@@ -30,8 +39,9 @@ function EditTimeOff() {
   return (
     <EntryForm
       back={{ to: "/licencias" }}
-      title="Editar licencia"
-      description={item.practitionerName}
+      title={item.practitionerName}
+      description="Los días u horas en que el profesional no atiende."
+      transitionId={timeOffId}
       subject="timeOff"
       initial={item.entry}
       submitLabel="Guardar"

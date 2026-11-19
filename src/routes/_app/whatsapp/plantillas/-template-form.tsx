@@ -244,13 +244,12 @@ export function TemplateForm(props: {
           </form.AppField>
           <form.AppField name="timing.when">
             {(field) => (
-              <field.SelectField label="Cuándo se envía" startsRow required>
-                {whenOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </field.SelectField>
+              <field.SelectField
+                label="Cuándo se envía"
+                startsRow
+                required
+                options={[...whenOptions]}
+              />
             )}
           </form.AppField>
           {(when === "before" || when === "after") && (
@@ -269,23 +268,30 @@ export function TemplateForm(props: {
               </form.AppField>
               <form.AppField name="timing.unit">
                 {(field) => (
-                  <field.SelectField label="Unidad" required>
-                    <option value="hours">Horas</option>
-                    <option value="days">Días</option>
-                  </field.SelectField>
+                  <field.SelectField
+                    label="Unidad"
+                    required
+                    options={[
+                      { value: "hours", label: "Horas" },
+                      { value: "days", label: "Días" },
+                    ]}
+                  />
                 )}
               </form.AppField>
             </>
           )}
           <form.AppField name="buttons">
             {(field) => (
-              <field.SelectField label="Botones" size="half" startsRow hint={buttonsHint}>
-                {ownTemplateButtonKinds.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {buttonsLabels[kind]}
-                  </option>
-                ))}
-              </field.SelectField>
+              <field.SelectField
+                label="Botones"
+                size="half"
+                startsRow
+                hint={buttonsHint}
+                options={ownTemplateButtonKinds.map((kind) => ({
+                  value: kind,
+                  label: buttonsLabels[kind],
+                }))}
+              />
             )}
           </form.AppField>
         </>

@@ -11,10 +11,12 @@ import {
   handoffContactsHint,
   keepsRecordsLabel,
 } from "#/routes/_app/whatsapp/configuracion/-handoff-contacts.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/contactos")({
   head: () => ({ meta: [{ title: "Contactos de derivación · underthing" }] }),
   loader: () => getHandoffContacts(),
+  staticData: { crumbs: fixedCrumbs("Contactos de derivación") },
   component: EditHandoffContacts,
 });
 

@@ -36,10 +36,10 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
   timeOff: "El profesional tiene una ausencia",
   closure: "La sede está cerrada",
   outsideSchedules: "Fuera de los horarios del profesional",
-  practitionerInactive: "El profesional está desactivado",
-  patientInactive: "El paciente está desactivado",
-  officeInactive: "La sede está desactivada",
-  roomInactive: "El consultorio está desactivado",
+  practitionerInactive: "El profesional está archivado",
+  patientInactive: "El paciente está archivado",
+  officeInactive: "La sede está archivada",
+  roomInactive: "El consultorio está archivado",
 };
 
 /** The reasons an appointment cannot take a new time yet. */
@@ -47,8 +47,8 @@ const blockedReasons: ToRescheduleReason[] = ["practitionerInactive", "patientIn
 
 /** What else an administrator can do for an appointment in a deactivated place. */
 const placeRemedies: Partial<Record<ToRescheduleReason, string>> = {
-  officeInactive: "reactivar la sede",
-  roomInactive: "reactivar el consultorio",
+  officeInactive: "restaurar la sede",
+  roomInactive: "restaurar el consultorio",
 };
 
 function ToRescheduleList() {

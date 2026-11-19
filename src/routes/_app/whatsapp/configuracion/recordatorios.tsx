@@ -1,17 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
-import { SelectOptions, useAppForm } from "#/components/app-form.tsx";
+import { useAppForm } from "#/components/app-form.tsx";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
 import { handoffRemindersSchema } from "#/lib/handoffs.ts";
 import { handoffReminderChoices } from "#/lib/hour-choices.ts";
 import { getWhatsappSettings, saveHandoffReminders } from "#/server/whatsapp.functions.ts";
 
 import { handoffRemindersHint } from "#/routes/_app/whatsapp/configuracion/-handoff-reminders.tsx";
+import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/whatsapp/configuracion/recordatorios")({
   head: () => ({ meta: [{ title: "Recordatorios de derivaciones · underthing" }] }),
   loader: () => getWhatsappSettings(),
+  staticData: { crumbs: fixedCrumbs("Recordatorios de derivaciones") },
   component: EditHandoffReminders,
 });
 
@@ -85,16 +87,22 @@ function HandoffRemindersForm(props: { recipientHours: number; othersHours: numb
     >
       <form.AppField name="recipientHours">
         {(field) => (
-          <field.SelectField label="A quien la recibe" required hint={hint}>
-            <SelectOptions options={handoffReminderChoices(props.recipientHours)} />
-          </field.SelectField>
+          <field.SelectField
+            label="A quien la recibe"
+            required
+            hint={hint}
+            options={handoffReminderChoices(props.recipientHours)}
+          />
         )}
       </form.AppField>
       <form.AppField name="othersHours">
         {(field) => (
-          <field.SelectField label="A los demás que pueden responderla" required hint={othersHint}>
-            <SelectOptions options={handoffReminderChoices(props.othersHours)} />
-          </field.SelectField>
+          <field.SelectField
+            label="A los demás que pueden responderla"
+            required
+            hint={othersHint}
+            options={handoffReminderChoices(props.othersHours)}
+          />
         )}
       </form.AppField>
     </ActionFormPage>

@@ -1,6 +1,8 @@
 import { useAppForm } from "#/components/app-form.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, useFormPage } from "#/components/form-page.tsx";
+import type { RecordHeader } from "#/components/form-page.tsx";
+import type { ReactNode } from "react";
 import { officeInputSchema } from "#/lib/offices.ts";
 import type { OfficeInput } from "#/lib/offices.ts";
 
@@ -9,7 +11,7 @@ import type { ActionResult } from "#/routes/_app/sedes/-shared.tsx";
 
 const fieldMessages: Record<keyof OfficeInput, string> = {
   name: "Ingresá el nombre de la sede.",
-  address: "Ingresá la dirección de la sede.",
+  address: "Ingresá el domicilio de la sede.",
   timeZone: "La zona horaria no es válida. Usá un nombre como America/Argentina/Buenos_Aires.",
 };
 
@@ -19,6 +21,9 @@ export function OfficeForm(props: {
   initial: OfficeInput;
   submitLabel: string;
   creates?: boolean;
+  /** An existing office's status and deactivation, beside the title. */
+  record?: RecordHeader;
+  frame?: (content: ReactNode) => ReactNode;
   onSubmit: (input: OfficeInput) => Promise<ActionResult>;
 }) {
   const { initial } = props;
@@ -26,6 +31,7 @@ export function OfficeForm(props: {
   const action = useAction();
 
   const form = useAppForm({
+    // The time zone has no field: a new office takes Argentina's, a saved one keeps its own.
     defaultValues: {
       name: initial.name,
       address: initial.address,
@@ -51,16 +57,15 @@ export function OfficeForm(props: {
       description={props.description}
       submitLabel={props.submitLabel}
       creates={props.creates}
+      record={props.record}
+      frame={props.frame}
       action={action}
     >
       <form.AppField name="name">
-        {(field) => <field.TextField label="Nombre" required />}
+        {(field) => <field.TextField label="Nombre" size="half" required />}
       </form.AppField>
       <form.AppField name="address">
-        {(field) => <field.TextField label="Dirección" size="half" required />}
-      </form.AppField>
-      <form.AppField name="timeZone">
-        {(field) => <field.TextField label="Zona horaria" required />}
+        {(field) => <field.TextField label="Domicilio" size="half" required />}
       </form.AppField>
     </ActionFormPage>
   );

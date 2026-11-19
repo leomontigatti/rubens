@@ -2,14 +2,13 @@ import { ShieldIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import * as z from "zod";
 
-import { RefusalMessage } from "#/components/admin-form.tsx";
-import { DataTable, NoMatches, RowLink, useClientDataTable } from "#/components/data-table.tsx";
+import { ArchivedBadge, RefusalMessage } from "#/components/admin-form.tsx";
+import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
-import { showsAllPick, statusFilter } from "#/components/filter-groups.ts";
+import { includesArchivedPick, archivedFilter } from "#/components/filter-groups.ts";
 import { CreateButton } from "#/components/form-page.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
 import { insurerKindLabels } from "#/lib/coverages.ts";
 import { getInsurers } from "#/server/insurers.functions.ts";
 import type { Insurer } from "#/organization/insurers.ts";
@@ -18,8 +17,8 @@ import { refusalMessages } from "#/routes/_app/obras-sociales/-insurer-form.tsx"
 
 export const Route = createFileRoute("/_app/obras-sociales/")({
   head: () => ({ meta: [{ title: "Obras sociales y prepagas · underthing" }] }),
-  validateSearch: z.object({ inactivas: z.boolean().optional().catch(undefined) }),
-  loaderDeps: ({ search }) => ({ includeInactive: search.inactivas ?? false }),
+  validateSearch: z.object({ archivadas: z.boolean().optional().catch(undefined) }),
+  loaderDeps: ({ search }) => ({ includeInactive: search.archivadas ?? false }),
   loader: ({ deps }) => getInsurers({ data: deps }),
   component: Insurers,
 });
@@ -60,26 +59,25 @@ const columns: DataTableColumn<ListedInsurer>[] = [
   {
     id: "name",
     header: "Nombre",
-    cell: (insurer) =>
-      insurer.canOpen ? (
-        <RowLink to="/obras-sociales/$insurerId" params={{ insurerId: insurer.id }}>
-          {insurer.name}
-        </RowLink>
-      ) : (
-        insurer.name
-      ),
+    cell: (insurer) => (
+      <RowName
+        name={insurer.name}
+        transitionId={insurer.id}
+        link={
+          insurer.canOpen
+            ? { to: "/obras-sociales/$insurerId", params: { insurerId: insurer.id } }
+            : undefined
+        }
+        status={<ArchivedBadge active={insurer.active} ending="a" />}
+      />
+    ),
   },
   { id: "kind", header: "Tipo", cell: (insurer) => insurerKindLabels[insurer.kind] },
-  {
-    id: "status",
-    header: "Estado",
-    cell: (insurer) => !insurer.active && <Badge variant="secondary">Inactiva</Badge>,
-  },
 ];
 
 function InsurerTable(props: { insurers: Insurer[]; onlyInactive: boolean; isAdmin: boolean }) {
   const { insurers, onlyInactive, isAdmin } = props;
-  const { inactivas } = Route.useSearch();
+  const { archivadas } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { table, pager, query, setQuery } = useClientDataTable({
     rows: insurers.map((insurer) => ({ ...insurer, canOpen: isAdmin })),
@@ -88,7 +86,7 @@ function InsurerTable(props: { insurers: Insurer[]; onlyInactive: boolean; isAdm
     searchText: (insurer) => insurer.name,
   });
   const changeStatus = (value: string | null) =>
-    void navigate({ search: { inactivas: showsAllPick(value) } });
+    void navigate({ search: { archivadas: includesArchivedPick(value) } });
 
   return (
     <DataTable
@@ -101,7 +99,7 @@ function InsurerTable(props: { insurers: Insurer[]; onlyInactive: boolean; isAdm
         placeholder: "Buscar por nombre",
       }}
       filters={{
-        groups: [statusFilter(inactivas, { active: "Activas", all: "Todas" })],
+        groups: [archivedFilter(archivadas, { group: "Archivadas", included: "Incluidas" })],
         onPick: (_id, value) => changeStatus(value),
         onRemove: () => changeStatus(null),
       }}
@@ -128,7 +126,7 @@ function NoInsurers(props: { onlyInactive: boolean; isAdmin: boolean }) {
       }
       description={
         onlyInactive
-          ? `No hay obras sociales ni prepagas activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las inactivas.`
+          ? `No hay obras sociales ni prepagas activas. ${isAdmin ? "Empezá creando una, o mirá" : "Mirá"} las archivadas.`
           : `Todavía no hay obras sociales ni prepagas.${isAdmin ? " Empezá creando la primera." : ""}`
       }
     >
@@ -140,9 +138,9 @@ function NoInsurers(props: { onlyInactive: boolean; isAdmin: boolean }) {
       {onlyInactive && (
         <EmptyStateLink
           variant={isAdmin ? "outline" : "default"}
-          link={<Link to="/obras-sociales" search={{ inactivas: true }} />}
+          link={<Link to="/obras-sociales" search={{ archivadas: true }} />}
         >
-          Ver inactivas
+          Ver archivadas
         </EmptyStateLink>
       )}
     </EmptyState>

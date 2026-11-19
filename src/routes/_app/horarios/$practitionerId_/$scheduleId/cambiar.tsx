@@ -8,10 +8,12 @@ import {
   ScheduleForm,
   offeredRooms,
 } from "#/routes/_app/horarios/-schedule-form.tsx";
+import { PractitionerStepCrumbs } from "#/routes/_app/horarios/-practitioner-crumbs.tsx";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId_/$scheduleId/cambiar")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
   head: () => ({ meta: [{ title: "Cambiar horario · underthing" }] }),
+  staticData: { crumbs: Crumbs },
   component: ChangeSchedule,
 });
 
@@ -40,5 +42,14 @@ function ChangeSchedule() {
         />
       )}
     </EditableSchedule>
+  );
+}
+
+function Crumbs() {
+  const result = Route.useLoaderData();
+  const { practitionerId } = Route.useParams();
+  const name = result.ok ? result.practitioner.displayName : null;
+  return (
+    <PractitionerStepCrumbs practitionerId={practitionerId} name={name} step="Cambiar horario" />
   );
 }

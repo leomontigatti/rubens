@@ -19,8 +19,11 @@ import { FormProblemsContext } from "#/components/field-problem.tsx";
 import { ConfirmDialog } from "#/components/confirm-dialog.tsx";
 import { isStillOn } from "#/components/form-page-location.ts";
 import type { FieldProblem } from "#/components/form-problems.ts";
+import { AlertStack } from "#/components/alert-stack.tsx";
 import { PageHeader } from "#/components/page-header.tsx";
+import { RecordName } from "#/components/record-transition.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import { Card, CardContent, CardFooter } from "#/components/ui/card.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
 import { useMountedRef } from "#/hooks/use-mounted-ref.ts";
@@ -136,22 +139,41 @@ type FormPageControl = ReturnType<typeof useFormPage>;
  */
 export interface RecordHeader {
   status?: ReactNode;
+  /** The record's id, so its name moves from the list row into the title (`RecordName`). */
+  transitionId?: string;
   /** The actions, disabled while `busy`: the form saves, or the page leaves. */
   actions: (busy: boolean) => ReactNode;
   error: string | null;
+  /** The record's own alert, first in the page's `AlertStack`: an archived one's (`ArchivedAlert`). */
+  alert?: ReactNode;
 }
 
 /**
- * The button that opens a create's page, for whoever may create: in the page
- * header's `actions`, and again in the list's `EmptyState`. `link` is its `Link`.
+ * The button that opens a create, for whoever may create: in the page
+ * header's `actions`, and again in the list's `EmptyState`. `link` is the
+ * `Link` to its page; `onClick` opens its dialog instead (`FormDialog`).
  */
-export function CreateButton(props: { can?: boolean; link: ReactElement; children: ReactNode }) {
+export function CreateButton(
+  props: { can?: boolean; children: ReactNode } & (
+    | { link: ReactElement; onClick?: never }
+    | { onClick: () => void; link?: never }
+  ),
+) {
   if (props.can === false) {
     return null;
   }
+  const icon = <PlusIcon data-icon="inline-start" aria-hidden />;
+  if (props.onClick) {
+    return (
+      <Button onClick={props.onClick}>
+        {icon}
+        {props.children}
+      </Button>
+    );
+  }
   return (
     <Button nativeButton={false} render={props.link}>
-      <PlusIcon data-icon="inline-start" aria-hidden />
+      {icon}
       {props.children}
     </Button>
   );
@@ -193,9 +215,13 @@ export function FormPage(props: {
    */
   lead?: ReactNode;
   record?: RecordHeader;
+  /** What the form sits in below the title, such as a tab beside the record's other parts. */
+  frame?: (content: ReactNode) => ReactNode;
+  /** The page's alerts, in its `AlertStack` under the header: why a field is locked, for one. */
+  alerts?: ReactNode;
   children: ReactNode;
 }) {
-  const { page, form, record = noRecord, refusals = noRefusals } = props;
+  const { page, form, record = noRecord, refusals = noRefusals, frame = unframed } = props;
   const problems = [...page.problems, ...refusals];
   const content = useRef<HTMLDivElement>(null);
   const alert = useRef<HTMLDivElement>(null);
@@ -220,24 +246,31 @@ export function FormPage(props: {
         title={props.title}
         description={props.description}
         record={record}
+        alerts={props.alerts}
         pending={pending}
       />
       <FormProblemsContext.Provider value={problems}>
         {/* A discard remounts the form: what its fields keep of their own goes too. */}
-        <div key={page.version} ref={content} className="flex flex-col gap-4">
-          <RefusalAlert focusRef={alert} problems={problems} />
-          {props.lead && <FormGrid disabled={pending}>{props.lead}</FormGrid>}
-          <form method="post" noValidate className="flex flex-col gap-4" onSubmit={submit}>
-            <FormGrid disabled={pending}>{props.children}</FormGrid>
-            <FormPageActions
-              page={page}
-              pending={pending}
-              submitLabel={props.submitLabel}
-              submitNote={props.submitNote}
-              discardable={!props.creates && dirty}
-            />
-          </form>
-        </div>
+        {frame(
+          <div key={page.version} ref={content} className="flex flex-col gap-4">
+            <RefusalAlert focusRef={alert} problems={problems} />
+            {props.lead && <FormGrid disabled={pending}>{props.lead}</FormGrid>}
+            <form method="post" noValidate onSubmit={submit}>
+              <Card>
+                <CardContent>
+                  <FormGrid disabled={pending}>{props.children}</FormGrid>
+                </CardContent>
+                <FormPageActions
+                  page={page}
+                  pending={pending}
+                  submitLabel={props.submitLabel}
+                  submitNote={props.submitNote}
+                  discardable={!props.creates && dirty}
+                />
+              </Card>
+            </form>
+          </div>,
+        )}
       </FormProblemsContext.Provider>
       <ConfirmDialog
         open={question.open}
@@ -286,25 +319,38 @@ function useLeaveQuestion(page: FormPageControl, dirty: boolean) {
   };
 }
 
+const unframed = (content: ReactNode) => content;
+
 /** The page's title, with its record's status and actions, which wait while it saves or leaves. */
 function FormPageHeader(props: {
   title: string;
   description?: string;
   record: RecordHeader;
+  alerts?: ReactNode;
   pending: boolean;
 }) {
   const { record } = props;
   return (
     <>
       <PageHeader
-        title={props.title}
+        title={
+          record.transitionId ? (
+            <RecordName id={record.transitionId}>{props.title}</RecordName>
+          ) : (
+            props.title
+          )
+        }
         status={record.status}
         description={
           props.description && <p className="text-muted-foreground text-sm">{props.description}</p>
         }
         actions={record.actions(props.pending)}
       />
-      <ErrorAlert message={record.error} />
+      <AlertStack>
+        {record.error && <ErrorAlert message={record.error} />}
+        {record.alert}
+        {props.alerts}
+      </AlertStack>
     </>
   );
 }
@@ -330,9 +376,9 @@ function RefusalAlert({
 
 /**
  * `Volver` on the left; `Descartar cambios`, once it applies, and the submit
- * button on the right, after the note on what it does, if any. Below `sm` the
- * submit takes a row of its own, full width, under the other two: three
- * buttons and a long submit label do not fit a phone's width.
+ * button on the right, after the note on what it does, if any, all in one row.
+ * The right-hand buttons wrap under `Volver` only when they do not fit, as
+ * three buttons and a long submit label on a phone.
  */
 function FormPageActions(props: {
   page: FormPageControl;
@@ -344,46 +390,48 @@ function FormPageActions(props: {
 }) {
   const { page, pending } = props;
   return (
-    <div
-      className={cn(
-        "bg-background sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t py-4",
-        !props.submitNote && "sm:flex-nowrap",
-      )}
-    >
-      <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
-        <ChevronLeftIcon data-icon="inline-start" aria-hidden />
-        Volver
-      </Button>
-      {/* On a narrow screen, a row of its own above the buttons. */}
-      {props.submitNote && (
-        <p className="text-muted-foreground order-first basis-full text-sm sm:order-none sm:ml-auto sm:basis-auto sm:text-right">
-          {props.submitNote}
-        </p>
-      )}
-      {/* Below `sm`, its buttons sit in the bar's own rows. */}
-      <div className="contents sm:flex sm:items-center sm:gap-3">
-        {props.discardable && (
-          <Button
-            type="button"
-            variant="outline"
-            className="ml-auto sm:ml-0"
-            disabled={pending}
-            onClick={page.askToDiscard}
-          >
-            <Undo2Icon data-icon="inline-start" aria-hidden />
-            Descartar cambios
-          </Button>
+    <CardFooter className="sticky bottom-0">
+      <div
+        className={cn(
+          "flex w-full flex-wrap items-center justify-between gap-3",
+          !props.submitNote && "sm:flex-nowrap",
         )}
-        <Button type="submit" className="basis-full sm:basis-auto" disabled={pending}>
-          {pending ? (
-            <Spinner data-icon="inline-start" aria-hidden />
-          ) : (
-            <CheckIcon data-icon="inline-start" aria-hidden />
-          )}
-          {props.submitLabel}
+      >
+        <Button type="button" variant="outline" disabled={pending} onClick={page.goBack}>
+          <ChevronLeftIcon data-icon="inline-start" aria-hidden />
+          Volver
         </Button>
+        {/* On a narrow screen, a row of its own above the buttons. */}
+        {props.submitNote && (
+          <p className="text-muted-foreground order-first basis-full text-sm sm:order-none sm:ml-auto sm:basis-auto sm:text-right">
+            {props.submitNote}
+          </p>
+        )}
+        {/* Below `sm`, its buttons sit in the bar's own rows: the submit on one of its own. */}
+        <div className="contents sm:flex sm:items-center sm:gap-3">
+          {props.discardable && (
+            <Button
+              type="button"
+              variant="outline"
+              className="ml-auto sm:ml-0"
+              disabled={pending}
+              onClick={page.askToDiscard}
+            >
+              <Undo2Icon data-icon="inline-start" aria-hidden />
+              Descartar cambios
+            </Button>
+          )}
+          <Button type="submit" className="basis-full sm:basis-auto" disabled={pending}>
+            {pending ? (
+              <Spinner data-icon="inline-start" aria-hidden />
+            ) : (
+              <CheckIcon data-icon="inline-start" aria-hidden />
+            )}
+            {props.submitLabel}
+          </Button>
+        </div>
       </div>
-    </div>
+    </CardFooter>
   );
 }
 
@@ -396,6 +444,8 @@ export function ActionFormPage(props: {
   submitLabel: string;
   creates?: boolean;
   record?: RecordHeader;
+  frame?: (content: ReactNode) => ReactNode;
+  alerts?: ReactNode;
   action: {
     pending: boolean;
     error: string | null;

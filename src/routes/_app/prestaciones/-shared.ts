@@ -12,7 +12,7 @@ export const refusalMessages = {
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos ese profesional o esa prestación.",
-  practitionerInactive: "El profesional está desactivado: no se le pueden cargar prestaciones.",
+  practitionerInactive: "El profesional está archivado: no se le pueden cargar prestaciones.",
   unknownTemplate: "Una de las plantillas ya no existe: volvé a cargar la página.",
   tooManyReminders: tooManyRemindersText,
 };

@@ -10,16 +10,21 @@
 // - `no-bare-label`: `Label` where `FieldLabel` belongs.
 // - `no-raw-table`: a `<table>` or the ui `Table` where `DataTable` belongs.
 // - `no-raw-empty`: the ui `Empty` where `EmptyState` belongs.
-// - `no-raw-form`: a `<form>` where `FormPage` belongs.
+// - `no-raw-form`: a `<form>` where `FormPage`, or for an exception `FormDialog`, belongs.
 // - `no-uncontrolled-input`: a default value where `useAppForm` holds the field.
 // - `no-raw-date-format`: a date or a time written for a person outside `src/lib/dates.ts`.
+// - `no-status-column`: a list column headed `Estado`.
+// - `use-archived-badge`: a `Badge` hand-written as a record's state (`Archivado`, `Activo`…).
+// - `create-names-thing`: a create's submit button labelled with a bare verb.
+// - `use-option-select`: shadcn's `Select` where `OptionSelect` belongs.
+// - `no-menu-item-icon`: an icon in a menu item.
 
 const REPLACEMENTS = new Map([
   ["button", "Button"],
   ["fieldset", "FieldSet"],
   ["label", "FieldLabel"],
   ["legend", "FieldLegend"],
-  ["select", "NativeSelect"],
+  ["select", "Select"],
   ["textarea", "Textarea"],
 ]);
 
@@ -333,7 +338,7 @@ const noRawForm = {
       description: "A create or an edit is a FormPage.",
     },
     messages: {
-      form: "Use FormPage from #/components/form-page.tsx: it owns the actions, the spinner and the question before leaving with changes, so a hand-made form drifts from it (style guide, Form pages).",
+      form: "Use FormPage from #/components/form-page.tsx, or for one of the style guide's exceptions FormDialog from #/components/form-dialog.tsx: they own the actions, the spinner and the refusals, so a hand-made form drifts from them (style guide, Form pages).",
     },
     schema: [],
   },
@@ -484,19 +489,163 @@ const noRawDateFormat = {
   },
 };
 
+const noStatusColumn = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "A list has no Estado column." },
+    messages: {
+      column:
+        "Show the state as a Badge beside the name, in RowName's `status`, not in an Estado column (style guide, A state is a Badge beside the name).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      Property(node) {
+        if (isEstadoHeader(node)) {
+          context.report({ node, messageId: "column" });
+        }
+      },
+    };
+  },
+};
+
+// `header: "Estado"`, a column's.
+function isEstadoHeader(node) {
+  const key = node.key?.name ?? node.key?.value;
+  return key === "header" && node.value?.type === "Literal" && node.value.value === "Estado";
+}
+
+// The state words of a record that only `ArchivedBadge` may write, the old ones too.
+const ARCHIVED_STATES = new Set([
+  "Archivado",
+  "Archivada",
+  "Activo",
+  "Activa",
+  "Inactivo",
+  "Inactiva",
+]);
+
+const useArchivedBadge = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "An archived state is ArchivedBadge." },
+    messages: {
+      badge:
+        "Use ArchivedBadge from #/components/admin-form.tsx: it shows `Archivado` on an archived record and nothing on an active one, since a badge only shows a state out of the ordinary (style guide, Badges).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXElement(node) {
+        if (node.openingElement.name.name !== "Badge") return;
+        const words = node.children
+          .filter((child) => child.type === "JSXText")
+          .map((child) => child.value.trim())
+          .join("");
+        if (ARCHIVED_STATES.has(words)) {
+          context.report({ node: node.openingElement, messageId: "badge" });
+        }
+      },
+    };
+  },
+};
+
+const BARE_VERBS = new Set(["Guardar", "Crear", "Agregar", "Registrar"]);
+
+const createNamesThing = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "A create's submit button names what it makes." },
+    messages: {
+      label:
+        "Name the thing on a create's submit button, as `Crear sede` or `Agregar cobertura`, not a bare verb (style guide, Form pages).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        const creates = node.attributes.some((item) => item.name?.name === "creates");
+        const label = stringAttribute(node, "submitLabel");
+        if (creates && BARE_VERBS.has(label)) {
+          context.report({ node, messageId: "label" });
+        }
+      },
+    };
+  },
+};
+
+const useOptionSelect = {
+  meta: {
+    type: "problem",
+    docs: { description: "A choice from a list is OptionSelect." },
+    messages: {
+      select:
+        "Use OptionSelect from #/components/option-select.tsx, or the form kit's SelectField: it opens the list below the box, never over it aligned on the picked option (style guide, Forms).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value.endsWith("/components/ui/select.tsx")) {
+          context.report({ node, messageId: "select" });
+        }
+      },
+    };
+  },
+};
+
+// `ArchiveIcon`, `Lucide…`: what lucide-react names its icons.
+const isIconName = (name) => typeof name === "string" && /^[A-Z]\w*Icon$/.test(name);
+
+// An element's children that are icons.
+const iconsIn = (node) =>
+  node.children.filter(
+    (child) => child.type === "JSXElement" && isIconName(child.openingElement.name.name),
+  );
+
+const noMenuItemIcon = {
+  meta: {
+    type: "suggestion",
+    docs: { description: "A menu item is text only." },
+    messages: {
+      icon: "A menu item is text only, with no icon: `Archivar` in red says enough (style guide, Form pages).",
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      JSXElement(node) {
+        if (node.openingElement.name.name !== "DropdownMenuItem") return;
+        for (const icon of iconsIn(node)) {
+          context.report({ node: icon.openingElement, messageId: "icon" });
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "ui" },
   rules: {
     "alert-structure": alertStructure,
+    "create-names-thing": createNamesThing,
     "no-bare-label": noBareLabel,
+    "no-menu-item-icon": noMenuItemIcon,
     "no-raw-date-format": noRawDateFormat,
     "no-raw-form": noRawForm,
     "no-raw-empty": noRawEmpty,
     "no-raw-form-element": noRawFormElement,
     "no-raw-page-title": noRawPageTitle,
     "no-raw-table": noRawTable,
+    "no-status-column": noStatusColumn,
     "no-uncontrolled-input": noUncontrolledInput,
     "require-no-validate": requireNoValidate,
     "require-post-method": requirePostMethod,
+    "use-archived-badge": useArchivedBadge,
+    "use-option-select": useOptionSelect,
   },
 };
