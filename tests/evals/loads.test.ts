@@ -26,11 +26,9 @@ describe("the evals' modules", () => {
   it("load under the pinned Node, as the eval scripts run them", () => {
     const loading = `await Promise.all(${JSON.stringify(evalModules)}.map((name) => import(name)));`;
 
-    const run = spawnSync(
-      process.execPath,
-      ["--import", "./tests/evals/src-imports.ts", "--input-type=module", "-e", loading],
-      { encoding: "utf8" },
-    );
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", loading], {
+      encoding: "utf8",
+    });
 
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);
