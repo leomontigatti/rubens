@@ -6,7 +6,7 @@ and no account: Miniflare runs the Worker and the organization objects locally
 
 ## Prerequisites
 
-- **Node 22.23.4**, from `.nvmrc` (`fnm use` or `nvm use` reads it).
+- **Node 26.13.1**, from `.nvmrc` (`fnm use` or `nvm use` reads it).
 - **pnpm**, the version in `packageManager`. Run `corepack enable` once, and pnpm
   picks the right version from the repo.
 - **Vite+ (`vp`)** is a dev dependency, so `pnpm <script>` and `pnpm exec vp` find it.

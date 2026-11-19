@@ -4,7 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@12.11.2",
   "engines": {
-    "node": "^22.23.4"
+    "node": "^26.13.1"
   },
   "imports": {
     "#/*": "./src/*"
@@ -79,7 +79,7 @@
     "@tanstack/ai-gemini": "^1.2.2",
     "@tanstack/ai-openai": "^1.1.1",
     "@tanstack/router-cli": "^1.168.0",
-    "@types/node": "^22.20.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
