@@ -95,9 +95,11 @@ has two parts, held to their counts alike:
 
 The list only falls. `pnpm check:type-assertions` (pre-commit and CI) fails when a
 file's count differs from its entry, when an entry is new or higher than on
-`origin/main`, when the override names any other file, and on a disable comment that
-names the rule or no rule; the rule takes none. So a helper that needs a cast to
-remove many keeps it in a file already on the list, within that file's entry. To
+`origin/main`, when the override names any other file, on a disable comment that
+names the rule or no rule (the rule takes none), and on a file it cannot parse. So a
+helper that needs a cast to remove many keeps it in a file already on the list, within
+that file's entry. A file renamed or moved is a new path to the list, so it moves
+without its assertions. To
 lower an entry, remove the assertions and run `pnpm check:type-assertions --write` in
 the same change: it rewrites the counts from the tree and drops a file at zero.
 

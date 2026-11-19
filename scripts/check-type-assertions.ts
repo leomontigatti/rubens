@@ -144,6 +144,9 @@ export function ratchetProblems(input: RatchetInput): string[] {
   ];
 }
 
+const cannotParse = (file: string) =>
+  new Error(`${file}: cannot parse it to count its type assertions and disable comments.`);
+
 const directive = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/;
 
 /**
@@ -152,7 +155,10 @@ const directive = /(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/;
  * comment ends where oxlint's does; `file` picks the language (`.tsx` parses JSX).
  */
 export function findDisableComments(source: string, file: string): number[] {
-  return parseSync(file, source).comments.flatMap(({ value, start }) => {
+  const { comments, errors } = parseSync(file, source);
+  // A file that does not parse would yield only the comments before its error.
+  if (errors.length > 0) throw cannotParse(file);
+  return comments.flatMap(({ value, start }) => {
     const found = directive.exec(value);
     if (!found) return [];
     const rules = value.slice(found.index + found[0].length);
@@ -216,8 +222,9 @@ function resolvedLintConfig() {
   return parseJson(lintConfigSchema, printed.stdout);
 }
 
+// A parse error is the one diagnostic without a code.
 const reportSchema = z.object({
-  diagnostics: z.array(z.object({ code: z.string(), filename: z.string() })),
+  diagnostics: z.array(z.object({ code: z.string().optional(), filename: z.string() })),
 });
 
 // Every tracked source file but those in `notCounted`. Tracked, not what lint
@@ -239,9 +246,10 @@ function trackedSourceFiles(): string[] {
     .filter((file) => file !== "" && existsSync(file));
 }
 
-// Oxlint's own binary, the one `vp lint` runs, with only this rule, no overrides
-// and no ignore files: the count is what the rule reports with the allowlist empty.
-function countAssertions(files: string[]): Record<string, number> {
+// Oxlint's own binary, the one `vp lint` runs, with only this rule, no overrides,
+// no nested configs and no ignore files: the count is what the rule reports with
+// the allowlist empty.
+export function countAssertions(files: string[]): Record<string, number> {
   const require = createRequire(import.meta.url);
   const fromVitePlus = createRequire(require.resolve("vite-plus/package.json"));
   const oxlint = path.join(path.dirname(fromVitePlus.resolve("oxlint/package.json")), "bin/oxlint");
@@ -256,10 +264,20 @@ function countAssertions(files: string[]): Record<string, number> {
     }),
   );
   try {
-    const linted = run(oxlint, ["-c", config, "--format", "json", "--no-ignore", ...files]);
+    const linted = run(oxlint, [
+      "-c",
+      config,
+      "--disable-nested-config",
+      "--format",
+      "json",
+      "--no-ignore",
+      ...files,
+    ]);
     const { diagnostics } = parseJson(reportSchema, linted.stdout);
     const counts: Record<string, number> = {};
     for (const { code, filename } of diagnostics) {
+      // A file that does not parse would count as none and `--write` would drop its entry.
+      if (code === undefined) throw cannotParse(filename);
       if (code !== "typescript(consistent-type-assertions)") continue;
       counts[filename] = (counts[filename] ?? 0) + 1;
     }

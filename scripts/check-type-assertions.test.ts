@@ -1,6 +1,15 @@
-import { describe, expect, test } from "vite-plus/test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-import { findDisableComments, ratchetProblems, ruleName } from "./check-type-assertions.ts";
+import { afterAll, describe, expect, test } from "vite-plus/test";
+
+import {
+  countAssertions,
+  findDisableComments,
+  ratchetProblems,
+  ruleName,
+} from "./check-type-assertions.ts";
 import type { Allowlist, RatchetInput } from "./check-type-assertions.ts";
 
 const allowlist: Allowlist = {
@@ -137,7 +146,41 @@ describe("the type assertion ratchet", () => {
   });
 });
 
+// Half a statement: neither oxlint nor oxc's parser can read it.
+const unparseable = "const a = 1 as number;\nconst b = {\n";
+
+describe("the count", { timeout: 30_000 }, () => {
+  const root = mkdtempSync(path.join(tmpdir(), "type-assertion-count-"));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  const file = (relative: string, source: string) => {
+    const at = path.join(root, relative);
+    mkdirSync(path.dirname(at), { recursive: true });
+    writeFileSync(at, source);
+    return at;
+  };
+
+  test("refuses a file it cannot parse, rather than counting it as none", () => {
+    const broken = file("broken.ts", unparseable);
+
+    expect(() => countAssertions([broken])).toThrow(/broken\.ts.*cannot parse/);
+  });
+
+  test("counts an assertion that a nested lint config turns off", () => {
+    file("nested/.oxlintrc.json", JSON.stringify({ rules: { [ruleName]: "off" } }));
+    const hidden = file("nested/hidden.ts", "export const c = 1 as number;\n");
+
+    expect(countAssertions([hidden])).toEqual({ [hidden]: 1 });
+  });
+});
+
 describe("disable comments", () => {
+  test("refuses a file it cannot parse, rather than finding none", () => {
+    expect(() => findDisableComments(unparseable, "src/broken.ts")).toThrow(
+      /src\/broken\.ts.*cannot parse/,
+    );
+  });
+
   test("finds one that names the rule, in any form, and one that names no rule", () => {
     const source = [
       `${disable("disable-next-line")} ${ruleName} -- a reason`,
