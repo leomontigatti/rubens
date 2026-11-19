@@ -58,8 +58,8 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   differs from its entry in `scripts/type-assertion-allowlist.json`, when an entry is
   new or higher than on `origin/main`, when the lint override does not name exactly
   the listed files, and on a disable comment for the rule; it fails closed when it
-  cannot read `origin/main`'s list. `--write` rewrites the list from the tree, to
-  lower an entry. CI runs it.
+  cannot read `origin/main`'s list or parse a file. `--write` rewrites the list from
+  the tree, to lower an entry, and refuses a file it cannot parse. CI runs it.
 
 ## Repository
 
