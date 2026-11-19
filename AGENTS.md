@@ -7,8 +7,9 @@ word matches the task.
 The skills, agent briefs and shared hooks are the shared workflow in
 `leomontigatti/agent-workflow`, installed at `~/.agents/workflow`; every harness loads them
 from the user's home ([agent-configuration.md](docs/agents/agent-configuration.md)), and on a
-Capy machine the project's Setup installs them. "Use the X skill" means read
-`~/.agents/skills/X/SKILL.md` and follow it in full, whatever the harness. This repo keeps only its own facts, in the contract files the shared
+Capy machine the project's Setup installs them. "Use the X skill" means read its `SKILL.md`
+and follow it in full, whatever the harness: `~/.agents/skills/X/` for a shared skill,
+`.agents/skills/X/` for one of this repo's own. This repo keeps only its own facts, in the contract files the shared
 `contract.md` lists: this file, [GLOSSARY.md](GLOSSARY.md), [docs/adr/](docs/adr/README.md),
 `t3.json`, `.agents/required-tools`, and under `docs/agents/`:
 [validation.md](docs/agents/validation.md), [verification.md](docs/agents/verification.md),

@@ -73,7 +73,9 @@ run only in the harnesses that wire them, Claude Code and Codex. A Capy thread r
 of them, so there the session does their work itself: format each file it writes with
 `pnpm exec vp fmt <file>...`, run `pnpm install --frozen-lockfile` when `pnpm-lock.yaml`
 changed, and before it ends run `pnpm check`, `pnpm check:fallow` and `pnpm check:dupes`,
-reading the last two by exit code as [fallow.md](./fallow.md) says.
+reading the last two by exit code as [fallow.md](./fallow.md) says. Like the `Stop` hook, it
+runs them only when the working tree changed a TypeScript or JavaScript file, a
+`package.json` or a `tsconfig`, and skips the two fallow gates on a `prototype/*` branch.
 
 Where they do run, they run three of these checks for you:
 
