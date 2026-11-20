@@ -11,8 +11,7 @@ the research behind it, with sources, is in
 Amended 2026-11-06: the channel (the organization's own number through WAHA, and the
 precautions against a ban) and the pg-boss worker are superseded by ADR-0010, which puts
 each organization on a new number on Meta's Cloud API, run from the organization's
-Durable Object ([the old text](./superseded/0006-whatsapp-through-waha.md)). The
-sections below are live.
+Durable Object. The sections below are live.
 
 Patients write to the practice on WhatsApp, and a reception desk is what the
 business wants to need less of. So each organization's number gets an assistant
@@ -71,3 +70,5 @@ settings' sandbox ([assistant.md](../domain/assistant.md#trying-it)).
 
 The evaluation of #151 chose Claude Haiku 5.5 (`claude-haiku-5-5`) for the assistant,
 and Whisper on Workers AI for voice notes.
+
+Governs: `src/organization/assistant.ts`, `src/organization/assistant-model.ts`, `src/organization/proposals.ts`, `src/lib/assistant.ts`

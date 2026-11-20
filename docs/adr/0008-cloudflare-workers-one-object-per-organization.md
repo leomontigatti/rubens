@@ -1,8 +1,7 @@
 # ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization
 
 **Status**: accepted; the port landed in #131. It supersedes
-[ADR-0002](./superseded/0002-tenancy-and-database-connections.md) and
-[ADR-0004](./superseded/0004-dedicated-postgres-schema.md).
+ADR-0002 and ADR-0004.
 
 Date: 2026-11-06. Decided in #125, from the prototype on the `prototype/cloudflare-workers`
 branch, whose README has the measurements.
@@ -122,3 +121,5 @@ Patient search's near-miss matching, which Postgres's `pg_trgm` did, is code in 
 object (`src/lib/search-text.ts`, #135): it pads each word's trigrams as `pg_trgm` pads
 them and matches a query word to a stored word on a trigram threshold, so a near miss
 still matches.
+
+Governs: `wrangler.jsonc`, `src/organization/organization.ts`, `src/organization/organization-runtime.ts`, `src/organization/jobs.ts`, `src/organization/encryption.ts`, `src/lib/search-text.ts`

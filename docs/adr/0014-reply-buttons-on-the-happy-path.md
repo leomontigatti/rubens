@@ -87,3 +87,5 @@ none. They go only on messages where the patient's answer is a single yes:
   beyond the message it reacts to. Accepting a proposal stays the model's, as before.
 - **The reply to a tap costs a message, as any reply does.** Only the model's calls are
   saved.
+
+Governs: `src/organization/button-taps.ts`, `src/lib/button-payloads.ts`, `src/organization/template-components.ts`

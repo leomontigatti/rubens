@@ -11,8 +11,7 @@ times.
 Amended 2026-11-06 (ADR-0010): with no phone on the organization's number, the app's
 view is a full inbox, not a fallback: every conversation, readable by role, and any
 allowed member can take one over at any time. Handoffs still carry the patient's words
-to Telegram, and practitioners still reply from there. The fallback view this ADR
-decided on 2026-11-04 is [kept apart](./superseded/0007-fallback-view.md).
+to Telegram, and practitioners still reply from there.
 
 Amended 2026-11-11 (ADR-0013): reception reads every conversation, and a handoff that
 needs no practitioner goes to reception, so a handoff's recipient on Telegram may be

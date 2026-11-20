@@ -56,7 +56,7 @@ Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
 
 How notes are written and kept is [ADR-0005](./0005-versioned-clinical-notes.md),
 which superseded this section's append-only notes and application-level encryption
-on 2026-10-28 ([the old text](./superseded/0003-clinical-notes-append-only.md)).
+on 2026-10-28.
 
 - Whether a practitioner keeps clinical records is a setting on the practitioner.
   Every practitioner who keeps them can read every patient's record in the
@@ -69,3 +69,5 @@ on 2026-10-28 ([the old text](./superseded/0003-clinical-notes-append-only.md)).
 Health data is sensitive data under Ley 25.326; registration with the AAIP,
 consent and the hosting country are to be confirmed with local counsel before
 go-live.
+
+Governs: `src/organization/appointment-placement.ts`, `src/organization/schedules.ts`, `src/lib/availability.ts`, `src/organization/audit.ts`, `keepsClinicalRecords`
