@@ -11,6 +11,7 @@ pnpm check                      # formatting check, lint and type check (`vp che
 pnpm test:unit <path>...        # the unit test files your change touches
 pnpm test:workers <path>...     # the Workers test files your change touches: the organization object, the request-to-caller step
 pnpm test:e2e                   # the whole browser suite: CI's `e2e` job runs it (§ Heavy)
+python3 -I ~/.agents/workflow/skills/domain-modeling/scripts/anchors.py   # every ADR anchor and glossary term is still in the code
 ```
 
 Run this once, after your edits. Do not run `pnpm test` in a session: it runs

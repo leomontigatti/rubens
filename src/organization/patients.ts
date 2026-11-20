@@ -61,7 +61,7 @@ export interface Patient {
   whatsappConsentBy: string;
   active: boolean;
   /** No birth date yet (ui: "Incompleto"). */
-  incomplete: boolean;
+  incompletePatient: boolean;
   /** Under 18 today in the organization's time zone; never with no birth date. */
   minor: boolean;
 }
@@ -111,14 +111,14 @@ export const patientColumns = {
   active: patient.active,
 };
 
-type PatientRow = Omit<Patient, "incomplete" | "minor">;
+type PatientRow = Omit<Patient, "incompletePatient" | "minor">;
 
 // The organization's offices are all in Argentina, so its date is the default
 // zone's.
 export function toPatient<Row extends PatientRow>(row: Row) {
   return {
     ...row,
-    incomplete: row.birthDate === null,
+    incompletePatient: row.birthDate === null,
     minor: isMinor(row.birthDate, today(defaultTimeZone)),
   };
 }

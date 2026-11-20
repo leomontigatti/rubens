@@ -165,12 +165,12 @@ function birthDateProblem(
 
 /** The badges a patient shows by their name. */
 export function patientBadges(patient: {
-  incomplete: boolean;
+  incompletePatient: boolean;
   minor: boolean;
   whatsappConsent: boolean;
 }) {
   return [
-    ...(patient.incomplete ? [{ label: "Incompleto", variant: "warning" as const }] : []),
+    ...(patient.incompletePatient ? [{ label: "Incompleto", variant: "warning" as const }] : []),
     ...(patient.minor ? [{ label: "Menor de edad", variant: "outline" as const }] : []),
     // `info`, like the alert its page shows.
     ...(patient.whatsappConsent ? [] : [{ label: "Sin WhatsApp", variant: "info" as const }]),

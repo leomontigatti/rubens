@@ -25,4 +25,4 @@ Object class, `Organization`, never carried the name, so no migration is needed.
 - The sibling repository `underthing` is the business site, whose Worker is
   `underthing-site`. The app's Worker takes the bare name.
 
-Governs: `wrangler.jsonc`, `package.json`, `underthing`
+Governs: `wrangler.jsonc`, `package.json`, `underthing-session-changed`
