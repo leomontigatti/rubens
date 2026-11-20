@@ -30,12 +30,12 @@ _Avoid_: owner, manager, superuser
 **`receptionist`** — ui: "Recepcionista"
 A member who books and moves `appointment`s and keeps the `patient` registry for
 every `practitioner`. A receptionist reads every WhatsApp conversation, and never a
-`clinicalRecord`.
+clinical record.
 _Avoid_: secretary, front desk, staff
 
 **`practitioner`** — ui: "Profesional"
 A health professional who works in exactly one `organization`. A practitioner who
-keeps clinical records writes in each patient's `clinicalRecord`; today every
+keeps clinical records writes in each patient's clinical record; today every
 practitioner does. Their `appointment`s are drawn in their own colour on the calendar.
 _Avoid_: doctor, dentist, provider, staff, medic
 
@@ -276,16 +276,3 @@ _Avoid_: prompt, instruction, style guide, training
 A reply of the `assistant` that staff corrected or marked as good, which it
 imitates.
 _Avoid_: training data, sample, few-shot
-
-## Clinical records
-
-**`clinicalRecord`** — ui: "Historia clínica"
-The clinical history of one `patient` in an `organization`: their notes,
-`attachment`s and medical alerts, readable by every practitioner who keeps
-clinical records.
-_Avoid_: medical record, HC, ficha, chart
-
-**`attachment`** — ui: "Adjunto"
-A file on a note in a `clinicalRecord`, such as an X-ray, a photo or a scanned
-informed-consent form.
-_Avoid_: document, upload, file
