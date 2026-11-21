@@ -44,7 +44,7 @@ describe("a medical service's duration", () => {
     ]);
   });
 
-  it("keeps a stored duration outside the list as one more choice in its place, so opening the form does not change it", () => {
+  it("keeps a stored duration outside the list as one more choice in its place", () => {
     expect(labels(durationChoices(20)).slice(0, 3)).toEqual(["15 min", "20 min", "30 min"]);
     expect(labels(durationChoices(240)).at(-1)).toBe("4 h");
   });
@@ -65,7 +65,7 @@ describe("a medical service's reschedule cutoff", () => {
     ]);
   });
 
-  it("keeps a stored cutoff outside the list as one more choice in its place, so opening the form does not change it", () => {
+  it("keeps a stored cutoff outside the list as one more choice in its place", () => {
     expect(labels(cutoffChoices(1)).slice(0, 3)).toEqual([
       "Hasta el turno",
       "1 h antes",

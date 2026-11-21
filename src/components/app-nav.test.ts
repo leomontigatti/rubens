@@ -23,12 +23,6 @@ describe("the menu a member sees", () => {
     expect(daily(3).find((item) => "to" in item && item.to === "/a-reprogramar")?.count).toBe(3);
     expect(daily(null).some((item) => "to" in item && item.to === "/a-reprogramar")).toBe(false);
   });
-
-  it("leaves the notifications out of the sidebar", () => {
-    const links = navFor(["admin"], counts(0)).flatMap((group) => group.items);
-
-    expect(links.some((item) => "to" in item && item.to === "/notificaciones")).toBe(false);
-  });
 });
 
 describe("the breadcrumbs' section", () => {

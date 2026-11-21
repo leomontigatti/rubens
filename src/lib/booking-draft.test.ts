@@ -243,7 +243,7 @@ describe("whether the booking form shows the week of free times", () => {
     expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: offered })).toBe(false);
   });
 
-  it("shows it on a page opened from a cell once its start was dropped and none are offered, so a start can still be picked", () => {
+  it("shows it on a page opened from a cell once its start was dropped and none are offered", () => {
     expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: null })).toBe(true);
     expect(showsWeekOfStarts({ fixed: true, start: null, offeredStarts: [] })).toBe(true);
   });

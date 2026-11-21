@@ -37,7 +37,7 @@ describe("turnMessages", () => {
     ]);
   });
 
-  it("puts the pause and staff notes where underthing does: before their message, and after the mark (#393)", () => {
+  it("puts a pause and a staff reply's notes before their message, and the new messages' pause note after the mark (#393)", () => {
     const messages = turnMessages(
       {
         ...findCase("when"),
