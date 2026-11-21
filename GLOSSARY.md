@@ -30,19 +30,14 @@ _Avoid_: owner, manager, superuser
 **`receptionist`** — ui: "Recepcionista"
 A member who books and moves `appointment`s and keeps the `patient` registry for
 every `practitioner`. A receptionist reads every WhatsApp conversation, and never a
-`clinicalRecord`.
+clinical record.
 _Avoid_: secretary, front desk, staff
 
 **`practitioner`** — ui: "Profesional"
 A health professional who works in exactly one `organization`. A practitioner who
-keeps clinical records writes `clinicalNote`s; today every practitioner does. Their
-`appointment`s are drawn in their own colour on the calendar.
+keeps clinical records writes in each patient's clinical record; today every
+practitioner does. Their `appointment`s are drawn in their own colour on the calendar.
 _Avoid_: doctor, dentist, provider, staff, medic
-
-**`licenseNumber`** — ui: "Matrícula"
-A `practitioner`'s professional licence number, shown next to their name on their
-`clinicalNote`s.
-_Avoid_: registration, MP, MN
 
 A member can hold several of these roles at once, such as a practitioner who is
 also the admin.
@@ -146,7 +141,7 @@ _Avoid_: insurance company, payer, provider
 
 **`guardian`** — ui: "Responsable"
 An adult responsible for a `patient`, usually a minor's parent. A guardian can be
-the patient's contact for messages and signs a minor's `consentForm`s.
+the patient's contact for messages and signs a minor's informed-consent forms.
 _Avoid_: tutor, parent, contact person
 
 **`whatsappConsent`** — ui: "Acepta WhatsApp"; off, "Sin WhatsApp"
@@ -281,36 +276,3 @@ _Avoid_: prompt, instruction, style guide, training
 A reply of the `assistant` that staff corrected or marked as good, which it
 imitates.
 _Avoid_: training data, sample, few-shot
-
-## Clinical records
-
-**`clinicalRecord`** — ui: "Historia clínica"
-The clinical history of one `patient` in an `organization`: their `clinicalNote`s,
-`attachment`s and `medicalAlert`s, readable by every practitioner who keeps
-clinical records.
-_Avoid_: medical record, HC, ficha, chart
-
-**`clinicalNote`** — ui: "Evolución"
-One entry in a `clinicalRecord`, written by one `practitioner` and optionally tied
-to an `appointment`. Only its author edits it, and every earlier version stays in
-the record.
-_Avoid_: note, `nota`, progress note, entry, draft, addendum, `adenda`
-
-**`medicalAlert`** — ui: "Alerta médica"
-An allergy or condition a `practitioner` must know before treating a `patient`,
-such as an allergy to penicillin, shown at the top of the `clinicalRecord`.
-_Avoid_: allergy, warning, flag
-
-**`attachment`** — ui: "Adjunto"
-A file on a `clinicalNote`, such as an X-ray, a photo or a scanned `consentForm`.
-_Avoid_: document, upload, file
-
-**`consentForm`** — ui: "Consentimiento informado"
-An informed-consent form signed on paper by the `patient` or a `guardian`, scanned
-as an `attachment`. The practice keeps the paper.
-_Avoid_: consent, waiver
-
-**`clinicalRecordCopy`** — ui: "Copia de historia clínica"
-A `clinicalRecord` handed to a `patient` who asks for it: a PDF of its notes with
-the files attached to them.
-_Avoid_: export, report, printout

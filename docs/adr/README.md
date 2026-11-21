@@ -3,10 +3,14 @@
 Read ADRs selectively: start with the topic that matches the change. Format and
 when to write one: the shared `domain-modeling` skill's `ADR-FORMAT.md`.
 
-`docs/adr/*.md` is live decisions only. A superseded ADR moves to
-`docs/adr/superseded/`, kept for its rationale: there, ADR-0002 (tenancy, RLS and
-database connections) and ADR-0004 (the `rubens` Postgres schema), both superseded
-by ADR-0008.
+`docs/adr/*.md` is decisions in force only. A superseded ADR is deleted in the change
+that supersedes it, and git keeps the record: ADR-0002 (tenancy, RLS and database
+connections) and ADR-0004 (the `rubens` Postgres schema), both superseded by ADR-0008,
+are gone that way.
+
+An ADR ends on a `Governs:` line naming the code it shapes, and the skill's
+`scripts/anchors.py` lists each one whose anchor has left the code. ADR-0005 (clinical
+notes) and ADR-0007 (Telegram) carry none yet: nothing they decide is built.
 
 ## By topic
 

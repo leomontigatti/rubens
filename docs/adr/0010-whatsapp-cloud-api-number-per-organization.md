@@ -115,3 +115,5 @@ at any time, not only on a handoff. Practitioners keep replying from Telegram
   secondary source only; Meta's text is to be read again before go-live.
 - Patients' messages still reach the model's provider abroad, as ADR-0006 says, and now
   Meta as the channel.
+
+Governs: `src/routes/api/whatsapp.ts`, `src/server/whatsapp-webhook.ts`, `src/organization/graph-api.ts`, `src/organization/whatsapp-connection.ts`, `src/lib/embedded-signup.ts`, `src/lib/conversation-window.ts`, `src/organization/inbox.ts`

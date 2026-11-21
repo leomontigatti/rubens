@@ -27,6 +27,7 @@ the project does not use, or there is a real gap. Note the gap for the
 
 If your output contradicts an ADR, say so rather than silently overriding it:
 
-> _Contradicts ADR-0002 (tenancy and connections), but worth reopening because…_
+> _Contradicts ADR-0008 (one object per organization), but worth reopening because…_
 
-ADRs are records. A reversal is a new ADR that supersedes the old one.
+ADRs are records. A reversal is a new ADR, and the one it supersedes is deleted in the
+same change: git keeps it.
