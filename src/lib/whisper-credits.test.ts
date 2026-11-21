@@ -50,4 +50,8 @@ describe("a voice note's transcript, without Whisper's credit lines", () => {
       expect(withoutWhisperCredits(words), words).toBe(words);
     }
   });
+
+  it("trims the transcript", () => {
+    expect(withoutWhisperCredits("  a qué hora es mi turno \n")).toBe("a qué hora es mi turno");
+  });
 });

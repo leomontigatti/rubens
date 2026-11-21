@@ -64,6 +64,7 @@ describe("a text that says when it is sent", () => {
     expect(mentionsSendTime("MAÑANA es tu turno.")).toBe(true);
     expect(mentionsSendTime("Tu turno es en 2 horas.")).toBe(true);
     expect(mentionsSendTime("Tu turno es en 1 hora.")).toBe(true);
+    expect(mentionsSendTime("Tu turno es EN 2 HORAS.")).toBe(true);
   });
 
   it("is not one that only holds those letters inside another word, or names the date", () => {
