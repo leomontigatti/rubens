@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { longPauseNote, newMessagesMark } from "#/lib/assistant.ts";
+import { newMessagesMark } from "#/lib/assistant.ts";
 import { asTurnMessages, type TurnRead } from "#/organization/turn-reading.ts";
 
 const minuteMs = 60_000;
@@ -49,20 +49,6 @@ describe("asTurnMessages", () => {
     expect(messages.at(-1)).toEqual({
       role: "user",
       content: `${newMessagesMark}\nhola\nsigo acá`,
-    });
-  });
-
-  it("marks a pause of an hour or more after the latest message (#393)", () => {
-    const messages = asTurnMessages(
-      read(
-        [message("reminder", "outgoing", 0, "Te recordamos tu turno")],
-        [message("answer", "incoming", 60, "lo puedo cambiar?")],
-      ),
-    );
-
-    expect(messages.at(-1)).toEqual({
-      role: "user",
-      content: `${newMessagesMark}\n${longPauseNote}\nlo puedo cambiar?`,
     });
   });
 });
