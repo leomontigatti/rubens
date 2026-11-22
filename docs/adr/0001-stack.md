@@ -66,3 +66,5 @@ was chosen for that shape, not inherited wholesale from En Escena.
   a decision. Moving with seven components in the tree was cheap; later it would
   mean rewriting every `asChild` call site.
 - **Nitro 3 is a beta** and is pinned to an exact version for that reason.
+
+Governs: `package.json`, `vite.config.ts`, `components.json`

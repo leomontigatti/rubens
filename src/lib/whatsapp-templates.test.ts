@@ -56,7 +56,7 @@ describe("the template rules check", () => {
     });
   });
 
-  it("reads a variable split across lines as one, as Meta does", () => {
+  it("reads a variable split across lines as one, and refuses its name", () => {
     expect(checkTemplateBody(own, "Hola {{PACIENTE\n}}, nos vemos.")).toEqual({
       ok: false,
       problems: [{ kind: "invalidVariable", variable: "PACIENTE\n" }],

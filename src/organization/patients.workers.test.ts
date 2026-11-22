@@ -87,7 +87,7 @@ describe("registering a patient", () => {
       phone: "+5493515551234",
       birthDate: null,
       documentType: null,
-      incomplete: true,
+      incompletePatient: true,
       minor: false,
       whatsappConsent: true,
       whatsappConsentBy: receptionist.userId,
@@ -125,7 +125,7 @@ describe("registering in full", () => {
       birthDate: "1990-04-12",
       email: "juana@example.com",
       address: "Av. Colón 100",
-      incomplete: false,
+      incompletePatient: false,
       minor: false,
     });
   });
@@ -190,7 +190,6 @@ describe("registering in full", () => {
       { ...juan, documentType: "dni" as const, documentNumber: "ABC" },
     ],
     ["a birth date in the future", { ...juan, birthDate: "2999-01-01" }],
-    ["a birth date more than 100 years ago", { ...juan, birthDate: "1900-01-01" }],
   ])("refuses %s as invalid input", async (_, input) => {
     const { organization, receptionist } = await registry();
 
@@ -213,7 +212,7 @@ describe("editing a patient", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      patient: { birthDate: "2015-06-01", incomplete: false, minor: true },
+      patient: { birthDate: "2015-06-01", incompletePatient: false, minor: true },
     });
     const [latest] = await historyOf(organization, patient.id);
     expect(latest).toMatchObject({

@@ -68,3 +68,5 @@ We decided:
   reach Telegram the same way, but a recipient may now be reception: the exposure is
   still kept to handoffs, and Telegram's place in the privacy notice is still for counsel
   to confirm before go-live.
+
+Governs: `src/organization/inbox.ts`, `src/organization/handoffs.ts`, `src/organization/turn-handoffs.ts`, `src/organization/turn-settling.ts`

@@ -366,7 +366,7 @@ describe("minors", () => {
       throw new Error("updatePatient or getPatient refused");
     }
     expect(updated.patient.minor).toBe(found.patient.minor);
-    return { minor: found.patient.minor, incomplete: found.patient.incomplete };
+    return { minor: found.patient.minor, incompletePatient: found.patient.incompletePatient };
   }
 
   it("is a minor until their 18th birthday in the organization's time zone", async () => {
@@ -384,7 +384,7 @@ describe("minors", () => {
   it("is not a minor with no birth date, but incomplete", async () => {
     expect(await minorOn("2026-10-28T12:00:00Z", null)).toEqual({
       minor: false,
-      incomplete: true,
+      incompletePatient: true,
     });
   });
 });

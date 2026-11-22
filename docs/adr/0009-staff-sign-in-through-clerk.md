@@ -20,7 +20,7 @@ organization's object took a median 5 ms of CPU deployed.
 ## Organization and roles live on the user
 
 Clerk's free plan caps an organization at 5 members. A member of Rubens belongs to
-exactly one organization ([ADR-0002](./superseded/0002-tenancy-and-database-connections.md)), so
+exactly one organization, so
 Clerk Organizations are off. Each Clerk user carries, in its public metadata, the
 organization id Rubens issued and the member's roles (`admin`, `receptionist`,
 `practitioner`, any combination). The session token carries both as claims (`org`,
@@ -72,3 +72,5 @@ A sign-in or a sign-out loads the app afresh in the tab that made it and in ever
 signed-in tab: what a tab holds in memory (the loader and query caches, the screen)
 belongs to whoever was signed in before, so a full page load drops it all instead of
 each cache being cleared by hand (`src/lib/session-change.ts`).
+
+Governs: `src/server/caller.ts`, `src/organization/accounts.ts`, `src/server/sign-in.functions.ts`, `src/lib/session-change.ts`

@@ -172,7 +172,7 @@ const columns: DataTableColumn<ListedPatient>[] = [
         status={
           <>
             <ArchivedBadge active={patient.active} ending="o" />
-            {patient.incomplete && <Badge variant="warning">Incompleto</Badge>}
+            {patient.incompletePatient && <Badge variant="warning">Incompleto</Badge>}
             {!patient.whatsappConsent && <Badge variant="info">Sin WhatsApp</Badge>}
           </>
         }

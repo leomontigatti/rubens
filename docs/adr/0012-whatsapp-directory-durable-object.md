@@ -43,3 +43,5 @@ organization's object still holds its own connection and could write it again.
 - The Worker's configured test number (`WHATSAPP_PHONE_NUMBER_ID` and
   `WHATSAPP_ORGANIZATION_ID`) is looked up before the directory and stays for
   development; a real practice's number is only ever in the directory.
+
+Governs: `src/server/whatsapp-directory.ts`, `WhatsappDirectory`, `WHATSAPP_DIRECTORY`

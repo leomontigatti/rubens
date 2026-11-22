@@ -24,3 +24,5 @@ Object class, `Organization`, never carried the name, so no migration is needed.
   to the new address. The old `rubens` Worker is deleted once the new one works.
 - The sibling repository `underthing` is the business site, whose Worker is
   `underthing-site`. The app's Worker takes the bare name.
+
+Governs: `wrangler.jsonc`, `package.json`, `underthing-session-changed`

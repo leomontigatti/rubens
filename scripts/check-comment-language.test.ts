@@ -142,7 +142,7 @@ describe("comment-language guardrail", () => {
   // reached it before: no accent for morphology to find, and not the spelling
   // the glossary lists.
   test("catches a glossary noun spelled without its accent", () => {
-    expect(kindsIn(`// Recalculates the linked evoluciones on correction.`)).toEqual(["comment"]);
+    expect(kindsIn(`// Recalculates the linked prestaciones on correction.`)).toEqual(["comment"]);
     expect(kindsIn(`test("loads Organizacion detail data", () => {});`)).toEqual(["test name"]);
   });
 

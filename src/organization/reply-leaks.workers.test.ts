@@ -152,7 +152,7 @@ describe("a reply that says it passed the conversation on", () => {
     ]);
   });
 
-  it("goes when the turn's handoff to reception is not in it", async () => {
+  it("goes when it does not say it passed the conversation on, though the turn handed off", async () => {
     await confirmsAndHandsOff("Listo, confirmado el lunes.");
 
     expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual(["Listo, confirmado el lunes."]);
@@ -161,7 +161,7 @@ describe("a reply that says it passed the conversation on", () => {
     ]);
   });
 
-  it("is held on the open handoff to reception when it comes before the reply that a person has it", async () => {
+  it("is held on the one open handoff when the model asks to hand off again, and the fixed reply still goes", async () => {
     await confirmsAndHandsOff("Listo, confirmado el lunes.");
     const reply = "Listo, ya hice accept_proposal.";
     await patientWrites(world.organization, "y quiero hablar con alguien", martinaPhone);
