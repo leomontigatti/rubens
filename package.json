@@ -97,7 +97,7 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
-    "vite-plus": "^1.6.0",
+    "vite-plus": "^1.7.0",
     "wrangler": "4.161.0"
   }
 }

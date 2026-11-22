@@ -22,9 +22,10 @@ audit:
 
 # Vite+ bundles its own Vite and Vitest; every package that peers on them must
 # get the same copies (node_modules/vite-plus/README.md, "Manual Installation").
-# Bump both with `vite-plus`: `vp toolchain vitest` prints the bundled version.
+# Bump both with `vite-plus`: `pnpm view vite-plus@<version> dependencies.vite` prints
+# the core's alias, and `vp toolchain vitest` the bundled Vitest.
 overrides:
-  vite@*: npm:@voidzero-dev/vite-plus-core@1.6.0
+  vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vitest@*: 5.1.0
 
 # The agent skills these packages ship stay unlinked: a package's skills are

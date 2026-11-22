@@ -37,10 +37,11 @@ there are no seams to test first, only the steps below.
    range `"<major>"`). `pnpm list --depth 0 --json` prints the version it resolved. `@playwright/test`
    is one of them; the Chromium it installs follows it.
 3. **Move the Vite+ overrides with `vite-plus`.** When step 1 moved `vite-plus`, set `vite@*` in
-   `overrides` (`pnpm-workspace.yaml`) to `npm:@voidzero-dev/vite-plus-core@<the vite-plus
-   version>`, and `vitest@*` to the version `pnpm exec vp toolchain vitest` prints, then
-   `pnpm install`. Bumped alone, the two Vite copies fail the type check (TS2321 in
-   `vite.config.ts`).
+   `overrides` (`pnpm-workspace.yaml`) to the alias `vite-plus` itself names
+   (`pnpm view vite-plus@<version> dependencies.vite`; since 1.7.0 the core's version encodes the
+   bundled Vite, `8.3.8000` for Vite `8.3.8`, not the `vite-plus` version), and `vitest@*` to the
+   version `pnpm exec vp toolchain vitest` prints, then `pnpm install`. Bumped alone, the two
+   Vite copies fail the type check (TS2321 in `vite.config.ts`).
    When `wrangler` moved, run `pnpm types:generate`: the runtime types follow the workerd it
    brings, and `pnpm check:worker-types` fails in CI until they are regenerated.
 4. **Copy the dependency skills again**:
