@@ -35,7 +35,8 @@ export function timingOf(row: { timing: TimingKind | null; timingHours: number |
       return row.timingHours === null
         ? null
         : ({ when: row.timing, hours: row.timingHours } satisfies Timing);
-    default:
+    case "booking":
+    case "attended":
       return { when: row.timing } satisfies Timing;
   }
 }
@@ -54,7 +55,8 @@ export function timingDueAt(
       return appointment.startsAt - timing.hours * 60 * 60_000;
     case "after":
       return appointment.endsAt + timing.hours * 60 * 60_000;
-    default:
+    case "booking":
+    case "attended":
       return now;
   }
 }
@@ -69,7 +71,7 @@ export function timingRank(timing: Timing | null): [number, number] {
       return [2, 0];
     case "after":
       return [3, timing.hours];
-    default:
+    case undefined:
       return [4, 0];
   }
 }

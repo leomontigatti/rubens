@@ -80,7 +80,7 @@ const fixedTitles: Partial<Record<NotificationKind, string>> = {
 };
 
 /** The texts that say the same whatever the event held. */
-const fixedTexts: Partial<Record<NotificationKind, string>> = {
+const fixedTexts = {
   templatePaused:
     "Meta la pausa cuando los pacientes la reportan o la bloquean. Vuelve a salir cuando Meta la reactive.",
   numberDisabled: "No puede enviar mensajes hasta que Meta la rehabilite.",
@@ -90,7 +90,10 @@ const fixedTexts: Partial<Record<NotificationKind, string>> = {
     "WhatsApp no pudo entregarla, y queda como No entregado en la conversación. Si respondía una derivación, la derivación volvió a quedar abierta.",
   appointmentCancelled:
     "Lo canceló por WhatsApp con el asistente. Mirá en la agenda si podés darle el horario a otro paciente.",
-};
+} satisfies Partial<Record<NotificationKind, string>>;
+
+const hasFixedText = (kind: NotificationKind): kind is keyof typeof fixedTexts =>
+  Object.hasOwn(fixedTexts, kind);
 
 type Title = (facts: NotificationFacts) => string;
 
@@ -130,9 +133,8 @@ export function notificationTitle(facts: NotificationFacts): string {
 }
 
 export function notificationText(facts: NotificationFacts): string {
-  const fixed = fixedTexts[facts.kind];
-  if (fixed) {
-    return fixed;
+  if (hasFixedText(facts.kind)) {
+    return fixedTexts[facts.kind];
   }
   switch (facts.kind) {
     case "templateRejected":
@@ -158,9 +160,6 @@ export function notificationText(facts: NotificationFacts): string {
     case "optOut":
     case "optOutReminder":
       return optOutText(facts);
-    default:
-      // Every other kind's text is fixed, above.
-      return "";
   }
 }
 

@@ -260,6 +260,28 @@ export default defineConfig({
       "typescript/no-unnecessary-type-assertion": "error",
       "typescript/ban-ts-comment": "error",
       "unicorn/no-abusive-eslint-disable": "error",
+      // TanStack Router's redirect and not-found are thrown, as its loaders expect.
+      "typescript/only-throw-error": [
+        "error",
+        {
+          allow: [
+            {
+              from: "package",
+              package: "@tanstack/router-core",
+              name: ["Redirect", "NotFoundError"],
+            },
+          ],
+        },
+      ],
+      "preserve-caught-error": "error",
+      "no-empty": "error",
+      "no-promise-executor-return": "error",
+      "prefer-promise-reject-errors": "error",
+      "no-warning-comments": "error",
+      "typescript/switch-exhaustiveness-check": [
+        "error",
+        { allowDefaultCaseForExhaustiveSwitch: true, considerDefaultExhaustiveForUnions: false },
+      ],
       "no-restricted-globals": ["error", { name: "fetch", message: fetchBan }],
       "no-restricted-properties": [
         "error",
