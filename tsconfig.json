@@ -15,7 +15,7 @@
     "types": [
       "node",
       "vite-plus/client",
-      "@cloudflare/workers-types",
+      "./worker-configuration.d.ts",
       "@cloudflare/vitest-plugin/types"
     ],
     "module": "ESNext",

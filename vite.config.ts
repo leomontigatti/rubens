@@ -146,7 +146,11 @@ const correctness = [
   "unicorn/prefer-string-starts-ends-with",
 ];
 
-const generated = ["src/routeTree.gen.ts", "src/organization/migrations/**"];
+const generated = [
+  "src/routeTree.gen.ts",
+  "src/organization/migrations/**",
+  "worker-configuration.d.ts",
+];
 // Agent skills copied from dependencies (`skills-lock.json`), and Claude Code's links
 // to them: theirs, kept as published.
 const vendoredSkills = [".agents/skills/**", ".claude/skills/**"];

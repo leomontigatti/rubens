@@ -105,6 +105,9 @@ jobs:
           # default install, so the flag is visible in this file.
           run-install: false
       - run: vp install --frozen-lockfile
+      # The committed runtime types match wrangler.jsonc's compatibility date and flags
+      # and the installed workerd, before the type check reads them.
+      - run: pnpm check:worker-types
       - run: pnpm check
       # Every label a workflow, script or agent doc names is in `.github/labels.json`.
       # Labels match as exact strings, and a typo in an `--add-label` otherwise

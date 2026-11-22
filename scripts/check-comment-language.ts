@@ -73,6 +73,10 @@ const shellFilePattern = /\.sh$/;
 // arrival and be recorded here deliberately.
 export const excludedYamlFiles = ["pnpm-lock.yaml"];
 
+// The same for source: the Workers runtime types `pnpm types:generate` writes,
+// whose comments are Cloudflare's to write, not ours.
+export const excludedSourceFiles = ["worker-configuration.d.ts"];
+
 // Root files that are not YAML but comment the same way, with `#` at line start
 // or after whitespace, and are read by a contributor.
 export const hashCommentRootFiles = [".env.example"];
@@ -1154,7 +1158,12 @@ function collectScannedSql(rootDirectory: string): string[] {
 /** The scanned directories plus the configs at the repo root, `vite.config.ts` among them. */
 function collectScannedFiles(rootDirectory: string): string[] {
   const rootFiles = readdirSync(rootDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && sourceFilePattern.test(entry.name))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        sourceFilePattern.test(entry.name) &&
+        !excludedSourceFiles.includes(entry.name),
+    )
     .map((entry) => path.join(rootDirectory, entry.name));
 
   return [

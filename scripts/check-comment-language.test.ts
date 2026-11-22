@@ -8,6 +8,7 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   checkCommentLanguage,
   excludedDocDirectories,
+  excludedSourceFiles,
   excludedYamlFiles,
   findSpanishProseInMarkdown,
   findSpanishProseInShell,
@@ -264,6 +265,7 @@ describe("comment-language guardrail", () => {
       .filter(Boolean);
     const exempt = (filePath: string) =>
       excludedYamlFiles.includes(filePath) ||
+      excludedSourceFiles.includes(filePath) ||
       excludedDocDirectories.some(
         (excluded) => filePath === excluded || filePath.startsWith(`${excluded}/`),
       );

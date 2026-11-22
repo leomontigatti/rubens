@@ -10,7 +10,7 @@ Four contexts should be required on `main` in branch protection. Required contex
 are a repo setting, not a file here: renaming or adding a job does not update
 protection, so changing the list is a human step in the repo settings.
 
-- `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check`,
+- `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check:worker-types`, `pnpm check`,
   `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
   `pnpm check:type-assertions`, `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm check:dupes`, `pnpm test:unit`, `pnpm test:workers`
   and `pnpm build`. No database service: `test:workers` runs the organization object in
@@ -58,7 +58,9 @@ current `main`.
    flagged test literals.
 4. **`vp install --frozen-lockfile`** after `voidzero-dev/setup-vp`, which installs
    Node from `.nvmrc` and pnpm from `packageManager`.
-5. **`pnpm check`** (`vp check`): format, lint and typecheck.
+5. **`pnpm check:worker-types`**, then **`pnpm check`** (`vp check`): the committed
+   `worker-configuration.d.ts` is current with `wrangler.jsonc` and the installed
+   workerd, then format, lint and typecheck.
 6. **`pnpm check:labels`**: every label a workflow, script or agent doc names in a
    `--label` flag, a workflow condition or a `priority:`/`wayfinder:` name is in
    `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#labels)).
