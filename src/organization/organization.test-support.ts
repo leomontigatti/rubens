@@ -341,7 +341,7 @@ export function inObject<T>(
   organization: OrganizationStub,
   work: (instance: Organization) => Promise<T>,
 ) {
-  // The stub's overload types the instance as RPC's branded type; it is the object itself.
+  // Named, since the stub alone types the instance as RPC's branded type; it is the object itself.
   return runInDurableObject<Organization, T>(organization, work);
 }
 
