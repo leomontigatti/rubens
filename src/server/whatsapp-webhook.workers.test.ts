@@ -291,7 +291,7 @@ describe("Meta's WhatsApp webhook", () => {
   it("stores a forwarded message, whose context names no message, with the rest of its call", async () => {
     const { organizationId, organization } = await setUpTestOrganization();
     const payload = metaPayload();
-    const text = (id: string, body: string, context?: object) => ({
+    const text = (id: string, body: string, context?: { forwarded: boolean }) => ({
       from: "5493514440000",
       id,
       timestamp: "4071240000",

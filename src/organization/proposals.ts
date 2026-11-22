@@ -7,7 +7,7 @@ import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { present } from "#/lib/present.ts";
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 
-import type { AssistantTool } from "#/organization/assistant-model.ts";
+import type { AssistantTool, ToolResult } from "#/organization/assistant-model.ts";
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import { cancelAppointment, changeAppointmentStatus } from "#/organization/appointment-changes.ts";
@@ -282,7 +282,7 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
 export function proposalTools(database: Database, turn: ProposalTurn): AssistantTool[] {
   // A person answers while a member holds the conversation, or answered the
   // turn's words since it read them.
-  const unlessHeld = (run: () => unknown) =>
+  const unlessHeld = (run: () => ToolResult) =>
     isHeld(database, turn.conversationId) ||
     answeredMeanwhile(
       database,

@@ -199,6 +199,7 @@ export default defineConfig({
       "@shadcn/lint",
       "./scripts/oxlint-ui-plugin.mjs",
       "./scripts/oxlint-tests-plugin.mjs",
+      "@nkzw/oxlint-config/quality/index.js",
     ],
     settings: {
       shadcn: {
@@ -221,6 +222,14 @@ export default defineConfig({
       "shadcn/no-unknown-classes": "error",
       "shadcn/no-inline-styles": "error",
       "shadcn/require-static-classes": "error",
+      "quality/no-unknown-returns": "error",
+      "quality/no-widen-then-assert": "error",
+      "quality/no-chained-type-assertions": "error",
+      "quality/no-object-parameters": "error",
+      "quality/no-reduce-accumulator-copy": "error",
+      "quality/no-reflect-apply": "error",
+      "quality/no-reflect-get": "error",
+      "quality/no-unknown-type-aliases": "error",
       "ui/alert-structure": "error",
       "ui/create-names-thing": "error",
       "ui/no-bare-label": "error",
@@ -309,6 +318,15 @@ export default defineConfig({
         ],
         rules: {
           "typescript/consistent-type-assertions": "off",
+        },
+      },
+      {
+        // TanStack AI types the AI binding with `@cloudflare/workers-types`, whose `Ai`
+        // does not overlap the generated runtime types' (`worker-configuration.d.ts`),
+        // so the binding crosses through `unknown` until the two agree.
+        files: ["src/organization/transcription.ts"],
+        rules: {
+          "quality/no-chained-type-assertions": "off",
         },
       },
       {

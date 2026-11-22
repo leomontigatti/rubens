@@ -17,7 +17,7 @@ export interface EntryValues {
 }
 
 /** The entry the fields hold, unchecked: the schema decides whether it is one. */
-export function readRangeEntry(values: EntryValues): unknown {
+export function readRangeEntry(values: EntryValues) {
   if (values.kind === "hours") {
     return {
       kind: "hours",

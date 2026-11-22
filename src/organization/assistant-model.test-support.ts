@@ -12,6 +12,7 @@ import type {
   ReplyToCheck,
   TemplateReview,
   TemplateToReview,
+  ToolResult,
 } from "#/organization/assistant-model.ts";
 import type { Organization } from "#/organization/organization.ts";
 import type { Transcriber, Transcript } from "#/organization/transcription.ts";
@@ -31,7 +32,7 @@ type Tokens = Omit<ModelUsage, "model">;
  * and one to end a call to the model that used `tokens` of the real model.
  */
 interface ScriptedTurn extends ModelTurn {
-  call(name: AssistantToolName, args?: Record<string, unknown>): unknown;
+  call(name: AssistantToolName, args?: Record<string, unknown>): ToolResult;
   uses(tokens: Tokens): void;
 }
 
@@ -42,7 +43,7 @@ type Script = (turn: ScriptedTurn) => string | Promise<string>;
 interface ToolCall {
   name: AssistantToolName;
   args: Record<string, unknown>;
-  result: unknown;
+  result: ToolResult;
 }
 
 /** The turn a test does not script: it judges the messages as nothing special, and replies. */

@@ -342,7 +342,7 @@ export function inObject<T>(
   work: (instance: Organization) => Promise<T>,
 ) {
   // The stub's overload types the instance as RPC's branded type; it is the object itself.
-  return runInDurableObject(organization, (instance) => work(instance as unknown as Organization));
+  return runInDurableObject<Organization, T>(organization, work);
 }
 
 /** Runs `work` on the object's storage directly: for what no method reads or writes yet. */

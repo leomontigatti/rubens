@@ -31,7 +31,7 @@ describe("Embedded Signup's message to the page", () => {
   });
 
   it("reads a cancelled signup, and an error with Meta's message", () => {
-    const message = (event: string, data: object) =>
+    const message = (event: string, data: { current_step?: string; error_message?: string }) =>
       JSON.stringify({ type: "WA_EMBEDDED_SIGNUP", event, data });
 
     expect(

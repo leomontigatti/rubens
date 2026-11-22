@@ -4,10 +4,10 @@
 import type { Case, HandoffReason, Proposal, ToolName } from "./cases.ts";
 import { numbers, type Appointment, type Slot } from "./world.ts";
 
-export type ToolCall = { name: ToolName; args: Record<string, unknown>; result: unknown };
+export type ToolCall = { name: ToolName; args: Record<string, unknown>; result: object };
 
 export type FakeObject = {
-  run(name: ToolName, args: Record<string, unknown>): unknown;
+  run(name: ToolName, args: Record<string, unknown>): object;
   calls: ToolCall[];
   // Every time the turn's tools showed the model, the only times it may offer.
   knownTimes: Set<string>;
@@ -35,7 +35,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
     };
   };
 
-  const handlers: Record<ToolName, (args: Record<string, unknown>) => unknown> = {
+  const handlers: Record<ToolName, (args: Record<string, unknown>) => object> = {
     list_patients: () => {
       for (const each of appointments) knownTimes.add(each.time);
       return {

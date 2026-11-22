@@ -25,7 +25,7 @@
     "src/organization/assistant.ts": 1,
     "src/organization/graph-api.test-support.ts": 1,
     "src/organization/medical-services.workers.test.ts": 1,
-    "src/organization/organization.test-support.ts": 6,
+    "src/organization/organization.test-support.ts": 4,
     "src/organization/patient-history.ts": 1,
     "src/organization/proposals.ts": 1,
     "src/organization/transcription.ts": 2,

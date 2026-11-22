@@ -103,7 +103,7 @@ export function timingEntry(timing: Timing): TimingEntry {
 }
 
 /** The timing `entry` asks for, in hours, for `timingSchema` to check; an amount not typed is no number. */
-export function timingFromEntry(entry: TimingEntry): unknown {
+export function timingFromEntry(entry: TimingEntry) {
   if (entry.when !== "before" && entry.when !== "after") {
     return { when: entry.when };
   }
