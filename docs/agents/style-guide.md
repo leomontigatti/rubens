@@ -62,6 +62,35 @@ What is settled already:
   why. Once decided, it goes in the same PR as a component, a lint rule where a machine can judge
   it, and a line here, so the next screen finds it.
 
+## Copy
+
+A screen is used, not read: its words are the ones a person needs to act. What an agent tends to
+add beyond them reads as generated and buries the rest.
+
+- **A line under a heading says what the heading does not.** A page's or a dialog's
+  `description` says what Page shell and Form pages give it to say, never the title again or an
+  order to manage it: `Sedes` /
+  `Los lugares de atención, cada uno con sus consultorios.`, never `Administrá las sedes de la
+  organización.` A section, a card or a menu item gets no line of its own unless it carries a
+  fact.
+- **No text narrates the screen or how it was built**: no `Hacé clic en el botón para empezar`,
+  `Esta tabla muestra los turnos`, `(se actualiza en tiempo real)`. An instruction earns its place
+  only where the user would otherwise get it wrong: a field's rule (`Código de área sin 0 y
+  número sin 15.`), an empty state's way to start.
+- **Only the label names a field.** A placeholder shows an example of the
+  format (`Av. Colón 1234, Córdoba`) and a hint states a rule (Forms); neither repeats the label.
+- **Say what happens, not how it feels.** Name the mechanism, the person or the number:
+  `underthing deja de enviar y recibir mensajes de WhatsApp hasta que conectes un número de
+  nuevo.`, never `Desconectá tu WhatsApp fácilmente.` No adverb that a number or a stronger verb
+  could replace (`fácilmente`, `rápidamente`, `simplemente`), and no sentence that would fit
+  another product unchanged.
+- **Name who acts when it changes what the user expects**: underthing, the patient, the
+  practitioner or `vos`. `No le llega al paciente.` says who does not get the message; a bare
+  `se envía` leaves the reader asking who sends it. An impersonal `se` stays where the actor does
+  not matter (`Todavía no se envió a Meta`).
+- **No em dash in a sentence**: a period or a comma instead. A lone `—` stands for an empty value
+  (`Detail`, `src/components/record-section.tsx`).
+
 ## Page shell
 
 Every signed-in screen sits in one shell, `_app.tsx`, for every role: the sidebar, and the page
