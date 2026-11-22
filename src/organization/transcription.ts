@@ -31,7 +31,7 @@ export function transcriberFor(env: { AI?: Ai }): Transcriber {
       }
       const result = await generateTranscription({
         adapter: createCloudflareTranscription(transcriptionModelId, {
-          // TanStack AI types the binding with an older release of the Workers types.
+          // TanStack AI types the binding with `@cloudflare/workers-types`, not the generated runtime types.
           binding: env.AI as unknown as CloudflareBindingConfig["binding"],
         }),
         threadId: crypto.randomUUID(),

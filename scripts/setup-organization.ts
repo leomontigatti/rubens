@@ -51,9 +51,9 @@ if (response.status === 404 || response.status === 401) {
   );
   process.exit(1);
 }
-const result = (await response.json()) as
-  | { ok: true; organizationId: string; userId: string }
-  | { ok: false; reason: string };
+const result = await response.json<
+  { ok: true; organizationId: string; userId: string } | { ok: false; reason: string }
+>();
 if (result.ok) {
   console.log(`created organization ${result.organizationId} with admin ${result.userId}`);
 } else if (result.reason === "alreadySetUp") {

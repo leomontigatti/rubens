@@ -41,6 +41,8 @@ there are no seams to test first, only the steps below.
    version>`, and `vitest@*` to the version `pnpm exec vp toolchain vitest` prints, then
    `pnpm install`. Bumped alone, the two Vite copies fail the type check (TS2321 in
    `vite.config.ts`).
+   When `wrangler` moved, run `pnpm types:generate`: the runtime types follow the workerd it
+   brings, and `pnpm check:worker-types` fails in CI until they are regenerated.
 4. **Copy the dependency skills again**:
    `DISABLE_TELEMETRY=1 pnpm exec skills experimental_install --force --no-frozen-lockfile -a codex -a claude-code`.
    It copies every entry in `skills-lock.json` again from `node_modules`; a skill whose package

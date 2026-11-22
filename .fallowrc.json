@@ -6,6 +6,8 @@
   // skills again (docs/agents/dependency-updates.md); nothing imports it either.
   // `@shadcn/lint` is an Oxlint JS plugin `vite.config.ts` loads by name.
   "ignoreDependencies": ["shadcn", "skills", "@shadcn/lint"],
+  // The Workers runtime types `pnpm types:generate` writes: Cloudflare's, not ours.
+  "ignorePatterns": ["worker-configuration.d.ts"],
   // The repo's own Oxlint JS plugins, and the Worker the object tests run
   // against, all loaded by path from `vite.config.ts`.
   "entry": [

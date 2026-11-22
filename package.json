@@ -21,6 +21,8 @@
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "routes:generate": "tsr generate",
+    "types:generate": "rm -f worker-configuration.d.ts && wrangler types --include-env=false",
+    "check:worker-types": "mkdir -p node_modules/.cache && rm -f node_modules/.cache/worker-configuration.d.ts && wrangler types --include-env=false node_modules/.cache/worker-configuration.d.ts > /dev/null && cmp -s worker-configuration.d.ts node_modules/.cache/worker-configuration.d.ts || { echo 'worker-configuration.d.ts is not what pnpm types:generate writes: run it and commit the result' >&2; exit 1; }",
     "test": "pnpm test:unit && pnpm test:workers",
     "test:unit": "vp test --run --project unit",
     "test:e2e": "pnpm build && node --import tsx tests/e2e/prepare.ts && playwright test",

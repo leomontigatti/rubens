@@ -212,6 +212,7 @@ const notCounted = [
   ".claude/skills/**",
   "src/routeTree.gen.ts",
   "src/organization/migrations/**",
+  "worker-configuration.d.ts",
 ];
 
 function resolvedLintConfig() {

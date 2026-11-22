@@ -21,12 +21,22 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   outside this worktree.
 - `routes:generate` ⚠️ rewrites `src/routeTree.gen.ts` from the route files. Generated,
   so only ever regenerate it, never edit it.
+- `types:generate` ⚠️ rewrites `worker-configuration.d.ts`, the Workers runtime types for
+  `wrangler.jsonc`'s compatibility date and flags and the installed workerd (`wrangler types`).
+  It leaves out the `Env` types: `Cloudflare.Env` is hand-written in `src/worker-env.d.ts`.
+  It deletes the file first, because `wrangler types` keeps an existing file's body when its
+  header still matches. Committed and generated, so rerun it after changing the
+  compatibility date or flags or bumping `wrangler`, never edit it.
 
 ## Build and checks
 
 - `build`: `vp build`. Produces the Worker and its assets under `dist/`, and the deploy
   config `wrangler deploy` and `wrangler dev` pick up ([infrastructure.md](./infrastructure.md#deploy)).
 - `check`: `vp check`: format check, lint and typecheck. This is what CI runs.
+- `check:worker-types`: generates the runtime types again under `node_modules/.cache/` and
+  fails when `worker-configuration.d.ts` differs from them by a byte: stale against
+  `wrangler.jsonc` or the installed workerd, edited by hand, or written by a plain
+  `wrangler types`, which adds `Env` types. `types:generate` fixes it. CI runs it.
 - `check:fix` ⚠️ `vp check --fix`: rewrites files in place to fix what it can.
 - `typecheck`: `vp check --no-fmt --no-lint`. Typecheck only; the pre-commit hook runs it.
 - `lint`: `vp lint`, Oxlint with the type-aware rules configured in `vite.config.ts`.
