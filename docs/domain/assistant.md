@@ -411,7 +411,7 @@ corrected, with the opening marks and the emojis taken out. A rule can change ho
 never what it may do.
 
 Staff can correct a reply the assistant sent, or mark one as good; it becomes a
-reply example, which the assistant imitates. Examples belong to the organization
+reply example (`Ejemplo de respuesta`), which the assistant imitates. Examples belong to the organization
 or to a practitioner, like rules.
 
 The number of rules and their length are limited. Every change is audited, and
