@@ -192,21 +192,23 @@ export function visibleWeekHours(
   days: readonly { date: string; ranges: readonly TimeRange[] }[],
   timeZone: string,
 ): TimeRange[] {
-  const midnights = days.map(({ date }) => instantOf(date, "00:00", timeZone));
-  const views = days.map(({ date, ranges }) => visibleHours(ranges, date, timeZone));
-  const fromMidnight = (instant: Date, index: number) => +instant - +midnights[index]!;
-  const first = Math.min(...views.map((view, index) => fromMidnight(view.start, index)));
-  const last = Math.max(...views.map((view, index) => fromMidnight(view.end, index)));
-  return midnights.map((midnight) => ({
+  const placed = days.map(({ date, ranges }) => {
+    const midnight = instantOf(date, "00:00", timeZone);
+    const view = visibleHours(ranges, date, timeZone);
+    return { midnight, start: +view.start - +midnight, end: +view.end - +midnight };
+  });
+  const first = Math.min(...placed.map((day) => day.start));
+  const last = Math.max(...placed.map((day) => day.end));
+  return placed.map(({ midnight }) => ({
     start: new Date(+midnight + first),
     end: new Date(+midnight + last),
   }));
 }
 
 function floorToHour(instant: Date, timeZone: string): Date {
-  const local = format(instant, "yyyy-MM-dd HH", { in: tz(timeZone) });
-  const [date, hour] = local.split(" ");
-  return instantOf(date!, `${hour}:00`, timeZone);
+  const date = format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
+  const hour = format(instant, "HH", { in: tz(timeZone) });
+  return instantOf(date, `${hour}:00`, timeZone);
 }
 
 function ceilToHour(instant: Date, timeZone: string): Date {

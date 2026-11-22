@@ -9,6 +9,7 @@ import {
 import type { SandboxStart, SandboxState, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
+import { present } from "#/lib/present.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
 import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
@@ -226,7 +227,7 @@ function overHourlyLimit(database: Database, running: SandboxTurnsRunning) {
     .select({ calls: count() })
     .from(modelUsage)
     .where(and(eq(modelUsage.sandbox, true), gt(modelUsage.createdAt, Date.now() - hourMs)))
-    .get()!;
+    .get() ?? { calls: 0 };
   return calls + running.count * callsPerTurn >= sandboxModelCallsPerHour;
 }
 
@@ -266,7 +267,7 @@ class SandboxRun {
    * keeps what `work` left of that conversation, and discards every write.
    */
   step<T>(work: () => T): T {
-    const kept: { result?: T; state?: SandboxState } = {};
+    const kept: { result?: T; state: SandboxState } = { state: this.state };
     try {
       this.database.transaction(() => {
         this.#replay();
@@ -279,13 +280,13 @@ class SandboxRun {
         throw error;
       }
     }
-    this.state = kept.state!;
+    this.state = kept.state;
     return kept.result as T;
   }
 
   /** Appends a message, after the last one: a turn's replies follow its patient's message. */
   append(direction: "incoming" | "outgoing", text: string) {
-    const last = this.state.messages.at(-1)!;
+    const last = present(this.state.messages.at(-1), "A sandbox has its reminder");
     const sentAt = Math.max(Date.now(), last.sentAt + 1);
     this.state = {
       ...this.state,
@@ -344,7 +345,7 @@ class SandboxRun {
           timing: "before",
           appointmentId: state.appointmentId,
           state: "sent",
-          dueAt: state.messages[0]!.sentAt,
+          dueAt: present(state.messages[0], "A sandbox has its reminder").sentAt,
           whatsappMessageId: this.#messageId(0),
         })
         .run();
@@ -356,7 +357,7 @@ class SandboxRun {
     const accepted = state.proposals.filter((kept) => kept.acceptedAt !== null);
     const stillMade = new Set(
       accepted
-        .sort((a, b) => a.acceptedAt! - b.acceptedAt!)
+        .sort((a, b) => (a.acceptedAt ?? 0) - (b.acceptedAt ?? 0))
         .filter(
           (kept) =>
             applyChange(database, { ...kept, conversationId, updatedAt: kept.createdAt }).ok,
@@ -382,11 +383,12 @@ class SandboxRun {
   #readBack(): SandboxState {
     const { database, state } = this;
     const { conversationId } = state;
-    const { misunderstandings } = database
+    const stored = database
       .select({ misunderstandings: conversation.misunderstandings })
       .from(conversation)
       .where(eq(conversation.id, conversationId))
-      .get()!;
+      .get();
+    const { misunderstandings } = present(stored, "The sandbox is stored");
     const judgements = new Map(
       database
         .select({ id: whatsappMessage.id, judgement: whatsappMessage.judgement })
@@ -486,7 +488,7 @@ async function playTurn(run: SandboxRun, model: AssistantModel) {
   const { read, appointments, answered } = run.step(() => {
     const read = readConversation(database, conversationId);
     const appointments = upcomingAppointments(database, read.phone, Date.now());
-    const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
+    const answered = answeredMessage(database, conversationId, read.unjudged);
     return { read, appointments, answered };
   });
   const turn = { conversationId, read, appointments: [...appointments] };

@@ -226,21 +226,25 @@ function cancelledAppointment(row: {
   if (
     row.cancelledId === null ||
     row.cancelledStartsAt === null ||
-    row.cancelledTimeZone === null
+    row.cancelledTimeZone === null ||
+    row.cancelledRoomId === null ||
+    row.cancelledPractitioner === null ||
+    row.cancelledFirstName === null ||
+    row.cancelledLastName === null
   ) {
     return null;
   }
   return {
     id: row.cancelledId,
     patient: patientName({
-      firstName: row.cancelledFirstName!,
-      lastName: row.cancelledLastName!,
+      firstName: row.cancelledFirstName,
+      lastName: row.cancelledLastName,
       chosenName: row.cancelledChosenName,
     }),
-    practitioner: row.cancelledPractitioner!,
+    practitioner: row.cancelledPractitioner,
     startsAt: row.cancelledStartsAt,
     timeZone: row.cancelledTimeZone,
-    roomId: row.cancelledRoomId!,
+    roomId: row.cancelledRoomId,
     date: today(row.cancelledTimeZone, new Date(row.cancelledStartsAt)),
   };
 }

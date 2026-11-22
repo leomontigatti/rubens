@@ -49,17 +49,18 @@ function AssistantSandbox() {
   if (!listed.ok) {
     return <RefusalMessage message={sandboxRefusalMessages[listed.reason]} />;
   }
+  const [first] = listed.scenarios;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Prueba del asistente" description={description} />
-      {listed.scenarios.length === 0 ? (
+      {first === undefined ? (
         <EmptyState
           icon={CalendarIcon}
           title="Sin turnos próximos"
           description="La prueba empieza desde el recordatorio de un turno próximo de un paciente con WhatsApp. Todavía no hay ninguno."
         />
       ) : (
-        <Sandbox scenarios={listed.scenarios} />
+        <Sandbox scenarios={listed.scenarios} first={first} />
       )}
     </div>
   );
@@ -68,7 +69,7 @@ function AssistantSandbox() {
 /** The sandbox conversation shown: as it started, or after its latest turn. */
 type Shown = Pick<Played, "sandbox" | "windowClosesAt"> & { turn: Played["turn"] | null };
 
-function Sandbox({ scenarios }: { scenarios: Scenario[] }) {
+function Sandbox({ scenarios, first }: { scenarios: Scenario[]; first: Scenario }) {
   const router = useRouter();
   const [shown, setShown] = useState<Shown | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +90,7 @@ function Sandbox({ scenarios }: { scenarios: Scenario[] }) {
   }
 
   const scenarioForm = useAppForm({
-    defaultValues: { appointmentId: scenarios[0]!.appointmentId },
+    defaultValues: { appointmentId: first.appointmentId },
     onSubmit: async ({ value }) => {
       setError(null);
       const result = await serverAnswer("sandbox-start", shownPath(router), () =>

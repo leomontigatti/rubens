@@ -42,8 +42,11 @@ function NewTemplate() {
         )
       }
       save={async (values) => {
+        if (!values.settings) {
+          throw new Error("A new template's form always sends its settings");
+        }
         const created = await createTemplate({
-          data: { body: values.body, ...values.settings! },
+          data: { body: values.body, ...values.settings },
         });
         return created.ok ? { ok: true } : created;
       }}

@@ -80,7 +80,7 @@ function isTemplateVariable(name: string): name is TemplateVariable {
 export function variablesIn(body: string): TemplateVariable[] {
   const used = new Set<TemplateVariable>();
   for (const [, name] of body.matchAll(variablePattern)) {
-    if (isTemplateVariable(name!)) {
+    if (name !== undefined && isTemplateVariable(name)) {
       used.add(name);
     }
   }

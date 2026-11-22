@@ -4,6 +4,7 @@ import { assistantToolSchemas } from "#/lib/assistant.ts";
 import { assistantUserId } from "#/lib/audit-fields.ts";
 import { proposalExpiresAt } from "#/lib/proposals.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
+import { present } from "#/lib/present.ts";
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 
 import type { AssistantTool } from "#/organization/assistant-model.ts";
@@ -78,10 +79,10 @@ export function applyChange(
     return movePatientAppointment(database, assistantActing, {
       appointmentId,
       stated: {
-        slotId: new Date(latest.startsAt!).toISOString(),
-        date: newDate!,
-        time: newTime!,
-        office: newOffice!,
+        slotId: new Date(latest.startsAt ?? 0).toISOString(),
+        date: newDate,
+        time: newTime,
+        office: newOffice,
       },
     });
   }
@@ -206,11 +207,14 @@ function refusalOf(latest: ReturnType<typeof latestProposal>, now: number) {
  * yes, since the turn's view dates from before the model ran.
  */
 function appointmentNow(database: Database, conversationId: string, appointmentId: string) {
-  const { phone } = database
-    .select({ phone: conversation.phone })
-    .from(conversation)
-    .where(eq(conversation.id, conversationId))
-    .get()!;
+  const { phone } = present(
+    database
+      .select({ phone: conversation.phone })
+      .from(conversation)
+      .where(eq(conversation.id, conversationId))
+      .get(),
+    "A proposal's conversation is stored",
+  );
   return upcomingAppointments(database, phone, Date.now()).find((one) => one.id === appointmentId);
 }
 
@@ -229,8 +233,9 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
     }
     const { appointments } = turn;
     const index = appointments.findIndex((one) => one.id === latest.appointmentId);
+    const viewed = appointments[index];
     const current = appointmentNow(database, turn.conversationId, latest.appointmentId);
-    if (index === -1 || !current) {
+    if (!viewed || !current) {
       return { ok: false, reason: "notFound" };
     }
     // Moved, or its practitioner or office changed, since it was proposed.
@@ -244,12 +249,18 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
     }
     database.update(proposal).set({ acceptedAt: now }).where(eq(proposal.id, latest.id)).run();
     const { date, time, newDate, newTime } = latest.statement;
-    turn.recorded.applied.push({ kind: latest.kind, date: date!, time: time!, newDate, newTime });
+    if (date === undefined || time === undefined) {
+      throw new Error("A proposal states the appointment's date and time");
+    }
+    turn.recorded.applied.push({ kind: latest.kind, date, time, newDate, newTime });
     // Only the turn's own change: anything else changed meanwhile still holds its reply.
     if (latest.kind === "confirm") {
-      appointments[index] = { ...appointments[index]!, status: "confirmed" };
+      appointments[index] = { ...viewed, status: "confirmed" };
     } else if (latest.kind === "move") {
-      appointments[index] = appointmentNow(database, turn.conversationId, current.id)!;
+      appointments[index] = present(
+        appointmentNow(database, turn.conversationId, current.id),
+        "An appointment the patient just moved is still upcoming for the conversation",
+      );
       // As upcomingAppointments orders them, so the reply's check compares like with like.
       appointments.sort((a, b) => a.startsAt - b.startsAt || a.id.localeCompare(b.id));
     } else {

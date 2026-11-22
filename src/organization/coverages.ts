@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import { coverageIdSchema, coverageInputSchema, coverageUpdateSchema } from "#/lib/coverages.ts";
 import type { CoverageId, CoverageInput, CoverageUpdate, InsurerKind } from "#/lib/coverages.ts";
+import { present } from "#/lib/present.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -167,7 +168,7 @@ export function addCoverage(
       .values({ ...fields, primary: asPrimary || primary === undefined })
       .returning({ id: coverage.id })
       .get();
-    const found = findCoverage(tx, created.id)!;
+    const found = present(findCoverage(tx, created.id), "A coverage just inserted is found");
     recordAudit(tx, acting.userId, {
       action: "create",
       entityType: "coverage",
@@ -203,7 +204,7 @@ export function updateCoverage(
       }
     }
     tx.update(coverage).set(fields).where(eq(coverage.id, coverageId)).run();
-    const updated = findCoverage(tx, coverageId)!;
+    const updated = present(findCoverage(tx, coverageId), "A coverage just updated is found");
     const changed = changedFields(auditedValues(current), auditedValues(updated));
     if (changed) {
       recordAudit(tx, acting.userId, {

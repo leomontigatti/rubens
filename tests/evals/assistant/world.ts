@@ -40,24 +40,26 @@ const riosSlots: Slot[] = [
   { slotId: "slot-r3", date: "2026-11-19", time: "17:00", office: centro.office },
 ];
 
+function luciaAppointment(overrides: Partial<Appointment> = {}): Appointment {
+  return {
+    appointmentId: "apt-101",
+    service: "Sesión de kinesiología",
+    practitioner: "Lic. Paula Ríos",
+    specialty: "Kinesiología",
+    date: "2026-11-12",
+    time: "16:30",
+    ...centro,
+    status: "booked",
+    freeSlots: riosSlots,
+    ...overrides,
+  };
+}
+
 function lucia(overrides: Partial<Appointment> = {}): Patient {
   return {
     patientId: "pat-lucia",
     firstName: "Lucía",
-    appointments: [
-      {
-        appointmentId: "apt-101",
-        service: "Sesión de kinesiología",
-        practitioner: "Lic. Paula Ríos",
-        specialty: "Kinesiología",
-        date: "2026-11-12",
-        time: "16:30",
-        ...centro,
-        status: "booked",
-        freeSlots: riosSlots,
-        ...overrides,
-      },
-    ],
+    appointments: [luciaAppointment(overrides)],
   };
 }
 
@@ -72,7 +74,7 @@ export const numbers = {
       appointments: [
         ...lucia().appointments,
         {
-          ...lucia().appointments[0]!,
+          ...luciaAppointment(),
           appointmentId: "apt-102",
           date: "2026-11-10",
           time: "08:30",

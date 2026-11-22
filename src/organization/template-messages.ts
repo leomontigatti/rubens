@@ -2,6 +2,7 @@ import { and, eq, gt, inArray } from "drizzle-orm";
 import type { SQLWrapper } from "drizzle-orm";
 
 import type { AppointmentStatus } from "#/lib/appointments.ts";
+import { present } from "#/lib/present.ts";
 import { attendedTimings, bookingTimings, timingDueAt, timingOf } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
 
@@ -195,7 +196,7 @@ function notSentFor(tx: Writer, appointmentId: string) {
       .all()
       .map((row) => row.templateId),
   );
-  const booked = readAppointment(tx, appointmentId)!;
+  const booked = present(readAppointment(tx, appointmentId), "The appointment is stored");
   return tx
     .select({ id: medicalServiceTemplate.templateId })
     .from(medicalServiceTemplate)
@@ -222,7 +223,7 @@ function upcomingOf(tx: Writer, medicalServiceIds: string[] | SQLWrapper) {
       ),
     )
     .all()
-    .map((row) => readAppointment(tx, row.id)!);
+    .map((row) => present(readAppointment(tx, row.id), "An appointment just selected is read"));
 }
 
 /**

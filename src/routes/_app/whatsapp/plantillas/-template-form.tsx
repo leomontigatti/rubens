@@ -191,7 +191,11 @@ export function TemplateForm(props: {
         : refused.reason && templateFormRefusals[refused.reason as RefusalReason];
       // An edit stores the name and timing before it sends the text, so only the text is lost.
       const kept =
-        templateId && settings && checked.success && settingsKept.includes(refused.reason!);
+        templateId &&
+        settings &&
+        checked.success &&
+        refused.reason !== null &&
+        settingsKept.includes(refused.reason);
       if (message && kept) {
         // As the server stored them: the schema's output, trimmed and in hours.
         setStored({

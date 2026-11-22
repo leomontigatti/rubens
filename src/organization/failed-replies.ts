@@ -1,5 +1,7 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
+import { present } from "#/lib/present.ts";
+
 import { boundAsOne } from "#/organization/database.ts";
 import type { Writer } from "#/organization/database.ts";
 import { notifiedPatientOf, notify } from "#/organization/notifications.ts";
@@ -65,7 +67,7 @@ export function settleFailedReplies(tx: Writer, whatsappIds: string[]) {
           .run();
       }
     }
-    notify(tx, [reply.sentBy!], {
+    notify(tx, [present(reply.sentBy, "The failed replies read are those a member wrote")], {
       kind: "replyFailed",
       conversationId: reply.conversationId,
       patientId: notifiedPatientOf(tx, reply.conversationId),

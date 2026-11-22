@@ -190,7 +190,10 @@ export function checkTemplateBody(
     problems.push({ kind: "endsWithVariable" });
   }
   for (const [, variable] of trimmed.matchAll(variablePattern)) {
-    const problem = variableProblem(allowed, variable!);
+    if (variable === undefined) {
+      continue;
+    }
+    const problem = variableProblem(allowed, variable);
     if (problem) {
       problems.push(problem);
     }

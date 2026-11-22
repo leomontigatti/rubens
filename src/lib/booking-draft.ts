@@ -9,6 +9,7 @@ import {
 } from "#/lib/appointments.ts";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
+import { formatTime } from "#/lib/dates.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 
@@ -69,18 +70,17 @@ export function initialBookingValues(
   defaultDate: string,
 ): BookingValues {
   const medicalService = from?.medicalService ?? null;
-  const [date, time] = from
-    ? format(from.start, "yyyy-MM-dd HH:mm", { in: tz(from.timeZone) }).split(" ")
-    : [defaultDate, ""];
+  const date = from ? format(from.start, "yyyy-MM-dd", { in: tz(from.timeZone) }) : defaultDate;
+  const time = from ? formatTime(from.start, from.timeZone) : "";
   return {
     patient: null,
-    practitionerId: practitionerIds.length === 1 ? practitionerIds[0]! : "",
+    practitionerId: practitionerIds.length === 1 ? (practitionerIds[0] ?? "") : "",
     medicalServiceId: medicalService?.id ?? "",
     durationMinutes: medicalService ? String(medicalService.durationMinutes) : "",
     start: from && { start: from.start, roomName: from.roomName, timeZone: from.timeZone },
     freeFrom: defaultDate,
-    date: date!,
-    time: time!,
+    date,
+    time,
     roomId: "",
     receptionNote: "",
   };

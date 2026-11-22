@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
+import { present } from "#/lib/present.ts";
 import { liveReactions, reactionLine, reactionType, takesBack } from "#/lib/reactions.ts";
 
 import type { Database } from "#/organization/database.ts";
@@ -46,7 +47,11 @@ export function reactionsOf(database: Database, conversationId: string) {
   return {
     /** Each reaction but those taking one back, as the model reads it. */
     lines: new Map(
-      shown.map((one) => [one.id, reactionLine(one.text!, words.get(one.reactsTo!) ?? null)]),
+      shown.map((one) => {
+        const text = present(one.text, "A reaction that takes none back has its emoji");
+        const target = one.reactsTo === null ? undefined : words.get(one.reactsTo);
+        return [one.id, reactionLine(text, target ?? null)];
+      }),
     ),
     /** The reactions their messages still show: the conversation so far reads only these. */
     live: new Set([...liveReactions(reactions).values()].map((one) => one.id)),
