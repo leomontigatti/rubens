@@ -156,7 +156,7 @@ _Avoid_: opt-in, subscription
 A message the `organization` starts, approved by Meta for its WhatsApp number and
 filled with an `appointment`'s facts. An admin creates and names the organization's
 own, each with its `templateTiming`, and a `medicalService` picks the ones its
-appointments get; the four `eventTemplate`s are fixed.
+appointments get; the four named by an `eventTemplateId` are fixed.
 _Avoid_: fixed text, canned message, HSM, message type
 
 **`templateTiming`** — ui: "Cuándo se envía"
@@ -164,11 +164,10 @@ When a `template` goes: when its `appointment` is booked, when it is marked
 attended, or a number of hours or days before or after it.
 _Avoid_: schedule, delay, trigger
 
-**`eventTemplate`** — no UI term (the list shows its event as its timing)
-One of the four fixed `template`s sent when something happens to an `appointment`
-or a conversation, such as staff moving the appointment. No `medicalService` picks it.
-`turno_no_disponible` is the one for an appointment the business cancelled or sent to
-the "to reschedule" list.
+**`eventTemplateId`** — no UI term (the list shows its event as its timing)
+The id of one of the four fixed `template`s sent when something happens to an
+`appointment` or a conversation, such as staff moving the appointment. No
+`medicalService` picks such a template.
 _Avoid_: system message, automatic template
 
 **`templateButtons`** — ui: "Botones"
@@ -271,8 +270,3 @@ _Avoid_: fallback agent, on-call
 An instruction on how the `assistant` writes, set by an admin for the
 `organization` or by a `practitioner` for their own conversations.
 _Avoid_: prompt, instruction, style guide, training
-
-**`replyExample`** — ui: "Ejemplo de respuesta"
-A reply of the `assistant` that staff corrected or marked as good, which it
-imitates.
-_Avoid_: training data, sample, few-shot
