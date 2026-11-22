@@ -3,6 +3,7 @@ import type { SQLWrapper } from "drizzle-orm";
 
 import { isOneOf } from "#/lib/is-one-of.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
+import { present } from "#/lib/present.ts";
 import { reactionType } from "#/lib/reactions.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import type { HandoffDetail, HandoffReason, HeldReplyCheck } from "#/lib/handoffs.ts";
@@ -183,7 +184,12 @@ function answeredKind(kind: string | null, timing: TimingKind | null) {
  * practitioner a handoff then goes to. `firstReply` says no turn judged a
  * reply to it yet: only that turn sorts a follow-up's answer.
  */
-export function answeredMessage(database: Database, conversationId: string, before: number) {
+export function answeredMessage(
+  database: Database,
+  conversationId: string,
+  newMessages: readonly { sentAt: number }[],
+) {
+  const before = present(newMessages[0], "A turn reads at least one new message").sentAt;
   const latest = database
     .select({
       kind: outboxMessage.kind,

@@ -53,7 +53,7 @@ function practitionerField(practitioners: SchedulePractitioner[]) {
   return {
     label: "Profesional",
     required: true,
-    initial: practitioners.length === 1 ? practitioners[0]!.id : "",
+    initial: practitioners.length === 1 ? (practitioners[0]?.id ?? "") : "",
     placeholder: "Elegí un profesional",
     options: practitioners.map((practitioner) => ({
       value: practitioner.id,

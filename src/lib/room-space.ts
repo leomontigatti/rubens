@@ -29,13 +29,19 @@ export function findCrowding<T extends Presence>(
         .filter((point) => point >= +span.start && point <= +span.end),
     ),
   ].sort((a, b) => a - b);
-  for (let index = 0; index + 1 < points.length; index += 1) {
-    const moment = { start: new Date(points[index]!), end: new Date(points[index + 1]!) };
+  const [first, ...rest] = points;
+  if (first === undefined) {
+    return null;
+  }
+  let start = first;
+  for (const end of rest) {
+    const moment = { start: new Date(start), end: new Date(end) };
     const present = inside.filter((presence) => intersects(presence, moment));
     const others = new Set(present.map((presence) => presence.practitionerId));
     if (!others.delete(practitionerId) && others.size >= capacity) {
       return present;
     }
+    start = end;
   }
   return null;
 }

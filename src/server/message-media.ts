@@ -63,7 +63,8 @@ export async function serveMessageMedia(
     });
   }
   // Meta's type can carry parameters (`audio/ogg; codecs=opus`); only the type decides.
-  const mimeType = opened.mimeType.split(";")[0]!.trim().toLowerCase();
+  const [type = ""] = opened.mimeType.split(";");
+  const mimeType = type.trim().toLowerCase();
   const inPlace = shownInPlace.some((pattern) => pattern.test(mimeType));
   return new Response(opened.body, {
     status: opened.partial ? 206 : 200,

@@ -59,13 +59,15 @@ export function dayLabel(at: number, now: number) {
 export function byDay<Item>(items: Item[], at: (item: Item) => number, now: number) {
   const days: { label: string; items: Item[] }[] = [];
   let current: string | null = null;
+  let run: Item[] = [];
   for (const item of items) {
     const day = dayOf(at(item));
     if (day !== current) {
-      days.push({ label: dayLabel(at(item), now), items: [] });
+      run = [];
+      days.push({ label: dayLabel(at(item), now), items: run });
       current = day;
     }
-    days.at(-1)!.items.push(item);
+    run.push(item);
   }
   return days;
 }

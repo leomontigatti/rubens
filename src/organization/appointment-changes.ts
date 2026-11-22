@@ -22,6 +22,7 @@ import type {
   StatusChangeInput,
   WarningConfirmation,
 } from "#/lib/appointments.ts";
+import { present } from "#/lib/present.ts";
 
 import { checkRoomSpace, placeAtTime } from "#/organization/appointment-placement.ts";
 import type { PlacementRefusal, RoomRefusal } from "#/organization/appointment-placement.ts";
@@ -385,21 +386,24 @@ function setStatus(
     queueChangeMessage(writer, placed.id, "appointmentCancelled");
   }
   const { status, cancelledBy, cancellationReason } = placed;
-  const changed = changedFields(
-    { status, cancelledBy, cancellationReason },
-    {
-      status: next.status,
-      cancelledBy: next.cancelledBy,
-      cancellationReason: next.cancellationReason,
-    },
+  const changed = present(
+    changedFields(
+      { status, cancelledBy, cancellationReason },
+      {
+        status: next.status,
+        cancelledBy: next.cancelledBy,
+        cancellationReason: next.cancellationReason,
+      },
+    ),
+    "A status change the status rules allowed changes the status or why it was cancelled",
   );
   recordAudit(writer, acting.userId, {
     action: "update",
     entityType: "appointment",
     entityId: placed.id,
     patientId: placed.patientId,
-    before: changed!.before,
-    after: changed!.after,
+    before: changed.before,
+    after: changed.after,
   });
   return { ok: true };
 }

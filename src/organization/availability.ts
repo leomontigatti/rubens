@@ -12,6 +12,7 @@ import type {
   FreeStart,
 } from "#/lib/availability.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
+import { present } from "#/lib/present.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -268,7 +269,7 @@ export function freeStartsOfDay(
   const { free, schedules } = findFreeTimes(writer, owner, { window, ...options });
   const zones = new Map(schedules.map((row) => [row.roomId, row.timeZone]));
   const sameDay = free.filter(({ start, roomId }) => {
-    const zone = zones.get(roomId)!;
+    const zone = present(zones.get(roomId), "A free time is in the room of one of its schedules");
     return localDate(start, zone) === localDate(instant, zone);
   });
   return toAvailableStarts(sameDay, schedules);
@@ -281,7 +282,7 @@ function toAvailableStarts(
 ): AvailableStart[] {
   const rooms = new Map(schedules.map((row) => [row.roomId, row]));
   return free.map(({ start, roomId }) => {
-    const where = rooms.get(roomId)!;
+    const where = present(rooms.get(roomId), "A free time is in the room of one of its schedules");
     return {
       start,
       officeName: where.officeName,

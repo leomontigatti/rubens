@@ -136,23 +136,26 @@ export function DayColumn(props: {
             )}
           </div>
         ))}
-        {busy.map((block) => (
-          <BusyCard
-            key={block.id}
-            block={block}
-            busy={busyById.get(block.id)!}
-            timeZone={timeZone}
-          />
-        ))}
-        {placed.cards.map((block) => (
-          <AppointmentCard
-            key={block.id}
-            block={block}
-            appointment={byId.get(block.id)!}
-            timeZone={timeZone}
-            onOpen={props.onOpen}
-          />
-        ))}
+        {busy.flatMap((block) => {
+          const card = busyById.get(block.id);
+          return card
+            ? [<BusyCard key={block.id} block={block} busy={card} timeZone={timeZone} />]
+            : [];
+        })}
+        {placed.cards.flatMap((block) => {
+          const appointment = byId.get(block.id);
+          return appointment
+            ? [
+                <AppointmentCard
+                  key={block.id}
+                  block={block}
+                  appointment={appointment}
+                  timeZone={timeZone}
+                  onOpen={props.onOpen}
+                />,
+              ]
+            : [];
+        })}
       </div>
     </div>
   );

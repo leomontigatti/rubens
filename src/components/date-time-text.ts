@@ -31,7 +31,7 @@ function maskSegments(text: string, separator: string, lengths: readonly number[
         segments.push("");
       }
     } else if (/\d/.test(char)) {
-      if (segments[last]!.length < lengths[last]!) {
+      if ((segments[last] ?? "").length < (lengths[last] ?? 0)) {
         segments[last] += char;
       } else if (room) {
         segments.push(char);

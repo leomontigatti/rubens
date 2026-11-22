@@ -10,6 +10,7 @@ import type {
 } from "#/lib/whatsapp-messages.ts";
 import { assistantWaitMs } from "#/lib/assistant.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
+import { present } from "#/lib/present.ts";
 import { reactionType, takesBack } from "#/lib/reactions.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
@@ -45,11 +46,13 @@ function conversationWith(tx: Writer, phone: string): string {
   if (created) {
     return created.id;
   }
-  return tx
+  const existing = tx
     .select({ id: conversation.id })
     .from(conversation)
     .where(eq(conversation.phone, phone))
-    .get()!.id;
+    .get();
+  return present(existing, "A conversation the insert skipped is one already stored for the phone")
+    .id;
 }
 
 /**
@@ -361,7 +364,7 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
     settleFailedReplies(
       tx,
       events.statuses
-        .filter((update, index) => update.status === "failed" && stored.statuses[index]!.updated)
+        .filter((update, index) => update.status === "failed" && stored.statuses[index]?.updated)
         .map((update) => update.whatsappId),
     );
     for (const update of events.templateCategories) {
@@ -378,10 +381,13 @@ export function storeWhatsappEvents(database: Database, events: WhatsappEvents) 
 }
 
 /** A reaction the patient took back (`takesBack`), in SQL. */
-const takenBack = and(
-  eq(whatsappMessage.type, reactionType),
-  or(isNull(whatsappMessage.text), eq(whatsappMessage.text, "")),
-)!;
+const takenBack = present(
+  and(
+    eq(whatsappMessage.type, reactionType),
+    or(isNull(whatsappMessage.text), eq(whatsappMessage.text, "")),
+  ),
+  "and() of two conditions is a condition",
+);
 
 /** When the patient last wrote in `conversationId`, which opens its window. */
 export function lastIncomingAt(database: Writer, conversationId: string) {

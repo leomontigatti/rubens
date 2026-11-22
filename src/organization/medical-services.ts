@@ -13,6 +13,7 @@ import type {
   MedicalServiceInput,
   MedicalServiceUpdate,
 } from "#/lib/medical-services.ts";
+import { present } from "#/lib/present.ts";
 import { timingOf, timingRank } from "#/lib/template-timing.ts";
 import type { Timing } from "#/lib/template-timing.ts";
 import { eventTemplateIds } from "#/lib/whatsapp-templates.ts";
@@ -94,7 +95,7 @@ function withPicks<T extends { id: string }>(
   for (const { medicalServiceId, templateId } of picked) {
     byService.get(medicalServiceId)?.push(templateId);
   }
-  return rows.map((row) => ({ ...row, templateIds: byService.get(row.id)! }));
+  return rows.map((row) => ({ ...row, templateIds: byService.get(row.id) ?? [] }));
 }
 
 /**
@@ -124,7 +125,7 @@ function pickableTemplates(database: Database) {
     .map(({ id, name, ...stored }) => ({
       id,
       name,
-      timing: timingOf(stored)!,
+      timing: present(timingOf(stored), "An organization's own template has a timing"),
       approved: approved.has(id),
     }))
     .sort((a, b) => {
@@ -139,7 +140,7 @@ function picksRefusal(tx: Database, templateIds: string[]) {
   if (!templateIds.every((id) => pickable.has(id))) {
     return unknownTemplate;
   }
-  const reminders = templateIds.filter((id) => pickable.get(id)!.timing.when === "before");
+  const reminders = templateIds.filter((id) => pickable.get(id)?.timing.when === "before");
   return reminders.length > maxReminders ? tooManyReminders : null;
 }
 
@@ -289,15 +290,15 @@ export function updateMedicalService(
     if (refusal) {
       return refusal;
     }
-    const [before] = withPicks(tx, [current]);
+    const before = present(withPicks(tx, [current])[0], "withPicks returns a row for each row");
     const updated = tx
       .update(medicalService)
       .set(fields)
       .where(eq(medicalService.id, medicalServiceId))
       .returning(medicalServiceColumns)
       .get();
-    savePicks(tx, medicalServiceId, before!.templateIds, templateIds);
-    const changed = changedFields(audited(before!), audited({ ...fields, templateIds }));
+    savePicks(tx, medicalServiceId, before.templateIds, templateIds);
+    const changed = changedFields(audited(before), audited({ ...fields, templateIds }));
     if (changed) {
       recordAudit(tx, acting.userId, {
         action: "update",

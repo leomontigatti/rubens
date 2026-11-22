@@ -405,7 +405,7 @@ function withReactions(rows: MessageRow[]) {
     .filter(
       (row) =>
         row.type !== reactionType ||
-        (!stored.has(row.reactsTo!) && live.get(row.reactsTo!) === row),
+        (row.reactsTo !== null && !stored.has(row.reactsTo) && live.get(row.reactsTo) === row),
     )
     .map((row) => asRead(row, live.get(row.whatsappId)?.text ?? null));
 }

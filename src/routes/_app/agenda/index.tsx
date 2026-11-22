@@ -252,24 +252,33 @@ function WeekGrid(props: {
     week.days.map((day) => ({ date: day.date, ranges: [...day.schedules, ...day.cards] })),
     timeZone,
   );
+  const [firstView] = views;
+  if (!firstView) {
+    throw new Error("A calendar week has at least one day");
+  }
   // The grid renders only in the browser: drawn on the server, its cells and
   // cards cost the page more CPU than a Worker on the free plan gets (#139).
   // The server sends the week's data and an empty frame of the grid's height.
   return (
-    <ClientOnly fallback={<WeekGridFrame view={views[0]!} />}>
+    <ClientOnly fallback={<WeekGridFrame view={firstView} />}>
       <div className="flex overflow-x-auto rounded-xl border">
-        <TimeAxis view={views[0]!} timeZone={timeZone} />
-        {week.days.map((day, index) => (
-          <DayColumn
-            key={day.date}
-            title={`${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date).slice(0, 5)}`}
-            day={day}
-            view={views[index]!}
-            timeZone={timeZone}
-            onPick={props.onPick}
-            onOpen={props.onOpen}
-          />
-        ))}
+        <TimeAxis view={firstView} timeZone={timeZone} />
+        {week.days.flatMap((day, index) => {
+          const view = views[index];
+          return view
+            ? [
+                <DayColumn
+                  key={day.date}
+                  title={`${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date).slice(0, 5)}`}
+                  day={day}
+                  view={view}
+                  timeZone={timeZone}
+                  onPick={props.onPick}
+                  onOpen={props.onOpen}
+                />,
+              ]
+            : [];
+        })}
       </div>
     </ClientOnly>
   );

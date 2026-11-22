@@ -283,7 +283,7 @@ export function BookingPage(props: BookingPageProps) {
       page={page}
       form={form}
       title={props.overbooking ? "Sobreturno" : "Nuevo turno"}
-      description={ask ? undefined : props.practitioners[0]!.displayName}
+      description={ask ? undefined : props.practitioners[0]?.displayName}
       submitLabel="Dar turno"
       creates
       pending={pending}

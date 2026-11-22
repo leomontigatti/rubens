@@ -84,6 +84,12 @@ a wrong shape gets through silently. Narrow instead: a type guard (`value is T`)
 schema parse where data enters from outside, or a typed helper that keeps the one
 check every caller needs. `as const` is not an assertion and stays.
 
+A non-null assertion (`value!`) is an assertion too: lint rejects it in `src/` and
+`scripts/` (`typescript/no-non-null-assertion`) and allows it in test code. Narrow
+with a check, destructure or `for…of` instead of indexing, or, where the value is a
+real invariant (a row just written, a key the map was built from), `present` from
+`src/lib/present.ts`, which throws an `Error` stating it.
+
 Lint rejects assertions (`typescript/consistent-type-assertions`, `never`) everywhere
 but the files in `scripts/type-assertion-allowlist.json`, each with the count it may
 hold; `vite.config.ts` builds the override that turns the rule off from that list. It

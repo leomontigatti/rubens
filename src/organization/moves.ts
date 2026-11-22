@@ -6,6 +6,7 @@ import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { moveRefusal } from "#/lib/proposals.ts";
 import type { MoveRefusal } from "#/lib/proposals.ts";
 import { formatDay, formatTime } from "#/lib/dates.ts";
+import { present } from "#/lib/present.ts";
 
 import { rescheduleAppointment } from "#/organization/appointment-changes.ts";
 import { asRange, findFreeTimes, meets } from "#/organization/availability.ts";
@@ -37,7 +38,7 @@ export interface Slot {
 
 /** The appointment as a move reads it: its time, its practitioner's grid and its medical service's cutoff. */
 function moveFacts(writer: Writer, appointmentId: string) {
-  return writer
+  const facts = writer
     .select({
       id: appointment.id,
       patientId: appointment.patientId,
@@ -51,7 +52,8 @@ function moveFacts(writer: Writer, appointmentId: string) {
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
     .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .where(eq(appointment.id, appointmentId))
-    .get()!;
+    .get();
+  return present(facts, "The appointment a move reads is stored");
 }
 
 type MoveFacts = ReturnType<typeof moveFacts>;
@@ -121,7 +123,10 @@ function allSlots(writer: Writer, moving: MoveFacts, now: number) {
     .filter(({ start }) => +start !== moving.startsAt)
     .filter(({ start }) => !patientBusy(start, new Date(+start + durationMs)))
     .map(({ start, roomId }) => {
-      const where = rooms.get(roomId)!;
+      const where = present(
+        rooms.get(roomId),
+        "A free time is in the room of one of its schedules",
+      );
       const slot: Slot = {
         slotId: start.toISOString(),
         date: formatDay(start, where.timeZone),
@@ -188,7 +193,7 @@ function asTaken<T extends { ok: false; reason: string }>(refusal: T) {
 export function movePatientAppointment(
   database: Database,
   acting: Acting,
-  move: { appointmentId: string; stated: Slot },
+  move: { appointmentId: string; stated: Pick<Slot, "slotId"> & Partial<Slot> },
 ) {
   const { appointmentId, stated } = move;
   const found = slotFor(database, appointmentId, stated.slotId);
