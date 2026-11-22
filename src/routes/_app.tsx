@@ -8,6 +8,7 @@ import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { useSignOut } from "#/components/sign-in-provider.tsx";
 import { Separator } from "#/components/ui/separator.tsx";
 import { UserMenu } from "#/components/user-menu.tsx";
+import { LookPreview } from "#/dev/look-preview.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar.tsx";
 import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import { useSessionGuard } from "#/hooks/use-session-guard.ts";
@@ -97,6 +98,7 @@ function AppShell() {
             <Outlet />
           </div>
         </SidebarInset>
+        {import.meta.env.DEV ? <LookPreview /> : null}
       </SidebarProvider>
     </TooltipProvider>
   );

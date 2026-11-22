@@ -1,3 +1,5 @@
+// Local edit: motion follows Keyframery's, through the `motion-*` utilities and
+// `--kf-speed` in styles.css, in place of shadcn's tw-animate classes. Keep it on a sync.
 // Local edits, kept on a shadcn sync: the screen-reader labels (the viewport's
 // and the close button's) are in Spanish, the UI's language; and a toast's
 // `type` is an alert variant, drawn in that variant's colors and icon, so a
@@ -42,7 +44,7 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
       className={cn(
         "group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-2xl border bg-popover text-popover-foreground shadow-lg will-change-transform outline-none select-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "[--gap:0.75rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))]",
-        "h-(--height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms]",
+        "h-(--height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] [transition:transform_calc(560ms*var(--kf-speed))_var(--ease-spring),opacity_calc(280ms*var(--kf-speed))_var(--ease-house),height_calc(380ms*var(--kf-speed))_var(--ease-house)]",
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
         "data-expanded:h-(--toast-height) data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))]",
         "data-limited:opacity-0 data-starting-style:[transform:translateY(150%)]",
@@ -67,7 +69,7 @@ function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
     <ToastPrimitive.Content
       data-slot="toast-content"
       className={cn(
-        "flex h-full items-center gap-3 overflow-hidden p-4 transition-opacity duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] data-behind:opacity-0 data-expanded:opacity-100",
+        "flex h-full items-center gap-3 overflow-hidden p-4 transition-opacity duration-[calc(250ms*var(--kf-speed))] ease-house data-behind:opacity-0 data-expanded:opacity-100",
         className,
       )}
       {...props}
