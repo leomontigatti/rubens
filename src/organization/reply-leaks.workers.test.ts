@@ -161,7 +161,7 @@ describe("a reply that says it passed the conversation on", () => {
     ]);
   });
 
-  it("is held on the one open handoff when the turn hands off again, and the fixed reply still goes", async () => {
+  it("is held on the one open handoff when the model asks to hand off again, and the fixed reply still goes", async () => {
     await confirmsAndHandsOff("Listo, confirmado el lunes.");
     const reply = "Listo, ya hice accept_proposal.";
     await patientWrites(world.organization, "y quiero hablar con alguien", martinaPhone);

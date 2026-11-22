@@ -61,6 +61,7 @@ describe("a text that says when it is sent", () => {
   it("flags `mañana`, `hoy` or `en N horas`, in any case", () => {
     expect(mentionsSendTime("Te esperamos mañana a las {{hora}}.")).toBe(true);
     expect(mentionsSendTime("Hoy es tu turno.")).toBe(true);
+    expect(mentionsSendTime("Tu turno es HOY.")).toBe(true);
     expect(mentionsSendTime("MAÑANA es tu turno.")).toBe(true);
     expect(mentionsSendTime("Tu turno es en 2 horas.")).toBe(true);
     expect(mentionsSendTime("Tu turno es en 1 hora.")).toBe(true);
