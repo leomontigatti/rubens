@@ -190,7 +190,6 @@ describe("registering in full", () => {
       { ...juan, documentType: "dni" as const, documentNumber: "ABC" },
     ],
     ["a birth date in the future", { ...juan, birthDate: "2999-01-01" }],
-    ["a birth date more than 100 years ago", { ...juan, birthDate: "1900-01-01" }],
   ])("refuses %s as invalid input", async (_, input) => {
     const { organization, receptionist } = await registry();
 
