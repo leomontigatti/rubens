@@ -8,6 +8,7 @@ import {
   passwordChangeSchema,
 } from "#/lib/password-change.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
+import { present } from "#/lib/present.ts";
 import {
   memberActiveChangeSchema,
   memberUpdateSchema,
@@ -188,7 +189,8 @@ export async function createStaffMember(
       await deleteUnclaimedUser(database, accounts, created.userId);
       return { ok: false as const, reason: "emailTaken" as const };
     }
-    return { ok: true as const, member: findStaffMember(database, created.userId)! };
+    const member = findStaffMember(database, created.userId);
+    return { ok: true as const, member: present(member, "A member just added is found") };
   });
 }
 
@@ -272,12 +274,15 @@ export async function updateMember(
   const { memberId, roles, practitioner: settings } = parsed.data;
   const saved = database.transaction((tx) => {
     const target = findStaffMember(tx, memberId);
-    const refusal = target ? updateRefusal(tx, target, parsed.data) : notFound;
+    if (!target) {
+      return notFound;
+    }
+    const refusal = updateRefusal(tx, target, parsed.data);
     if (refusal) {
       return refusal;
     }
     if (roles) {
-      saveRoles(tx, acting, target!, roles);
+      saveRoles(tx, acting, target, roles);
     }
     if (settings) {
       saveSettings(tx, acting, memberId, settings);
@@ -290,7 +295,8 @@ export async function updateMember(
   if (roles) {
     await accounts.updateMetadata(memberId, { roles });
   }
-  return { ok: true as const, member: findStaffMember(database, memberId)! };
+  const member = findStaffMember(database, memberId);
+  return { ok: true as const, member: present(member, "A member just updated is found") };
 }
 
 interface MemberChange {
@@ -354,9 +360,14 @@ function saveSettings(
   memberId: string,
   settings: PractitionerSettings,
 ) {
-  const before = tx.select().from(practitioner).where(eq(practitioner.memberId, memberId)).get()!;
+  const read = () =>
+    present(
+      tx.select().from(practitioner).where(eq(practitioner.memberId, memberId)).get(),
+      "Practitioner settings are saved for a member who is a practitioner",
+    );
+  const before = read();
   tx.update(practitioner).set(settings).where(eq(practitioner.memberId, memberId)).run();
-  const after = tx.select().from(practitioner).where(eq(practitioner.memberId, memberId)).get()!;
+  const after = read();
   const changed = changedFields(settingsOf(before), settingsOf(after));
   if (changed) {
     recordAudit(tx, acting.userId, {

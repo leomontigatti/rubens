@@ -29,7 +29,10 @@ export function InsertChips(
   },
 ) {
   function insert(text: string) {
-    const area = props.box.current!;
+    const area = props.box.current;
+    if (!area) {
+      throw new Error("Insert chips write into a text box that is mounted beside them");
+    }
     const next = insertText(
       props.value,
       { start: area.selectionStart, end: area.selectionEnd },

@@ -7,6 +7,7 @@ import {
   withSenderName,
 } from "#/lib/conversation-holds.ts";
 import type { PersonalReply, ReturnTimeInput } from "#/lib/conversation-holds.ts";
+import { present } from "#/lib/present.ts";
 import { conversationReferenceSchema } from "#/lib/whatsapp-messages.ts";
 import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
 
@@ -126,11 +127,14 @@ export async function replyToConversation(
   if (!reached.ok && reached.reason === "notConnected") {
     return { ok: false as const, reason: "notConnected" as const };
   }
-  const { name } = database
-    .select({ name: member.name })
-    .from(member)
-    .where(eq(member.userId, acting.userId))
-    .get()!;
+  const { name } = present(
+    database
+      .select({ name: member.name })
+      .from(member)
+      .where(eq(member.userId, acting.userId))
+      .get(),
+    "The member holding the conversation is a member",
+  );
   const text = withSenderName(parsed.data.text, name);
   if (text.length > maxReplyLength) {
     return { ok: false as const, reason: "tooLong" as const };

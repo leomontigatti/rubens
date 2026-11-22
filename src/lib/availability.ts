@@ -2,7 +2,7 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
-import { formatLocalDate } from "#/lib/dates.ts";
+import { formatLocalDate, formatTime } from "#/lib/dates.ts";
 import { shiftDate, shortTime, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { WeeklySlot } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
@@ -105,7 +105,7 @@ export function availabilityViewOf(
 ) {
   return {
     practitionerId:
-      search.profesional ?? (practitioners.length === 1 ? practitioners[0]!.id : undefined),
+      search.profesional ?? (practitioners.length === 1 ? practitioners[0]?.id : undefined),
     firstDate: search.fecha ?? today,
     durationMinutes: search.duracion ?? defaultDuration,
     week: search.vista === "semana",
@@ -130,8 +130,8 @@ function localDate(instant: Date, timeZone: string): string {
 }
 
 function minutesOf(time: string): number {
-  const [hours, minutes] = shortTime(time).split(":").map(Number);
-  return hours! * 60 + minutes!;
+  const [hours = NaN, minutes = NaN] = shortTime(time).split(":").map(Number);
+  return hours * 60 + minutes;
 }
 
 function timeOf(minutes: number): string {
@@ -316,11 +316,11 @@ interface PlacedStart {
 export function freeStartsByDay<T extends PlacedStart>(starts: readonly T[]) {
   const days = new Map<string, (T & { time: string })[]>();
   for (const free of starts) {
-    const local = format(free.start, "yyyy-MM-dd HH:mm", { in: tz(free.timeZone) });
-    const [date, time] = local.split(" ");
-    const day = days.get(date!) ?? [];
-    day.push({ ...free, time: time! });
-    days.set(date!, day);
+    const date = format(free.start, "yyyy-MM-dd", { in: tz(free.timeZone) });
+    const time = formatTime(free.start, free.timeZone);
+    const day = days.get(date) ?? [];
+    day.push({ ...free, time });
+    days.set(date, day);
   }
   return [...days.entries()]
     .sort(([a], [b]) => (a < b ? -1 : 1))

@@ -160,11 +160,17 @@ async function registerQaPatient(
   );
   const patientId = registered.patient.id;
   if (coverage) {
+    const insurerId = insurerIds[coverage.insurer];
+    if (insurerId === undefined) {
+      throw new Error(
+        `A QA patient's coverage names insurer ${coverage.insurer}, which was not created`,
+      );
+    }
     accepted(
       `addCoverage ${patient.lastName}`,
       await organization.addCoverage(admin, {
         patientId,
-        insurerId: insurerIds[coverage.insurer]!,
+        insurerId,
         plan: coverage.plan,
         memberNumber: coverage.memberNumber,
       }),
@@ -262,7 +268,8 @@ function planQaWeek(firstDate: string, earliest: number): QaAppointment[] {
       ...where,
       medicalService: medicalServiceAt(where.practitioner, index),
       patientIndex: count,
-      receptionNote: count % 5 === 2 ? qaReceptionNotes[count % qaReceptionNotes.length]! : null,
+      receptionNote:
+        count % 5 === 2 ? (qaReceptionNotes[count % qaReceptionNotes.length] ?? null) : null,
       outcome,
     };
   });
@@ -280,10 +287,16 @@ async function bookWeek(
 ) {
   for (const planned of planQaWeek(today(defaultTimeZone), Date.now() + leadMs)) {
     const medicalService = plan.medicalServices[planned.medicalService];
+    const patientId = plan.patientIds[planned.patientIndex % plan.patientIds.length];
+    if (patientId === undefined) {
+      throw new Error(
+        "The QA week books its appointments for the QA patients, so it needs at least one",
+      );
+    }
     const { appointment } = accepted(
       `bookAppointment ${planned.date} ${planned.time} ${planned.practitioner}`,
       await organization.bookAppointment(admin, {
-        patientId: plan.patientIds[planned.patientIndex % plan.patientIds.length]!,
+        patientId,
         practitionerId: plan.practitionerIds[planned.practitioner],
         medicalServiceId: medicalService.id,
         start: instantOf(planned.date, planned.time, defaultTimeZone),

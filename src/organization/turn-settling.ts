@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { isOneOf } from "#/lib/is-one-of.ts";
+import { present } from "#/lib/present.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
 import { boundAsOne } from "#/organization/database.ts";
@@ -114,7 +115,10 @@ export function settleTurn(
     // The turn judges its burst as one: the opt-out is decided under its newest words.
     // As the model reads them: a voice note nobody could make out holds no words.
     const words = turn.read.unjudged.filter((message) => message.text);
-    const optOutMessageId = (words.at(-1) ?? turn.read.unjudged.at(-1)!).id;
+    const optOutMessageId = present(
+      words.at(-1) ?? turn.read.unjudged.at(-1),
+      "A turn judges at least one message",
+    ).id;
     const optOutAsked =
       turn.judgement.optOut && holdForOptOut(tx, turn.read.phone, optOutMessageId).length > 0;
     return {
@@ -141,7 +145,7 @@ function outcomeOf(
   const held = isHeld(tx, turn.conversationId);
   if (turn.judgement.emergency) {
     if (held) {
-      notify(tx, [heldBy(tx, turn.conversationId)!], {
+      notify(tx, [present(heldBy(tx, turn.conversationId), "A held conversation has a holder")], {
         kind: "emergency",
         conversationId: turn.conversationId,
       });

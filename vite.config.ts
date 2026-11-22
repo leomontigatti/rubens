@@ -262,6 +262,7 @@ export default defineConfig({
       "typescript/no-unsafe-member-access": "error",
       "typescript/no-unsafe-return": "error",
       "typescript/no-unnecessary-type-assertion": "error",
+      "typescript/no-non-null-assertion": "error",
       "typescript/ban-ts-comment": "error",
       "unicorn/no-abusive-eslint-disable": "error",
       // TanStack Router's redirect and not-found are thrown, as its loaders expect.
@@ -431,6 +432,7 @@ export default defineConfig({
           "typescript/no-unsafe-argument": "off",
           "typescript/no-unsafe-assignment": "off",
           "typescript/no-unsafe-member-access": "off",
+          "typescript/no-non-null-assertion": "off",
         },
       },
       {

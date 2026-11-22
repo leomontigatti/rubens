@@ -24,10 +24,8 @@ import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 /** The first day of the month after `month` (`2099-12` → `2100-01-01`). */
 function nextMonthStart(month: string) {
-  const [year, number] = month.split("-").map(Number);
-  return number === 12
-    ? `${year! + 1}-01-01`
-    : `${year}-${String(number! + 1).padStart(2, "0")}-01`;
+  const [year = NaN, number = NaN] = month.split("-").map(Number);
+  return number === 12 ? `${year + 1}-01-01` : `${year}-${String(number + 1).padStart(2, "0")}-01`;
 }
 
 /** This month's delivered messages, in the organization's zone: the templates by category, and the rest. */

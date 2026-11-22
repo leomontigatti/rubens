@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, ne } from "drizzle-orm";
 
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { coveringSchedule, occurrencesDuring } from "#/lib/availability.ts";
+import { present } from "#/lib/present.ts";
 import { findCrowding } from "#/lib/room-space.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -245,7 +246,10 @@ function placeFreeStart(
     });
     return { ok: false, reason: "notFree", freeStarts };
   }
-  const { timeZone } = schedules.find((row) => row.roomId === slot.roomId)!;
+  const { timeZone } = present(
+    schedules.find((row) => row.roomId === slot.roomId),
+    "A free time is in the room of one of the schedules it came from",
+  );
   return { ok: true, roomId: slot.roomId, timeZone };
 }
 

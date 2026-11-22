@@ -2,6 +2,7 @@ import { asc, desc, eq } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import { defaultTimeZone } from "#/lib/offices.ts";
+import { present } from "#/lib/present.ts";
 import {
   timeOffDeleteSchema,
   timeOffInputSchema,
@@ -86,7 +87,7 @@ export function listTimeOff(
   return {
     ok: true,
     timeOff: rows.map((row) => {
-      const owner = byId.get(row.practitionerId)!;
+      const owner = present(byId.get(row.practitionerId), "Time off belongs to a practitioner");
       return {
         id: row.id,
         practitionerId: row.practitionerId,

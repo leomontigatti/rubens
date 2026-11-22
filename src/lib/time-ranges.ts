@@ -33,9 +33,17 @@ export interface TimeRange {
 }
 
 export function instantOf(date: string, time: string, timeZone: string): Date {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hours, minutes] = time.split(":").map(Number);
-  return new Date(+new TZDate(year!, month! - 1, day!, hours!, minutes!, timeZone));
+  const [year = NaN, month = NaN, day = NaN] = date.split("-").map(Number);
+  const [hours = NaN, minutes = NaN] = time.split(":").map(Number);
+  return new Date(+new TZDate(year, month - 1, day, hours, minutes, timeZone));
+}
+
+function splitLocalDateTime(value: string): { date: string; time: string } {
+  const [date, time] = value.split("T");
+  if (date === undefined || time === undefined) {
+    throw new Error("A local date-time is YYYY-MM-DDTHH:MM, with a T between date and time");
+  }
+  return { date, time };
 }
 
 export function toTimeRange(entry: RangeEntry, timeZone: string): TimeRange {
@@ -45,11 +53,11 @@ export function toTimeRange(entry: RangeEntry, timeZone: string): TimeRange {
       end: instantOf(shiftDate(entry.lastDate, 1), "00:00", timeZone),
     };
   }
-  const [startDate, startTime] = entry.start.split("T");
-  const [endDate, endTime] = entry.end.split("T");
+  const start = splitLocalDateTime(entry.start);
+  const end = splitLocalDateTime(entry.end);
   return {
-    start: instantOf(startDate!, startTime!, timeZone),
-    end: instantOf(endDate!, endTime!, timeZone),
+    start: instantOf(start.date, start.time, timeZone),
+    end: instantOf(end.date, end.time, timeZone),
   };
 }
 
@@ -74,12 +82,12 @@ export function rangeEntryLabel(entry: RangeEntry): string {
       ? first
       : `Del ${first} al ${formatLocalDate(entry.lastDate)}`;
   }
-  const [startDate, startTime] = entry.start.split("T");
-  const [endDate, endTime] = entry.end.split("T");
+  const [startDate = "", startTime] = entry.start.split("T");
+  const [endDate = "", endTime] = entry.end.split("T");
   if (startDate === endDate) {
-    return `${formatLocalDate(startDate!)} de ${startTime} a ${endTime}`;
+    return `${formatLocalDate(startDate)} de ${startTime} a ${endTime}`;
   }
-  return `Del ${formatLocalDate(startDate!)} ${startTime} al ${formatLocalDate(endDate!)} ${endTime}`;
+  return `Del ${formatLocalDate(startDate)} ${startTime} al ${formatLocalDate(endDate)} ${endTime}`;
 }
 
 const id = z.uuid();

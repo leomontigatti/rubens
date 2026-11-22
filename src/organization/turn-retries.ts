@@ -1,6 +1,7 @@
 import { and, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 
 import { windowClosesAt } from "#/lib/conversation-window.ts";
+import { present } from "#/lib/present.ts";
 
 import { boundAsOne } from "#/organization/database.ts";
 import type { Database, Writer } from "#/organization/database.ts";
@@ -64,11 +65,14 @@ export function retryOrHandOff(
   const now = Date.now();
   const changed = changedSince(database, conversationId, turn.startedAt);
   database.transaction((tx) => {
-    const { failedTurns } = tx
-      .select({ failedTurns: conversation.failedTurns })
-      .from(conversation)
-      .where(eq(conversation.id, conversationId))
-      .get()!;
+    const { failedTurns } = present(
+      tx
+        .select({ failedTurns: conversation.failedTurns })
+        .from(conversation)
+        .where(eq(conversation.id, conversationId))
+        .get(),
+      "A turn's conversation is stored",
+    );
     const closesAt = windowClosesAt(lastIncomingAt(tx, conversationId)) ?? now;
     const handOffAt = closesAt - handOffBeforeCloseMs;
     if (now < handOffAt && !changed) {

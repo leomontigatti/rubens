@@ -8,6 +8,7 @@ import {
   withdrawnReplyNote,
   withoutMark,
 } from "#/lib/assistant.ts";
+import { present } from "#/lib/present.ts";
 import { reactionType } from "#/lib/reactions.ts";
 
 import type { TurnMessage } from "#/organization/assistant-model.ts";
@@ -59,11 +60,14 @@ const messageColumns = {
  * others as the conversation so far.
  */
 export function readConversation(database: Database, conversationId: string) {
-  const { phone, misunderstandings } = database
-    .select({ phone: conversation.phone, misunderstandings: conversation.misunderstandings })
-    .from(conversation)
-    .where(eq(conversation.id, conversationId))
-    .get()!;
+  const { phone, misunderstandings } = present(
+    database
+      .select({ phone: conversation.phone, misunderstandings: conversation.misunderstandings })
+      .from(conversation)
+      .where(eq(conversation.id, conversationId))
+      .get(),
+    "A turn's conversation is stored",
+  );
   const inConversation = eq(whatsappMessage.conversationId, conversationId);
   const notJudged = and(
     eq(whatsappMessage.direction, "incoming"),

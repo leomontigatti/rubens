@@ -106,8 +106,9 @@ function TemplateList({ settings }: { settings: Settings }) {
     setUnread(null);
     await action.run(async () => {
       const result = await refreshWhatsappTemplates();
-      if (result.ok && result.failures.length > 0) {
-        setUnread(result.failures[0]!.message);
+      const [failure] = result.ok ? result.failures : [];
+      if (failure) {
+        setUnread(failure.message);
       }
       return result.ok ? { ok: true } : result;
     });

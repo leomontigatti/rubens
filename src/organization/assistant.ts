@@ -324,7 +324,7 @@ async function runTurn(
   // The turn's own view of them, which a proposal it accepts changes: its
   // reply is checked against the state its own change left.
   const view = [...appointments];
-  const answered = answeredMessage(database, conversationId, read.unjudged[0]!.sentAt);
+  const answered = answeredMessage(database, conversationId, read.unjudged);
   const media = read.unjudged.filter((message) => isOneOf(mediaTypes, message.type));
   const startedAt = Date.now();
   const { turn, unread } = await judgeWithoutMedia(database, model, {

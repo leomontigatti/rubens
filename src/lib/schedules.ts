@@ -186,7 +186,11 @@ export function findCollision<T extends WeeklySlot>(
           (other) => coversDate(other, date) && coversTime(other, time),
         );
         if (present.length + 1 > capacity) {
-          return { schedule: present[0]!, weekday };
+          const [schedule] = present;
+          if (schedule === undefined) {
+            throw new Error("A room's capacity is at least 1, so a collision has another schedule");
+          }
+          return { schedule, weekday };
         }
       }
     }
@@ -212,7 +216,11 @@ export function collisionLabel(collision: {
   startTime: string;
   endTime: string;
 }): string {
-  const day = weekdayLabels[collision.weekday]!.toLowerCase();
+  const label = weekdayLabels[collision.weekday];
+  if (label === undefined) {
+    throw new Error(`A weekday is 0 to 6, got ${collision.weekday}`);
+  }
+  const day = label.toLowerCase();
   return (
     `Choca con el horario de ${collision.practitionerName} en ${collision.roomName}, ` +
     `los ${day} de ${collision.startTime} a ${collision.endTime}.`

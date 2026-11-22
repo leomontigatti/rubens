@@ -268,7 +268,9 @@ type SourceSpan = {
 export function readGlossaryTerms(rootDirectory: string): string[] {
   const contents = readFileSync(path.join(rootDirectory, "GLOSSARY.md"), "utf8");
 
-  return Array.from(contents.matchAll(glossaryTermPattern)).map((match) => match[1]!);
+  return Array.from(contents.matchAll(glossaryTermPattern)).flatMap(([, term]) =>
+    term === undefined ? [] : [term],
+  );
 }
 
 /** `evolución` → `evolucion`, the spelling a URL and a hurried hand use. */
@@ -412,7 +414,7 @@ function tokenAt(
   contents: string,
   index: number,
 ): { kind: "comment" | "regex" | "string"; stop: number } | null {
-  const character = contents[index]!;
+  const character = contents.charAt(index);
 
   if (character !== "/") {
     return quoteCharacters.has(character)
@@ -456,7 +458,7 @@ function opensRegex(contents: string, index: number): boolean {
 
   return (
     before < 0 ||
-    regexPrecedingCharacters.has(contents[before]!) ||
+    regexPrecedingCharacters.has(contents.charAt(before)) ||
     regexPrecedingKeyword.test(contents.slice(Math.max(0, before - 10), before + 1))
   );
 }
@@ -558,7 +560,7 @@ function calleeBefore(contents: string, stringStartIndex: number): string | null
 function skipBackwardsWhile(contents: string, from: number, pattern: RegExp): number {
   let index = from;
 
-  while (index >= 0 && pattern.test(contents[index]!)) {
+  while (index >= 0 && pattern.test(contents.charAt(index))) {
     index -= 1;
   }
 
@@ -587,7 +589,7 @@ function skipBalancedParenthesesBackwards(contents: string, from: number): numbe
 function findTestTitles(contents: string, strings: SourceSpan[]): SourceSpan[] {
   return strings.filter((span) => {
     const callee = calleeBefore(contents, span.startIndex);
-    return callee !== null && testFunctionNames.has(callee.split(".")[0]!);
+    return callee !== null && testFunctionNames.has(callee.split(".")[0] ?? "");
   });
 }
 
@@ -735,7 +737,7 @@ export function findSpanishProseInMarkdown(input: {
           kind: "prose" as const,
           lineNumber: index + 1,
           markers: [...new Set(matches.map((match) => match[0].toLowerCase()))],
-          text: lines[index]!.trim().slice(0, 120),
+          text: (lines[index] ?? "").trim().slice(0, 120),
         },
       ];
     });
@@ -792,7 +794,7 @@ function lineCommentAt(
   let quote: string | null = null;
 
   for (let index = 0; index < line.length; index += 1) {
-    const character = line[index]!;
+    const character = line.charAt(index);
 
     if (quote !== null) {
       if (character === quote) {
@@ -806,7 +808,10 @@ function lineCommentAt(
       continue;
     }
 
-    if (line.startsWith(marker, index) && (index === 0 || markerFollows.test(line[index - 1]!))) {
+    if (
+      line.startsWith(marker, index) &&
+      (index === 0 || markerFollows.test(line.charAt(index - 1)))
+    ) {
       return line.slice(index);
     }
   }
@@ -942,17 +947,18 @@ function stderrMessagesIn(line: string, messageVariables: Set<string>): string[]
     return quotedRunsIn(line);
   }
 
-  const assignment = line.match(/^\s*([A-Za-z_]\w*)=(.*)$/u);
+  const [, name, value] = line.match(/^\s*([A-Za-z_]\w*)=(.*)$/u) ?? [];
 
   if (
-    assignment === null ||
-    !messageVariables.has(assignment[1]!) ||
-    assignment[2]!.includes("$(")
+    name === undefined ||
+    value === undefined ||
+    !messageVariables.has(name) ||
+    value.includes("$(")
   ) {
     return [];
   }
 
-  return quotedRunsIn(assignment[2]!);
+  return quotedRunsIn(value);
 }
 
 /**
@@ -963,7 +969,10 @@ function stderrMessagesIn(line: string, messageVariables: Set<string>): string[]
  * message itself.
  */
 function quotedRunsIn(text: string): string[] {
-  return Array.from(text.matchAll(/"([^"\n]*)"|'([^'\n]*)'/gu), (match) => match[1] ?? match[2]!);
+  return Array.from(
+    text.matchAll(/"([^"\n]*)"|'([^'\n]*)'/gu),
+    (match) => match[1] ?? match[2] ?? "",
+  );
 }
 
 /**
@@ -975,7 +984,11 @@ function stderrVariableNamesIn(lines: string[]): Set<string> {
   return new Set(
     lines
       .filter((line) => line.includes(">&2"))
-      .flatMap((line) => Array.from(line.matchAll(/\$\{?([A-Za-z_]\w*)/gu), (match) => match[1]!)),
+      .flatMap((line) =>
+        Array.from(line.matchAll(/\$\{?([A-Za-z_]\w*)/gu)).flatMap(([, name]) =>
+          name === undefined ? [] : [name],
+        ),
+      ),
   );
 }
 
@@ -1003,8 +1016,9 @@ export function findSpanishProseInSource(input: {
     spans.flatMap((span) => {
       const prose = blankDataSpans(span.text);
       const matches = spanishMarkersIn(prose, glossaryNouns);
+      const [first] = matches;
 
-      if (matches.length === 0) {
+      if (first === undefined) {
         return [];
       }
 
@@ -1012,9 +1026,9 @@ export function findSpanishProseInSource(input: {
         {
           filePath: input.filePath,
           kind,
-          lineNumber: lineNumberAt(input.contents, span.startIndex + matches[0]!.index),
+          lineNumber: lineNumberAt(input.contents, span.startIndex + first.index),
           markers: [...new Set(matches.map((match) => match[0].toLowerCase()))],
-          text: span.text.trim().split("\n")[0]!.slice(0, 120),
+          text: (span.text.trim().split("\n")[0] ?? "").slice(0, 120),
         },
       ];
     }),

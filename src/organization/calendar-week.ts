@@ -116,17 +116,25 @@ function listRoomChoices(writer: Writer): RoomChoice[] {
     .orderBy(asc(office.name), asc(office.id), asc(room.name))
     .all();
   const choices: RoomChoice[] = [];
+  let current: string | null = null;
+  let rooms: RoomChoice["rooms"] = [];
   for (const { officeId, officeName, id, name } of rows) {
-    if (choices.at(-1)?.officeId !== officeId) {
-      choices.push({ officeId, officeName, rooms: [] });
+    if (officeId !== current) {
+      rooms = [];
+      choices.push({ officeId, officeName, rooms });
+      current = officeId;
     }
-    choices.at(-1)!.rooms.push({ id, name });
+    rooms.push({ id, name });
   }
   return choices;
 }
 
 /** The room's schedules that meet the dates, with their practitioner and member. */
-function selectRoomSchedules(writer: Writer, roomId: string, dates: string[]) {
+function selectRoomSchedules(
+  writer: Writer,
+  roomId: string,
+  dates: { firstDate: string; lastDate: string },
+) {
   return writer
     .select({
       practitionerId: practitioner.id,
@@ -148,8 +156,8 @@ function selectRoomSchedules(writer: Writer, roomId: string, dates: string[]) {
     .where(
       and(
         eq(schedule.roomId, roomId),
-        lte(schedule.firstDate, dates.at(-1)!),
-        or(isNull(schedule.lastDate), gte(schedule.lastDate, dates[0]!)),
+        lte(schedule.firstDate, dates.lastDate),
+        or(isNull(schedule.lastDate), gte(schedule.lastDate, dates.firstDate)),
       ),
     )
     .orderBy(asc(practitioner.displayName), asc(practitioner.id))
@@ -326,10 +334,11 @@ function findOwnHours(
   options: { schedules: readonly RoomSchedule[]; window: TimeRange; room: FoundRoom },
 ): TimeRange[] {
   const own = options.schedules.filter((row) => row.userId === acting.userId);
-  if (own.length === 0) {
+  const [first] = own;
+  if (!first) {
     return [];
   }
-  const { timeOff, closures } = findBlocking(writer, own[0]!.practitionerId, options.window, [
+  const { timeOff, closures } = findBlocking(writer, first.practitionerId, options.window, [
     options.room.officeId,
   ]);
   const blocked = [...timeOff, ...closures.map((one) => one.during)];
@@ -465,11 +474,9 @@ function splitByDay(
 function buildWeek(writer: Writer, acting: Acting, found: FoundRoom, query: Query): CalendarWeek {
   const monday = mondayOf(query.date);
   const dates = Array.from({ length: daysInWeek }, (_, offset) => shiftDate(monday, offset));
-  const window = toTimeRange(
-    { kind: "days", firstDate: dates[0]!, lastDate: dates.at(-1)! },
-    found.timeZone,
-  );
-  const schedules = selectRoomSchedules(writer, found.id, dates);
+  const bounds = { firstDate: monday, lastDate: shiftDate(monday, daysInWeek - 1) };
+  const window = toTimeRange({ kind: "days", ...bounds }, found.timeZone);
+  const schedules = selectRoomSchedules(writer, found.id, bounds);
   const present = practitionersOf(schedules);
   const practitioners = listPractitioners(writer, acting, {
     roomId: found.id,
