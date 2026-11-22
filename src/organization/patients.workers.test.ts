@@ -427,7 +427,10 @@ describe("the patient list", () => {
 
     for (const result of [listed, found]) {
       expect(
-        result.ok && result.patients.map((row) => [row.firstName, row.insurerName]).sort(),
+        result.ok &&
+          result.patients
+            .map((row) => [row.firstName, row.insurerName])
+            .sort(([left], [right]) => String(left).localeCompare(String(right))),
       ).toEqual([
         ["Juan", "OSDE"],
         ["Luz", null],

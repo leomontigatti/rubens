@@ -108,7 +108,7 @@ export function useFormPage(back: NavigateOptions) {
     problems,
     problemsShown,
     /** Shows what the form's check refused, under each field and in the summary. */
-    showProblems(refused: FieldProblem[]) {
+    showProblems: (refused: FieldProblem[]) => {
       setProblems(refused);
       setProblemsShown((shown) => shown + 1);
     },

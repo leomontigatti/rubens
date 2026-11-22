@@ -4,7 +4,7 @@ import { dateText, shownText, timeText, typedValue } from "#/components/date-tim
 
 /** The box's text after typing `keys` one at a time, as the box masks each. */
 const typedKeys = (kind: typeof dateText, keys: string) =>
-  [...keys].reduce((text, key) => kind.mask(text + key), "");
+  keys.split("").reduce((text, key) => kind.mask(text + key), "");
 
 describe("a typed date", () => {
   it("is held as the calendar date it names, day first", () => {

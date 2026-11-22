@@ -138,7 +138,7 @@ function tone() {
   const samples = rate * 2;
   const wav = new DataView(new ArrayBuffer(44 + samples * 2));
   const ascii = (offset: number, text: string) =>
-    [...text].forEach((char, index) => wav.setUint8(offset + index, char.charCodeAt(0)));
+    text.split("").forEach((char, index) => wav.setUint8(offset + index, char.charCodeAt(0)));
   ascii(0, "RIFF");
   wav.setUint32(4, 36 + samples * 2, true);
   ascii(8, "WAVEfmt ");
