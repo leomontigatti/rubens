@@ -13,6 +13,7 @@ import { activeHold } from "#/organization/whatsapp-limits.ts";
 import { monthMessages } from "#/organization/month-messages.ts";
 import { organizationName } from "#/organization/members.ts";
 import { listTemplates } from "#/organization/templates.ts";
+import { log } from "#/lib/log.ts";
 
 // The WhatsApp settings: the organization's number
 // (`src/organization/whatsapp-connection.ts`) and its templates
@@ -32,7 +33,7 @@ const missingSettingLogs: Record<
 function logMissingSettings(...settings: (MissingSetting | MissingTemplateSetting | null)[]) {
   for (const setting of new Set(settings)) {
     if (setting && setting !== "connectionFailed") {
-      console.warn(`[whatsapp-settings] ${setting}: ${missingSettingLogs[setting]}`);
+      log.warn("whatsapp-settings", missingSettingLogs[setting], { setting });
     }
   }
 }
@@ -53,7 +54,9 @@ export function getWhatsappSettings(
   logMissingSettings(cloud.missingSetting(), templateMissing);
   const signupMissing = number.missingSignupSetting();
   if (signupMissing) {
-    console.warn(`[whatsapp-settings] signupNotConfigured: ${signupMissing} is not set`);
+    log.warn("whatsapp-settings", `${signupMissing} is not set`, {
+      setting: "signupNotConfigured",
+    });
   }
   return {
     ok: true,

@@ -4,5 +4,7 @@
 
 /** Waits `ms` milliseconds while the patient sees the assistant typing. */
 export function typingPause(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

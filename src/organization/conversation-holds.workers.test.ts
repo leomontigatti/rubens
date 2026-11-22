@@ -348,7 +348,7 @@ describe("a person's reply", () => {
       await world.organization.storeWhatsappEvents({
         messages: [],
         statuses: sent.map((one) => ({
-          whatsappId: one.whatsappId!,
+          whatsappId: one.whatsappId,
           status: "failed" as const,
           at: Date.now(),
         })),

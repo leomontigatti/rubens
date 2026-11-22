@@ -41,7 +41,7 @@ export function InsurerForm(props: {
   const action = useAction();
 
   const form = useAppForm({
-    defaultValues: { name: initial.name, kind: initial.kind as string },
+    defaultValues: { name: initial.name, kind: initial.kind },
     onSubmit: async ({ value }) => {
       const input = insurerInputSchema.safeParse(value);
       if (!input.success) {

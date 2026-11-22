@@ -129,9 +129,7 @@ function clerkAccounts(secretKey: string): Accounts {
     async findUserByEmail(email) {
       const { data } = await users.getUserList({ emailAddress: [email], limit: 1 });
       const user = data[0];
-      return user
-        ? { userId: user.id, metadata: user.publicMetadata as Partial<AccountMetadata> }
-        : undefined;
+      return user ? { userId: user.id, metadata: user.publicMetadata } : undefined;
     },
     async deleteUser(userId) {
       await users.deleteUser(userId);

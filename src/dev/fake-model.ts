@@ -20,7 +20,9 @@ export const fakeModel: AssistantModel = {
   runTurn: () => Promise.reject(new Error("The fake model runs no assistant turn")),
   checkReply: () => Promise.reject(new Error("The fake model runs no clinical check")),
   async reviewTemplate({ body }) {
-    await new Promise((resolve) => setTimeout(resolve, reviewMs));
+    await new Promise((resolve) => {
+      setTimeout(resolve, reviewMs);
+    });
     if (/\bfalla\b/iu.test(body)) {
       throw new Error("The fake model failed, as the text asked");
     }

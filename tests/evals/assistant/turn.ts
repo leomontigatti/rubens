@@ -60,7 +60,9 @@ export async function runTurn(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (attempt >= 6 || !transient.test(message) || spent.test(message)) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 2 ** attempt * 1000);
+      });
     }
   }
 }

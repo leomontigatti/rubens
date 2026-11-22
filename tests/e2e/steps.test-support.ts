@@ -16,7 +16,9 @@ import { medicalServiceName } from "./world.test-support.ts";
 export async function holdServerFunctions(page: Page, ms: number, writesMs = ms) {
   await page.route("**/_serverFn/**", async (route) => {
     const wait = route.request().method() === "POST" ? writesMs : ms;
-    await new Promise((resolve) => setTimeout(resolve, wait));
+    await new Promise((resolve) => {
+      setTimeout(resolve, wait);
+    });
     await route.continue().catch(() => {
       // The page moved on and dropped the request: nothing to continue.
     });

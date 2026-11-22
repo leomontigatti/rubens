@@ -2,6 +2,7 @@
 // instead of answering with a refusal.
 
 import type { AnyRouter } from "@tanstack/react-router";
+import { errorClass, log } from "#/lib/log.ts";
 
 import { toast } from "#/components/ui/toast.tsx";
 
@@ -23,10 +24,7 @@ export async function serverAnswer<T>(
   try {
     return await call();
   } catch (error) {
-    console.error(
-      `[save-failed] ${tag} ${path}:`,
-      error instanceof Error ? error.name : typeof error,
-    );
+    log.error("save-failed", "a server call threw", { call: tag, path, error: errorClass(error) });
     showSaveFailed();
     return null;
   }

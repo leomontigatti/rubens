@@ -20,7 +20,7 @@ export const fakeMetaFetch: Fetcher = async (input, init) => {
     return media;
   }
   if (request.method === "POST" && new URL(request.url).pathname.endsWith("/messages")) {
-    const { to } = (await request.json()) as { to?: string };
+    const { to } = await request.json<{ to?: string }>();
     return Response.json({
       messaging_product: "whatsapp",
       contacts: [{ input: to, wa_id: to }],

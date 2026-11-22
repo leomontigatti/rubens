@@ -19,11 +19,12 @@ describe("serverAnswer", () => {
     expect(answer).toBeNull();
     expect(add).toHaveBeenCalledWith(expect.objectContaining({ type: "destructive" }));
     expect(log).toHaveBeenCalledOnce();
-    const line = log.mock.calls[0]!.join(" ");
-    expect(line).toContain("[save-failed]");
-    expect(line).toContain("patient-save");
-    expect(line).toContain("/pacientes/p-1");
-    expect(line).toContain("TypeError");
-    expect(line).not.toContain("30111222");
+    expect(log).toHaveBeenCalledWith({
+      tag: "save-failed",
+      message: "a server call threw",
+      call: "patient-save",
+      path: "/pacientes/p-1",
+      error: "TypeError",
+    });
   });
 });

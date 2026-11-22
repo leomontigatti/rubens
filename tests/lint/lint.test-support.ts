@@ -48,18 +48,18 @@ export function lintProbes(name: string) {
 
   return {
     /** Declares a file holding `source`, at collection time, and returns its path. */
-    probe(file: string, source: string): string {
+    probe: (file: string, source: string): string => {
       const relative = path.join(probeDir, file);
       probes.set(relative, source);
       return relative;
     },
     /** Declares a file of the repository for the same run. */
-    existing(file: string): string {
+    existing: (file: string): string => {
       committed.push(file);
       return file;
     },
     /** The findings on `files`, from the one run over everything declared. */
-    lint(...files: string[]): Diagnostic[] {
+    lint: (...files: string[]): Diagnostic[] => {
       diagnostics ??= lintEverything();
       return diagnostics.filter((d) => files.includes(d.filename));
     },

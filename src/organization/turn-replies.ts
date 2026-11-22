@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { errorClass, log } from "#/lib/log.ts";
 
 import {
   alreadyHandedOffReply,
@@ -202,12 +203,11 @@ async function clinicalCheckHolds(
   const recordUsage = (used: ModelUsage) =>
     recordModelUsage(database, { ...used, purpose: "clinicalCheck", sandbox });
   const found = await model.checkReply({ ...request, recordUsage }).catch((error: unknown) => {
-    // Any failure leaves the reply unchecked, so it is held. The error's
-    // message can carry the reply, so only its class is logged.
-    console.error(
-      `[clinical-check] check failed in conversation ${request.conversationId}:`,
-      error instanceof Error ? error.name : typeof error,
-    );
+    // Any failure leaves the reply unchecked, so it is held.
+    log.error("clinical-check", "check failed", {
+      conversationId: request.conversationId,
+      error: errorClass(error),
+    });
     return null;
   });
   return !found || found.clinical || found.otherPatient;

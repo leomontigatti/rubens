@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { log } from "#/lib/log.ts";
 
 import { isOneOf } from "#/lib/is-one-of.ts";
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
@@ -390,16 +391,14 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
   const parsed = metaWebhook.safeParse(json);
   if (!parsed.success) {
     // The issues can quote the payload, so they are not logged.
-    console.warn(
-      "[whatsapp-webhook] a signed call in a shape underthing does not read was dropped",
-    );
+    log.warn("whatsapp-webhook", "a signed call in a shape underthing does not read was dropped");
     return new Response(null, { status: 200 });
   }
   const { events, unknown } = await eventsByOrganization(parsed.data, env);
   if (unknown > 0) {
-    console.warn(
-      `[whatsapp-webhook] dropped ${unknown} change(s) for a number or account no organization has`,
-    );
+    log.warn("whatsapp-webhook", "dropped changes for a number or account no organization has", {
+      changes: unknown,
+    });
   }
   let stored = true;
   for (const [organizationId, organizationEvents] of events) {
@@ -412,7 +411,7 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
     if (!result.ok) {
       // A mapping to an object no organization was set up in: Meta retries
       // the call, for up to 7 days, while the mapping is corrected.
-      console.error(`[whatsapp-webhook] organization ${organizationId} is not set up`);
+      log.error("whatsapp-webhook", "the organization is not set up", { organizationId });
       stored = false;
     }
   }

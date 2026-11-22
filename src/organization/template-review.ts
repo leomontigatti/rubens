@@ -1,5 +1,6 @@
 import { templateReviewRequestSchema } from "#/lib/whatsapp-templates.ts";
 import type { TemplateReviewRequest } from "#/lib/whatsapp-templates.ts";
+import { errorClass, log } from "#/lib/log.ts";
 
 import type { AssistantModel, ModelUsage } from "#/organization/assistant-model.ts";
 import { recordModelUsage } from "#/organization/assistant-usage.ts";
@@ -36,11 +37,7 @@ export async function reviewTemplate(
     });
     return { ok: true, notes } as const;
   } catch (error) {
-    // Only the error's class is logged: its message can carry the text.
-    console.error(
-      "[template-review] review failed:",
-      error instanceof Error ? error.name : typeof error,
-    );
+    log.error("template-review", "review failed", { error: errorClass(error) });
     return { ok: false, reason: "reviewFailed" } as const;
   }
 }

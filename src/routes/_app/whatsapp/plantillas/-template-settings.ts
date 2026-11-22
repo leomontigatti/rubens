@@ -19,7 +19,7 @@ export function settingsEntry(settings: TemplateSettings | null) {
   return {
     name: settings?.name ?? "",
     timing: timingEntry(settings?.timing ?? { when: "before", hours: 24 }),
-    buttons: settings?.buttons ?? ("none" as TemplateSettings["buttons"]),
+    buttons: settings?.buttons ?? "none",
   };
 }
 

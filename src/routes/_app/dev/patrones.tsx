@@ -186,7 +186,7 @@ function PatternFormPage(props: { title: string; record?: RecordHeader }) {
 }
 
 function PatternMarkedSelect() {
-  const form = useAppForm({ defaultValues: { color: practitionerColors[0] as string } });
+  const form = useAppForm({ defaultValues: { color: practitionerColors[0] } });
   const options = practitionerColors.map((color) => ({
     value: color,
     label: practitionerColorLabels[color],

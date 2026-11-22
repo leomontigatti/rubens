@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { log } from "#/lib/log.ts";
 
 import { signupCompletionSchema } from "#/lib/whatsapp.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
@@ -119,11 +120,11 @@ export class WhatsappNumber {
     try {
       const cipher = await this.#services.cipher(organizationId);
       if (!cipher) {
-        console.error("[whatsapp-connection] ORGANIZATION_ENCRYPTION_KEY is not set");
+        log.error("whatsapp-connection", "ORGANIZATION_ENCRYPTION_KEY is not set");
       }
       return cipher;
     } catch {
-      console.error("[whatsapp-connection] ORGANIZATION_ENCRYPTION_KEY is not a usable key");
+      log.error("whatsapp-connection", "ORGANIZATION_ENCRYPTION_KEY is not a usable key");
       return null;
     }
   }
@@ -139,9 +140,7 @@ export class WhatsappNumber {
       return await cipher.open(sealed, purpose);
     } catch {
       // The cipher's error says nothing more than that it did not open.
-      console.error(
-        `[whatsapp-connection] a sealed value of organization ${organizationId} did not open`,
-      );
+      log.error("whatsapp-connection", "a sealed value did not open", { organizationId });
       return null;
     }
   }

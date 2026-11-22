@@ -8,6 +8,8 @@
 // still loading misses the event; the signed-in layout catches it by asking the
 // server who is signed in once it mounts (`useSessionGuard` in `src/hooks/use-session-guard.ts`).
 
+import { errorClass, log } from "#/lib/log.ts";
+
 const storageKey = "underthing-session-changed";
 
 let changing = false;
@@ -33,7 +35,7 @@ export function startNewSession(path: string): void {
   try {
     localStorage.setItem(storageKey, crypto.randomUUID());
   } catch (error) {
-    console.warn("[session-change] could not tell other tabs", error);
+    log.warn("session-change", "could not tell other tabs", { error: errorClass(error) });
   }
   changing = true;
   window.location.assign(path);

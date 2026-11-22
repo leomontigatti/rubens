@@ -16,7 +16,7 @@ describe("the fake Meta of the browser suite", () => {
         body: JSON.stringify({ to: "5493514000001", type: "text" }),
       });
       expect(sent.status).toBe(200);
-      return ((await sent.json()) as { messages: { id: string }[] }).messages[0]!.id;
+      return (await sent.json<{ messages: { id: string }[] }>()).messages[0]!.id;
     };
     // Two messages with one id would be stored as one: the id is unique per message.
     expect(await send()).not.toBe(await send());

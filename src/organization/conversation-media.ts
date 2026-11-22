@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { errorClass, log } from "#/lib/log.ts";
 
 import { byteRangeOf, mediaIn, metaMediaRetentionMs } from "#/lib/message-media.ts";
 import { messageReferenceSchema } from "#/lib/whatsapp-messages.ts";
@@ -86,15 +87,17 @@ async function fromMeta(
     return null;
   }
   const opened = await cloud.openMedia(mediaId, range).catch((error: unknown) => {
-    // An error can quote Meta's answer, so only its class is logged.
-    const why = error instanceof Error ? error.name : typeof error;
-    console.error(`[conversation-media] Meta did not serve message ${messageId}: ${why}`);
+    log.error("conversation-media", "Meta did not serve the message", {
+      messageId,
+      error: errorClass(error),
+    });
     return null;
   });
   if (opened && !opened.ok) {
-    console.error(
-      `[conversation-media] Meta refused message ${messageId} (code ${opened.metaError.code})`,
-    );
+    log.error("conversation-media", "Meta refused the message", {
+      messageId,
+      code: opened.metaError.code,
+    });
     return null;
   }
   return opened;

@@ -254,7 +254,7 @@ function useBookingForm(props: BookingPageProps) {
         setAnswer((last) => ({
           ...noAnswer,
           refusal: last.refusal,
-          freshStarts: keepsOfferedStarts(fieldApi.name) ? last.freshStarts : null,
+          freshStarts: keepsOfferedStarts(String(fieldApi.name)) ? last.freshStarts : null,
         })),
     },
     onSubmit: ({ value }) => book(value, false),

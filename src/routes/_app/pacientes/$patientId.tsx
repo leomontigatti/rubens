@@ -249,7 +249,10 @@ function PatientTabs(props: {
   patient: Patient;
   tabs: ReturnType<typeof usePatientTabs>;
   lists: PatientLists;
-  activity: Pick<ReturnType<typeof Route.useLoaderData>, "appointments" | "history">;
+  activity: {
+    appointments: Awaited<ReturnType<typeof getPatientAppointments>>;
+    history: Awaited<ReturnType<typeof getPatientChanges>> | null;
+  };
   children: ReactNode;
 }) {
   const { patient, tabs, lists } = props;

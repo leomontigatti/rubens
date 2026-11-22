@@ -58,7 +58,9 @@ export class Waits {
       if (holds()) {
         return;
       }
-      return new Promise<void>((resolve) => this.#pending.push({ holds, resolve }));
+      return new Promise<void>((resolve) => {
+        this.#pending.push({ holds, resolve });
+      });
     });
   }
 

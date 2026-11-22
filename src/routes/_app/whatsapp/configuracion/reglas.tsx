@@ -56,7 +56,7 @@ function RulesForm(props: { initial: Omit<CommunicationRulesInput, "phone"> & { 
 
   const form = useAppForm({
     defaultValues: {
-      formOfAddress: initial.formOfAddress as string,
+      formOfAddress: initial.formOfAddress,
       tone: initial.tone,
       phone: splitPhone(initial.phone),
     },
