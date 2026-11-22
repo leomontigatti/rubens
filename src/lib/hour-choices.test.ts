@@ -63,6 +63,7 @@ describe("a medical service's duration", () => {
     ]);
     expect(labels(durationChoices(240)).at(-1)).toBe("4 h");
     expect(values(durationChoices(240)).at(-1)).toBe("240");
+    expect(durationChoices(240)).toHaveLength(13);
   });
 });
 
@@ -101,6 +102,7 @@ describe("a medical service's reschedule cutoff", () => {
     ]);
     expect(labels(cutoffChoices(72)).at(-1)).toBe("3 días antes");
     expect(values(cutoffChoices(72)).at(-1)).toBe("72");
+    expect(cutoffChoices(72)).toHaveLength(10);
   });
 });
 
