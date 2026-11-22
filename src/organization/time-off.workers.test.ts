@@ -103,9 +103,9 @@ describe("recording time off", () => {
   });
 
   it.each<[string, RangeEntry]>([
-    ["hours ending before they start", { ...afternoon, end: "2099-01-12T13:00" } as RangeEntry],
-    ["hours ending as they start", { ...afternoon, end: afternoon.start } as RangeEntry],
-    ["a last day before the first", { ...vacation, lastDate: "2099-01-04" } as RangeEntry],
+    ["hours ending before they start", { ...afternoon, end: "2099-01-12T13:00" }],
+    ["hours ending as they start", { ...afternoon, end: afternoon.start }],
+    ["a last day before the first", { ...vacation, lastDate: "2099-01-04" }],
   ])("refuses %s", async (_, entry) => {
     const { create, storedSpans } = await world();
 

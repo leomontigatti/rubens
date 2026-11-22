@@ -80,7 +80,6 @@ function VoiceNotePlayer(props: { url: string; action: string; onFailed: () => v
       </Button>
     );
   }
-  // oxlint-disable-next-line jsx-a11y/media-has-caption -- a patient's voice note has no captions; its transcript is the bubble's text.
   return (
     <audio
       controls
@@ -126,7 +125,6 @@ function MediaViewer(props: {
             className="max-h-128 w-full rounded-md object-contain"
           />
         ) : (
-          // oxlint-disable-next-line jsx-a11y/media-has-caption -- a patient's video has no captions.
           <video
             controls
             autoPlay

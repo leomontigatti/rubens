@@ -45,6 +45,7 @@ export async function fromMediaHost(
     throw new Error(`Meta's media host answered ${response.status}`);
   }
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-assignment -- Workers types a fetched body as `ReadableStream<any>`; its chunks are bytes.
     body: response.body,
     partial: response.status === 206,
     length: response.headers.get("content-length"),

@@ -201,7 +201,7 @@ export default defineConfig({
         note: "A colour, radius or state comes from a token or a variant; className is for layout (docs/agents/style-guide.md). A new token or variant is a product decision: ask before adding one.",
       },
     },
-    options: { typeAware: true, typeCheck: true },
+    options: { typeAware: true, typeCheck: true, reportUnusedDisableDirectives: "error" },
     rules: {
       ...Object.fromEntries(correctness.map((rule) => [rule, "error" as const])),
       "shadcn/no-restyle": [
@@ -252,6 +252,14 @@ export default defineConfig({
       "import/no-cycle": "error",
       "typescript/no-floating-promises": ["error", { checkThenables: true }],
       "typescript/no-misused-promises": ["error", { checksVoidReturn: { attributes: false } }],
+      "typescript/no-unsafe-argument": "error",
+      "typescript/no-unsafe-assignment": "error",
+      "typescript/no-unsafe-call": "error",
+      "typescript/no-unsafe-member-access": "error",
+      "typescript/no-unsafe-return": "error",
+      "typescript/no-unnecessary-type-assertion": "error",
+      "typescript/ban-ts-comment": "error",
+      "unicorn/no-abusive-eslint-disable": "error",
       "no-restricted-globals": ["error", { name: "fetch", message: fetchBan }],
       "no-restricted-properties": [
         "error",
@@ -273,6 +281,17 @@ export default defineConfig({
         ],
         rules: {
           "typescript/consistent-type-assertions": "off",
+        },
+      },
+      {
+        // JavaScript declares no types, so the type-aware checks read each value as `any`.
+        files: ["**/*.{js,jsx,mjs,cjs}"],
+        rules: {
+          "typescript/no-unsafe-argument": "off",
+          "typescript/no-unsafe-assignment": "off",
+          "typescript/no-unsafe-call": "off",
+          "typescript/no-unsafe-member-access": "off",
+          "typescript/no-unsafe-return": "off",
         },
       },
       {
@@ -373,6 +392,10 @@ export default defineConfig({
         files: ["**/*.test.{ts,tsx}", "**/*.test-support.ts", "tests/e2e/**"],
         rules: {
           "tests/no-sleep-poll": "error",
+          // Matchers such as `expect.any` are typed `any`.
+          "typescript/no-unsafe-argument": "off",
+          "typescript/no-unsafe-assignment": "off",
+          "typescript/no-unsafe-member-access": "off",
         },
       },
       {

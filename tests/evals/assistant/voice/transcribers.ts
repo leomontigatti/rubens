@@ -69,7 +69,8 @@ function geminiHears(
           usage.output += used.completionTokens ?? 0;
         },
       };
-      const value = Buffer.from(await audio.arrayBuffer()).toString("base64");
+      const bytes = new Uint8Array(await audio.arrayBuffer());
+      const value = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
       const { text } = await chat({
         adapter: geminiText(model as Parameters<typeof geminiText>[0]),
         threadId: `transcribe-${audio.name}`,

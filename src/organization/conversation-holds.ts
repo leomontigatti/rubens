@@ -63,7 +63,7 @@ export function saveReturnTime(database: Database, acting: Acting, input: Return
 
 /** The conversation `conversationId` when `acting` may read it (`inbox.ts`). */
 function readable(database: Writer, acting: Acting, conversationId: string) {
-  const reader = readerOf(database as Database, acting);
+  const reader = readerOf(database, acting);
   const found = database
     .select({ id: conversation.id, phone: conversation.phone, heldBy: conversation.heldBy })
     .from(conversation)

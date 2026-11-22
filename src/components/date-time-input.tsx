@@ -79,8 +79,8 @@ function Submitted(props: { name?: string; value: string }) {
 
 /** A local date `YYYY-MM-DD` as the calendar's day, at its local midnight. */
 function calendarDay(date: string): Date {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year!, month! - 1, day!);
+  const [year = NaN, month = NaN, day = NaN] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function localDateOf(day: Date): string {

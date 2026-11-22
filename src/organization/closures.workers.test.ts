@@ -115,7 +115,7 @@ describe("creating a closure", () => {
     expect(
       await organization.createClosure(adminCaller, {
         officeId: null,
-        entry: { ...fridayAfternoon, end: "2099-01-09T14:00" } as RangeEntry,
+        entry: { ...fridayAfternoon, end: "2099-01-09T14:00" },
       }),
     ).toEqual({ ok: false, reason: "invalidInput" });
   });
