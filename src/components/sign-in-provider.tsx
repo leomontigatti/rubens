@@ -14,7 +14,9 @@ import { signOutOfDev } from "#/server/sign-in.functions.ts";
 
 export type SignInConfig = { mode: "clerk"; publishableKey: string } | { mode: "dev" };
 
-const SignOutContext = createContext<() => Promise<unknown>>(() => signOutOfDev());
+const SignOutContext = createContext<() => Promise<void>>(async () => {
+  await signOutOfDev();
+});
 
 /** Ends the signed-in member's session, Clerk's or the dev sign-in's. */
 export function useSignOut() {

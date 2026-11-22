@@ -9,7 +9,7 @@ import { assistantSystemPrompt, assistantToolSchemas } from "#/lib/assistant.ts"
 
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
-import type { AssistantModel, AssistantTool } from "#/organization/assistant-model.ts";
+import type { AssistantModel, AssistantTool, ToolResult } from "#/organization/assistant-model.ts";
 import { recordModelUsage } from "#/organization/assistant-usage.ts";
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import type { Database } from "#/organization/database.ts";
@@ -168,7 +168,7 @@ function turnTools(
  */
 export interface TurnMode {
   sandbox: boolean;
-  step(name: AssistantTool["name"], args: unknown, run: () => unknown): unknown;
+  step(name: AssistantTool["name"], args: unknown, run: () => ToolResult): ToolResult;
 }
 
 const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run() };

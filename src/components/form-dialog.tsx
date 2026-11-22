@@ -22,7 +22,7 @@ import { useFocusProblem } from "#/hooks/use-focus-problem.ts";
 
 /** What `FormDialog` needs of `useAppForm`'s form. */
 interface DialogForm {
-  handleSubmit: () => Promise<unknown>;
+  handleSubmit: () => Promise<void>;
   reset: () => void;
 }
 

@@ -59,7 +59,7 @@ async function playPatient(state: SandboxState, text: string) {
   return expectOk(await world.organization.sandboxTurn(adminCaller, { state, text }));
 }
 
-const fromJson = (text: string): unknown => JSON.parse(text);
+const fromJson = (text: string) => z.json().parse(JSON.parse(text));
 
 /** The free times find_free_times returns, by the id a proposal takes. */
 const freeTimes = z.object({ slots: z.array(z.object({ slotId: z.string() })) });

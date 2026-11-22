@@ -26,10 +26,13 @@ import type * as z from "zod";
 // limit, a dropped stream) or a clinical check whose answer it cannot parse or
 // validate is not recorded, though Anthropic bills it.
 
+/** What a tool answers the model: an object, which it reads as JSON. */
+export type ToolResult = object;
+
 /** A tool of the turn, run by the object with the permissions of the patient's number. */
 export interface AssistantTool {
   name: AssistantToolName;
-  run(args: unknown): unknown;
+  run(args: unknown): ToolResult;
 }
 
 /** What one call to the model used, and the model. */

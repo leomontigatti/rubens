@@ -22,7 +22,7 @@ function listOf<T extends z.ZodType>(entry: T) {
  */
 function firstOf<T extends z.ZodType>(entry: T) {
   return z.preprocess(
-    (list): unknown => (typeof list === "object" && list !== null ? Reflect.get(list, 0) : null),
+    (list) => (typeof list === "object" && list !== null && 0 in list ? list[0] : null),
     entry.nullable().catch(null),
   );
 }

@@ -73,7 +73,11 @@ export function usePatientSave<I extends object>(
   return {
     ...state,
     submit: (next: I) => save(next, false),
-    confirm: () => state.input && save(state.input, true),
+    confirm: async () => {
+      if (state.input) {
+        await save(state.input, true);
+      }
+    },
     dismiss: () => dispatch({ type: "dismissed" }),
   };
 }
@@ -88,7 +92,7 @@ export function patientRefusals(save: RefusalState): FieldProblem[] {
 
 /** The document refusal and the duplicate warning of a patient form. */
 export function PatientSaveFeedback(props: {
-  save: RefusalState & { pending: boolean; confirm: () => unknown; dismiss: () => void };
+  save: RefusalState & { pending: boolean; confirm: () => Promise<void>; dismiss: () => void };
   confirmLabel: string;
   onUse: (patient: Patient) => void;
 }) {
@@ -164,7 +168,7 @@ function patientValues(initial?: Patient): typeof noPatient {
  */
 export function usePatientForm(
   initial: Patient | undefined,
-  onSubmit: (input: PatientInput) => Promise<unknown>,
+  onSubmit: (input: PatientInput) => Promise<void>,
 ) {
   return useAppForm({
     defaultValues: patientValues(initial),
