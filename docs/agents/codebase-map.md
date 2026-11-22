@@ -39,7 +39,8 @@ src/
 │                      `fake-meta-media.ts` (the made-up media it serves)
 ├── server.ts          the Worker's entry: Start's handler, and the object class exported beside it
 ├── lib/               shared pure helpers: `access.ts` (roles), validation, formatting, rules;
-│                      `dates.ts` (every date and time a person or the assistant reads)
+│                      `dates.ts` (every date and time a person or the assistant reads),
+│                      `log.ts` (the app's one way to log, client and server)
 ├── server/            server-only modules that are not routes: `*.functions.ts` (server functions),
 │                      `whatsapp-directory.ts` (the one object shared across organizations,
 │                      mapping each WhatsApp number to its organization, ADR-0012),

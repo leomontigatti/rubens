@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { errorClass, log } from "#/lib/log.ts";
 
 import { isSignedInAs, reloadForNewSession, reloadOnSessionChange } from "#/lib/session-change.ts";
 import { getViewer } from "#/server/account.functions.ts";
@@ -28,7 +29,9 @@ export function useSessionGuard(userId: string) {
     let retry: ReturnType<typeof setTimeout> | undefined;
     async function check() {
       const result = await getViewer().catch((error: unknown) => {
-        console.warn("[session-guard] could not check who is signed in; retrying", error);
+        log.warn("session-guard", "could not check who is signed in; retrying", {
+          error: errorClass(error),
+        });
         return null;
       });
       if (stopped) {

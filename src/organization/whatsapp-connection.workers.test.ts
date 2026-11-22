@@ -228,7 +228,9 @@ describe("connecting the organization's number", () => {
     delete fakeMeta.signupSettings.WHATSAPP_SIGNUP_CONFIG_ID;
 
     expect(expectOk(await organization.whatsappSettings(adminCaller)).signup).toBeNull();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("WHATSAPP_SIGNUP_CONFIG_ID"));
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("WHATSAPP_SIGNUP_CONFIG_ID") }),
+    );
     expect(await organization.connectWhatsapp(adminCaller, completion())).toEqual({
       ok: false,
       reason: "signupNotConfigured",

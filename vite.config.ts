@@ -282,6 +282,7 @@ export default defineConfig({
         "error",
         { allowDefaultCaseForExhaustiveSwitch: true, considerDefaultExhaustiveForUnions: false },
       ],
+      "no-console": "error",
       "no-restricted-globals": ["error", { name: "fetch", message: fetchBan }],
       "no-restricted-properties": [
         "error",
@@ -314,6 +315,14 @@ export default defineConfig({
           "typescript/no-unsafe-call": "off",
           "typescript/no-unsafe-member-access": "off",
           "typescript/no-unsafe-return": "off",
+        },
+      },
+      {
+        // The one place the app logs, and the command-line programs, whose output is
+        // what they print.
+        files: ["src/lib/log.ts", "scripts/**", "tests/evals/**", "tests/e2e/prepare.ts"],
+        rules: {
+          "no-console": "off",
         },
       },
       {

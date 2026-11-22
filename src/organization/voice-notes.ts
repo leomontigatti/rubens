@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import * as z from "zod";
+import { errorClass, log } from "#/lib/log.ts";
 
 import { transcriptionModelId } from "#/lib/assistant.ts";
 import { withoutWhisperCredits } from "#/lib/whisper-credits.ts";
@@ -81,14 +82,11 @@ export async function transcribeVoiceNotes(
   for (const note of untranscribed(database, messageIds)) {
     const transcript = await transcriptOf(cloud, transcriber, note.payload).catch(
       (error: unknown) => {
-        // Another error can quote Meta's or Workers AI's answer, so only its class is logged.
-        const why =
-          error instanceof AudioUnavailable
-            ? error.message
-            : error instanceof Error
-              ? error.name
-              : typeof error;
-        console.error(`[voice-notes] no transcript for message ${note.id}: ${why}`);
+        log.error("voice-notes", "no transcript", {
+          messageId: note.id,
+          error: errorClass(error),
+          reason: error instanceof AudioUnavailable ? error.message : null,
+        });
         return null;
       },
     );

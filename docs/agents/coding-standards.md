@@ -144,8 +144,11 @@ boundary, not by moving half the functions to a `-2` file.
 ## Errors and catches
 
 A `catch` that turns a failure into user copy hides it from everyone else. It
-either tests the condition it expects and rethrows the rest, or logs a tagged line
-before converting, with ids and never patient data. A bare `catch {}` needs the
+either tests the condition it expects and rethrows the rest, or logs it before
+converting, with ids and never patient data. The app logs only through
+`src/lib/log.ts` (lint bans `console` elsewhere in `src/`): `log.error(tag, message,
+fields)`, with a caught value as `errorClass(error)`, since its message can quote
+patient data. A bare `catch {}` needs the
 expected condition in the code or a one-line reason.
 
 ## underthing rules
@@ -194,7 +197,7 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   the only change allowed on a version. The object's methods are the only writers,
   so they are where these rules are checked and tested.
 - **No patient data in logs or errors.** Names, phone numbers, appointment times and
-  clinical text stay out of `console` and error messages. Ids are enough to find a
+  clinical text stay out of logs and error messages. Ids are enough to find a
   record.
 - **The object's schema is `src/organization/schema.ts`**, with its WhatsApp tables in
   `whatsapp-schema.ts`, and its migrations are

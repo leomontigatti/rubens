@@ -38,7 +38,9 @@ describe("the WhatsApp settings", () => {
     const settings = expectOk(await organization.whatsappSettings(adminCaller));
 
     expect(settings).not.toHaveProperty("missing");
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("WHATSAPP_PHONE_NUMBER_ID"));
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("WHATSAPP_PHONE_NUMBER_ID") }),
+    );
   });
 
   it("log nothing while the Worker has every setting", async () => {

@@ -1,4 +1,5 @@
 import { isWindowOpen } from "#/lib/conversation-window.ts";
+import { errorClass, log } from "#/lib/log.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
 import { settleFailedReplies } from "#/organization/failed-replies.ts";
@@ -145,12 +146,10 @@ export async function send(
   }
   const answer = await whileSending(database, () => callMeta(cloud, message)).catch(
     (error: unknown) => {
-      // The error's message can carry the request, so only its class is logged.
-      const where = message.kind === "template" ? "" : ` in conversation ${message.conversationId}`;
-      console.error(
-        `[whatsapp-send] send to Meta threw${where}:`,
-        error instanceof Error ? error.name : typeof error,
-      );
+      log.error("whatsapp-send", "send to Meta threw", {
+        conversationId: message.kind === "template" ? null : message.conversationId,
+        error: errorClass(error),
+      });
       return null;
     },
   );
