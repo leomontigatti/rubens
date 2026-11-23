@@ -65,6 +65,10 @@ conversation. Anyone allowed can take a conversation over
 at any time, not only on a handoff. Practitioners keep replying from Telegram
 (ADR-0007); the inbox is no longer only its fallback.
 
+Amended 2026-11-11 ([ADR-0013](./0013-reception-reads-every-conversation.md)): no message
+is hidden by its judgement. Reception and admins read every message of every
+conversation, and a practitioner reads only the conversations handed to them.
+
 ## Considered options
 
 - **WAHA on a small host.** An always-on server again, against ADR-0008's goal; a

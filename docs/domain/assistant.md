@@ -377,13 +377,13 @@ the same time are each answered after their own pauses, not one after the other'
 
 ## Communication rules
 
-How the assistant writes is set in three layers, the higher one winning:
+How the assistant writes is set in two layers, the higher one winning:
 
 1. **Its own rules**, above. Nobody edits them.
 2. **The organization's**, set by admins: tone, and `vos` or `usted` (`Trato`). Replies
    carry no sign-off: the conversation is already the organization's number.
-3. **A practitioner's**, set by that practitioner, for conversations about their
-   appointments: how to name them, for example.
+
+A practitioner has no rules of their own.
 
 A rule is either written in words, which the assistant follows as an instruction,
 or one of a few checks applied to every reply, which always hold: no opening `¿`
@@ -391,9 +391,9 @@ and `¡`, no emojis, a maximum length. A reply that breaks one of the first two 
 corrected, with the opening marks and the emojis taken out. A rule can change how the assistant writes,
 never what it may do.
 
-Staff can correct a reply the assistant sent, or mark one as good; it becomes a
-reply example (`Ejemplo de respuesta`), which the assistant imitates. Examples belong to the organization
-or to a practitioner, like rules.
+After the first version, staff can correct a reply the assistant sent, or mark one
+as good; it becomes a reply example (`Ejemplo de respuesta`), which the assistant
+imitates. Examples belong to the organization, like rules.
 
 The number of rules and their length are limited. Every change is audited, and
 each reply records the version of the rules it was written under.

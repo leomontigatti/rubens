@@ -84,7 +84,7 @@ template of its own, written by an admin. The event templates' drafts follow the
 | ------------------ | ------------------------------------------------------- |
 | `{{paciente}}`     | The patient's first name, or chosen name                |
 | `{{organizacion}}` | The organization's name                                 |
-| `{{profesional}}`  | The practitioner, as the practitioner's rules name them |
+| `{{profesional}}`  | The practitioner, by the name patients read             |
 | `{{fecha}}`        | The day, such as `jueves 12 de noviembre`               |
 | `{{hora}}`         | The time, in the office's zone, such as `10:30`         |
 | `{{sede}}`         | The office's name                                       |

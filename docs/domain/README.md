@@ -29,6 +29,7 @@ Not in the first version, in rough order of arrival:
   its own until they arrive. The odontogram is their first structured feature.
 - A medical service's price, and the patient's part per insurer.
 - A practitioner's licence number.
+- Reply examples the assistant imitates ([assistant.md](./assistant.md#communication-rules)).
 - Merging two patients.
 - Treatment plans and quotes.
 - A waitlist that offers freed times to other patients.

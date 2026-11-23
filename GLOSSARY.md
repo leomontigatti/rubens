@@ -268,5 +268,5 @@ _Avoid_: fallback agent, on-call
 
 **`communicationRule`** — ui: "Regla de comunicación"
 An instruction on how the `assistant` writes, set by an admin for the
-`organization` or by a `practitioner` for their own conversations.
+`organization`.
 _Avoid_: prompt, instruction, style guide, training
