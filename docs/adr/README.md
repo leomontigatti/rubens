@@ -10,7 +10,9 @@ are gone that way.
 
 An ADR ends on a `Governs:` line naming the code it shapes, and the skill's
 `scripts/anchors.py` lists each one whose anchor has left the code. ADR-0005 (clinical
-notes) and ADR-0007 (Telegram) carry none yet: nothing they decide is built.
+notes) carries none yet: nothing it decides is built. ADR-0007 (a
+handoff carries the patient's own words to Telegram), superseded by ADR-0015 before any
+of it was built, is gone the same way.
 
 ## By topic
 
@@ -22,11 +24,11 @@ notes) and ADR-0007 (Telegram) carry none yet: nothing they decide is built.
   `0008-cloudflare-workers-one-object-per-organization.md`
 - Staff sign-in: `0009-staff-sign-in-through-clerk.md`
 - The product's name: `0011-product-named-underthing.md`
-- WhatsApp, the assistant and Telegram: `0010-whatsapp-cloud-api-number-per-organization.md`
+- WhatsApp and the assistant: `0010-whatsapp-cloud-api-number-per-organization.md`
   (the channel), `0012-whatsapp-directory-durable-object.md` (finding a number's
   organization), `0006-patient-assistant-on-whatsapp.md` (the model and proposals),
-  `0007-patients-words-on-telegram.md`, `0013-reception-reads-every-conversation.md`
-  (who reads a conversation), `0014-reply-buttons-on-the-happy-path.md` (reply
+  `0013-reception-reads-every-conversation.md`
+  (who reads a conversation), `0015-staff-answer-in-the-app-only.md` (no Telegram), `0014-reply-buttons-on-the-happy-path.md` (reply
   buttons read by code)
 
 ## Decisions
@@ -44,12 +46,9 @@ notes) and ADR-0007 (Telegram) carry none yet: nothing they decide is built.
 - [ADR-0006: Patients talk to an assistant on the organization's WhatsApp number](./0006-patient-assistant-on-whatsapp.md) -
   the model interprets and Rubens decides through proposals; TanStack AI. Its channel
   (WAHA on the organization's own number) and pg-boss worker are superseded by ADR-0010.
-- [ADR-0007: A handoff carries the patient's own words to Telegram](./0007-patients-words-on-telegram.md) -
-  people can answer handed-off patients from Telegram; amended by ADR-0010, which makes
-  the app's view a full inbox.
 - [ADR-0013: Reception reads every conversation; the clinical record stays with the practitioners](./0013-reception-reads-every-conversation.md) -
   reception and admins read every WhatsApp message, and the assistant hands to the
-  practitioner only what needs one; amends ADR-0007's Telegram note and #169's burst ruling.
+  practitioner only what needs one; amends #169's burst ruling.
 - [ADR-0008: Rubens runs on Cloudflare Workers, one Durable Object per organization](./0008-cloudflare-workers-one-object-per-organization.md) -
   each organization's data in its own SQLite object as the tenant boundary, booking
   rules and jobs in the object, app-level encryption of clinical data; supersedes
@@ -71,6 +70,9 @@ notes) and ADR-0007 (Telegram) carry none yet: nothing they decide is built.
   the one object shared across organizations, mapping each connected number and account
   to its organization for the webhook; ids only; chosen over KV (eventually consistent)
   and D1 (a database for one table).
+- [ADR-0015: Staff read and answer patients in the app only](./0015-staff-answer-in-the-app-only.md) -
+  no Telegram: notifications, handoffs and people's replies live in the app; supersedes
+  ADR-0007, none of which was built.
 - [ADR-0014: Reply buttons on the happy path, read by code](./0014-reply-buttons-on-the-happy-path.md) -
   a reminder that asks to confirm, `turno_movido` and `reabrir_conversacion`
   carry buttons whose id code reads without a model call; the assistant's replies carry

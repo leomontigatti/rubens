@@ -147,7 +147,7 @@ asking for another time is handed off.
 
 Meta can restrict or rate-limit the organization's number, reject a template, or
 move an approved one to another category. The admins are warned at once, in the
-app and on Telegram, with what is affected and how many messages are waiting.
+app, with what is affected and how many messages are waiting.
 Nothing goes by another channel instead: the messages wait, and go out once the
 number or the template is usable again, less those no longer true, which are
 dropped:
@@ -188,18 +188,6 @@ A cancellation the patient makes through the assistant notifies reception and th
 so they can give the freed time to another patient: it names the patient, the appointment's
 day and time and its practitioner, and links to the appointment's week on the agenda. Undoing
 the cancellation withdraws it. A patient's confirmation notifies nobody, since nobody acts on it.
-
-A practitioner can link Telegram from their profile, through the bot's start link.
-They then get a Telegram copy of every cancellation and reschedule of their
-appointments, whoever made it: the patient, reception or a closure. They can mute
-it, or limit it to appointments in the next few days. Telegram is a third party,
-and a dental appointment is health data (Ley 25.326), so each delivery there
-carries only what its work needs:
-
-- a cancellation or reschedule: the patient's name and the old and new times;
-- a request to approve: the patient's name, the medical service and the time;
-- a handoff: the patient's own words, because the reply is written there
-  ([ADR-0007](../adr/0007-patients-words-on-telegram.md)).
 
 Every message, to patients or staff, is queued in the same transaction that
 changes the appointment.

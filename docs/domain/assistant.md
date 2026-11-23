@@ -1,7 +1,6 @@
 # Assistant
 
-The assistant answers patients on the organization's WhatsApp number, and
-practitioners on Telegram. It writes the way the organization writes, under its
+The assistant answers patients on the organization's WhatsApp number. It writes the way the organization writes, under its
 communication rules. It never claims to be a person; asked whether it is a bot,
 it says yes. It does not introduce itself as one unprompted. Why the channel is
 what it is: [ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md);
@@ -11,7 +10,7 @@ why the model works through proposals: [ADR-0006](../adr/0006-patient-assistant-
 
 Each organization gets a new WhatsApp number, used only through underthing, on Meta's
 official Cloud API. There is no phone and no WhatsApp app on it: every reply a
-person writes goes through underthing, from the inbox or from Telegram.
+person writes goes through underthing, from the inbox.
 
 An admin connects it from the WhatsApp settings, through Meta's signup. The
 organization owns its WhatsApp Business account and the number, adds its own
@@ -106,21 +105,6 @@ patient's yes, freeing the old time.
   proposal or to a reminder that asks them to confirm, as a reaction to that message
   or as a message holding only that emoji right after it ([Proposals](#proposals)).
 
-## For practitioners
-
-A practitioner who linked Telegram can ask the assistant there, with the same
-permissions as in the app:
-
-- **Their agenda and their availability**, such as tomorrow's appointments or the
-  free times on Thursday. Patients appear by name and time, nothing clinical.
-- **Their time off.** Once it is confirmed, the affected appointments go on the
-  "to reschedule" list, and each affected patient is told unless the practitioner
-  chooses not to ([scheduling.md](./scheduling.md#time-off-and-closures)).
-- **Their medical services**: reading them, and changing the duration, the price,
-  the accepted insurers and the text for patients. Anything else is done in the app.
-- **Requests** for medical services that require approval: approve, reject, or
-  propose another time.
-
 ## Proposals
 
 The assistant changes nothing on its own judgment. Every change is a proposal,
@@ -189,8 +173,7 @@ No organization can edit or override these:
   unsent, and the conversation is handed to the practitioner. A reply that could
   not be checked is held the same way. The held reply is shown in the app to
   everyone who reads the conversation; only a practitioner who keeps clinical
-  records sends or fixes it, and anyone who reads it drops it. Telegram gets the
-  handoff without it. The check is a model call of its own that reads the reply
+  records sends or fixes it, and anyone who reads it drops it. The check is a model call of its own that reads the reply
   alone, never the conversation.
 - Two code checks run on every reply the clinical check passes. One that names
   one of the assistant's tools (`find_free_times`) or holds one of the prompt's
@@ -229,7 +212,7 @@ reception's to act on, with the words in front of it.
 
 Every conversation is in the app's inbox. Reception and admins read all of them,
 every message included: the patient's, one not judged yet, a held reply and a
-practitioner's reply, in the app and on Telegram
+practitioner's reply
 ([ADR-0013](../adr/0013-reception-reads-every-conversation.md)). A practitioner
 reads only the conversations handed to them, not every conversation of their
 patients; the number's link to its patients still routes a handoff. What stays
@@ -305,9 +288,8 @@ A handoff's notification says why, so its reader can answer without reading the
 conversation back: `Marta Quiroga quiere pasar el turno del jueves 10:00 y falta
 menos de 24 h`, and what the same turn did anyway, such as another appointment it
 moved. That reason, in the app and in the notification, never quotes the patient;
-the handoff arrives on Telegram with the patient's own words
-([ADR-0007](../adr/0007-patients-words-on-telegram.md)) and in the inbox. The
-person replies in Telegram or in the app, and the reply reaches the patient on
+the patient's own words are in the inbox. The
+person replies in the app, and the reply reaches the patient on
 WhatsApp under their name. The reply box of a practitioner answering a handoff
 says that reception reads the conversation too.
 
@@ -345,8 +327,7 @@ reminded about 6 hours before the close, and about 2 hours before it the reminde
 also goes to every other member who may answer it (for one to the practitioner,
 only practitioners who keep clinical records). An admin can move these times, but none
 can fall after the close. A reminder that falls between 21:00 and 08:00 in the
-organization's time zone (its first office's) waits until 08:00, in the app and on
-Telegram, and does not go when the window closes first: a reply after the close goes
+organization's time zone (its first office's) waits until 08:00, and does not go when the window closes first: a reply after the close goes
 through the reopen template. These hours are fixed; offices have no opening hours.
 The notification when a handoff opens always goes at once. A handoff made after the close, for a reply that could not
 go out in time, has no countdown and tells the patient nothing: its recipient is

@@ -81,8 +81,8 @@ _Avoid_: free time, open slots, vacancies
 
 **`medicalService`** — ui: "Prestación"
 The kind of visit or practice a `practitioner` offers, such as a first consultation
-or a check-up. It sets the default duration and the price of its `appointment`s,
-and picks the `template`s they get.
+or a check-up. It sets the default duration of its `appointment`s and picks the `template`s they
+get.
 _Avoid_: service, visit type, event type, appointment type
 
 **`appointment`** — ui: "Turno"
@@ -193,8 +193,8 @@ A patient's request to be called, made from the `rescheduleLink`; asking to be
 contacted is now a `handoff`.
 
 **`notification`** — ui: "Notificación"
-An event shown to staff in the app, such as a cancellation. Telegram and WhatsApp
-copies of it are extra deliveries of the same notification.
+An event shown to staff in the app, such as a cancellation. WhatsApp copies of it
+are extra deliveries of the same notification.
 _Avoid_: alert, message, inbox item
 
 **`careInstructions`** — ui: "Indicaciones"
@@ -209,8 +209,8 @@ _Avoid_: check-in, survey
 ## Assistant
 
 **`assistant`** — ui: "Asistente"
-The bot that answers `patient`s on the `organization`'s WhatsApp and
-`practitioner`s on Telegram, acting only through accepted `proposal`s.
+The bot that answers `patient`s on the `organization`'s WhatsApp, acting only
+through accepted `proposal`s.
 _Avoid_: chatbot, agent, AI
 
 **`whatsappConnection`** — ui: "Conexión de WhatsApp"

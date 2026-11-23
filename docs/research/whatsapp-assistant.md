@@ -3,8 +3,8 @@
 What exists for a patient assistant on WhatsApp, first gathered 2026-11-04; Meta's
 Cloud API section checked again on primary sources on 2026-11-06. What Rubens
 decided: [ADR-0010](../adr/0010-whatsapp-cloud-api-number-per-organization.md),
-[ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md) and
-[ADR-0007](../adr/0007-patients-words-on-telegram.md). Prices change; check them
+and [ADR-0006](../adr/0006-patient-assistant-on-whatsapp.md); Telegram, which
+ADR-0007 chose for staff, was dropped on 2026-11-23. Prices change; check them
 again before setting what an organization pays.
 
 ## WhatsApp on Meta's Cloud API

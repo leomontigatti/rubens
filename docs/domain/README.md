@@ -9,22 +9,27 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 - [Appointments](./appointments.md): medical services, statuses, rescheduling, overbooking.
 - [Patients](./patients.md): the registry, identity, guardians, consent.
 - [Messages](./messages.md): templates, reminders, staff notifications.
-- [Assistant](./assistant.md): what it does for patients and practitioners, proposals,
+- [Assistant](./assistant.md): what it does for patients, proposals,
   the inbox, handoff, communication rules, trying it.
-- [Clinical records](./clinical-records.md): notes and their versions, alerts, attachments, copies.
+- [Clinical records](./clinical-records.md), after the first version: notes and their versions, alerts, attachments, copies.
 
 ## Scope
 
-underthing serves one business today, a dental practice with several offices. The
-organization, its offices and its first admin are created by a script; there is
-no public sign-up. The data model stays multi-organization.
+underthing serves one business today, a dental practice. The organization and its
+first admin are created by a script; there is no public sign-up. The data model
+stays multi-organization.
 
-Staff book in the app. Patients book, cancel and reschedule by WhatsApp, through
-the assistant. Prices are information for patients; underthing bills nothing.
+Staff book in the app. Patients cancel and reschedule by WhatsApp, through the
+assistant, and book there from its second release
+([assistant.md](./assistant.md#for-patients)). underthing bills nothing.
 
 Not in the first version, in rough order of arrival:
 
-- The odontogram, the first structured clinical feature after launch.
+- Clinical records ([clinical-records.md](./clinical-records.md)): the practice keeps
+  its own until they arrive. The odontogram is their first structured feature.
+- A medical service's price, and the patient's part per insurer.
+- A practitioner's licence number.
+- Merging two patients.
 - Treatment plans and quotes.
 - A waitlist that offers freed times to other patients.
 - Recurring appointments.
