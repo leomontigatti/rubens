@@ -1,8 +1,9 @@
 import { Link, useMatches, useRouterState } from "@tanstack/react-router";
-import type { ComponentType, ReactElement } from "react";
+import type { ComponentProps, ComponentType, ReactElement } from "react";
 import { Fragment } from "react";
 
 import { sectionOf } from "#/components/app-nav.ts";
+import { usePrototypeNav } from "#/routes/_app/sedes/-prototype-store.ts";
 import type { SectionCrumb } from "#/components/app-nav.ts";
 import {
   Breadcrumb,
@@ -53,13 +54,24 @@ function SectionStep({ step, isPage }: { step: SectionCrumb; isPage: boolean }) 
   if (!step.to) {
     return step.label;
   }
-  return <BreadcrumbLink render={<Link to={step.to} />}>{step.label}</BreadcrumbLink>;
+  return <BreadcrumbLink render={<SectionLink to={step.to} />}>{step.label}</BreadcrumbLink>;
+}
+
+/** PROTOTYPE (LEO-6): a link back to the office page keeps the variant last shown. */
+function SectionLink(props: ComponentProps<"a"> & { to: NonNullable<SectionCrumb["to"]> }) {
+  const { to, ...anchor } = props;
+  const { variant } = usePrototypeNav();
+  return <Link {...anchor} to={to} search={to === "/sedes" ? { variant } : undefined} />;
 }
 
 export function AppBreadcrumbs() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const deepest = useMatches({ select: (matches) => matches.at(-1) });
-  const section = sectionOf(pathname);
+  // PROTOTYPE (LEO-6): the office page's name follows the variant last shown.
+  const officeNav = usePrototypeNav();
+  const section = sectionOf(pathname).map((step) =>
+    step.to === "/sedes" ? { ...step, label: officeNav.label } : step,
+  );
   // A page's own steps read its loaded data: none while it loads or after its loader failed.
   const RouteCrumbs = deepest?.status === "success" ? deepest.staticData.crumbs : undefined;
   if (section.length === 0 && !RouteCrumbs) {

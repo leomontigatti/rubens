@@ -27,6 +27,7 @@ import {
   useSidebar,
 } from "#/components/ui/sidebar.tsx";
 import type { Role } from "#/lib/access.ts";
+import { usePrototypeNav } from "#/routes/_app/sedes/-prototype-store.ts";
 
 interface Viewer {
   name: string;
@@ -41,8 +42,18 @@ type NavFolderItem = Extract<NavItem, { entries: unknown }>;
 function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { setOpenMobile } = useSidebar();
+  // PROTOTYPE (LEO-6): the office page's name and icon follow the variant last shown.
+  const officeNav = usePrototypeNav();
+  const groups = navFor(props.roles, props.counts).map((group) => ({
+    ...group,
+    items: group.items.map((item) =>
+      "to" in item && item.to === "/sedes"
+        ? { ...item, label: officeNav.label, icon: officeNav.icon }
+        : item,
+    ),
+  }));
 
-  return navFor(props.roles, props.counts).map((group) => (
+  return groups.map((group) => (
     <SidebarGroup key={group.label}>
       <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
       <SidebarGroupContent>
@@ -55,7 +66,13 @@ function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
                 <SidebarMenuButton
                   isActive={isCurrentPath(pathname, item.to)}
                   tooltip={item.count > 0 ? `${item.label} (${item.count})` : item.label}
-                  render={<Link to={item.to} onClick={() => setOpenMobile(false)} />}
+                  render={
+                    <Link
+                      to={item.to}
+                      search={item.to === "/sedes" ? { variant: officeNav.variant } : undefined}
+                      onClick={() => setOpenMobile(false)}
+                    />
+                  }
                 >
                   <item.icon />
                   <span>{item.label}</span>

@@ -43,6 +43,7 @@ import { Route as AppPrestacionesIndexRouteImport } from './routes/_app/prestaci
 import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app/prestaciones/$practitionerId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
+import { Route as AppSedesEditarRouteImport } from './routes/_app/sedes/editar'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
@@ -242,6 +243,11 @@ const AppSedesOfficeIdRoute = AppSedesOfficeIdRouteImport.update({
   path: '/sedes/$officeId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSedesEditarRoute = AppSedesEditarRouteImport.update({
+  id: '/sedes/editar',
+  path: '/sedes/editar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
   id: '/sedes/nueva',
   path: '/sedes/nueva',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/personal/nueva': typeof AppPersonalNuevaRoute
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
+  '/sedes/editar': typeof AppSedesEditarRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
@@ -472,6 +479,7 @@ export interface FileRoutesByTo {
   '/personal/nueva': typeof AppPersonalNuevaRoute
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
+  '/sedes/editar': typeof AppSedesEditarRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
@@ -534,6 +542,7 @@ export interface FileRoutesById {
   '/_app/personal/nueva': typeof AppPersonalNuevaRoute
   '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
+  '/_app/sedes/editar': typeof AppSedesEditarRoute
   '/_app/sedes/nueva': typeof AppSedesNuevaRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
@@ -596,6 +605,7 @@ export interface FileRouteTypes {
     | '/personal/nueva'
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
+    | '/sedes/editar'
     | '/sedes/nueva'
     | '/a-reprogramar/'
     | '/agenda/'
@@ -656,6 +666,7 @@ export interface FileRouteTypes {
     | '/personal/nueva'
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
+    | '/sedes/editar'
     | '/sedes/nueva'
     | '/a-reprogramar'
     | '/agenda'
@@ -717,6 +728,7 @@ export interface FileRouteTypes {
     | '/_app/personal/nueva'
     | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
+    | '/_app/sedes/editar'
     | '/_app/sedes/nueva'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
@@ -1005,6 +1017,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSedesOfficeIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sedes/editar': {
+      id: '/_app/sedes/editar'
+      path: '/sedes/editar'
+      fullPath: '/sedes/editar'
+      preLoaderRoute: typeof AppSedesEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sedes/nueva': {
       id: '/_app/sedes/nueva'
       path: '/sedes/nueva'
@@ -1201,6 +1220,7 @@ interface AppRouteChildren {
   AppPersonalNuevaRoute: typeof AppPersonalNuevaRoute
   AppPrestacionesPractitionerIdRoute: typeof AppPrestacionesPractitionerIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
+  AppSedesEditarRoute: typeof AppSedesEditarRoute
   AppSedesNuevaRoute: typeof AppSedesNuevaRoute
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
@@ -1258,6 +1278,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalNuevaRoute: AppPersonalNuevaRoute,
   AppPrestacionesPractitionerIdRoute: AppPrestacionesPractitionerIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
+  AppSedesEditarRoute: AppSedesEditarRoute,
   AppSedesNuevaRoute: AppSedesNuevaRoute,
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
