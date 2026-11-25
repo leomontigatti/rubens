@@ -1,9 +1,10 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { handoffContactsSchema } from "#/lib/handoff-contacts.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
+import { keepsRecords } from "#/organization/conversation-access.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { member, practitioner } from "#/organization/schema.ts";
@@ -23,10 +24,6 @@ export interface HandoffContactCandidate {
   keepsClinicalRecords: boolean;
   handoffContact: boolean;
 }
-
-// Whether a member row keeps clinical records: the practitioner role, and the
-// setting on the practitioner row the role keeps after it is removed.
-export const keepsRecords = sql<boolean>`(exists (select 1 from json_each(${member.roles}) where value = 'practitioner') and coalesce(${practitioner.keepsClinicalRecords}, 0) = 1)`;
 
 /** The active members an admin picks from, by name, with who is a contact now. */
 export function listHandoffContacts(database: Database) {

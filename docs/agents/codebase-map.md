@@ -32,7 +32,8 @@ src/
 │   │                  RPC method per operation) over `organization-whatsapp.ts` (its WhatsApp
 │   │                  methods) over `organization-runtime.ts` (its storage, services, alarm and
 │   │                  `as()`, the authorization every method goes through), one module per area
-│   │                  (`members.ts`, `audit.ts`, …), `encryption.ts` (the organization's key),
+│   │                  (`members.ts`, `audit.ts`, …), `conversation-access.ts` (who reads a WhatsApp
+│   │                  conversation and who answers its handoffs, ADR-0013), `encryption.ts` (the organization's key),
 │   │                  `schema.ts` and `whatsapp-schema.ts` (its SQLite schema) and `migrations/` (generated, applied on start)
 ├── dev/               the dev organization: `world.ts` (its made-up data), `seed.ts` (fills it);
 │                      `fake-meta.ts` (Meta answered inside the Worker, for the browser suite),

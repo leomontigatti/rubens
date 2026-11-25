@@ -14,7 +14,7 @@ import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { readerOf } from "#/organization/inbox.ts";
+import { readerOf } from "#/organization/conversation-access.ts";
 import { queueLateReply } from "#/organization/late-replies.ts";
 import { returnAfterHours, settleReply } from "#/organization/personal-replies.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -70,7 +70,7 @@ function readable(database: Writer, acting: Acting, conversationId: string) {
     .from(conversation)
     .where(and(eq(conversation.id, conversationId), reader.visible))
     .get();
-  return found ? { ...found, keepsRecords: reader.keepsRecords } : null;
+  return found ? { ...found, answerer: reader.answerer } : null;
 }
 
 /** Makes `acting` the holder of a conversation they read, taking it from whoever held it. */
@@ -141,8 +141,11 @@ export async function replyToConversation(
   }
   if (!reached.ok && reached.reason === "windowClosed") {
     // Held behind the reopen template, which waits out a hold of Meta's like any other.
-    const writer = { userId: acting.userId, keepsRecords: found.keepsRecords };
-    const queued = queueLateReply(database, writer, { conversationId, phone: found.phone, text });
+    const queued = queueLateReply(database, found.answerer, {
+      conversationId,
+      phone: found.phone,
+      text,
+    });
     return queued.ok ? { ok: true as const, held: true } : queued;
   }
   if (!reached.ok) {
@@ -157,8 +160,7 @@ export async function replyToConversation(
     sentBy: acting.userId,
   };
   const sent = await send(database, cloud, message, (tx, stored) => {
-    const reply = { writtenBy: acting.userId, conversationId, keepsRecords: found.keepsRecords };
-    settleReply(tx, { ...reply, since: sendingFrom }, stored);
+    settleReply(tx, { answerer: found.answerer, conversationId, since: sendingFrom }, stored);
   });
   if (!sent.ok) {
     // Meta was not reached or refused it: the member is told and tries again.

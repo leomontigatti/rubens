@@ -7,7 +7,7 @@ import type { MessageReference } from "#/lib/whatsapp-messages.ts";
 
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { readerOf } from "#/organization/inbox.ts";
+import { readerOf } from "#/organization/conversation-access.ts";
 import type { Acting } from "#/organization/members.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 

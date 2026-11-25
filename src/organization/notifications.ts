@@ -7,6 +7,7 @@ import type { NotificationReference } from "#/lib/notifications.ts";
 import { patientName } from "#/lib/patients.ts";
 import { today } from "#/lib/schedules.ts";
 
+import { readerOf } from "#/organization/conversation-access.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { byName } from "#/organization/name-order.ts";
@@ -197,18 +198,6 @@ function onlyPatient(
   return first?.only ? { id: first.id, name: first.name, phone: first.phone } : null;
 }
 
-/** Whether `acting` is a practitioner who keeps clinical records. */
-function keepsRecords(database: Database, acting: Acting) {
-  const own = acting.roles.includes("practitioner")
-    ? database
-        .select({ keeps: practitioner.keepsClinicalRecords })
-        .from(practitioner)
-        .where(eq(practitioner.memberId, acting.userId))
-        .get()
-    : undefined;
-  return own?.keeps === true;
-}
-
 /**
  * A cancellation's notification as it reads: who cancelled, with whom and
  * when, and where its time is on the agenda; `null` for another kind.
@@ -256,7 +245,7 @@ function cancelledAppointment(row: {
 export function listNotifications(database: Database, acting: Acting) {
   // A handoff to the practitioner reaches someone who keeps no clinical
   // records only when nobody active does (`handoffs.ts`).
-  const noPractitioner = !keepsRecords(database, acting);
+  const noPractitioner = !readerOf(database, acting).answerer.keepsRecords;
   const rows = database
     .select({
       id: notification.id,

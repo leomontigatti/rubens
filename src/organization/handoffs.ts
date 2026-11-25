@@ -11,7 +11,7 @@ import { attendedTimings } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
-import { keepsRecords } from "#/organization/handoff-contacts.ts";
+import { keepsRecords } from "#/organization/conversation-access.ts";
 import { notify } from "#/organization/notifications.ts";
 import { appointment, member, practitioner } from "#/organization/schema.ts";
 import {
@@ -228,29 +228,6 @@ export function answeredMessage(
     )
     .get();
   return { kind, appointmentId: latest.appointmentId, firstReply: !judgedSince };
-}
-
-/**
- * Whether `memberId` may answer the handoff `one`: any one to reception;
- * one to the practitioner only when they keep clinical records, or it went
- * to them because nobody active did.
- */
-export function mayAnswer(
-  tx: Writer,
-  one: { id: string; forPractitioner: boolean },
-  member: { memberId: string; keepsRecords: boolean },
-) {
-  if (!one.forPractitioner || member.keepsRecords) {
-    return true;
-  }
-  const recipient = tx
-    .select({ one: handoffRecipient.memberId })
-    .from(handoffRecipient)
-    .where(
-      and(eq(handoffRecipient.handoffId, one.id), eq(handoffRecipient.memberId, member.memberId)),
-    )
-    .get();
-  return recipient !== undefined;
 }
 
 /** Every recipient of `handoffIds`, by handoff. */
