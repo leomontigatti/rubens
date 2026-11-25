@@ -71,4 +71,4 @@ We decided:
   still kept to handoffs, and Telegram's place in the privacy notice is still for counsel
   to confirm before go-live.
 
-Governs: `src/organization/inbox.ts`, `src/organization/handoffs.ts`, `src/organization/turn-handoffs.ts`, `src/organization/turn-settling.ts`
+Governs: `src/organization/conversation-access.ts`, `src/organization/inbox.ts`, `src/organization/handoffs.ts`, `src/organization/turn-handoffs.ts`, `src/organization/turn-settling.ts`
