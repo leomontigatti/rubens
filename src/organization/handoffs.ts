@@ -11,7 +11,7 @@ import { attendedTimings } from "#/lib/template-timing.ts";
 import type { TimingKind } from "#/lib/template-timing.ts";
 
 import type { Database, Writer } from "#/organization/database.ts";
-import { keepsRecords } from "#/organization/handoff-contacts.ts";
+import { keepsRecords } from "#/organization/conversation-access.ts";
 import { notify } from "#/organization/notifications.ts";
 import { appointment, member, practitioner } from "#/organization/schema.ts";
 import {
