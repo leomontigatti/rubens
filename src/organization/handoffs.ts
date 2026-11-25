@@ -230,29 +230,6 @@ export function answeredMessage(
   return { kind, appointmentId: latest.appointmentId, firstReply: !judgedSince };
 }
 
-/**
- * Whether `memberId` may answer the handoff `one`: any one to reception;
- * one to the practitioner only when they keep clinical records, or it went
- * to them because nobody active did.
- */
-export function mayAnswer(
-  tx: Writer,
-  one: { id: string; forPractitioner: boolean },
-  member: { memberId: string; keepsRecords: boolean },
-) {
-  if (!one.forPractitioner || member.keepsRecords) {
-    return true;
-  }
-  const recipient = tx
-    .select({ one: handoffRecipient.memberId })
-    .from(handoffRecipient)
-    .where(
-      and(eq(handoffRecipient.handoffId, one.id), eq(handoffRecipient.memberId, member.memberId)),
-    )
-    .get();
-  return recipient !== undefined;
-}
-
 /** Every recipient of `handoffIds`, by handoff. */
 export function recipientsByHandoff(database: Database, handoffIds: string[] | SQLWrapper) {
   const rows = database

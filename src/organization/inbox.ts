@@ -2,7 +2,6 @@ import { and, asc, count, desc, eq, exists, inArray, like, or, sql } from "drizz
 import type { SQL, SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { actsForEveryone } from "#/lib/access.ts";
 import { messageMediaOf } from "#/lib/message-media.ts";
 import type { MessageMedia } from "#/lib/message-media.ts";
 import { isWindowOpen, windowClosesAt } from "#/lib/conversation-window.ts";
@@ -25,13 +24,13 @@ import type {
 import type { HandoffReason } from "#/lib/handoffs.ts";
 
 import type { Database } from "#/organization/database.ts";
+import { readerOf } from "#/organization/conversation-access.ts";
 import { recipientsByHandoff } from "#/organization/handoffs.ts";
 import type { Acting } from "#/organization/members.ts";
-import { member, patient, practitioner } from "#/organization/schema.ts";
+import { member, patient } from "#/organization/schema.ts";
 import {
   conversation,
   conversationPatient,
-  handoffRecipient,
   handoff,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
@@ -129,43 +128,6 @@ function withOpenHandoff(database: Database): SQL {
       .select({ one: handoff.id })
       .from(handoff)
       .where(and(eq(handoff.conversationId, conversation.id), eq(handoff.state, "open"))),
-  );
-}
-
-function ownPractitioner(database: Database, acting: Acting) {
-  if (!acting.roles.includes("practitioner")) {
-    return undefined;
-  }
-  return database
-    .select({ id: practitioner.id, keepsClinicalRecords: practitioner.keepsClinicalRecords })
-    .from(practitioner)
-    .where(eq(practitioner.memberId, acting.userId))
-    .get();
-}
-
-/**
- * How `acting` reads the inbox: which conversations, and whether they keep
- * clinical records, so answer a handoff to the practitioner.
- */
-export function readerOf(database: Database, acting: Acting) {
-  const own = ownPractitioner(database, acting);
-  let visible: SQL | undefined = undefined;
-  if (!actsForEveryone(acting)) {
-    visible = own ? handedTo(database, acting.userId) : sql`false`;
-  }
-  return { keepsRecords: own?.keepsClinicalRecords === true, visible };
-}
-
-/** The conversations a handoff went to `memberId` in. */
-function handedTo(database: Database, memberId: string): SQL {
-  return exists(
-    database
-      .select({ one: handoffRecipient.handoffId })
-      .from(handoffRecipient)
-      .innerJoin(handoff, eq(handoff.id, handoffRecipient.handoffId))
-      .where(
-        and(eq(handoff.conversationId, conversation.id), eq(handoffRecipient.memberId, memberId)),
-      ),
   );
 }
 

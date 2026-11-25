@@ -15,12 +15,13 @@ import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import {
   addsToOpen,
-  mayAnswer,
   openHandoffsOf,
   recipientsByHandoff,
   sendHandoff,
 } from "#/organization/handoffs.ts";
-import { asRead, messageColumns, patientsOf, readerOf } from "#/organization/inbox.ts";
+import { mayAnswer, mayUseHeldReply, readerOf } from "#/organization/conversation-access.ts";
+import type { Reader } from "#/organization/conversation-access.ts";
+import { asRead, messageColumns, patientsOf } from "#/organization/inbox.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
 import type { Acting } from "#/organization/members.ts";
 import { answeredByPerson } from "#/organization/turn-retries.ts";
@@ -143,10 +144,9 @@ export function listOpenHandoffs(
   const withPractitioner = new Set(
     rows.filter((row) => row.forPractitioner).map((row) => row.conversationId),
   );
-  const member = { memberId: acting.userId, keepsRecords: reader.keepsRecords };
   const handoffs: OpenHandoff[] = rows.map(({ detail, ...row }) => {
     const last = lastMessages.get(row.conversationId);
-    const answers = mayAnswer(database, row, member);
+    const answers = mayAnswer(database, row, reader.answerer);
     return {
       ...row,
       media: detail?.media ?? [],
@@ -154,7 +154,7 @@ export function listOpenHandoffs(
       recipients: recipients.get(row.id) ?? [],
       lastPatientMessage: last ? asRead(last) : null,
       mayAnswer: answers,
-      mayUseHeldReply: row.forPractitioner ? reader.keepsRecords : answers,
+      mayUseHeldReply: mayUseHeldReply(database, row, reader.answerer),
       mayPass: !row.forPractitioner && !withPractitioner.has(row.conversationId),
     };
   });
@@ -175,7 +175,7 @@ function handoffInputOf(database: Database, acting: Acting, input: HandoffRefere
 }
 
 /** The open handoff `handoffId`, if `reader` sees it. */
-function openHandoffSeen(tx: Writer, reader: ReturnType<typeof readerOf>, handoffId: string) {
+function openHandoffSeen(tx: Writer, reader: Reader, handoffId: string) {
   return tx
     .select({
       id: handoff.id,
@@ -208,7 +208,7 @@ export function closeHandoffWithoutReply(
     if (!found) {
       return { ok: false as const, reason: "notFound" as const };
     }
-    if (!mayAnswer(tx, found, { memberId: acting.userId, keepsRecords: reader.keepsRecords })) {
+    if (!mayAnswer(tx, found, reader.answerer)) {
       return { ok: false as const, reason: "forbidden" as const };
     }
     tx.update(handoff)

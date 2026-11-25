@@ -14,7 +14,7 @@ import type { ConversationReference } from "#/lib/whatsapp-messages.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
-import { readerOf } from "#/organization/inbox.ts";
+import { readerOf } from "#/organization/conversation-access.ts";
 import { queueLateReply } from "#/organization/late-replies.ts";
 import { returnAfterHours, settleReply } from "#/organization/personal-replies.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -70,7 +70,7 @@ function readable(database: Writer, acting: Acting, conversationId: string) {
     .from(conversation)
     .where(and(eq(conversation.id, conversationId), reader.visible))
     .get();
-  return found ? { ...found, keepsRecords: reader.keepsRecords } : null;
+  return found ? { ...found, keepsRecords: reader.answerer.keepsRecords } : null;
 }
 
 /** Makes `acting` the holder of a conversation they read, taking it from whoever held it. */

@@ -31,7 +31,7 @@ import { isHeldUnder, liftOptOutHold, optOutPendingSince } from "#/organization/
 import { dropQueuedForPatient, requeueForPatient } from "#/organization/outbox.ts";
 import { normalizeText, wordsOf } from "#/lib/search-text.ts";
 import { coverage, guardian, insurer, patient } from "#/organization/schema.ts";
-import { readerOf } from "#/organization/inbox.ts";
+import { readerOf } from "#/organization/conversation-access.ts";
 import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts";
 import { relinkPatient } from "#/organization/whatsapp-messages.ts";
 import { byName } from "#/organization/name-order.ts";

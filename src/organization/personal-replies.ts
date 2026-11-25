@@ -3,7 +3,8 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { defaultReturnAfterHours } from "#/lib/conversation-holds.ts";
 
 import type { Writer } from "#/organization/database.ts";
-import { mayAnswer, openHandoffsOf } from "#/organization/handoffs.ts";
+import { mayAnswer } from "#/organization/conversation-access.ts";
+import { openHandoffsOf } from "#/organization/handoffs.ts";
 import { answeredByPerson } from "#/organization/turn-retries.ts";
 import { conversation, handoff, inboxSettings } from "#/organization/whatsapp-schema.ts";
 

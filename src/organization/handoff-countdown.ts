@@ -8,7 +8,7 @@ import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import { returnAfterHours } from "#/organization/personal-replies.ts";
 import type { Database, Writer } from "#/organization/database.ts";
-import { readerOf } from "#/organization/inbox.ts";
+import { readerOf } from "#/organization/conversation-access.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notify } from "#/organization/notifications.ts";
 import { organizationTimeZone } from "#/organization/offices.ts";
@@ -188,7 +188,7 @@ function mayAnswer(database: Database, countdown: Countdown) {
   return members
     .filter((acting) => {
       const reader = readerOf(database, acting);
-      if (countdown.forPractitioner && !reader.keepsRecords) {
+      if (countdown.forPractitioner && !reader.answerer.keepsRecords) {
         return false;
       }
       const found = database
