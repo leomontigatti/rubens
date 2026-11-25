@@ -28,6 +28,14 @@ overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vitest@*: 5.1.0
 
+# Packages `pnpm update` leaves where they are. Each entry says what breaks and
+# the issue that tracks the fix before it moves again.
+updateConfig:
+  ignoreDependencies:
+    # 1.13.17's metadata accepts a 16-digit NZ phone as valid and refuses NZ
+    # numbers 1.13.16 stored (#461).
+    - libphonenumber-js
+
 # The agent skills these packages ship stay unlinked: a package's skills are
 # approved all or none, most are of no use here, and the ones that are get
 # installed one by one (docs/agents/agent-configuration.md).
