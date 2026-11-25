@@ -8,17 +8,12 @@ import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 import { recordAudit } from "#/organization/audit.ts";
 import { returnAfterHours } from "#/organization/personal-replies.ts";
 import type { Database, Writer } from "#/organization/database.ts";
-import { readerOf } from "#/organization/conversation-access.ts";
+import { answerersOf } from "#/organization/conversation-access.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notify } from "#/organization/notifications.ts";
 import { organizationTimeZone } from "#/organization/offices.ts";
 import { member } from "#/organization/schema.ts";
-import {
-  conversation,
-  handoff,
-  handoffRecipient,
-  inboxSettings,
-} from "#/organization/whatsapp-schema.ts";
+import { handoff, handoffRecipient, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
 import type { Job } from "#/organization/jobs.ts";
 
@@ -174,33 +169,6 @@ function activeRecipients(database: Writer, handoffId: string) {
     .map((row) => row.memberId);
 }
 
-/**
- * The active members who may answer the handoff: those who read its
- * conversation in the inbox, and for one to the practitioner only
- * practitioners who keep clinical records, the only ones who answer it.
- */
-function mayAnswer(database: Database, countdown: Countdown) {
-  const members = database
-    .select({ userId: member.userId, roles: member.roles })
-    .from(member)
-    .where(eq(member.active, true))
-    .all();
-  return members
-    .filter((acting) => {
-      const reader = readerOf(database, acting);
-      if (countdown.forPractitioner && !reader.answerer.keepsRecords) {
-        return false;
-      }
-      const found = database
-        .select({ id: conversation.id })
-        .from(conversation)
-        .where(and(eq(conversation.id, countdown.conversationId), reader.visible))
-        .get();
-      return found !== undefined;
-    })
-    .map((acting) => acting.userId);
-}
-
 function isDue(at: number | null, now: number) {
   return at !== null && at <= now;
 }
@@ -215,7 +183,7 @@ function remindedMembers(
   if (!due.others) {
     return recipients;
   }
-  const others = mayAnswer(database, countdown).filter((id) => !recipients.includes(id));
+  const others = answerersOf(database, countdown).filter((id) => !recipients.includes(id));
   return due.recipients || !countdown.othersOnly ? [...recipients, ...others] : others;
 }
 
