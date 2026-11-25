@@ -5,13 +5,13 @@ import type { Role } from "#/lib/access.ts";
 
 import {
   answerersOf,
-  keepsRecords,
   mayAnswer,
   mayUseHeldReply,
   readerOf,
 } from "#/organization/conversation-access.ts";
 import type { Reader } from "#/organization/conversation-access.ts";
 import type { Database } from "#/organization/database.ts";
+import { sendHandoff } from "#/organization/handoffs.ts";
 import { listNotifications } from "#/organization/notifications.ts";
 import {
   addMember,
@@ -120,7 +120,26 @@ const matrix: Row[] = [
     reads: true,
     answers: true,
     usesHeldReply: true,
-    catches: "an admin is kept from a conversation nobody handed them",
+    catches:
+      "an admin is kept from a conversation nobody handed them, or from its handoff to reception",
+  },
+  {
+    who: "admin",
+    standing: "handedOther",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "an admin cannot answer a handoff to reception beside one that went to them",
+  },
+  {
+    who: "admin",
+    standing: "recipient",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "an admin cannot answer a handoff to reception that went to them",
   },
   {
     who: "admin",
@@ -129,7 +148,18 @@ const matrix: Row[] = [
     reads: true,
     answers: false,
     usesHeldReply: false,
-    catches: "an admin who keeps no records answers a clinical handoff while someone does",
+    catches:
+      "an admin answers a clinical handoff that did not go to them while someone keeps records",
+  },
+  {
+    who: "admin",
+    standing: "handedOther",
+    kind: "practitioner",
+    reads: true,
+    answers: false,
+    usesHeldReply: false,
+    catches:
+      "an admin answers a clinical handoff because another handoff in the conversation went to them",
   },
   {
     who: "admin",
@@ -138,8 +168,7 @@ const matrix: Row[] = [
     reads: true,
     answers: true,
     usesHeldReply: false,
-    catches:
-      "an admin a clinical handoff went to because nobody keeps records cannot answer it (#285)",
+    catches: "an admin a clinical handoff went to cannot answer it (#285), or uses its held reply",
   },
   {
     who: "receptionist",
@@ -148,7 +177,36 @@ const matrix: Row[] = [
     reads: true,
     answers: true,
     usesHeldReply: true,
-    catches: "reception cannot answer or use the held reply of a handoff to reception",
+    catches:
+      "a receptionist is kept from a conversation nobody handed them, or from its handoff to reception",
+  },
+  {
+    who: "receptionist",
+    standing: "handedOther",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "a receptionist cannot answer a handoff to reception beside one that went to them",
+  },
+  {
+    who: "receptionist",
+    standing: "recipient",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "a receptionist cannot answer a handoff to reception that went to them",
+  },
+  {
+    who: "receptionist",
+    standing: "notHanded",
+    kind: "practitioner",
+    reads: true,
+    answers: false,
+    usesHeldReply: false,
+    catches:
+      "a receptionist answers a clinical handoff that did not go to them while someone keeps records",
   },
   {
     who: "receptionist",
@@ -157,7 +215,8 @@ const matrix: Row[] = [
     reads: true,
     answers: false,
     usesHeldReply: false,
-    catches: "a receptionist answers a clinical handoff while someone keeps records",
+    catches:
+      "a receptionist answers a clinical handoff because another handoff in the conversation went to them",
   },
   {
     who: "receptionist",
@@ -166,7 +225,8 @@ const matrix: Row[] = [
     reads: true,
     answers: true,
     usesHeldReply: false,
-    catches: "a receptionist a clinical handoff went to cannot answer it, or uses its held reply",
+    catches:
+      "a receptionist a clinical handoff went to cannot answer it (#285), or uses its held reply",
   },
   {
     who: "keepsRecords",
@@ -180,7 +240,7 @@ const matrix: Row[] = [
     standing: "notHanded",
     kind: "practitioner",
     reads: false,
-    catches: "a practitioner reads a clinical conversation nobody handed them",
+    catches: "a practitioner who keeps records reads a clinical conversation nobody handed them",
   },
   {
     who: "keepsRecords",
@@ -189,7 +249,16 @@ const matrix: Row[] = [
     reads: true,
     answers: true,
     usesHeldReply: true,
-    catches: "a practitioner handed the conversation cannot answer its other handoffs to reception",
+    catches: "a practitioner handed the conversation cannot answer its other handoff to reception",
+  },
+  {
+    who: "keepsRecords",
+    standing: "recipient",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "a practitioner cannot answer a handoff to reception that went to them",
   },
   {
     who: "keepsRecords",
@@ -213,9 +282,16 @@ const matrix: Row[] = [
   {
     who: "keepsNone",
     standing: "notHanded",
-    kind: "practitioner",
+    kind: "reception",
     reads: false,
     catches: "a practitioner who keeps no records reads a conversation nobody handed them",
+  },
+  {
+    who: "keepsNone",
+    standing: "notHanded",
+    kind: "practitioner",
+    reads: false,
+    catches: "a practitioner who keeps no records reads a clinical conversation nobody handed them",
   },
   {
     who: "keepsNone",
@@ -228,13 +304,23 @@ const matrix: Row[] = [
   },
   {
     who: "keepsNone",
+    standing: "recipient",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches:
+      "a practitioner who keeps no records cannot answer a handoff to reception that went to them",
+  },
+  {
+    who: "keepsNone",
     standing: "handedOther",
     kind: "practitioner",
     reads: true,
     answers: false,
     usesHeldReply: false,
     catches:
-      "a practitioner who keeps no records answers a clinical handoff that went to someone else",
+      "a practitioner who keeps no records answers a clinical handoff that did not go to them",
   },
   {
     who: "keepsNone",
@@ -263,7 +349,45 @@ const matrix: Row[] = [
     answers: true,
     usesHeldReply: true,
     catches:
-      "a practitioner admin who keeps records cannot answer a clinical handoff nobody sent them",
+      "a practitioner admin who keeps records cannot answer a clinical handoff that did not go to them",
+  },
+  {
+    who: "practitionerAdmin",
+    standing: "handedOther",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "a practitioner admin cannot answer a handoff to reception (handedOther)",
+  },
+  {
+    who: "practitionerAdmin",
+    standing: "handedOther",
+    kind: "practitioner",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches:
+      "a practitioner admin who keeps records cannot answer a clinical handoff or use its held reply (handedOther)",
+  },
+  {
+    who: "practitionerAdmin",
+    standing: "recipient",
+    kind: "reception",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches: "a practitioner admin cannot answer a handoff to reception (recipient)",
+  },
+  {
+    who: "practitionerAdmin",
+    standing: "recipient",
+    kind: "practitioner",
+    reads: true,
+    answers: true,
+    usesHeldReply: true,
+    catches:
+      "a practitioner admin who keeps records cannot answer a clinical handoff or use its held reply (recipient)",
   },
 ];
 
@@ -307,7 +431,6 @@ describe("conversation access", () => {
         .select({ userId: member.userId, roles: member.roles, active: member.active })
         .from(member)
         .all();
-      expect(everyone.some((one) => one.userId === adminCaller.userId)).toBe(true);
       for (const one of handoffs) {
         const forward = everyone
           .filter((acting) => {
@@ -324,36 +447,38 @@ describe("conversation access", () => {
     });
   });
 
-  it("counts a member whose practitioner role was removed as keeping no records everywhere", async () => {
+  it("counts a member whose practitioner role was removed as keeping no records for routing, contacts, reading and notifications", async () => {
     const { organization } = await setUpTestOrganization();
+    const juan = (await addStaff(organization, "Juan")).caller.userId;
     const rosa = (await addStaff(organization, "Rosa")).caller.userId;
-    const conversationId = await inStorage(organization, (database) => {
+    const { conversationId, routedTo } = await inStorage(organization, (database) => {
       database
         .update(member)
         .set({ roles: ["admin"] })
         .where(eq(member.userId, rosa))
         .run();
-      const one = addHandoff(database, "practitioner", [rosa]);
+      const one = addHandoff(database, "practitioner", []);
+      database.transaction((tx) =>
+        sendHandoff(tx, one.id, { forPractitioner: true, appointmentId: null }),
+      );
       database
         .insert(notification)
         .values({ kind: "handoff", handoffId: one.id, recipientId: rosa })
         .run();
-      return one.conversationId;
+      const routed = database
+        .select({ memberId: handoffRecipient.memberId })
+        .from(handoffRecipient)
+        .where(eq(handoffRecipient.handoffId, one.id))
+        .all();
+      return { conversationId: one.conversationId, routedTo: routed.map((row) => row.memberId) };
     });
+    expect(routedTo).toEqual([juan]);
     const contacts = expectOk(await organization.handoffContacts(adminCaller));
     expect(contacts.members.find((one) => one.memberId === rosa)?.keepsClinicalRecords).toBe(false);
     await inStorage(organization, (database) => {
       const acting = { userId: rosa, roles: ["admin"] as const };
-      const routed = database
-        .select({ keeps: keepsRecords.mapWith(Boolean) })
-        .from(member)
-        .leftJoin(practitioner, eq(practitioner.memberId, member.userId))
-        .where(eq(member.userId, rosa))
-        .get();
-      expect(routed?.keeps).toBe(false);
       expect(readerOf(database, acting).answerer.keepsRecords).toBe(false);
-      const listed = listNotifications(database, acting);
-      const told = listed.notifications.find(
+      const told = listNotifications(database, acting).notifications.find(
         (one) => one.handoff?.conversationId === conversationId,
       );
       expect(told?.handoff?.noPractitioner).toBe(true);

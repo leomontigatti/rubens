@@ -8,6 +8,7 @@ import { fillTemplate } from "#/lib/template-filling.ts";
 import type { OutboxDropReason } from "#/lib/outbox.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
+import type { Answerer } from "#/organization/conversation-access.ts";
 import { organizationName } from "#/organization/members.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
@@ -65,7 +66,7 @@ function greetedAt(tx: Writer, phone: string) {
  */
 export function queueLateReply(
   database: Database,
-  writer: { userId: string; keepsRecords: boolean },
+  writer: Answerer,
   reply: { conversationId: string; phone: string; text: string },
 ) {
   const { conversationId } = reply;
@@ -80,7 +81,7 @@ export function queueLateReply(
     tx.insert(lateReply)
       .values({
         conversationId,
-        writtenBy: writer.userId,
+        writtenBy: writer.memberId,
         text: reply.text,
         keepsRecords: writer.keepsRecords,
         patientIds: reachedIds(tx, reply.phone),
@@ -408,7 +409,13 @@ async function deliver(database: Database, cloud: WhatsappCloud, waiting: Waitin
     sentBy: waiting.writtenBy,
   };
   const sent = await send(database, cloud, message, (tx, stored) => {
-    const reply = { ...waiting, since: waiting.createdAt, writtenAt: waiting.createdAt };
+    const answerer = { memberId: waiting.writtenBy, keepsRecords: waiting.keepsRecords };
+    const reply = {
+      answerer,
+      conversationId: waiting.conversationId,
+      since: waiting.createdAt,
+      writtenAt: waiting.createdAt,
+    };
     settleReply(tx, reply, stored);
     tx.update(lateReply)
       .set({ state: "delivered", whatsappMessageId: stored.id })

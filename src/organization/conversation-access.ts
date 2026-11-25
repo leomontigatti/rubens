@@ -62,6 +62,18 @@ function handedTo(database: Writer, memberId: string | typeof member.userId): SQ
   );
 }
 
+/** The row that says the handoff `handoffId` went to `memberId`, if it did. */
+function recipientRow(
+  database: Writer,
+  handoffId: string,
+  memberId: string | typeof member.userId,
+) {
+  return database
+    .select({ one: handoffRecipient.memberId })
+    .from(handoffRecipient)
+    .where(and(eq(handoffRecipient.handoffId, handoffId), eq(handoffRecipient.memberId, memberId)));
+}
+
 /** How `acting` reads the inbox: which conversations, and as which answerer. */
 export function readerOf(database: Writer, acting: Acting): Reader {
   const row = database
@@ -87,14 +99,7 @@ export function mayAnswer(tx: Writer, one: AskedHandoff, answerer: Answerer): bo
   if (!one.forPractitioner || answerer.keepsRecords) {
     return true;
   }
-  const found = tx
-    .select({ one: handoffRecipient.memberId })
-    .from(handoffRecipient)
-    .where(
-      and(eq(handoffRecipient.handoffId, one.id), eq(handoffRecipient.memberId, answerer.memberId)),
-    )
-    .get();
-  return found !== undefined;
+  return recipientRow(tx, one.id, answerer.memberId).get() !== undefined;
 }
 
 /**
@@ -113,13 +118,9 @@ export function answerersOf(tx: Writer, one: AskedHandoff & { conversationId: st
     holds("receptionist"),
     and(holds("practitioner"), isNotNull(practitioner.id), handedTo(tx, member.userId)),
   );
-  const recipient = tx
-    .select({ one: handoffRecipient.memberId })
-    .from(handoffRecipient)
-    .where(
-      and(eq(handoffRecipient.handoffId, one.id), eq(handoffRecipient.memberId, member.userId)),
-    );
-  const answersIt = one.forPractitioner ? or(keepsRecords, exists(recipient)) : undefined;
+  const answersIt = one.forPractitioner
+    ? or(keepsRecords, exists(recipientRow(tx, one.id, member.userId)))
+    : undefined;
   return tx
     .select({ memberId: member.userId })
     .from(member)

@@ -4,6 +4,7 @@ import { defaultReturnAfterHours } from "#/lib/conversation-holds.ts";
 
 import type { Writer } from "#/organization/database.ts";
 import { mayAnswer } from "#/organization/conversation-access.ts";
+import type { Answerer } from "#/organization/conversation-access.ts";
 import { openHandoffsOf } from "#/organization/handoffs.ts";
 import { answeredByPerson } from "#/organization/turn-retries.ts";
 import { conversation, handoff, inboxSettings } from "#/organization/whatsapp-schema.ts";
@@ -30,12 +31,11 @@ export function returnAfterHours(database: Writer) {
 function answeredHandoffs(
   database: Writer,
   conversationId: string,
-  reply: { writtenBy: string; keepsRecords: boolean; writtenAt?: number },
+  reply: { answerer: Answerer; writtenAt?: number },
 ) {
-  const writer = { memberId: reply.writtenBy, keepsRecords: reply.keepsRecords };
   return openHandoffsOf(database, conversationId).filter(
     (one) =>
-      mayAnswer(database, one, writer) &&
+      mayAnswer(database, one, reply.answerer) &&
       (reply.writtenAt === undefined || one.createdAt <= reply.writtenAt),
   );
 }
@@ -50,9 +50,9 @@ function answeredHandoffs(
 export function settleReply(
   tx: Writer,
   reply: {
-    writtenBy: string;
+    /** Who wrote it; for a late reply, as they kept records when they wrote it. */
+    answerer: Answerer;
     conversationId: string;
-    keepsRecords: boolean;
     /** Up to when the patient's messages it answers go: when it was written or its send started. */
     since: number;
     /** For a late reply: when it was written. */
@@ -60,7 +60,8 @@ export function settleReply(
   },
   stored: { id: string },
 ) {
-  const { conversationId, writtenBy } = reply;
+  const { conversationId } = reply;
+  const writtenBy = reply.answerer.memberId;
   // Read after the send: a handoff may have opened while Meta answered.
   const answered = answeredHandoffs(tx, conversationId, reply);
   answeredByPerson(tx, conversationId, reply.writtenAt ?? reply.since);
