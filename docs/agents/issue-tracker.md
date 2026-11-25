@@ -40,7 +40,9 @@ The operations:
 - **Labels and priority**: `tools.issue.update({ issue, labels: [...], priority })`. `labels`
   replaces the whole set, so pass the ones that stay too.
 - **Start**: `tools.issue.update({ issue, claim: true, status: "In progress" })` assigns the
-  issue to this thread, and fails naming the holder when it is already assigned.
+  issue to this thread, and fails naming the holder when it is already assigned. An issue the
+  read shows assigned to this thread already (the thread that launched the session may have
+  assigned it) takes the status alone: `tools.issue.update({ issue, status: "In progress" })`.
 - **Open the PR**: `tools.issue.update({ issue, status: "In review", link: ["leomontigatti/rubens#<pr>"] })`.
 - **Close**: see [Closing an issue](#closing-an-issue).
 
