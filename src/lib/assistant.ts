@@ -35,7 +35,7 @@ export const withdrawnReplyNote =
 
 /**
  * The line before an earlier message a person at the practice wrote, from the
- * inbox or Telegram, so the model does not take it for its own: a proposal
+ * inbox, so the model does not take it for its own: a proposal
  * after it restates enough to stand on its own (§ Proposals).
  */
 export const staffReplyNote = "[A person at the practice wrote the next message, not you.]";

@@ -1,8 +1,10 @@
 # ADR-0013: Reception reads every conversation; the clinical record stays with the practitioners
 
-Date: 2026-11-11. Decided by the business owner (#290). Amends
-[ADR-0007](./0007-patients-words-on-telegram.md)'s note on Telegram and the ruling in
-#169 that judges a burst of messages together to hide it.
+Date: 2026-11-11. Decided by the business owner (#290). Amended
+ADR-0007's note on Telegram and the ruling in
+#169 that judges a burst of messages together to hide it. Amended 2026-11-23
+([ADR-0015](./0015-staff-answer-in-the-app-only.md)): what this record says of Telegram
+no longer holds, and conversations are read in the app only.
 
 Until now a patient's WhatsApp message the assistant judged clinical, or had not judged
 yet, was withheld from everyone who is not a practitioner who keeps clinical records: the

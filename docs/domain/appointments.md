@@ -11,8 +11,9 @@ Admins, and each practitioner for their own, manage medical services. A medical
 service in use is deactivated, never deleted.
 
 What a medical service tells patients is for the assistant to answer with
-([assistant.md](./assistant.md)); underthing bills nothing. Its price is the private
-one, with the patient's part per insurer where it differs. It accepts the
+([assistant.md](./assistant.md)); underthing bills nothing. Its price, the
+private one with the patient's part per insurer where it differs, comes after the
+first version. It accepts the
 practitioner's insurers unless it narrows them. Its text for patients says how to
 prepare and what to bring. A medical service can also make a patient's booking
 wait for the practitioner's approval, which is off by default
@@ -66,7 +67,7 @@ booking confirmation goes out. A time the practitioner proposes that the patient
 accepts moves the request and books it, without using up the patient's one move;
 so does the practitioner moving it themselves. Rejection cancels it, by the business, and the
 assistant offers the patient other times. The practitioner is reminded of a
-request still waiting, on Telegram and in the app, partway through the time the
+request still waiting, in the app, partway through the time the
 admin sets and again before it ends. A request nobody answers in that time, or
 by the lead time the admin also sets before the appointment would start,
 whichever comes first, is cancelled the same way, and the patient is told. So a

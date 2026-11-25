@@ -3,11 +3,14 @@
 **Status**: accepted; not built yet. Supersedes the channel decision of
 [ADR-0006](./0006-patient-assistant-on-whatsapp.md) (WAHA on the organization's own
 number) and its pg-boss worker. ADR-0006's sections on the model interpreting and
-Rubens deciding, proposals and TanStack AI stay in force. Amends
-[ADR-0007](./0007-patients-words-on-telegram.md): the app's view becomes a full inbox.
+Rubens deciding, proposals and TanStack AI stay in force. Amended
+ADR-0007 (Telegram, since superseded by [ADR-0015](./0015-staff-answer-in-the-app-only.md)):
+the app's view becomes a full inbox.
 
 Date: 2026-11-06. Decided with the business owner. Amended 2026-11-07: the account is
-on Workers Paid now (ADR-0008), so Workflows run on that plan. The rules it serves are in
+on Workers Paid now (ADR-0008), so Workflows run on that plan. Amended 2026-11-23
+([ADR-0015](./0015-staff-answer-in-the-app-only.md)): what this record says of Telegram no
+longer holds, and a person's reply goes from the app's inbox only. The rules it serves are in
 [assistant.md](../domain/assistant.md) and [messages.md](../domain/messages.md); the
 facts behind it, with sources, are in
 [whatsapp-assistant.md](../research/whatsapp-assistant.md).
@@ -61,6 +64,10 @@ them. The assistant judges every patient message, also while a person holds the
 conversation. Anyone allowed can take a conversation over
 at any time, not only on a handoff. Practitioners keep replying from Telegram
 (ADR-0007); the inbox is no longer only its fallback.
+
+Amended 2026-11-11 ([ADR-0013](./0013-reception-reads-every-conversation.md)): no message
+is hidden by its judgement. Reception and admins read every message of every
+conversation, and a practitioner reads only the conversations handed to them.
 
 ## Considered options
 
