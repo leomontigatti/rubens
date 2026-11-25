@@ -63,7 +63,7 @@ current `main`.
    workerd, then format, lint and typecheck.
 6. **`pnpm check:labels`**: every label a workflow, script or agent doc names in a
    `--label` flag, a workflow condition or a `priority:`/`wayfinder:` name is in
-   `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#labels)).
+   `.github/labels.json` ([issue-tracker.md](../agents/issue-tracker.md#github-issues-during-the-pilot)).
 7. **`pnpm check:comment-language`**: no Spanish engineering prose anywhere in the
    tree ([coding-standards.md](../agents/coding-standards.md#code-language)).
 8. **`pnpm check:file-tokens`**: no source file under `src/` above the

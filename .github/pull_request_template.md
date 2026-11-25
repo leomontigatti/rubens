@@ -10,4 +10,4 @@ Tier: <!-- what `review.py tier` printed, or higher -->, reviewed <!-- short sha
 
 - <!-- axis (model): findings, fixed, declined -->
 
-Closes #
+Closes <!-- #N for a GitHub issue, LEO-N for a Capy issue: docs/agents/issue-tracker.md § Closing an issue -->

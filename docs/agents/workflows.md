@@ -18,7 +18,8 @@ dev database and a human to ask. Three entry points, by how much is still unknow
   into sub-issues, then `/implement-spec <PRD>`. The session runs every unblocked
   sub-issue at once in `implementer` subagents, merges each onto the thread's
   branch, and opens one draft PR for the chain. Details in
-  [issue-tracker.md](./issue-tracker.md#prd-workflow).
+  [issue-tracker.md](./issue-tracker.md#prd-workflow). While the tracker pilot runs, this
+  path files its PRD and tickets on GitHub ([issue-tracker.md](./issue-tracker.md#conventions)).
 - **Foggy** (decisions nobody has made yet): `/wayfinder`. The map's tickets are
   grilling, research, prototype or task. The map ends with one or more PRDs.
 
