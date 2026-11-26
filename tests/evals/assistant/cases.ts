@@ -36,6 +36,12 @@ type HistoryMessage = {
   pauseBefore?: true;
 };
 
+// An argument that must be a local date or date and time (as `from` takes
+// them) strictly later than `instant`: a date reads as the start of its day.
+export class LaterThan {
+  constructor(readonly laterThan: string) {}
+}
+
 // An acceptance names the kind of change it must have applied: the turn's
 // latest proposal when it accepted, not any proposal the turn made.
 export type ExpectedCall =
@@ -572,7 +578,15 @@ export const cases: Case[] = [
     ],
     patient: ["ninguno me sirve"],
     expect: {
-      calls: [{ name: "find_booking_times", args: { medicalService: "Consulta odontológica" } }],
+      calls: [
+        {
+          name: "find_booking_times",
+          args: {
+            medicalService: "Consulta odontológica",
+            from: new LaterThan("2026-11-11T11:00"),
+          },
+        },
+      ],
       forbidden: ["propose_change", "propose_booking", "accept_proposal"],
       handoff: noHandoff,
       judgement: plain,

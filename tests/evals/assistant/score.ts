@@ -4,6 +4,7 @@
 
 import { isDeepStrictEqual } from "node:util";
 
+import { LaterThan } from "./cases.ts";
 import type { Case, ExpectedCall, Told } from "./cases.ts";
 import { numbers } from "./world.ts";
 import type { ToolCall } from "./fake-object.ts";
@@ -52,9 +53,12 @@ function matches(call: ToolCall, expected: ExpectedCall): boolean {
   if (changes.has(call.name) && (call.result as { ok?: boolean }).ok !== true) return false;
   if (expected.name === "accept_proposal")
     return (call.result as { applied: { kind: string } }).applied.kind === expected.accepts;
-  return Object.entries(expected.args ?? {}).every(([key, value]) =>
-    isDeepStrictEqual(call.args[key], value),
-  );
+  return Object.entries(expected.args ?? {}).every(([key, value]) => {
+    const actual = call.args[key];
+    return value instanceof LaterThan
+      ? typeof actual === "string" && actual > value.laterThan
+      : isDeepStrictEqual(actual, value);
+  });
 }
 
 function describeCall(expected: ExpectedCall): string {

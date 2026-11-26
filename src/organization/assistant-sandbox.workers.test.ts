@@ -154,6 +154,18 @@ function toolCalls(played: Awaited<ReturnType<typeof playPatient>>) {
   }));
 }
 
+/** Someone else takes Juan's Monday 5 January at 10:00, for real. */
+async function bookTenForReal() {
+  const other = await world.addPatient("Tomás", "+5493515550002");
+  await world.book({
+    practitionerId: world.juan.practitionerId,
+    patientId: other.id,
+    medicalServiceId,
+    start: at("13:00"),
+    durationMinutes: 30,
+  });
+}
+
 /** Every message the object queued, in any state. */
 function outbox() {
   return inStorage(world.organization, (database) =>
@@ -508,6 +520,80 @@ describe("a sandbox conversation", () => {
       ]),
     });
     expect(await stored()).toEqual(storedBefore);
+  });
+
+  it("goes on once an appointment it booked and cancelled loses its time for real", async () => {
+    const { booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero otro turno el lunes a las 10",
+      {},
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      const newAppointment = bookedAtTen(turn.call("list_patients"));
+      turn.call("propose_change", { appointmentId: newAppointment, kind: "cancel" });
+      turn.call("accept_proposal");
+      return "Listo, cancelé el turno de las 10:00.";
+    });
+    const cancelled = await playPatient(booked.sandbox, "mejor cancelá el de las 10");
+    await bookTenForReal();
+
+    const { played, listed } = await listedAfter(cancelled.sandbox);
+
+    expect(played.turn.replies).toEqual(["Tenés estos turnos."]);
+    expect(listed).toMatchObject({ patients: [{ upcomingAppointments: [{ appointmentId }] }] });
+    expect(played.sandbox.proposals).toMatchObject([
+      { kind: "book", acceptedAt: null, appointmentId: null },
+      { kind: "cancel", acceptedAt: null, appointmentId: null },
+    ]);
+  });
+
+  it("goes on once the first booking of a person it registered, booked again since, loses its time for real", async () => {
+    const { booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero un turno para mi hijo Tomás Ruiz",
+      { newPatientName: { firstName: "Tomás", lastName: "Ruiz" } },
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      const tomas = listing
+        .parse(turn.call("list_patients"))
+        .patients.find((one) => one.firstName === "Tomás");
+      const found = bookingTimes.parse(
+        turn.call("find_booking_times", { medicalService: "Consulta", from: "2099-01-05" }),
+      );
+      const slotId = found.slots.find((one) => one.time === "10:30")?.slotId;
+      turn.call("propose_booking", { patientId: tomas?.patientId, slotId });
+      return "Te reservo otra consulta para Tomás el lunes 5 de enero a las 10:30. Te parece bien?";
+    });
+    const proposed = await playPatient(booked.sandbox, "y otro para Tomás a las 10:30");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      turn.call("accept_proposal");
+      return "Listo, te reservé la consulta.";
+    });
+    const bookedAgain = await playPatient(proposed.sandbox, "sí");
+    await bookTenForReal();
+
+    const { played, listed } = await listedAfter(bookedAgain.sandbox);
+
+    expect(toolCalls(bookedAgain).at(-1)).toMatchObject({ result: { ok: true } });
+    expect(played.turn.replies).toEqual(["Tenés estos turnos."]);
+    expect(listed).toMatchObject({ patients: [{ firstName: "Martina" }] });
+    expect(played.sandbox.proposals).toMatchObject([
+      { kind: "book", acceptedAt: null, appointmentId: null, patientId: null },
+      { kind: "book", acceptedAt: null, appointmentId: null, patientId: null },
+    ]);
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      turn.call("accept_proposal");
+      return "Listo, te reservé la consulta.";
+    });
+    const again = await playPatient(played.sandbox, "sí");
+    expect(toolCalls(again).at(-1)).toMatchObject({
+      name: "accept_proposal",
+      result: { ok: false, reason: "expired" },
+    });
   });
 
   it("no longer holds a move it accepted once the new time is booked for real, and says so", async () => {

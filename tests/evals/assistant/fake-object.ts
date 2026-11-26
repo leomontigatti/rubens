@@ -119,7 +119,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       const offered = slots.filter(
         (slot) =>
           (practitioner === undefined || slot.practitioner === practitioner) &&
-          slot.date >= String(from).slice(0, 10),
+          `${slot.date}T${slot.time}` >= String(from),
       );
       for (const slot of offered) knownTimes.add(slot.time);
       return { ok: true, medicalService, slots: offered, more: false };

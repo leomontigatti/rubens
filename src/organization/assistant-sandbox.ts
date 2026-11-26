@@ -83,6 +83,15 @@ interface ToolCall {
   result: string;
 }
 
+/** The ids an accepted booking minted: its appointment, and the patient it registered. */
+function mintedBy(kept: SandboxState["proposals"][number]) {
+  if (kept.kind !== "book") {
+    return [];
+  }
+  const registered = kept.statement.newPatient === undefined ? null : kept.patientId;
+  return [kept.appointmentId, registered].filter((id) => id !== null);
+}
+
 /** One sandbox turn: its conversation, carried from step to step, and the tool calls it shows. */
 class SandboxRun {
   toolCalls: ToolCall[] = [];
@@ -193,40 +202,60 @@ class SandboxRun {
         })
         .run();
     }
-    // The sandbox's own changes hold in its later steps: made again, by the same
-    // functions, whose rules run again, a booking under the appointment and
-    // patient ids its first acceptance minted, so later steps can act on them.
-    // One they refuse now (its new time was booked meanwhile, its cutoff
-    // passed, reception confirmed it for real) is no longer accepted (#257),
-    // and a booking no longer made names no appointment or registered patient.
-    const accepted = state.proposals.filter((kept) => kept.acceptedAt !== null);
-    const stillMade = new Set(
-      accepted
-        .sort((a, b) => (a.acceptedAt ?? 0) - (b.acceptedAt ?? 0))
-        .filter(
-          (kept) =>
-            applyChange(database, { ...kept, conversationId, updatedAt: kept.createdAt }).ok,
-        )
-        .map((kept) => kept.id),
-    );
-    for (const kept of state.proposals) {
-      const made = stillMade.has(kept.id);
-      const unbooked = !made && kept.kind === "book";
-      database
-        .insert(proposal)
-        .values({
-          ...kept,
-          acceptedAt: made ? kept.acceptedAt : null,
-          ...(unbooked && { appointmentId: null }),
-          ...(unbooked && kept.statement.newPatient !== undefined && { patientId: null }),
-          conversationId,
-        })
-        .run();
-    }
+    this.#replayProposals();
     for (const kept of state.handoffs) {
       database
         .insert(handoff)
         .values({ ...kept, conversationId })
+        .run();
+    }
+  }
+
+  /**
+   * The sandbox's own changes hold in its later steps: made again, by the same
+   * functions, whose rules run again, a booking under the appointment and
+   * patient ids its first acceptance minted, so later steps can act on them.
+   * One they refuse now (its new time was booked meanwhile, its cutoff
+   * passed, reception confirmed it for real) is no longer accepted (#257). A
+   * booking no longer made names no appointment or patient it minted, and a
+   * proposal about one of those is not made either and can no longer be
+   * accepted.
+   */
+  #replayProposals() {
+    const { database, state } = this;
+    const { conversationId } = state;
+    // Each id a booking no longer made had minted, with that booking's proposal.
+    const lost = new Map<string, string>();
+    const strands = (kept: SandboxState["proposals"][number]) =>
+      [kept.appointmentId, kept.patientId].some(
+        (id) => id !== null && lost.has(id) && lost.get(id) !== kept.id,
+      );
+    const stillMade = new Set<string>();
+    const accepted = state.proposals
+      .filter((kept) => kept.acceptedAt !== null)
+      .sort((a, b) => (a.acceptedAt ?? 0) - (b.acceptedAt ?? 0));
+    for (const kept of accepted) {
+      const change = { ...kept, conversationId, updatedAt: kept.createdAt };
+      if (!strands(kept) && applyChange(database, change).ok) {
+        stillMade.add(kept.id);
+        continue;
+      }
+      for (const id of mintedBy(kept)) {
+        lost.set(id, kept.id);
+      }
+    }
+    const unlessLost = (id: string | null) => (id !== null && lost.has(id) ? null : id);
+    for (const kept of state.proposals) {
+      database
+        .insert(proposal)
+        .values({
+          ...kept,
+          acceptedAt: stillMade.has(kept.id) ? kept.acceptedAt : null,
+          appointmentId: unlessLost(kept.appointmentId),
+          patientId: unlessLost(kept.patientId),
+          ...(strands(kept) && { expiresAt: kept.createdAt }),
+          conversationId,
+        })
         .run();
     }
   }

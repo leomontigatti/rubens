@@ -89,6 +89,19 @@ describe("score", () => {
     expect(book({ ...named, firstName: "Anabel" }).toolChoice.pass).toBe(false);
   });
 
+  it("counts another search for times only from later than the last one offered", () => {
+    const searchFrom = (from: string) =>
+      turn("book-none-of-the-times-suits", "Tengo el jueves 12/11 a las 10:00.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+        tools.run("find_booking_times", { medicalService: "Consulta odontológica", from });
+      }).toolChoice.pass;
+
+    expect(searchFrom("2026-11-11")).toBe(false);
+    expect(searchFrom("2026-11-11T11:00")).toBe(false);
+    expect(searchFrom("2026-11-11T11:30")).toBe(true);
+    expect(searchFrom("2026-11-12")).toBe(true);
+  });
+
   it("does not count a booking proposal the object refused", () => {
     const result = turn("book-known-patient-picks-time", "Te reservo el miércoles.", (tools) => {
       tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
