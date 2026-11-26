@@ -166,9 +166,8 @@ In `usted`:
 Sent when staff cancel an appointment, by the business, and when time off, a closure
 or a schedule change leaves it outside working time, unless whoever entered the time
 off or the closure chose not to tell the patients. A reply is routed by the
-appointment's state: for one on the "to reschedule" list the assistant offers times;
-for a cancelled one, until booking arrives in the second release, a reply asking for
-another time is handed off.
+appointment's state: for one on the "to reschedule" list the assistant offers times
+to move it; for a cancelled one, it books a new appointment in its place.
 
 > Hola {{paciente}}! Te escribimos de {{organizacion}} para avisarte que lamentablemente {{profesional}} no va a poder atenderte el {{fecha}} a las {{hora}}. Por favor, escribinos si querés sacar un turno nuevo.
 

@@ -139,9 +139,9 @@ No message timed before the appointment goes while it is on the list, told or
 not. The message
 says what happened and invites a reply: a move asks the patient to confirm the new
 time, and a cancellation or the list asks them to write for a new one. The
-assistant then offers times, except for
-a cancelled appointment: until booking arrives, in the second release, a reply
-asking for another time is handed off.
+assistant then offers times: for an appointment on the list, to move it; for a
+cancelled one, to book a new appointment in its place
+([assistant.md](./assistant.md#for-patients)).
 
 ## When Meta limits the number
 

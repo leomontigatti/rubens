@@ -83,6 +83,14 @@ describe("a handoff's notification", () => {
     );
   });
 
+  it("names the medical service asked for when the assistant could not book it", () => {
+    const asked = { refused: null, applied: [], medicalService: "Ortodoncia" };
+
+    expect(notificationText(withHandoff({ reason: "bookingUnavailable", detail: asked }))).toBe(
+      "Marta Quiroga pide un turno de Ortodoncia, que el asistente no puede dar.",
+    );
+  });
+
   it("tells an admin who got one for the practitioner that nobody keeps clinical records", () => {
     expect(
       notificationText(

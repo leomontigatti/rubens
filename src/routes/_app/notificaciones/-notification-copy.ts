@@ -220,6 +220,11 @@ function handoffWhy(handoff: HandoffFacts, named = false) {
       ? `${who} quiere pasar ${appointment} y falta menos de ${refused.cutoffHours} h.`
       : `${who} quiere pasar ${appointment}, que ya movió una vez.`;
   }
+  const asked = handoff.reason === "bookingUnavailable" ? handoff.detail?.medicalService : null;
+  if (asked) {
+    const subject = handoff.patient && !named ? `${handoff.patient} pide` : "Pide";
+    return `${subject} un turno de ${asked}, que el asistente no puede dar.`;
+  }
   const label = handoffReasonLabel(handoff.reason, handoff.detail?.media);
   return handoff.patient && !named ? `${label}: ${handoff.patient}.` : `${label}.`;
 }
