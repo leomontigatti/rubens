@@ -129,11 +129,18 @@ function dropQueued(tx: Writer, appointmentId: string, kinds: readonly TimingKin
     .run();
 }
 
-/** Queues what the booking of `appointmentId` sends: at once, and before the appointment. */
-export function queueOnBooking(tx: Writer, appointmentId: string) {
+/**
+ * Queues what the booking of `appointmentId` sends: at once, and before the
+ * appointment; only the latter for one booked `inConversation`.
+ */
+export function queueOnBooking(
+  tx: Writer,
+  appointmentId: string,
+  { inConversation }: { inConversation: boolean },
+) {
   const booked = readAppointment(tx, appointmentId);
   if (booked && upcomingStatuses.includes(booked.status)) {
-    queueTimed(tx, booked, bookingTimings);
+    queueTimed(tx, booked, inConversation ? ["before"] : bookingTimings);
   }
 }
 

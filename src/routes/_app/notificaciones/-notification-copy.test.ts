@@ -108,6 +108,7 @@ describe("a cancellation's notification", () => {
       appointment: {
         patient: "Marta Quiroga",
         practitioner: "Juan Prueba",
+        medicalService: "Consulta",
         // Thursday 12 November 2026, 13:00 UTC: 10:00 in Buenos Aires.
         startsAt: Date.UTC(2026, 10, 12, 13, 0),
       },
@@ -115,6 +116,27 @@ describe("a cancellation's notification", () => {
 
     expect(notificationTitle(cancelled)).toBe(
       "Marta Quiroga canceló su turno del jueves 12/11 10:00 con Juan Prueba",
+    );
+  });
+});
+
+describe("a booking's notification", () => {
+  it("names the patient, the medical service, and the day and time in the practice's zone", () => {
+    const booked: NotificationFacts = {
+      ...facts,
+      kind: "appointmentBooked",
+      handoff: null,
+      appointment: {
+        patient: "Marta Quiroga",
+        practitioner: "Juan Prueba",
+        medicalService: "Consulta",
+        // Thursday 12 November 2026, 13:00 UTC: 10:00 in Buenos Aires.
+        startsAt: Date.UTC(2026, 10, 12, 13, 0),
+      },
+    };
+
+    expect(notificationTitle(booked)).toBe(
+      "Marta Quiroga sacó un turno de Consulta con vos para el jueves 12/11 10:00",
     );
   });
 });

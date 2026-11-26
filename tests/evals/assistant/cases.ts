@@ -15,6 +15,7 @@ export type ToolName =
   | "find_booking_times"
   | "find_free_times"
   | "propose_change"
+  | "propose_booking"
   | "accept_proposal"
   | "hand_off"
   | "judge_messages";
@@ -39,7 +40,7 @@ type HistoryMessage = {
 // latest proposal when it accepted, not any proposal the turn made.
 export type ExpectedCall =
   | { name: Exclude<ToolName, "accept_proposal">; args?: Record<string, unknown> }
-  | { name: "accept_proposal"; accepts: Proposal["kind"] };
+  | { name: "accept_proposal"; accepts: Proposal["kind"] | "book" };
 
 export type Expectation = {
   // Every one of these must be called, with at least these arguments.
@@ -89,7 +90,7 @@ export type Case = {
   pauseBefore?: true;
   // A proposal already stated in the history and still live.
   liveProposal?: Proposal;
-  // The accepted time was taken meanwhile: accepting a move fails.
+  // The accepted time was taken meanwhile: accepting a move or a booking fails.
   slotTaken?: boolean;
   // The conversation's open handoffs, which the prompt tells the model of.
   openHandoffs?: OpenHandoffReason[];

@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { tapConfirmedReply } from "#/lib/assistant.ts";
+import { tapConfirmedReply } from "#/lib/assistant-replies.ts";
 import { readButtonPayload, tapLine } from "#/lib/button-payloads.ts";
 
 import { changeAppointmentStatus } from "#/organization/appointment-changes.ts";

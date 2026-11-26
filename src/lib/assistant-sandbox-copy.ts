@@ -45,6 +45,7 @@ export const proposalKindLabels: Record<ProposalKind, string> = {
   confirm: "Confirmar",
   cancel: "Cancelar",
   move: "Mover",
+  book: "Reservar",
 };
 
 export function proposalStatement(statement: Record<string, string>) {

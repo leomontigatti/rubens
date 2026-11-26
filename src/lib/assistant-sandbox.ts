@@ -32,10 +32,15 @@ const sandboxMessageSchema = z.object({
 
 const sandboxProposalSchema = z.object({
   id,
-  appointmentId: id,
+  appointmentId: id.nullable(),
   kind: z.enum(proposalKinds),
   statement: z.record(z.string().max(64), z.string().max(400)),
+  patientId: id.nullable(),
+  medicalServiceId: id.nullable(),
+  practitionerId: id.nullable(),
+  roomId: id.nullable(),
   startsAt: instant.nullable(),
+  endsAt: instant.nullable(),
   expiresAt: instant,
   acceptedAt: instant.nullable(),
   createdAt: instant,

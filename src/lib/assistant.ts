@@ -146,6 +146,14 @@ export const assistantToolSchemas = {
       slotId: z.string().optional().describe("For a move: the slotId find_free_times returned"),
     }),
   },
+  propose_booking: {
+    description:
+      "Stores a proposal to book a new appointment for one of the number's patients, at a time find_booking_times returned, and returns what it stores, with that patient's other appointments that day. It replaces any earlier proposal. Nothing is booked until accept_proposal.",
+    inputSchema: z.object({
+      patientId: z.string().describe("The patientId list_patients returned"),
+      slotId: z.string().describe("The slotId find_booking_times returned"),
+    }),
+  },
   accept_proposal: {
     description:
       "Applies the conversation's latest proposal, once the patient said yes to it. Can fail, for example when it expired, the appointment already started or the time was taken.",
@@ -204,24 +212,13 @@ export interface PromptContext {
   openHandoffs: HandoffReason[];
 }
 
-/**
- * What the patient is told when they ask again about what a person already
- * has: underthing sends it, after the model's reply. Fixed, so the model's
- * wording cannot leave it out.
- */
-export function alreadyHandedOffReply(formOfAddress: FormOfAddress): string {
-  return formOfAddress === "usted"
-    ? "Ya se lo pasé, le va a responder por acá."
-    : "Ya se lo pasé, te va a responder por acá.";
-}
-
 function openHandoffRule(context: PromptContext) {
   if (context.openHandoffs.length === 0) {
     return [];
   }
   const topics = [...new Set(context.openHandoffs.map((reason) => handoffTopics[reason]))];
   return [
-    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, when and where). Judge only the new messages: what the patient wrote about that topic before them is not judged again. Do not answer that topic yourself and do not hand it off again. When the patient asks about it, underthing tells them a person has it: your reply says nothing of it, and with nothing else to say, it is empty.`,
+    `A person at the practice already has this conversation, about: ${topics.join("; ")}. Keep answering the new requests you can handle (confirming, cancelling, moving, booking, when and where). Judge only the new messages: what the patient wrote about that topic before them is not judged again. Do not answer that topic yourself and do not hand it off again. When the patient asks about it, underthing tells them a person has it: your reply says nothing of it, and with nothing else to say, it is empty.`,
   ];
 }
 
@@ -230,6 +227,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "- Say when and with whom an appointment is, and where the practice is.",
     "- Say which medical services the practice offers and which practitioners offer each (list_medical_services).",
     "- Confirm, cancel or move an appointment, through a proposal.",
+    "- Book a new appointment at a time find_booking_times offers, through a proposal (propose_booking).",
     "- Hand the conversation to a person at the practice (hand_off).",
   ];
   const rules = [
@@ -240,14 +238,15 @@ export function assistantSystemPrompt(context: PromptContext): string {
     'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); a health question (clinical); an emergency (emergency). Pass the appointmentId when it is about one appointment. Do what you can of the rest in the same turn, such as confirming. A person answers what you hand off, and underthing sends the patient its own message about it, or none: your reply says nothing of what you hand off. Do not answer it, do not tell the patient you passed it on or why a rule refused it, never ask whether they want a person (hand off instead), and never send them to another professional ("consultá con tu odontólogo"). If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00".',
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
-    'Changes go through propose_change, then accept_proposal: you change nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A proposal stated in an earlier message is still stored, however briefly it was worded: on a yes to it, call accept_proposal alone, without proposing it again. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',
+    'Changes go through propose_change, and a new appointment through propose_booking, then accept_proposal: you change or book nothing any other way. An explicit request is its own acceptance: "sí, voy" to a reminder that asks to confirm, or "cancelalo", is proposed and accepted in the same turn. accept_proposal accepts the latest proposal only. A proposal stated in an earlier message is still stored, however briefly it was worded: on a yes to it, call accept_proposal alone, without proposing it again. A bare "sí" with nothing before it to answer is not a confirmation: ask what they mean.',
     'A line such as "[reaccionó 👍 al mensaje: «…»]" is the patient reacting to that message. 👍 or ✅ (in any skin tone) is their yes, as "sí" is, when it reacts to the message it answers or is a message of its own holding only that emoji, right after it: to your latest proposal, accept_proposal; to a reminder from the practice that asks them to confirm, only while no message from the practice or from you came after it and the appointment is not confirmed yet, propose the confirmation and accept it in the same turn, as for "sí, voy". A reaction to any other message (an older reminder, one that does not ask to confirm, a reminder of an appointment already confirmed), or with any other emoji, asks for nothing: propose and accept nothing, and answer in a few words.',
     '"No voy a poder" and similar are ambiguous: ask one plain question, whether to cancel or to move the appointment. Do not propose anything yet.',
     "If accept_proposal fails, say plainly that the change was not made.",
-    "Free times come only from find_free_times. When the patient wants another time, including in answer to a message from the practice that moved their appointment or asks them to pick another time, call find_free_times and offer some of its times.",
-    "When the patient picks a free time, propose the move and ask them to confirm it; accept it only on their yes in a later message.",
+    "Free times come only from find_free_times, to move an appointment, and from find_booking_times, for a new one. When the patient wants another time, including in answer to a message from the practice that moved their appointment or asks them to pick another time, call find_free_times and offer some of its times.",
+    "When the patient picks a free time, propose the move or the booking and ask them to confirm it; accept it only on their yes in a later message.",
+    'A proposal of a new appointment names the medical service, the practitioner, the day and the time, as in "Te reservo la consulta con Juan Gómez el martes 24 a las 10:30. Te parece bien?". When propose_booking returns alreadyBooked, say in the same message that the patient already has those appointments that day, before asking them to confirm.',
     `A proposal reads as a person's reply, not a form: name only what changes. For a move, that is the new day and time, as in "Perfecto, te lo paso al martes 24 a las 10:30. Te parece bien?". Do not repeat the practitioner, the medical service or the appointment's current day and time: the stored proposal holds them. But the patient's yes must never accept something they were not shown, so always: (a) state it in full (the medical service or practitioner, the appointment's current day and time, and the new day and time) when the conversation has not said which appointment it is, or when a line "${longPauseNote}", or a message a person at the practice wrote (it follows the line "${staffReplyNote}"), comes after the last message from you, or automated one from the practice such as a reminder (not one a person wrote), that named the appointment or offered its times; (b) name the appointment's current day and time when the patient has several upcoming appointments and the conversation is not only about one; (c) name the patient when the number stands for several patients. Those note lines are underthing's, not messages: they never stand between a message and the one right after it.`,
-    "If accepting fails because the time was taken, say so and offer other times from find_free_times.",
+    "If accepting fails because the time was taken, say so and offer other times from find_free_times, or from find_booking_times for a new appointment.",
     "If find_free_times or a move refuses it (past the cutoff, or the one move already used), do not offer times and do not explain the refusal: call hand_off with reason rule_refused.",
     "Never give clinical advice, never say whether a symptom is normal, never suggest a medicine or a treatment. Hand a health question off instead.",
     "If asked whether you are a bot or a person, say plainly that you are the practice's automated assistant. Do not say so unprompted.",
@@ -256,7 +255,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     ...openHandoffRule(context),
   ];
   const tone = context.tone ? `\nThe practice describes its tone as: ${context.tone}\n` : "";
-  return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina, at ${context.address}. You answer patients about appointments they already have and about the practice's medical services.
+  return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina, at ${context.address}. You help patients with the appointments they already have, book new ones, and answer about the practice's medical services.
 
 Now: ${formatPromptNow(context.now, practiceTimeZone)} (${practiceTimeZone}). Write in Argentine Spanish, addressing the patient as "${context.formOfAddress}", short and warm, as the practice's receptionist would. No emojis, no opening "¿" or "¡". At most three short paragraphs. Do not sign off.
 ${tone}
@@ -265,63 +264,6 @@ ${capabilities.join("\n")}
 
 Rules you always keep:
 ${rules.map((rule, index) => `${index + 1}. ${rule}`).join("\n")}`;
-}
-
-/**
- * What the patient is told when they ask the practice to stop writing: that
- * the team is told, since a person turns their WhatsApp consent off. Fixed,
- * so it promises nothing the model wrote.
- */
-export function optOutReply(formOfAddress: FormOfAddress): string {
-  return formOfAddress === "usted"
-    ? "Entendido. Le avisamos al equipo para que no le enviemos más mensajes por WhatsApp."
-    : "Entendido. Le avisamos al equipo para que no te enviemos más mensajes por WhatsApp.";
-}
-
-export function tapConfirmedReply(formOfAddress: FormOfAddress): string {
-  return formOfAddress === "usted" ? "Genial, muchas gracias!" : "Genial, te esperamos!";
-}
-
-/**
- * What the patient is told of a voice note that could not be understood: a
- * request to write it. Fixed, since the assistant's model never read the note.
- */
-export function unintelligibleVoiceReply(formOfAddress: FormOfAddress): string {
-  return formOfAddress === "usted"
-    ? "Perdón, no pudimos entender su nota de voz. Escríbanos lo que necesita, por favor."
-    : "Perdón, no pudimos entender tu nota de voz. Escribinos lo que necesitás, por favor.";
-}
-
-/**
- * What the patient is told when the assistant hands the conversation to the
- * practitioner: to `practitioner`, the appointment's, by the name patients
- * read, or to the practitioner when no appointment names one. Fixed, so a
- * handoff's reply says nothing the model wrote. Any other handoff tells the
- * patient nothing.
- */
-export function practitionerHandoffReply(
-  formOfAddress: FormOfAddress,
-  practitioner: string | null,
-): string {
-  const consultation = formOfAddress === "usted" ? "su consulta" : "tu consulta";
-  return `Le paso ${consultation} ${practitioner ? `a ${practitioner}` : "al profesional"}.`;
-}
-
-const emergencyNumber = "107";
-
-/**
- * What the patient is told on a message judged an emergency: the emergency
- * number, the organization's phone when it has one (`formattedPhone`, as
- * patients dial it) and that the team is told. Fixed, so an emergency is never
- * answered with words the model wrote.
- */
-export function emergencyReply(formOfAddress: FormOfAddress, formattedPhone: string): string {
-  const usted = formOfAddress === "usted";
-  const call = `Si es una urgencia, ${usted ? "llame" : "llamá"} ahora al ${emergencyNumber} (emergencias).`;
-  const phone = formattedPhone
-    ? ` También ${usted ? "puede" : "podés"} llamarnos al ${formattedPhone}.`
-    : "";
-  return `${call}${phone} Ya le pasamos ${usted ? "su" : "tu"} mensaje a una persona del equipo.`;
 }
 
 export const clinicalCheckSchema = z.object({

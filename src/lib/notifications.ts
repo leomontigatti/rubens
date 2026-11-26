@@ -23,6 +23,8 @@ export const notificationKinds = [
   "optOutReminder",
   /** A patient cancelled an appointment through the assistant: its time is free. */
   "appointmentCancelled",
+  /** The assistant booked an appointment with the practitioner in a conversation. */
+  "appointmentBooked",
 ] as const;
 
 export type NotificationKind = (typeof notificationKinds)[number];

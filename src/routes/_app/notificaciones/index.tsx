@@ -35,7 +35,9 @@ import {
 // resolved once someone decided; and cancellations a
 // patient made through the assistant, which go to reception and the admins
 // and link to the appointment's week on the agenda, cancelled ones shown,
-// where its free time is given to another patient.
+// where its free time is given to another patient; and bookings the
+// assistant made, which go to the appointment's practitioner and link to its
+// week on the agenda.
 
 export const Route = createFileRoute("/_app/notificaciones/")({
   head: () => ({ meta: [{ title: "Notificaciones · underthing" }] }),
@@ -160,7 +162,7 @@ function NotificationRow(props: {
 /**
  * Where a notification is acted on: the conversation handed off or not
  * delivered to, with the handoff contacts when no practitioner could take
- * it, the cancelled appointment's week, the opt-out's message, or for one
+ * it, the cancelled or booked appointment's week, the opt-out's message, or for one
  * kept from before, the patient to turn off, the template, or the WhatsApp
  * settings.
  */
@@ -191,7 +193,14 @@ function NotificationLink({ notification }: { notification: Notification }) {
         size="sm"
         nativeButton={false}
         render={
-          <Link to="/agenda" search={{ consultorio: roomId, fecha: date, cancelados: true }} />
+          <Link
+            to="/agenda"
+            search={{
+              consultorio: roomId,
+              fecha: date,
+              cancelados: notification.kind === "appointmentCancelled" ? true : undefined,
+            }}
+          />
         }
       >
         Ver en la agenda

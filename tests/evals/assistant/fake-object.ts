@@ -6,6 +6,9 @@ import { bookingSlots, medicalServices, numbers, type Appointment, type Slot } f
 
 export type ToolCall = { name: ToolName; args: Record<string, unknown>; result: object };
 
+// A booking proposal: the patient and a time find_booking_times offered.
+type Booking = { kind: "book"; patientId: string; slotId: string };
+
 export type FakeObject = {
   run(name: ToolName, args: Record<string, unknown>): object;
   calls: ToolCall[];
@@ -18,7 +21,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
   const appointments = patients.flatMap((patient) => patient.appointments);
   const calls: ToolCall[] = [];
   const knownTimes = new Set<string>();
-  let latest: Proposal | undefined = evaluationCase.liveProposal;
+  let latest: Proposal | Booking | undefined = evaluationCase.liveProposal;
   let proposals = 0;
 
   const appointment = (id: unknown): Appointment | undefined =>
@@ -32,6 +35,22 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       practitioner: target.practitioner,
       from: { date: target.date, time: target.time },
       to: slot ? { date: slot.date, time: slot.time } : undefined,
+    };
+  };
+
+  const bookingSlot = (slotId: unknown) =>
+    Object.entries(bookingSlots)
+      .flatMap(([service, slots]) => slots.map((slot) => ({ service, ...slot })))
+      .find((slot) => slot.slotId === slotId);
+
+  const describeBooking = (booking: Booking) => {
+    const slot = bookingSlot(booking.slotId);
+    return {
+      kind: booking.kind,
+      medicalService: slot?.service,
+      practitioner: slot?.practitioner,
+      date: slot?.date,
+      time: slot?.time,
     };
   };
 
@@ -100,10 +119,28 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       latest = { kind, appointmentId: target.appointmentId, slotId: args.slotId as string };
       return { ok: true, proposalId: `prop-${proposals}`, proposal: describe(latest, target) };
     },
+    propose_booking: ({ patientId, slotId }) => {
+      const patient = patients.find((each) => each.patientId === patientId);
+      if (!patient) return { ok: false, reason: "notFound" };
+      const slot = bookingSlot(slotId);
+      if (!slot) return { ok: false, reason: "notFree" };
+      knownTimes.add(slot.time);
+      latest = { kind: "book", patientId: patient.patientId, slotId: slot.slotId };
+      const alreadyBooked = patient.appointments
+        .filter((each) => each.date === slot.date && each.status !== "cancelled_by_organization")
+        .map((each) => ({
+          date: each.date,
+          time: each.time,
+          practitioner: each.practitioner,
+          overlaps: each.time === slot.time,
+        }));
+      return { ok: true, proposal: describeBooking(latest), alreadyBooked };
+    },
     accept_proposal: () => {
       if (!latest) return { ok: false, reason: "no_live_proposal" };
-      if (latest.kind === "move" && evaluationCase.slotTaken)
+      if ((latest.kind === "move" || latest.kind === "book") && evaluationCase.slotTaken)
         return { ok: false, reason: "slot_taken" };
+      if (latest.kind === "book") return { ok: true, applied: describeBooking(latest) };
       const target = appointment(latest.appointmentId);
       return target
         ? { ok: true, applied: describe(latest, target) }

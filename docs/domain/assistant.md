@@ -320,12 +320,13 @@ What the patient is told:
 - **An emergency**: the emergency reply above.
 
 While a handoff is open the assistant stays in the conversation. It answers the
-new requests it can handle (confirming, cancelling, moving, when and where), told
+new requests it can handle (confirming, cancelling, moving, booking, when and where), told
 what the open handoff is about, and does not answer that topic again: asked
 about it, the patient gets `Ya se lo pasé, te va a responder por acá.`, fixed
-and after the assistant's reply to anything else in the same turn; a number with
-nothing booked, of no patient or misunderstood is handed off whatever it writes,
-so it never gets it. A second handoff
+and after the assistant's reply to anything else in the same turn; a number of
+no patient or misunderstood is handed off whatever it writes, so it never gets
+it. A patient with nothing booked is not handed off for it: the assistant books
+for them. A second handoff
 of the kind already open, to the practitioner or to reception, is not opened. It
 stays silent while a person holds the conversation.
 

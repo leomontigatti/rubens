@@ -187,7 +187,10 @@ record, so a failed external delivery loses nothing.
 A cancellation the patient makes through the assistant notifies reception and the admins,
 so they can give the freed time to another patient: it names the patient, the appointment's
 day and time and its practitioner, and links to the appointment's week on the agenda. Undoing
-the cancellation withdraws it. A patient's confirmation notifies nobody, since nobody acts on it.
+the cancellation withdraws it. A booking the assistant makes in the conversation notifies the
+appointment's practitioner: it names the patient, the medical service and the day and time, and
+links to the appointment's week on the agenda. A patient's confirmation notifies nobody, since
+nobody acts on it.
 
 Every message, to patients or staff, is queued in the same transaction that
 changes the appointment.

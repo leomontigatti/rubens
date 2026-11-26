@@ -139,7 +139,7 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
 /**
  * What underthing hands off without the model asking: a health question, a
  * move a rule refused, a photo or a file, a second misunderstanding (a voice
- * note nobody could understand counts as one), nothing booked. A health
+ * note nobody could understand counts as one), a number of no patient. A health
  * question that goes to reception gives way to a refusal or a photo, which
  * reception reads it beside. An opt-out from a number of patients is
  * answered, not handed off, unless it is a health question too.
@@ -166,12 +166,12 @@ export const unansweredReasons = [
   "misunderstoodTwice",
   "voiceUnintelligible",
   "unknownNumber",
-  "noUpcomingAppointment",
 ] as const satisfies HandoffWanted["reason"][];
 
 /**
  * Why a turn that needs no practitioner and was not refused is handed off, if it is: a
- * second misunderstanding, a number of no patient, nothing booked. An opt-out
+ * second misunderstanding, a number of no patient. A patient with nothing
+ * booked is answered: the assistant books for them. An opt-out
  * reaching here comes from a number that reaches nobody now, its contact moved
  * while the model ran, so there is no consent to turn off.
  */
@@ -180,10 +180,7 @@ function unansweredReason(turn: TurnToSort): (typeof unansweredReasons)[number] 
   if (!judgement.understood && turn.read.misunderstandings >= 1) {
     return turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";
   }
-  if (turn.read.patients.length === 0 || judgement.optOut) {
-    return "unknownNumber";
-  }
-  return turn.appointments.length === 0 ? "noUpcomingAppointment" : null;
+  return turn.read.patients.length === 0 || judgement.optOut ? "unknownNumber" : null;
 }
 
 /**

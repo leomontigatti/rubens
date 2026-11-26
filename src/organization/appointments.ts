@@ -110,10 +110,10 @@ function checkVisit(
 function placeNew<Kind extends NewPlacement["kind"]>(
   database: Database,
   acting: Acting,
-  input: Visit & { practitionerId: string; confirmWarnings: boolean },
+  input: Visit & { practitionerId: string; confirmWarnings: boolean; inConversation: boolean },
   placement: Extract<NewPlacement, { kind: Kind }>,
 ): BookingResultOf<Kind> {
-  const { practitionerId, confirmWarnings, ...visit } = input;
+  const { practitionerId, confirmWarnings, inConversation, ...visit } = input;
   return database.transaction((tx): BookingResultOf<Kind> => {
     const found = findBookablePractitioner(tx, acting, practitionerId);
     if (!found.ok) {
@@ -139,7 +139,7 @@ function placeNew<Kind extends NewPlacement["kind"]>(
       .values({ ...fields, startsAt: +span.start, endsAt: +span.end, createdBy: acting.userId })
       .returning({ id: appointment.id })
       .get();
-    queueOnBooking(tx, created.id);
+    queueOnBooking(tx, created.id, { inConversation });
     recordAudit(tx, acting.userId, {
       action: "create",
       entityType: "appointment",
@@ -165,11 +165,14 @@ const spanOf = (start: Date, durationMinutes: number): TimeRange => ({
 /**
  * Books the patient at a free start of the practitioner's, for the duration.
  * The patient's other appointments that day warn until `confirmWarnings`.
+ * One the assistant books `inConversation` queues no template sent at
+ * booking: its reply there confirms it.
  */
 export function bookAppointment(
   database: Database,
   acting: Acting,
   input: BookingInput & WarningConfirmation,
+  { inConversation = false } = {},
 ): BookingResultOf<"freeStart"> {
   const parsed = bookingInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -179,7 +182,7 @@ export function bookAppointment(
   return placeNew(
     database,
     acting,
-    { ...visit, confirmWarnings: input.confirmWarnings === true },
+    { ...visit, confirmWarnings: input.confirmWarnings === true, inConversation },
     { kind: "freeStart", span: spanOf(start, durationMinutes) },
   );
 }
@@ -204,7 +207,7 @@ export function bookOverbooking(
   return placeNew(
     database,
     acting,
-    { ...visit, confirmWarnings: input.confirmWarnings === true },
+    { ...visit, confirmWarnings: input.confirmWarnings === true, inConversation: false },
     { kind: "overbooking", span: spanOf(start, durationMinutes), pickedRoomId: roomId },
   );
 }

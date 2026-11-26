@@ -382,14 +382,19 @@ describe("a number with nothing booked to talk about", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
-  it("hands off a patient with no upcoming appointment, named in its notification", async () => {
+  it("names the patient with no upcoming appointment in the notification of a handoff about none", async () => {
     await contactsAre(world.lucia.caller);
     await world.addPatient("Martina", martinaPhone);
-    await writes("quiero sacar un turno");
+    await writes("quiero hablar con alguien");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      one.call("hand_off", { reason: "patient_asked" });
+      return "";
+    });
 
     await turn();
 
-    expect((await openHandoffs())[0]).toMatchObject({ reason: "noUpcomingAppointment" });
+    expect((await openHandoffs())[0]).toMatchObject({ reason: "patientAsked" });
     expect(await handoffPatients(world.lucia.caller)).toEqual(["Martina Paz"]);
   });
 
@@ -397,7 +402,12 @@ describe("a number with nothing booked to talk about", () => {
     await contactsAre(world.lucia.caller);
     await world.addPatient("Martina", martinaPhone);
     await siblingOfMartina();
-    await writes("quiero sacar un turno");
+    await writes("quiero hablar con alguien");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      one.call("hand_off", { reason: "patient_asked" });
+      return "";
+    });
 
     await turn();
 
@@ -642,10 +652,7 @@ describe("answering a follow-up", () => {
 
     await turn();
 
-    expect((await openHandoffs())[0]).toMatchObject({
-      reason: "noUpcomingAppointment",
-      forPractitioner: false,
-    });
+    expect(await openHandoffs()).toEqual([]);
   });
 
   it("hands a clinical message after the first answer to the follow-up's practitioner", async () => {

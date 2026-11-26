@@ -28,7 +28,14 @@ import {
   templateStatuses,
 } from "#/lib/whatsapp-templates.ts";
 
-import { appointment, medicalService, member, patient } from "#/organization/schema.ts";
+import {
+  appointment,
+  medicalService,
+  member,
+  patient,
+  practitioner,
+  room,
+} from "#/organization/schema.ts";
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
 
 // The organization object's WhatsApp tables (ADR-0010), beside the rest of its
@@ -450,8 +457,9 @@ export const handoffRecipient = sqliteTable(
 /**
  * A change the assistant proposed to the patient, every fact of it (`src/lib/proposals.ts`):
  * only the conversation's latest can be accepted, once, before it expires.
- * Accepting runs the appointment's own change functions. The patient's own
- * moves of an appointment are its accepted moves.
+ * Accepting runs the appointment's own change functions, or for a booking the
+ * app's own booking. The patient's own moves of an appointment are its
+ * accepted moves.
  */
 export const proposal = sqliteTable(
   "proposal",
@@ -460,14 +468,20 @@ export const proposal = sqliteTable(
     conversationId: text("conversation_id")
       .notNull()
       .references(() => conversation.id),
-    appointmentId: text("appointment_id")
-      .notNull()
-      .references(() => appointment.id),
+    /** The appointment it changes; none for a booking. */
+    appointmentId: text("appointment_id").references(() => appointment.id),
     kind: text("kind", { enum: proposalKinds }).notNull(),
     /** What the patient was told: the change and the appointment's facts, compared again on the yes. */
     statement: text("statement", { mode: "json" }).$type<Record<string, string>>().notNull(),
-    /** A move's new start, one find_free_times offered; none for another kind. */
+    /** A booking's patient, medical service, practitioner and room; none for another kind. */
+    patientId: text("patient_id").references(() => patient.id),
+    medicalServiceId: text("medical_service_id").references(() => medicalService.id),
+    practitionerId: text("practitioner_id").references(() => practitioner.id),
+    roomId: text("room_id").references(() => room.id),
+    /** A move's new start, one find_free_times offered, or a booking's, one find_booking_times offered; none for another kind. */
     startsAt: instant("starts_at"),
+    /** A booking's end; none for another kind. */
+    endsAt: instant("ends_at"),
     expiresAt: instant("expires_at").notNull(),
     /** When its change was made; none while it waits for its yes, or when it failed. */
     acceptedAt: instant("accepted_at"),
