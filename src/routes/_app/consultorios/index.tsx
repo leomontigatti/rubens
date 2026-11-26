@@ -17,8 +17,9 @@ import type { Office, Room } from "#/organization/offices.ts";
 import { useRoomDialog } from "#/routes/_app/consultorios/-room-form.tsx";
 import { RefusedPage } from "#/routes/_app/consultorios/-shared.tsx";
 
-// The organization's rooms are the page, and its one office is the line under
-// the title, edited from `Acciones` (LEO-6's prototype pass, variant C).
+// The organization's rooms are the page, and its one office's address is the
+// line under the title, with the office edited from `Acciones` (LEO-6's
+// prototype pass, variant C).
 
 export const Route = createFileRoute("/_app/consultorios/")({
   validateSearch: z.object({
@@ -79,12 +80,12 @@ function EditRooms(props: { office: Office; rooms: Room[]; onlyInactive: boolean
   );
 }
 
-/** The page's title, with the office's name and address under it. */
+/** The page's title, with where the rooms are under it. */
 function RoomsHeader(props: { office: Office; actions?: ReactNode }) {
   return (
     <PageHeader
       title="Consultorios"
-      description={`${props.office.name}, ${props.office.address}.`}
+      description={`Los consultorios donde se atiende, en ${props.office.address}.`}
       actions={props.actions}
     />
   );
