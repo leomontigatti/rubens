@@ -17,9 +17,8 @@ import type { Office, Room } from "#/organization/offices.ts";
 import { useRoomDialog } from "#/routes/_app/consultorios/-room-form.tsx";
 import { RefusedPage } from "#/routes/_app/consultorios/-shared.tsx";
 
-// The organization's rooms are the page, and its one office's address is the
-// line under the title, with the office edited from `Acciones` (LEO-6's
-// prototype pass, variant C).
+// The organization's rooms are the page, with its one office edited from
+// `Acciones` (LEO-6's prototype pass, variant C).
 
 export const Route = createFileRoute("/_app/consultorios/")({
   validateSearch: z.object({
@@ -41,7 +40,7 @@ function Rooms() {
   if (!viewer.roles.includes("admin")) {
     return (
       <div className="flex flex-col gap-6">
-        <RoomsHeader office={result.office} />
+        <RoomsHeader />
         <RoomTable rooms={result.rooms} onlyInactive={result.onlyInactive} />
       </div>
     );
@@ -57,7 +56,6 @@ function EditRooms(props: { office: Office; rooms: Room[]; onlyInactive: boolean
   return (
     <div className="flex flex-col gap-6">
       <RoomsHeader
-        office={props.office}
         actions={
           <>
             <ActionsMenu disabled={false}>
@@ -80,12 +78,12 @@ function EditRooms(props: { office: Office; rooms: Room[]; onlyInactive: boolean
   );
 }
 
-/** The page's title, with where the rooms are under it. */
-function RoomsHeader(props: { office: Office; actions?: ReactNode }) {
+/** The page's title and the line under it. */
+function RoomsHeader(props: { actions?: ReactNode }) {
   return (
     <PageHeader
       title="Consultorios"
-      description={`Los consultorios donde se atiende, en ${props.office.address}.`}
+      description="Los consultorios donde se atiende."
       actions={props.actions}
     />
   );

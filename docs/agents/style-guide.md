@@ -71,9 +71,8 @@ add beyond them reads as generated and buries the rest.
   `description` says what Page shell and Form pages give it to say, never the title again or an
   order to manage it: `Obras sociales` /
   `Las coberturas que se pueden cargar en cada paciente.`, never `Administrá las obras sociales
-  de la organización.` A list page whose rows all belong to one record adds where that record is:
-  `Consultorios` / `Los consultorios donde se atiende, en <domicilio>.`, the office's. A section, a card or a menu item gets no line of its own unless it carries a
-  fact.
+  de la organización.` A section, a card or a menu item gets no line of its own unless it
+  carries a fact.
 - **No text narrates the screen or how it was built**: no `Hacé clic en el botón para empezar`,
   `Esta tabla muestra los turnos`, `(se actualiza en tiempo real)`. An instruction earns its place
   only where the user would otherwise get it wrong: a field's rule (`Código de área sin 0 y
