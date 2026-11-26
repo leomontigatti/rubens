@@ -8,7 +8,9 @@ import { reactionType } from "#/lib/reactions.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 import { assistantSystemPrompt, assistantToolSchemas } from "#/lib/assistant.ts";
 
+import { bookableMedicalServices } from "#/organization/assistant-information.ts";
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
+import { findBookingTimes } from "#/organization/booking-times.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import type { AssistantModel, AssistantTool, ToolResult } from "#/organization/assistant-model.ts";
 import { recordModelUsage } from "#/organization/assistant-usage.ts";
@@ -73,6 +75,8 @@ interface Recorded {
   ruleRefused: string | null;
   /** Why, as the handoff's notification says it. */
   refusal: HandoffDetail["refused"];
+  /** The medical service find_booking_times refused to book, which underthing hands off. */
+  bookingUnavailable: string | null;
   /** The changes the turn's accepted proposals made. */
   applied: HandoffDetail["applied"];
   /** The model stored a proposal, which its reply states. */
@@ -131,6 +135,28 @@ function turnTools(
             address: found.address,
           },
         };
+      },
+    },
+    {
+      name: "list_medical_services",
+      run: () => ({ medicalServices: bookableMedicalServices(database) }),
+    },
+    {
+      name: "find_booking_times",
+      run: (args) => {
+        const found = findBookingTimes(database, args);
+        const asked = assistantToolSchemas.find_booking_times.inputSchema.safeParse(args);
+        // A practitioner named who does not offer it is no reason: the practice may.
+        const unbookable =
+          !found.ok &&
+          found.reason !== "invalidInput" &&
+          !(found.reason === "notFound" && asked.data?.practitioner !== undefined);
+        if (found.ok) {
+          recorded.bookingUnavailable = null;
+        } else if (unbookable && asked.success) {
+          recorded.bookingUnavailable = asked.data.medicalService;
+        }
+        return found;
       },
     },
     {
@@ -198,6 +224,7 @@ export async function judgeTurn(
     handOff: null,
     ruleRefused: null,
     refusal: null,
+    bookingUnavailable: null,
     applied: [],
     proposed: false,
   };
@@ -236,6 +263,7 @@ export async function judgeTurn(
     handOff: recorded.handOff,
     ruleRefused: recorded.ruleRefused,
     refusal: recorded.refusal,
+    bookingUnavailable: recorded.bookingUnavailable,
     applied: recorded.applied,
     proposed: recorded.proposed,
     rules,
@@ -434,10 +462,12 @@ async function judgeWithoutMedia(
       emergency: false,
       understood: true,
       optOut: false,
+      booking: false,
     };
     const rules = currentCommunicationRules(database);
     const nothingElse = {
       ...{ reply: "", handOff: null, ruleRefused: null, refusal: null, applied: [] },
+      bookingUnavailable: null,
       ...{ proposed: false, rules },
     };
     const onlyMedia = {

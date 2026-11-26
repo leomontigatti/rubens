@@ -20,11 +20,8 @@ import type {
   TemplateReviewRequest,
 } from "#/lib/whatsapp-templates.ts";
 
-import {
-  listSandboxScenarios,
-  runSandboxTurn,
-  startSandbox,
-} from "#/organization/assistant-sandbox.ts";
+import { runSandboxTurn } from "#/organization/assistant-sandbox.ts";
+import { listSandboxScenarios, startSandbox } from "#/organization/assistant-sandbox-scenarios.ts";
 import type { SandboxTurnsRunning } from "#/organization/assistant-sandbox.ts";
 import { saveCommunicationRules } from "#/organization/communication-rules.ts";
 import { openMessageMedia } from "#/organization/conversation-media.ts";

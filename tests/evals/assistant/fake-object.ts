@@ -1,10 +1,27 @@
 // The organization object as the assistant's tools see it, scripted from a case:
 // every tool answers from world.ts, and nothing is written anywhere.
 
+import { assistantToolSchemas } from "#/lib/assistant.ts";
+
 import type { Case, HandoffReason, Proposal, ToolName } from "./cases.ts";
-import { numbers, type Appointment, type Slot } from "./world.ts";
+import {
+  bookingSlots,
+  medicalServices,
+  numbers,
+  whatsappBookingOff,
+  type Appointment,
+  type Patient,
+  type Slot,
+} from "./world.ts";
+
+const newPatientNameSchema =
+  assistantToolSchemas.propose_booking.inputSchema.shape.newPatientName.unwrap();
 
 export type ToolCall = { name: ToolName; args: Record<string, unknown>; result: object };
+
+// A booking proposal: the patient, or the name of a person the practice does
+// not know, and a time find_booking_times offered.
+type Booking = { kind: "book"; patientId: string | null; newPatient?: string; slotId: string };
 
 export type FakeObject = {
   run(name: ToolName, args: Record<string, unknown>): object;
@@ -14,12 +31,14 @@ export type FakeObject = {
 };
 
 export function fakeObject(evaluationCase: Case): FakeObject {
-  const patients = numbers[evaluationCase.number];
+  const patients: Patient[] = numbers[evaluationCase.number];
   const appointments = patients.flatMap((patient) => patient.appointments);
   const calls: ToolCall[] = [];
   const knownTimes = new Set<string>();
-  let latest: Proposal | undefined = evaluationCase.liveProposal;
+  let latest: Proposal | Booking | undefined = evaluationCase.liveProposal;
   let proposals = 0;
+  // The turn stored a proposal: a booking it made the patient has not read yet.
+  let proposedThisTurn = false;
 
   const appointment = (id: unknown): Appointment | undefined =>
     appointments.find((each) => each.appointmentId === id);
@@ -33,6 +52,37 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       from: { date: target.date, time: target.time },
       to: slot ? { date: slot.date, time: slot.time } : undefined,
     };
+  };
+
+  const bookingSlot = (slotId: unknown) =>
+    Object.entries(bookingSlots)
+      .flatMap(([service, slots]) => slots.map((slot) => ({ service, ...slot })))
+      .find((slot) => slot.slotId === slotId);
+
+  const describeBooking = (booking: Booking) => {
+    const slot = bookingSlot(booking.slotId);
+    return {
+      kind: booking.kind,
+      medicalService: slot?.service,
+      practitioner: slot?.practitioner,
+      date: slot?.date,
+      time: slot?.time,
+      ...(booking.newPatient && { newPatient: booking.newPatient }),
+    };
+  };
+
+  // Who a booking is for, as propose_booking settles it.
+  const bookedFor = ({ patientId, newPatientName }: Record<string, unknown>) => {
+    const named = newPatientNameSchema.safeParse(newPatientName);
+    if (named.success) {
+      const { firstName, lastName } = named.data;
+      return { ok: true, patientId: null, newPatient: `${firstName} ${lastName}` };
+    }
+    const chosen = patientId ?? (patients.length === 1 ? patients[0]?.patientId : undefined);
+    if (chosen === undefined)
+      return { ok: false, reason: patients.length === 0 ? "nameNeeded" : "patientNotChosen" };
+    const patient = patients.find((each) => each.patientId === chosen);
+    return patient ? { ok: true, patientId: patient.patientId } : { ok: false, reason: "notFound" };
   };
 
   const handlers: Record<ToolName, (args: Record<string, unknown>) => object> = {
@@ -60,11 +110,23 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       const { freeSlots: _slots, moveRefusal: _refusal, ...details } = found;
       return { ok: true, appointment: details };
     },
+    list_medical_services: () => ({ medicalServices }),
+    find_booking_times: ({ medicalService, practitioner, from }) => {
+      if (whatsappBookingOff.includes(String(medicalService)))
+        return { ok: false, reason: "whatsappBookingOff" };
+      const slots = bookingSlots[String(medicalService)];
+      if (!slots) return { ok: false, reason: "notFound" };
+      const offered = slots.filter(
+        (slot) =>
+          (practitioner === undefined || slot.practitioner === practitioner) &&
+          `${slot.date}T${slot.time}` >= String(from),
+      );
+      for (const slot of offered) knownTimes.add(slot.time);
+      return { ok: true, medicalService, slots: offered, more: false };
+    },
     find_free_times: ({ appointmentId }) => {
       const found = appointment(appointmentId);
       if (!found) return { ok: false, reason: "not_found" };
-      if (found.status === "cancelled_by_organization")
-        return { ok: false, reason: "cancelled_by_organization" };
       if (found.moveRefusal) return { ok: false, reason: found.moveRefusal };
       const offered = evaluationCase.slotTaken
         ? found.freeSlots.filter((slot) => slot.slotId !== latest?.slotId)
@@ -82,16 +144,37 @@ export function fakeObject(evaluationCase: Case): FakeObject {
         if (!slot) return { ok: false, reason: "unknown_slot" };
         knownTimes.add(slot.time);
       }
-      if (target.status === "cancelled_by_organization")
-        return { ok: false, reason: "cancelled_by_organization" };
       proposals += 1;
+      proposedThisTurn = true;
       latest = { kind, appointmentId: target.appointmentId, slotId: args.slotId as string };
       return { ok: true, proposalId: `prop-${proposals}`, proposal: describe(latest, target) };
     },
+    propose_booking: (args) => {
+      const forWhom = bookedFor(args);
+      if (!forWhom.ok) return { ok: false, reason: forWhom.reason };
+      const slot = bookingSlot(args.slotId);
+      if (!slot) return { ok: false, reason: "notFree" };
+      knownTimes.add(slot.time);
+      const { patientId = null, newPatient } = forWhom;
+      proposedThisTurn = true;
+      latest = { kind: "book", patientId, newPatient, slotId: slot.slotId };
+      const patient = patients.find((each) => each.patientId === patientId);
+      const alreadyBooked = (patient?.appointments ?? [])
+        .filter((each) => each.date === slot.date)
+        .map((each) => ({
+          date: each.date,
+          time: each.time,
+          practitioner: each.practitioner,
+          overlaps: each.time === slot.time,
+        }));
+      return { ok: true, proposal: describeBooking(latest), alreadyBooked };
+    },
     accept_proposal: () => {
       if (!latest) return { ok: false, reason: "no_live_proposal" };
-      if (latest.kind === "move" && evaluationCase.slotTaken)
+      if (latest.kind === "book" && proposedThisTurn) return { ok: false, reason: "not_shown_yet" };
+      if ((latest.kind === "move" || latest.kind === "book") && evaluationCase.slotTaken)
         return { ok: false, reason: "slot_taken" };
+      if (latest.kind === "book") return { ok: true, applied: describeBooking(latest) };
       const target = appointment(latest.appointmentId);
       return target
         ? { ok: true, applied: describe(latest, target) }

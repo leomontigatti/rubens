@@ -166,7 +166,7 @@ function localDay(instant: Date): TimeRange {
  * The patient's active appointments on the local day of `span`, as warnings,
  * but for `excludeId`, the one being rescheduled.
  */
-function findPatientWarnings(
+export function findPatientWarnings(
   writer: Writer,
   patientId: string,
   span: TimeRange,

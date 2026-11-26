@@ -27,6 +27,8 @@ export interface TurnToSort {
   ruleRefused: string | null;
   /** Why, as the handoff's notification says it. */
   refusal: HandoffDetail["refused"];
+  /** The medical service find_booking_times refused to book, as the model asked for it. */
+  bookingUnavailable: string | null;
   /** The changes the turn's accepted proposals made, which that notification names too. */
   applied: HandoffDetail["applied"];
   /** The patients whose messages go to the number as the turn settles: a contact may change while the model runs. */
@@ -39,7 +41,7 @@ export interface TurnToSort {
 
 const modelReasons = {
   patient_asked: "patientAsked",
-  organization_cancelled: "organizationCancelled",
+  booking_unavailable: "bookingUnavailable",
   rule_refused: "ruleRefused",
   clinical: "clinical",
   emergency: "emergency",
@@ -102,10 +104,16 @@ function healthHandoff(turn: TurnToSort, appointmentId: string | null): HandoffW
     : { reason: "unmatchedHealthQuestion", forPractitioner: false, appointmentId };
 }
 
-/** A move a rule refused, or a photo or a file: reception's, which a health question gives way to. */
+/**
+ * A move a rule refused, a booking find_booking_times refused, or a photo or
+ * a file: reception's, which a health question gives way to.
+ */
 function receptionReason(turn: TurnToSort): HandoffWanted | null {
   if (turn.ruleRefused) {
     return { reason: "ruleRefused", forPractitioner: false, appointmentId: turn.ruleRefused };
+  }
+  if (turn.bookingUnavailable) {
+    return { reason: "bookingUnavailable", forPractitioner: false, appointmentId: null };
   }
   if (turn.media?.length) {
     return { reason: "media", forPractitioner: false, appointmentId: null };
@@ -138,8 +146,8 @@ function modelHandoff(turn: TurnToSort, handOff: HandOffCall): HandoffWanted {
 
 /**
  * What underthing hands off without the model asking: a health question, a
- * move a rule refused, a photo or a file, a second misunderstanding (a voice
- * note nobody could understand counts as one), nothing booked. A health
+ * move a rule refused, a booking find_booking_times refused, a photo or a file, a second misunderstanding (a voice
+ * note nobody could understand counts as one), a number of no patient. A health
  * question that goes to reception gives way to a refusal or a photo, which
  * reception reads it beside. An opt-out from a number of patients is
  * answered, not handed off, unless it is a health question too.
@@ -166,12 +174,13 @@ export const unansweredReasons = [
   "misunderstoodTwice",
   "voiceUnintelligible",
   "unknownNumber",
-  "noUpcomingAppointment",
 ] as const satisfies HandoffWanted["reason"][];
 
 /**
  * Why a turn that needs no practitioner and was not refused is handed off, if it is: a
- * second misunderstanding, a number of no patient, nothing booked. An opt-out
+ * second misunderstanding, a number of no patient that is not booking. A
+ * patient with nothing booked is answered, and so is a number of no patient
+ * asking for an appointment: the assistant books for them. An opt-out
  * reaching here comes from a number that reaches nobody now, its contact moved
  * while the model ran, so there is no consent to turn off.
  */
@@ -180,10 +189,8 @@ function unansweredReason(turn: TurnToSort): (typeof unansweredReasons)[number] 
   if (!judgement.understood && turn.read.misunderstandings >= 1) {
     return turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";
   }
-  if (turn.read.patients.length === 0 || judgement.optOut) {
-    return "unknownNumber";
-  }
-  return turn.appointments.length === 0 ? "noUpcomingAppointment" : null;
+  const unknown = turn.read.patients.length === 0 && !judgement.booking;
+  return unknown || judgement.optOut ? "unknownNumber" : null;
 }
 
 /**
@@ -210,11 +217,23 @@ export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
   );
 }
 
-/** What the handoff's notification and label say of the turn: a refused move, its own changes, the media sent. */
+/**
+ * What the handoff's notification and label say of the turn: a refused move,
+ * its own changes, the media sent, the medical service it could not book.
+ */
 function detailOf(turn: TurnToSort, wanted: HandoffWanted): HandoffDetail | null {
   const media = wanted.reason === "media" ? [...new Set(turn.media)] : [];
-  if (!turn.refusal && turn.applied.length === 0 && media.length === 0) {
+  const medicalService =
+    wanted.reason === "bookingUnavailable"
+      ? (turn.handOff?.medicalService ?? turn.bookingUnavailable)
+      : null;
+  if (!turn.refusal && turn.applied.length === 0 && media.length === 0 && !medicalService) {
     return null;
   }
-  return { refused: turn.refusal, applied: turn.applied, ...(media.length > 0 && { media }) };
+  return {
+    refused: turn.refusal,
+    applied: turn.applied,
+    ...(media.length > 0 && { media }),
+    ...(medicalService && { medicalService }),
+  };
 }

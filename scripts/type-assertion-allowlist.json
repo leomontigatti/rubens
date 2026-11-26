@@ -43,7 +43,7 @@
     "tests/evals/assistant/provider.ts": 1,
     "tests/evals/assistant/report.ts": 2,
     "tests/evals/assistant/run.ts": 2,
-    "tests/evals/assistant/score.ts": 6,
+    "tests/evals/assistant/score.ts": 5,
     "tests/evals/assistant/summary.ts": 1,
     "tests/evals/assistant/tools.ts": 2,
     "tests/evals/assistant/voice/run.ts": 4,

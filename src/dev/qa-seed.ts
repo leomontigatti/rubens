@@ -134,6 +134,7 @@ async function createMedicalServices(
         name: fields.name,
         durationMinutes: fields.durationMinutes,
         practitionerId: practitionerIds[fields.practitioner],
+        whatsappBooking: fields.whatsappBooking,
       }),
     );
     created[key as keyof typeof qaMedicalServices] = {

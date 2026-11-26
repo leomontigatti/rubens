@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { tapConfirmedReply } from "#/lib/assistant.ts";
+import { tapConfirmedReply } from "#/lib/assistant-replies.ts";
 import { readButtonPayload, tapLine } from "#/lib/button-payloads.ts";
 
 import { changeAppointmentStatus } from "#/organization/appointment-changes.ts";
@@ -10,7 +10,7 @@ import { currentCommunicationRules } from "#/organization/communication-rules.ts
 import type { Database } from "#/organization/database.ts";
 import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import { hasRepliesBehind } from "#/organization/reopen-replies.ts";
-import { assistantActing } from "#/organization/proposals.ts";
+import { assistantActing } from "#/organization/proposal-store.ts";
 import { reach } from "#/organization/sending.ts";
 import { isToReschedule } from "#/organization/to-reschedule.ts";
 import { sendReply } from "#/organization/turn-replies.ts";

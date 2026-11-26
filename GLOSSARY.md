@@ -98,7 +98,7 @@ outside their `schedule`s. Only staff book one, and patients never see one.
 _Avoid_: double booking, extra appointment
 
 **`appointmentStatus`** — ui: "Estado"
-Where an `appointment` stands: `requested` ("Solicitado"), `booked` ("Reservado"), `confirmed` ("Confirmado"),
+Where an `appointment` stands: `booked` ("Reservado"), `confirmed` ("Confirmado"),
 `checkedIn` ("En sala"), `attended` ("Atendido"), `noShow` ("Ausente") or
 `cancelled` ("Cancelado").
 _Avoid_: pending, done, missed, arrived

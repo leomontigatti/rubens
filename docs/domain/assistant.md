@@ -37,23 +37,33 @@ In the first release:
   until then ([patients.md](./patients.md#whatsapp-consent)). It is not a
   handoff, unless the reply is a health question too, or the number reaches no
   patient by the time the turn settles.
+- **Booking** a new appointment, for the patient or for a person the practice
+  does not know yet: an active medical service patients
+  can book by WhatsApp, with any practitioner who offers it or the one the patient
+  names, at a time from availability up to 60 days ahead. The assistant asks for
+  the medical service when the patient does not say it, for a preferred day
+  and time before offering any, and, when several practitioners offer it and
+  the patient names none, whether they prefer one; then it offers the few
+  nearest to it, and `ninguno me sirve` gets others, from later than the last
+  one offered. Overbookings are never offered. A medical service with its
+  switch off, or one the practice does not offer, is handed to reception
+  ([appointments.md](./appointments.md#medical-services)). The booking is a
+  proposal the patient accepts ([Proposals](#proposals)), made under the rules of
+  a staff booking, and the assistant's reply confirms it, so it gets no booking
+  template ([messages.md](./messages.md#the-organizations-templates)).
+- **Information**: which medical services the practice offers and who offers
+  each, by the name patients read. It lists the active medical services patients
+  can book by WhatsApp ([appointments.md](./appointments.md)), of active
+  practitioners, and answers only from the organization's data. Prices, what a
+  patient pays and the insurers are not in the first release: asked about them,
+  it says it does not know and hands the conversation to a person.
 
 In the second release:
 
-- **Information.** Medical services, their duration and price, the insurers each
-  practitioner accepts, which practitioner works when (from their schedules: the
-  practice has no opening hours), and
-  availability. It answers only from the organization's data. What the data does
-  not say, it does not guess: it says it does not know and offers a person.
-- **Booking.** A patient can book any active medical service of any practitioner,
-  at a time from availability. The assistant asks for a preferred day and time
-  before offering any, and offers the few nearest to it. Overbookings are never
-  offered. A medical service that requires approval books a request instead
-  ([appointments.md](./appointments.md#requests)). An unknown number can book: the
-  patient is registered as incomplete, with the name they give and the number, and
-  their WhatsApp consent recorded as given to the assistant. The assistant's reply
-  confirms the booking, so it gets no booking template
-  ([messages.md](./messages.md#the-organizations-templates)).
+- **More information.** Each medical service's duration and price, the insurers
+  each practitioner accepts, and which practitioner works when (from their
+  schedules: the practice has no opening hours). What the data does not say, it
+  does not guess: it says it does not know and offers a person.
 
 Patients write in their own words. The assistant's replies carry no buttons; only a
 template's quick replies do, and a tap the code does not settle reaches the
@@ -72,7 +82,12 @@ replies in text only, never with a voice note.
 The patient is identified by the WhatsApp number. A number is the contact of
 every patient whose messages go to it, the patient's own or a guardian's
 ([patients.md](./patients.md#guardians)), so it can stand for several patients;
-the assistant asks which one before acting. The assistant never tells a number
+the assistant asks which one before acting, and a booking for no chosen one is
+refused. A number that stands for nobody books once it gives a name, and a known
+number can book for a person the practice does not know: either is registered
+as an incomplete patient with that number, their WhatsApp consent given to the
+assistant ([patients.md](./patients.md#registering)). A number of no patient is
+otherwise handed off. The assistant never tells a number
 anything about a patient who is not theirs, and never anything clinical.
 
 Each turn judges only what it can see, and underthing decides who answers. The
@@ -134,7 +149,9 @@ it is made, or when the conversation window closes, whichever comes first. Accep
 rules, so it can still fail, for example when the time was taken meanwhile; the
 assistant then says so and offers others.
 
-An explicit request is its own acceptance: `cancelalo`, `sí, voy`. An ambiguous
+An explicit request is its own acceptance: `cancelalo`, `sí, voy`. A booking is
+not: it is accepted only in a later turn than the one that proposed it, so the
+yes accepts what the patient read. An ambiguous
 one gets one plain question back: `no voy a poder` is asked whether to cancel or
 to move the appointment.
 
@@ -251,8 +268,8 @@ The assistant hands a conversation to a person when:
 
 - the patient asks for one, or to be contacted;
 - a rule refuses what the patient wants (past the cutoff, the one move used);
-- the patient wants a new time for an appointment the organization cancelled,
-  until booking arrives in the second release;
+- the patient asks to book a medical service patients cannot book by WhatsApp, or
+  one the practice does not offer, without being told why;
 - the patient asks a health question ([above](#for-patients)), or a follow-up's
   answer is not plainly good;
 - it has misunderstood the patient twice in a row;
@@ -288,7 +305,8 @@ contact can neither be removed nor deactivated, as the last admin
 
 A handoff's notification says why, so its reader can answer without reading the
 conversation back: `Marta Quiroga quiere pasar el turno del jueves 10:00 y falta
-menos de 24 h`, and what the same turn did anyway, such as another appointment it
+menos de 24 h`, or `Marta Quiroga pide un turno de Ortodoncia, que el asistente no
+puede dar`, and what the same turn did anyway, such as another appointment it
 moved. That reason, in the app and in the notification, never quotes the patient;
 the patient's own words are in the inbox. The
 person replies in the app, and the reply reaches the patient on
@@ -315,12 +333,13 @@ What the patient is told:
 - **An emergency**: the emergency reply above.
 
 While a handoff is open the assistant stays in the conversation. It answers the
-new requests it can handle (confirming, cancelling, moving, when and where), told
+new requests it can handle (confirming, cancelling, moving, booking, when and where), told
 what the open handoff is about, and does not answer that topic again: asked
 about it, the patient gets `Ya se lo pasé, te va a responder por acá.`, fixed
-and after the assistant's reply to anything else in the same turn; a number with
-nothing booked, of no patient or misunderstood is handed off whatever it writes,
-so it never gets it. A second handoff
+and after the assistant's reply to anything else in the same turn; a number of
+no patient that is not booking, or misunderstood, is handed off whatever it
+writes, so it never gets it. A patient with nothing booked is not handed off for it: the assistant books
+for them. A second handoff
 of the kind already open, to the practitioner or to reception, is not opened. It
 stays silent while a person holds the conversation.
 
@@ -418,7 +437,10 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
   version beside the one in use, each by the day it was sent, the older ones on
   demand.
 - **Sandbox** (first release): staff play the patient against the real assistant,
-  with its real tools and the real agenda, starting from a scenario. It shows what
+  with its real tools and the real agenda, starting from a scenario, booking
+  included: a person the practice does not know is registered only inside the
+  turn, and a later turn can move, cancel or book again what an earlier one
+  booked. It shows what
   the turn did, the proposals, whether the clinical or code checks would hold a reply, and for whom, the
   window's countdown and the number of messages. It runs the organization's real
   object methods with their writes discarded (the conversation lives in the page,

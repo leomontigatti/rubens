@@ -21,6 +21,7 @@ const newMedicalService: MedicalServiceFields = {
   durationMinutes: 30,
   templateIds: [],
   rescheduleCutoffHours: 24,
+  whatsappBooking: true,
 };
 
 function NewMedicalService() {

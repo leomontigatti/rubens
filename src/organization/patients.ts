@@ -329,10 +329,12 @@ function conversationOf(database: Database, acting: Acting, found: { id: string;
   return row?.id ?? null;
 }
 
+/** `patientId` is the id the sandbox keeps for a patient it registers again on each step (`assistant-sandbox.ts`). */
 export function registerPatient(
   database: Database,
   acting: Acting,
   input: PatientInput & DuplicateConfirmation,
+  { patientId }: { patientId?: string } = {},
 ): Result<{ patient: Patient }> | DuplicateRefusal {
   const parsed = patientInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -348,6 +350,7 @@ export function registerPatient(
     const created = tx
       .insert(patient)
       .values({
+        ...(patientId && { id: patientId }),
         ...parsed.data,
         searchName: searchNameOf(parsed.data),
         whatsappConsentAt: Date.now(),

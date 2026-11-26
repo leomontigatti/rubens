@@ -41,10 +41,11 @@ export interface NotificationFacts {
   messageId: string | null;
   /** Whether what it asked for was done: an opt-out decided. */
   resolved: boolean;
-  /** The appointment an `appointmentCancelled` notification is about, by its patient's and practitioner's names. */
+  /** The appointment an `appointmentCancelled` or `appointmentBooked` notification is about, by its patient's, practitioner's and medical service's names. */
   appointment: {
     patient: string;
     practitioner: string;
+    medicalService: string;
     startsAt: number;
   } | null;
 }
@@ -88,6 +89,7 @@ const fixedTexts = {
     "WhatsApp no pudo entregarla, y queda como No entregado en la conversación. Si respondía una derivación, la derivación volvió a quedar abierta.",
   appointmentCancelled:
     "Lo canceló por WhatsApp con el asistente. Mirá en la agenda si podés darle el horario a otro paciente.",
+  appointmentBooked: "Lo reservó por WhatsApp con el asistente.",
 } satisfies Partial<Record<NotificationKind, string>>;
 
 const hasFixedText = (kind: NotificationKind): kind is keyof typeof fixedTexts =>
@@ -115,6 +117,7 @@ const titles: Partial<Record<NotificationKind, Title>> = {
   optOutReminder: ({ patient }) =>
     `Falta decidir si ${patient?.name ?? "un paciente"} sigue recibiendo mensajes de WhatsApp`,
   appointmentCancelled: ({ appointment }) => cancelledTitle(appointment),
+  appointmentBooked: ({ appointment }) => bookedTitle(appointment),
   handoffReminder: ({ handoff }) =>
     handoff?.patient
       ? `${handoff.patient} sigue esperando respuesta`
@@ -173,18 +176,35 @@ function optOutText(facts: NotificationFacts) {
     : "Sus recordatorios y avisos quedan en espera hasta que alguien decida, debajo de su mensaje en la conversación: Dejar de enviar o Seguir enviando.";
 }
 
+function shortWhen(startsAt: number) {
+  return `${formatShortDay(startsAt, practiceTimeZone)} ${formatTime(startsAt, practiceTimeZone)}`;
+}
+
 function cancelledTitle(appointment: NotificationFacts["appointment"]) {
   if (!appointment) {
     return "Un paciente canceló su turno";
   }
   const { patient, practitioner, startsAt } = appointment;
-  const when = `${formatShortDay(startsAt, practiceTimeZone)} ${formatTime(startsAt, practiceTimeZone)}`;
-  return `${patient} canceló su turno del ${when} con ${practitioner}`;
+  return `${patient} canceló su turno del ${shortWhen(startsAt)} con ${practitioner}`;
+}
+
+/** The booking's title, for its practitioner: whose, of which medical service and when. */
+function bookedTitle(appointment: NotificationFacts["appointment"]) {
+  if (!appointment) {
+    return "Un paciente sacó un turno con vos";
+  }
+  const { patient, medicalService, startsAt } = appointment;
+  return `${patient} sacó un turno de ${medicalService} con vos para el ${shortWhen(startsAt)}`;
 }
 
 type HandoffFacts = NonNullable<NotificationFacts["handoff"]>;
 
-const appliedVerbs = { confirm: "confirmó", cancel: "canceló", move: "pasó" } as const;
+const appliedVerbs = {
+  confirm: "confirmó",
+  cancel: "canceló",
+  move: "pasó",
+  book: "reservó",
+} as const;
 
 /**
  * Why the conversation was handed off, so its reader answers without reading
@@ -199,6 +219,11 @@ function handoffWhy(handoff: HandoffFacts, named = false) {
     return refused.why === "pastCutoff"
       ? `${who} quiere pasar ${appointment} y falta menos de ${refused.cutoffHours} h.`
       : `${who} quiere pasar ${appointment}, que ya movió una vez.`;
+  }
+  const asked = handoff.reason === "bookingUnavailable" ? handoff.detail?.medicalService : null;
+  if (asked) {
+    const subject = handoff.patient && !named ? `${handoff.patient} pide` : "Pide";
+    return `${subject} un turno de ${asked}, que el asistente no puede dar.`;
   }
   const label = handoffReasonLabel(handoff.reason, handoff.detail?.media);
   return handoff.patient && !named ? `${label}: ${handoff.patient}.` : `${label}.`;

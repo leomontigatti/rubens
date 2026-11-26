@@ -274,8 +274,13 @@ describe("a handoff about no appointment on a number siblings share", () => {
         memberIds: [world.juan.caller.userId],
       }),
     );
-    await patientWrites(world.organization, "quiero sacar un turno", martinaPhone);
+    await patientWrites(world.organization, "quiero hablar con alguien", martinaPhone);
     const closesAt = Date.now() + 24 * hourMs;
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: false, emergency: false });
+      one.call("hand_off", { reason: "patient_asked" });
+      return "";
+    });
     await afterTheWait(world.organization);
 
     await alarmAt(closesAt - 4 * hourMs);
@@ -285,6 +290,6 @@ describe("a handoff about no appointment on a number siblings share", () => {
       listed.notifications
         .filter((one) => one.kind === "handoffReminder")
         .map((one) => ({ reason: one.handoff?.reason, patient: one.handoff?.patient })),
-    ).toEqual([{ reason: "noUpcomingAppointment", patient: null }]);
+    ).toEqual([{ reason: "patientAsked", patient: null }]);
   });
 });

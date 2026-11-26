@@ -16,6 +16,15 @@ filled in at the first visit; the birth date is what completes the record,
 because it says whether the patient is a minor. Forcing every field up front
 only gets invented data.
 
+The assistant registers a patient too, when it books for a person the practice
+does not know: one writing from a number that stands for no patient, or one a
+known number books for, such as a new sibling
+([assistant.md](./assistant.md#for-patients)). The patient is registered
+incomplete, with the name given and that number as their phone, so their
+messages go to it, in the transaction that books: a refused booking registers
+nobody. The duplicate check runs as for anyone, and only a matching document
+blocks, which the assistant never has.
+
 A patient's first and last names, and a guardian's name, are saved in Spanish
 title case whatever case they were typed in, so a name reads the same on every
 screen and message: `juan DE LA cruz` is saved as `Juan de la Cruz`. The particles
@@ -110,7 +119,8 @@ guardian without requiring one: a teenager may book for themselves.
 WhatsApp consent is on from registration. The patient gave the number and agreed
 to WhatsApp contact, and that agreement can be collected in any form: the
 registration form, or reception telling the patient that reminders come by
-WhatsApp. The consent records when and by whom the patient was registered.
+WhatsApp. The consent records when and by whom the patient was registered; a
+patient the assistant registered shows it as given to the assistant.
 
 Opting out is the exception, not part of the flow, and messages offer no way to
 unsubscribe. A patient who asks to stop, by any channel, is turned off by

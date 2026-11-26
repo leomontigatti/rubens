@@ -20,6 +20,7 @@ const fieldMessages: Record<keyof MedicalServiceFields | "practitionerId", strin
   durationMinutes: "Elegí la duración.",
   templateIds: "Elegí plantillas de la lista.",
   rescheduleCutoffHours: "Elegí hasta cuándo se puede reprogramar.",
+  whatsappBooking: "Elegí si se puede pedir por WhatsApp.",
 };
 
 const fieldsSchema = medicalServiceInputSchema.omit({ practitionerId: true });
@@ -51,6 +52,7 @@ export function MedicalServiceForm(props: {
       durationMinutes: String(initial.durationMinutes),
       templateIds: initial.templateIds ?? [],
       rescheduleCutoffHours: String(cutoffHours),
+      whatsappBooking: initial.whatsappBooking ?? true,
     },
     onSubmit: async ({ value }) => {
       const fields = fieldsSchema.safeParse({
@@ -107,6 +109,15 @@ export function MedicalServiceForm(props: {
             startsRow
             required
             options={cutoffChoices(cutoffHours)}
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="whatsappBooking">
+        {(field) => (
+          <field.CheckboxField
+            label="Los pacientes la pueden pedir por WhatsApp"
+            size="half"
+            startsRow
           />
         )}
       </form.AppField>

@@ -8,6 +8,7 @@ const handoffReasonLabels: Record<HandoffReason, string> = {
   patientAsked: "Pidió hablar con una persona",
   ruleRefused: "Pidió un cambio que las reglas no permiten",
   organizationCancelled: "Pide otro horario para un turno que cancelamos",
+  bookingUnavailable: "Pide un turno que el asistente no puede dar",
   clinical: "Consulta para el profesional",
   emergency: "Posible urgencia",
   followUpAnswer: "Respuesta al seguimiento",

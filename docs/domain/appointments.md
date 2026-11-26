@@ -7,6 +7,11 @@ the booking can change, which of the organization's templates its appointments
 get ([messages.md](./messages.md#the-organizations-templates)), and how late the
 patient may reschedule.
 
+A medical service also says whether patients can book it by WhatsApp, on by
+default and set by whoever may edit it. One switched off, for a visit that needs
+a person's judgement, is handed to reception when a patient asks the assistant
+for it ([assistant.md](./assistant.md)).
+
 Admins, and each practitioner for their own, manage medical services. A medical
 service in use is deactivated, never deleted.
 
@@ -15,9 +20,7 @@ What a medical service tells patients is for the assistant to answer with
 private one with the patient's part per insurer where it differs, comes after the
 first version. It accepts the
 practitioner's insurers unless it narrows them. Its text for patients says how to
-prepare and what to bring. A medical service can also make a patient's booking
-wait for the practitioner's approval, which is off by default
-([Requests](#requests)).
+prepare and what to bring.
 
 Appointments are booked one at a time. A series, such as monthly orthodontic
 check-ups, is booked one appointment after the other.
@@ -54,41 +57,22 @@ it. Clinical information goes in the
 clinical record, and the form says so; without a note field, such notes end up in
 the patient's name.
 
-## Requests
+## Booking by WhatsApp
 
 A patient books by WhatsApp, through the assistant, from the same availability
-staff see. When the medical service needs the practitioner's approval, the
-booking is a request: it holds its time like any appointment, so nobody else
-takes it while the practitioner decides. It counts as active for every overlap
-rule, the database's included. Only the practitioner approves it, rejects it, or proposes another time. Approval books it, and the
-booking confirmation goes out. A time the practitioner proposes that the patient
-accepts moves the request and books it, without using up the patient's one move;
-so does the practitioner moving it themselves. Rejection cancels it, by the business, and the
-assistant offers the patient other times. The practitioner is reminded of a
-request still waiting, in the app, partway through the time the
-admin sets and again before it ends. A request nobody answers in that time, or
-by the lead time the admin also sets before the appointment would start,
-whichever comes first, is cancelled the same way, and the patient is told. So a
-request never reaches its start time, and no way of moving or booking a request
-(the assistant, the staff picker) offers a time inside that
-lead time.
-
-A request on the "to reschedule" list, whatever sent it there, cannot be approved
-while it is on it. Moving it, by the patient or by other staff, keeps it a request
-for the practitioner to decide, and its answer time starts again.
-
-Staff bookings never need approval.
+staff see and under the rules of a staff booking
+([assistant.md](./assistant.md#for-patients)). No booking waits for the
+practitioner's approval in the first version: requests that hold their time
+until the practitioner approves, rejects or moves them come after it.
 
 ## Statuses
 
 ```
-requested ──► booked ──► confirmed ──► checkedIn ──► attended
-    │            │           │
-    │            └───────────┴──► noShow | cancelled
-    └──► cancelled
+booked ──► confirmed ──► checkedIn ──► attended
+   │           │
+   └───────────┴──► noShow | cancelled
 ```
 
-- **Requested**: a patient's booking waiting for approval. It is never a no-show.
 - **Confirmed**: the patient confirmed, from a reminder or by phone to reception.
 - **Checked in**: reception marked the patient as arrived.
 - **Attended**: marked by the practitioner or reception. From booked or confirmed,
@@ -111,8 +95,8 @@ log keeps the previous values; it is not a cancellation plus a new appointment.
 Staff reschedule through the free-times picker; there is no drag and drop in the
 first version.
 
-The "to reschedule" list is computed, never stored: every future requested, booked
-or confirmed appointment that now falls outside working time, outside the
+The "to reschedule" list is computed, never stored: every future booked or
+confirmed appointment that now falls outside working time, outside the
 practitioner's schedules or inside their time off or a closure. An appointment
 leaves it when it is moved or cancelled. Overbookings are left out, being outside
 working time on purpose. Reception sees the list with a count in the menu.
@@ -124,13 +108,13 @@ that sends none saves without asking. The count is taken again on saving: when i
 changed meanwhile, because someone booked or moved an appointment, the question
 comes back with the new number instead of saving.
 
-Deactivating a practitioner or a patient sends every future requested, booked or
+Deactivating a practitioner or a patient sends every future booked or
 confirmed appointment of theirs to the list, overbookings included, and the admin is told first
 how many that adds. Rescheduling keeps the practitioner and the patient, so such
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 
-Deactivating a room sends every future requested, booked or confirmed appointment
+Deactivating a room sends every future booked or confirmed appointment
 in it to the list, overbookings included: the calendar no longer offers the room,
 even when another room's schedule still covers the time. Its schedules also cover
 nothing from then on, so an appointment in another room of the office that only they

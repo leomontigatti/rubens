@@ -1405,6 +1405,7 @@ describe("confirming and cancelling through proposals", () => {
       id: appointmentId,
       patient: "Martina Paz",
       practitioner: "Juan Gómez",
+      medicalService: "Consulta",
       startsAt: at("12:00").getTime(),
       roomId: world.room.id,
       date: "2099-01-05",

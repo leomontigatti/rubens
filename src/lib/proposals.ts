@@ -5,14 +5,15 @@ import { windowClosesAt } from "#/lib/conversation-window.ts";
 
 // Proposals (ui: "Propuesta", docs/domain/assistant.md § Proposals).
 
-/** What a proposal changes: confirming the appointment, cancelling it by the patient, or moving it. */
-export type ProposalKind = z.output<typeof assistantToolSchemas.propose_change.inputSchema>["kind"];
+type ChangeKind = z.output<typeof assistantToolSchemas.propose_change.inputSchema>["kind"];
 
-export const proposalKinds = [
-  "confirm",
-  "cancel",
-  "move",
-] as const satisfies readonly ProposalKind[];
+/** What a proposal does: confirming the appointment, cancelling it by the patient, moving it, or booking a new one. */
+export const proposalKinds = ["confirm", "cancel", "move", "book"] as const satisfies readonly (
+  | ChangeKind
+  | "book"
+)[];
+
+export type ProposalKind = (typeof proposalKinds)[number];
 
 const proposalLifetimeMs = 60 * 60_000;
 

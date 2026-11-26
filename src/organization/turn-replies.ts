@@ -7,7 +7,7 @@ import {
   optOutReply,
   practitionerHandoffReply,
   unintelligibleVoiceReply,
-} from "#/lib/assistant.ts";
+} from "#/lib/assistant-replies.ts";
 import { isWindowOpen } from "#/lib/conversation-window.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { checkReply } from "#/lib/reply-checks.ts";

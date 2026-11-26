@@ -73,6 +73,57 @@ describe("score", () => {
     expect(result.availability).toEqual({ pass: false, reason: "times no tool returned: 11:15" });
   });
 
+  it("passes a booking for a person the practice does not know only with the name they gave", () => {
+    const named = { firstName: "Ana", lastName: "Ferreyra" };
+    const book = (newPatientName: { firstName: string; lastName: string }) =>
+      turn(
+        "book-unknown-number-gives-name",
+        "Te reservo la consulta, ¿te parece bien?",
+        (tools) => {
+          tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+          tools.run("propose_booking", { slotId: "book-m2", newPatientName });
+        },
+      );
+
+    expect(book({ lastName: "Ferreyra", firstName: "Ana" }).toolChoice.pass).toBe(true);
+    expect(book({ ...named, firstName: "Anabel" }).toolChoice.pass).toBe(false);
+  });
+
+  it("counts another search for times only from later than the last one offered", () => {
+    const searchFrom = (from: string) =>
+      turn("book-none-of-the-times-suits", "Tengo el jueves 12/11 a las 10:00.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+        tools.run("find_booking_times", { medicalService: "Consulta odontológica", from });
+      }).toolChoice.pass;
+
+    expect(searchFrom("2026-11-11")).toBe(false);
+    expect(searchFrom("2026-11-11T11:00")).toBe(false);
+    expect(searchFrom("2026-11-11T11:30")).toBe(true);
+    expect(searchFrom("2026-11-12")).toBe(true);
+  });
+
+  it("does not count a search from a date or time that does not exist", () => {
+    const searchFrom = (from: string) =>
+      turn("book-none-of-the-times-suits", "Tengo el jueves 12/11 a las 10:00.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+        tools.run("find_booking_times", { medicalService: "Consulta odontológica", from });
+      }).toolChoice.pass;
+
+    expect(searchFrom("2026-11-11T25:00")).toBe(false);
+    expect(searchFrom("2026-11-11T11:60")).toBe(false);
+    expect(searchFrom("2026-11-31")).toBe(false);
+    expect(searchFrom("2026-11-11T11:30x")).toBe(false);
+  });
+
+  it("does not count a booking proposal the object refused", () => {
+    const result = turn("book-known-patient-picks-time", "Te reservo el miércoles.", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("propose_booking", { slotId: "book-r2", patientId: "pat-unknown" });
+    });
+
+    expect(result.toolChoice.reason).toBe('missing propose_booking({"slotId":"book-r2"})');
+  });
+
   it("fails a turn that misses a required call, uses a forbidden one or skips judging", () => {
     const result = turn("cannot-make-it", "Listo, lo cancelé.", (tools) => {
       tools.run("propose_change", { kind: "cancel", appointmentId: "apt-101" });
@@ -228,6 +279,43 @@ describe("score", () => {
     expect(movedToo.handoff).toEqual({ pass: true, reason: "ok" });
   });
 
+  it("counts the handoff the code opens for a medical service find_booking_times refused, and tells the patient nothing", () => {
+    const result = turn("book-service-switched-off", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("find_booking_times", { medicalService: "Ortodoncia", from: "2026-11-12" });
+    });
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(result.reply.pass).toBe(true);
+  });
+
+  it("counts no forced handoff once a later search in the turn finds a medical service", () => {
+    const result = turn("book-service-switched-off", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("find_booking_times", { medicalService: "Ortodoncia", from: "2026-11-12" });
+      tools.run("find_booking_times", {
+        medicalService: "Sesión de kinesiología",
+        from: "2026-11-12",
+      });
+    });
+
+    expect(result.handoff.pass).toBe(false);
+  });
+
+  it("keeps the forced handoff when a later search fails for another reason", () => {
+    const result = turn("book-service-switched-off", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("find_booking_times", { medicalService: "Ortodoncia", from: "2026-11-12" });
+      tools.run("find_booking_times", {
+        medicalService: "Ortodonci",
+        practitioner: "Lic. Paula Ríos",
+        from: "2026-11-12",
+      });
+    });
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+  });
+
   it("leaves a repeat during a handoff to the practitioner to underthing's sentence", () => {
     const result = turn("repeat-during-handoff", "", (tools) => {
       tools.run("judge_messages", { healthQuestion: true, emergency: false });
@@ -278,9 +366,12 @@ describe("score", () => {
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101; told both");
   });
 
-  it("tells a booking because of a toothache, reception's, from a medicine question, the dentist's", () => {
+  it("tells a booking because of a toothache, the assistant's, from a medicine question, the dentist's", () => {
     const booking = turn("booking-for-a-toothache", "", (tools) => {
-      tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+    });
+    const bookingHandedOff = turn("booking-for-a-toothache", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
       tools.run("hand_off", { reason: "patient_asked" });
     });
     const bookingJudgedHealth = turn("booking-for-a-toothache", "", (tools) => {
@@ -294,8 +385,9 @@ describe("score", () => {
     });
 
     expect(booking.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(bookingHandedOff.handoff.pass).toBe(false);
     expect(bookingJudgedHealth.handoff.reason).toBe(
-      "handoff reason clinical; judged healthQuestion=true",
+      "handed off when not due; judged healthQuestion=true; told nothing",
     );
     expect(toDentist.handoff).toEqual({ pass: true, reason: "ok" });
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101");
@@ -408,5 +500,12 @@ describe("score", () => {
     const tools = fakeObject(findCase("move-slot-taken"));
 
     expect(tools.run("accept_proposal", {})).toEqual({ ok: false, reason: "slot_taken" });
+  });
+
+  it("refuses accepting a booking in the turn that proposed it, as the object does", () => {
+    const tools = fakeObject(findCase("book-known-patient-picks-time"));
+    tools.run("propose_booking", { slotId: "book-r2" });
+
+    expect(tools.run("accept_proposal", {})).toEqual({ ok: false, reason: "not_shown_yet" });
   });
 });
