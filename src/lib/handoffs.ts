@@ -12,8 +12,10 @@ export const handoffReasons = [
   "patientAsked",
   /** A rule refused what the patient wants: past the cutoff, the one move used (#174). */
   "ruleRefused",
-  /** The patient wants a new time for an appointment the organization cancelled. */
+  /** The patient wanted a new time for an appointment the organization cancelled: no turn opens one since the assistant books it (LEO-21), but stored handoffs keep it. */
   "organizationCancelled",
+  /** A new appointment the assistant cannot book: a medical service patients cannot book by WhatsApp, or one the practice does not offer. */
+  "bookingUnavailable",
   /** A question only the practitioner can answer: advice, a medicine or a treatment. */
   "clinical",
   /** A message judged an emergency. */
@@ -65,6 +67,8 @@ export interface HandoffDetail {
   applied: { kind: ProposalKind; date: string; time: string; newDate?: string; newTime?: string }[];
   /** For a `media` handoff, what the patient sent, so its reason names only that. */
   media?: MediaType[];
+  /** For a `bookingUnavailable` handoff, the medical service the patient asked for, in the model's words. */
+  medicalService?: string;
 }
 
 export const handoffStates = ["open", "closed"] as const;

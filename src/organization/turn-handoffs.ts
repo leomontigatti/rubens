@@ -39,7 +39,7 @@ export interface TurnToSort {
 
 const modelReasons = {
   patient_asked: "patientAsked",
-  organization_cancelled: "organizationCancelled",
+  booking_unavailable: "bookingUnavailable",
   rule_refused: "ruleRefused",
   clinical: "clinical",
   emergency: "emergency",
@@ -207,11 +207,21 @@ export function handoffWanted(turn: TurnToSort): HandoffWanted | null {
   );
 }
 
-/** What the handoff's notification and label say of the turn: a refused move, its own changes, the media sent. */
+/**
+ * What the handoff's notification and label say of the turn: a refused move,
+ * its own changes, the media sent, the medical service it could not book.
+ */
 function detailOf(turn: TurnToSort, wanted: HandoffWanted): HandoffDetail | null {
   const media = wanted.reason === "media" ? [...new Set(turn.media)] : [];
-  if (!turn.refusal && turn.applied.length === 0 && media.length === 0) {
+  const medicalService =
+    wanted.reason === "bookingUnavailable" ? turn.handOff?.medicalService : undefined;
+  if (!turn.refusal && turn.applied.length === 0 && media.length === 0 && !medicalService) {
     return null;
   }
-  return { refused: turn.refusal, applied: turn.applied, ...(media.length > 0 && { media }) };
+  return {
+    refused: turn.refusal,
+    applied: turn.applied,
+    ...(media.length > 0 && { media }),
+    ...(medicalService && { medicalService }),
+  };
 }

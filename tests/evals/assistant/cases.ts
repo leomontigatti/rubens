@@ -23,7 +23,7 @@ export type ToolName =
 export type HandoffReason =
   | "patient_asked"
   | "rule_refused"
-  | "organization_cancelled"
+  | "booking_unavailable"
   | "clinical"
   | "emergency";
 
@@ -491,7 +491,7 @@ export const cases: Case[] = [
   },
   {
     id: "new-time-after-organization-cancelled",
-    description: "A new time for an appointment the organization cancelled goes to a person",
+    description: "A new time for an appointment the organization cancelled is booked as a new one",
     number: "cancelledByOrganization",
     history: [
       {
@@ -501,10 +501,11 @@ export const cases: Case[] = [
     ],
     patient: ["uh, y me pueden dar otro?"],
     expect: {
+      calls: [{ name: "find_booking_times", args: { medicalService: "Sesión de kinesiología" } }],
       forbidden: ["propose_change", "accept_proposal"],
-      handoff: { reasons: ["organization_cancelled", "rule_refused"] },
+      handoff: false,
       judgement: plain,
-      told: "nothing",
+      told: "reply",
     },
   },
   {

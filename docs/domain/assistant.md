@@ -256,8 +256,8 @@ The assistant hands a conversation to a person when:
 
 - the patient asks for one, or to be contacted;
 - a rule refuses what the patient wants (past the cutoff, the one move used);
-- the patient wants a new time for an appointment the organization cancelled,
-  until booking arrives in the second release;
+- the patient asks to book a medical service patients cannot book by WhatsApp, or
+  one the practice does not offer, without being told why;
 - the patient asks a health question ([above](#for-patients)), or a follow-up's
   answer is not plainly good;
 - it has misunderstood the patient twice in a row;
@@ -293,7 +293,8 @@ contact can neither be removed nor deactivated, as the last admin
 
 A handoff's notification says why, so its reader can answer without reading the
 conversation back: `Marta Quiroga quiere pasar el turno del jueves 10:00 y falta
-menos de 24 h`, and what the same turn did anyway, such as another appointment it
+menos de 24 h`, or `Marta Quiroga pide un turno de Ortodoncia, que el asistente no
+puede dar`, and what the same turn did anyway, such as another appointment it
 moved. That reason, in the app and in the notification, never quotes the patient;
 the patient's own words are in the inbox. The
 person replies in the app, and the reply reaches the patient on
