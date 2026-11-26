@@ -289,6 +289,19 @@ describe("score", () => {
     expect(result.reply.pass).toBe(true);
   });
 
+  it("counts no forced handoff once a later search in the turn finds a medical service", () => {
+    const result = turn("book-service-switched-off", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("find_booking_times", { medicalService: "Ortodoncia", from: "2026-11-12" });
+      tools.run("find_booking_times", {
+        medicalService: "Sesión de kinesiología",
+        from: "2026-11-12",
+      });
+    });
+
+    expect(result.handoff.pass).toBe(false);
+  });
+
   it("leaves a repeat during a handoff to the practitioner to underthing's sentence", () => {
     const result = turn("repeat-during-handoff", "", (tools) => {
       tools.run("judge_messages", { healthQuestion: true, emergency: false });

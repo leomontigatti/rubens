@@ -151,7 +151,9 @@ function turnTools(
           !found.ok &&
           found.reason !== "invalidInput" &&
           !(found.reason === "notFound" && asked.data?.practitioner !== undefined);
-        if (unbookable && asked.success) {
+        if (found.ok) {
+          recorded.bookingUnavailable = null;
+        } else if (unbookable && asked.success) {
           recorded.bookingUnavailable = asked.data.medicalService;
         }
         return found;

@@ -126,12 +126,12 @@ function refusedReason(turn: Turn) {
       failedWith(call, ruleRefusals),
   );
   if (ruleRefused) return "rule_refused";
-  const bookingRefused = turn.calls.some(
-    (call) =>
-      call.name === "find_booking_times" &&
-      failedWith(call, bookingRefusals) &&
-      !(failedWith(call, new Set(["notFound"])) && call.args.practitioner),
-  );
+  // A later search that finds the medical service clears an earlier refusal, as the code does.
+  const lastSearch = turn.calls.filter((call) => call.name === "find_booking_times").at(-1);
+  const bookingRefused =
+    lastSearch !== undefined &&
+    failedWith(lastSearch, bookingRefusals) &&
+    !(failedWith(lastSearch, new Set(["notFound"])) && lastSearch.args.practitioner);
   return bookingRefused ? "booking_unavailable" : null;
 }
 

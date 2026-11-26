@@ -668,6 +668,35 @@ describe("a booking the assistant cannot make", () => {
     ]);
   });
 
+  it("opens no handoff when a retry in the same turn finds the medical service, and the reply goes", async () => {
+    expectOk(
+      await world.organization.createMedicalService(adminCaller, {
+        practitionerId: world.juan.practitionerId,
+        name: "Limpieza dental",
+        durationMinutes: 30,
+      }),
+    );
+    await world.addPatient("Martina", martinaPhone);
+    await writes("quiero un turno de limpieza");
+    const found: unknown[] = [];
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, booking: true });
+      found.push(
+        one.call("find_booking_times", { medicalService: "Limpieza", from: "2099-01-05" }),
+      );
+      found.push(
+        one.call("find_booking_times", { medicalService: "Limpieza dental", from: "2099-01-05" }),
+      );
+      return "Qué día te queda mejor?";
+    });
+
+    await turn();
+
+    expect(found).toMatchObject([{ ok: false, reason: "notFound" }, { ok: true }]);
+    expect(await openHandoffs()).toEqual([]);
+    expect(fakeMeta.textsSent().map((sent) => sent.text)).toEqual(["Qué día te queda mejor?"]);
+  });
+
   it("hands a medical service the practice does not offer to reception, named as the patient asked for it", async () => {
     await world.addPatient("Martina", martinaPhone);
     await writes("hacen blanqueamiento?");
