@@ -39,7 +39,10 @@ type HistoryMessage = {
 // An argument that must be a local date or date and time (as `from` takes
 // them) strictly later than `instant`: a date reads as the start of its day.
 export class LaterThan {
-  constructor(readonly laterThan: string) {}
+  readonly laterThan: string;
+  constructor(laterThan: string) {
+    this.laterThan = laterThan;
+  }
 }
 
 // An acceptance names the kind of change it must have applied: the turn's
