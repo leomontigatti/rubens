@@ -33,6 +33,33 @@ still skips, and a docs-only commit on a code branch still runs the suite. When
 the job did not run, the whole browser suite runs here, as `HEAVY.md`'s fallback
 says.
 
+## The assistant's evaluation
+
+`pnpm eval:assistant`, `pnpm eval:voice` and `pnpm eval:template-review` are paid runs on
+provider keys a session's machine does not hold
+([tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)): the maintainer
+runs them. A session's part is to say which run its change calls for and hand it over.
+
+A change calls for a run when it changes what one of them measures:
+
+| The change                                                                                                                                                                            | The run it calls for                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| What the assistant's model reads in a turn: the system prompt, a tool's schema or description, a note added to the turn (`src/lib/assistant.ts`), or what a tool returns to the model | `pnpm eval:assistant <the assistant's model> --repeat 3`         |
+| The template review's prompt or schema (`src/lib/template-review.ts`)                                                                                                                 | `pnpm eval:template-review`                                      |
+| The transcription model (`transcriptionModelId`)                                                                                                                                      | `pnpm eval:voice --assistant <the assistant's model> --repeat 2` |
+| The assistant's model (`assistantModelId`)                                                                                                                                            | all three, on the new model                                      |
+
+The session still makes the set match the change: a tool that returns something new answers
+the same way in `fake-object.ts` and `world.ts`, and a new behaviour gets its case in
+`cases.ts`. Then it hands the run over in three places, each naming the command and what
+changed in what the model reads:
+
+- **The PR body** opens with it, as the thing the maintainer must do.
+- **The issue** the PR closes is marked as work for a human
+  ([issue-tracker.md](./issue-tracker.md#labels)) once the PR is ready, with the same text as
+  a comment.
+- **The final report** lists it first, among the checks the session could not run.
+
 ## As you go
 
 Each time a slice goes green, check that slice alone:
