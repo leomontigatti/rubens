@@ -2,6 +2,8 @@
 // order the model is chosen by: tool choice and no invented availability first,
 // then handoff when due.
 
+import { isDeepStrictEqual } from "node:util";
+
 import type { Case, ExpectedCall, Told } from "./cases.ts";
 import { numbers } from "./world.ts";
 import type { ToolCall } from "./fake-object.ts";
@@ -43,14 +45,16 @@ export function timesIn(text: string): number[] {
 
 // A change counts only once the object took it: accepting before proposing, or
 // proposing a time that is not free, fails and does not stand in for the call.
-const changes = new Set(["propose_change", "accept_proposal"]);
+const changes = new Set(["propose_change", "propose_booking", "accept_proposal"]);
 
 function matches(call: ToolCall, expected: ExpectedCall): boolean {
   if (call.name !== expected.name) return false;
   if (changes.has(call.name) && (call.result as { ok?: boolean }).ok !== true) return false;
   if (expected.name === "accept_proposal")
     return (call.result as { applied: { kind: string } }).applied.kind === expected.accepts;
-  return Object.entries(expected.args ?? {}).every(([key, value]) => call.args[key] === value);
+  return Object.entries(expected.args ?? {}).every(([key, value]) =>
+    isDeepStrictEqual(call.args[key], value),
+  );
 }
 
 function describeCall(expected: ExpectedCall): string {

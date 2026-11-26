@@ -177,8 +177,8 @@ In `usted`:
 
 ### `solicitud_no_confirmada`
 
-Sent when a request is rejected or expires. Requests come with booking, in the
-second release.
+Sent when a booking request is rejected or expires. Requests come after the first
+version, so nothing sends it yet.
 
 > Hola {{paciente}}! Te escribimos de {{organizacion}} para avisarte que lamentablemente no pudimos confirmar el turno que pediste con {{profesional}} para el {{fecha}}. Por favor, escribinos si querés buscar otro horario.
 

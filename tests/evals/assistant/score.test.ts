@@ -73,6 +73,31 @@ describe("score", () => {
     expect(result.availability).toEqual({ pass: false, reason: "times no tool returned: 11:15" });
   });
 
+  it("passes a booking for a person the practice does not know only with the name they gave", () => {
+    const named = { firstName: "Ana", lastName: "Ferreyra" };
+    const book = (newPatientName: { firstName: string; lastName: string }) =>
+      turn(
+        "book-unknown-number-gives-name",
+        "Te reservo la consulta, ¿te parece bien?",
+        (tools) => {
+          tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+          tools.run("propose_booking", { slotId: "book-m2", newPatientName });
+        },
+      );
+
+    expect(book({ lastName: "Ferreyra", firstName: "Ana" }).toolChoice.pass).toBe(true);
+    expect(book({ ...named, firstName: "Anabel" }).toolChoice.pass).toBe(false);
+  });
+
+  it("does not count a booking proposal the object refused", () => {
+    const result = turn("book-known-patient-picks-time", "Te reservo el miércoles.", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("propose_booking", { slotId: "book-r9" });
+    });
+
+    expect(result.toolChoice.reason).toBe('missing propose_booking({"slotId":"book-r2"})');
+  });
+
   it("fails a turn that misses a required call, uses a forbidden one or skips judging", () => {
     const result = turn("cannot-make-it", "Listo, lo cancelé.", (tools) => {
       tools.run("propose_change", { kind: "cancel", appointmentId: "apt-101" });
@@ -278,9 +303,12 @@ describe("score", () => {
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101; told both");
   });
 
-  it("tells a booking because of a toothache, reception's, from a medicine question, the dentist's", () => {
+  it("tells a booking because of a toothache, the assistant's, from a medicine question, the dentist's", () => {
     const booking = turn("booking-for-a-toothache", "", (tools) => {
-      tools.run("judge_messages", { healthQuestion: false, emergency: false });
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+    });
+    const bookingHandedOff = turn("booking-for-a-toothache", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
       tools.run("hand_off", { reason: "patient_asked" });
     });
     const bookingJudgedHealth = turn("booking-for-a-toothache", "", (tools) => {
@@ -294,8 +322,9 @@ describe("score", () => {
     });
 
     expect(booking.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(bookingHandedOff.handoff.pass).toBe(false);
     expect(bookingJudgedHealth.handoff.reason).toBe(
-      "handoff reason clinical; judged healthQuestion=true",
+      "handed off when not due; judged healthQuestion=true; told nothing",
     );
     expect(toDentist.handoff).toEqual({ pass: true, reason: "ok" });
     expect(toKinesiologist.handoff.reason).toBe("judged treatedBy=apt-101");

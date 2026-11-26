@@ -48,8 +48,8 @@ does. Each has:
   to bring, are written into the text of the template that carries them.
 - **Its buttons** (`Botones`): `Ninguno`, or `Confirmar asistencia` for one that
   asks the patient to confirm. A change submits the text again with them.
-- **When it is sent** (`Cuándo se envía`): when the appointment is booked (or the
-  request approved), when it is marked attended, or a number of hours or days
+- **When it is sent** (`Cuándo se envía`): when the appointment is booked, when it is
+  marked attended, or a number of hours or days
   before or after the appointment, up to 30 days. Before counts from the
   appointment's start, after from its end. This is underthing's setting, not
   Meta's: changing it, or the name, submits nothing and needs no new approval.
@@ -82,12 +82,10 @@ it through the assistant ([assistant.md](./assistant.md#cancelling-and-moving)).
 A template sends nothing until Meta approves one of its versions. From then on
 its messages are queued as their appointments come to their timing:
 
-- **when booked**: at the booking, or at the approval of a request. A booking the
-  assistant makes in the conversation (second release) gets none: its reply there
-  already confirms it;
+- **when booked**: at the booking. A booking the assistant makes in the
+  conversation gets none: its reply there already confirms it;
 - **before the appointment**: at the booking, each for its time. One whose time
-  has already passed is skipped, not sent late. A request gets none until it is
-  approved; the same rule then applies from the approval;
+  has already passed is skipped, not sent late;
 - **when marked attended**: at once, when the appointment is marked attended;
 - **after the appointment**: when it is marked attended, for its time after the
   appointment's end. An appointment never marked attended gets none.
@@ -127,7 +125,8 @@ there.
 Four templates are fixed and sent on their event, never picked by a medical
 service, never named or timed by an admin: `turno_movido`, `turno_no_disponible`
 (for a cancellation by the business and for the "to reschedule" list alike),
-`solicitud_no_confirmada` and `reabrir_conversacion`
+`solicitud_no_confirmada` (for the booking requests that come after the first
+version, so nothing sends it yet) and `reabrir_conversacion`
 ([whatsapp-templates.md](../operations/whatsapp-templates.md#event-templates)).
 An admin writes and submits their text as for the others.
 
@@ -172,7 +171,7 @@ conversation handed off.
 ## To staff
 
 Every event that staff act on is a notification in the app, read or unread:
-cancellations, reschedules, requests to approve, handoffs, replies
+cancellations, reschedules, handoffs, replies
 not delivered because the patient never answered, warnings about the WhatsApp
 number, and replies that look like opt-outs. Meta's warnings go to every admin, a
 person's reply that was not delivered or failed goes to that person, and replies

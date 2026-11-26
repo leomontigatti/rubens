@@ -13,10 +13,14 @@ export const organization = {
 // What list_medical_services returns: the medical services patients can book
 // by WhatsApp, each with the practitioners who offer it.
 export const medicalServices = [
-  { name: "Consulta odontológica", practitioners: ["Od. Carla Méndez"] },
+  { name: "Consulta odontológica", practitioners: ["Od. Carla Méndez", "Od. Javier Luna"] },
   { name: "Control pediátrico", practitioners: ["Dr. Martín Sosa"] },
   { name: "Sesión de kinesiología", practitioners: ["Lic. Paula Ríos"] },
 ];
+
+// Medical services the practice offers whose switch for booking by WhatsApp is
+// off: list_medical_services leaves them out, and find_booking_times refuses them.
+export const whatsappBookingOff = ["Ortodoncia"];
 
 export type Slot = { slotId: string; date: string; time: string };
 
@@ -44,6 +48,20 @@ export const bookingSlots: Record<string, Array<Slot & { practitioner: string; r
       room: "Consultorio 1",
       date: "2026-11-13",
       time: "15:00",
+    },
+    {
+      slotId: "book-l1",
+      practitioner: "Od. Javier Luna",
+      room: "Consultorio 4",
+      date: "2026-11-12",
+      time: "10:00",
+    },
+    {
+      slotId: "book-l2",
+      practitioner: "Od. Javier Luna",
+      room: "Consultorio 4",
+      date: "2026-11-12",
+      time: "17:30",
     },
   ],
   "Control pediátrico": [
@@ -89,7 +107,7 @@ export type Appointment = {
   date: string;
   time: string;
   address: string;
-  status: "booked" | "confirmed" | "cancelled_by_organization";
+  status: "booked" | "confirmed";
   // Why a patient's own move is refused, if it is: the medical service's cutoff
   // has passed, or the patient already used the appointment's one move.
   moveRefusal?: "past_cutoff" | "move_already_used";
@@ -169,7 +187,10 @@ export const numbers = {
       ],
     },
   ],
-  cancelledByOrganization: [lucia({ status: "cancelled_by_organization", freeSlots: [] })],
+  // The patient whose appointment the practice cancelled: list_patients lists only upcoming ones.
+  cancelledByOrganization: [{ ...lucia(), appointments: [] }],
+  // A number the practice does not know.
+  unknown: [],
   alreadyConfirmed: [lucia({ status: "confirmed" })],
   guardian: [
     {

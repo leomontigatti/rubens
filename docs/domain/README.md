@@ -20,15 +20,16 @@ office and its first admin are created by a script; there is no public sign-up, 
 nothing adds a second office or archives the first. The data model stays
 multi-organization.
 
-Staff book in the app. Patients cancel and reschedule by WhatsApp, through the
-assistant, and book there from its second release
-([assistant.md](./assistant.md#for-patients)). underthing bills nothing.
+Staff book in the app. Patients book, cancel and reschedule by WhatsApp, through
+the assistant ([assistant.md](./assistant.md#for-patients)). underthing bills nothing.
 
 Not in the first version, in rough order of arrival:
 
 - Clinical records ([clinical-records.md](./clinical-records.md)): the practice keeps
   its own until they arrive. The odontogram is their first structured feature.
 - A medical service's price, and the patient's part per insurer.
+- Booking requests that wait for the practitioner's approval
+  ([appointments.md](./appointments.md#booking-by-whatsapp)).
 - A practitioner's licence number.
 - Reply examples the assistant imitates ([assistant.md](./assistant.md#communication-rules)).
 - Merging two patients.

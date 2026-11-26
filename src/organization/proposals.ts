@@ -129,12 +129,15 @@ function book(database: Database, latest: Stored, patientId: string) {
   return { ok: true, appointmentId: booked.appointment.id } as const;
 }
 
-/** Makes the proposal's change through the appointment's own function, or books it; the sandbox replays its accepted ones with it. */
+/**
+ * Makes the proposal's change through the appointment's own function, or
+ * books it, registering the person it is for when the practice did not know
+ * them; the sandbox replays its accepted ones with it.
+ */
 export function applyChange(database: Database, latest: Stored) {
   if (latest.kind === "book") {
-    // A person the practice did not know is registered only as the conversation books.
     return latest.patientId === null
-      ? ({ ok: false, reason: "notFound" } as const)
+      ? registerAndBook(database, latest, phoneOf(database, latest.conversationId))
       : book(database, latest, latest.patientId);
   }
   const appointmentId = present(latest.appointmentId, "A change proposal names its appointment");

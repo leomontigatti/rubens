@@ -4,7 +4,15 @@
 import { assistantToolSchemas } from "#/lib/assistant.ts";
 
 import type { Case, HandoffReason, Proposal, ToolName } from "./cases.ts";
-import { bookingSlots, medicalServices, numbers, type Appointment, type Slot } from "./world.ts";
+import {
+  bookingSlots,
+  medicalServices,
+  numbers,
+  whatsappBookingOff,
+  type Appointment,
+  type Patient,
+  type Slot,
+} from "./world.ts";
 
 const newPatientNameSchema =
   assistantToolSchemas.propose_booking.inputSchema.shape.newPatientName.unwrap();
@@ -23,7 +31,7 @@ export type FakeObject = {
 };
 
 export function fakeObject(evaluationCase: Case): FakeObject {
-  const patients = numbers[evaluationCase.number];
+  const patients: Patient[] = numbers[evaluationCase.number];
   const appointments = patients.flatMap((patient) => patient.appointments);
   const calls: ToolCall[] = [];
   const knownTimes = new Set<string>();
@@ -102,6 +110,8 @@ export function fakeObject(evaluationCase: Case): FakeObject {
     },
     list_medical_services: () => ({ medicalServices }),
     find_booking_times: ({ medicalService, practitioner, from }) => {
+      if (whatsappBookingOff.includes(String(medicalService)))
+        return { ok: false, reason: "whatsappBookingOff" };
       const slots = bookingSlots[String(medicalService)];
       if (!slots) return { ok: false, reason: "notFound" };
       const offered = slots.filter(
@@ -115,8 +125,6 @@ export function fakeObject(evaluationCase: Case): FakeObject {
     find_free_times: ({ appointmentId }) => {
       const found = appointment(appointmentId);
       if (!found) return { ok: false, reason: "not_found" };
-      if (found.status === "cancelled_by_organization")
-        return { ok: false, reason: "cancelled_by_organization" };
       if (found.moveRefusal) return { ok: false, reason: found.moveRefusal };
       const offered = evaluationCase.slotTaken
         ? found.freeSlots.filter((slot) => slot.slotId !== latest?.slotId)
@@ -134,8 +142,6 @@ export function fakeObject(evaluationCase: Case): FakeObject {
         if (!slot) return { ok: false, reason: "unknown_slot" };
         knownTimes.add(slot.time);
       }
-      if (target.status === "cancelled_by_organization")
-        return { ok: false, reason: "cancelled_by_organization" };
       proposals += 1;
       latest = { kind, appointmentId: target.appointmentId, slotId: args.slotId as string };
       return { ok: true, proposalId: `prop-${proposals}`, proposal: describe(latest, target) };
@@ -150,7 +156,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       latest = { kind: "book", patientId, newPatient, slotId: slot.slotId };
       const patient = patients.find((each) => each.patientId === patientId);
       const alreadyBooked = (patient?.appointments ?? [])
-        .filter((each) => each.date === slot.date && each.status !== "cancelled_by_organization")
+        .filter((each) => each.date === slot.date)
         .map((each) => ({
           date: each.date,
           time: each.time,

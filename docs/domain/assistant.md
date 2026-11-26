@@ -37,6 +37,18 @@ In the first release:
   until then ([patients.md](./patients.md#whatsapp-consent)). It is not a
   handoff, unless the reply is a health question too, or the number reaches no
   patient by the time the turn settles.
+- **Booking** a new appointment, for the patient or for a person the practice
+  does not know yet: an active medical service patients
+  can book by WhatsApp, with any practitioner who offers it or the one the patient
+  names, at a time from availability up to 60 days ahead. The assistant asks for
+  the medical service when the patient does not say it, and for a preferred day
+  and time before offering any, then offers the few nearest to it; `ninguno me
+  sirve` gets others. Overbookings are never offered. A medical service with its
+  switch off, or one the practice does not offer, is handed to reception
+  ([appointments.md](./appointments.md#medical-services)). The booking is a
+  proposal the patient accepts ([Proposals](#proposals)), made under the rules of
+  a staff booking, and the assistant's reply confirms it, so it gets no booking
+  template ([messages.md](./messages.md#the-organizations-templates)).
 - **Information**: which medical services the practice offers and who offers
   each, by the name patients read. It lists the active medical services patients
   can book by WhatsApp ([appointments.md](./appointments.md)), of active
@@ -50,13 +62,6 @@ In the second release:
   each practitioner accepts, and which practitioner works when (from their
   schedules: the practice has no opening hours). What the data does not say, it
   does not guess: it says it does not know and offers a person.
-- **Booking.** A patient can book any active medical service of any practitioner,
-  at a time from availability. The assistant asks for a preferred day and time
-  before offering any, and offers the few nearest to it. Overbookings are never
-  offered. A medical service that requires approval books a request instead
-  ([appointments.md](./appointments.md#requests)). The assistant's reply
-  confirms the booking, so it gets no booking template
-  ([messages.md](./messages.md#the-organizations-templates)).
 
 Patients write in their own words. The assistant's replies carry no buttons; only a
 template's quick replies do, and a tap the code does not settle reaches the
@@ -428,7 +433,9 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
   version beside the one in use, each by the day it was sent, the older ones on
   demand.
 - **Sandbox** (first release): staff play the patient against the real assistant,
-  with its real tools and the real agenda, starting from a scenario. It shows what
+  with its real tools and the real agenda, starting from a scenario, booking
+  included: a person the practice does not know is registered only inside the
+  turn. It shows what
   the turn did, the proposals, whether the clinical or code checks would hold a reply, and for whom, the
   window's countdown and the number of messages. It runs the organization's real
   object methods with their writes discarded (the conversation lives in the page,
