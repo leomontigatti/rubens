@@ -47,10 +47,7 @@ export async function seedDevOrganization(
       await organization.addMember(admin, { ...devPeople[role], roles: [role] }),
     );
   }
-  const [office] = accepted(
-    "listOffices",
-    await organization.listOffices(admin, { includeInactive: false }),
-  ).offices;
+  const [office] = accepted("listOffices", await organization.listOffices(admin)).offices;
   if (!office) {
     throw new Error("dev seed: setUp left no office");
   }

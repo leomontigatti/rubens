@@ -71,8 +71,7 @@ export type AppointmentUpdateResult =
   | { ok: true }
   | { ok: false; reason: "invalidInput" }
   | PractitionerRefusal
-  | RoomRefusal
-  | { ok: false; reason: "otherOffice" };
+  | RoomRefusal;
 
 export type RescheduleResult =
   | { ok: true }
@@ -174,19 +173,16 @@ export function getAppointment(
   };
 }
 
-/** Moves the appointment to `roomId`, another of its office at the same time, and audits it. */
+/** Moves the appointment to `roomId`, at the same time, and audits it. */
 function moveToRoom(
   writer: Writer,
   acting: Acting,
   placed: Placed,
   roomId: string,
-): { ok: true } | RoomRefusal | { ok: false; reason: "otherOffice" } {
+): { ok: true } | RoomRefusal {
   const space = checkRoomSpace(writer, roomId, placed.practitionerId, placed.during);
   if (!space.ok) {
     return space;
-  }
-  if (space.officeId !== placed.officeId) {
-    return { ok: false, reason: "otherOffice" };
   }
   writer.update(appointment).set({ roomId }).where(eq(appointment.id, placed.id)).run();
   recordAudit(writer, acting.userId, {

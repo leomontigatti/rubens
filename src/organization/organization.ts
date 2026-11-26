@@ -242,11 +242,11 @@ export class Organization extends OrganizationWhatsapp {
 
   // Offices and rooms
 
-  listOffices(caller: Caller, input: ListOptions) {
-    return this.as(caller, "any", () => listOffices(this.database, input));
+  listOffices(caller: Caller) {
+    return this.as(caller, "any", () => listOffices(this.database));
   }
 
-  getOffice(caller: Caller, input: { officeId: string } & ListOptions) {
+  getOffice(caller: Caller, input: ListOptions) {
     return this.as(caller, "any", () => getOffice(this.database, input));
   }
 

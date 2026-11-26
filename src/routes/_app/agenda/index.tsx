@@ -104,11 +104,13 @@ function Agenda() {
           title="Sin consultorios activos"
           description={
             isAdmin
-              ? "Todavía no hay consultorios activos. Empezá agregando uno en Sedes."
+              ? "Todavía no hay consultorios activos. Empezá agregando uno en Consultorios."
               : "Todavía no hay consultorios activos."
           }
         >
-          {isAdmin && <EmptyStateLink link={<Link to="/sedes" />}>Ir a Sedes</EmptyStateLink>}
+          {isAdmin && (
+            <EmptyStateLink link={<Link to="/consultorios" />}>Ir a Consultorios</EmptyStateLink>
+          )}
         </EmptyState>
       </div>
     );

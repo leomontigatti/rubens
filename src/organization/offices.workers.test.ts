@@ -44,9 +44,6 @@ describe("offices", () => {
       ok: false,
       reason: "notFound",
     });
-    expect(
-      await organization.getOffice(adminCaller, { officeId: missing, includeInactive: true }),
-    ).toEqual({ ok: false, reason: "notFound" });
   });
 });
 
@@ -57,10 +54,7 @@ describe("rooms", () => {
     await newRoom(organization, created.id);
     await organization.createRoom(adminCaller, { officeId: created.id, name: "Consultorio 2" });
 
-    const result = await organization.getOffice(adminCaller, {
-      officeId: created.id,
-      includeInactive: false,
-    });
+    const result = await organization.getOffice(adminCaller, { includeInactive: false });
 
     expect(result).toMatchObject({
       ok: true,
@@ -104,7 +98,7 @@ describe("rooms", () => {
     const office = await theOffice(organization);
     const room = await newRoom(organization, office.id);
     const detail = (includeInactive: boolean) =>
-      organization.getOffice(adminCaller, { officeId: office.id, includeInactive });
+      organization.getOffice(adminCaller, { includeInactive });
 
     await organization.setRoomActive(adminCaller, { id: room.id, active: false });
     const active = await detail(false);
@@ -123,7 +117,7 @@ describe("rooms", () => {
     const { organization } = await setUpTestOrganization();
     const office = await theOffice(organization);
     const rooms = (includeInactive: boolean) =>
-      organization.getOffice(adminCaller, { officeId: office.id, includeInactive });
+      organization.getOffice(adminCaller, { includeInactive });
     const none = await rooms(false);
     const room = await newRoom(organization, office.id);
     await organization.setRoomActive(adminCaller, { id: room.id, active: false });
@@ -142,13 +136,14 @@ describe("roles", () => {
 
     for (const roles of [["receptionist"], ["practitioner"]] as const) {
       const caller = await addMember(organization, [...roles]);
-      const listed = await organization.listOffices(caller, { includeInactive: false });
-      const detail = await organization.getOffice(caller, {
-        officeId: office.id,
-        includeInactive: false,
+      const listed = await organization.listOffices(caller);
+      const detail = await organization.getOffice(caller, { includeInactive: false });
+      expect(listed).toEqual({ ok: true, offices: [office] });
+      expect(detail).toMatchObject({
+        ok: true,
+        office: { id: office.id },
+        rooms: [{ name: "Consultorio 1" }],
       });
-      expect(listed).toMatchObject({ ok: true, offices: [{ id: office.id }] });
-      expect(detail).toMatchObject({ ok: true, rooms: [{ name: "Consultorio 1" }] });
     }
   });
 
@@ -168,9 +163,7 @@ describe("roles", () => {
     for (const result of results) {
       expect(result).toEqual({ ok: false, reason: "forbidden" });
     }
-    expect(
-      await organization.getOffice(adminCaller, { officeId: office.id, includeInactive: true }),
-    ).toMatchObject({
+    expect(await organization.getOffice(adminCaller, { includeInactive: true })).toMatchObject({
       ok: true,
       office: { name: "Sede Centro", active: true },
       rooms: [{ name: "Consultorio 1", active: true }],

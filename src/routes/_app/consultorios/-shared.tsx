@@ -1,20 +1,17 @@
 import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
 
-// The refusal copy the office and room screens share.
+// The refusal copy the `Consultorios` page, its room dialog and the office form share.
 
 /** The copy for every refusal the office and room server functions return. */
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
-  forbidden: "Solo un administrador puede cambiar sedes y consultorios.",
+  forbidden: "Solo un administrador puede cambiar la sede y los consultorios.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos esa sede o ese consultorio.",
-  officeInactive: "La sede está archivada. Restaurala para agregarle consultorios.",
 };
 
 export type RefusalReason = keyof typeof refusalMessages;
-
-export type ActionResult = { ok: true } | { ok: false; reason: RefusalReason };
 
 export function useAction() {
   return useFormAction(refusalMessages);

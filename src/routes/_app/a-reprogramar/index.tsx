@@ -38,7 +38,6 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
   outsideSchedules: "Fuera de los horarios del profesional",
   practitionerInactive: "El profesional está archivado",
   patientInactive: "El paciente está archivado",
-  officeInactive: "La sede está archivada",
   roomInactive: "El consultorio está archivado",
 };
 
@@ -47,7 +46,6 @@ const blockedReasons: ToRescheduleReason[] = ["practitionerInactive", "patientIn
 
 /** What else an administrator can do for an appointment in a deactivated place. */
 const placeRemedies: Partial<Record<ToRescheduleReason, string>> = {
-  officeInactive: "restaurar la sede",
   roomInactive: "restaurar el consultorio",
 };
 

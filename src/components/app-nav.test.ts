@@ -8,7 +8,7 @@ describe("the menu a member sees", () => {
   it("leaves the admin's screens out for anyone else", () => {
     const administration = navFor(["receptionist", "practitioner"], counts(0)).at(-1)!;
 
-    expect(administration.items.map((item) => item.label)).toEqual(["Sedes", "Cierres"]);
+    expect(administration.items.map((item) => item.label)).toEqual(["Consultorios", "Cierres"]);
   });
 
   it("keeps them for a member who is an admin among other roles", () => {
@@ -95,8 +95,8 @@ describe("the WhatsApp group", () => {
 
 describe("the current link", () => {
   it("holds for its page and the pages under it, not for a longer name", () => {
-    expect(isCurrentPath("/sedes", "/sedes")).toBe(true);
-    expect(isCurrentPath("/sedes/1", "/sedes")).toBe(true);
-    expect(isCurrentPath("/sedes-viejas", "/sedes")).toBe(false);
+    expect(isCurrentPath("/consultorios", "/consultorios")).toBe(true);
+    expect(isCurrentPath("/consultorios/sede", "/consultorios")).toBe(true);
+    expect(isCurrentPath("/consultorios-viejos", "/consultorios")).toBe(false);
   });
 });

@@ -49,49 +49,31 @@ export interface Room {
   active: boolean;
 }
 
-type Refusal = "invalidInput" | "notFound" | "officeInactive";
+type Refusal = "invalidInput" | "notFound";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
-const officeInactive = { ok: false, reason: "officeInactive" } as const;
 
 export interface ListOptions {
   includeInactive: boolean;
 }
 
-/**
- * The offices, and `onlyInactive`: the default list shows none, yet some
- * exist, all inactive.
- */
-export function listOffices(
-  database: Database,
-  options: ListOptions,
-): { ok: true; offices: Office[]; onlyInactive: boolean } {
-  const offices = database
-    .select(officeColumns)
-    .from(office)
-    .where(options.includeInactive ? undefined : eq(office.active, true))
-    .orderBy(asc(office.name))
-    .all();
-  const onlyInactive =
-    !options.includeInactive &&
-    offices.length === 0 &&
-    database.select({ id: office.id }).from(office).limit(1).get() !== undefined;
-  return { ok: true, offices, onlyInactive };
+export function listOffices(database: Database): { ok: true; offices: Office[] } {
+  const offices = database.select(officeColumns).from(office).orderBy(asc(office.name)).all();
+  return { ok: true, offices };
 }
 
-/** An office and its rooms, with `onlyInactive` as `listOffices` says, for its rooms. */
+/**
+ * The organization's office and its rooms, and `onlyInactive`: the default
+ * room list shows none, yet some exist, all inactive.
+ */
 export function getOffice(
   database: Database,
-  input: { officeId: string } & ListOptions,
+  input: ListOptions,
 ): Result<{ office: Office; rooms: Room[]; onlyInactive: boolean }> {
-  const found = database
-    .select(officeColumns)
-    .from(office)
-    .where(eq(office.id, input.officeId))
-    .get();
+  const found = database.select(officeColumns).from(office).orderBy(asc(office.name)).get();
   if (!found) {
     return notFound;
   }
@@ -161,17 +143,12 @@ export function createRoom(
   }
   return database.transaction((tx) => {
     const parent = tx
-      .select({ active: office.active })
+      .select({ id: office.id })
       .from(office)
       .where(eq(office.id, parsed.data.officeId))
       .get();
     if (!parent) {
       return notFound;
-    }
-    // A deactivated office keeps its rooms as they were, reactivating one
-    // included, but gets no new ones.
-    if (!parent.active) {
-      return officeInactive;
     }
     const created = tx.insert(room).values(parsed.data).returning(roomColumns).get();
     recordAudit(tx, acting.userId, {

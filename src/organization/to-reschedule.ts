@@ -64,7 +64,6 @@ export type ToRescheduleReason =
   | OutsideWorkingTime
   | "practitionerInactive"
   | "patientInactive"
-  | "officeInactive"
   | "roomInactive";
 
 /** Where an appointment sits or a schedule runs. */
@@ -95,7 +94,6 @@ function upcomingAppointments(writer: Writer, acting: Acting) {
       medicalServiceName: medicalService.name,
       color: practitioner.color,
       officeId: office.id,
-      officeActive: office.active,
       officeName: office.name,
       roomId: room.id,
       roomActive: room.active,
@@ -204,7 +202,6 @@ function upcomingWhere(writer: Writer, which: SQL | undefined) {
       practitionerActive: member.active,
       patientActive: patient.active,
       officeId: office.id,
-      officeActive: office.active,
       roomActive: room.active,
     })
     .from(appointment)
@@ -259,13 +256,7 @@ type OutsideCheck = PractitionerWorkingTime["outside"];
 /** What decides whether an appointment is on the list. */
 type ListedBy = Pick<
   Upcoming,
-  | "practitionerActive"
-  | "patientActive"
-  | "officeActive"
-  | "roomActive"
-  | "overbooking"
-  | "during"
-  | "officeId"
+  "practitionerActive" | "patientActive" | "roomActive" | "overbooking" | "during" | "officeId"
 >;
 
 /** Why the appointment is on the list; `null` when it is not. */
@@ -275,9 +266,6 @@ function reasonFor(row: ListedBy, outside: OutsideCheck): ToRescheduleReason | n
   }
   if (!row.patientActive) {
     return "patientInactive";
-  }
-  if (!row.officeActive) {
-    return "officeInactive";
   }
   if (!row.roomActive) {
     return "roomInactive";

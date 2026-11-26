@@ -18,10 +18,10 @@ import {
 } from "#/server/offices.functions.ts";
 import type { Room } from "#/organization/offices.ts";
 
-import { useAction } from "#/routes/_app/sedes/-shared.tsx";
+import { useAction } from "#/routes/_app/consultorios/-shared.tsx";
 
-// An office's rooms are created and edited in a dialog over its `Consultorios`
-// tab (style guide, Form dialogs): one field and a state, nothing of their own.
+// The rooms are created and edited in a dialog over the `Consultorios` page
+// (style guide, Form dialogs): one field and a state, nothing of their own.
 
 // The room form's fields: the room update schema without the id it is sent with.
 const roomFieldsSchema = roomUpdateSchema.omit({ roomId: true });
@@ -140,7 +140,7 @@ function dialogCopy(room: Room | null) {
         <ArchivedBadge active={room.active} ending="o" />
       </>
     ),
-    description: "Los datos del consultorio.",
+    description: "El nombre del consultorio.",
     submitLabel: "Guardar",
   };
 }

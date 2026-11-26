@@ -59,7 +59,6 @@ const refusalMessages = {
   timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",
   closed: "La sede está cerrada a esa hora.",
   roomInactive: "Ese consultorio está archivado.",
-  officeInactive: "La sede de ese consultorio está archivada.",
 };
 
 type RefusalReason = keyof typeof refusalMessages;

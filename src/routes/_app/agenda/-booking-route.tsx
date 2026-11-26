@@ -97,7 +97,7 @@ export function BookingRoute({
   }
   const { week, search } = loaded;
   if (!week) {
-    return <RefusalMessage message="No hay consultorios activos. Agregalos en Sedes." />;
+    return <RefusalMessage message="No hay consultorios activos. Agregalos en Consultorios." />;
   }
   const { office } = week;
   return (

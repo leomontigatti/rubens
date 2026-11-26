@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page, Request } from "@playwright/test";
 
 import { holdServerFunctions } from "./steps.test-support.ts";
-import { fullName, officeName, seededPatients, storageStateOf } from "./world.test-support.ts";
+import { fullName, seededPatients, storageStateOf } from "./world.test-support.ts";
 
 // A save that ends while the user is already somewhere else moves nobody
 // (`useFormPage` in src/components/form-page.tsx). Both races need the save to
@@ -81,13 +81,12 @@ async function settle(page: Page) {
 
 // #106: before the fix, a save ending while a sidebar link's page was still
 // loading sent the user back to the form, or to the list, stuck with a spinner.
-// On an office's page, an admin's edit form, whose save leaves as soon as the server answers: a
+// On the office's form page, whose save leaves as soon as the server answers: a
 // patient's save first reloads the page's data, and by then the link's page has
 // loaded, which hides the race.
 test("#106: a sidebar link clicked during a save opens its page, and stays", async ({ page }) => {
-  await page.goto("/sedes");
-  await page.getByRole("link", { name: officeName }).click();
-  await expect(page.getByRole("heading", { level: 1, name: officeName })).toBeVisible();
+  await page.goto("/consultorios/sede");
+  await expect(page.getByRole("heading", { level: 1, name: "Datos de la sede" })).toBeVisible();
   await expect(page.getByLabel("Domicilio")).toBeEditable();
   const save = await startHeldSave(page, "Calle Sidebar 106");
   const shown = addressesFrom(page);
@@ -96,7 +95,7 @@ test("#106: a sidebar link clicked during a save opens its page, and stays", asy
   await save.ended;
   await settle(page);
 
-  // Never back to the form or the office on the way: only the agenda.
+  // Never back to the form or the rooms on the way: only the agenda.
   expect(shown.filter((pathname) => pathname !== "/agenda")).toEqual([]);
   await expect(page).toHaveURL(/\/agenda/);
   await expect(page.getByRole("heading", { level: 1, name: "Agenda" })).toBeVisible();

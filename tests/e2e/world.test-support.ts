@@ -1,7 +1,6 @@
 import {
   devIncomingMessages,
   devMedicalService,
-  devOffice,
   devOrganizationName,
   devPatients,
   devPeople,
@@ -27,7 +26,6 @@ export const organizationName = devOrganizationName;
 /** Each role's person, signed in once by `auth.setup.ts`. */
 export const people = devPeople;
 
-export const officeName = devOffice.name;
 export const roomName = devRoom.name;
 export const medicalServiceName = devMedicalService.name;
 

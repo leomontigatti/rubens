@@ -84,7 +84,6 @@ type Refusal =
   | "notFound"
   | "practitionerInactive"
   | "roomInactive"
-  | "officeInactive"
   | "dateInPast"
   | "alreadyStarted";
 
@@ -207,20 +206,12 @@ function checkCandidate(
   replacing: string | null,
 ): { ok: true } | { ok: false; reason: Refusal } | CollisionRefusal {
   const target = writer
-    .select({
-      name: room.name,
-      active: room.active,
-      officeActive: office.active,
-    })
+    .select({ name: room.name, active: room.active })
     .from(room)
-    .innerJoin(office, eq(office.id, room.officeId))
     .where(eq(room.id, candidate.roomId))
     .get();
   if (!target) {
     return notFound;
-  }
-  if (!target.officeActive) {
-    return { ok: false, reason: "officeInactive" };
   }
   if (!target.active) {
     return { ok: false, reason: "roomInactive" };

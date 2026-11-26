@@ -45,13 +45,15 @@ also the admin.
 ## Places
 
 **`office`** — ui: "Sede"
-A physical location of the business. Every time the app reads or shows is in
-one zone, `America/Argentina/Buenos_Aires`; instants are stored in UTC.
+The practice's one physical location, created with the `organization`; its name
+and address are edited from `Consultorios`, under `Datos de la sede`. Every time
+the app reads or shows is in one zone, `America/Argentina/Buenos_Aires`; instants
+are stored in UTC.
 _Avoid_: branch, clinic, site
 
 **`room`** — ui: "Consultorio"
-A room inside an `office` where a `practitioner` sees a `patient`. It holds one
-practitioner at a time.
+A room of the `office` where a `practitioner` sees a `patient`. It holds one
+practitioner at a time. The rooms are their own page, `Consultorios`.
 _Avoid_: box, cubicle, chair, shared room, exclusive room
 
 ## Scheduling
@@ -109,7 +111,7 @@ _Avoid_: comment, observation, reason, motivo
 **`toReschedule`** — ui: "Turnos a reprogramar"
 The `appointment`s a new `timeOff`, `closure` or `schedule` change left outside
 working time, those of an `inactive` `practitioner` or `patient`, and those in an
-`inactive` `room` or `office`, listed for reception to move or cancel. They are
+`inactive` `room`, listed for reception to move or cancel. They are
 never cancelled on their own.
 _Avoid_: conflicts, affected appointments
 

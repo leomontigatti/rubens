@@ -14,16 +14,8 @@ import { withOrganization } from "#/server/with-organization.ts";
 // The object validates the input and requires the admin role for a change, so
 // each validator here only names the type.
 
-export const getOffices = createServerFn({ method: "GET" })
-  .validator((data: ListOptions) => data)
-  .handler(({ data }) =>
-    withOrganization((organization, caller) =>
-      organization.listOffices(caller, { includeInactive: data.includeInactive }),
-    ),
-  );
-
 export const getOfficeWithRooms = createServerFn({ method: "GET" })
-  .validator((data: { officeId: string } & ListOptions) => data)
+  .validator((data: ListOptions) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.getOffice(caller, data)),
   );

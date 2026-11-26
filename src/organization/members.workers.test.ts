@@ -34,12 +34,11 @@ describe("the organization object's members", () => {
   it("sets an organization up with its one office", async () => {
     const { organization } = await setUpTestOrganization();
 
-    expect(await organization.listOffices(adminCaller, { includeInactive: true })).toEqual({
+    expect(await organization.listOffices(adminCaller)).toEqual({
       ok: true,
       offices: [
         { id: expect.any(String), name: "Sede Centro", address: "Av. Colón 100", active: true },
       ],
-      onlyInactive: false,
     });
   });
 
@@ -71,7 +70,7 @@ describe("the organization object's members", () => {
     });
 
     expect(again).toEqual({ ok: false, reason: "alreadySetUp" });
-    expect(await organization.listOffices(adminCaller, { includeInactive: true })).toMatchObject({
+    expect(await organization.listOffices(adminCaller)).toMatchObject({
       offices: [{ name: "Sede Centro" }],
     });
     expect(await organization.viewer({ userId: "someone-else" })).toEqual({

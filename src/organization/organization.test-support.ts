@@ -160,7 +160,7 @@ export async function addStaff(
 
 /** The office the organization's setup created, "Sede Centro". */
 export async function theOffice(organization: OrganizationStub) {
-  const listed = await organization.listOffices(adminCaller, { includeInactive: true });
+  const listed = await organization.listOffices(adminCaller);
   const [office] = listed.ok ? listed.offices : [];
   if (!office) {
     throw new Error("the organization has no office");

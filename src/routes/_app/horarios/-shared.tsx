@@ -13,7 +13,6 @@ const refusalMessages = {
   notFound: "No encontramos ese profesional, ese horario o ese consultorio.",
   practitionerInactive: "El profesional está archivado: no se le pueden cargar horarios.",
   roomInactive: "El consultorio está archivado. Elegí otro o restauralo.",
-  officeInactive: "La sede del consultorio está archivada. Elegí otro consultorio.",
   dateInPast: "La fecha ya pasó. Elegí hoy o una fecha posterior.",
   alreadyStarted: "El horario ya empezó, así que no se puede eliminar. Terminalo en una fecha.",
   roomFull: "El consultorio ya está completo en ese horario.",

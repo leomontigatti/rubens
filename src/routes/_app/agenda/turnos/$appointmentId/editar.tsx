@@ -39,12 +39,8 @@ const refusalMessages = {
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos ese turno, o ya no ocupa su horario: volvé a abrirlo.",
   practitionerInactive: "Ese profesional está archivado.",
-  otherOffice: "Ese consultorio es de otra sede.",
   roomInactive: "Ese consultorio está archivado.",
-  officeInactive: "La sede de ese consultorio está archivada.",
 };
-
-const roomRefusals: readonly string[] = ["otherOffice", "roomInactive", "officeInactive"];
 
 const fieldMessages = {
   roomId: "Elegí un consultorio.",
@@ -59,7 +55,7 @@ function refusalOf(result: Exclude<SaveResult, { ok: true }>): FieldProblem {
     return { field: "roomId", message: roomFullMessage(result.occupants) };
   }
   return {
-    field: roomRefusals.includes(result.reason) ? "roomId" : "",
+    field: result.reason === "roomInactive" ? "roomId" : "",
     message: refusalMessages[result.reason],
   };
 }

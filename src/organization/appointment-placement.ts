@@ -42,7 +42,7 @@ export interface RoomOccupant {
 }
 
 export type RoomRefusal =
-  | { ok: false; reason: "notFound" | "roomInactive" | "officeInactive" }
+  | { ok: false; reason: "notFound" | "roomInactive" }
   | { ok: false; reason: "roomFull"; occupants: RoomOccupant[] };
 
 /** Another appointment of the patient's that a booking warns about. */
@@ -133,20 +133,12 @@ export function checkRoomSpace(
   span: TimeRange,
 ): { ok: true; officeId: string } | RoomRefusal {
   const target = writer
-    .select({
-      officeId: room.officeId,
-      active: room.active,
-      officeActive: office.active,
-    })
+    .select({ officeId: room.officeId, active: room.active })
     .from(room)
-    .innerJoin(office, eq(office.id, room.officeId))
     .where(eq(room.id, roomId))
     .get();
   if (!target) {
     return { ok: false, reason: "notFound" };
-  }
-  if (!target.officeActive) {
-    return { ok: false, reason: "officeInactive" };
   }
   if (!target.active) {
     return { ok: false, reason: "roomInactive" };

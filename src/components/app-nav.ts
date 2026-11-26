@@ -1,11 +1,11 @@
 import type { LinkProps } from "@tanstack/react-router";
 import {
-  BuildingIcon,
   CalendarDaysIcon,
   CalendarSearchIcon,
   CalendarSyncIcon,
   CalendarXIcon,
   ClockIcon,
+  DoorOpenIcon,
   MessageCircleIcon,
   MessagesSquareIcon,
   ShieldIcon,
@@ -67,7 +67,7 @@ const groups: { label: string; items: (NavLink | NavFolder)[] }[] = [
   {
     label: "Administración",
     items: [
-      { label: "Sedes", to: "/sedes", icon: BuildingIcon },
+      { label: "Consultorios", to: "/consultorios", icon: DoorOpenIcon },
       { label: "Cierres", to: "/cierres", icon: CalendarXIcon },
       { label: "Obras sociales", to: "/obras-sociales", icon: ShieldIcon, adminOnly: true },
       { label: "Personal", to: "/personal", icon: UserCogIcon, adminOnly: true },

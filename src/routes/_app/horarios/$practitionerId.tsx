@@ -89,11 +89,13 @@ function NoSchedules(props: { practitionerId: string; canEdit: boolean; rooms: R
         title="Sin horarios"
         description={
           isAdmin
-            ? "Todavía no tiene horarios. Empezá agregando un consultorio activo en Sedes."
+            ? "Todavía no tiene horarios. Empezá agregando un consultorio activo en Consultorios."
             : "Todavía no tiene horarios, y antes hace falta un consultorio activo."
         }
       >
-        {isAdmin && <EmptyStateLink link={<Link to="/sedes" />}>Ir a Sedes</EmptyStateLink>}
+        {isAdmin && (
+          <EmptyStateLink link={<Link to="/consultorios" />}>Ir a Consultorios</EmptyStateLink>
+        )}
       </EmptyState>
     );
   }

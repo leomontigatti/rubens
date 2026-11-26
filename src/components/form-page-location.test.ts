@@ -12,7 +12,7 @@ describe("isStillOn", () => {
   });
 
   it("is true before the router has resolved any location", () => {
-    expect(isStillOn("/sedes/nueva", at("/sedes/nueva"), undefined)).toBe(true);
+    expect(isStillOn("/consultorios/sede", at("/consultorios/sede"), undefined)).toBe(true);
   });
 
   it("is false once the user reached another record of the same edit page", () => {
@@ -22,7 +22,7 @@ describe("isStillOn", () => {
   });
 
   it("is false while a navigation away is still loading", () => {
-    expect(isStillOn("/sedes/nueva", at("/personal"), at("/sedes/nueva"))).toBe(false);
+    expect(isStillOn("/consultorios/sede", at("/personal"), at("/consultorios/sede"))).toBe(false);
   });
 
   it("is false while a navigation back to the page is loading from another record", () => {
