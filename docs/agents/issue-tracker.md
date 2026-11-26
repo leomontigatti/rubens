@@ -42,10 +42,13 @@ The operations:
   so it carries no agent note.
 - **Labels and priority**: `tools.issue.update({ issue, labels: [...], priority })`. `labels`
   replaces the whole set, so pass the ones that stay too.
-- **Start**: `tools.issue.update({ issue, claim: true, status: "In progress" })` assigns the
-  issue to this thread, and fails naming the holder when it is already assigned. An issue the
-  read shows assigned to this thread already (the thread that launched the session may have
-  assigned it) takes the status alone: `tools.issue.update({ issue, status: "In progress" })`.
+- **Start**, for a single issue and for a PRD alike:
+  `tools.issue.update({ issue, claim: true, owner: "this", status: "In progress" })`. `claim`
+  assigns the issue to this thread, and fails naming the holder when it is already assigned.
+  `owner` makes this thread the one the issue's comments and changes wake; without it the
+  thread that filed the issue stays the owner and gets them. An issue the read shows assigned
+  to this thread already (the thread that launched the session may have assigned it) takes the
+  same call without `claim`.
 - **Open the PR**: `tools.issue.update({ issue, status: "In review", link: ["leomontigatti/rubens#<pr>"] })`.
 - **Close**: see [Closing an issue](#closing-an-issue).
 
@@ -171,8 +174,12 @@ for the PRD; closing the PRD closes none of its sub-issues.
 | **Out of scope**    | `status: "Canceled"`                                                           | **required**: `Closure: out of scope — <why>`      |
 | **Duplicate**       | `tools.issue.update({ issue, status: "Canceled", related: ["LEO-<number>"] })` | **required**: `Closure: duplicate of LEO-<number>` |
 
-"Built" means the change is on `main`. An issue in `In review` whose linked PR has merged was
-left open by a thread that did not wake: close it as built. A deferral names its follow-up
+"Built" means the change is on `main`. A merge wakes a thread only while a person has written
+in it lately, so an issue can stay in `In review` after its PR merged. The `In review sweep`
+automation closes those once a day: an issue in `In review` whose linked PRs are all merged
+moves to `Done`, with a comment naming the PR. It leaves an issue with a linked PR that closed
+unmerged, and names it in its run's report. A session that meets an issue whose PRs have all
+merged closes it as built without waiting for the sweep. A deferral names its follow-up
 issue, which must exist before the close, and re-points anything blocked on this issue at the
 follow-up with `tools.issue.update({ issue: "<dependent>", blocked_by: ["<follow-up>"] })`: Capy
 counts a closed blocker as cleared.
