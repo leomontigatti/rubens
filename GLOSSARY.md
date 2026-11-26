@@ -70,8 +70,8 @@ illness, overriding their `schedule`s.
 _Avoid_: absence, leave, exception, vacation
 
 **`closure`** — ui: "Cierre"
-A one-off range when an `office`, or the whole `organization`, is closed, such as a
-national holiday.
+A one-off range when the whole `organization` is closed, every `room` in it, such
+as a national holiday.
 _Avoid_: holiday, exception, blackout
 
 **`availability`** — ui: "Disponibilidad"

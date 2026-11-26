@@ -256,7 +256,6 @@ describe("asking whether to tell the patients a time off or a closure sends to t
     await bookMartina();
     const createClosure = (notice: { tellPatients?: boolean; affected?: number } = {}) =>
       world.organization.createClosure(adminCaller, {
-        officeId: null,
         entry: { kind: "days", firstDate: "2099-01-04", lastDate: "2099-01-04" },
         ...notice,
       });
@@ -265,7 +264,6 @@ describe("asking whether to tell the patients a time off or a closure sends to t
     const moved = (notice: { tellPatients?: boolean; affected?: number } = {}) =>
       world.organization.updateClosure(adminCaller, {
         closureId: closure.id,
-        officeId: null,
         entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
         ...notice,
       });
@@ -341,7 +339,6 @@ describe('telling patients their appointment went to the "to reschedule" list', 
     expectOk(
       await answeringNotice(true, (notice) =>
         world.organization.createClosure(adminCaller, {
-          officeId: null,
           entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
           ...notice,
         }),

@@ -138,45 +138,21 @@ describe("time off, closures and busy ranges", () => {
     expect(starts({ timeOff: [away], durationMinutes: 30 })).toEqual(["2099-01-05T12:00:00.000Z"]);
   });
 
-  it("skips closures, whether of an office or the organization", () => {
-    const officeClosed = {
+  it("skips closures", () => {
+    const early = {
       start: new Date("2099-01-05T12:00:00Z"),
       end: new Date("2099-01-05T12:15:00Z"),
     };
-    const organizationClosed = {
+    const late = {
       start: new Date("2099-01-05T12:45:00Z"),
       end: new Date("2099-01-05T15:00:00Z"),
     };
 
     expect(
       starts({
-        closures: [
-          { during: officeClosed, officeId: "office-centro" },
-          { during: organizationClosed, officeId: null },
-        ],
+        closures: [early, late],
       }),
     ).toEqual(["2099-01-05T12:15:00.000Z", "2099-01-05T12:30:00.000Z"]);
-  });
-
-  it("applies an office's closure only to that office's schedules", () => {
-    const norte = {
-      ...morning,
-      officeId: "office-norte",
-      roomId: "room-n",
-      startTime: "10:00",
-      endTime: "10:30",
-    };
-    const wholeDay = {
-      start: new Date("2099-01-05T03:00:00Z"),
-      end: new Date("2099-01-06T03:00:00Z"),
-    };
-
-    expect(
-      starts({
-        schedules: [morning, norte],
-        closures: [{ during: wholeDay, officeId: "office-centro" }],
-      }),
-    ).toEqual(["2099-01-05T13:00:00.000Z", "2099-01-05T13:15:00.000Z"]);
   });
 
   it("skips busy ranges, and a range that only touches the span leaves it free", () => {
@@ -435,22 +411,11 @@ describe.each([
     expect(outsideWorkingTime(span("12:00", "12:20"), "office-centro", away)).toBeNull();
   });
 
-  it("is outside in a closure of its office, and not in another office's", () => {
-    const closed = (officeId: string) =>
-      workingTime({ closures: [{ during: span("12:00", "13:00"), officeId }] });
-
-    expect(
-      outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed("office-centro")),
-    ).toBe("closure");
-    expect(
-      outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed("office-norte")),
-    ).toBeNull();
-  });
-
-  it("is outside in a closure of the whole organization", () => {
-    const closed = workingTime({ closures: [{ during: span("03:00", "23:00"), officeId: null }] });
+  it("is outside in a closure, even when it only overlaps part of the span", () => {
+    const closed = workingTime({ closures: [span("12:20", "13:00")] });
 
     expect(outsideWorkingTime(span("12:00", "12:30"), "office-centro", closed)).toBe("closure");
+    expect(outsideWorkingTime(span("12:00", "12:20"), "office-centro", closed)).toBeNull();
   });
 });
 

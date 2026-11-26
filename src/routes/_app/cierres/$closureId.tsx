@@ -4,15 +4,10 @@ import { pageHead } from "#/lib/page-title.ts";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import { EntryForm } from "#/components/range-entry.tsx";
 import { readRangeEntry } from "#/components/range-entry-values.ts";
-import { closureOfficeOptions, closureUpdateSchema } from "#/lib/time-ranges.ts";
+import { closureUpdateSchema, rangeEntryLabel } from "#/lib/time-ranges.ts";
 import { editClosure, getClosures, removeClosure } from "#/server/closures.functions.ts";
 
-import {
-  closurePlace,
-  officeField,
-  readOfficeId,
-  refusalMessages,
-} from "#/routes/_app/cierres/-closure-fields.tsx";
+import { refusalMessages } from "#/routes/_app/cierres/-closure-fields.tsx";
 import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/cierres/$closureId")({
@@ -20,7 +15,7 @@ export const Route = createFileRoute("/_app/cierres/$closureId")({
     const closure = loaderData?.ok
       ? loaderData.closures.find((one) => one.id === params.closureId)
       : undefined;
-    return pageHead(closure ? closurePlace(closure) : "Cierre");
+    return pageHead(closure ? rangeEntryLabel(closure.entry) : "Cierre");
   },
   loader: () => getClosures(),
   staticData: { crumbs: fixedCrumbs("Editar cierre") },
@@ -43,13 +38,12 @@ function EditClosure() {
   return (
     <EntryForm
       back={{ to: "/cierres" }}
-      title={closurePlace(closure)}
-      description="Los días u horas en que la sede, o toda la organización, no atiende."
+      title={rangeEntryLabel(closure.entry)}
+      description="Los días u horas en que no se atiende."
       transitionId={closureId}
       subject="closure"
       initial={closure.entry}
       submitLabel="Guardar"
-      owner={officeField(closureOfficeOptions(result.offices, closure), closure.officeId)}
       messages={refusalMessages}
       deletion={{
         question: "¿Eliminar este cierre?",
@@ -59,7 +53,6 @@ function EditClosure() {
       onSubmit={(values, notice) => {
         const input = closureUpdateSchema.safeParse({
           closureId,
-          officeId: readOfficeId(values.owner),
           entry: readRangeEntry(values),
           ...notice,
         });

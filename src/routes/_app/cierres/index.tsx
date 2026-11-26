@@ -11,7 +11,7 @@ import { rangeEntryLabel } from "#/lib/time-ranges.ts";
 import { getClosures } from "#/server/closures.functions.ts";
 import type { Closure } from "#/organization/closures.ts";
 
-import { closurePlace, refusalMessages } from "#/routes/_app/cierres/-closure-fields.tsx";
+import { refusalMessages } from "#/routes/_app/cierres/-closure-fields.tsx";
 
 export const Route = createFileRoute("/_app/cierres/")({
   head: () => ({ meta: [{ title: "Cierres · underthing" }] }),
@@ -30,7 +30,7 @@ function ClosureList() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Cierres"
-        description="Los días en que una sede, o todas, no atiende: un feriado o un día sin atención."
+        description="Los días en que no se atiende: un feriado o un día sin atención."
         actions={
           <CreateButton can={result.canEdit} link={<Link to="/cierres/nuevo" />}>
             Nuevo cierre
@@ -42,16 +42,16 @@ function ClosureList() {
   );
 }
 
-/** A closure in the list, with what it closes, and whether the viewer may open its page. */
-type ListedClosure = Closure & { place: string; canOpen: boolean };
+/** A closure in the list, with when it closes, and whether the viewer may open its page. */
+type ListedClosure = Closure & { when: string; canOpen: boolean };
 
 const columns: DataTableColumn<ListedClosure>[] = [
   {
-    id: "place",
-    header: "Sede",
+    id: "when",
+    header: "Cuándo",
     cell: (closure) => (
       <RowName
-        name={closure.place}
+        name={closure.when}
         transitionId={closure.id}
         link={
           closure.canOpen
@@ -61,19 +61,18 @@ const columns: DataTableColumn<ListedClosure>[] = [
       />
     ),
   },
-  { id: "when", header: "Cuándo", cell: (closure) => rangeEntryLabel(closure.entry) },
 ];
 
 function ClosureTable({ closures, canEdit }: { closures: Closure[]; canEdit: boolean }) {
   const { table, pager, query, setQuery } = useClientDataTable({
     rows: closures.map((closure) => ({
       ...closure,
-      place: closurePlace(closure),
+      when: rangeEntryLabel(closure.entry),
       canOpen: canEdit,
     })),
     columns,
     getRowId: (closure) => closure.id,
-    searchText: (closure) => closure.place,
+    searchText: (closure) => closure.when,
   });
 
   return (
@@ -84,7 +83,7 @@ function ClosureTable({ closures, canEdit }: { closures: Closure[]; canEdit: boo
         value: query,
         onChange: setQuery,
         label: "Buscar cierre",
-        placeholder: "Buscar por sede",
+        placeholder: "Buscar por fecha",
       }}
       noRecords={closures.length === 0}
       empty={

@@ -154,12 +154,11 @@ export const timeOff = sqliteTable(
   ],
 );
 
-/** A closure (ui: "Cierre") of one office, or of the whole organization when `officeId` is null. */
+/** A closure (ui: "Cierre") of the whole organization: every room in it is closed. */
 export const closure = sqliteTable(
   "closure",
   {
     id: id(),
-    officeId: text("office_id").references(() => office.id),
     startsAt: instant("starts_at").notNull(),
     endsAt: instant("ends_at").notNull(),
     /** The last answer, on saving, to whether the patients it sent to the "to reschedule" list were told by WhatsApp; true while nobody was asked. */
@@ -167,7 +166,7 @@ export const closure = sqliteTable(
     ...timestamps,
   },
   (table) => [
-    index("closure_office_id_idx").on(table.officeId, table.startsAt),
+    index("closure_starts_at_idx").on(table.startsAt),
     check("closure_span_check", sql`${table.startsAt} < ${table.endsAt}`),
   ],
 );

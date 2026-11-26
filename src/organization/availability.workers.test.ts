@@ -48,8 +48,8 @@ async function world() {
     }
   }
 
-  async function addClosure(officeId: string | null, entry: RangeEntry) {
-    const result = await organization.createClosure(adminCaller, { officeId, entry });
+  async function addClosure(entry: RangeEntry) {
+    const result = await organization.createClosure(adminCaller, { entry });
     if (!result.ok) {
       throw new Error(`createClosure refused: ${result.reason}`);
     }
@@ -112,19 +112,19 @@ describe("free times for stored data", () => {
     ]);
   });
 
-  it("leaves out the practitioner's time off and the closures of their office and the organization", async () => {
-    const { centro, addSchedule, addTimeOff, addClosure, freeStarts } = await world();
+  it("leaves out the practitioner's time off and the closures", async () => {
+    const { addSchedule, addTimeOff, addClosure, freeStarts } = await world();
     await addSchedule();
     await addTimeOff({ kind: "hours", start: "2099-01-05T09:00", end: "2099-01-05T09:30" });
-    await addClosure(centro.id, {
+    await addClosure({
       kind: "hours",
       start: "2099-01-05T10:00",
       end: "2099-01-05T10:30",
     });
-    await addClosure(null, { kind: "hours", start: "2099-01-05T10:45", end: "2099-01-05T11:00" });
+    await addClosure({ kind: "hours", start: "2099-01-05T10:45", end: "2099-01-05T11:00" });
 
     // 09:30 is the only start whose half hour meets none of them; 10:30 runs
-    // into the organization's closure.
+    // into the second closure.
     expect(await freeStarts()).toEqual(["2099-01-05T12:30:00.000Z"]);
   });
 
@@ -151,7 +151,7 @@ describe("free times for stored data", () => {
     });
     // Wednesday off, and the practice closed on Thursday.
     await addTimeOff(day("2099-01-07"));
-    await addClosure(centro.id, day("2099-01-08"));
+    await addClosure(day("2099-01-08"));
 
     expect(await freeStarts(adminCaller, { lastDate: "2099-01-11" })).toEqual([
       "2099-01-05T12:00:00.000Z",

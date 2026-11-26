@@ -367,7 +367,6 @@ async function addTimeOffAndClosure(
   accepted(
     "createClosure",
     await organization.createClosure(admin, {
-      officeId: null,
       entry: { kind: "days", firstDate: closed, lastDate: closed },
     }),
   );

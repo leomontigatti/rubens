@@ -6,11 +6,7 @@ import { readRangeEntry } from "#/components/range-entry-values.ts";
 import { closureInputSchema } from "#/lib/time-ranges.ts";
 import { addClosure, getClosures } from "#/server/closures.functions.ts";
 
-import {
-  officeField,
-  readOfficeId,
-  refusalMessages,
-} from "#/routes/_app/cierres/-closure-fields.tsx";
+import { refusalMessages } from "#/routes/_app/cierres/-closure-fields.tsx";
 import { fixedCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 export const Route = createFileRoute("/_app/cierres/nuevo")({
@@ -32,16 +28,14 @@ function NewClosure() {
     <EntryForm
       back={{ to: "/cierres" }}
       title="Nuevo cierre"
-      description="Los días u horas en que una sede, o toda la organización, no atiende."
+      description="Los días u horas en que no se atiende."
       subject="closure"
       initial={null}
       submitLabel="Crear cierre"
       creates
-      owner={officeField(result.offices, null)}
       messages={refusalMessages}
       onSubmit={(values, notice) => {
         const input = closureInputSchema.safeParse({
-          officeId: readOfficeId(values.owner),
           entry: readRangeEntry(values),
           ...notice,
         });
