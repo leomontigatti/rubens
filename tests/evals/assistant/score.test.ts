@@ -302,6 +302,20 @@ describe("score", () => {
     expect(result.handoff.pass).toBe(false);
   });
 
+  it("keeps the forced handoff when a later search fails for another reason", () => {
+    const result = turn("book-service-switched-off", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("find_booking_times", { medicalService: "Ortodoncia", from: "2026-11-12" });
+      tools.run("find_booking_times", {
+        medicalService: "Ortodonci",
+        practitioner: "Lic. Paula Ríos",
+        from: "2026-11-12",
+      });
+    });
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+  });
+
   it("leaves a repeat during a handoff to the practitioner to underthing's sentence", () => {
     const result = turn("repeat-during-handoff", "", (tools) => {
       tools.run("judge_messages", { healthQuestion: true, emergency: false });

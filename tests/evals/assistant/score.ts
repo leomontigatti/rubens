@@ -111,9 +111,10 @@ const ruleRefusals = new Set(["past_cutoff", "move_already_used"]);
 
 const bookingRefusals = new Set(["whatsappBookingOff", "archived", "notFound"]);
 
+const outcome = (call: ToolCall) => call.result as { ok?: boolean; reason?: string };
+
 const failedWith = (call: ToolCall, reasons: Set<string>) =>
-  (call.result as { ok?: boolean; reason?: string }).ok === false &&
-  reasons.has(String((call.result as { reason?: string }).reason));
+  outcome(call).ok === false && reasons.has(String(outcome(call).reason));
 
 // What the code hands off itself, without a hand_off, as `receptionReason`
 // (`src/organization/turn-handoffs.ts`) orders them: a move a rule refused, then
@@ -126,12 +127,19 @@ function refusedReason(turn: Turn) {
       failedWith(call, ruleRefusals),
   );
   if (ruleRefused) return "rule_refused";
-  // A later search that finds the medical service clears an earlier refusal, as the code does.
-  const lastSearch = turn.calls.filter((call) => call.name === "find_booking_times").at(-1);
-  const bookingRefused =
-    lastSearch !== undefined &&
-    failedWith(lastSearch, bookingRefusals) &&
-    !(failedWith(lastSearch, new Set(["notFound"])) && lastSearch.args.practitioner);
+  // As the code does: a refusal of the service sets it, a later search that finds it clears it,
+  // and any other failure leaves it as it was.
+  let bookingRefused = false;
+  for (const call of turn.calls) {
+    if (call.name !== "find_booking_times") continue;
+    if (outcome(call).ok === true) bookingRefused = false;
+    else if (
+      failedWith(call, bookingRefusals) &&
+      !(failedWith(call, new Set(["notFound"])) && call.args.practitioner)
+    ) {
+      bookingRefused = true;
+    }
+  }
   return bookingRefused ? "booking_unavailable" : null;
 }
 
