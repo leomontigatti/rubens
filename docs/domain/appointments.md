@@ -25,8 +25,7 @@ check-ups, is booked one appointment after the other.
 ## Booking
 
 Reception books from a free cell clicked on the calendar, which fills in the
-time and room, and the practitioner when only one is free there (otherwise the
-form asks which of those free), or from `Nuevo turno`: patient, practitioner and
+time, the room and the practitioner free there, or from `Nuevo turno`: patient, practitioner and
 medical service, then the free times for that service's duration. The service comes
 before the time because its duration decides which times fit; the duration can
 still be adjusted. The patient is found with the search box, or registered on
@@ -101,7 +100,8 @@ requested ──► booked ──► confirmed ──► checkedIn ──► att
 A status set by mistake can be undone the same day. The audit log keeps both
 changes; a busy front desk will make mistakes, and forbidding the undo only
 breeds workarounds. Undoing a cancellation or a no-show brings the appointment back
-only if its time and its room still have space.
+only if no other practitioner holds its room then and the practitioner has no other
+appointment at that time.
 
 ## Rescheduling
 

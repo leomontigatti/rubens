@@ -58,7 +58,7 @@ export function FreeStartList(props: {
                 type="button"
                 size="xs"
                 variant={+free.start === +(props.picked?.start ?? 0) ? "default" : "outline"}
-                title={`${free.officeName}, ${free.roomName}`}
+                title={free.roomName}
                 onClick={() => props.onPick(free)}
               >
                 {free.time}

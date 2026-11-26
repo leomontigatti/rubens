@@ -15,7 +15,7 @@ import { getOfficeWithRooms } from "#/server/offices.functions.ts";
 import type { Office, Room } from "#/organization/offices.ts";
 
 import { useRoomDialog } from "#/routes/_app/consultorios/-room-form.tsx";
-import { RefusalAlert } from "#/routes/_app/consultorios/-shared.tsx";
+import { RefusedPage } from "#/routes/_app/consultorios/-shared.tsx";
 
 // The organization's rooms are the page, and its one office is the line under
 // the title, edited from `Acciones` (LEO-6's prototype pass, variant C).
@@ -35,7 +35,7 @@ function Rooms() {
   const result = Route.useLoaderData();
 
   if (!result.ok) {
-    return <RefusalAlert reason={result.reason} />;
+    return <RefusedPage title="Consultorios" reason={result.reason} />;
   }
   if (!viewer.roles.includes("admin")) {
     return (

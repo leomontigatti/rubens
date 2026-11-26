@@ -131,7 +131,7 @@ const statusIcons: Partial<Record<AppointmentStatus, LucideIcon>> = {
 function AppointmentLine({ appointment }: { appointment: PatientAppointment }) {
   const Icon = statusIcons[appointment.status] ?? CalendarClockIcon;
   const details = [
-    `${appointment.officeName}, ${appointment.roomName}`,
+    appointment.roomName,
     appointment.overbooking ? "Sobreturno" : null,
     cancellationText(appointment),
   ].filter(Boolean);

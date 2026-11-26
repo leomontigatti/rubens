@@ -39,11 +39,16 @@ describe("offices", () => {
 
   it("answers notFound for an office that does not exist", async () => {
     const { organization } = await setUpTestOrganization();
+    const before = await theOffice(organization);
 
-    expect(await organization.updateOffice(adminCaller, { ...centro, officeId: missing })).toEqual({
-      ok: false,
-      reason: "notFound",
-    });
+    expect(
+      await organization.updateOffice(adminCaller, {
+        name: "Sede Norte",
+        address: "Cabildo 1",
+        officeId: missing,
+      }),
+    ).toEqual({ ok: false, reason: "notFound" });
+    expect(await theOffice(organization)).toEqual(before);
   });
 });
 

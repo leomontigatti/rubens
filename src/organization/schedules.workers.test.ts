@@ -18,8 +18,8 @@ import type { OrganizationStub } from "#/organization/organization.test-support.
 import { member } from "#/organization/schema.ts";
 
 // Dates far in the future or the past keep "today" out of the way unless a
-// test is about it; 2099-01-05 and 2020-01-06 are Mondays. The offices are in
-// Buenos Aires (UTC-3) unless a test names another zone.
+// test is about it; 2099-01-05 and 2020-01-06 are Mondays. The practice is in
+// Buenos Aires (UTC-3).
 
 const zone = "America/Argentina/Buenos_Aires";
 
@@ -74,7 +74,7 @@ async function world() {
 }
 
 describe("creating a schedule", () => {
-  it("stores the weekly fields with the room it holds, naming no office, and audits it", async () => {
+  it("stores the weekly fields with the room it holds, and audits it", async () => {
     const { organization, room, mondayMorning, create, schedulesOf } = await world();
 
     const result = await create(
@@ -84,7 +84,6 @@ describe("creating a schedule", () => {
 
     expect(result).toMatchObject({ ok: true });
     const schedules = await schedulesOf();
-    expect(schedules[0]).not.toHaveProperty("officeName");
     expect(schedules).toEqual([
       expect.objectContaining({
         roomId: room.id,
@@ -158,7 +157,7 @@ describe("validating a schedule", () => {
   });
 
   it("refuses a deactivated room or practitioner", async () => {
-    const { organization, mondayMorning, create } = await world();
+    const { organization, mondayMorning, create, schedulesOf } = await world();
     const inactiveRoom = await addRoom(
       organization,
       (await theOffice(organization)).id,
@@ -181,6 +180,8 @@ describe("validating a schedule", () => {
     expect(
       await create(adminCaller, mondayMorning({ practitionerId: leaving.practitionerId })),
     ).toEqual({ ok: false, reason: "practitionerInactive" });
+    expect(await schedulesOf()).toEqual([]);
+    expect(await schedulesOf(leaving.practitionerId)).toEqual([]);
   });
 });
 

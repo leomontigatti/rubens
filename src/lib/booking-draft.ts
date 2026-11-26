@@ -21,10 +21,6 @@ export interface PickedStart {
   roomName: string;
 }
 
-export interface OfferedStart extends PickedStart {
-  officeName: string;
-}
-
 export interface BookingWarning {
   kind: "overlap" | "sameDay";
   start: Date;
@@ -185,7 +181,7 @@ export function keepsOfferedStarts(changedField: string): boolean {
 export function showsWeekOfStarts(form: {
   fixed: boolean;
   start: PickedStart | null;
-  offeredStarts: readonly OfferedStart[] | null;
+  offeredStarts: readonly PickedStart[] | null;
 }): boolean {
   if (!form.fixed) {
     return true;

@@ -316,7 +316,6 @@ describe("the to-reschedule list", () => {
     expect(result.appointments[0]).toMatchObject({
       patientName: "María Paz",
       practitioner: { id: w.juan.practitionerId, displayName: "Juan Gómez" },
-      officeName: "Sede Centro",
       roomName: "Consultorio 1",
       start: at("12:00"),
       end: at("12:30"),

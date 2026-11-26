@@ -392,7 +392,7 @@ describe("the calendar week of a room", () => {
     expect(shown.days[0]!.freeStarts).toHaveLength(4);
   });
 
-  it("gives a practitioner their own appointments in full and nothing of others'", async () => {
+  it("gives a practitioner their own appointments and nothing of others'", async () => {
     const w = await world();
     const juans = await w.book();
     const lucias = await w.book({

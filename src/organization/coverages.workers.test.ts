@@ -95,9 +95,7 @@ describe("a patient's coverage", () => {
 
     const added = await add(receptionist, { plan: " 310 " });
 
-    expect(added).toEqual({
-      id: added.id,
-      patientId: added.patientId,
+    expect(added).toMatchObject({
       insurerId: osde,
       insurerName: "OSDE",
       insurerKind: "prepaga",
@@ -203,6 +201,7 @@ describe("a patient's coverage", () => {
         memberNumber: "1",
       }),
     ).toEqual({ ok: false, reason: "insurerInactive" });
+    expect(await coverages()).toMatchObject([{ insurerName: "Apross", memberNumber: "123" }]);
 
     await organization.removeCoverage(receptionist, { coverageId: added.id });
     expect(
@@ -212,10 +211,12 @@ describe("a patient's coverage", () => {
         memberNumber: "1",
       }),
     ).toEqual({ ok: false, reason: "insurerInactive" });
+    expect(await coverages()).toEqual([]);
   });
 
   it("refuses coverage calls to a caller who is not a member", async () => {
-    const { organization, receptionist, patientId, osde, add } = await patientWithInsurers();
+    const { organization, receptionist, patientId, osde, add, coverages } =
+      await patientWithInsurers();
     const added = await add(receptionist);
     const stranger = { userId: "user-stranger" };
 
@@ -231,10 +232,11 @@ describe("a patient's coverage", () => {
     ]) {
       expect(result).toEqual({ ok: false, reason: "unauthenticated" });
     }
+    expect(await coverages()).toEqual([added]);
   });
 
   it("answers notFound for what is not there", async () => {
-    const { organization, receptionist, patientId, osde } = await patientWithInsurers();
+    const { organization, receptionist, patientId, osde, coverages } = await patientWithInsurers();
 
     for (const result of [
       await organization.listCoverages(receptionist, { patientId: missing }),
@@ -257,6 +259,7 @@ describe("a patient's coverage", () => {
     ]) {
       expect(result).toEqual({ ok: false, reason: "notFound" });
     }
+    expect(await coverages()).toEqual([]);
   });
 
   it("writes each coverage change to the patient's history, in order", async () => {

@@ -219,9 +219,7 @@ function FreeTimes({ starts }: { starts: AvailableStart[] }) {
               {day.starts.map((free) => (
                 <li key={+free.start} className="flex gap-3">
                   <span className="font-medium tabular-nums">{free.time}</span>
-                  <span className="text-muted-foreground">
-                    {free.officeName}, {free.roomName}
-                  </span>
+                  <span className="text-muted-foreground">{free.roomName}</span>
                 </li>
               ))}
             </ul>

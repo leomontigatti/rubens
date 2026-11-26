@@ -136,7 +136,6 @@ describe("booking an appointment", () => {
     );
     expect(offered[0]).toEqual({
       start: at("12:30"),
-      officeName: "Sede Centro",
       roomName: "Consultorio 1",
     });
   });
@@ -627,7 +626,6 @@ describe("a patient's appointments", () => {
       cancelledBy: "patient",
       practitionerName: "Lucía Díaz",
       medicalServiceName: "Consulta",
-      officeName: "Sede Centro",
       roomName: "Consultorio 2",
     });
   });

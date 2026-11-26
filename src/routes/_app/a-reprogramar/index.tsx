@@ -102,8 +102,7 @@ function EntryRow({ entry }: { entry: ToRescheduleEntry }) {
           {formatDateTime(entry.start, practiceTimeZone)} · {entry.patientName}
         </p>
         <p className="text-muted-foreground">
-          {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.officeName},{" "}
-          {entry.roomName}
+          {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.roomName}
         </p>
         <p className="text-muted-foreground">{reasonLabels[entry.reason]}</p>
         {note && <p className="text-muted-foreground">{note}</p>}

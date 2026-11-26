@@ -289,7 +289,6 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
 
 interface PlacedStart {
   start: Date;
-  officeName: string;
   roomName: string;
 }
 

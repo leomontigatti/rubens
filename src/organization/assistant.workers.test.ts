@@ -407,7 +407,7 @@ describe("the assistant's pace", () => {
 });
 
 describe("answering when, where and with whom", () => {
-  it("replies with the appointment's date, time, practitioner and address, through the Graph API", async () => {
+  it("replies with the appointment's date, time and practitioner through the Graph API, from details that hold its address", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("cuándo tengo el turno?");
     let details: unknown;

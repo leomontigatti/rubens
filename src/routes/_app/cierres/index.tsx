@@ -30,7 +30,7 @@ function ClosureList() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Cierres"
-        description="Los días en que no se atiende: un feriado o un día sin atención."
+        description="Los días u horarios en que no se atiende: un feriado, un viernes desde las 14."
         actions={
           <CreateButton can={result.canEdit} link={<Link to="/cierres/nuevo" />}>
             Nuevo cierre

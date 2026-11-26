@@ -11,7 +11,7 @@ import type { PlaceReference } from "#/lib/offices.ts";
 import { patientName, patientReferenceSchema } from "#/lib/patients.ts";
 import type { PatientReference } from "#/lib/patients.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
-import { shiftDate, today } from "#/lib/schedules.ts";
+import { today } from "#/lib/schedules.ts";
 import { memberReferenceSchema } from "#/lib/staff.ts";
 import type { MemberReference } from "#/lib/staff.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -54,7 +54,6 @@ export interface ToRescheduleEntry {
   status: AppointmentStatus;
   medicalServiceName: string;
   color: PractitionerColor;
-  officeName: string;
   roomName: string;
   reason: ToRescheduleReason;
 }
@@ -94,7 +93,6 @@ function upcomingAppointments(writer: Writer, acting: Acting) {
       medicalServiceName: medicalService.name,
       color: practitioner.color,
       officeId: office.id,
-      officeName: office.name,
       roomId: room.id,
       roomActive: room.active,
       roomName: room.name,
@@ -142,11 +140,7 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
     .where(
       and(
         inArray(schedule.practitionerId, boundAsOne(practitionerIds)),
-        // An office in another zone than the default one may still be on yesterday.
-        or(
-          isNull(schedule.lastDate),
-          gte(schedule.lastDate, shiftDate(today(practiceTimeZone), -1)),
-        ),
+        or(isNull(schedule.lastDate), gte(schedule.lastDate, today(practiceTimeZone))),
       ),
     )
     .all();
@@ -308,7 +302,6 @@ function findToReschedule(writer: Writer, acting: Acting): ToRescheduleEntry[] {
         status: row.status,
         medicalServiceName: row.medicalServiceName,
         color: row.color,
-        officeName: row.officeName,
         roomName: row.roomName,
         reason,
       },

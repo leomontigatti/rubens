@@ -228,7 +228,7 @@ describe("the free times offered after a start stopped being free", () => {
 });
 
 describe("whether the booking form shows the week of free times", () => {
-  const offered = [{ ...nine, officeName: "Centro" }];
+  const offered = [nine];
 
   it("shows it on a new booking", () => {
     expect(showsWeekOfStarts({ fixed: false, start: null, offeredStarts: null })).toBe(true);

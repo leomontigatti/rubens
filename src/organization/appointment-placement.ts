@@ -131,12 +131,8 @@ export function checkRoomSpace(
   roomId: string,
   practitionerId: string,
   span: TimeRange,
-): { ok: true; officeId: string } | RoomRefusal {
-  const target = writer
-    .select({ officeId: room.officeId, active: room.active })
-    .from(room)
-    .where(eq(room.id, roomId))
-    .get();
+): { ok: true } | RoomRefusal {
+  const target = writer.select({ active: room.active }).from(room).where(eq(room.id, roomId)).get();
   if (!target) {
     return { ok: false, reason: "notFound" };
   }
@@ -158,7 +154,7 @@ export function checkRoomSpace(
       .sort((a, b) => +a.start - +b.start || a.practitionerName.localeCompare(b.practitionerName));
     return { ok: false, reason: "roomFull", occupants };
   }
-  return { ok: true, officeId: target.officeId };
+  return { ok: true };
 }
 
 function localDay(instant: Date): TimeRange {

@@ -58,19 +58,6 @@ describe("filling a template", () => {
       ],
     });
   });
-
-  it("fills the practitioner, date, time and address from the sample appointment, the time in the practice's zone", () => {
-    const body = "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{domicilio}}.";
-
-    expect(
-      fillTemplate(
-        body,
-        templateValues({ ...sampleAppointment, organizationName: "Consultorios Prueba" }),
-      ).text,
-    ).toBe(
-      "Tu turno con la Dra. Sofía Méndez es el jueves 12 de noviembre a las 10:30 en Av. Colón 1234, Córdoba.",
-    );
-  });
 });
 
 describe("the sample appointment", () => {
@@ -91,10 +78,12 @@ describe("the sample appointment", () => {
   it("fills a body as the template preview shows it, the time read in the practice's zone", () => {
     expect(
       fillSample(
-        "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n",
+        "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}} con {{profesional}} en {{domicilio}}.\n",
         "Consultorios Prueba",
       ),
-    ).toBe("Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30.");
+    ).toBe(
+      "Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30 con la Dra. Sofía Méndez en Av. Colón 1234, Córdoba.",
+    );
   });
 
   it("leaves what is not a variable of any template as written, the office's name among them", () => {

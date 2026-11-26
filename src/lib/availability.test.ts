@@ -238,7 +238,6 @@ describe("free starts by day", () => {
   it("groups starts under their local date in the practice's zone, with local times", () => {
     const at = (iso: string) => ({
       start: new Date(iso),
-      officeName: "Sede Centro",
       roomName: "Consultorio 1",
     });
 

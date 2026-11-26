@@ -61,7 +61,7 @@ interface CalendarPractitioner {
 export interface CalendarWeek {
   room: { id: string; name: string };
   /** The room's office, with its active rooms, where a move or an overbooking can go. */
-  office: { id: string; name: string; rooms: { id: string; name: string }[] };
+  office: { id: string; rooms: { id: string; name: string }[] };
   /** The practitioners with a schedule or an appointment in the room that week. */
   practitioners: CalendarPractitioner[];
   /** Their active medical services. */
@@ -230,7 +230,6 @@ function findRoom(writer: Writer, roomId: string) {
       id: room.id,
       name: room.name,
       officeId: office.id,
-      officeName: office.name,
     })
     .from(room)
     .innerJoin(office, eq(office.id, room.officeId))
@@ -409,7 +408,6 @@ function buildWeek(writer: Writer, acting: Acting, found: FoundRoom, query: Quer
     room: { id: found.id, name: found.name },
     office: {
       id: found.officeId,
-      name: found.officeName,
       rooms: officeRooms,
     },
     practitioners,

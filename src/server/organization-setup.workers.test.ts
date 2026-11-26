@@ -64,7 +64,7 @@ describe("the setup endpoint", () => {
     expect(fakeAccounts.calls).toEqual([]);
   });
 
-  it("refuses a request without the office's name and address, and creates no user", async () => {
+  it("refuses a request without the office's address, and creates no user", async () => {
     const response = await handleSetupRequest(
       setupRequest("Otra", undefined, { name: "Sede Otra" }),
       bindings,

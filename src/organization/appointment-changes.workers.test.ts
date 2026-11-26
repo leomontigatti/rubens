@@ -127,7 +127,7 @@ async function world() {
 }
 
 describe("reading one appointment", () => {
-  it("draws it as the calendar does, with its office's rooms", async () => {
+  it("reads its patient, room, note, status and actions, with its office's rooms", async () => {
     const w = await world();
     const id = await w.bookJuan(at("12:00"), w.maria.id, "Trae estudios");
 

@@ -77,10 +77,10 @@ export function WeekGridFrame(props: { view: TimeRange }) {
   );
 }
 
-/** A free cell clicked: its start and the practitioners free from it. */
+/** A free cell clicked: its start and the practitioner free from it. */
 export interface PickedCell {
   start: Date;
-  practitionerIds: string[];
+  practitionerId: string;
 }
 
 /**
@@ -103,16 +103,16 @@ export function DayColumn(props: {
     <div className="min-w-28 flex-1 border-r last:border-r-0">
       <div className="flex h-10 items-center border-b px-2 text-sm font-medium">{props.title}</div>
       <div className="relative h-(--height)" style={{ "--height": px(offsetOf(view.end, view)) }}>
-        {placed.cells.map(({ start, top, height, free, lane, lanes }) => (
+        {placed.cells.map(({ start, top, height, free: [free], lane, lanes }) => (
           <div
             key={top}
             className={cn(
               "absolute inset-x-0 top-(--top) h-(--height) border-t",
-              free.length > 0 ? "bg-background" : "bg-sidebar",
+              free ? "bg-background" : "bg-sidebar",
             )}
             style={{ "--top": px(top), "--height": px(height) }}
           >
-            {free.length > 0 && (
+            {free && (
               <Button
                 variant="ghost"
                 className="absolute left-(--left) h-full w-(--width)"
@@ -121,9 +121,7 @@ export function DayColumn(props: {
                   "--width": laneWidth({ lane, lanes }),
                 }}
                 aria-label={`Dar turno el ${dateLabel} a las ${formatTime(start, practiceTimeZone)}`}
-                onClick={() =>
-                  props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
-                }
+                onClick={() => props.onPick({ start, practitionerId: free.practitionerId })}
               />
             )}
           </div>

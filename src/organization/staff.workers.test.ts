@@ -12,7 +12,7 @@ import {
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { auditLog, office } from "#/organization/schema.ts";
+import { auditLog } from "#/organization/schema.ts";
 
 // The object reaches Clerk only through its accounts adapter, faked here: each
 // test reads what the adapter was asked to do.
@@ -807,11 +807,15 @@ describe("setting an organization up", () => {
         mustChangePassword: true,
       },
     });
-    expect(
-      await inStorage(fresh, (database) =>
-        database.select({ name: office.name, address: office.address }).from(office).all(),
-      ),
-    ).toEqual([{ name: "Sede Belgrano", address: "Cabildo 2000" }]);
+    const admin = { userId: fakeAccounts.lastUserId! };
+    await fresh.changePassword(admin, {
+      currentPassword: startingPassword,
+      newPassword: "a-new-password",
+    });
+    expect(await fresh.listOffices(admin)).toMatchObject({
+      ok: true,
+      offices: [{ name: "Sede Belgrano", address: "Cabildo 2000" }],
+    });
   });
 
   it("changes nothing, and creates no user, when the organization is already set up", async () => {

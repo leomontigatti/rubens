@@ -1,4 +1,5 @@
-import { RefusalMessage, useFormAction } from "#/components/admin-form.tsx";
+import { ErrorAlert, useFormAction } from "#/components/admin-form.tsx";
+import { PageHeader } from "#/components/page-header.tsx";
 
 // The refusal copy the `Consultorios` page, its room dialog and the office form share.
 
@@ -17,6 +18,12 @@ export function useAction() {
   return useFormAction(refusalMessages);
 }
 
-export function RefusalAlert({ reason }: { reason: RefusalReason }) {
-  return <RefusalMessage message={refusalMessages[reason]} />;
+/** A refused page: its title, and the refusal under it. */
+export function RefusedPage(props: { title: string; reason: RefusalReason }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title={props.title} />
+      <ErrorAlert message={refusalMessages[props.reason]} />
+    </div>
+  );
 }

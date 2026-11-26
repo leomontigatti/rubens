@@ -319,7 +319,6 @@ export interface PatientAppointment {
   overbooking: boolean;
   practitionerName: string;
   medicalServiceName: string;
-  officeName: string;
   roomName: string;
   cancelledBy: "patient" | "business" | null;
   cancellationReason: string | null;
@@ -351,7 +350,6 @@ export function listPatientAppointments(
       overbooking: appointment.overbooking,
       practitionerName: practitioner.displayName,
       medicalServiceName: medicalService.name,
-      officeName: office.name,
       roomName: room.name,
       cancelledBy: appointment.cancelledBy,
       cancellationReason: appointment.cancellationReason,
@@ -360,7 +358,6 @@ export function listPatientAppointments(
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
     .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
     .innerJoin(room, eq(room.id, appointment.roomId))
-    .innerJoin(office, eq(office.id, room.officeId))
     .where(
       and(
         eq(appointment.patientId, patientId.data),

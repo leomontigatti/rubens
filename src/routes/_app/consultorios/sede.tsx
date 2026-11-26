@@ -9,7 +9,7 @@ import type { OfficeInput } from "#/lib/offices.ts";
 import { editOffice, getOfficeWithRooms } from "#/server/offices.functions.ts";
 import type { Office } from "#/organization/offices.ts";
 
-import { RefusalAlert, useAction } from "#/routes/_app/consultorios/-shared.tsx";
+import { RefusedPage, useAction } from "#/routes/_app/consultorios/-shared.tsx";
 
 // The office's own form page, reached from `Consultorios`' `Acciones` menu:
 // the office has no page titled by its name (LEO-6's prototype pass, variant C).
@@ -26,10 +26,10 @@ function OfficePage() {
   const result = Route.useLoaderData();
 
   if (!result.ok) {
-    return <RefusalAlert reason={result.reason} />;
+    return <RefusedPage title="Datos de la sede" reason={result.reason} />;
   }
   if (!viewer.roles.includes("admin")) {
-    return <RefusalAlert reason="forbidden" />;
+    return <RefusedPage title="Datos de la sede" reason="forbidden" />;
   }
   return <OfficeForm office={result.office} />;
 }

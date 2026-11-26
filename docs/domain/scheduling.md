@@ -8,7 +8,7 @@ is shared by giving several practitioners schedules in it at different times.
 ## Schedules
 
 A practitioner works in weekly schedules. A schedule is one or more weekdays, a
-start and an end time, one room of one office, a first date and an optional last
+start and an end time, one room, a first date and an optional last
 date. A break is two schedules on the same day (9 to 13 and 14 to 18). The screen
 is weekly only; alternate weeks can come later without a new model.
 

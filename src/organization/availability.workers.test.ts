@@ -14,8 +14,7 @@ import {
 } from "#/organization/organization.test-support.ts";
 import { practitioner as practitionerTable } from "#/organization/schema.ts";
 
-// The office is in Buenos Aires (UTC-3) unless a test names another zone,
-// so 09:00 there is 12:00Z. 2099-01-05 is a Monday.
+// The practice is in Buenos Aires (UTC-3), so 09:00 there is 12:00Z. 2099-01-05 is a Monday.
 
 type Caller = typeof adminCaller;
 
@@ -104,7 +103,6 @@ describe("free times for stored data", () => {
     expect(result.ok && result.freeStarts).toEqual([
       {
         start: new Date("2099-01-05T12:00:00Z"),
-        officeName: "Sede Centro",
         roomName: "Consultorio 1",
       },
       expect.objectContaining({ start: new Date("2099-01-05T12:20:00Z") }),

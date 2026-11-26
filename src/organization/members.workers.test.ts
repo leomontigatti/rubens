@@ -42,7 +42,7 @@ describe("the organization object's members", () => {
     });
   });
 
-  it("refuses an office with no name or address, and writes nothing", async () => {
+  it("refuses an office with no name or address, and makes no member", async () => {
     const { organizationId, organization } = freshOrganization();
 
     const refused = await organization.setUp({

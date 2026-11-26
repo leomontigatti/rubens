@@ -166,7 +166,7 @@ function Calendar(props: {
               // The medical service filtered starts the form, with its duration.
               prestacion: week.filter.medicalServiceId ?? undefined,
               inicio: cell.start.toISOString(),
-              profesionales: cell.practitionerIds,
+              profesionales: [cell.practitionerId],
             },
           })
         }

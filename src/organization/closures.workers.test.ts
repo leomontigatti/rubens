@@ -97,13 +97,14 @@ describe("creating a closure", () => {
   });
 
   it("refuses hours that do not start before they end", async () => {
-    const { organization } = await world();
+    const { organization, list } = await world();
 
     expect(
       await organization.createClosure(adminCaller, {
         entry: { ...fridayAfternoon, end: "2099-01-09T14:00" },
       }),
     ).toEqual({ ok: false, reason: "invalidInput" });
+    expect((await list()).closures).toEqual([]);
   });
 });
 
@@ -164,7 +165,8 @@ describe("editing and deleting a closure", () => {
   });
 
   it("refuses a closure that does not exist", async () => {
-    const { organization } = await world();
+    const { organization, createdId, list } = await world();
+    const id = await createdId(fridayAfternoon);
     const missing = crypto.randomUUID();
 
     expect(
@@ -177,5 +179,6 @@ describe("editing and deleting a closure", () => {
       ok: false,
       reason: "notFound",
     });
+    expect((await list()).closures).toEqual([{ id, entry: fridayAfternoon }]);
   });
 });
