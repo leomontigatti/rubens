@@ -3,23 +3,20 @@ import { ZapIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
-import { layoutCells, layoutColumn, layoutDay } from "#/lib/calendar-layout.ts";
+import { layoutCells, layoutDay } from "#/lib/calendar-layout.ts";
 import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
-import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/organization/calendar-week.ts";
+import type { CalendarAppointment, CalendarDay } from "#/organization/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
 import { formatLocalDate, formatTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // The calendar's pieces (docs/domain/appointments.md § Calendar): the time
 // axis, and a day's column of 30-minute cells, white and bookable where free,
-// under its cards, which sit side by side and never overlap. Another
-// practitioner's busy block, with its time and practitioner, covers its cells,
-// white ones included, under the viewer's own cards; only another block shares
-// its width.
+// under its cards, which sit side by side and never overlap.
 
 /** The height of a minute on the calendar, in pixels: a 30-minute cell is 48 px. */
 const minuteHeight = 1.6;
@@ -98,12 +95,8 @@ export function DayColumn(props: {
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
   const { day, view } = props;
-  const appointments = day.cards.filter((card) => card.kind === "appointment");
-  const byId = new Map(appointments.map((card) => [card.id, card]));
-  const placed = layoutDay(view, day.freeStarts, appointments);
-  const busyCards = day.cards.filter((card) => card.kind === "busy");
-  const busyById = new Map(busyCards.map((card) => [card.id, card]));
-  const busy = layoutColumn(busyCards, view);
+  const byId = new Map(day.cards.map((card) => [card.id, card]));
+  const placed = layoutDay(view, day.freeStarts, day.cards);
   const dateLabel = `${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date)}`;
 
   return (
@@ -135,10 +128,6 @@ export function DayColumn(props: {
             )}
           </div>
         ))}
-        {busy.flatMap((block) => {
-          const card = busyById.get(block.id);
-          return card ? [<BusyCard key={block.id} block={block} busy={card} />] : [];
-        })}
         {placed.cards.flatMap((block) => {
           const appointment = byId.get(block.id);
           return appointment
@@ -215,26 +204,5 @@ function CardHeading(props: {
         {formatTime(card.start, practiceTimeZone)} {card.patientName}
       </span>
     </Button>
-  );
-}
-
-/**
- * Another practitioner's appointment, as a practitioner sees it: a grey block,
- * the column's width unless two overlap, with its time and practitioner and nothing about the patient.
- */
-function BusyCard(props: { block: PlacedBlock; busy: BusyBlock }) {
-  const { block, busy } = props;
-  return (
-    <div
-      className="bg-muted text-muted-foreground absolute top-(--top) left-(--left) h-(--height) w-(--width) truncate rounded-md border px-1.5 py-0.5 text-xs"
-      style={{
-        "--top": px(block.top),
-        "--height": px(block.height),
-        "--left": laneLeft(block),
-        "--width": laneWidth(block),
-      }}
-    >
-      {formatTime(busy.start, practiceTimeZone)} {busy.practitionerName}
-    </div>
   );
 }

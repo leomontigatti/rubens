@@ -96,14 +96,10 @@ export const room = sqliteTable(
       .notNull()
       .references(() => office.id),
     name: text("name").notNull(),
-    capacity: integer("capacity").notNull().default(1),
     active: flag("active").notNull().default(true),
     ...timestamps,
   },
-  (table) => [
-    index("room_office_id_idx").on(table.officeId),
-    check("room_capacity_check", sql`${table.capacity} >= 1`),
-  ],
+  (table) => [index("room_office_id_idx").on(table.officeId)],
 );
 
 // A set of weekdays with times and validity dates (ADR-0003): the times are

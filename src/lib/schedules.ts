@@ -122,8 +122,8 @@ function coversTime(slot: WeeklySlot, time: string): boolean {
 }
 
 /**
- * One of `others` that, with `candidate`, puts more than `capacity` schedules
- * at the same moment, and the weekday of that moment; `null` when none does.
+ * One of `others` present at the same moment as `candidate`, and the weekday
+ * of that moment; `null` when none is.
  *
  * Ranges are half-open, so schedules that only touch never collide. For each
  * weekday, the schedules are boxes of dates by times, and the busiest moment
@@ -134,7 +134,6 @@ function coversTime(slot: WeeklySlot, time: string): boolean {
 export function findCollision<T extends WeeklySlot>(
   candidate: WeeklySlot,
   others: readonly T[],
-  capacity: number,
 ): { schedule: T; weekday: number } | null {
   for (const weekday of candidate.weekdays) {
     const sameDay = others.filter((other) => other.weekdays.includes(weekday));
@@ -152,14 +151,10 @@ export function findCollision<T extends WeeklySlot>(
       .filter((time) => coversTime(candidate, time));
     for (const date of dates) {
       for (const time of times) {
-        const present = sameDay.filter(
+        const schedule = sameDay.find(
           (other) => coversDate(other, date) && coversTime(other, time),
         );
-        if (present.length + 1 > capacity) {
-          const [schedule] = present;
-          if (schedule === undefined) {
-            throw new Error("A room's capacity is at least 1, so a collision has another schedule");
-          }
+        if (schedule) {
           return { schedule, weekday };
         }
       }

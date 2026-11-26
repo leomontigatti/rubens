@@ -14,7 +14,6 @@ import { RecordName } from "#/components/record-transition.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.tsx";
-import { capacityLabel } from "#/lib/offices.ts";
 import { editOffice, getOfficeWithRooms } from "#/server/offices.functions.ts";
 import type { Office, Room } from "#/organization/offices.ts";
 
@@ -160,7 +159,6 @@ const columns: DataTableColumn<ListedRoom>[] = [
       />
     ),
   },
-  { id: "capacity", header: "Capacidad", cell: (room) => capacityLabel(room.capacity) },
 ];
 
 /**

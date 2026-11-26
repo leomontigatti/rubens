@@ -12,20 +12,25 @@ import {
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { medicalService, practitioner, timeOff } from "#/organization/schema.ts";
+import { medicalService, practitioner } from "#/organization/schema.ts";
 
 // The office is in Buenos Aires (UTC-3), so 09:00 there is 12:00Z. 2099-01-05
-// is a Monday. Juan and "Lucía" both work Mondays 09:00 to 11:00 in
-// "Consultorio doble", a room for two.
+// is a Monday. Juan works Mondays 09:00 to 11:00 in "Consultorio 3", and
+// "Lucía" after him there, 11:00 to 13:00: a room holds one practitioner at a time.
 
 type Caller = typeof adminCaller;
 
 async function world() {
   const booking = await setUpBookingWorld();
   const { organization, juan, lucia } = booking;
-  const shared = await addRoom(organization, booking.office.id, "Consultorio doble", 2);
+  const shared = await addRoom(organization, booking.office.id, "Consultorio 3");
   await booking.addSchedule({ practitionerId: juan.practitionerId, roomId: shared.id });
-  await booking.addSchedule({ practitionerId: lucia.practitionerId, roomId: shared.id });
+  await booking.addSchedule({
+    practitionerId: lucia.practitionerId,
+    roomId: shared.id,
+    startTime: "11:00",
+    endTime: "13:00",
+  });
   const juanService = await booking.addMedicalService(juan.practitionerId);
   const juanLongService = await booking.addMedicalService(juan.practitionerId, 60);
   const luciaService = await booking.addMedicalService(lucia.practitionerId);
@@ -255,7 +260,7 @@ describe("the calendar week of a room", () => {
 
     const week = await w.weekOf(w.receptionist);
 
-    expect(week.room).toEqual({ id: w.shared.id, name: "Consultorio doble" });
+    expect(week.room).toEqual({ id: w.shared.id, name: "Consultorio 3" });
     expect(week.office).toMatchObject({
       id: w.office.id,
     });
@@ -285,24 +290,23 @@ describe("the calendar week of a room", () => {
     );
   });
 
-  it("frees a cell for every practitioner who is free for all of it, and draws the appointments", async () => {
+  it("frees each practitioner's cells within their own hours, and draws the appointments", async () => {
     const w = await world();
     const { id } = await w.book();
 
     const week = await w.weekOf(w.receptionist);
 
-    // Juan's appointment holds the shared room at 12:00, for "Lucía" too.
     expect(w.mondayFree(week)).toEqual([
       "12:30 Juan Gómez",
-      "12:30 Lucía Díaz",
       "13:00 Juan Gómez",
-      "13:00 Lucía Díaz",
       "13:30 Juan Gómez",
-      "13:30 Lucía Díaz",
+      "14:00 Lucía Díaz",
+      "14:30 Lucía Díaz",
+      "15:00 Lucía Díaz",
+      "15:30 Lucía Díaz",
     ]);
     expect(week.days[0]!.cards).toEqual([
       expect.objectContaining({
-        kind: "appointment",
         id,
         practitionerId: w.juan.practitionerId,
         practitionerName: "Juan Gómez",
@@ -312,7 +316,7 @@ describe("the calendar week of a room", () => {
         status: "booked",
         start: at("12:00"),
         end: at("12:30"),
-        roomName: "Consultorio doble",
+        roomName: "Consultorio 3",
       }),
     ]);
     expect(week.days.slice(1).every((day) => day.freeStarts.length === 0)).toBe(true);
@@ -324,7 +328,9 @@ describe("the calendar week of a room", () => {
 
     const week = await w.weekOf(w.receptionist, { practitionerId: w.lucia.practitionerId });
 
-    expect(w.mondayFree(week)).toEqual(["12:30", "13:00", "13:30"].map((t) => `${t} Lucía Díaz`));
+    expect(w.mondayFree(week)).toEqual(
+      ["14:00", "14:30", "15:00", "15:30"].map((t) => `${t} Lucía Díaz`),
+    );
     expect(week.days[0]!.cards).toEqual([]);
     expect(week.filter).toEqual({ practitionerId: w.lucia.practitionerId, medicalServiceId: null });
   });
@@ -386,98 +392,28 @@ describe("the calendar week of a room", () => {
     expect(shown.days[0]!.freeStarts).toHaveLength(4);
   });
 
-  it("gives a practitioner their own appointments in full and no patient data about others'", async () => {
+  it("gives a practitioner their own appointments in full and nothing of others'", async () => {
     const w = await world();
     const juans = await w.book();
-    await w.book({
+    const lucias = await w.book({
       patientId: (await w.anotherPatient()).id,
       practitionerId: w.lucia.practitionerId,
       medicalServiceId: w.luciaService.id,
-      start: at("12:30"),
+      start: at("14:00"),
+      receptionNote: "Viene en ayunas",
     });
 
     const week = await w.weekOf(w.lucia.caller);
 
     expect(week.days[0]!.cards).toEqual([
-      {
-        kind: "busy",
-        id: juans.id,
-        start: at("12:00"),
-        end: at("12:30"),
-        practitionerName: "Juan Gómez",
-      },
-      expect.objectContaining({ kind: "appointment", practitionerId: w.lucia.practitionerId }),
+      expect.objectContaining({ id: lucias.id, practitionerId: w.lucia.practitionerId }),
     ]);
-    const sent = JSON.stringify(week.days[0]!.cards[0]);
-    for (const leak of [w.maria.id, "María", "Trae estudios", w.juanService.id]) {
+    const sent = JSON.stringify(week.days);
+    for (const leak of [juans.id, w.maria.id, "María", "Trae estudios"]) {
       expect(sent).not.toContain(leak);
     }
     // A practitioner books only for themselves.
     expect(w.mondayFree(week).every((free) => free.endsWith("Lucía Díaz"))).toBe(true);
-  });
-
-  it("sends a practitioner another's appointment only when it meets their own hours in the room", async () => {
-    const w = await world();
-    // 15:00Z is 12:00 in Buenos Aires, after "Lucía"'s 09:00 to 11:00.
-    await w.overbook({ start: at("15:00") });
-    const { id } = await w.book({ patientId: (await w.anotherPatient()).id, start: at("13:30") });
-
-    const week = await w.weekOf(w.lucia.caller);
-
-    expect(week.days[0]!.cards).toEqual([expect.objectContaining({ kind: "busy", id })]);
-    expect(week.days.slice(1).flatMap((day) => day.cards)).toEqual([]);
-  });
-
-  async function luciaOff(w: Awaited<ReturnType<typeof world>>, start: Date, end: Date) {
-    await inStorage(w.organization, (database) =>
-      database
-        .insert(timeOff)
-        .values({ practitionerId: w.lucia.practitionerId, startsAt: +start, endsAt: +end })
-        .run(),
-    );
-  }
-
-  it("leaves out another's appointment while the practitioner is on time off", async () => {
-    const w = await world();
-    await luciaOff(w, at("12:00"), at("13:00"));
-    await w.book();
-    const { id } = await w.book({ patientId: (await w.anotherPatient()).id, start: at("13:30") });
-
-    const week = await w.weekOf(w.lucia.caller);
-
-    expect(week.days[0]!.cards).toEqual([expect.objectContaining({ kind: "busy", id })]);
-  });
-
-  it("cuts another's appointment to the practitioner's hours, on both sides of their time off", async () => {
-    const w = await world();
-    await luciaOff(w, at("12:30"), at("13:00"));
-    // From 09:00 to 11:30 in Buenos Aires: past "Lucía"'s 11:00, and across their time off.
-    await w.overbook({ durationMinutes: 150 });
-
-    const week = await w.weekOf(w.lucia.caller);
-
-    expect(week.days[0]!.cards).toMatchObject([
-      { kind: "busy", start: at("12:00"), end: at("12:30") },
-      { kind: "busy", start: at("13:00"), end: at("14:00") },
-    ]);
-  });
-
-  it("keeps one block across the practitioner's back-to-back schedules", async () => {
-    const w = await world();
-    // After their 09:00 to 11:00: 14:00Z to 16:00Z.
-    await w.addSchedule({
-      practitionerId: w.lucia.practitionerId,
-      roomId: w.shared.id,
-      startTime: "11:00",
-      endTime: "13:00",
-    });
-    await w.overbook({ start: at("13:30"), durationMinutes: 60 });
-
-    const week = await w.weekOf(w.lucia.caller);
-
-    expect(week.days[0]!.cards).toMatchObject([
-      { kind: "busy", start: at("13:30"), end: at("14:30") },
-    ]);
   });
 
   it("offers each viewer the status changes and the undo they may make", async () => {
@@ -508,7 +444,7 @@ describe("the calendar week of a room", () => {
     expect(week.office.rooms.map((one) => one.name)).toEqual([
       "Consultorio 1",
       "Consultorio 2",
-      "Consultorio doble",
+      "Consultorio 3",
     ]);
     expect(week.days[0]!.cards).toEqual([
       expect.objectContaining({ overbooking: true, roomName: "Consultorio 2" }),
@@ -527,7 +463,7 @@ describe("the calendar week of a room", () => {
       ok: true,
       roomChoices: [
         { id: w.room.id, name: "Consultorio 1" },
-        { id: w.shared.id, name: "Consultorio doble" },
+        { id: w.shared.id, name: "Consultorio 3" },
       ],
       week: { room: { id: w.room.id } },
     });
@@ -603,16 +539,6 @@ describe("the calendar week of a room", () => {
     const week = await w.weekOf(w.receptionist, { medicalServiceId: w.juanService.id });
 
     expect(week.days[0]!.cards).toEqual([expect.objectContaining({ id })]);
-  });
-
-  it("keys each busy block by its appointment, so two overbookings at one start stay two", async () => {
-    const w = await world();
-    const first = await w.overbook();
-    const second = await w.overbook({ patientId: (await w.anotherPatient()).id });
-
-    const week = await w.weekOf(w.lucia.caller);
-
-    expect(week.days[0]!.cards.map((card) => card.id).sort()).toEqual([first.id, second.id].sort());
   });
 
   it("draws an appointment across midnight on both days, in both weeks", async () => {

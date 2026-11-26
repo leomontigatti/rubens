@@ -39,8 +39,6 @@ and practitioner.
   ([assistant.md](./assistant.md#inbox)).
 - **A practitioner sees only their own appointments.** An appointment already says
   something about a patient's health, so the schedule shows no more than the work
-  needs. On the calendar, other practitioners' appointments in the room show only
-  as grey blocks with the time and the practitioner's name, within the practitioner's own
-  working hours, never anything about the patient.
+  needs. On the calendar, other practitioners' appointments are not shown at all.
 - **Schedules** are edited by admins and by each practitioner for their own,
   so reception cannot change a practitioner's hours behind their back.

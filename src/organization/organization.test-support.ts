@@ -169,13 +169,8 @@ export async function theOffice(organization: OrganizationStub) {
 }
 
 /** Adds a room to `officeId`, as the first admin. */
-export async function addRoom(
-  organization: OrganizationStub,
-  officeId: string,
-  name: string,
-  capacity = 1,
-) {
-  const created = await organization.createRoom(adminCaller, { officeId, name, capacity });
+export async function addRoom(organization: OrganizationStub, officeId: string, name: string) {
+  const created = await organization.createRoom(adminCaller, { officeId, name });
   if (!created.ok) {
     throw new Error(`createRoom refused: ${created.reason}`);
   }

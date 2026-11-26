@@ -50,8 +50,8 @@ one zone, `America/Argentina/Buenos_Aires`; instants are stored in UTC.
 _Avoid_: branch, clinic, site
 
 **`room`** — ui: "Consultorio"
-A room inside an `office` where a `practitioner` sees a `patient`. Its capacity is
-how many practitioners can use it at the same moment, 1 unless set otherwise.
+A room inside an `office` where a `practitioner` sees a `patient`. It holds one
+practitioner at a time.
 _Avoid_: box, cubicle, chair, shared room, exclusive room
 
 ## Scheduling

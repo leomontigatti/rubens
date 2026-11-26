@@ -50,7 +50,7 @@ import { appointment, office, room } from "#/organization/schema.ts";
 // undo. Every staff role may act (the object's requirement); on whose
 // appointments is decided here, as for booking. Each change reads the
 // appointment, checks and writes in one synchronous transaction (ADR-0008),
-// so the overlap and capacity rules hold until the write, and audits it about
+// so the overlap and room rules hold until the write, and audits it about
 // the appointment's patient.
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;

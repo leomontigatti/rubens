@@ -51,15 +51,11 @@ describe("offices", () => {
 });
 
 describe("rooms", () => {
-  it("creates a room in an office with a capacity of 1 unless told otherwise", async () => {
+  it("creates rooms in an office", async () => {
     const { organization } = await setUpTestOrganization();
     const created = await theOffice(organization);
     await newRoom(organization, created.id);
-    await organization.createRoom(adminCaller, {
-      officeId: created.id,
-      name: "Consultorio 2",
-      capacity: 2,
-    });
+    await organization.createRoom(adminCaller, { officeId: created.id, name: "Consultorio 2" });
 
     const result = await organization.getOffice(adminCaller, {
       officeId: created.id,
@@ -70,8 +66,8 @@ describe("rooms", () => {
       ok: true,
       office: { id: created.id },
       rooms: [
-        { name: "Consultorio 1", capacity: 1, active: true },
-        { name: "Consultorio 2", capacity: 2, active: true },
+        { name: "Consultorio 1", active: true },
+        { name: "Consultorio 2", active: true },
       ],
     });
   });
@@ -98,23 +94,9 @@ describe("rooms", () => {
     const result = await organization.updateRoom(adminCaller, {
       roomId: room.id,
       name: "Consultorio A",
-      capacity: 3,
     });
 
-    expect(result).toMatchObject({ ok: true, room: { name: "Consultorio A", capacity: 3 } });
-  });
-
-  it("keeps the capacity when an edit leaves it out", async () => {
-    const { organization } = await setUpTestOrganization();
-    const room = await newRoom(organization, (await theOffice(organization)).id);
-    await organization.updateRoom(adminCaller, { roomId: room.id, name: "A", capacity: 3 });
-
-    const result = await organization.updateRoom(adminCaller, {
-      roomId: room.id,
-      name: "Consultorio A",
-    });
-
-    expect(result).toMatchObject({ ok: true, room: { name: "Consultorio A", capacity: 3 } });
+    expect(result).toMatchObject({ ok: true, room: { name: "Consultorio A" } });
   });
 
   it("drops a deactivated room from the office's default list, shows it on request, and reactivates it", async () => {
@@ -179,7 +161,7 @@ describe("roles", () => {
     const results = [
       await organization.updateOffice(nonAdmin, { ...centro, name: "X", officeId: office.id }),
       await organization.createRoom(nonAdmin, { officeId: office.id, name: "X" }),
-      await organization.updateRoom(nonAdmin, { roomId: room.id, name: "X", capacity: 1 }),
+      await organization.updateRoom(nonAdmin, { roomId: room.id, name: "X" }),
       await organization.setRoomActive(nonAdmin, { id: room.id, active: false }),
     ];
 
@@ -228,11 +210,7 @@ describe("auditing offices and rooms", () => {
     const { organization } = await setUpTestOrganization();
     const office = await theOffice(organization);
     const room = await newRoom(organization, office.id);
-    await organization.updateRoom(adminCaller, {
-      roomId: room.id,
-      name: "Consultorio 1",
-      capacity: 2,
-    });
+    await organization.updateRoom(adminCaller, { roomId: room.id, name: "Consultorio A" });
     await organization.setRoomActive(adminCaller, { id: room.id, active: false });
 
     const about = { entityType: "room", userId: adminCaller.userId, patientId: null };
@@ -241,9 +219,14 @@ describe("auditing offices and rooms", () => {
         ...about,
         action: "create",
         before: null,
-        after: { officeId: office.id, name: "Consultorio 1", capacity: 1 },
+        after: { officeId: office.id, name: "Consultorio 1" },
       },
-      { ...about, action: "update", before: { capacity: 1 }, after: { capacity: 2 } },
+      {
+        ...about,
+        action: "update",
+        before: { name: "Consultorio 1" },
+        after: { name: "Consultorio A" },
+      },
       { ...about, action: "deactivate", before: { active: true }, after: { active: false } },
     ]);
   });
