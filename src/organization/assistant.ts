@@ -10,6 +10,7 @@ import { assistantSystemPrompt, assistantToolSchemas } from "#/lib/assistant.ts"
 
 import { bookableMedicalServices } from "#/organization/assistant-information.ts";
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
+import { findBookingTimes } from "#/organization/booking-times.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import type { AssistantModel, AssistantTool, ToolResult } from "#/organization/assistant-model.ts";
 import { recordModelUsage } from "#/organization/assistant-usage.ts";
@@ -138,6 +139,7 @@ function turnTools(
       name: "list_medical_services",
       run: () => ({ medicalServices: bookableMedicalServices(database) }),
     },
+    { name: "find_booking_times", run: (args) => findBookingTimes(database, args) },
     {
       name: "judge_messages",
       run: (args) => {

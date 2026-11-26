@@ -12,6 +12,7 @@ export type ToolName =
   | "list_patients"
   | "get_appointment"
   | "list_medical_services"
+  | "find_booking_times"
   | "find_free_times"
   | "propose_change"
   | "accept_proposal"

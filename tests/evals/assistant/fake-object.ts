@@ -2,7 +2,7 @@
 // every tool answers from world.ts, and nothing is written anywhere.
 
 import type { Case, HandoffReason, Proposal, ToolName } from "./cases.ts";
-import { medicalServices, numbers, type Appointment, type Slot } from "./world.ts";
+import { bookingSlots, medicalServices, numbers, type Appointment, type Slot } from "./world.ts";
 
 export type ToolCall = { name: ToolName; args: Record<string, unknown>; result: object };
 
@@ -61,6 +61,17 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       return { ok: true, appointment: details };
     },
     list_medical_services: () => ({ medicalServices }),
+    find_booking_times: ({ medicalService, practitioner, from }) => {
+      const slots = bookingSlots[String(medicalService)];
+      if (!slots) return { ok: false, reason: "notFound" };
+      const offered = slots.filter(
+        (slot) =>
+          (practitioner === undefined || slot.practitioner === practitioner) &&
+          slot.date >= String(from).slice(0, 10),
+      );
+      for (const slot of offered) knownTimes.add(slot.time);
+      return { ok: true, medicalService, slots: offered, more: false };
+    },
     find_free_times: ({ appointmentId }) => {
       const found = appointment(appointmentId);
       if (!found) return { ok: false, reason: "not_found" };

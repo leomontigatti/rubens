@@ -116,6 +116,27 @@ export const assistantToolSchemas = {
         ),
     }),
   },
+  find_booking_times: {
+    description:
+      "The few free times nearest from the day and time the patient prefers, for a new appointment of a medical service list_medical_services returned: with the practitioner named, or across those who offer it, over the next 60 days. Refuses a medical service patients cannot book here.",
+    inputSchema: z.object({
+      medicalService: z
+        .string()
+        .describe("The medical service's name, as list_medical_services returned it"),
+      practitioner: z
+        .string()
+        .optional()
+        .describe(
+          "The practitioner's name, as list_medical_services returned it, when the patient wants that one",
+        ),
+      from: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/u)
+        .describe(
+          "The local date (YYYY-MM-DD) or date and time (YYYY-MM-DDTHH:MM) the patient prefers: the times are the nearest from it on. A later one shows other times",
+        ),
+    }),
+  },
   propose_change: {
     description:
       "Stores a proposal to confirm, cancel or move an appointment, and returns what it stores. It replaces any earlier proposal. Nothing changes until accept_proposal.",

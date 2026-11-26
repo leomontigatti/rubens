@@ -20,6 +20,66 @@ export const medicalServices = [
 
 export type Slot = { slotId: string; date: string; time: string };
 
+// What find_booking_times returns for a new appointment: free times of each
+// medical service above, with their practitioner and room.
+export const bookingSlots: Record<string, Array<Slot & { practitioner: string; room: string }>> = {
+  "Consulta odontológica": [
+    {
+      slotId: "book-m1",
+      practitioner: "Od. Carla Méndez",
+      room: "Consultorio 1",
+      date: "2026-11-11",
+      time: "09:30",
+    },
+    {
+      slotId: "book-m2",
+      practitioner: "Od. Carla Méndez",
+      room: "Consultorio 1",
+      date: "2026-11-11",
+      time: "11:00",
+    },
+    {
+      slotId: "book-m3",
+      practitioner: "Od. Carla Méndez",
+      room: "Consultorio 1",
+      date: "2026-11-13",
+      time: "15:00",
+    },
+  ],
+  "Control pediátrico": [
+    {
+      slotId: "book-s1",
+      practitioner: "Dr. Martín Sosa",
+      room: "Consultorio 2",
+      date: "2026-11-10",
+      time: "08:30",
+    },
+    {
+      slotId: "book-s2",
+      practitioner: "Dr. Martín Sosa",
+      room: "Consultorio 2",
+      date: "2026-11-12",
+      time: "18:00",
+    },
+  ],
+  "Sesión de kinesiología": [
+    {
+      slotId: "book-r1",
+      practitioner: "Lic. Paula Ríos",
+      room: "Consultorio 3",
+      date: "2026-11-16",
+      time: "09:00",
+    },
+    {
+      slotId: "book-r2",
+      practitioner: "Lic. Paula Ríos",
+      room: "Consultorio 3",
+      date: "2026-11-18",
+      time: "12:00",
+    },
+  ],
+};
+
 export type Appointment = {
   appointmentId: string;
   service: string;
