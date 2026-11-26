@@ -21,6 +21,23 @@ into `tail` or `head`, which hides the failure.
 
 Run `pnpm typecheck` and `pnpm build` one after the other, never in parallel.
 
+A thread that commits needs a **medium** machine (8 GB) at least. The pre-commit hook
+(`.vite-hooks/pre-commit`: `vp staged`, a whole-project `pnpm typecheck`, fallow) does not
+run on a small 4 GB one: in RUBE-11 and RUBE-24 oxlint panicked in `oxc_allocator` and the
+type check was killed. Its lint and type check ran clean on medium (peaking at 2.8 GB) and on
+large (2.3 GB), where RUBE-11 also committed. Never commit with `--no-verify` to get past it; move to a larger machine instead.
+
+## Before review
+
+When the change calls for one of the assistant's paid runs (§ The assistant's evaluation), it
+runs once the § Before committing list is clean and before the first reviewer starts, not after
+the review rounds. A regression the run finds is then fixed before anyone reviews it; in RUBE-26
+the run found a move-appointment regression only after several fix rounds. Who runs it and on
+which key are § The assistant's evaluation's. Before review there is no PR or ready issue to
+carry it yet, so ask for the run in the thread, naming the command and what changed in what the
+model reads, and start the first reviewer once its result is back. The PR body, the issue and
+the final report still carry it as that section says.
+
 ## Heavy
 
 `pnpm test:e2e` runs in CI instead of the session: the `e2e` job of

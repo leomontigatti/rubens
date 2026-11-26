@@ -84,8 +84,8 @@ there are no seams to test first, only the steps below.
     the skills that changed, a new or widened instruction in a changed skill (it is instructions
     agents will follow, so it is read as such), the packages held back, the audit's findings and
     the pins behind. The review tier is the one `review.py tier` prints. Then this thread
-    babysits the PR by the `babysit-pr` skill until it is ready to merge, and leaves the merge
-    to the user.
+    babysits the PR by the `babysit-pr` skill until it is ready to merge, and merges it under the
+    standing merge permission in the root `AGENTS.md`.
 
 ## What stays by hand
 
