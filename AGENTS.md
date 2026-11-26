@@ -30,6 +30,12 @@ and follow it in full, whatever the harness: `~/.agents/skills/X/` for a shared 
   before editing. Where work starts: [workflows.md](docs/agents/workflows.md);
   investigating before editing, and the thread's branch and worktree: the `implement`
   skill's `THREADS.md`.
+- **Merging, standing permission from Leo**: you may merge a PR you opened without
+  asking when it changes only files under `docs/`, or is the weekly npm dependency
+  update [dependency-updates.md](docs/agents/dependency-updates.md) describes, once every
+  check passed, the review left no open finding or **ask**, and the branch merges clean
+  (`gh pr merge <n> --squash --match-head-commit <head sha>`). This grant is the ask the
+  `babysit-pr` skill and `THREADS.md` wait for. Every other PR's merge stays Leo's.
 - **Validation**: [validation.md](docs/agents/validation.md) is the whole surface. Run
   only commands it or [scripts.md](docs/operations/scripts.md) lists.
 - **Subagents**: reviewers spawn as "Spawning a reviewer" in the `code-review` skill
