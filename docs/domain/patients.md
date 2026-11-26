@@ -62,9 +62,10 @@ live in the clinical record ([clinical-records.md](./clinical-records.md)).
 
 ## Coverage
 
-A patient has zero or more coverages, each an insurer from the organization's
-list (`obra social` or `prepaga`, kept by an admin), a plan and a member number. One
-is primary. A patient with none is private (`Particular`).
+A patient has zero or one coverage: an insurer from the organization's list
+(`obra social` or `prepaga`, kept by an admin), a plan and a member number. A
+patient with none is private (`Particular`). Adding a coverage to a patient who
+has one is refused: the one they have is edited or removed.
 
 ## Identity
 

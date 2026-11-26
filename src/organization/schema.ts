@@ -261,7 +261,7 @@ export const insurer = sqliteTable(
   ],
 );
 
-/** A patient's membership of an insurer (ui: "Cobertura"). */
+/** A patient's membership of an insurer (ui: "Cobertura"); a patient has at most one. */
 export const coverage = sqliteTable(
   "coverage",
   {
@@ -274,16 +274,11 @@ export const coverage = sqliteTable(
       .references(() => insurer.id),
     plan: text("plan"),
     memberNumber: text("member_number").notNull(),
-    primary: flag("primary").notNull().default(false),
     ...timestamps,
   },
-  (table) => [
-    index("coverage_patient_id_idx").on(table.patientId),
-    // At most one primary coverage per patient; the object moves the flag.
-    uniqueIndex("coverage_primary_unique")
-      .on(table.patientId)
-      .where(sql`${table.primary}`),
-  ],
+  // At most one coverage per patient; the object refuses a second before it
+  // reaches this index.
+  (table) => [uniqueIndex("coverage_patient_unique").on(table.patientId)],
 );
 
 /**

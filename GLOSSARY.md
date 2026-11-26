@@ -134,7 +134,7 @@ _Avoid_: draft patient, pending patient, quick patient
 
 **`coverage`** — ui: "Cobertura"
 A `patient`'s membership of an `insurer`: the insurer, a plan and a member number.
-A patient with none is private ("Particular").
+A patient has zero or one; with none, they are private ("Particular").
 _Avoid_: insurance, `obra social`, `prepaga`, plan
 
 **`insurer`** — ui: "Obra social / prepaga"

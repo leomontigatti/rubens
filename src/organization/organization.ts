@@ -93,7 +93,6 @@ import {
 import {
   addCoverage,
   listCoverages,
-  makeCoveragePrimary,
   removeCoverage,
   updateCoverage,
 } from "#/organization/coverages.ts";
@@ -405,12 +404,6 @@ export class Organization extends OrganizationWhatsapp {
   updateCoverage(caller: Caller, input: CoverageUpdate) {
     return this.as(caller, patientEditors, (acting) =>
       updateCoverage(this.database, acting, input),
-    );
-  }
-
-  makeCoveragePrimary(caller: Caller, input: CoverageId) {
-    return this.as(caller, patientEditors, (acting) =>
-      makeCoveragePrimary(this.database, acting, input),
     );
   }
 

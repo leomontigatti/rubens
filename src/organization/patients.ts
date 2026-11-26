@@ -247,12 +247,12 @@ export interface PatientPage {
   onlyInactive: boolean;
 }
 
-/** Patients with their primary insurer: at most one coverage is primary, so a patient is one row. */
+/** Patients with their insurer: a patient has at most one coverage, so a patient is one row. */
 function selectListedPatients(database: Database) {
   return database
     .select({ ...patientColumns, insurerName: insurer.name })
     .from(patient)
-    .leftJoin(coverage, and(eq(coverage.patientId, patient.id), eq(coverage.primary, true)))
+    .leftJoin(coverage, eq(coverage.patientId, patient.id))
     .leftJoin(insurer, eq(insurer.id, coverage.insurerId));
 }
 

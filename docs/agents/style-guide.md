@@ -23,7 +23,7 @@ What is settled already:
   gets a one-off class; a second case gets a variant or a component. A new token, variant or
   typeface is a product decision: ask before adding one.
 - **A badge only shows a state out of the ordinary**: an archived record (`ArchivedBadge`), an
-  incomplete patient, a minor, a patient without WhatsApp, a coverage's `Principal`. The regular state has none: no `Activo`
+  incomplete patient, a minor, a patient without WhatsApp. The regular state has none: no `Activo`
   badge, no `Estado` filter, since a list already shows only active records. A state is a `Badge`
   beside the name, never ` · Archivado` in the text, and a table has no `Estado` column. Every list looks alike unless a screen says otherwise: its first cell is
   `RowName` (`data-table.tsx`), the only way a list links a row: its name or link and its states
@@ -38,7 +38,7 @@ What is settled already:
   | `Cancelado`, `Atendido`                       | `secondary`   |
   | `Archivado`, `Archivada`, as its page's alert | `info`        |
   | `Sin WhatsApp`, as its page's alert           | `info`        |
-  | `Sobreturno`, `Principal`, `Menor de edad`    | `outline`     |
+  | `Sobreturno`, `Menor de edad`                 | `outline`     |
   | `Incompleto`                                  | `warning`     |
   | `Ausente`, `Turnos a reprogramar` count       | `destructive` |
 
@@ -231,14 +231,15 @@ beside it.
   `outline` `Badge` (the tab list's background hides a `secondary` one). A list in a tab has no
   heading or button of its own: its create is in `Acciones`, and again in its empty state. A
   patient's page splits its form over `Datos generales` and `Contacto` (one form; a refusal opens
-  the tab of the field it names), shows `Coberturas` and `Responsables` only once there is one,
+  the tab of the field it names), shows `Cobertura` (the one the patient has, or `Particular`)
+  and `Responsables` only once there is one,
   and ends with `Actividad`: `Turnos`, the past ones collapsed, and for an admin `Historial`,
   collapsed, each a line of shadcn's `Trace` that opens on its detail. A
   list page of its own keeps its create button visible in its header (`Nuevo consultorio`).
   The form's tab stays mounted, so an edit survives a look at another tab, and a tab switch is no
   navigation, which would ask before discarding it. `?seccion=` only picks the tab a page
   opens on; a list row's pages lead back to their tab with it. A list in a tab is a `DataTable`
-  like any other, and a row's actions, such as a coverage's `Hacer principal` and `Quitar`, are
+  like any other, and a row's actions, such as a coverage's `Quitar`, are
   in its own page's `Acciones`, never buttons in the row.
 - **Who can't edit the record sees its header and its lists**, with no form and no tabs. Its
   list's name cell links only for someone who may open the page, and is plain text otherwise.

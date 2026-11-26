@@ -22,7 +22,7 @@ src/
 │   │                  action), `range-entry.tsx` (the time-off and closure forms and rows),
 │   │                  `patient-form.tsx` (patient registration, for any screen that registers one),
 │   │                  `patient-duplicates.tsx` (the duplicate check's refusal and warning),
-│   │                  `patient-coverages.tsx` (the patient page's coverages),
+│   │                  `patient-coverages.tsx` (the patient page's coverage),
 │   │                  `patient-guardians.tsx` (the patient page's guardians and message contact),
 │   │                  `app-nav.ts` and `app-sidebar.tsx` (the shell's menu), `page-header.tsx`
 │   │                  (every page's title)

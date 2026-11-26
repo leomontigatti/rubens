@@ -415,7 +415,6 @@ describe("the patient list", () => {
       patientId: covered.id,
       insurerId: created.insurer.id,
       memberNumber: "123",
-      primary: true,
     });
 
     const listed = await organization.listPatients(receptionist, { includeInactive: false });

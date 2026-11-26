@@ -215,6 +215,7 @@ const fieldLabelsInFormOrder: Record<string, string> = {
   insurer: "Obra social / prepaga",
   plan: "Plan",
   memberNumber: "Número de afiliado",
+  // Only in entries from before a patient had at most one coverage.
   primary: "Principal",
   messageContact: "Recibe los mensajes",
   start: "Inicio",

@@ -11,8 +11,7 @@ import { EmptyState } from "#/components/empty-state.tsx";
 import { fieldProblems, messageIn } from "#/components/form-problems.ts";
 import { ActionFormPage, CreateButton, useFormPage } from "#/components/form-page.tsx";
 import type { RecordHeader } from "#/components/form-page.tsx";
-import { Badge } from "#/components/ui/badge.tsx";
-import { DropdownMenuItem, DropdownMenuSeparator } from "#/components/ui/dropdown-menu.tsx";
+import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import {
   coverageInputSchema,
   coverageLabel,
@@ -20,12 +19,13 @@ import {
   privateCoverageLabel,
 } from "#/lib/coverages.ts";
 import type { CoverageInput } from "#/lib/coverages.ts";
-import { changePrimaryCoverage, deleteCoverage } from "#/server/coverages.functions.ts";
+import { deleteCoverage } from "#/server/coverages.functions.ts";
 import type { Coverage } from "#/organization/coverages.ts";
 import type { Insurer } from "#/organization/insurers.ts";
 
-// The coverages section of the patient page: the list, "Particular" when it is
-// empty, and the add and edit page's form, which offers active insurers only.
+// The coverage section of the patient page: the patient's one coverage, or
+// "Particular" when they have none, and the add and edit page's form, which
+// offers active insurers only.
 
 const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
@@ -34,6 +34,7 @@ const refusalMessages = {
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos esa cobertura.",
   insurerInactive: "Esa obra social o prepaga está archivada. Elegí otra.",
+  hasCoverage: "El paciente ya tiene una cobertura. Editala o quitala.",
 };
 
 type ActionResult = { ok: true } | { ok: false; reason: keyof typeof refusalMessages };
@@ -70,12 +71,7 @@ const coverageColumns: DataTableColumn<ListedCoverage>[] = [
           to: "/pacientes/$patientId/coberturas/$coverageId",
           params: { patientId: coverage.patientId, coverageId: coverage.id },
         }}
-        status={
-          <>
-            {coverage.primary && <Badge variant="outline">Principal</Badge>}
-            <ArchivedBadge active={coverage.insurerActive} ending="a" />
-          </>
-        }
+        status={<ArchivedBadge active={coverage.insurerActive} ending="a" />}
       />
     ),
   },
@@ -88,7 +84,10 @@ const coverageColumns: DataTableColumn<ListedCoverage>[] = [
   { id: "member", header: "N.º de afiliado", cell: (coverage) => coverage.memberNumber },
 ];
 
-/** The patient's coverages, in the patient page's `Coberturas` tab: a row's name opens its page. */
+/**
+ * The patient's coverage, in the patient page's `Cobertura` tab: its name opens
+ * its page; with none, `Particular` and `Agregar cobertura`.
+ */
 export function CoverageList(props: { patientId: string; coverages: Coverage[] }) {
   const { table } = useClientDataTable({
     rows: props.coverages.map((coverage) => ({ ...coverage, patientId: props.patientId })),
@@ -102,7 +101,7 @@ export function CoverageList(props: { patientId: string; coverages: Coverage[] }
       empty={
         <EmptyState
           icon={ShieldIcon}
-          title="Sin coberturas"
+          title="Sin cobertura"
           description={`${privateCoverageLabel}: no tiene obra social ni prepaga cargada.`}
         >
           <CreateButton
@@ -121,10 +120,7 @@ export function CoverageList(props: { patientId: string; coverages: Coverage[] }
   );
 }
 
-/**
- * A coverage's page's `Acciones`: `Hacer principal` while it is not, then
- * `Quitar`, which asks first and goes back to the patient's coverages.
- */
+/** A coverage's page's `Acciones`: `Quitar`, which asks first and goes back to the patient's coverage. */
 export function useCoverageRecord(patientId: string, coverage: Coverage): RecordHeader {
   const action = useAction();
   const navigate = useNavigate();
@@ -137,20 +133,9 @@ export function useCoverageRecord(patientId: string, coverage: Coverage): Record
       search: { seccion: "coberturas" },
     });
   return {
-    status: coverage.primary && <Badge variant="outline">Principal</Badge>,
     actions: (busy) => (
       <>
         <ActionsMenu disabled={action.pending || busy}>
-          {!coverage.primary && (
-            <>
-              <DropdownMenuItem
-                onClick={() => void action.run(() => changePrimaryCoverage({ data }))}
-              >
-                Hacer principal
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
           <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
             Quitar
           </DropdownMenuItem>
@@ -159,11 +144,7 @@ export function useCoverageRecord(patientId: string, coverage: Coverage): Record
           open={confirming}
           onOpenChange={setConfirming}
           title="¿Quitar esta cobertura?"
-          description={
-            coverage.primary
-              ? "El paciente deja de tenerla, y la siguiente que tenga pasa a ser la principal."
-              : "El paciente deja de tenerla."
-          }
+          description="El paciente deja de tenerla y queda como particular."
           confirmLabel="Quitar"
           onConfirm={() =>
             void action.save(() => deleteCoverage({ data })).then((removed) => removed && back())

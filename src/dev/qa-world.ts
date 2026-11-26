@@ -44,7 +44,7 @@ interface QaPatient {
   birthDate?: string;
   email?: string;
   address?: string;
-  /** The insurer's index in `qaInsurers`, its plan and member number. */
+  /** The patient's one coverage, if any: the insurer's index in `qaInsurers`, its plan and member number. */
   coverage?: { insurer: number; plan: string | null; memberNumber: string };
   guardian?: { name: string; relationship: string; phone: PhoneEntry };
   whatsappConsent?: false;
