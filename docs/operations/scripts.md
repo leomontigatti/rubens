@@ -93,8 +93,9 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   data. CI runs it in the `e2e` job ([tests/e2e/README.md](../../tests/e2e/README.md)).
 - `eval:assistant`: the patient assistant's evaluation (#157), each booking conversation in
   `tests/evals/assistant/` on the named model candidates, under plain Node. Calls the
-  providers' APIs and costs money, so it runs on demand with their keys, never in CI
-  ([tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)). The unit
+  providers' APIs and costs money, so the maintainer runs it on demand with their keys,
+  never a session or CI ([validation.md](../agents/validation.md#the-assistants-evaluation);
+  [tests/evals/assistant/README.md](../../tests/evals/assistant/README.md)). The unit
   test `tests/evals/loads.test.ts` loads every module the eval entry points import, under
   plain Node in CI, so one that stops loading fails before a paid run.
 - `eval:voice`: the voice notes through each transcription option, then the transcript

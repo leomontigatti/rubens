@@ -4,7 +4,10 @@ The set of booking conversations that picks the patient assistant's model and it
 transcription option (#157, ADR-0006 § TanStack AI). Each case is one assistant turn
 after a conversation so far, run through the real prompt and tool schemas with
 TanStack AI, against a fake organization object that answers from made-up data. It
-calls the providers' real APIs, so it costs money and runs on demand, never in CI.
+calls the providers' real APIs, so it costs money and the maintainer runs it on demand,
+never a session or CI:
+[validation.md](../../../docs/agents/validation.md#the-assistants-evaluation) says which
+changes call for a run and how a session hands it over.
 
 ## Running
 
