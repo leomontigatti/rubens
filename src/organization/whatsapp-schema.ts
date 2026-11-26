@@ -11,12 +11,7 @@ import {
 
 import { formsOfAddress } from "#/lib/communication-rules.ts";
 import { lateReplyStates } from "#/lib/conversation-holds.ts";
-import {
-  defaultHandoffReminders,
-  handoffReasons,
-  handoffStates,
-  heldReplyChecks,
-} from "#/lib/handoffs.ts";
+import { handoffReasons, handoffStates, heldReplyChecks } from "#/lib/handoffs.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { outboxDropReasons, outboxKinds, outboxStates } from "#/lib/outbox.ts";
 import { proposalKinds } from "#/lib/proposals.ts";
@@ -380,14 +375,6 @@ export const inboxSettings = sqliteTable(
     id: integer("id").primaryKey(),
     /** How long a member holds a conversation they took over before it goes back to the assistant. */
     returnAfterHours: integer("return_after_hours").notNull(),
-    /** How many hours before the window closes a handoff's recipients are reminded of it. */
-    handoffReminderHours: integer("handoff_reminder_hours")
-      .notNull()
-      .default(defaultHandoffReminders.recipientHours),
-    /** How many hours before the window closes every other member who may answer a handoff is reminded too. */
-    handoffWideReminderHours: integer("handoff_wide_reminder_hours")
-      .notNull()
-      .default(defaultHandoffReminders.othersHours),
     ...timestamps,
   },
   (table) => [check("inbox_settings_one_row", sql`${table.id} = 1`)],

@@ -1,6 +1,5 @@
 import * as z from "zod";
 
-import { conversationWindowMs } from "#/lib/conversation-window.ts";
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 
@@ -70,8 +69,6 @@ export interface HandoffDetail {
 
 export const handoffStates = ["open", "closed"] as const;
 
-export const maxReminderHours = conversationWindowMs / (60 * 60_000) - 1;
-
 export const handoffReferenceSchema = z.object({ handoffId: z.uuid() });
 
 export type HandoffReference = z.input<typeof handoffReferenceSchema>;
@@ -79,17 +76,3 @@ export type HandoffReference = z.input<typeof handoffReferenceSchema>;
 export const openHandoffListSchema = z.object({ conversationId: z.uuid().optional() });
 
 export type OpenHandoffListOptions = z.input<typeof openHandoffListSchema>;
-
-export const defaultHandoffReminders = { recipientHours: 6, othersHours: 2 } as const;
-
-export const handoffRemindersSchema = z
-  .object({
-    recipientHours: z.number().int().min(1).max(maxReminderHours),
-    othersHours: z.number().int().min(1).max(maxReminderHours),
-  })
-  .refine((hours) => hours.othersHours <= hours.recipientHours, {
-    path: ["othersHours"],
-    message: "othersBeforeRecipients",
-  });
-
-export type HandoffRemindersInput = z.input<typeof handoffRemindersSchema>;

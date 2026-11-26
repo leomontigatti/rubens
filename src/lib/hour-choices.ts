@@ -50,7 +50,3 @@ export const cutoffChoices = (stored: number) => choicesWith(range(0, 48, 6), st
 /** How long a conversation taken over stays with its member. */
 export const returnTimeChoices = (stored: number) =>
   choicesWith([1, 2, 4, 8, 12, 24], stored, hoursLabel);
-
-/** How long before the conversation window closes a handoff is reminded. */
-export const handoffReminderChoices = (stored: number) =>
-  choicesWith([1, 2, 3, 4, 6, 8, 12], stored, hoursLabel);

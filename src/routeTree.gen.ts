@@ -52,7 +52,6 @@ import { Route as AppWhatsappConfiguracionIndexRouteImport } from './routes/_app
 import { Route as AppWhatsappConfiguracionContactosRouteImport } from './routes/_app/whatsapp/configuracion/contactos'
 import { Route as AppWhatsappConfiguracionDevolucionRouteImport } from './routes/_app/whatsapp/configuracion/devolucion'
 import { Route as AppWhatsappConfiguracionPruebaRouteImport } from './routes/_app/whatsapp/configuracion/prueba'
-import { Route as AppWhatsappConfiguracionRecordatoriosRouteImport } from './routes/_app/whatsapp/configuracion/recordatorios'
 import { Route as AppWhatsappConfiguracionReglasRouteImport } from './routes/_app/whatsapp/configuracion/reglas'
 import { Route as AppWhatsappPlantillasIndexRouteImport } from './routes/_app/whatsapp/plantillas/index'
 import { Route as AppWhatsappPlantillasTemplateIdRouteImport } from './routes/_app/whatsapp/plantillas/$templateId'
@@ -294,12 +293,6 @@ const AppWhatsappConfiguracionPruebaRoute =
     path: '/whatsapp/configuracion/prueba',
     getParentRoute: () => AppRoute,
   } as any)
-const AppWhatsappConfiguracionRecordatoriosRoute =
-  AppWhatsappConfiguracionRecordatoriosRouteImport.update({
-    id: '/whatsapp/configuracion/recordatorios',
-    path: '/whatsapp/configuracion/recordatorios',
-    getParentRoute: () => AppRoute,
-  } as any)
 const AppWhatsappConfiguracionReglasRoute =
   AppWhatsappConfiguracionReglasRouteImport.update({
     id: '/whatsapp/configuracion/reglas',
@@ -427,7 +420,6 @@ export interface FileRoutesByFullPath {
   '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
-  '/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
   '/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
   '/whatsapp/plantillas/$templateId': typeof AppWhatsappPlantillasTemplateIdRoute
   '/whatsapp/plantillas/nueva': typeof AppWhatsappPlantillasNuevaRoute
@@ -486,7 +478,6 @@ export interface FileRoutesByTo {
   '/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
-  '/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
   '/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
   '/whatsapp/plantillas/$templateId': typeof AppWhatsappPlantillasTemplateIdRoute
   '/whatsapp/plantillas/nueva': typeof AppWhatsappPlantillasNuevaRoute
@@ -547,7 +538,6 @@ export interface FileRoutesById {
   '/_app/whatsapp/configuracion/contactos': typeof AppWhatsappConfiguracionContactosRoute
   '/_app/whatsapp/configuracion/devolucion': typeof AppWhatsappConfiguracionDevolucionRoute
   '/_app/whatsapp/configuracion/prueba': typeof AppWhatsappConfiguracionPruebaRoute
-  '/_app/whatsapp/configuracion/recordatorios': typeof AppWhatsappConfiguracionRecordatoriosRoute
   '/_app/whatsapp/configuracion/reglas': typeof AppWhatsappConfiguracionReglasRoute
   '/_app/whatsapp/plantillas/$templateId': typeof AppWhatsappPlantillasTemplateIdRoute
   '/_app/whatsapp/plantillas/nueva': typeof AppWhatsappPlantillasNuevaRoute
@@ -608,7 +598,6 @@ export interface FileRouteTypes {
     | '/whatsapp/configuracion/contactos'
     | '/whatsapp/configuracion/devolucion'
     | '/whatsapp/configuracion/prueba'
-    | '/whatsapp/configuracion/recordatorios'
     | '/whatsapp/configuracion/reglas'
     | '/whatsapp/plantillas/$templateId'
     | '/whatsapp/plantillas/nueva'
@@ -667,7 +656,6 @@ export interface FileRouteTypes {
     | '/whatsapp/configuracion/contactos'
     | '/whatsapp/configuracion/devolucion'
     | '/whatsapp/configuracion/prueba'
-    | '/whatsapp/configuracion/recordatorios'
     | '/whatsapp/configuracion/reglas'
     | '/whatsapp/plantillas/$templateId'
     | '/whatsapp/plantillas/nueva'
@@ -727,7 +715,6 @@ export interface FileRouteTypes {
     | '/_app/whatsapp/configuracion/contactos'
     | '/_app/whatsapp/configuracion/devolucion'
     | '/_app/whatsapp/configuracion/prueba'
-    | '/_app/whatsapp/configuracion/recordatorios'
     | '/_app/whatsapp/configuracion/reglas'
     | '/_app/whatsapp/plantillas/$templateId'
     | '/_app/whatsapp/plantillas/nueva'
@@ -1056,13 +1043,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWhatsappConfiguracionPruebaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/whatsapp/configuracion/recordatorios': {
-      id: '/_app/whatsapp/configuracion/recordatorios'
-      path: '/whatsapp/configuracion/recordatorios'
-      fullPath: '/whatsapp/configuracion/recordatorios'
-      preLoaderRoute: typeof AppWhatsappConfiguracionRecordatoriosRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/whatsapp/configuracion/reglas': {
       id: '/_app/whatsapp/configuracion/reglas'
       path: '/whatsapp/configuracion/reglas'
@@ -1203,7 +1183,6 @@ interface AppRouteChildren {
   AppWhatsappConfiguracionContactosRoute: typeof AppWhatsappConfiguracionContactosRoute
   AppWhatsappConfiguracionDevolucionRoute: typeof AppWhatsappConfiguracionDevolucionRoute
   AppWhatsappConfiguracionPruebaRoute: typeof AppWhatsappConfiguracionPruebaRoute
-  AppWhatsappConfiguracionRecordatoriosRoute: typeof AppWhatsappConfiguracionRecordatoriosRoute
   AppWhatsappConfiguracionReglasRoute: typeof AppWhatsappConfiguracionReglasRoute
   AppWhatsappPlantillasTemplateIdRoute: typeof AppWhatsappPlantillasTemplateIdRoute
   AppWhatsappPlantillasNuevaRoute: typeof AppWhatsappPlantillasNuevaRoute
@@ -1263,8 +1242,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhatsappConfiguracionDevolucionRoute:
     AppWhatsappConfiguracionDevolucionRoute,
   AppWhatsappConfiguracionPruebaRoute: AppWhatsappConfiguracionPruebaRoute,
-  AppWhatsappConfiguracionRecordatoriosRoute:
-    AppWhatsappConfiguracionRecordatoriosRoute,
   AppWhatsappConfiguracionReglasRoute: AppWhatsappConfiguracionReglasRoute,
   AppWhatsappPlantillasTemplateIdRoute: AppWhatsappPlantillasTemplateIdRoute,
   AppWhatsappPlantillasNuevaRoute: AppWhatsappPlantillasNuevaRoute,

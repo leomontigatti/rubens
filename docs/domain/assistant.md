@@ -324,11 +324,11 @@ so it never gets it. A second handoff
 of the kind already open, to the practitioner or to reception, is not opened. It
 stays silent while a person holds the conversation.
 
-A handoff counts back from the window's close. Its recipient is told at once,
-reminded about 6 hours before the close, and about 2 hours before it the reminder
-also goes to every other member who may answer it (for one to the practitioner,
-only practitioners who keep clinical records). An admin can move these times, but none
-can fall after the close. A reminder that falls between 21:00 and 08:00 in the
+A handoff counts back from the window's close. Its recipient is told at once and
+reminded 20 hours before the close, and 4 hours before it the reminder also goes to every other member who may answer it (for
+one to the practitioner, only practitioners who keep clinical records), so someone
+answers before only a template can go. These two times are fixed: nobody sets them.
+A reminder that falls between 21:00 and 08:00 in the
 practice's zone, `America/Argentina/Buenos_Aires`, waits until 08:00, and does not go when the window closes first: a reply after the close goes
 through the reopen template. These hours are fixed; offices have no opening hours.
 The notification when a handoff opens always goes at once. A handoff made after the close, for a reply that could not

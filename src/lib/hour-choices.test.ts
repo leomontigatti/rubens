@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  cutoffChoices,
-  durationChoices,
-  handoffReminderChoices,
-  returnTimeChoices,
-} from "#/lib/hour-choices.ts";
+import { cutoffChoices, durationChoices, returnTimeChoices } from "#/lib/hour-choices.ts";
 
 const labels = (choices: { label: string }[]) => choices.map((one) => one.label);
 const values = (choices: { value: string }[]) => choices.map((one) => one.value);
@@ -110,18 +105,5 @@ describe("the WhatsApp settings' hours", () => {
   it("offers 1 to 24 hours for the return time, and keeps a stored one outside the list", () => {
     expect(labels(returnTimeChoices(4))).toEqual(["1 h", "2 h", "4 h", "8 h", "12 h", "24 h"]);
     expect(values(returnTimeChoices(3))).toEqual(["1", "2", "3", "4", "8", "12", "24"]);
-  });
-
-  it("offers 1 to 12 hours for the handoff reminders, and keeps a stored one outside the list", () => {
-    expect(labels(handoffReminderChoices(2))).toEqual([
-      "1 h",
-      "2 h",
-      "3 h",
-      "4 h",
-      "6 h",
-      "8 h",
-      "12 h",
-    ]);
-    expect(values(handoffReminderChoices(10))).toEqual(["1", "2", "3", "4", "6", "8", "10", "12"]);
   });
 });

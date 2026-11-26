@@ -1,6 +1,5 @@
 import { currentCommunicationRules } from "#/organization/communication-rules.ts";
 import { returnAfterHours } from "#/organization/personal-replies.ts";
-import { handoffReminders } from "#/organization/handoff-countdown.ts";
 import { listHandoffContacts } from "#/organization/handoff-contacts.ts";
 import type {
   MissingSetting,
@@ -69,7 +68,6 @@ export function getWhatsappSettings(
     communicationRules: currentCommunicationRules(database),
     handoffContacts: listHandoffContacts(database).members,
     returnAfterHours: returnAfterHours(database),
-    handoffReminders: handoffReminders(database),
     messages: monthMessages(database),
     businessAccountId: cloud.businessAccountId(),
   } as const;
