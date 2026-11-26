@@ -142,10 +142,7 @@ export function ScheduleForm(props: {
             startsRow
             required
             placeholder="Elegí un consultorio"
-            options={props.rooms.map((room) => ({
-              value: room.id,
-              label: `${room.name} · ${room.officeName}`,
-            }))}
+            options={props.rooms.map((room) => ({ value: room.id, label: room.name }))}
           />
         )}
       </form.AppField>
@@ -167,7 +164,7 @@ export function offeredRooms(rooms: RoomOption[], schedule: Schedule): RoomOptio
   if (rooms.some((room) => room.id === schedule.roomId)) {
     return rooms;
   }
-  const own = { id: schedule.roomId, name: schedule.roomName, officeName: schedule.officeName };
+  const own = { id: schedule.roomId, name: schedule.roomName };
   return [own, ...rooms];
 }
 

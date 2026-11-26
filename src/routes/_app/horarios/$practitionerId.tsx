@@ -146,9 +146,7 @@ function ScheduleSummary(props: { schedule: Schedule; ended: boolean; children: 
         <span className="font-medium">
           {weekdaysLabel(schedule.weekdays)} · {schedule.startTime} a {schedule.endTime}
         </span>
-        <span className="text-muted-foreground text-sm">
-          {schedule.roomName} · {schedule.officeName}
-        </span>
+        <span className="text-muted-foreground text-sm">{schedule.roomName}</span>
         <span className="text-muted-foreground text-sm">
           {validityLabel(schedule)}
           {props.ended && " · Terminado"}

@@ -164,7 +164,6 @@ function readQueued(database: Database, id: string) {
       patientPhone: patient.phone,
       guardianPhone: guardian.phone,
       practitionerName: practitioner.displayName,
-      officeName: office.name,
       officeAddress: office.address,
       medicalServiceName: medicalService.name,
     })
@@ -274,7 +273,6 @@ function toSend(database: Database, id: string, kind: OutboxKind) {
     patient: queued,
     practitionerName: queued.practitionerName,
     start: new Date(queued.startsAt),
-    officeName: queued.officeName,
     officeAddress: queued.officeAddress,
     medicalServiceName: queued.medicalServiceName,
     organizationName: organizationName(database),

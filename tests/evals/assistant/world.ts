@@ -7,9 +7,10 @@ export const organization = {
   name: "Consultorio Ejemplo",
   phone: "0351 555-0100",
   emergencyNumber: "107",
+  address: "Av. Colón 1234, Córdoba",
 };
 
-export type Slot = { slotId: string; date: string; time: string; office: string };
+export type Slot = { slotId: string; date: string; time: string };
 
 export type Appointment = {
   appointmentId: string;
@@ -19,7 +20,6 @@ export type Appointment = {
   specialty: string;
   date: string;
   time: string;
-  office: string;
   address: string;
   status: "booked" | "confirmed" | "cancelled_by_organization";
   // Why a patient's own move is refused, if it is: the medical service's cutoff
@@ -30,13 +30,12 @@ export type Appointment = {
 
 export type Patient = { patientId: string; firstName: string; appointments: Appointment[] };
 
-const centro = { office: "Sede Centro", address: "Av. Colón 1234, Córdoba" };
-const norte = { office: "Sede Norte", address: "Av. Rafael Núñez 4500, Córdoba" };
+const practice = { address: organization.address };
 
 const riosSlots: Slot[] = [
-  { slotId: "slot-r1", date: "2026-11-16", time: "09:00", office: centro.office },
-  { slotId: "slot-r2", date: "2026-11-17", time: "10:30", office: norte.office },
-  { slotId: "slot-r3", date: "2026-11-19", time: "17:00", office: centro.office },
+  { slotId: "slot-r1", date: "2026-11-16", time: "09:00" },
+  { slotId: "slot-r2", date: "2026-11-17", time: "10:30" },
+  { slotId: "slot-r3", date: "2026-11-19", time: "17:00" },
 ];
 
 function luciaAppointment(overrides: Partial<Appointment> = {}): Appointment {
@@ -47,7 +46,7 @@ function luciaAppointment(overrides: Partial<Appointment> = {}): Appointment {
     specialty: "Kinesiología",
     date: "2026-11-12",
     time: "16:30",
-    ...centro,
+    ...practice,
     status: "booked",
     freeSlots: riosSlots,
     ...overrides,
@@ -95,11 +94,9 @@ export const numbers = {
           specialty: "Odontología",
           date: "2026-11-13",
           time: "11:00",
-          ...centro,
+          ...practice,
           status: "booked" as const,
-          freeSlots: [
-            { slotId: "slot-m1", date: "2026-11-20", time: "11:00", office: centro.office },
-          ],
+          freeSlots: [{ slotId: "slot-m1", date: "2026-11-20", time: "11:00" }],
         },
       ],
     },
@@ -118,11 +115,9 @@ export const numbers = {
           specialty: "Pediatría",
           date: "2026-11-11",
           time: "09:00",
-          ...norte,
+          ...practice,
           status: "booked",
-          freeSlots: [
-            { slotId: "slot-s1", date: "2026-11-18", time: "11:00", office: norte.office },
-          ],
+          freeSlots: [{ slotId: "slot-s1", date: "2026-11-18", time: "11:00" }],
         },
       ],
     },
@@ -137,7 +132,7 @@ export const numbers = {
           specialty: "Kinesiología",
           date: "2026-11-13",
           time: "18:00",
-          ...centro,
+          ...practice,
           status: "booked",
           freeSlots: riosSlots,
         },

@@ -9,6 +9,7 @@ import { now, organization } from "./world.ts";
 export function systemPrompt(evaluationCase: Case): string {
   return assistantSystemPrompt({
     organizationName: organization.name,
+    address: organization.address,
     now: new Date(now),
     formOfAddress: "vos",
     tone: "",

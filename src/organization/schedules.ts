@@ -45,7 +45,6 @@ export interface Schedule {
   id: string;
   roomId: string;
   roomName: string;
-  officeName: string;
   weekdays: number[];
   startTime: string;
   endTime: string;
@@ -57,7 +56,6 @@ export interface Schedule {
 export interface RoomOption {
   id: string;
   name: string;
-  officeName: string;
 }
 
 /** The schedule a save collides with, and on which weekday. */
@@ -106,7 +104,6 @@ const scheduleColumns = {
   practitionerId: schedule.practitionerId,
   roomId: schedule.roomId,
   roomName: room.name,
-  officeName: office.name,
   weekdays: schedule.weekdays,
   startTime: schedule.startTime,
   endTime: schedule.endTime,
@@ -120,8 +117,7 @@ function selectSchedules(writer: Writer) {
   return writer
     .select(scheduleColumns)
     .from(schedule)
-    .innerJoin(room, eq(room.id, schedule.roomId))
-    .innerJoin(office, eq(office.id, room.officeId));
+    .innerJoin(room, eq(room.id, schedule.roomId));
 }
 
 function toSchedule(row: ScheduleRow): Schedule {
@@ -129,7 +125,6 @@ function toSchedule(row: ScheduleRow): Schedule {
     id: row.id,
     roomId: row.roomId,
     roomName: row.roomName,
-    officeName: row.officeName,
     weekdays: row.weekdays,
     startTime: shortTime(row.startTime),
     endTime: shortTime(row.endTime),
@@ -163,11 +158,11 @@ export function getPractitionerSchedules(
     .orderBy(asc(schedule.firstDate), asc(schedule.startTime))
     .all();
   const rooms = database
-    .select({ id: room.id, name: room.name, officeName: office.name })
+    .select({ id: room.id, name: room.name })
     .from(room)
     .innerJoin(office, eq(office.id, room.officeId))
     .where(and(eq(room.active, true), eq(office.active, true)))
-    .orderBy(asc(office.name), asc(room.name))
+    .orderBy(asc(room.name))
     .all();
   return {
     ok: true,
