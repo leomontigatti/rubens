@@ -187,7 +187,7 @@ describe("validating a schedule", () => {
   });
 });
 
-describe("room capacity", () => {
+describe("a room holds one practitioner at a time", () => {
   it("refuses a second overlapping schedule in a room for one, naming the first", async () => {
     const { mondayMorning, create, createFor } = await world();
     await create(adminCaller, mondayMorning());
@@ -222,36 +222,6 @@ describe("room capacity", () => {
 
     expect(await createFor("Lucía Díaz", { firstDate: "2099-03-02" })).toMatchObject({ ok: true });
     expect(await createFor("Rosa Paz", { weekdays: [2] })).toMatchObject({ ok: true });
-  });
-
-  it("accepts a second practitioner in a room for two and refuses a third", async () => {
-    const { organization, mondayMorning, create, createFor } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const shared = await addRoom(organization, norte.id, "Gimnasio", 2);
-    await create(adminCaller, mondayMorning({ roomId: shared.id }));
-
-    expect(
-      await createFor("Lucía Díaz", { roomId: shared.id, startTime: "11:00", endTime: "15:00" }),
-    ).toMatchObject({ ok: true });
-    expect(
-      await createFor("Rosa Paz", { roomId: shared.id, startTime: "12:00", endTime: "12:30" }),
-    ).toMatchObject({ ok: false, reason: "roomFull" });
-    expect(
-      await createFor("Pedro Ruiz", { roomId: shared.id, startTime: "13:00", endTime: "14:00" }),
-    ).toMatchObject({ ok: true });
-  });
-
-  it("counts only the schedules present at the same moment in a room for two", async () => {
-    const { organization, mondayMorning, create, createFor } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const shared = await addRoom(organization, norte.id, "Gimnasio", 2);
-    // Two schedules in turn, never together: a third over both meets one at a time.
-    await create(adminCaller, mondayMorning({ roomId: shared.id, lastDate: "2099-02-23" }));
-    await createFor("Lucía Díaz", { roomId: shared.id, firstDate: "2099-03-02" });
-
-    expect(
-      await createFor("Rosa Paz", { roomId: shared.id, startTime: "10:00", endTime: "11:00" }),
-    ).toMatchObject({ ok: true });
   });
 });
 

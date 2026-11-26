@@ -37,7 +37,6 @@ const roomColumns = {
   id: room.id,
   officeId: room.officeId,
   name: room.name,
-  capacity: room.capacity,
   active: room.active,
 };
 
@@ -52,7 +51,6 @@ export interface Room {
   id: string;
   officeId: string;
   name: string;
-  capacity: number;
   active: boolean;
 }
 

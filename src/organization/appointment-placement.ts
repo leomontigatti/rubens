@@ -123,8 +123,8 @@ function findPresences(writer: Writer, roomId: string, span: TimeRange) {
 }
 
 /**
- * Whether the room has space for the practitioner during `span`: no other
- * practitioner's active appointment there meets it, and its capacity holds them.
+ * Whether the room is free for the practitioner during `span`: no other
+ * practitioner holds it then, by an active appointment or a schedule.
  */
 export function checkRoomSpace(
   writer: Writer,
@@ -136,7 +136,6 @@ export function checkRoomSpace(
     .select({
       officeId: room.officeId,
       active: room.active,
-      capacity: room.capacity,
       officeActive: office.active,
     })
     .from(room)
@@ -153,15 +152,14 @@ export function checkRoomSpace(
     return { ok: false, reason: "roomInactive" };
   }
   const presences = findPresences(writer, roomId, span);
-  // Another practitioner's appointment holds the room whatever its capacity.
+  // Other practitioners' appointments are named first, all those over the span.
   const held = presences.filter(
     (presence) =>
       presence.kind === "appointment" &&
       presence.practitionerId !== practitionerId &&
       intersects(presence, span),
   );
-  const crowding =
-    held.length > 0 ? held : findCrowding(span, practitionerId, presences, target.capacity);
+  const crowding = held.length > 0 ? held : findCrowding(span, practitionerId, presences);
   if (crowding) {
     const occupants = crowding
       .map(({ practitionerName, kind, start, end }) => ({ practitionerName, kind, start, end }))

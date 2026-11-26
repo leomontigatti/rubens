@@ -6,7 +6,6 @@ import { and, asc, eq, gt, inArray, ne, or } from "drizzle-orm";
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { occurrencesDuring } from "#/lib/availability.ts";
-import { findCrowding } from "#/lib/room-space.ts";
 import {
   findCollision,
   scheduleChangeSchema,
@@ -24,7 +23,6 @@ import type {
   ScheduleInput,
   WeeklySlot,
 } from "#/lib/schedules.ts";
-import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import { settlingToReschedule } from "#/organization/change-messages.ts";
@@ -37,8 +35,8 @@ import { appointment, office, practitioner, room, schedule } from "#/organizatio
 // Practitioners' weekly schedules. Everyone reads them; an admin changes
 // anyone's and a practitioner their own (the object requires one of the two
 // roles, and `findPractitioner` decides whose). Saving one checks that the
-// room never holds more practitioners at once than its capacity, through
-// schedules or future appointments, and the practitioner is never in two
+// room never holds two practitioners at once, through schedules or future
+// appointments, and the practitioner is never in two
 // schedules at once (ADR-0003). The check and the write run in one
 // synchronous transaction, so no other call interleaves (ADR-0008). Every
 // change is written to the audit log, about no patient.
@@ -212,7 +210,6 @@ function checkCandidate(
     .select({
       name: room.name,
       active: room.active,
-      capacity: room.capacity,
       officeActive: office.active,
     })
     .from(room)
@@ -247,7 +244,7 @@ function checkCandidate(
     .all();
 
   const inRoom = others.filter((row) => row.roomId === candidate.roomId);
-  const roomClash = findCollision(candidate, inRoom, target.capacity);
+  const roomClash = findCollision(candidate, inRoom);
   if (roomClash) {
     return {
       ok: false,
@@ -255,14 +252,13 @@ function checkCandidate(
       collision: describeCollision(roomClash.schedule, roomClash.weekday),
     };
   }
-  const crowded = findCrowdedAppointment(writer, candidate, inRoom, target);
+  const crowded = findHoldingAppointment(writer, candidate, target.name);
   if (crowded) {
     return { ok: false, reason: "roomFull", appointment: crowded };
   }
   const ownClash = findCollision(
     candidate,
     others.filter((row) => row.practitionerId === candidate.practitionerId),
-    1,
   );
   if (ownClash) {
     return {
@@ -275,19 +271,16 @@ function checkCandidate(
 }
 
 /**
- * Another practitioner's future active appointment in the room that, with the
- * room's schedules and appointments, leaves no space for `candidate`; `null`
- * when there is none. `roomSchedules` excludes the one being replaced.
+ * Another practitioner's future active appointment in the room during one of
+ * `candidate`'s occurrences; `null` when there is none.
  */
-function findCrowdedAppointment(
+function findHoldingAppointment(
   writer: Writer,
   candidate: Candidate,
-  roomSchedules: readonly ScheduleRow[],
-  target: { name: string; capacity: number },
+  roomName: string,
 ): AppointmentCollision | null {
-  const appointments = writer
+  const held = writer
     .select({
-      practitionerId: appointment.practitionerId,
       practitionerName: practitioner.displayName,
       startsAt: appointment.startsAt,
       endsAt: appointment.endsAt,
@@ -297,48 +290,30 @@ function findCrowdedAppointment(
     .where(
       and(
         eq(appointment.roomId, candidate.roomId),
+        ne(appointment.practitionerId, candidate.practitionerId),
         inArray(appointment.status, [...activeAppointmentStatuses]),
         gt(appointment.endsAt, Date.now()),
       ),
     )
+    .orderBy(asc(appointment.startsAt))
     .all()
-    .map(({ startsAt, endsAt, ...rest }) => ({
-      ...rest,
-      during: { start: new Date(startsAt), end: new Date(endsAt) },
-    }));
-  const presences = (span: TimeRange) => [
-    ...roomSchedules.flatMap((row) =>
-      occurrencesDuring(row, span).map((occurrence) => ({
-        practitionerId: row.practitionerId,
-        ...occurrence,
-      })),
-    ),
-    ...appointments.map(({ practitionerId, during }) => ({ practitionerId, ...during })),
-  ];
-  const slot = candidate;
-  for (const held of appointments) {
-    if (held.practitionerId === candidate.practitionerId) {
-      continue;
-    }
-    for (const occurrence of occurrencesDuring(slot, held.during)) {
-      const span = {
-        start: occurrence.start > held.during.start ? occurrence.start : held.during.start,
-        end: occurrence.end < held.during.end ? occurrence.end : held.during.end,
-      };
-      if (findCrowding(span, candidate.practitionerId, presences(span), target.capacity)) {
-        const local = (instant: Date, pattern: string) =>
-          format(instant, pattern, { in: tz(practiceTimeZone) });
-        return {
-          practitionerName: held.practitionerName,
-          roomName: target.name,
-          date: local(held.during.start, "yyyy-MM-dd"),
-          startTime: local(held.during.start, "HH:mm"),
-          endTime: local(held.during.end, "HH:mm"),
-        };
-      }
-    }
+    .find(
+      ({ startsAt, endsAt }) =>
+        occurrencesDuring(candidate, { start: new Date(startsAt), end: new Date(endsAt) }).length >
+        0,
+    );
+  if (!held) {
+    return null;
   }
-  return null;
+  const local = (instant: number, pattern: string) =>
+    format(new Date(instant), pattern, { in: tz(practiceTimeZone) });
+  return {
+    practitionerName: held.practitionerName,
+    roomName,
+    date: local(held.startsAt, "yyyy-MM-dd"),
+    startTime: local(held.startsAt, "HH:mm"),
+    endTime: local(held.endsAt, "HH:mm"),
+  };
 }
 
 function insertSchedule(writer: Writer, acting: Acting, candidate: Candidate) {

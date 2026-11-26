@@ -373,44 +373,6 @@ describe("who books", () => {
   });
 });
 
-describe("a room two practitioners share", () => {
-  // Both work there from 11:00 to 13:00 too, 14:00Z to 16:00Z.
-  async function sharedWorld() {
-    const w = await world();
-    const shared = await addRoom(w.organization, w.office.id, "Consultorio doble", 2);
-    for (const practitionerId of [w.juan.practitionerId, w.lucia.practitionerId]) {
-      await w.addSchedule({
-        practitionerId,
-        roomId: shared.id,
-        startTime: "11:00",
-        endTime: "13:00",
-      });
-    }
-    await w.book(w.bookingOf({ start: at("14:00") }));
-    return w;
-  }
-
-  it("offers no other practitioner the time an appointment there holds, and refuses booking it", async () => {
-    const w = await sharedWorld();
-
-    const offered = await w.freeStartsOf(w.lucia.practitionerId);
-
-    expect(offered).toContain("2099-01-05T14:30:00.000Z");
-    expect(offered).not.toContain("2099-01-05T14:00:00.000Z");
-    expect(
-      await w.tryBook(
-        w.bookingOf({
-          patientId: w.pedro.id,
-          practitionerId: w.lucia.practitionerId,
-          medicalServiceId: w.luciaService.id,
-          start: at("14:00"),
-        }),
-      ),
-    ).toMatchObject({ ok: false, reason: "notFree" });
-    expect(await w.appointmentCount()).toBe(1);
-  });
-});
-
 describe("an overbooking on top of another appointment", () => {
   it("books over the appointment, off the grid, in the room of the schedule", async () => {
     const w = await world();
@@ -475,12 +437,11 @@ describe("an overbooking on top of another appointment", () => {
 });
 
 describe("an overbooking outside the practitioner's schedules", () => {
-  // "Consultorio 3" is empty, of capacity 1, and "Consultorio 4" of capacity 2.
+  // "Consultorio 3" is empty.
   async function roomsWorld() {
     const w = await world();
     const third = await addRoom(w.organization, w.office.id, "Consultorio 3");
-    const double = await addRoom(w.organization, w.office.id, "Consultorio 4", 2);
-    return { ...w, third, double };
+    return { ...w, third };
   }
 
   it("needs a room picked", async () => {
@@ -544,64 +505,6 @@ describe("an overbooking outside the practitioner's schedules", () => {
       ],
     });
     expect(await w.appointmentCount()).toBe(1);
-  });
-
-  it("fits beside one other practitioner in a room of capacity 2, and not beside two", async () => {
-    const w = await roomsWorld();
-    // The second schedule of "Lucía" follows the one in "Consultorio 2".
-    await w.addSchedule({
-      practitionerId: w.lucia.practitionerId,
-      roomId: w.double.id,
-      startTime: "11:00",
-      endTime: "13:00",
-    });
-    const inDouble = w.overbookingOf({ start: at("14:30"), roomId: w.double.id });
-
-    expect(await w.tryOverbook(inDouble)).toMatchObject({ ok: true });
-
-    const ana = await addStaff(w.organization, "Ana Ruiz");
-    await w.addSchedule({
-      practitionerId: ana.practitionerId,
-      roomId: w.double.id,
-      startTime: "11:00",
-      endTime: "11:30",
-    });
-
-    expect(
-      await w.tryOverbook({ ...inDouble, patientId: w.maria.id, start: at("14:00") }),
-    ).toMatchObject({
-      ok: false,
-      reason: "roomFull",
-      occupants: [{ practitionerName: "Ana Ruiz" }, { practitionerName: "Lucía Díaz" }],
-    });
-  });
-
-  it("is refused over another practitioner's appointment in a room they share, naming it", async () => {
-    const w = await roomsWorld();
-    // "Lucía" works in "Consultorio 4" too, where Juan's overbooking is.
-    await w.addSchedule({
-      practitionerId: w.lucia.practitionerId,
-      roomId: w.double.id,
-      startTime: "11:00",
-      endTime: "13:00",
-    });
-    await w.overbook(w.overbookingOf({ start: at("14:30"), roomId: w.double.id }));
-
-    expect(
-      await w.tryOverbook(
-        w.overbookingOf({
-          patientId: w.maria.id,
-          practitionerId: w.lucia.practitionerId,
-          medicalServiceId: w.luciaService.id,
-          start: at("14:30"),
-          roomId: w.double.id,
-        }),
-      ),
-    ).toMatchObject({
-      ok: false,
-      reason: "roomFull",
-      occupants: [{ practitionerName: "Juan Gómez", kind: "appointment" }],
-    });
   });
 
   it("adds no practitioner on top of their own appointment in that room", async () => {

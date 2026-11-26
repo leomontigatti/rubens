@@ -33,11 +33,10 @@ still be adjusted. The patient is found with the search box, or registered on
 the spot with the quick registration.
 
 An appointment takes the room of the schedule it falls in. Reception can move it
-to another room only if that room has space at that time: its capacity, counted
-against other practitioners' schedules and appointments there. An overbooking
-outside the practitioner's schedules needs a room picked explicitly, under the
-same rule. So a room never holds more practitioners than its capacity, for
-appointments as for schedules.
+to another room only if no other practitioner holds it at that time, by a
+schedule or an appointment there. An overbooking outside the practitioner's
+schedules needs a room picked explicitly, under the same rule. So a room never
+holds two practitioners at once, for appointments as for schedules.
 
 Practitioners can share a room, but never at once: while one practitioner holds
 an appointment there, no other practitioner can book, overbook or move an
