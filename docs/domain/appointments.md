@@ -130,14 +130,14 @@ how many that adds. Rescheduling keeps the practitioner and the patient, so such
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 
-Deactivating a room or an office sends every future requested, booked or confirmed appointment
+Deactivating a room sends every future requested, booked or confirmed appointment
 in it to the list, overbookings included: the calendar no longer offers the room,
 even when another room's schedule still covers the time. Its schedules also cover
 nothing from then on, so an appointment in another room of the office that only they
 covered goes to the list as outside working time. The admin is told first how many
 appointments that adds up to, leaving out those on the list already. Rescheduling
 picks a new room, so such an appointment can move once the practitioner has a free
-time in an active room; reactivating the place takes the rest off the list.
+time in an active room; reactivating the room takes the rest off the list.
 
 ## Overlaps and overbooking
 

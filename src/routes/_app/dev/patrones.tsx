@@ -445,22 +445,22 @@ function Patterns() {
       <Pattern title="Sin datos">
         <EmptyState
           icon={BuildingIcon}
-          title="Sin sedes"
-          description="Todavía no hay sedes. Empezá creando la primera."
+          title="Sin obras sociales"
+          description="Todavía no hay obras sociales. Empezá creando la primera."
         >
-          <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>
+          <CreateButton link={<Link to="/obras-sociales/nueva" />}>Nueva obra social</CreateButton>
         </EmptyState>
       </Pattern>
       <Pattern title="Sin datos activos">
         <EmptyState
           icon={BuildingIcon}
-          title="Sin sedes activas"
-          description="No hay sedes activas. Empezá creando una, o mirá las archivadas."
+          title="Sin obras sociales activas"
+          description="No hay obras sociales activas. Empezá creando una, o mirá las archivadas."
         >
-          <CreateButton link={<Link to="/sedes/nueva" />}>Nueva sede</CreateButton>
+          <CreateButton link={<Link to="/obras-sociales/nueva" />}>Nueva obra social</CreateButton>
           <EmptyStateLink
             variant="outline"
-            link={<Link to="/sedes" search={{ archivadas: true }} />}
+            link={<Link to="/obras-sociales" search={{ archivadas: true }} />}
           >
             Ver archivadas
           </EmptyStateLink>

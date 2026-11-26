@@ -3,7 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import * as z from "zod";
 
-import { ArchivedAlert, ArchivedBadge, activeRecord } from "#/components/admin-form.tsx";
+import { ActionsMenu, ArchivedBadge } from "#/components/admin-form.tsx";
 import { DataTable, NoMatches, RowName, useClientDataTable } from "#/components/data-table.tsx";
 import type { DataTableColumn } from "#/components/data-table.tsx";
 import { EmptyState, EmptyStateLink } from "#/components/empty-state.tsx";
@@ -15,17 +15,12 @@ import { Badge } from "#/components/ui/badge.tsx";
 import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.tsx";
 import { capacityLabel } from "#/lib/offices.ts";
-import {
-  changeOfficeActive,
-  editOffice,
-  getOfficeUpcomingCount,
-  getOfficeWithRooms,
-} from "#/server/offices.functions.ts";
+import { editOffice, getOfficeWithRooms } from "#/server/offices.functions.ts";
 import type { Office, Room } from "#/organization/offices.ts";
 
 import { OfficeForm } from "#/routes/_app/sedes/-office-form.tsx";
 import { useRoomDialog } from "#/routes/_app/sedes/-room-form.tsx";
-import { RefusalAlert, useAction } from "#/routes/_app/sedes/-shared.tsx";
+import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
 
 /** The page's subtitle, the same for every office and every role. */
@@ -78,13 +73,12 @@ function OfficePage() {
 }
 
 /**
- * An admin's office page: titled by the office, with its state and
- * deactivation beside the name, and two tabs, the same form as a new
- * office's and its rooms, which open in a dialog over it.
+ * An admin's office page: titled by the office, with a new room in its
+ * `Acciones`, and two tabs, the office's form and its rooms, which open in a
+ * dialog over it.
  */
 function EditOffice(props: { office: Office; rooms: Room[]; onlyInactive: boolean }) {
   const { office, rooms } = props;
-  const toggle = useAction();
   const roomDialog = useRoomDialog(office.id, rooms);
   const activeRooms = rooms.filter((room) => room.active).length;
   // The URL picks the tab a page opens on (a room's pages come back to
@@ -92,22 +86,15 @@ function EditOffice(props: { office: Office; rooms: Room[]; onlyInactive: boolea
   // before discarding an unsaved edit.
   const { seccion = "datos" } = Route.useSearch();
   const [section, setSection] = useState<Section>(seccion);
-  const record = activeRecord({
-    active: office.active,
-    ending: "a",
-    archived: archivedOffice,
+  const record = {
     transitionId: office.id,
-    toggle,
-    onChange: (next) =>
-      void toggle.run(() => changeOfficeActive({ data: { id: office.id, active: next } })),
-    deactivation: {
-      question: `¿Archivar ${office.name}?`,
-      countUpcoming: () => getOfficeUpcomingCount({ data: { id: office.id } }),
-    },
-    items: office.active && (
-      <DropdownMenuItem onClick={roomDialog.create}>Nuevo consultorio</DropdownMenuItem>
+    error: null,
+    actions: (busy: boolean) => (
+      <ActionsMenu disabled={busy}>
+        <DropdownMenuItem onClick={roomDialog.create}>Nuevo consultorio</DropdownMenuItem>
+      </ActionsMenu>
     ),
-  });
+  };
   return (
     <OfficeForm
       key={office.id}
@@ -135,7 +122,7 @@ function EditOffice(props: { office: Office; rooms: Room[]; onlyInactive: boolea
                 rooms={rooms}
                 onlyInactive={props.onlyInactive}
                 onOpen={roomDialog.edit}
-                onCreate={office.active ? roomDialog.create : undefined}
+                onCreate={roomDialog.create}
               />
             </TabsContent>
           </Tabs>
@@ -148,23 +135,13 @@ function EditOffice(props: { office: Office; rooms: Room[]; onlyInactive: boolea
   );
 }
 
-/** What an archived office's page says about it. */
-const archivedOffice = {
-  title: "Sede archivada",
-  consequence: "No aparece en las listas, y no se dan turnos en sus consultorios.",
-};
-
 /** The office's name and address, for those who can't change it. */
 function OfficeHeading({ office }: { office: Office }) {
   return (
-    <>
-      <PageHeader
-        title={<RecordName id={office.id}>{office.name}</RecordName>}
-        status={<ArchivedBadge active={office.active} ending="a" />}
-        description={officeDescription}
-      />
-      {!office.active && <ArchivedAlert notice={archivedOffice} ending="a" />}
-    </>
+    <PageHeader
+      title={<RecordName id={office.id}>{office.name}</RecordName>}
+      description={officeDescription}
+    />
   );
 }
 
@@ -188,7 +165,7 @@ const columns: DataTableColumn<ListedRoom>[] = [
 
 /**
  * The office's rooms: for an admin, a name opens the room's dialog
- * (`onOpen`), and `onCreate`, on an active office, a new one's.
+ * (`onOpen`), and `onCreate` a new one's.
  */
 function RoomTable(props: {
   officeId: string;

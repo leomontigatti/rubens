@@ -31,7 +31,6 @@ import type {
 } from "#/lib/medical-services.ts";
 import type {
   ActiveChange,
-  OfficeInput,
   OfficeUpdate,
   PlaceReference,
   RoomInput,
@@ -132,11 +131,9 @@ import {
 import type { Caller, MemberInput } from "#/organization/members.ts";
 import { OrganizationWhatsapp } from "#/organization/organization-whatsapp.ts";
 import {
-  createOffice,
   createRoom,
   getOffice,
   listOffices,
-  setOfficeActive,
   setRoomActive,
   updateOffice,
   updateRoom,
@@ -181,7 +178,6 @@ import {
 } from "#/organization/time-off.ts";
 import {
   countMemberUpcoming,
-  countOfficeUpcoming,
   countPatientUpcoming,
   countRoomUpcoming,
   countToReschedule,
@@ -214,7 +210,7 @@ export class Organization extends OrganizationWhatsapp {
   // never with input from the browser (`src/server/organization-setup.ts`,
   // `src/server/dev-sign-in.ts`).
 
-  setUp(input: { organizationId: string; name: string; admin: Omit<MemberInput, "roles"> }) {
+  setUp(input: Parameters<typeof setUpOrganization>[1]) {
     return this.armingOnWrite(() => setUpOrganization(this.database, input));
   }
 
@@ -254,16 +250,8 @@ export class Organization extends OrganizationWhatsapp {
     return this.as(caller, "any", () => getOffice(this.database, input));
   }
 
-  createOffice(caller: Caller, input: OfficeInput) {
-    return this.as(caller, ["admin"], (acting) => createOffice(this.database, acting, input));
-  }
-
   updateOffice(caller: Caller, input: OfficeUpdate) {
     return this.as(caller, ["admin"], (acting) => updateOffice(this.database, acting, input));
-  }
-
-  setOfficeActive(caller: Caller, input: ActiveChange) {
-    return this.as(caller, ["admin"], (acting) => setOfficeActive(this.database, acting, input));
   }
 
   createRoom(caller: Caller, input: RoomInput) {
@@ -630,12 +618,6 @@ export class Organization extends OrganizationWhatsapp {
 
   countRoomUpcoming(caller: Caller, input: PlaceReference) {
     return this.as(caller, ["admin"], (acting) => countRoomUpcoming(this.database, acting, input));
-  }
-
-  countOfficeUpcoming(caller: Caller, input: PlaceReference) {
-    return this.as(caller, ["admin"], (acting) =>
-      countOfficeUpcoming(this.database, acting, input),
-    );
   }
 
   // The inbox: every staff role reads it; which conversations, and which

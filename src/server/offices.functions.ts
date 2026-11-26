@@ -3,7 +3,6 @@ import { createServerFn } from "@tanstack/react-start";
 import type {
   ActiveChange,
   PlaceReference,
-  OfficeInput,
   OfficeUpdate,
   RoomInput,
   RoomUpdate,
@@ -29,28 +28,10 @@ export const getOfficeWithRooms = createServerFn({ method: "GET" })
     withOrganization((organization, caller) => organization.getOffice(caller, data)),
   );
 
-export const addOffice = createServerFn({ method: "POST" })
-  .validator((data: OfficeInput) => data)
-  .handler(({ data }) =>
-    withOrganization((organization, caller) => organization.createOffice(caller, data)),
-  );
-
 export const editOffice = createServerFn({ method: "POST" })
   .validator((data: OfficeUpdate) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.updateOffice(caller, data)),
-  );
-
-export const getOfficeUpcomingCount = createServerFn({ method: "GET" })
-  .validator((data: PlaceReference) => data)
-  .handler(({ data }) =>
-    withOrganization((organization, caller) => organization.countOfficeUpcoming(caller, data)),
-  );
-
-export const changeOfficeActive = createServerFn({ method: "POST" })
-  .validator((data: ActiveChange) => data)
-  .handler(({ data }) =>
-    withOrganization((organization, caller) => organization.setOfficeActive(caller, data)),
   );
 
 export const addRoom = createServerFn({ method: "POST" })

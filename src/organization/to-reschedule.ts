@@ -424,8 +424,3 @@ function countForPlace(
 export function countRoomUpcoming(writer: Writer, acting: Acting, input: PlaceReference) {
   return countForPlace(writer, acting, input, (id) => (where) => where.roomId === id);
 }
-
-/** The appointments deactivating the office would send to the list. */
-export function countOfficeUpcoming(writer: Writer, acting: Acting, input: PlaceReference) {
-  return countForPlace(writer, acting, input, (id) => (where) => where.officeId === id);
-}

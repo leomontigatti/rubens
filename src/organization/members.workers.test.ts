@@ -31,16 +31,49 @@ describe("the organization object's members", () => {
     });
   });
 
+  it("sets an organization up with its one office", async () => {
+    const { organization } = await setUpTestOrganization();
+
+    expect(await organization.listOffices(adminCaller, { includeInactive: true })).toEqual({
+      ok: true,
+      offices: [
+        { id: expect.any(String), name: "Sede Centro", address: "Av. Colón 100", active: true },
+      ],
+      onlyInactive: false,
+    });
+  });
+
+  it("refuses an office with no name or address, and writes nothing", async () => {
+    const { organizationId, organization } = freshOrganization();
+
+    const refused = await organization.setUp({
+      organizationId,
+      name: "Consultorios Prueba",
+      office: { name: " ", address: "" },
+      admin: { userId: adminCaller.userId, name: "Ana Admin", email: "ana@example.com" },
+    });
+
+    expect(refused).toEqual({ ok: false, reason: "invalidOrganization" });
+    expect(await organization.viewer(adminCaller)).toEqual({
+      ok: false,
+      reason: "unauthenticated",
+    });
+  });
+
   it("sets an organization up once", async () => {
     const { organizationId, organization } = await setUpTestOrganization();
 
     const again = await organization.setUp({
       organizationId,
       name: "Otra",
+      office: { name: "Otra sede", address: "Otra calle 1" },
       admin: { userId: "someone-else", name: "Otro", email: "otro@example.com" },
     });
 
     expect(again).toEqual({ ok: false, reason: "alreadySetUp" });
+    expect(await organization.listOffices(adminCaller, { includeInactive: true })).toMatchObject({
+      offices: [{ name: "Sede Centro" }],
+    });
     expect(await organization.viewer({ userId: "someone-else" })).toEqual({
       ok: false,
       reason: "unauthenticated",

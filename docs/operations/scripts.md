@@ -111,11 +111,13 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   snapshot and writes the migration and `migrations.js` index under
   `src/organization/migrations`, which the object applies on start. Offline. Commit what it
   writes, and never edit a migration that is already on `main`.
-- `setup:organization` ⚠️ runs `scripts/setup-organization.ts`: creates an organization
-  and its first admin, with `--url <worker url> --organization "<name>" --name "<admin name>"
+- `setup:organization` ⚠️ runs `scripts/setup-organization.ts`: creates an organization,
+  its office and its first admin, with `--url <worker url> --organization "<name>"
+  --office "<office name>" --address "<office address>" --name "<admin name>"
   --email <email> --password <starting password>`, and `SETUP_SECRET` in the environment,
   the Worker's secret of that name. It posts to the Worker's `/api/setup`, and the
-  organization's object creates the admin in Clerk and in its member table. There is no
+  organization's object creates the office, and the admin in Clerk and in its member
+  table, in one transaction. There is no
   public sign-up, so this is how a business comes to exist. A second run for the same
   organization name changes nothing and says so. The admin must replace the starting
   password at first sign-in. Dev needs none of it: the dev sign-in seeds its own

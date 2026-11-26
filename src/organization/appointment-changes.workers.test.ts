@@ -8,7 +8,6 @@ import type {
 } from "#/lib/appointments.ts";
 
 import {
-  addOffice,
   addRoom,
   adminCaller,
   at,
@@ -265,18 +264,6 @@ describe("moving an appointment to another room", () => {
     expect(await w.changesOf(id)).toEqual([]);
   });
 
-  it("is refused to a room of another office", async () => {
-    const w = await world();
-    const id = await w.bookJuan();
-    const norte = await addOffice(w.organization, "Sede Norte");
-    const norteRoom = await addRoom(w.organization, norte.id, "Consultorio Norte");
-
-    expect(await w.edit(id, "", w.receptionist, norteRoom.id)).toEqual({
-      ok: false,
-      reason: "otherOffice",
-    });
-  });
-
   it("changes nothing and audits nothing when it is already in that room", async () => {
     const w = await world();
     const id = await w.bookJuan();
@@ -303,17 +290,16 @@ describe("moving an appointment to another room", () => {
 
 describe("rescheduling", () => {
   /**
-   * Juan also works from 14:00 to 16:00 at "Sede Norte", on a 15-minute grid,
+   * Juan also works from 14:00 to 16:00 in "Consultorio 3", on a 15-minute grid,
    * so a move can land over the appointment's own old time; "Lucía" works from
    * 09:00 to 11:00 in "Consultorio 2".
    */
   async function rescheduleWorld() {
     const w = await world();
-    const north = await addOffice(w.organization, "Sede Norte");
-    const northRoom = await addRoom(w.organization, north.id, "Norte 1");
+    const afternoonRoom = await addRoom(w.organization, w.office.id, "Consultorio 3");
     await w.addSchedule({
       practitionerId: w.juan.practitionerId,
-      roomId: northRoom.id,
+      roomId: afternoonRoom.id,
       startTime: "14:00",
       endTime: "16:00",
     });
@@ -325,7 +311,7 @@ describe("rescheduling", () => {
         .where(eq(practitioner.id, w.juan.practitionerId))
         .run(),
     );
-    return { ...w, northRoom };
+    return { ...w, afternoonRoom };
   }
 
   it("moves the same appointment over its own old time, auditing the previous values", async () => {
@@ -343,13 +329,13 @@ describe("rescheduling", () => {
     });
   });
 
-  it("moves it to another office, in the room of the schedule there", async () => {
+  it("moves it to another room, the one of the schedule there", async () => {
     const w = await rescheduleWorld();
     const id = await w.bookJuan();
 
     expect(await w.reschedule({ appointmentId: id, start: at("17:00") })).toEqual({ ok: true });
 
-    expect((await w.appointmentOf(id)).roomId).toBe(w.northRoom.id);
+    expect((await w.appointmentOf(id)).roomId).toBe(w.afternoonRoom.id);
     expect((await w.changesOf(id)).at(-1)!.before).toMatchObject({ roomId: w.room.id });
   });
 

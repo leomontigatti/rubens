@@ -3,11 +3,13 @@ import { asc, count, eq, sql } from "drizzle-orm";
 import { roleNames } from "#/lib/access.ts";
 import type { Role } from "#/lib/access.ts";
 import { createdFields } from "#/lib/audit-fields.ts";
+import { officeInputSchema } from "#/lib/offices.ts";
+import type { OfficeInput } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import type { Database, Writer } from "#/organization/database.ts";
-import { member, organization, practitioner } from "#/organization/schema.ts";
+import { member, office, organization, practitioner } from "#/organization/schema.ts";
 
 /**
  * Who calls into the organization's object: the user id the Worker took from a
@@ -197,10 +199,16 @@ export function ensurePractitioner(writer: Writer, memberId: string, displayName
  */
 export function setUpOrganization(
   database: Database,
-  input: { organizationId: string; name: string; admin: Omit<MemberInput, "roles"> },
+  input: {
+    organizationId: string;
+    name: string;
+    office: OfficeInput;
+    admin: Omit<MemberInput, "roles">;
+  },
 ): { ok: true } | { ok: false; reason: "alreadySetUp" | "invalidOrganization" | MemberRefusal } {
   const name = input.name.trim();
-  if (!name || !input.organizationId) {
+  const parsedOffice = officeInputSchema.safeParse(input.office);
+  if (!name || !input.organizationId || !parsedOffice.success) {
     return { ok: false, reason: "invalidOrganization" };
   }
   return database.transaction((tx) => {
@@ -209,9 +217,19 @@ export function setUpOrganization(
     }
     // The member first: when it is refused, nothing has been written.
     const added = insertMember(tx, input.admin.userId, { ...input.admin, roles: ["admin"] });
-    if (added.ok) {
-      tx.insert(organization).values({ id: input.organizationId, name }).run();
+    if (!added.ok) {
+      return added;
     }
+    tx.insert(organization).values({ id: input.organizationId, name }).run();
+    const created = tx.insert(office).values(parsedOffice.data).returning({ id: office.id }).get();
+    recordAudit(tx, input.admin.userId, {
+      action: "create",
+      entityType: "office",
+      entityId: created.id,
+      patientId: null,
+      before: null,
+      after: createdFields(parsedOffice.data),
+    });
     return added;
   });
 }

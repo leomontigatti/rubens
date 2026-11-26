@@ -5,24 +5,23 @@ import type { ScheduleInput } from "#/lib/schedules.ts";
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 
 import {
-  addOffice,
   addRoom,
   addStaff,
   adminCaller,
   inStorage,
   setUpTestOrganization,
+  theOffice,
 } from "#/organization/organization.test-support.ts";
 import { practitioner as practitionerTable } from "#/organization/schema.ts";
 
-// The offices are in Buenos Aires (UTC-3) unless a test names another zone,
+// The office is in Buenos Aires (UTC-3) unless a test names another zone,
 // so 09:00 there is 12:00Z. 2099-01-05 is a Monday.
 
 type Caller = typeof adminCaller;
 
 async function world() {
   const { organization } = await setUpTestOrganization();
-  const centro = await addOffice(organization, "Sede Centro");
-  const norte = await addOffice(organization, "Sede Norte");
+  const centro = await theOffice(organization);
   const room = await addRoom(organization, centro.id, "Consultorio 1");
   const juan = await addStaff(organization, "Juan Gómez");
 
@@ -79,7 +78,6 @@ async function world() {
   return {
     organization,
     centro,
-    norte,
     room,
     juan,
     addSchedule,
@@ -130,35 +128,30 @@ describe("free times for stored data", () => {
     expect(await freeStarts()).toEqual(["2099-01-05T12:30:00.000Z"]);
   });
 
-  it("ignores another practitioner's time off and another office's closures", async () => {
-    const { organization, norte, addSchedule, addTimeOff, addClosure, freeStarts } = await world();
+  it("ignores another practitioner's time off", async () => {
+    const { organization, addSchedule, addTimeOff, freeStarts } = await world();
     await addSchedule({ endTime: "10:00" });
-    // The practitioner also works at the closed office that afternoon, and
-    // loses only those starts.
-    const norteRoom = await addRoom(organization, norte.id, "Consultorio Norte");
-    await addSchedule({ roomId: norteRoom.id, startTime: "14:00", endTime: "15:00" });
     const lucia = await addStaff(organization, "Lucía Díaz");
     await addTimeOff(day("2099-01-05"), lucia.practitionerId);
-    await addClosure(norte.id, day("2099-01-05"));
 
     expect(await freeStarts()).toEqual(["2099-01-05T12:00:00.000Z", "2099-01-05T12:30:00.000Z"]);
   });
 
-  it("matches a week across two offices to the schedules minus time off and closures", async () => {
-    const { organization, norte, addSchedule, addTimeOff, addClosure, freeStarts } = await world();
-    // Centro on Mondays and Wednesdays at 09:00, Norte on Tuesdays
-    // and Thursdays at 14:00, an hour each, two starts each.
+  it("matches a week across two rooms to the schedules minus time off and closures", async () => {
+    const { organization, centro, addSchedule, addTimeOff, addClosure, freeStarts } = await world();
+    // `Consultorio 1` on Mondays and Wednesdays at 09:00, `Consultorio 2` on
+    // Tuesdays and Thursdays at 14:00, an hour each, two starts each.
     await addSchedule({ weekdays: [1, 3], endTime: "10:00" });
-    const norteRoom = await addRoom(organization, norte.id, "Consultorio Norte");
+    const otherRoom = await addRoom(organization, centro.id, "Consultorio 2");
     await addSchedule({
-      roomId: norteRoom.id,
+      roomId: otherRoom.id,
       weekdays: [2, 4],
       startTime: "14:00",
       endTime: "15:00",
     });
-    // Wednesday off, and Norte closed on Thursday.
+    // Wednesday off, and the practice closed on Thursday.
     await addTimeOff(day("2099-01-07"));
-    await addClosure(norte.id, day("2099-01-08"));
+    await addClosure(centro.id, day("2099-01-08"));
 
     expect(await freeStarts(adminCaller, { lastDate: "2099-01-11" })).toEqual([
       "2099-01-05T12:00:00.000Z",

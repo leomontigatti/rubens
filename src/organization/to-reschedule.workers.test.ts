@@ -119,11 +119,7 @@ async function world() {
   }
 
   async function setPlaceActive(place: { id: string }, active: boolean) {
-    expectOk(
-      place.id === office.id
-        ? await organization.setOfficeActive(adminCaller, { id: place.id, active })
-        : await organization.setRoomActive(adminCaller, { id: place.id, active }),
-    );
+    expectOk(await organization.setRoomActive(adminCaller, { id: place.id, active }));
   }
 
   /** Juan's Mondays move to a new room of the office from the second Monday on. */
@@ -480,15 +476,13 @@ describe("deactivated places on the to-reschedule list", () => {
     expect(await w.listed()).toEqual([{ id, reason: "roomInactive" }]);
   });
 
-  it("names the office when both are deactivated, and a person before either", async () => {
+  it("names a person before the room", async () => {
     const w = await world();
     const id = await w.book(at("12:00"));
 
     await w.setPlaceActive(w.room, false);
-    await w.setPlaceActive(w.office, false);
-    expect(await w.listed()).toEqual([{ id, reason: "officeInactive" }]);
-
     await w.setPatientActive(w.maria, false);
+
     expect(await w.listed()).toEqual([{ id, reason: "patientInactive" }]);
   });
 
@@ -512,9 +506,9 @@ describe("deactivated places on the to-reschedule list", () => {
   it("gives the appointments back on reactivation", async () => {
     const w = await world();
     await w.book(at("12:00"));
-    await w.setPlaceActive(w.office, false);
+    await w.setPlaceActive(w.room, false);
 
-    await w.setPlaceActive(w.office, true);
+    await w.setPlaceActive(w.room, true);
 
     expect(await w.listed()).toEqual([]);
   });
@@ -629,14 +623,12 @@ describe("the future appointments a deactivation would send to the list", () => 
   });
 });
 
-describe("the future appointments deactivating a room or an office would send to the list", () => {
+describe("the future appointments deactivating a room would send to the list", () => {
   async function countWorld() {
     const w = await world();
     const roomCount = (room: { id: string }, caller: Caller = adminCaller) =>
       w.organization.countRoomUpcoming(caller, { id: room.id });
-    const officeCount = (office: { id: string }, caller: Caller = adminCaller) =>
-      w.organization.countOfficeUpcoming(caller, { id: office.id });
-    return { ...w, roomCount, officeCount };
+    return { ...w, roomCount };
   }
 
   it("counts the appointments in that room, overbookings too", async () => {
@@ -676,41 +668,10 @@ describe("the future appointments deactivating a room or an office would send to
     expect(await w.listed()).toEqual([{ id, reason: "outsideSchedules" }]);
   });
 
-  it("counts every room of an office", async () => {
-    const w = await countWorld();
-    await w.book(at("12:00"));
-    await w.book(at("12:00"), w.pedro.id, "lucia");
-
-    expect(await w.officeCount(w.office)).toEqual({ ok: true, count: 2 });
-  });
-
-  it("matches what deactivating the office adds to the list", async () => {
-    const w = await countWorld();
-    await w.book(at("12:00"));
-    await w.overbook(at("15:00"), w.pedro.id);
-    await w.book(at("12:00"), w.pedro.id, "lucia");
-    await w.addTimeOff("2099-01-05T09:00", "2099-01-05T09:30");
-
-    const before = await w.count();
-    const predicted = await w.officeCount(w.office);
-    await w.setPlaceActive(w.office, false);
-
-    expect(before).toBe(1);
-    expect(predicted).toEqual({ ok: true, count: (await w.count()) - before });
-  });
-
   it("refuses a malformed id, and anyone but an admin", async () => {
     const w = await countWorld();
 
     expect(await w.roomCount({ id: "not-a-uuid" })).toEqual({ ok: false, reason: "invalidInput" });
-    expect(await w.officeCount({ id: "not-a-uuid" })).toEqual({
-      ok: false,
-      reason: "invalidInput",
-    });
     expect(await w.roomCount(w.room, w.receptionist)).toEqual({ ok: false, reason: "forbidden" });
-    expect(await w.officeCount(w.office, w.receptionist)).toEqual({
-      ok: false,
-      reason: "forbidden",
-    });
   });
 });

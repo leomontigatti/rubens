@@ -5,7 +5,7 @@ import { shiftDate, today } from "#/lib/schedules.ts";
 import type { ScheduleChange, ScheduleInput } from "#/lib/schedules.ts";
 
 import {
-  addOffice,
+  theOffice,
   addRoom,
   addStaff,
   adminCaller,
@@ -27,7 +27,7 @@ type Caller = typeof adminCaller;
 
 async function world() {
   const { organization } = await setUpTestOrganization();
-  const centro = await addOffice(organization, "Sede Centro");
+  const centro = await theOffice(organization);
   const room = await addRoom(organization, centro.id, "Consultorio 1");
   const juan = await addStaff(organization, "Juan Gómez");
 
@@ -156,14 +156,14 @@ describe("validating a schedule", () => {
     expect(await schedulesOf()).toEqual([]);
   });
 
-  it("refuses a deactivated room, office or practitioner", async () => {
+  it("refuses a deactivated room or practitioner", async () => {
     const { organization, mondayMorning, create } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const inactiveRoom = await addRoom(organization, norte.id, "Consultorio 9");
+    const inactiveRoom = await addRoom(
+      organization,
+      (await theOffice(organization)).id,
+      "Consultorio 9",
+    );
     await organization.setRoomActive(adminCaller, { id: inactiveRoom.id, active: false });
-    const sur = await addOffice(organization, "Sede Sur");
-    const roomInClosed = await addRoom(organization, sur.id, "Consultorio 1");
-    await organization.setOfficeActive(adminCaller, { id: sur.id, active: false });
     const leaving = await addStaff(organization, "Lucía Díaz");
     await inStorage(organization, (database) =>
       database
@@ -176,10 +176,6 @@ describe("validating a schedule", () => {
     expect(await create(adminCaller, mondayMorning({ roomId: inactiveRoom.id }))).toEqual({
       ok: false,
       reason: "roomInactive",
-    });
-    expect(await create(adminCaller, mondayMorning({ roomId: roomInClosed.id }))).toEqual({
-      ok: false,
-      reason: "officeInactive",
     });
     expect(
       await create(adminCaller, mondayMorning({ practitionerId: leaving.practitionerId })),
@@ -226,8 +222,7 @@ describe("room capacity", () => {
 
   it("accepts a second practitioner in a room for two and refuses a third", async () => {
     const { organization, mondayMorning, create, createFor } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const shared = await addRoom(organization, norte.id, "Gimnasio", 2);
+    const shared = await addRoom(organization, (await theOffice(organization)).id, "Gimnasio", 2);
     await create(adminCaller, mondayMorning({ roomId: shared.id }));
 
     expect(
@@ -243,8 +238,7 @@ describe("room capacity", () => {
 
   it("counts only the schedules present at the same moment in a room for two", async () => {
     const { organization, mondayMorning, create, createFor } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const shared = await addRoom(organization, norte.id, "Gimnasio", 2);
+    const shared = await addRoom(organization, (await theOffice(organization)).id, "Gimnasio", 2);
     // Two schedules in turn, never together: a third over both meets one at a time.
     await create(adminCaller, mondayMorning({ roomId: shared.id, lastDate: "2099-02-23" }));
     await createFor("Lucía Díaz", { roomId: shared.id, firstDate: "2099-03-02" });
@@ -337,8 +331,11 @@ describe("a schedule saved in a room an appointment holds", () => {
 describe("practitioner overlap", () => {
   it("refuses one practitioner in two rooms at once, and accepts a break between", async () => {
     const { organization, mondayMorning, create } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const elsewhere = await addRoom(organization, norte.id, "Consultorio 2");
+    const elsewhere = await addRoom(
+      organization,
+      (await theOffice(organization)).id,
+      "Consultorio 2",
+    );
     await create(adminCaller, mondayMorning());
 
     expect(
