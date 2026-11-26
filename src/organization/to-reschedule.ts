@@ -162,11 +162,11 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
     .where(and(inArray(timeOff.practitionerId, boundAsOne(practitionerIds)), meets(timeOff, reach)))
     .all();
   const closures = writer
-    .select({ officeId: closure.officeId, startsAt: closure.startsAt, endsAt: closure.endsAt })
+    .select({ startsAt: closure.startsAt, endsAt: closure.endsAt })
     .from(closure)
     .where(meets(closure, reach))
     .all()
-    .map((row) => ({ officeId: row.officeId, during: asRange(row) }));
+    .map(asRange);
   const byPractitioner = new Map<string, PractitionerWorkingTime>();
   return (practitionerId: string): PractitionerWorkingTime => {
     let found = byPractitioner.get(practitionerId);

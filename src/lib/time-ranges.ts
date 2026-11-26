@@ -119,9 +119,8 @@ export const timeOffUpdateSchema = z.object({
 
 export const timeOffDeleteSchema = z.object({ timeOffId: id });
 
-/** A closure of one office, or of the whole organization when `officeId` is null. */
+/** A closure of the whole organization. */
 export const closureInputSchema = z.object({
-  officeId: id.nullable(),
   entry: rangeEntrySchema,
   ...notice,
 });
@@ -129,21 +128,6 @@ export const closureInputSchema = z.object({
 export const closureUpdateSchema = closureInputSchema.extend({ closureId: id });
 
 export const closureDeleteSchema = z.object({ closureId: id });
-
-export function closureOfficeOptions<T extends { id: string; name: string }>(
-  activeOffices: readonly T[],
-  editing: { officeId: string | null; officeName: string | null },
-): { id: string; name: string }[] {
-  const options: { id: string; name: string }[] = [...activeOffices];
-  if (
-    editing.officeId !== null &&
-    editing.officeName !== null &&
-    !options.some((office) => office.id === editing.officeId)
-  ) {
-    options.push({ id: editing.officeId, name: editing.officeName });
-  }
-  return options;
-}
 
 export type TimeOffInput = z.input<typeof timeOffInputSchema>;
 export type TimeOffUpdate = z.input<typeof timeOffUpdateSchema>;

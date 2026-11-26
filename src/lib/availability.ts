@@ -17,16 +17,11 @@ export interface AvailabilitySchedule extends WeeklySlot {
   roomId: string;
 }
 
-/** A closure of one office, or of the whole organization when `officeId` is null. */
-export interface AvailabilityClosure {
-  during: TimeRange;
-  officeId: string | null;
-}
-
 export interface AvailabilityInput {
   schedules: readonly AvailabilitySchedule[];
   timeOff: readonly TimeRange[];
-  closures: readonly AvailabilityClosure[];
+  /** Closures of the whole organization. */
+  closures: readonly TimeRange[];
   /** The practitioner's active appointments, overbookings included. */
   busy: readonly TimeRange[];
   /** Other practitioners' active appointments in the schedules' rooms, which hold the room. */
@@ -183,21 +178,17 @@ export function coveringSchedule<T extends AvailabilitySchedule>(
 export interface WorkingTime {
   schedules: readonly AvailabilitySchedule[];
   timeOff: readonly TimeRange[];
-  closures: readonly AvailabilityClosure[];
+  /** Closures of the whole organization. */
+  closures: readonly TimeRange[];
 }
 
 export type OutsideWorkingTime = "timeOff" | "closure" | "outsideSchedules";
 
-function blockedBy(span: TimeRange, officeId: string, workingTime: WorkingTime) {
+function blockedBy(span: TimeRange, workingTime: WorkingTime) {
   if (workingTime.timeOff.some((range) => intersects(range, span))) {
     return "timeOff";
   }
-  const closed = workingTime.closures.some(
-    (closure) =>
-      (closure.officeId === null || closure.officeId === officeId) &&
-      intersects(closure.during, span),
-  );
-  return closed ? "closure" : null;
+  return workingTime.closures.some((range) => intersects(range, span)) ? "closure" : null;
 }
 
 export function outsideWorkingTime(
@@ -205,7 +196,7 @@ export function outsideWorkingTime(
   officeId: string,
   workingTime: WorkingTime,
 ): OutsideWorkingTime | null {
-  const blocked = blockedBy(span, officeId, workingTime);
+  const blocked = blockedBy(span, workingTime);
   if (blocked) {
     return blocked;
   }
@@ -228,7 +219,7 @@ export function outsideWorkingTimeWithin(workingTime: WorkingTime, reach: TimeRa
       })),
   }));
   return (span: TimeRange, officeId: string): OutsideWorkingTime | null => {
-    const blocked = blockedBy(span, officeId, workingTime);
+    const blocked = blockedBy(span, workingTime);
     if (blocked) {
       return blocked;
     }
@@ -277,9 +268,7 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
     .flatMap((schedule) => {
       const blocked = [
         ...input.timeOff,
-        ...input.closures
-          .filter(({ officeId }) => officeId === null || officeId === schedule.officeId)
-          .map(({ during }) => during),
+        ...input.closures,
         ...input.busy,
         ...input.roomBusy
           .filter(({ roomId }) => roomId === schedule.roomId)

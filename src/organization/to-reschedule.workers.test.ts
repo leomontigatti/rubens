@@ -93,11 +93,10 @@ async function world() {
     );
   }
 
-  async function addClosure(officeId: string | null, date: string) {
+  async function addClosure(date: string) {
     expectOk(
       await answeringNotice(true, (notice) =>
         organization.createClosure(adminCaller, {
-          officeId,
           entry: { kind: "days", firstDate: date, lastDate: date },
           ...notice,
         }),
@@ -182,7 +181,6 @@ describe("the to-reschedule list", () => {
     expectOk(
       await answeringNotice(true, (notice) =>
         w.organization.createClosure(adminCaller, {
-          officeId: w.office.id,
           entry: { kind: "hours", start: `${tuesday}T11:00`, end: `${tuesday}T12:00` },
           ...notice,
         }),
@@ -204,23 +202,21 @@ describe("the to-reschedule list", () => {
     expect(await w.count()).toBe(1);
   });
 
-  it("takes the appointments in an office's closure, and in the organization's", async () => {
+  it("takes the appointments in every room inside a closure, and only those", async () => {
     const w = await world();
-    const firstMonday = await w.book(at("12:00"));
+    const juans = await w.book(at("12:00"));
     const lucias = await w.book(at("12:00"), w.pedro.id, "lucia");
-    const secondMonday = await w.book(at("12:00", "2099-01-12"));
+    await w.book(at("12:00", "2099-01-12"));
 
-    await w.addClosure(w.office.id, "2099-01-05");
+    await w.addClosure("2099-01-05");
+
     expect(await w.listed()).toEqual(
       [
-        { id: firstMonday, reason: "closure" },
+        { id: juans, reason: "closure" },
         { id: lucias, reason: "closure" },
       ].sort((a, b) => a.id.localeCompare(b.id)),
     );
-
-    await w.addClosure(null, "2099-01-12");
-    expect(await w.count()).toBe(3);
-    expect((await w.listed()).map((entry) => entry.id)).toContain(secondMonday);
+    expect(await w.count()).toBe(2);
   });
 
   it("takes the appointments after a schedule ended early", async () => {
@@ -304,7 +300,7 @@ describe("the to-reschedule list", () => {
     const w = await world();
     const juans = await w.book(at("12:00"));
     await w.book(at("12:00"), w.pedro.id, "lucia");
-    await w.addClosure(w.office.id, "2099-01-05");
+    await w.addClosure("2099-01-05");
 
     expect(await w.listed(w.juan.caller)).toEqual([{ id: juans, reason: "closure" }]);
     expect(await w.count(w.juan.caller)).toBe(1);
@@ -313,7 +309,7 @@ describe("the to-reschedule list", () => {
   it("names the patient, the practitioner and the place, for reception to call", async () => {
     const w = await world();
     await w.book(at("12:00"));
-    await w.addClosure(w.office.id, "2099-01-05");
+    await w.addClosure("2099-01-05");
 
     const result = expectOk(await w.organization.listToReschedule(w.receptionist));
 
@@ -338,7 +334,7 @@ describe("the menu's count of the to-reschedule list", () => {
     await w.book(at("12:00"), w.pedro.id, "lucia");
     await w.book(at("12:00", "2099-01-12"));
     await w.addTimeOff("2099-01-05T09:30", "2099-01-05T10:00");
-    await w.addClosure(w.office.id, "2099-01-12");
+    await w.addClosure("2099-01-12");
     await w.setPractitionerActive(false, "lucia");
 
     expect((await w.listed()).map((entry) => entry.reason).sort()).toEqual([
@@ -373,7 +369,7 @@ describe("a list of more practitioners than one statement binds", () => {
     }
     expect(await w.listed()).toEqual([]);
 
-    await w.addClosure(w.office.id, "2099-01-05");
+    await w.addClosure("2099-01-05");
 
     expect(await w.listed()).toHaveLength(100);
     expect(await w.count()).toBe(100);

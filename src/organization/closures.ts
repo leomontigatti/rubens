@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import { practiceTimeZone } from "#/lib/dates.ts";
@@ -21,25 +21,16 @@ import { recordAudit } from "#/organization/audit.ts";
 import { askingFirst, settlingToReschedule, storedAnswer } from "#/organization/change-messages.ts";
 import type { Database, Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
-import { closure, office } from "#/organization/schema.ts";
+import { closure } from "#/organization/schema.ts";
 
-// Closures of one office or the whole organization. Everyone reads them; only
-// admins change them (the object's requirement). Both are read in the
-// practice's zone. Closures may overlap, and they change no record of past work, so they can always be
+// Closures of the whole organization: every room in it is closed. Everyone
+// reads them; only admins change them (the object's requirement). They are read
+// in the practice's zone. Closures may overlap, and they change no record of past work, so they can always be
 // edited or deleted. Every change is written to the audit log, about no patient.
 
 export interface Closure {
   id: string;
-  /** Null when the whole organization is closed. */
-  officeId: string | null;
-  officeName: string | null;
   entry: RangeEntry;
-}
-
-/** An active office a closure can be recorded for. */
-export interface OfficeOption {
-  id: string;
-  name: string;
 }
 
 type Refusal = "invalidInput" | "notFound";
@@ -49,58 +40,33 @@ type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 
-/** Every closure, latest first, the offices a new one can close, and whether `acting` may. */
+/** Every closure, latest first, and whether `acting` may change them. */
 export function listClosures(
   database: Database,
   acting: Acting,
-): { ok: true; closures: Closure[]; offices: OfficeOption[]; canEdit: boolean } {
+): { ok: true; closures: Closure[]; canEdit: boolean } {
   const rows = database
-    .select({
-      id: closure.id,
-      officeId: closure.officeId,
-      officeName: office.name,
-      startsAt: closure.startsAt,
-      endsAt: closure.endsAt,
-    })
+    .select({ id: closure.id, startsAt: closure.startsAt, endsAt: closure.endsAt })
     .from(closure)
-    .leftJoin(office, eq(office.id, closure.officeId))
     .orderBy(desc(closure.startsAt))
-    .all();
-  const offices = database
-    .select({ id: office.id, name: office.name })
-    .from(office)
-    .where(eq(office.active, true))
-    .orderBy(asc(office.name))
     .all();
   return {
     ok: true,
     closures: rows.map((row) => ({
       id: row.id,
-      officeId: row.officeId,
-      officeName: row.officeName,
       entry: toRangeEntry(
         { start: new Date(row.startsAt), end: new Date(row.endsAt) },
         practiceTimeZone,
       ),
     })),
-    offices,
     canEdit: acting.roles.includes("admin"),
   };
 }
 
-/**
- * A closure of `officeId` over `entry`, as stored, or `undefined` when the
- * office is missing.
- */
-function closureOf(writer: Writer, officeId: string | null, entry: RangeEntry) {
-  if (
-    officeId !== null &&
-    !writer.select({ id: office.id }).from(office).where(eq(office.id, officeId)).get()
-  ) {
-    return undefined;
-  }
+/** A closure over `entry`, as stored. */
+function closureOf(entry: RangeEntry) {
   const { start, end } = toTimeRange(entry, practiceTimeZone);
-  return { officeId, startsAt: +start, endsAt: +end };
+  return { startsAt: +start, endsAt: +end };
 }
 
 export function createClosure(
@@ -112,14 +78,10 @@ export function createClosure(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { officeId, entry, ...notice } = parsed.data;
+  const { entry, ...notice } = parsed.data;
   return askingFirst(() =>
     database.transaction((tx) => {
-      const span = closureOf(tx, officeId, entry);
-      if (!span) {
-        return notFound;
-      }
-      const values = { ...span, ...storedAnswer(notice) };
+      const values = { ...closureOf(entry), ...storedAnswer(notice) };
       const created = settlingToReschedule(tx, null, notice, () =>
         tx.insert(closure).values(values).returning({ id: closure.id }).get(),
       );
@@ -139,7 +101,6 @@ export function createClosure(
 function findClosure(writer: Writer, closureId: string) {
   return writer
     .select({
-      officeId: closure.officeId,
       startsAt: closure.startsAt,
       endsAt: closure.endsAt,
       tellPatients: closure.tellPatients,
@@ -158,15 +119,14 @@ export function updateClosure(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { closureId, officeId, entry, ...notice } = parsed.data;
+  const { closureId, entry, ...notice } = parsed.data;
   return askingFirst(() =>
     database.transaction((tx) => {
       const current = findClosure(tx, closureId);
-      const span = closureOf(tx, officeId, entry);
-      if (!current || !span) {
+      if (!current) {
         return notFound;
       }
-      const values = { ...span, ...storedAnswer(notice) };
+      const values = { ...closureOf(entry), ...storedAnswer(notice) };
       settlingToReschedule(tx, null, notice, () =>
         tx.update(closure).set(values).where(eq(closure.id, closureId)).run(),
       );

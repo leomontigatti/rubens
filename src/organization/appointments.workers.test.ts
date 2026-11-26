@@ -409,7 +409,6 @@ describe("an overbooking on top of another appointment", () => {
 
     await answeringNotice(true, (notice) =>
       w.organization.createClosure(adminCaller, {
-        officeId: w.office.id,
         entry: { kind: "hours", start: "2099-01-05T10:00", end: "2099-01-05T10:30" },
         ...notice,
       }),

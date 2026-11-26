@@ -5,12 +5,7 @@ import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from "drizzle
 import { actsForEveryone } from "#/lib/access.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { availabilityQuerySchema, findFreeStarts } from "#/lib/availability.ts";
-import type {
-  AvailabilityClosure,
-  AvailabilityQuery,
-  AvailabilitySchedule,
-  FreeStart,
-} from "#/lib/availability.ts";
+import type { AvailabilityQuery, AvailabilitySchedule, FreeStart } from "#/lib/availability.ts";
 import { practiceTimeZone } from "#/lib/dates.ts";
 import { present } from "#/lib/present.ts";
 import { shiftDate } from "#/lib/schedules.ts";
@@ -93,37 +88,23 @@ export const asRange = (row: { startsAt: number; endsAt: number }): TimeRange =>
   end: new Date(row.endsAt),
 });
 
-/**
- * The practitioner's time off that meets `range`, and the closures that meet
- * it of the organization and of the offices `officeIds`.
- */
+/** The practitioner's time off that meets `range`, and the closures that meet it. */
 export function findBlocking(
   writer: Writer,
   practitionerId: string,
   range: TimeRange,
-  officeIds: readonly string[],
-): { timeOff: TimeRange[]; closures: AvailabilityClosure[] } {
+): { timeOff: TimeRange[]; closures: TimeRange[] } {
   const timeOffRows = writer
     .select({ startsAt: timeOff.startsAt, endsAt: timeOff.endsAt })
     .from(timeOff)
     .where(and(eq(timeOff.practitionerId, practitionerId), meets(timeOff, range)))
     .all();
   const closureRows = writer
-    .select({ officeId: closure.officeId, startsAt: closure.startsAt, endsAt: closure.endsAt })
+    .select({ startsAt: closure.startsAt, endsAt: closure.endsAt })
     .from(closure)
-    .where(
-      and(
-        officeIds.length > 0
-          ? or(isNull(closure.officeId), inArray(closure.officeId, [...officeIds]))
-          : isNull(closure.officeId),
-        meets(closure, range),
-      ),
-    )
+    .where(meets(closure, range))
     .all();
-  return {
-    timeOff: timeOffRows.map(asRange),
-    closures: closureRows.map((row) => ({ officeId: row.officeId, during: asRange(row) })),
-  };
+  return { timeOff: timeOffRows.map(asRange), closures: closureRows.map(asRange) };
 }
 
 /** A schedule as the free times read it, with its office's and room's names. */
@@ -226,9 +207,7 @@ export function findFreeTimes(
       ),
     )
     .all();
-  const blocking = findBlocking(writer, owner.id, reach, [
-    ...new Set(schedules.map((row) => row.officeId)),
-  ]);
+  const blocking = findBlocking(writer, owner.id, reach);
   const free = findFreeStarts({
     schedules,
     ...blocking,

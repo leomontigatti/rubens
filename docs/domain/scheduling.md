@@ -13,7 +13,7 @@ date. A break is two schedules on the same day (9 to 13 and 14 to 18). The scree
 is weekly only; alternate weeks can come later without a new model.
 
 Offices have no opening hours of their own: schedules are the only working time,
-and a closure covers a day an office is shut.
+and a closure covers a day the practice is shut.
 
 Saving a schedule fails if, on any date it applies, another practitioner holds
 the room at that time, by a schedule in it or a future appointment there
@@ -29,8 +29,8 @@ to another room that is free at that time.
 
 ## Time off and closures
 
-Time off belongs to one practitioner; a closure to one office or the whole
-organization. Both are ranges of time, with a whole-day shortcut for the usual
+Time off belongs to one practitioner; a closure to the whole organization, every
+room in it. Both are ranges of time, with a whole-day shortcut for the usual
 case, so "Friday from 14:00" is a closure too. Admins enter closures; time off is
 entered by an admin or by the practitioner it belongs to.
 

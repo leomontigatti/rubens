@@ -263,7 +263,7 @@ function placeOverbooking(
   if (!space.ok) {
     return space;
   }
-  const blocking = findBlocking(writer, bookable.id, span, [space.officeId]);
+  const blocking = findBlocking(writer, bookable.id, span);
   if (blocking.timeOff.length > 0) {
     return { ok: false, reason: "timeOff" };
   }

@@ -1,31 +1,8 @@
-import type { OfficeOption } from "#/organization/closures.ts";
-
 /** The copy for every refusal the closure server functions return. */
 export const refusalMessages = {
   unauthenticated: "Tu sesión terminó. Ingresá de nuevo.",
   forbidden: "Solo un administrador puede cambiar cierres.",
   mustChangePassword: "Elegí una contraseña nueva para continuar.",
   invalidInput: "Revisá los datos ingresados.",
-  notFound: "No encontramos esa sede o ese cierre.",
+  notFound: "No encontramos ese cierre.",
 };
-
-const wholeOrganization = "Toda la organización";
-
-/** What a closure closes: its office, or the whole organization. */
-export const closurePlace = (closure: { officeName: string | null }) =>
-  closure.officeName ?? wholeOrganization;
-
-/** The office the form holds: empty for the whole organization. */
-export const readOfficeId = (owner: string): string | null => (owner === "" ? null : owner);
-
-/** The office field of a closure's form. */
-export function officeField(offices: OfficeOption[], initial: string | null) {
-  return {
-    label: "Sede",
-    initial: initial ?? "",
-    options: [
-      { value: "", label: wholeOrganization },
-      ...offices.map((office) => ({ value: office.id, label: office.name })),
-    ],
-  };
-}
