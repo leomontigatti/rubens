@@ -27,7 +27,7 @@ import {
   useSidebar,
 } from "#/components/ui/sidebar.tsx";
 import type { Role } from "#/lib/access.ts";
-import { usePrototypeNav } from "#/routes/_app/sedes/-prototype-store.ts";
+import { usePrototypeNav } from "#/routes/_app/consultorios/-prototype-store.ts";
 
 interface Viewer {
   name: string;
@@ -48,7 +48,7 @@ function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
     ...group,
     items: group.items.map((item) =>
       "to" in item && item.to === "/sedes"
-        ? { ...item, label: officeNav.label, icon: officeNav.icon }
+        ? { ...item, to: "/consultorios" as const, label: officeNav.label, icon: officeNav.icon }
         : item,
     ),
   }));
@@ -69,7 +69,9 @@ function NavMenu(props: { roles: readonly Role[]; counts: NavCounts }) {
                   render={
                     <Link
                       to={item.to}
-                      search={item.to === "/sedes" ? { variant: officeNav.variant } : undefined}
+                      search={
+                        item.to === "/consultorios" ? { variant: officeNav.variant } : undefined
+                      }
                       onClick={() => setOpenMobile(false)}
                     />
                   }

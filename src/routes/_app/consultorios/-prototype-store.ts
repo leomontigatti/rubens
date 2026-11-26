@@ -1,5 +1,5 @@
 // PROTOTYPE (LEO-6), never merged: the single office's settings page, in three
-// variants switched by `?variant=` on /sedes and /sedes/editar. The office and
+// variants switched by `?variant=` on /consultorios and /consultorios/sede. The office and
 // its rooms load once from the dev organization, then live here, in memory:
 // nothing a variant does reaches the organization object.
 
@@ -139,35 +139,4 @@ export function usePrototypeNav() {
   // Remembered quietly while a page shows one, so a link back from elsewhere keeps it.
   const variant = shown ? remember(shown) : state.variant;
   return { ...navByVariant[variant], variant };
-}
-
-/** Time zones the prototype offers: Argentina's, then its neighbours'. */
-const timeZones: [string, string][] = [
-  ["America/Argentina/Buenos_Aires", "Buenos Aires"],
-  ["America/Argentina/Cordoba", "Córdoba"],
-  ["America/Argentina/Catamarca", "Catamarca"],
-  ["America/Argentina/Jujuy", "Jujuy"],
-  ["America/Argentina/La_Rioja", "La Rioja"],
-  ["America/Argentina/Mendoza", "Mendoza"],
-  ["America/Argentina/Rio_Gallegos", "Río Gallegos"],
-  ["America/Argentina/Salta", "Salta"],
-  ["America/Argentina/San_Juan", "San Juan"],
-  ["America/Argentina/San_Luis", "San Luis"],
-  ["America/Argentina/Tucuman", "Tucumán"],
-  ["America/Argentina/Ushuaia", "Ushuaia"],
-  ["America/Montevideo", "Montevideo, Uruguay"],
-  ["America/Santiago", "Santiago, Chile"],
-  ["America/Asuncion", "Asunción, Paraguay"],
-  ["America/Sao_Paulo", "San Pablo, Brasil"],
-];
-
-export function timeZoneOptions(current: string) {
-  const options = timeZones.map(([value, label]) => ({ value, label }));
-  return options.some((option) => option.value === current) || !current
-    ? options
-    : [{ value: current, label: current }, ...options];
-}
-
-export function timeZoneLabel(value: string) {
-  return timeZones.find(([zone]) => zone === value)?.[1] ?? value;
 }

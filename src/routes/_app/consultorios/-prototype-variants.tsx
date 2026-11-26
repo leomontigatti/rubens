@@ -28,13 +28,8 @@ import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.tsx";
 import { officeInputSchema } from "#/lib/offices.ts";
 
-import {
-  prototypeActions,
-  timeZoneLabel,
-  timeZoneOptions,
-  usePrototype,
-} from "#/routes/_app/sedes/-prototype-store.ts";
-import type { PrototypeRoom, Variant } from "#/routes/_app/sedes/-prototype-store.ts";
+import { prototypeActions, usePrototype } from "#/routes/_app/consultorios/-prototype-store.ts";
+import type { PrototypeRoom, Variant } from "#/routes/_app/consultorios/-prototype-store.ts";
 
 /** What a variant needs from its route: who looks, and the list's archived filter. */
 export interface VariantProps {
@@ -51,7 +46,7 @@ function NewBadge() {
 // Variant A: `Pestañas`
 
 /**
- * A: the office is a record page, as `/sedes/$officeId` is today: titled by its
+ * A: the office is a record page, as `/sedes/$officeId` is on main: titled by its
  * name, with `Datos generales` (the form) and `Consultorios` tabs, and
  * `Acciones` holding only `Nuevo consultorio`, since the office cannot be archived.
  */
@@ -159,10 +154,9 @@ export function VariantB(props: VariantProps) {
 function OfficeDetails() {
   const { office } = usePrototype();
   return (
-    <dl className="grid gap-4 sm:grid-cols-3">
+    <dl className="grid gap-4 sm:grid-cols-2">
       <Detail label="Nombre" value={office.name} />
       <Detail label="Domicilio" value={office.address} />
-      <Detail label="Zona horaria" value={timeZoneLabel(office.timeZone)} />
     </dl>
   );
 }
@@ -172,7 +166,7 @@ function EditOfficeButton(props: { variant: Variant; label: string }) {
     <Button
       variant="outline"
       nativeButton={false}
-      render={<Link to="/sedes/editar" search={{ variant: props.variant }} />}
+      render={<Link to="/consultorios/sede" search={{ variant: props.variant }} />}
     >
       <PencilIcon data-icon="inline-start" aria-hidden />
       {props.label}
@@ -185,7 +179,7 @@ function EditOfficeButton(props: { variant: Variant; label: string }) {
 /**
  * C: the rooms are the page, a list page like any other titled
  * `Consultorios`; the office is the line under the title, and its form opens
- * from `Datos de la sede` beside `Nuevo consultorio`.
+ * from the `Acciones` menu's `Datos de la sede`, beside `Nuevo consultorio`.
  */
 export function VariantC(props: VariantProps) {
   const { office, rooms } = usePrototype();
@@ -196,14 +190,19 @@ export function VariantC(props: VariantProps) {
         title="Consultorios"
         description={
           <p className="text-muted-foreground text-sm">
-            {office.name}, {office.address}. Hora de {timeZoneLabel(office.timeZone)}.
+            {office.name}, {office.address}.
           </p>
         }
         actions={
           props.canEdit && (
             <>
-              <NewBadge />
-              <EditOfficeButton variant="C" label="Datos de la sede" />
+              <ActionsMenu disabled={false}>
+                <DropdownMenuItem
+                  render={<Link to="/consultorios/sede" search={{ variant: "C" }} />}
+                >
+                  Datos de la sede
+                </DropdownMenuItem>
+              </ActionsMenu>
               <CreateButton onClick={roomDialog.create}>Nuevo consultorio</CreateButton>
             </>
           )
@@ -221,18 +220,19 @@ export function VariantC(props: VariantProps) {
 
 // What the variants share.
 
+/** The office's fields: no time zone, which the first version drops (LEO-6's prototype pass). */
+const officeFieldsSchema = officeInputSchema.pick({ name: true, address: true });
+
 const officeMessages = {
   name: "Ingresá el nombre de la sede.",
   address: "Ingresá el domicilio de la sede.",
-  timeZone: "Elegí la zona horaria de la sede.",
 };
 
 /** Nothing is refused by a stub, and nothing waits on one. */
 const stubAction = { pending: false, error: null, errorField: "", setError: () => {} };
 
 /**
- * The office's one form: name and address side by side, the time zone on a
- * row of its own. On A it stays on the page once saved; on B and C, a page of
+ * The office's one form: name and address side by side. On A it stays on the page once saved; on B and C, a page of
  * its own, it goes back.
  */
 export function OfficeForm(props: {
@@ -244,11 +244,11 @@ export function OfficeForm(props: {
   frame?: (content: ReactNode) => ReactNode;
 }) {
   const { office } = usePrototype();
-  const page = useFormPage({ to: "/sedes", search: { variant: props.variant } });
+  const page = useFormPage({ to: "/consultorios", search: { variant: props.variant } });
   const form = useAppForm({
-    defaultValues: { ...office },
+    defaultValues: { name: office.name, address: office.address },
     onSubmit: ({ value }) => {
-      const input = officeInputSchema.safeParse(value);
+      const input = officeFieldsSchema.safeParse(value);
       if (!input.success) {
         page.showProblems(fieldProblems(input.error.issues, messageIn(officeMessages)));
         return;
@@ -256,7 +256,7 @@ export function OfficeForm(props: {
       if (!props.stays) {
         page.leave();
       }
-      prototypeActions.saveOffice({ ...input.data, timeZone: input.data.timeZone });
+      prototypeActions.saveOffice({ ...office, ...input.data });
     },
   });
   return (
@@ -280,18 +280,6 @@ export function OfficeForm(props: {
             label="Domicilio"
             size="half"
             placeholder="Av. Colón 1234, Córdoba"
-            required
-          />
-        )}
-      </form.AppField>
-      <form.AppField name="timeZone">
-        {(field) => (
-          <field.SelectField
-            label="Zona horaria"
-            size="half"
-            startsRow
-            hint="Los horarios, los turnos y los recordatorios se leen en esta hora."
-            options={timeZoneOptions(office.timeZone)}
             required
           />
         )}

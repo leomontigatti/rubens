@@ -20,6 +20,8 @@ import { Route as AppAgendaIndexRouteImport } from './routes/_app/agenda/index'
 import { Route as AppCierresIndexRouteImport } from './routes/_app/cierres/index'
 import { Route as AppCierresClosureIdRouteImport } from './routes/_app/cierres/$closureId'
 import { Route as AppCierresNuevoRouteImport } from './routes/_app/cierres/nuevo'
+import { Route as AppConsultoriosIndexRouteImport } from './routes/_app/consultorios/index'
+import { Route as AppConsultoriosSedeRouteImport } from './routes/_app/consultorios/sede'
 import { Route as AppConversacionesIndexRouteImport } from './routes/_app/conversaciones/index'
 import { Route as AppConversacionesConversationIdRouteImport } from './routes/_app/conversaciones/$conversationId'
 import { Route as AppDevPatronesRouteImport } from './routes/_app/dev/patrones'
@@ -43,7 +45,6 @@ import { Route as AppPrestacionesIndexRouteImport } from './routes/_app/prestaci
 import { Route as AppPrestacionesPractitionerIdRouteImport } from './routes/_app/prestaciones/$practitionerId'
 import { Route as AppSedesIndexRouteImport } from './routes/_app/sedes/index'
 import { Route as AppSedesOfficeIdRouteImport } from './routes/_app/sedes/$officeId'
-import { Route as AppSedesEditarRouteImport } from './routes/_app/sedes/editar'
 import { Route as AppSedesNuevaRouteImport } from './routes/_app/sedes/nueva'
 import { Route as AppAgendaSobreturnosNuevoRouteImport } from './routes/_app/agenda/sobreturnos/nuevo'
 import { Route as AppAgendaTurnosNuevoRouteImport } from './routes/_app/agenda/turnos/nuevo'
@@ -122,6 +123,16 @@ const AppCierresClosureIdRoute = AppCierresClosureIdRouteImport.update({
 const AppCierresNuevoRoute = AppCierresNuevoRouteImport.update({
   id: '/cierres/nuevo',
   path: '/cierres/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConsultoriosIndexRoute = AppConsultoriosIndexRouteImport.update({
+  id: '/consultorios/',
+  path: '/consultorios/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConsultoriosSedeRoute = AppConsultoriosSedeRouteImport.update({
+  id: '/consultorios/sede',
+  path: '/consultorios/sede',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConversacionesIndexRoute = AppConversacionesIndexRouteImport.update({
@@ -241,11 +252,6 @@ const AppSedesIndexRoute = AppSedesIndexRouteImport.update({
 const AppSedesOfficeIdRoute = AppSedesOfficeIdRouteImport.update({
   id: '/sedes/$officeId',
   path: '/sedes/$officeId',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSedesEditarRoute = AppSedesEditarRouteImport.update({
-  id: '/sedes/editar',
-  path: '/sedes/editar',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSedesNuevaRoute = AppSedesNuevaRouteImport.update({
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/api/whatsapp': typeof ApiWhatsappRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
+  '/consultorios/sede': typeof AppConsultoriosSedeRoute
   '/conversaciones/$conversationId': typeof AppConversacionesConversationIdRoute
   '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
@@ -418,11 +425,11 @@ export interface FileRoutesByFullPath {
   '/personal/nueva': typeof AppPersonalNuevaRoute
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
-  '/sedes/editar': typeof AppSedesEditarRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
   '/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/cierres/': typeof AppCierresIndexRoute
+  '/consultorios/': typeof AppConsultoriosIndexRoute
   '/conversaciones/': typeof AppConversacionesIndexRoute
   '/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/horarios/': typeof AppHorariosIndexRoute
@@ -466,6 +473,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/cierres/nuevo': typeof AppCierresNuevoRoute
+  '/consultorios/sede': typeof AppConsultoriosSedeRoute
   '/conversaciones/$conversationId': typeof AppConversacionesConversationIdRoute
   '/dev/patrones': typeof AppDevPatronesRoute
   '/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
@@ -479,11 +487,11 @@ export interface FileRoutesByTo {
   '/personal/nueva': typeof AppPersonalNuevaRoute
   '/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/sedes/$officeId': typeof AppSedesOfficeIdRoute
-  '/sedes/editar': typeof AppSedesEditarRoute
   '/sedes/nueva': typeof AppSedesNuevaRoute
   '/a-reprogramar': typeof AppAReprogramarIndexRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/cierres': typeof AppCierresIndexRoute
+  '/consultorios': typeof AppConsultoriosIndexRoute
   '/conversaciones': typeof AppConversacionesIndexRoute
   '/disponibilidad': typeof AppDisponibilidadIndexRoute
   '/horarios': typeof AppHorariosIndexRoute
@@ -529,6 +537,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/cierres/$closureId': typeof AppCierresClosureIdRoute
   '/_app/cierres/nuevo': typeof AppCierresNuevoRoute
+  '/_app/consultorios/sede': typeof AppConsultoriosSedeRoute
   '/_app/conversaciones/$conversationId': typeof AppConversacionesConversationIdRoute
   '/_app/dev/patrones': typeof AppDevPatronesRoute
   '/_app/horarios/$practitionerId': typeof AppHorariosPractitionerIdRoute
@@ -542,11 +551,11 @@ export interface FileRoutesById {
   '/_app/personal/nueva': typeof AppPersonalNuevaRoute
   '/_app/prestaciones/$practitionerId': typeof AppPrestacionesPractitionerIdRoute
   '/_app/sedes/$officeId': typeof AppSedesOfficeIdRoute
-  '/_app/sedes/editar': typeof AppSedesEditarRoute
   '/_app/sedes/nueva': typeof AppSedesNuevaRoute
   '/_app/a-reprogramar/': typeof AppAReprogramarIndexRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/cierres/': typeof AppCierresIndexRoute
+  '/_app/consultorios/': typeof AppConsultoriosIndexRoute
   '/_app/conversaciones/': typeof AppConversacionesIndexRoute
   '/_app/disponibilidad/': typeof AppDisponibilidadIndexRoute
   '/_app/horarios/': typeof AppHorariosIndexRoute
@@ -592,6 +601,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
+    | '/consultorios/sede'
     | '/conversaciones/$conversationId'
     | '/dev/patrones'
     | '/horarios/$practitionerId'
@@ -605,11 +615,11 @@ export interface FileRouteTypes {
     | '/personal/nueva'
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
-    | '/sedes/editar'
     | '/sedes/nueva'
     | '/a-reprogramar/'
     | '/agenda/'
     | '/cierres/'
+    | '/consultorios/'
     | '/conversaciones/'
     | '/disponibilidad/'
     | '/horarios/'
@@ -653,6 +663,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cierres/$closureId'
     | '/cierres/nuevo'
+    | '/consultorios/sede'
     | '/conversaciones/$conversationId'
     | '/dev/patrones'
     | '/horarios/$practitionerId'
@@ -666,11 +677,11 @@ export interface FileRouteTypes {
     | '/personal/nueva'
     | '/prestaciones/$practitionerId'
     | '/sedes/$officeId'
-    | '/sedes/editar'
     | '/sedes/nueva'
     | '/a-reprogramar'
     | '/agenda'
     | '/cierres'
+    | '/consultorios'
     | '/conversaciones'
     | '/disponibilidad'
     | '/horarios'
@@ -715,6 +726,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/cierres/$closureId'
     | '/_app/cierres/nuevo'
+    | '/_app/consultorios/sede'
     | '/_app/conversaciones/$conversationId'
     | '/_app/dev/patrones'
     | '/_app/horarios/$practitionerId'
@@ -728,11 +740,11 @@ export interface FileRouteTypes {
     | '/_app/personal/nueva'
     | '/_app/prestaciones/$practitionerId'
     | '/_app/sedes/$officeId'
-    | '/_app/sedes/editar'
     | '/_app/sedes/nueva'
     | '/_app/a-reprogramar/'
     | '/_app/agenda/'
     | '/_app/cierres/'
+    | '/_app/consultorios/'
     | '/_app/conversaciones/'
     | '/_app/disponibilidad/'
     | '/_app/horarios/'
@@ -854,6 +866,20 @@ declare module '@tanstack/react-router' {
       path: '/cierres/nuevo'
       fullPath: '/cierres/nuevo'
       preLoaderRoute: typeof AppCierresNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/consultorios/': {
+      id: '/_app/consultorios/'
+      path: '/consultorios'
+      fullPath: '/consultorios/'
+      preLoaderRoute: typeof AppConsultoriosIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/consultorios/sede': {
+      id: '/_app/consultorios/sede'
+      path: '/consultorios/sede'
+      fullPath: '/consultorios/sede'
+      preLoaderRoute: typeof AppConsultoriosSedeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/conversaciones/': {
@@ -1015,13 +1041,6 @@ declare module '@tanstack/react-router' {
       path: '/sedes/$officeId'
       fullPath: '/sedes/$officeId'
       preLoaderRoute: typeof AppSedesOfficeIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/sedes/editar': {
-      id: '/_app/sedes/editar'
-      path: '/sedes/editar'
-      fullPath: '/sedes/editar'
-      preLoaderRoute: typeof AppSedesEditarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sedes/nueva': {
@@ -1207,6 +1226,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppCierresClosureIdRoute: typeof AppCierresClosureIdRoute
   AppCierresNuevoRoute: typeof AppCierresNuevoRoute
+  AppConsultoriosSedeRoute: typeof AppConsultoriosSedeRoute
   AppConversacionesConversationIdRoute: typeof AppConversacionesConversationIdRoute
   AppDevPatronesRoute: typeof AppDevPatronesRoute
   AppHorariosPractitionerIdRoute: typeof AppHorariosPractitionerIdRoute
@@ -1220,11 +1240,11 @@ interface AppRouteChildren {
   AppPersonalNuevaRoute: typeof AppPersonalNuevaRoute
   AppPrestacionesPractitionerIdRoute: typeof AppPrestacionesPractitionerIdRoute
   AppSedesOfficeIdRoute: typeof AppSedesOfficeIdRoute
-  AppSedesEditarRoute: typeof AppSedesEditarRoute
   AppSedesNuevaRoute: typeof AppSedesNuevaRoute
   AppAReprogramarIndexRoute: typeof AppAReprogramarIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCierresIndexRoute: typeof AppCierresIndexRoute
+  AppConsultoriosIndexRoute: typeof AppConsultoriosIndexRoute
   AppConversacionesIndexRoute: typeof AppConversacionesIndexRoute
   AppDisponibilidadIndexRoute: typeof AppDisponibilidadIndexRoute
   AppHorariosIndexRoute: typeof AppHorariosIndexRoute
@@ -1265,6 +1285,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppCierresClosureIdRoute: AppCierresClosureIdRoute,
   AppCierresNuevoRoute: AppCierresNuevoRoute,
+  AppConsultoriosSedeRoute: AppConsultoriosSedeRoute,
   AppConversacionesConversationIdRoute: AppConversacionesConversationIdRoute,
   AppDevPatronesRoute: AppDevPatronesRoute,
   AppHorariosPractitionerIdRoute: AppHorariosPractitionerIdRoute,
@@ -1278,11 +1299,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalNuevaRoute: AppPersonalNuevaRoute,
   AppPrestacionesPractitionerIdRoute: AppPrestacionesPractitionerIdRoute,
   AppSedesOfficeIdRoute: AppSedesOfficeIdRoute,
-  AppSedesEditarRoute: AppSedesEditarRoute,
   AppSedesNuevaRoute: AppSedesNuevaRoute,
   AppAReprogramarIndexRoute: AppAReprogramarIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCierresIndexRoute: AppCierresIndexRoute,
+  AppConsultoriosIndexRoute: AppConsultoriosIndexRoute,
   AppConversacionesIndexRoute: AppConversacionesIndexRoute,
   AppDisponibilidadIndexRoute: AppDisponibilidadIndexRoute,
   AppHorariosIndexRoute: AppHorariosIndexRoute,

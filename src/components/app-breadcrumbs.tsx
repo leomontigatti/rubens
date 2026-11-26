@@ -2,8 +2,8 @@ import { Link, useMatches, useRouterState } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, ReactElement } from "react";
 import { Fragment } from "react";
 
-import { sectionOf } from "#/components/app-nav.ts";
-import { usePrototypeNav } from "#/routes/_app/sedes/-prototype-store.ts";
+import { isCurrentPath, sectionOf } from "#/components/app-nav.ts";
+import { usePrototypeNav } from "#/routes/_app/consultorios/-prototype-store.ts";
 import type { SectionCrumb } from "#/components/app-nav.ts";
 import {
   Breadcrumb,
@@ -61,7 +61,7 @@ function SectionStep({ step, isPage }: { step: SectionCrumb; isPage: boolean }) 
 function SectionLink(props: ComponentProps<"a"> & { to: NonNullable<SectionCrumb["to"]> }) {
   const { to, ...anchor } = props;
   const { variant } = usePrototypeNav();
-  return <Link {...anchor} to={to} search={to === "/sedes" ? { variant } : undefined} />;
+  return <Link {...anchor} to={to} search={to === "/consultorios" ? { variant } : undefined} />;
 }
 
 export function AppBreadcrumbs() {
@@ -69,9 +69,9 @@ export function AppBreadcrumbs() {
   const deepest = useMatches({ select: (matches) => matches.at(-1) });
   // PROTOTYPE (LEO-6): the office page's name follows the variant last shown.
   const officeNav = usePrototypeNav();
-  const section = sectionOf(pathname).map((step) =>
-    step.to === "/sedes" ? { ...step, label: officeNav.label } : step,
-  );
+  const section = isCurrentPath(pathname, "/consultorios")
+    ? [{ label: "Administración" }, { label: officeNav.label, to: "/consultorios" as const }]
+    : sectionOf(pathname);
   // A page's own steps read its loaded data: none while it loads or after its loader failed.
   const RouteCrumbs = deepest?.status === "success" ? deepest.staticData.crumbs : undefined;
   if (section.length === 0 && !RouteCrumbs) {

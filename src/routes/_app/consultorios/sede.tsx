@@ -9,14 +9,14 @@ import {
   prototypeVariants,
   seedPrototype,
   variantSchema,
-} from "#/routes/_app/sedes/-prototype-store.ts";
-import { OfficeForm } from "#/routes/_app/sedes/-prototype-variants.tsx";
+} from "#/routes/_app/consultorios/-prototype-store.ts";
+import { OfficeForm } from "#/routes/_app/consultorios/-prototype-variants.tsx";
 import { RefusalAlert } from "#/routes/_app/sedes/-shared.tsx";
 
 // PROTOTYPE (LEO-6), never merged: the office's form page, which variants B and
 // C open from the settings page. Variant A holds the form in its own tab.
 
-export const Route = createFileRoute("/_app/sedes/editar")({
+export const Route = createFileRoute("/_app/consultorios/sede")({
   head: () => ({ meta: [{ title: "Datos de la sede · underthing" }] }),
   validateSearch: z.object({ variant: variantSchema }),
   loader: () => loadPrototypeOffice(),
@@ -41,12 +41,12 @@ function EditOffice() {
       <OfficeForm
         variant={variant}
         title="Datos de la sede"
-        description="El nombre, el domicilio y la zona horaria de la sede."
+        description="El nombre y el domicilio de la sede."
       />
       <PrototypeSwitcher
         variants={prototypeVariants}
         current={variant}
-        onChange={(key) => void navigate({ to: "/sedes", search: { variant: key } })}
+        onChange={(key) => void navigate({ to: "/consultorios", search: { variant: key } })}
       />
     </>
   );
