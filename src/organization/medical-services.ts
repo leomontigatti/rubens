@@ -45,6 +45,8 @@ export interface MedicalService {
   /** The organization's templates it sends. */
   templateIds: string[];
   rescheduleCutoffHours: number;
+  /** Whether patients can book it with the assistant. */
+  whatsappBooking: boolean;
   active: boolean;
 }
 
@@ -70,6 +72,7 @@ const medicalServiceColumns = {
   name: medicalService.name,
   durationMinutes: medicalService.durationMinutes,
   rescheduleCutoffHours: medicalService.rescheduleCutoffHours,
+  whatsappBooking: medicalService.whatsappBooking,
   active: medicalService.active,
 };
 

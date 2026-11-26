@@ -290,6 +290,7 @@ export async function setUpBookingWorld() {
       name: service.name,
       durationMinutes: service.durationMinutes,
       rescheduleCutoffHours: service.rescheduleCutoffHours,
+      whatsappBooking: service.whatsappBooking,
       templateIds,
     });
     if (!result.ok) {

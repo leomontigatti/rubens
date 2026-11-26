@@ -30,17 +30,18 @@ beforeEach(() => {
 });
 
 /** A medical service's patient messages, none picked: an edit names every one. */
-const noMessages = { templateIds: [], rescheduleCutoffHours: 24 };
+const noMessages = { templateIds: [], rescheduleCutoffHours: 24, whatsappBooking: true };
 
 async function world() {
   const { organization } = await setUpTestOrganization();
   const juan = await addStaff(organization, "Juan Gómez");
   const ana = await addStaff(organization, "Ana Ruiz");
   const rita = await addStaff(organization, "Rita Paz", ["receptionist"]);
-  const firstVisit = (overrides: Partial<MedicalServiceInput> = {}): MedicalServiceInput => ({
+  const firstVisit = (overrides: Partial<MedicalServiceInput> = {}) => ({
     practitionerId: juan.practitionerId,
     name: "Primera consulta",
     durationMinutes: 40,
+    whatsappBooking: true,
     ...overrides,
   });
   async function created(caller: typeof adminCaller = adminCaller, input = firstVisit()) {
@@ -156,6 +157,39 @@ describe("managing medical services", () => {
       await organization.setMedicalServiceActive(rita.caller, { id: service.id, active: false }),
     ).toEqual({ ok: false, reason: "forbidden" });
     expect((await servicesOf(rita.caller, true)).canEdit).toBe(false);
+  });
+
+  it("lets patients book a medical service by WhatsApp until an editor switches it off", async () => {
+    const { organization, juan, ana, firstVisit, created, servicesOf } = await world();
+    const service = await created();
+    const othersService = await created(
+      adminCaller,
+      firstVisit({ practitionerId: ana.practitionerId, name: "Control", durationMinutes: 20 }),
+    );
+    const switchedOff = {
+      ...noMessages,
+      name: "Primera consulta",
+      durationMinutes: 40,
+      whatsappBooking: false,
+    };
+
+    const own = await organization.updateMedicalService(juan.caller, {
+      medicalServiceId: service.id,
+      ...switchedOff,
+    });
+    const others = await organization.updateMedicalService(juan.caller, {
+      medicalServiceId: othersService.id,
+      ...switchedOff,
+    });
+
+    expect(service.whatsappBooking).toBe(true);
+    expect(own).toMatchObject({ ok: true, medicalService: { whatsappBooking: false } });
+    expect(others).toEqual({ ok: false, reason: "forbidden" });
+    const { medicalServices } = await servicesOf(adminCaller, false);
+    expect(medicalServices).toMatchObject([{ id: service.id, whatsappBooking: false }]);
+    expect(
+      (await servicesOf(adminCaller, false, ana.practitionerId)).medicalServices,
+    ).toMatchObject([{ whatsappBooking: true }]);
   });
 
   it("saves the longest duration, which the database's check allows too", async () => {

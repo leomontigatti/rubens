@@ -167,7 +167,7 @@ A patient's name opens their page, the edit form titled by their name with their
 
 Paths: `_app/prestaciones/`, `src/organization/medical-services*.ts`, `src/organization/practitioners.ts`, `src/server/medical-services.functions.ts`, `src/lib/medical-services.ts`.
 
-As an admin, `/prestaciones` lists the practitioners; on one, `Nueva prestación` creates one (name, duration in minutes, and under `Mensajes por WhatsApp` a checkbox for each of the organization's templates, named with its timing, such as `Recordatorio · 2 horas antes del turno`, none checked by default, and `Reprogramar hasta`, 24 hours by default; no colour); its name opens its edit page, with the templates it sends checked, where `Archivar` beside the title keeps it on the list marked `Archivada` and `Restaurar` brings it back. A practitioner manages only their own; a receptionist sees the lists with names as plain text.
+As an admin, `/prestaciones` lists the practitioners; on one, `Nueva prestación` creates one (name, duration in minutes, and under `Mensajes por WhatsApp` a checkbox for each of the organization's templates, named with its timing, such as `Recordatorio · 2 horas antes del turno`, none checked by default, `Reprogramar hasta`, 24 hours by default, and `Los pacientes la pueden pedir por WhatsApp`, checked by default; no colour); its name opens its edit page, with the templates it sends checked, where `Archivar` beside the title keeps it on the list marked `Archivada` and `Restaurar` brings it back. A practitioner manages only their own; a receptionist sees the lists with names as plain text.
 
 ### The calendar and booking
 

@@ -1,0 +1,1 @@
+ALTER TABLE `medical_service` ADD `whatsapp_booking` integer DEFAULT true NOT NULL;

@@ -19,10 +19,21 @@ export const qaRoom = { name: "Consultorio 2" };
 
 export const qaWorkingHours = { startTime: "09:00", endTime: "17:00" } as const;
 
+/** `Seguimiento` is the one patients cannot book by WhatsApp. */
 export const qaMedicalServices = {
-  control: { practitioner: "juan", name: "Control", durationMinutes: 30 },
-  firstVisit: { practitioner: "laura", name: "Primera consulta", durationMinutes: 60 },
-  followUp: { practitioner: "laura", name: "Seguimiento", durationMinutes: 30 },
+  control: { practitioner: "juan", name: "Control", durationMinutes: 30, whatsappBooking: true },
+  firstVisit: {
+    practitioner: "laura",
+    name: "Primera consulta",
+    durationMinutes: 60,
+    whatsappBooking: true,
+  },
+  followUp: {
+    practitioner: "laura",
+    name: "Seguimiento",
+    durationMinutes: 30,
+    whatsappBooking: false,
+  },
 } as const;
 
 export type QaPractitioner = "juan" | "laura";

@@ -7,6 +7,11 @@ the booking can change, which of the organization's templates its appointments
 get ([messages.md](./messages.md#the-organizations-templates)), and how late the
 patient may reschedule.
 
+A medical service also says whether patients can book it by WhatsApp, on by
+default and set by whoever may edit it. One switched off, for a visit that needs
+a person's judgement, is handed to reception when a patient asks the assistant
+for it ([assistant.md](./assistant.md)).
+
 Admins, and each practitioner for their own, manage medical services. A medical
 service in use is deactivated, never deleted.
 

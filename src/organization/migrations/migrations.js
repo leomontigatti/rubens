@@ -41,6 +41,7 @@ import m0038 from './0038_organization.sql';
 import m0039 from './0039_organization.sql';
 import m0040 from './0040_organization.sql';
 import m0041 from './0041_organization.sql';
+import m0042 from './0042_organization.sql';
 
   export default {
     journal,
@@ -86,7 +87,8 @@ m0037,
 m0038,
 m0039,
 m0040,
-m0041
+m0041,
+m0042
     }
   }
   

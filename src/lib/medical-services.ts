@@ -19,6 +19,7 @@ const medicalServiceFields = z.object({
   durationMinutes: durationMinutesSchema,
   templateIds: templateIdsSchema,
   rescheduleCutoffHours: rescheduleCutoffHoursSchema,
+  whatsappBooking: z.boolean(),
 });
 
 /** A new medical service, shared by the form and the services: it starts sending no template. */
@@ -26,6 +27,7 @@ export const medicalServiceInputSchema = medicalServiceFields.extend({
   practitionerId: z.uuid(),
   templateIds: templateIdsSchema.default([]),
   rescheduleCutoffHours: rescheduleCutoffHoursSchema.default(24),
+  whatsappBooking: z.boolean().default(true),
 });
 
 export const medicalServiceUpdateSchema = medicalServiceFields.extend({

@@ -330,6 +330,8 @@ export const medicalService = sqliteTable(
     // The templates it sends are `medicalServiceTemplate` rows (`whatsapp-schema.ts`).
     // Whole hours, bounded by `src/lib/medical-services.ts`: a check here would rebuild the table.
     rescheduleCutoffHours: integer("reschedule_cutoff_hours").notNull().default(24),
+    // Whether patients can book it with the assistant; one switched off is handed to reception.
+    whatsappBooking: flag("whatsapp_booking").notNull().default(true),
     // A medical service in use is deactivated, never deleted: it drops out of
     // booking and stays on its appointments.
     active: flag("active").notNull().default(true),
