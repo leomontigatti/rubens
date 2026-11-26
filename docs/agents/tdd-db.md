@@ -49,7 +49,7 @@ organization's data: the organization object's methods and the area modules in
   wrote, never after one that only read) is pinned once, in
   `src/organization/organization-runtime.workers.test.ts`: a method's own tests need not check it.
 - **Fixtures**: `src/organization/organization.test-support.ts` (`setUpTestOrganization`,
-  `adminCaller`, `addMember`, `addRefusedAdmin`, `addStaff`, `addOffice`, `addRoom`, `setUpBookingWorld` with its
+  `adminCaller`, `addMember`, `addRefusedAdmin`, `addStaff`, `theOffice`, `addRoom`, `setUpBookingWorld` with its
   `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`, `fakeAccounts`, `fakeMeta`). Extend it before adding another support file
   ([coding-standards.md](./coding-standards.md#test-support-files)).
 - **A schema change** is `src/organization/schema.ts` (or `whatsapp-schema.ts`, `assistant-usage-schema.ts`) plus `pnpm organization:generate`, and the

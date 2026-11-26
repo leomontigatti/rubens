@@ -25,26 +25,24 @@ check-ups, is booked one appointment after the other.
 ## Booking
 
 Reception books from a free cell clicked on the calendar, which fills in the
-time and room, and the practitioner when only one is free there (otherwise the
-form asks which of those free), or from `Nuevo turno`: patient, practitioner and
+time, the room and the practitioner free there, or from `Nuevo turno`: patient, practitioner and
 medical service, then the free times for that service's duration. The service comes
 before the time because its duration decides which times fit; the duration can
 still be adjusted. The patient is found with the search box, or registered on
 the spot with the quick registration.
 
 An appointment takes the room of the schedule it falls in. Reception can move it
-to another room only if that room has space at that time: its capacity, counted
-against other practitioners' schedules and appointments there. An overbooking
-outside the practitioner's schedules needs a room picked explicitly, under the
-same rule. So a room never holds more practitioners than its capacity, for
-appointments as for schedules.
+to another room only if no other practitioner holds it at that time, by a
+schedule or an appointment there. An overbooking outside the practitioner's
+schedules needs a room picked explicitly, under the same rule. So a room never
+holds two practitioners at once, for appointments as for schedules.
 
 Practitioners can share a room, but never at once: while one practitioner holds
 an appointment there, no other practitioner can book, overbook or move an
-appointment into that time, and their cells there turn grey. Only the
-appointment's own practitioner can add an overbooking over it, or reception on
-their behalf. The database enforces it (`appointment_room_overlap`), so two
-bookings racing for a shared room's time cannot both win.
+appointment into that time. Only the appointment's own practitioner can add an
+overbooking over it, or reception on their behalf. The database enforces it
+(`appointment_room_overlap`), so two bookings racing for a room's time cannot
+both win.
 
 Booking warns, without blocking, when the patient already has an appointment that
 overlaps, or one the same day with another practitioner: back-to-back visits with
@@ -102,7 +100,9 @@ requested ──► booked ──► confirmed ──► checkedIn ──► att
 A status set by mistake can be undone the same day. The audit log keeps both
 changes; a busy front desk will make mistakes, and forbidding the undo only
 breeds workarounds. Undoing a cancellation or a no-show brings the appointment back
-only if its time and its room still have space.
+only if no other practitioner holds its room then and the practitioner has no other
+regular appointment at that time. An overbooking on either side does not stop it:
+neither theirs at that time nor the restored appointment being one.
 
 ## Rescheduling
 
@@ -130,14 +130,14 @@ how many that adds. Rescheduling keeps the practitioner and the patient, so such
 an appointment is refused a new time until the person is reactivated, which takes
 it off the list; meanwhile it can be cancelled.
 
-Deactivating a room or an office sends every future requested, booked or confirmed appointment
+Deactivating a room sends every future requested, booked or confirmed appointment
 in it to the list, overbookings included: the calendar no longer offers the room,
 even when another room's schedule still covers the time. Its schedules also cover
 nothing from then on, so an appointment in another room of the office that only they
 covered goes to the list as outside working time. The admin is told first how many
 appointments that adds up to, leaving out those on the list already. Rescheduling
 picks a new room, so such an appointment can move once the practitioner has a free
-time in an active room; reactivating the place takes the rest off the list.
+time in an active room; reactivating the room takes the rest off the list.
 
 ## Overlaps and overbooking
 
@@ -151,9 +151,9 @@ free time.
 
 ## Calendar
 
-The calendar is one week of one room, Monday to Sunday, in the room's office's
+The calendar is one week of one room, Monday to Sunday, in the practice's
 zone, with the previous and next week and a date to jump to. It is filtered in
-this order: the room, required, from the active rooms grouped by office; then a
+this order: the room, required, from the active rooms by name; then a
 practitioner, optional; then a medical service, optional, from the chosen practitioner's active ones or all of them, which
 implies its practitioner. The practitioners to filter by are those with a
 schedule or an active appointment in the room that week, and, for reception and
@@ -187,11 +187,9 @@ role: it is not drawn unless asked for, and then faded in its own lane, and
 opening it allows an undo.
 
 A practitioner sees their own appointments in full and books only for
-themself. Other practitioners' appointments in the room show as grey
-blocks across the day's width (two that overlap share it) with their time and practitioner (`09:30 Pablo
-Ríos`), nothing about the patient, and
-cut to the practitioner's own working hours in the room: the
-server sends no others. A block covers its cells, white ones included.
+themself. Other practitioners' appointments are not shown, and the server sends
+none: a room holds one practitioner at a time, so none falls within the
+practitioner's own hours in the room.
 
 ## Patient history
 

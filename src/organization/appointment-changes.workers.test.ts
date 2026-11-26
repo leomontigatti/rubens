@@ -6,10 +6,8 @@ import type {
   StatusChangeInput,
   WarningConfirmation,
 } from "#/lib/appointments.ts";
-import { historyChanges } from "#/lib/patients.ts";
 
 import {
-  addOffice,
   addRoom,
   adminCaller,
   at,
@@ -18,7 +16,7 @@ import {
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { office as officeTable, practitioner, room as roomTable } from "#/organization/schema.ts";
+import { practitioner, room as roomTable } from "#/organization/schema.ts";
 
 vi.mock(import("#/organization/accounts.ts"), async (original) => ({
   ...(await original()),
@@ -129,7 +127,7 @@ async function world() {
 }
 
 describe("reading one appointment", () => {
-  it("draws it as the calendar does, with its office's zone and rooms", async () => {
+  it("reads its patient, room, note, status and actions, with its office's rooms", async () => {
     const w = await world();
     const id = await w.bookJuan(at("12:00"), w.maria.id, "Trae estudios");
 
@@ -146,7 +144,6 @@ describe("reading one appointment", () => {
         actions: expect.arrayContaining(["confirmed", "cancelled"]),
       },
       office: {
-        timeZone: "America/Argentina/Buenos_Aires",
         rooms: [
           { id: w.room.id, name: "Consultorio 1" },
           { id: w.otherRoom.id, name: "Consultorio 2" },
@@ -267,18 +264,6 @@ describe("moving an appointment to another room", () => {
     expect(await w.changesOf(id)).toEqual([]);
   });
 
-  it("is refused to a room of another office", async () => {
-    const w = await world();
-    const id = await w.bookJuan();
-    const norte = await addOffice(w.organization, "Sede Norte");
-    const norteRoom = await addRoom(w.organization, norte.id, "Consultorio Norte");
-
-    expect(await w.edit(id, "", w.receptionist, norteRoom.id)).toEqual({
-      ok: false,
-      reason: "otherOffice",
-    });
-  });
-
   it("changes nothing and audits nothing when it is already in that room", async () => {
     const w = await world();
     const id = await w.bookJuan();
@@ -305,17 +290,16 @@ describe("moving an appointment to another room", () => {
 
 describe("rescheduling", () => {
   /**
-   * Juan also works from 14:00 to 16:00 at "Sede Norte", on a 15-minute grid,
+   * Juan also works from 14:00 to 16:00 in "Consultorio 3", on a 15-minute grid,
    * so a move can land over the appointment's own old time; "Lucía" works from
    * 09:00 to 11:00 in "Consultorio 2".
    */
   async function rescheduleWorld() {
     const w = await world();
-    const north = await addOffice(w.organization, "Sede Norte");
-    const northRoom = await addRoom(w.organization, north.id, "Norte 1");
+    const afternoonRoom = await addRoom(w.organization, w.office.id, "Consultorio 3");
     await w.addSchedule({
       practitionerId: w.juan.practitionerId,
-      roomId: northRoom.id,
+      roomId: afternoonRoom.id,
       startTime: "14:00",
       endTime: "16:00",
     });
@@ -327,7 +311,7 @@ describe("rescheduling", () => {
         .where(eq(practitioner.id, w.juan.practitionerId))
         .run(),
     );
-    return { ...w, northRoom };
+    return { ...w, afternoonRoom };
   }
 
   it("moves the same appointment over its own old time, auditing the previous values", async () => {
@@ -345,13 +329,13 @@ describe("rescheduling", () => {
     });
   });
 
-  it("moves it to another office, in the room of the schedule there", async () => {
+  it("moves it to another room, the one of the schedule there", async () => {
     const w = await rescheduleWorld();
     const id = await w.bookJuan();
 
     expect(await w.reschedule({ appointmentId: id, start: at("17:00") })).toEqual({ ok: true });
 
-    expect((await w.appointmentOf(id)).roomId).toBe(w.northRoom.id);
+    expect((await w.appointmentOf(id)).roomId).toBe(w.afternoonRoom.id);
     expect((await w.changesOf(id)).at(-1)!.before).toMatchObject({ roomId: w.room.id });
   });
 
@@ -431,46 +415,6 @@ describe("rescheduling", () => {
         roomId: w.otherRoom.id,
       }),
     ).toMatchObject({ ok: false, reason: "roomFull" });
-  });
-
-  it("shows each side of a move to another office's zone in the patient's history", async () => {
-    const w = await rescheduleWorld();
-    const id = await w.bookJuan();
-    expect(await w.reschedule({ appointmentId: id, start: at("17:00") })).toEqual({ ok: true });
-    // A practitioner's schedules share one zone, so the other zone is set
-    // straight on the office: 17:00Z is 12:00 in Lima (UTC-5).
-    const northRoomRow = await inStorage(w.organization, (database) =>
-      database.select().from(roomTable).where(eq(roomTable.id, w.northRoom.id)).get(),
-    );
-    await inStorage(w.organization, (database) =>
-      database
-        .update(officeTable)
-        .set({ timeZone: "America/Lima" })
-        .where(eq(officeTable.id, northRoomRow!.officeId))
-        .run(),
-    );
-
-    const result = await w.organization.getPatientHistory(adminCaller, { patientId: w.maria.id });
-    if (!result.ok) {
-      throw new Error(`getPatientHistory refused: ${result.reason}`);
-    }
-
-    const move = result.entries.find((entry) => entry.action === "update");
-    expect(move!.timeZones).toEqual({
-      before: "America/Argentina/Buenos_Aires",
-      after: "America/Lima",
-    });
-    expect(historyChanges(move!, result.names)).toEqual([
-      { field: "Inicio", before: "05/01/2099 09:00", after: "05/01/2099 12:00" },
-      { field: "Fin", before: "05/01/2099 09:30", after: "05/01/2099 12:30" },
-      { field: "Consultorio", before: "Consultorio 1", after: "Norte 1" },
-    ]);
-    // Titled by the appointment as it is now, in its office's zone (#173).
-    expect(move!.appointment).toEqual({
-      startsAt: new Date(at("17:00")).getTime(),
-      practitioner: "Juan Gómez",
-      timeZone: "America/Lima",
-    });
   });
 
   it("refuses the appointment of a deactivated patient, or practitioner", async () => {

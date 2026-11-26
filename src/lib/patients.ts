@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 import { appointmentStatusLabels, cancellerLabels } from "#/lib/appointment-statuses.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { toPersonLastName, toPersonName } from "#/lib/person-names.ts";
 import { formatPhone, parsePhoneEntry } from "#/lib/phones.ts";
 import { formatDateTime, formatLocalDate } from "#/lib/dates.ts";
@@ -57,7 +57,7 @@ const patientFields = z.object({
       }
       // The organization's offices are all in Argentina, so its date is the
       // default zone's, on the browser's clock and on the server's.
-      const problem = birthDateProblem(value, today(defaultTimeZone));
+      const problem = birthDateProblem(value, today(practiceTimeZone));
       if (problem) {
         context.addIssue({ code: "custom", message: problem });
         return z.NEVER;
@@ -215,6 +215,7 @@ const fieldLabelsInFormOrder: Record<string, string> = {
   insurer: "Obra social / prepaga",
   plan: "Plan",
   memberNumber: "Número de afiliado",
+  // Only in entries from before a patient had at most one coverage.
   primary: "Principal",
   messageContact: "Recibe los mensajes",
   start: "Inicio",
@@ -288,26 +289,23 @@ const hiddenFields = new Set(["insurerId", "patientId", "active"]);
 
 /**
  * An audit entry's changed fields, labelled and formatted for the change
- * history: ids by their `names`, an appointment's times on each side in that
- * side's zone of `timeZones`.
+ * history: ids by their `names`.
  */
 export function historyChanges(
   entry: {
     before: Record<string, HistoryValue> | null;
     after: Record<string, HistoryValue> | null;
-    timeZones?: { before: string; after: string } | null;
   },
   names: Readonly<Record<string, string>> = {},
 ): FieldChange[] {
-  const before = { names, timeZone: entry.timeZones?.before ?? defaultTimeZone };
-  const after = { names, timeZone: entry.timeZones?.after ?? defaultTimeZone };
+  const context = { names, timeZone: practiceTimeZone };
   const fields = Object.keys({ ...entry.before, ...entry.after })
     .filter((field) => !hiddenFields.has(field))
     .sort((a, b) => fieldRank(a) - fieldRank(b));
   return fields.map((field) => ({
     field: fieldLabelsInFormOrder[field] ?? field,
-    before: formatValue(field, entry.before?.[field], before),
-    after: formatValue(field, entry.after?.[field], after),
+    before: formatValue(field, entry.before?.[field], context),
+    after: formatValue(field, entry.after?.[field], context),
   }));
 }
 
@@ -332,12 +330,12 @@ const entityLabels: Record<string, string> = {
 export function historyTitle(entry: {
   action: keyof typeof actionLabels;
   entityType: string;
-  appointment: { startsAt: number; practitioner: string; timeZone: string } | null;
+  appointment: { startsAt: number; practitioner: string } | null;
 }): string {
   const action = actionLabels[entry.action];
   const { appointment } = entry;
   if (appointment) {
-    const when = formatDateTime(appointment.startsAt, appointment.timeZone);
+    const when = formatDateTime(appointment.startsAt, practiceTimeZone);
     return `${action} del turno del ${when} con ${appointment.practitioner}`;
   }
   return `${action}${entityLabels[entry.entityType] ?? ""}`;

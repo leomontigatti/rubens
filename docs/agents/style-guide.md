@@ -23,7 +23,7 @@ What is settled already:
   gets a one-off class; a second case gets a variant or a component. A new token, variant or
   typeface is a product decision: ask before adding one.
 - **A badge only shows a state out of the ordinary**: an archived record (`ArchivedBadge`), an
-  incomplete patient, a minor, a patient without WhatsApp, a coverage's `Principal`. The regular state has none: no `Activo`
+  incomplete patient, a minor, a patient without WhatsApp. The regular state has none: no `Activo`
   badge, no `Estado` filter, since a list already shows only active records. A state is a `Badge`
   beside the name, never ` · Archivado` in the text, and a table has no `Estado` column. Every list looks alike unless a screen says otherwise: its first cell is
   `RowName` (`data-table.tsx`), the only way a list links a row: its name or link and its states
@@ -38,7 +38,7 @@ What is settled already:
   | `Cancelado`, `Atendido`                       | `secondary`   |
   | `Archivado`, `Archivada`, as its page's alert | `info`        |
   | `Sin WhatsApp`, as its page's alert           | `info`        |
-  | `Sobreturno`, `Principal`, `Menor de edad`    | `outline`     |
+  | `Sobreturno`, `Menor de edad`                 | `outline`     |
   | `Incompleto`                                  | `warning`     |
   | `Ausente`, `Turnos a reprogramar` count       | `destructive` |
 
@@ -69,10 +69,10 @@ add beyond them reads as generated and buries the rest.
 
 - **A line under a heading says what the heading does not.** A page's or a dialog's
   `description` says what Page shell and Form pages give it to say, never the title again or an
-  order to manage it: `Sedes` /
-  `Los lugares de atención, cada uno con sus consultorios.`, never `Administrá las sedes de la
-  organización.` A section, a card or a menu item gets no line of its own unless it carries a
-  fact.
+  order to manage it: `Obras sociales` /
+  `Las coberturas que se pueden cargar en cada paciente.`, never `Administrá las obras sociales
+  de la organización.` A section, a card or a menu item gets no line of its own unless it
+  carries a fact.
 - **No text narrates the screen or how it was built**: no `Hacé clic en el botón para empezar`,
   `Esta tabla muestra los turnos`, `(se actualiza en tiempo real)`. An instruction earns its place
   only where the user would otherwise get it wrong: a field's rule (`Código de área sin 0 y
@@ -139,9 +139,9 @@ beside it.
   `pnpm lint` rejects the ui `Empty` anywhere else, `ui/no-raw-empty`), with the icon the sidebar
   gives its concept, in a dashed outline centred in the space the page leaves. Inside a form, a
   dialog, a menu or a section of a page, a sentence is enough.
-- **Its title is short, `Sin sedes`; its description says there are none yet, then how to start**:
-  `Todavía no hay sedes. Empezá creando la primera.` Without the permission to start, the first
-  sentence stands alone. What the page is for goes in the page's subtitle, not here.
+- **Its title is short, `Sin consultorios`; its description says there are none yet, then how to
+  start**: `Todavía no hay consultorios. Empezá creando el primero.` Without the permission to
+  start, the first sentence stands alone. What the page is for goes in the page's subtitle, not here.
 - **What to do next is a button in it**, as shadcn's `Empty` shows: `CreateButton` for a create,
   `EmptyStateLink` for a way elsewhere, the main action first and the rest `outline`, even when the
   page header has the same button. Pass only the buttons the viewer may use.
@@ -150,8 +150,8 @@ beside it.
   so with `NoMatches`.
 - **A list that hides archived records says none exist only when that is true.** Its loader
   answers `onlyInactive` when the default list is empty because every record is archived; then
-  the empty state says `No hay sedes activas` and offers `Ver archivadas`. `/dev/patrones` shows
-  each case.
+  the empty state says `No hay consultorios activos` and offers `Ver archivados`. `/dev/patrones`
+  shows each case.
 
 ## Tables
 
@@ -210,14 +210,14 @@ beside it.
 - **A page of settings is `RecordSection`s**, one per setting, each showing its values; its
   `Editar` opens that setting's own form page, saved apart from the rest, and a section that
   leads elsewhere has that link as its action (`Probar`): `/whatsapp/configuracion`.
-- **A record's page is its edit form**, the model being an office's (`/sedes/$officeId`); detail
-  pages move to it one by one. The list's name opens it: no detail page, no `Editar`. Its fields are
+- **A record's page is its edit form**, the model being an insurer's
+  (`/obras-sociales/$insurerId`); detail pages move to it one by one. The list's name opens it: no detail page, no `Editar`. Its fields are
   the create's, in the same order, so a create and an edit look alike.
 - **Its title is the record's name, with its state badge beside it** when there is one
   (`ArchivedBadge`, which shows none on an active record),
   and its actions on the right in one `Acciones` menu (`activeRecord`'s `menu`,
-  `src/components/admin-form.tsx`): a create for each of its lists first, such as `Nuevo
-  consultorio`, then, past a separator, `Archivar` in red or `Restaurar`, or `Eliminar`. Its
+  `src/components/admin-form.tsx`): a create for each of its lists first, such as `Agregar
+  cobertura`, then, past a separator, `Archivar` in red or `Restaurar`, or `Eliminar`. Its
   items are text only, with no icons (`ui/no-menu-item-icon`). One
   that asks first keeps asking: its dialog sits outside the menu (`useDeactivation`). The name
   moves from the list row into the title and back (`RecordName`, through the router's view transitions); nothing else on the page animates. The
@@ -229,17 +229,23 @@ beside it.
   `outline` `Badge` (the tab list's background hides a `secondary` one). A list in a tab has no
   heading or button of its own: its create is in `Acciones`, and again in its empty state. A
   patient's page splits its form over `Datos generales` and `Contacto` (one form; a refusal opens
-  the tab of the field it names), shows `Coberturas` and `Responsables` only once there is one,
+  the tab of the field it names), shows `Cobertura` (the one the patient has, or `Particular`)
+  and `Responsables` only once there is one,
   and ends with `Actividad`: `Turnos`, the past ones collapsed, and for an admin `Historial`,
   collapsed, each a line of shadcn's `Trace` that opens on its detail. A
-  list page of its own keeps its create button visible in its header (`Nueva sede`).
+  list page of its own keeps its create button visible in its header (`Nuevo consultorio`).
   The form's tab stays mounted, so an edit survives a look at another tab, and a tab switch is no
   navigation, which would ask before discarding it. `?seccion=` only picks the tab a page
   opens on; a list row's pages lead back to their tab with it. A list in a tab is a `DataTable`
-  like any other, and a row's actions, such as a coverage's `Hacer principal` and `Quitar`, are
+  like any other, and a row's actions, such as a coverage's `Quitar`, are
   in its own page's `Acciones`, never buttons in the row.
 - **Who can't edit the record sees its header and its lists**, with no form and no tabs. Its
   list's name cell links only for someone who may open the page, and is plain text otherwise.
+- **The office has no page of its own**, titled by its name: its form page, `Datos de la sede`
+  (`/consultorios/sede`), opens from its rooms' list, whose header has an `Acciones` menu with
+  that one item beside `Nuevo consultorio`; its save goes back to the list. It is the one list
+  page with an `Acciones` menu, and the one whose item opens another record's form page
+  (the winner comment on LEO-6 of 2026-11-26).
 - **A page that is only its form stays as it is**: `/ingresar`, `/cambiar-contrasena`, and
   `/disponibilidad`, which asks and answers.
 
@@ -252,8 +258,8 @@ here take one; a new one is a product decision, added to this list first.
 - **A record qualifies when it is small and lives only in its parent's list**: a few short fields,
   no list of its own, no history worth a page, nothing that links to it. Anything bigger stays a page:
   a dialog cannot hold tabs, a long form, or a list, and a page can be linked and gone back to.
-- **Today: an office's rooms** (`/sedes/$officeId`, tab `Consultorios`), created from the office's
-  `Acciones` > `Nuevo consultorio` and edited from the room's name.
+- **Today: the rooms** (`/consultorios`), created from the header's `Nuevo consultorio` and
+  edited from the room's name.
 - **The list opens it**: the row's name is a button (`RowName`'s `onOpen`) that looks like the
   other lists' links, and `CreateButton`'s `onClick` opens an empty one. No URL changes.
 - **Its title is the record's name with its state badge**, like a record's page, and a create's

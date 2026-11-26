@@ -30,8 +30,8 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       kind: proposal.kind,
       service: target.service,
       practitioner: target.practitioner,
-      from: { date: target.date, time: target.time, office: target.office },
-      to: slot ? { date: slot.date, time: slot.time, office: slot.office } : undefined,
+      from: { date: target.date, time: target.time },
+      to: slot ? { date: slot.date, time: slot.time } : undefined,
     };
   };
 

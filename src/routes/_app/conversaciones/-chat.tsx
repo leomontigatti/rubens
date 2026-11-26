@@ -8,7 +8,7 @@ import {
 } from "#/components/whatsapp-bubble.tsx";
 import { WhatsappStatus } from "#/components/whatsapp-status.tsx";
 import { formatDateTime } from "#/lib/dates.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import type { InboxMessage } from "#/organization/inbox.ts";
 import type { QueuedReopen, ShownLateReply, WithdrawnReply } from "#/organization/late-replies.ts";
 import type { ShownOptOut } from "#/organization/opt-out-holds.ts";
@@ -117,7 +117,7 @@ function ChatBubble({
     return (
       <p className="text-muted-foreground my-1 self-center text-xs">
         {item.reply.writer} retiró una respuesta ·{" "}
-        {formatDateTime(item.reply.withdrawnAt, defaultTimeZone)}
+        {formatDateTime(item.reply.withdrawnAt, practiceTimeZone)}
       </p>
     );
   }

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import { coverageIdSchema, coverageInputSchema, coverageUpdateSchema } from "#/lib/coverages.ts";
@@ -11,11 +11,10 @@ import type { Acting } from "#/organization/members.ts";
 import { findPatient } from "#/organization/patients.ts";
 import { coverage, insurer } from "#/organization/schema.ts";
 
-// A patient's coverages. Reception, admins and practitioners add, edit and
-// remove them. A patient with coverages has exactly one primary: the first
-// one added, until another is made primary or the primary is removed, when the
-// flag moves. A coverage is offered only active insurers, and keeps the one it
-// has when that is deactivated. Every change is written to the audit log about
+// A patient's coverage: they have one or none (`Particular`). Reception,
+// admins and practitioners add, edit and remove it; adding one to a patient who
+// has one is refused. A coverage is offered only active insurers, and keeps the
+// one it has when that is deactivated. Every change is written to the audit log about
 // the patient, in its own transaction.
 
 export interface Coverage {
@@ -28,16 +27,16 @@ export interface Coverage {
   insurerActive: boolean;
   plan: string | null;
   memberNumber: string;
-  primary: boolean;
 }
 
-type Refusal = "invalidInput" | "notFound" | "insurerInactive";
+type Refusal = "invalidInput" | "notFound" | "insurerInactive" | "hasCoverage";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
 const insurerInactive = { ok: false, reason: "insurerInactive" } as const;
+const hasCoverage = { ok: false, reason: "hasCoverage" } as const;
 
 const coverageColumns = {
   id: coverage.id,
@@ -48,11 +47,7 @@ const coverageColumns = {
   insurerActive: insurer.active,
   plan: coverage.plan,
   memberNumber: coverage.memberNumber,
-  primary: coverage.primary,
 };
-
-// The order coverages were added in; two can share a millisecond.
-const added = [asc(coverage.createdAt), asc(sql`${coverage}.rowid`)];
 
 /**
  * The fields an audit entry records: the insurer by its id, and by the name it
@@ -64,7 +59,6 @@ function auditedValues(row: Coverage) {
     insurer: row.insurerName,
     plan: row.plan,
     memberNumber: row.memberNumber,
-    primary: row.primary,
   };
 }
 
@@ -92,36 +86,7 @@ function checkInsurer(writer: Writer, insurerId: string) {
   return found.active ? null : insurerInactive;
 }
 
-/** Sets a coverage's primary flag and writes the change to the audit log. */
-function setPrimary(writer: Writer, acting: Acting, row: Coverage, primary: boolean) {
-  writer.update(coverage).set({ primary }).where(eq(coverage.id, row.id)).run();
-  recordAudit(writer, acting.userId, {
-    action: "update",
-    entityType: "coverage",
-    entityId: row.id,
-    patientId: row.patientId,
-    before: { primary: row.primary },
-    after: { primary },
-  });
-}
-
-/** Takes the flag from the patient's primary coverage other than `exceptId`, if any. */
-function clearPrimary(writer: Writer, acting: Acting, patientId: string, exceptId?: string) {
-  const current = selectCoverages(writer)
-    .where(
-      and(
-        eq(coverage.patientId, patientId),
-        eq(coverage.primary, true),
-        exceptId ? ne(coverage.id, exceptId) : undefined,
-      ),
-    )
-    .get();
-  if (current) {
-    setPrimary(writer, acting, current, false);
-  }
-}
-
-/** The patient's coverages, the primary first, then in the order they were added. */
+/** The patient's coverage, as a list of one, or none when they are private. */
 export function listCoverages(
   database: Database,
   input: { patientId: string },
@@ -130,10 +95,7 @@ export function listCoverages(
   if (!parsed.success || !findPatient(database, parsed.data)) {
     return notFound;
   }
-  const coverages = selectCoverages(database)
-    .where(eq(coverage.patientId, parsed.data))
-    .orderBy(desc(coverage.primary), ...added)
-    .all();
+  const coverages = selectCoverages(database).where(eq(coverage.patientId, parsed.data)).all();
   return { ok: true, coverages };
 }
 
@@ -146,28 +108,24 @@ export function addCoverage(
   if (!parsed.success) {
     return invalidInput;
   }
-  const { primary: asPrimary, ...fields } = parsed.data;
+  const fields = parsed.data;
   return database.transaction((tx) => {
     if (!findPatient(tx, fields.patientId)) {
       return notFound;
+    }
+    const existing = tx
+      .select({ id: coverage.id })
+      .from(coverage)
+      .where(eq(coverage.patientId, fields.patientId))
+      .get();
+    if (existing) {
+      return hasCoverage;
     }
     const refusal = checkInsurer(tx, fields.insurerId);
     if (refusal) {
       return refusal;
     }
-    const primary = tx
-      .select({ id: coverage.id })
-      .from(coverage)
-      .where(and(eq(coverage.patientId, fields.patientId), eq(coverage.primary, true)))
-      .get();
-    if (asPrimary) {
-      clearPrimary(tx, acting, fields.patientId);
-    }
-    const created = tx
-      .insert(coverage)
-      .values({ ...fields, primary: asPrimary || primary === undefined })
-      .returning({ id: coverage.id })
-      .get();
+    const created = tx.insert(coverage).values(fields).returning({ id: coverage.id }).get();
     const found = present(findCoverage(tx, created.id), "A coverage just inserted is found");
     recordAudit(tx, acting.userId, {
       action: "create",
@@ -219,33 +177,7 @@ export function updateCoverage(
   });
 }
 
-/** Makes a coverage the patient's primary one, taking the flag from the last. */
-export function makeCoveragePrimary(
-  database: Database,
-  acting: Acting,
-  input: CoverageId,
-): Result<object> {
-  const parsed = coverageIdSchema.safeParse(input);
-  if (!parsed.success) {
-    return notFound;
-  }
-  return database.transaction((tx) => {
-    const current = findCoverage(tx, parsed.data.coverageId);
-    if (!current) {
-      return notFound;
-    }
-    if (!current.primary) {
-      clearPrimary(tx, acting, current.patientId, current.id);
-      setPrimary(tx, acting, current, true);
-    }
-    return { ok: true as const };
-  });
-}
-
-/**
- * Removes a coverage. When it was the primary one, the oldest coverage left
- * becomes primary.
- */
+/** Removes the patient's coverage, leaving them private. */
 export function removeCoverage(
   database: Database,
   acting: Acting,
@@ -269,16 +201,6 @@ export function removeCoverage(
       before: createdFields(auditedValues(current)),
       after: null,
     });
-    if (current.primary) {
-      const next = selectCoverages(tx)
-        .where(eq(coverage.patientId, current.patientId))
-        .orderBy(...added)
-        .limit(1)
-        .get();
-      if (next) {
-        setPrimary(tx, acting, next, true);
-      }
-    }
     return { ok: true as const };
   });
 }

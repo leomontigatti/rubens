@@ -5,7 +5,7 @@ import { shiftDate, today } from "#/lib/schedules.ts";
 import type { ScheduleChange, ScheduleInput } from "#/lib/schedules.ts";
 
 import {
-  addOffice,
+  theOffice,
   addRoom,
   addStaff,
   adminCaller,
@@ -18,8 +18,8 @@ import type { OrganizationStub } from "#/organization/organization.test-support.
 import { member } from "#/organization/schema.ts";
 
 // Dates far in the future or the past keep "today" out of the way unless a
-// test is about it; 2099-01-05 and 2020-01-06 are Mondays. The offices are in
-// Buenos Aires (UTC-3) unless a test names another zone.
+// test is about it; 2099-01-05 and 2020-01-06 are Mondays. The practice is in
+// Buenos Aires (UTC-3).
 
 const zone = "America/Argentina/Buenos_Aires";
 
@@ -27,7 +27,7 @@ type Caller = typeof adminCaller;
 
 async function world() {
   const { organization } = await setUpTestOrganization();
-  const centro = await addOffice(organization, "Sede Centro");
+  const centro = await theOffice(organization);
   const room = await addRoom(organization, centro.id, "Consultorio 1");
   const juan = await addStaff(organization, "Juan Gómez");
 
@@ -74,7 +74,7 @@ async function world() {
 }
 
 describe("creating a schedule", () => {
-  it("stores the weekly fields with the room and office it holds, and audits it", async () => {
+  it("stores the weekly fields with the room it holds, and audits it", async () => {
     const { organization, room, mondayMorning, create, schedulesOf } = await world();
 
     const result = await create(
@@ -83,12 +83,11 @@ describe("creating a schedule", () => {
     );
 
     expect(result).toMatchObject({ ok: true });
-    expect(await schedulesOf()).toEqual([
+    const schedules = await schedulesOf();
+    expect(schedules).toEqual([
       expect.objectContaining({
         roomId: room.id,
         roomName: "Consultorio 1",
-        officeName: "Sede Centro",
-        timeZone: zone,
         weekdays: [1, 3],
         startTime: "09:00",
         endTime: "13:00",
@@ -157,14 +156,14 @@ describe("validating a schedule", () => {
     expect(await schedulesOf()).toEqual([]);
   });
 
-  it("refuses a deactivated room, office or practitioner", async () => {
-    const { organization, mondayMorning, create } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const inactiveRoom = await addRoom(organization, norte.id, "Consultorio 9");
+  it("refuses a deactivated room or practitioner", async () => {
+    const { organization, mondayMorning, create, schedulesOf } = await world();
+    const inactiveRoom = await addRoom(
+      organization,
+      (await theOffice(organization)).id,
+      "Consultorio 9",
+    );
     await organization.setRoomActive(adminCaller, { id: inactiveRoom.id, active: false });
-    const sur = await addOffice(organization, "Sede Sur");
-    const roomInClosed = await addRoom(organization, sur.id, "Consultorio 1");
-    await organization.setOfficeActive(adminCaller, { id: sur.id, active: false });
     const leaving = await addStaff(organization, "Lucía Díaz");
     await inStorage(organization, (database) =>
       database
@@ -178,17 +177,15 @@ describe("validating a schedule", () => {
       ok: false,
       reason: "roomInactive",
     });
-    expect(await create(adminCaller, mondayMorning({ roomId: roomInClosed.id }))).toEqual({
-      ok: false,
-      reason: "officeInactive",
-    });
     expect(
       await create(adminCaller, mondayMorning({ practitionerId: leaving.practitionerId })),
     ).toEqual({ ok: false, reason: "practitionerInactive" });
+    expect(await schedulesOf()).toEqual([]);
+    expect(await schedulesOf(leaving.practitionerId)).toEqual([]);
   });
 });
 
-describe("room capacity", () => {
+describe("a room holds one practitioner at a time", () => {
   it("refuses a second overlapping schedule in a room for one, naming the first", async () => {
     const { mondayMorning, create, createFor } = await world();
     await create(adminCaller, mondayMorning());
@@ -223,36 +220,6 @@ describe("room capacity", () => {
 
     expect(await createFor("Lucía Díaz", { firstDate: "2099-03-02" })).toMatchObject({ ok: true });
     expect(await createFor("Rosa Paz", { weekdays: [2] })).toMatchObject({ ok: true });
-  });
-
-  it("accepts a second practitioner in a room for two and refuses a third", async () => {
-    const { organization, mondayMorning, create, createFor } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const shared = await addRoom(organization, norte.id, "Gimnasio", 2);
-    await create(adminCaller, mondayMorning({ roomId: shared.id }));
-
-    expect(
-      await createFor("Lucía Díaz", { roomId: shared.id, startTime: "11:00", endTime: "15:00" }),
-    ).toMatchObject({ ok: true });
-    expect(
-      await createFor("Rosa Paz", { roomId: shared.id, startTime: "12:00", endTime: "12:30" }),
-    ).toMatchObject({ ok: false, reason: "roomFull" });
-    expect(
-      await createFor("Pedro Ruiz", { roomId: shared.id, startTime: "13:00", endTime: "14:00" }),
-    ).toMatchObject({ ok: true });
-  });
-
-  it("counts only the schedules present at the same moment in a room for two", async () => {
-    const { organization, mondayMorning, create, createFor } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const shared = await addRoom(organization, norte.id, "Gimnasio", 2);
-    // Two schedules in turn, never together: a third over both meets one at a time.
-    await create(adminCaller, mondayMorning({ roomId: shared.id, lastDate: "2099-02-23" }));
-    await createFor("Lucía Díaz", { roomId: shared.id, firstDate: "2099-03-02" });
-
-    expect(
-      await createFor("Rosa Paz", { roomId: shared.id, startTime: "10:00", endTime: "11:00" }),
-    ).toMatchObject({ ok: true });
   });
 });
 
@@ -338,8 +305,11 @@ describe("a schedule saved in a room an appointment holds", () => {
 describe("practitioner overlap", () => {
   it("refuses one practitioner in two rooms at once, and accepts a break between", async () => {
     const { organization, mondayMorning, create } = await world();
-    const norte = await addOffice(organization, "Sede Norte");
-    const elsewhere = await addRoom(organization, norte.id, "Consultorio 2");
+    const elsewhere = await addRoom(
+      organization,
+      (await theOffice(organization)).id,
+      "Consultorio 2",
+    );
     await create(adminCaller, mondayMorning());
 
     expect(
@@ -364,35 +334,6 @@ describe("practitioner overlap", () => {
         mondayMorning({ roomId: elsewhere.id, startTime: "14:00", endTime: "18:00" }),
       ),
     ).toMatchObject({ ok: true });
-  });
-
-  it("refuses one practitioner in two time zones at once, and accepts them in turn", async () => {
-    const { organization, mondayMorning, create } = await world();
-    const madrid = await addOffice(organization, "Sede Madrid", "Europe/Madrid");
-    const abroad = await addRoom(organization, madrid.id, "Consultorio 2");
-    await create(adminCaller, mondayMorning({ lastDate: "2099-02-23" }));
-    // Tuesdays never meet Mondays, yet the zones alone refuse the dates in common.
-    const tuesday = { roomId: abroad.id, weekdays: [2] };
-
-    expect(await create(adminCaller, mondayMorning(tuesday))).toEqual({
-      ok: false,
-      reason: "otherTimeZone",
-    });
-    expect(
-      await create(adminCaller, mondayMorning({ ...tuesday, firstDate: "2099-02-24" })),
-    ).toMatchObject({ ok: true });
-  });
-
-  it("compares the clocks over the dates two schedules share, not from the new one's start", async () => {
-    const { organization, mondayMorning, create } = await world();
-    // San Luis kept a clock of its own in 2009, and has kept Buenos Aires' since.
-    const office = await addOffice(organization, "Sede San Luis", "America/Argentina/San_Luis");
-    const sanLuis = await addRoom(organization, office.id, "Consultorio 2");
-    await create(adminCaller, mondayMorning({ roomId: sanLuis.id, weekdays: [2] }));
-
-    expect(await create(adminCaller, mondayMorning({ firstDate: "2009-01-05" }))).toMatchObject({
-      ok: true,
-    });
   });
 });
 

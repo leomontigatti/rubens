@@ -25,12 +25,6 @@ export const editCoverage = createServerFn({ method: "POST" })
     withOrganization((organization, caller) => organization.updateCoverage(caller, data)),
   );
 
-export const changePrimaryCoverage = createServerFn({ method: "POST" })
-  .validator((data: CoverageId) => data)
-  .handler(({ data }) =>
-    withOrganization((organization, caller) => organization.makeCoveragePrimary(caller, data)),
-  );
-
 export const deleteCoverage = createServerFn({ method: "POST" })
   .validator((data: CoverageId) => data)
   .handler(({ data }) =>

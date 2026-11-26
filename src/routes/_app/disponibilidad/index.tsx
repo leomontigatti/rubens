@@ -21,7 +21,7 @@ import {
   freeTimesQueryOf,
 } from "#/lib/availability.ts";
 import type { AvailabilityView } from "#/lib/availability.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { today } from "#/lib/schedules.ts";
 import type { AvailableStart } from "#/organization/availability.ts";
 import { getAvailabilityPractitioners, getFreeTimes } from "#/server/availability.functions.ts";
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/_app/disponibilidad/")({
     if (!listed.ok) {
       return listed;
     }
-    const query = availabilityViewOf(deps, listed.practitioners, today(defaultTimeZone));
+    const query = availabilityViewOf(deps, listed.practitioners, today(practiceTimeZone));
     const window = freeTimesQueryOf(query);
     return {
       ok: true as const,
@@ -219,9 +219,7 @@ function FreeTimes({ starts }: { starts: AvailableStart[] }) {
               {day.starts.map((free) => (
                 <li key={+free.start} className="flex gap-3">
                   <span className="font-medium tabular-nums">{free.time}</span>
-                  <span className="text-muted-foreground">
-                    {free.officeName}, {free.roomName}
-                  </span>
+                  <span className="text-muted-foreground">{free.roomName}</span>
                 </li>
               ))}
             </ul>

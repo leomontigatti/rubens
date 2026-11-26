@@ -83,12 +83,13 @@ export async function answeringNotice<
   return (await save({ tellPatients, affected: asked.affected })) as T;
 }
 
-/** A fresh organization, set up with `adminCaller` as its first admin. */
+/** A fresh organization, set up with its office, "Sede Centro", and `adminCaller` as its first admin. */
 export async function setUpTestOrganization() {
   const fresh = freshOrganization();
   const setUp = await fresh.organization.setUp({
     organizationId: fresh.organizationId,
     name: "Consultorios Prueba",
+    office: { name: "Sede Centro", address: "Av. Colón 100" },
     admin: { userId: adminCaller.userId, name: "Ana Admin", email: "ana@example.com" },
   });
   if (!setUp.ok) {
@@ -157,27 +158,19 @@ export async function addStaff(
   return { caller: { userId }, practitionerId: practitionerId ?? "" };
 }
 
-/** Adds an office, as the first admin, in `timeZone` or the default one. */
-export async function addOffice(organization: OrganizationStub, name: string, timeZone?: string) {
-  const created = await organization.createOffice(adminCaller, {
-    name,
-    address: "Av. Colón 100",
-    timeZone,
-  });
-  if (!created.ok) {
-    throw new Error(`createOffice refused: ${created.reason}`);
+/** The office the organization's setup created, "Sede Centro". */
+export async function theOffice(organization: OrganizationStub) {
+  const listed = await organization.listOffices(adminCaller);
+  const [office] = listed.ok ? listed.offices : [];
+  if (!office) {
+    throw new Error("the organization has no office");
   }
-  return created.office;
+  return office;
 }
 
 /** Adds a room to `officeId`, as the first admin. */
-export async function addRoom(
-  organization: OrganizationStub,
-  officeId: string,
-  name: string,
-  capacity = 1,
-) {
-  const created = await organization.createRoom(adminCaller, { officeId, name, capacity });
+export async function addRoom(organization: OrganizationStub, officeId: string, name: string) {
+  const created = await organization.createRoom(adminCaller, { officeId, name });
   if (!created.ok) {
     throw new Error(`createRoom refused: ${created.reason}`);
   }
@@ -192,7 +185,7 @@ export async function addRoom(
  */
 export async function setUpBookingWorld() {
   const { organization } = await setUpTestOrganization();
-  const office = await addOffice(organization, "Sede Centro");
+  const office = await theOffice(organization);
   const room = await addRoom(organization, office.id, "Consultorio 1");
   const otherRoom = await addRoom(organization, office.id, "Consultorio 2");
   const juan = await addStaff(organization, "Juan Gómez");

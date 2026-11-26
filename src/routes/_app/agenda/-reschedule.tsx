@@ -18,6 +18,7 @@ import { appointmentBack, appointmentSummary } from "#/routes/_app/agenda/-appoi
 import type { LoadedAppointment } from "#/routes/_app/agenda/-appointment-page.tsx";
 import { PatientWarnings, durationMessage } from "#/routes/_app/agenda/-booking.tsx";
 import { FreeStartsOfWeek, StartGroup } from "#/routes/_app/agenda/-free-starts.tsx";
+import { practiceTimeZone } from "#/lib/dates.ts";
 
 // Rescheduling an appointment through the free-times picker: a new free time
 // of the same practitioner, a week from a date, which brings its schedule's
@@ -37,7 +38,6 @@ const refusalMessages = {
   timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",
   closed: "La sede está cerrada a esa hora.",
   roomInactive: "Ese consultorio está archivado.",
-  officeInactive: "La sede de ese consultorio está archivada.",
   roomFull: "Ese consultorio no tiene lugar a esa hora.",
 };
 
@@ -84,10 +84,10 @@ function problemsOf(issues: Parameters<typeof fieldProblems>[0], values: Resched
 }
 
 /** The appointment's own duration, and its free times from its own day, nothing picked yet. */
-function initialValues({ appointment, office }: LoadedAppointment): RescheduleValues {
+function initialValues({ appointment }: LoadedAppointment): RescheduleValues {
   return {
     durationMinutes: String((+appointment.end - +appointment.start) / 60_000),
-    freeFrom: format(appointment.start, "yyyy-MM-dd", { in: tz(office.timeZone) }),
+    freeFrom: format(appointment.start, "yyyy-MM-dd", { in: tz(practiceTimeZone) }),
     start: null,
   };
 }

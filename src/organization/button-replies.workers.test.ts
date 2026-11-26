@@ -146,7 +146,6 @@ describe("a tap on `Sí, voy`", () => {
     expectOk(
       await answeringNotice(false, (notice) =>
         world.organization.createClosure(adminCaller, {
-          officeId: null,
           entry: { kind: "days", firstDate: "2099-01-05", lastDate: "2099-01-05" },
           ...notice,
         }),

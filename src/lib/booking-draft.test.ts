@@ -12,13 +12,12 @@ import {
 } from "#/lib/booking-draft.ts";
 import type { BookingValues } from "#/lib/booking-draft.ts";
 
-const zone = "America/Argentina/Buenos_Aires";
 const uuid = (n: number) => `6f1c2b9e-4a3d-4e8f-9b2a-1c3d5e7f9a${String(n).padStart(2, "0")}`;
 const juan = uuid(1);
 const lucia = uuid(2);
 const maria = { id: uuid(4), name: "María Fernández" };
 const room3 = uuid(5);
-const nine = { start: new Date("2099-01-05T12:00:00Z"), roomName: "Consultorio 1", timeZone: zone };
+const nine = { start: new Date("2099-01-05T12:00:00Z"), roomName: "Consultorio 1" };
 const consulta = { id: uuid(3), durationMinutes: 40 };
 
 describe("a new booking form", () => {
@@ -96,33 +95,31 @@ describe("what a booking form books", () => {
 describe("what an overbooking form books", () => {
   const typed = { ...ready, start: null, date: "2099-01-05", time: "09:10" };
 
-  it("books the local date and time in the office's zone, in the schedule's room unless one is picked", () => {
-    expect(overbookingRequestOf(typed, zone).data).toMatchObject({
+  it("books the local date and time in the practice's zone, in the schedule's room unless one is picked", () => {
+    expect(overbookingRequestOf(typed).data).toMatchObject({
       start: new Date("2099-01-05T12:10:00Z"),
       roomId: null,
     });
-    expect(overbookingRequestOf({ ...typed, roomId: room3 }, zone).data).toMatchObject({
+    expect(overbookingRequestOf({ ...typed, roomId: room3 }).data).toMatchObject({
       roomId: room3,
     });
   });
 
   it("needs a date and a time", () => {
-    expect(refusedPaths(overbookingRequestOf({ ...typed, date: "" }, zone))).toEqual(["start"]);
-    expect(refusedPaths(overbookingRequestOf({ ...typed, time: "" }, zone))).toEqual(["start"]);
+    expect(refusedPaths(overbookingRequestOf({ ...typed, date: "" }))).toEqual(["start"]);
+    expect(refusedPaths(overbookingRequestOf({ ...typed, time: "" }))).toEqual(["start"]);
   });
 
   it("refuses 25:00 rather than rolling it into the next day", () => {
-    expect(refusedPaths(overbookingRequestOf({ ...typed, time: "25:00" }, zone))).toEqual([
-      "start",
-    ]);
+    expect(refusedPaths(overbookingRequestOf({ ...typed, time: "25:00" }))).toEqual(["start"]);
   });
 
   it("refuses a time or a date that is half typed or names none, rather than booking another time", () => {
     for (const time of ["10:", "10:3", "23:75"]) {
-      expect(refusedPaths(overbookingRequestOf({ ...typed, time }, zone))).toEqual(["start"]);
+      expect(refusedPaths(overbookingRequestOf({ ...typed, time }))).toEqual(["start"]);
     }
     for (const date of ["05/01/20", "31/02/2099"]) {
-      expect(refusedPaths(overbookingRequestOf({ ...typed, date }, zone))).toEqual(["start"]);
+      expect(refusedPaths(overbookingRequestOf({ ...typed, date }))).toEqual(["start"]);
     }
   });
 });
@@ -231,7 +228,7 @@ describe("the free times offered after a start stopped being free", () => {
 });
 
 describe("whether the booking form shows the week of free times", () => {
-  const offered = [{ ...nine, officeName: "Centro" }];
+  const offered = [nine];
 
   it("shows it on a new booking", () => {
     expect(showsWeekOfStarts({ fixed: false, start: null, offeredStarts: null })).toBe(true);

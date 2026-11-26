@@ -5,11 +5,7 @@ import type {
   ReturnTimeInput,
 } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
-import type {
-  HandoffReference,
-  HandoffRemindersInput,
-  OpenHandoffListOptions,
-} from "#/lib/handoffs.ts";
+import type { HandoffReference, OpenHandoffListOptions } from "#/lib/handoffs.ts";
 import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
 import type {
@@ -39,7 +35,6 @@ import {
   takeOverConversation,
 } from "#/organization/conversation-holds.ts";
 import { listHandoffContacts, replaceHandoffContacts } from "#/organization/handoff-contacts.ts";
-import { saveHandoffReminders } from "#/organization/handoff-countdown.ts";
 import {
   closeHandoffWithoutReply,
   dropHandoffHeldReply,
@@ -142,13 +137,6 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
   /** How long a member holds a conversation before it goes back to the assistant. */
   saveReturnTime(caller: Caller, input: ReturnTimeInput) {
     return this.as(caller, ["admin"], (acting) => saveReturnTime(this.database, acting, input));
-  }
-
-  /** How many hours before the window closes a handoff's reminders go. */
-  saveHandoffReminders(caller: Caller, input: HandoffRemindersInput) {
-    return this.as(caller, ["admin"], (acting) =>
-      saveHandoffReminders(this.database, acting, input),
-    );
   }
 
   whatsappSettings(caller: Caller) {

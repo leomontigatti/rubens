@@ -1,7 +1,8 @@
 import type { TimeRange } from "#/lib/time-ranges.ts";
 
-// Whether a room has space for one more practitioner over a span
-// (docs/domain/appointments.md § Booking), as a pure function.
+// Whether a room is free for a practitioner over a span, a room holding one
+// practitioner at a time (docs/domain/appointments.md § Booking), as a pure
+// function.
 
 export interface Presence extends TimeRange {
   practitionerId: string;
@@ -12,14 +13,13 @@ function intersects(a: TimeRange, b: TimeRange): boolean {
 }
 
 /**
- * The presences at the first moment of `span` where the room is full for
- * `practitionerId`, or `null` when it has space throughout.
+ * The presences at the first moment of `span` where another practitioner
+ * holds the room, or `null` when nobody else does throughout.
  */
 export function findCrowding<T extends Presence>(
   span: TimeRange,
   practitionerId: string,
   presences: readonly T[],
-  capacity: number,
 ): T[] | null {
   const inside = presences.filter((presence) => intersects(presence, span));
   const points = [
@@ -37,8 +37,10 @@ export function findCrowding<T extends Presence>(
   for (const end of rest) {
     const moment = { start: new Date(start), end: new Date(end) };
     const present = inside.filter((presence) => intersects(presence, moment));
-    const others = new Set(present.map((presence) => presence.practitionerId));
-    if (!others.delete(practitionerId) && others.size >= capacity) {
+    if (
+      present.length > 0 &&
+      !present.some((presence) => presence.practitionerId === practitionerId)
+    ) {
       return present;
     }
     start = end;

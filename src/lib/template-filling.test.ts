@@ -12,22 +12,19 @@ const appointment: TemplateAppointment = {
   patient: { firstName: "Martina", chosenName: null },
   practitionerName: "Dr. Juan Gómez",
   start: new Date("2099-01-05T12:05:00Z"),
-  timeZone: "America/Argentina/Buenos_Aires",
-  officeName: "Sede Centro",
   officeAddress: "Av. Colón 100",
   medicalServiceName: "Extracción dental",
   organizationName: "Consultorios Prueba",
 };
 
 describe("an appointment's template values", () => {
-  it("names the patient, the organization, the practitioner, the day, the time in the office's zone, the office and the medical service, lowercased to follow `tu`", () => {
+  it("names the patient, the organization, the practitioner, the day, the time in the practice's zone, the office's address and the medical service, lowercased to follow `tu`", () => {
     expect(templateValues(appointment)).toEqual({
       paciente: "Martina",
       organizacion: "Consultorios Prueba",
       profesional: "Dr. Juan Gómez",
       fecha: "lunes 5 de enero",
       hora: "09:05",
-      sede: "Sede Centro",
       domicilio: "Av. Colón 100",
       prestacion: "extracción dental",
       direccion: "Av. Colón 100",
@@ -40,12 +37,10 @@ describe("an appointment's template values", () => {
     expect(templateValues(chosen).paciente).toBe("Tina");
   });
 
-  it("reads the day and the time in the office's zone, not in UTC", () => {
+  it("reads the day and the time in the practice's zone, not in UTC", () => {
     const late = { ...appointment, start: new Date("2099-01-06T01:30:00Z") };
-    const madrid = { ...appointment, timeZone: "Europe/Madrid" };
 
     expect(templateValues(late)).toMatchObject({ fecha: "lunes 5 de enero", hora: "22:30" });
-    expect(templateValues(madrid)).toMatchObject({ fecha: "lunes 5 de enero", hora: "13:05" });
   });
 });
 
@@ -62,20 +57,6 @@ describe("filling a template", () => {
         { name: "hora", value: "09:05" },
       ],
     });
-  });
-
-  it("fills the practitioner, date, time and office from the sample appointment, the time in its office's zone", () => {
-    const body =
-      "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}).";
-
-    expect(
-      fillTemplate(
-        body,
-        templateValues({ ...sampleAppointment, organizationName: "Consultorios Prueba" }),
-      ).text,
-    ).toBe(
-      "Tu turno con la Dra. Sofía Méndez es el jueves 12 de noviembre a las 10:30 en Sede Centro (Av. Colón 1234, Córdoba).",
-    );
   });
 });
 
@@ -94,30 +75,29 @@ describe("the sample appointment", () => {
     expect(values.filter(([, value]) => !value)).toEqual([]);
   });
 
-  it("fills a body as the template preview shows it, the time read in the office's zone", () => {
+  it("fills a body as the template preview shows it, the time read in the practice's zone", () => {
     expect(
       fillSample(
-        "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n",
+        "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}} con {{profesional}} en {{domicilio}}.\n",
         "Consultorios Prueba",
       ),
-    ).toBe("Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30.");
+    ).toBe(
+      "Hola Lucía, te esperamos el jueves 12 de noviembre a las 10:30 con la Dra. Sofía Méndez en Av. Colón 1234, Córdoba.",
+    );
   });
 
-  it("leaves what is not a variable of any template as written", () => {
+  it("leaves what is not a variable of any template as written, the office's name among them", () => {
     expect(fillSample("Hola {{nombre}}, en {{sede}}.", "Consultorios Prueba")).toBe(
-      "Hola {{nombre}}, en Sede Centro.",
+      "Hola {{nombre}}, en {{sede}}.",
     );
   });
 
   it("still fills the address of a template approved under its old name, {{direccion}}", () => {
-    const body = "Te esperamos en {{sede}} ({{direccion}}).";
+    const body = "Te esperamos en {{direccion}}.";
 
     expect(fillTemplate(body, templateValues(appointment))).toEqual({
-      text: "Te esperamos en Sede Centro (Av. Colón 100).",
-      parameters: [
-        { name: "sede", value: "Sede Centro" },
-        { name: "direccion", value: "Av. Colón 100" },
-      ],
+      text: "Te esperamos en Av. Colón 100.",
+      parameters: [{ name: "direccion", value: "Av. Colón 100" }],
     });
   });
 });

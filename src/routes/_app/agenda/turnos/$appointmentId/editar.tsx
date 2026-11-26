@@ -39,12 +39,8 @@ const refusalMessages = {
   invalidInput: "Revisá los datos ingresados.",
   notFound: "No encontramos ese turno, o ya no ocupa su horario: volvé a abrirlo.",
   practitionerInactive: "Ese profesional está archivado.",
-  otherOffice: "Ese consultorio es de otra sede.",
   roomInactive: "Ese consultorio está archivado.",
-  officeInactive: "La sede de ese consultorio está archivada.",
 };
-
-const roomRefusals: readonly string[] = ["otherOffice", "roomInactive", "officeInactive"];
 
 const fieldMessages = {
   roomId: "Elegí un consultorio.",
@@ -54,12 +50,12 @@ const fieldMessages = {
 type SaveResult = Awaited<ReturnType<typeof saveAppointment>>;
 
 /** What a refusal says, under the room when it is about the room. */
-function refusalOf(result: Exclude<SaveResult, { ok: true }>, timeZone: string): FieldProblem {
+function refusalOf(result: Exclude<SaveResult, { ok: true }>): FieldProblem {
   if (result.reason === "roomFull") {
-    return { field: "roomId", message: roomFullMessage(result.occupants, timeZone) };
+    return { field: "roomId", message: roomFullMessage(result.occupants) };
   }
   return {
-    field: roomRefusals.includes(result.reason) ? "roomId" : "",
+    field: result.reason === "roomInactive" ? "roomId" : "",
     message: refusalMessages[result.reason],
   };
 }
@@ -103,7 +99,7 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
       if (result.ok) {
         page.leave();
       } else {
-        setRefusal(refusalOf(result, office.timeZone));
+        setRefusal(refusalOf(result));
       }
     },
   });

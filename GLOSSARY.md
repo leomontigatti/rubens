@@ -45,13 +45,15 @@ also the admin.
 ## Places
 
 **`office`** — ui: "Sede"
-A physical location of the business, with its own IANA time zone. Its times are
-derived from that zone; instants are stored in UTC.
+The practice's one physical location, created with the `organization`; its name
+and address are edited from `Consultorios`, under `Datos de la sede`. Every time
+the app reads or shows is in one zone, `America/Argentina/Buenos_Aires`; instants
+are stored in UTC.
 _Avoid_: branch, clinic, site
 
 **`room`** — ui: "Consultorio"
-A room inside an `office` where a `practitioner` sees a `patient`. Its capacity is
-how many practitioners can use it at the same moment, 1 unless set otherwise.
+A room of the `office` where a `practitioner` sees a `patient`. It holds one
+practitioner at a time. The rooms are their own page, `Consultorios`.
 _Avoid_: box, cubicle, chair, shared room, exclusive room
 
 ## Scheduling
@@ -68,8 +70,8 @@ illness, overriding their `schedule`s.
 _Avoid_: absence, leave, exception, vacation
 
 **`closure`** — ui: "Cierre"
-A one-off range when an `office`, or the whole `organization`, is closed, such as a
-national holiday.
+A one-off range when the whole `organization` is closed, every `room` in it, such
+as a national holiday.
 _Avoid_: holiday, exception, blackout
 
 **`availability`** — ui: "Disponibilidad"
@@ -109,7 +111,7 @@ _Avoid_: comment, observation, reason, motivo
 **`toReschedule`** — ui: "Turnos a reprogramar"
 The `appointment`s a new `timeOff`, `closure` or `schedule` change left outside
 working time, those of an `inactive` `practitioner` or `patient`, and those in an
-`inactive` `room` or `office`, listed for reception to move or cancel. They are
+`inactive` `room`, listed for reception to move or cancel. They are
 never cancelled on their own.
 _Avoid_: conflicts, affected appointments
 
@@ -132,7 +134,7 @@ _Avoid_: draft patient, pending patient, quick patient
 
 **`coverage`** — ui: "Cobertura"
 A `patient`'s membership of an `insurer`: the insurer, a plan and a member number.
-A patient with none is private ("Particular").
+A patient has zero or one; with none, they are private ("Particular").
 _Avoid_: insurance, `obra social`, `prepaga`, plan
 
 **`insurer`** — ui: "Obra social / prepaga"

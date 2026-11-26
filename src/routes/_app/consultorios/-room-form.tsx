@@ -18,20 +18,17 @@ import {
 } from "#/server/offices.functions.ts";
 import type { Room } from "#/organization/offices.ts";
 
-import { useAction } from "#/routes/_app/sedes/-shared.tsx";
+import { useAction } from "#/routes/_app/consultorios/-shared.tsx";
 
-// An office's rooms are created and edited in a dialog over its `Consultorios`
-// tab (style guide, Form dialogs): two fields and a state, nothing of their own.
+// The rooms are created and edited in a dialog over the `Consultorios` page
+// (style guide, Form dialogs): one field and a state, nothing of their own.
 
 // The room form's fields: the room update schema without the id it is sent with.
 const roomFieldsSchema = roomUpdateSchema.omit({ roomId: true });
 
 const fieldMessages: Record<keyof z.input<typeof roomFieldsSchema>, string> = {
   name: "Ingresá el nombre del consultorio.",
-  capacity: "La capacidad tiene que ser un número entero entre 1 y 100.",
 };
-
-const newRoom = { name: "", capacity: 1 };
 
 /**
  * The office's room dialog: `create` opens it empty, `edit` on a room, which
@@ -65,7 +62,7 @@ function RoomDialog(props: { dialog: FormDialogControl; officeId: string; room: 
   const form = useAppForm({
     defaultValues: roomValues(room),
     onSubmit: async ({ value }) => {
-      const fields = roomFieldsSchema.safeParse({ ...value, capacity: Number(value.capacity) });
+      const fields = roomFieldsSchema.safeParse(value);
       if (!fields.success) {
         dialog.showProblems(fieldProblems(fields.error.issues, messageIn(fieldMessages)));
         return;
@@ -109,26 +106,13 @@ function RoomDialog(props: { dialog: FormDialogControl; officeId: string; room: 
       <form.AppField name="name">
         {(field) => <field.TextField label="Nombre" required />}
       </form.AppField>
-      <form.AppField name="capacity">
-        {(field) => (
-          <field.TextField
-            label="Capacidad (profesionales a la vez)"
-            type="number"
-            min={1}
-            max={100}
-            step={1}
-            required
-          />
-        )}
-      </form.AppField>
     </FormDialog>
   );
 }
 
 /** The form's values: the room's, or a new one's. */
 function roomValues(room: Room | null) {
-  const values = room ?? newRoom;
-  return { name: values.name, capacity: String(values.capacity) };
+  return { name: room ? room.name : "" };
 }
 
 /** What `Archivar` asks before archiving the room, and how it counts the appointments ahead. */
@@ -156,7 +140,7 @@ function dialogCopy(room: Room | null) {
         <ArchivedBadge active={room.active} ending="o" />
       </>
     ),
-    description: "Los datos del consultorio y cuántos profesionales atienden a la vez.",
+    description: "El nombre del consultorio.",
     submitLabel: "Guardar",
   };
 }

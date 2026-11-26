@@ -3,7 +3,7 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { actsForEveryone } from "#/lib/access.ts";
 import { activeAppointmentStatuses, mondayOf } from "#/lib/appointments.ts";
 import { occurrencesDuring } from "#/lib/availability.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -68,9 +68,7 @@ function scheduledRooms(
       ),
     )
     .all();
-  const held = rows.filter(
-    (row) => occurrencesDuring({ ...row, timeZone: defaultTimeZone }, week).length > 0,
-  );
+  const held = rows.filter((row) => occurrencesDuring(row, week).length > 0);
   return new Set(held.map((row) => row.roomId));
 }
 
@@ -95,7 +93,7 @@ export function findCalendarOpening(
   const firstDate = mondayOf(date);
   const week = toTimeRange(
     { kind: "days", firstDate, lastDate: shiftDate(firstDate, 6) },
-    defaultTimeZone,
+    practiceTimeZone,
   );
   const counts = countByRoom(writer, own.id, roomIds, week);
   if (counts.size > 0) {

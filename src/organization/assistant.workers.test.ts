@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod";
 
 import {
-  addOffice,
   adminCaller,
   afterTheWait as afterWait,
   auditEntriesFor,
@@ -242,7 +241,7 @@ describe("the assistant's pace", () => {
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
       turn.call("propose_change", { appointmentId, kind: "confirm" });
-      return "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.\n\nMe decís que sí?";
+      return "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez.\n\nMe decís que sí?";
     });
 
     await afterTheWait();
@@ -250,7 +249,7 @@ describe("the assistant's pace", () => {
     expect(textsToMeta()).toEqual([
       {
         to: "5491155550000",
-        text: "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.\n\nMe decís que sí?",
+        text: "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez.\n\nMe decís que sí?",
       },
     ]);
   });
@@ -408,7 +407,7 @@ describe("the assistant's pace", () => {
 });
 
 describe("answering when, where and with whom", () => {
-  it("replies with the appointment's date, time, practitioner and office, through the Graph API", async () => {
+  it("replies with the appointment's date, time and practitioner through the Graph API, from details that hold its address", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("cuándo tengo el turno?");
     let details: unknown;
@@ -416,7 +415,7 @@ describe("answering when, where and with whom", () => {
       turn.call("judge_messages", notClinical);
       turn.call("list_patients");
       details = turn.call("get_appointment", { appointmentId });
-      return "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.";
+      return "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez.";
     });
 
     await afterTheWait();
@@ -428,14 +427,13 @@ describe("answering when, where and with whom", () => {
         practitioner: "Juan Gómez",
         date: "lunes 5 de enero",
         time: "09:00",
-        office: "Sede Centro",
         address: world.office.address,
       },
     });
     expect(textsToMeta()).toEqual([
       {
         to: "5491155550000",
-        text: "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.",
+        text: "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez.",
       },
     ]);
     expect((await storedFlags()).at(-1)).toEqual({
@@ -626,31 +624,6 @@ describe("the organization's voice", () => {
     expect(system).toContain("Cordial y breve.");
     expect(textsToMeta()).toEqual([{ to: "5491155550000", text: "En qué lo puedo ayudar?" }]);
     expect((await storedFlags()).at(-1)).toMatchObject({ rulesVersion: 1 });
-  });
-
-  it("reads the time in the first office's zone, not a later office's", async () => {
-    await bookPatient("Martina", martinaPhone);
-    expectOk(
-      await world.organization.updateOffice(adminCaller, {
-        officeId: world.office.id,
-        name: world.office.name,
-        address: world.office.address,
-        timeZone: "America/Bogota",
-      }),
-    );
-    wait(60_000);
-    await addOffice(world.organization, "Sede Norte", "Europe/Madrid");
-    await patientWrites("hola");
-    scriptedModel.script((turn) => {
-      turn.call("judge_messages", notClinical);
-      return "Hola, en qué te ayudo?";
-    });
-
-    await afterTheWait();
-
-    const { system } = scriptedModel.turns[0]!;
-    expect(system).toContain("(America/Bogota)");
-    expect(system).not.toContain("Europe/Madrid");
   });
 });
 
@@ -1353,7 +1326,6 @@ describe("confirming and cancelling through proposals", () => {
       practitioner: "Juan Gómez",
       date: "lunes 5 de enero",
       time: "09:00",
-      office: "Sede Centro",
     };
     expect(proposed).toEqual({ ok: true, proposal: stated });
     expect(accepted).toEqual({ ok: true, applied: stated });
@@ -1434,7 +1406,6 @@ describe("confirming and cancelling through proposals", () => {
       patient: "Martina Paz",
       practitioner: "Juan Gómez",
       startsAt: at("12:00").getTime(),
-      timeZone: "America/Argentina/Buenos_Aires",
       roomId: world.room.id,
       date: "2099-01-05",
     };

@@ -2,25 +2,22 @@
 
 ## Rooms
 
-A room's capacity is how many practitioners can use it at the same moment, 1
-unless set otherwise. "Shared" is not a kind of room: a room is shared by giving
-several practitioners schedules in it at different times. A capacity above 1
-covers the rare room two practitioners really use together.
+A room holds one practitioner at a time. "Shared" is not a kind of room: a room
+is shared by giving several practitioners schedules in it at different times.
 
 ## Schedules
 
 A practitioner works in weekly schedules. A schedule is one or more weekdays, a
-start and an end time, one room of one office, a first date and an optional last
+start and an end time, one room, a first date and an optional last
 date. A break is two schedules on the same day (9 to 13 and 14 to 18). The screen
 is weekly only; alternate weeks can come later without a new model.
 
 Offices have no opening hours of their own: schedules are the only working time,
-and a closure covers a day an office is shut.
+and a closure covers a day the practice is shut.
 
-Saving a schedule fails if, on any date it applies, the
-room would hold more practitioners than its capacity, counting the schedules in it
-and the future appointments other practitioners have there (overbookings and room
-moves place appointments outside schedules). The room is settled when the
+Saving a schedule fails if, on any date it applies, another practitioner holds
+the room at that time, by a schedule in it or a future appointment there
+(overbookings and room moves place appointments outside schedules). The room is settled when the
 schedule is saved, not each time an appointment is booked.
 
 A change to a schedule takes effect from a date the user picks: the old schedule
@@ -32,8 +29,8 @@ to another room that is free at that time.
 
 ## Time off and closures
 
-Time off belongs to one practitioner; a closure to one office or the whole
-organization. Both are ranges of time, with a whole-day shortcut for the usual
+Time off belongs to one practitioner; a closure to the whole organization, every
+room in it. Both are ranges of time, with a whole-day shortcut for the usual
 case, so "Friday from 14:00" is a closure too. Admins enter closures; time off is
 entered by an admin or by the practitioner it belongs to.
 

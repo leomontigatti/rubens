@@ -17,7 +17,6 @@ describe("coverageInputSchema", () => {
       ...base,
       plan: null,
       memberNumber: "123",
-      primary: false,
     });
   });
 });

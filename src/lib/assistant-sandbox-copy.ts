@@ -1,6 +1,6 @@
 import type { HeldReplyCheck } from "#/lib/handoffs.ts";
 import type { ProposalKind } from "#/lib/proposals.ts";
-import { formatDay, formatTime } from "#/lib/dates.ts";
+import { formatDay, formatTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // The copy of the assistant's sandbox in the WhatsApp settings
 // (`src/routes/_app/whatsapp/configuracion/prueba.tsx`): its refusals, what a turn did, and
@@ -56,11 +56,10 @@ export function proposalStatement(statement: Record<string, string>) {
 export function scenarioLabel(scenario: {
   patient: string;
   startsAt: number;
-  timeZone: string;
   practitioner: string;
 }) {
   const start = new Date(scenario.startsAt);
-  const when = `${formatDay(start, scenario.timeZone)}, ${formatTime(start, scenario.timeZone)}`;
+  const when = `${formatDay(start, practiceTimeZone)}, ${formatTime(start, practiceTimeZone)}`;
   return `${scenario.patient} · ${when} · ${scenario.practitioner}`;
 }
 

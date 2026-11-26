@@ -9,7 +9,7 @@ import {
 } from "#/lib/appointments.ts";
 import { durationMinutesSchema } from "#/lib/availability.ts";
 import type { AvailabilityQuery } from "#/lib/availability.ts";
-import { formatTime } from "#/lib/dates.ts";
+import { formatTime, practiceTimeZone } from "#/lib/dates.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 
@@ -19,11 +19,6 @@ import { instantOf } from "#/lib/time-ranges.ts";
 export interface PickedStart {
   start: Date;
   roomName: string;
-  timeZone: string;
-}
-
-export interface OfferedStart extends PickedStart {
-  officeName: string;
 }
 
 export interface BookingWarning {
@@ -31,7 +26,6 @@ export interface BookingWarning {
   start: Date;
   end: Date;
   practitionerName: string;
-  timeZone: string;
 }
 
 export interface PickedPatient {
@@ -70,14 +64,14 @@ export function initialBookingValues(
   defaultDate: string,
 ): BookingValues {
   const medicalService = from?.medicalService ?? null;
-  const date = from ? format(from.start, "yyyy-MM-dd", { in: tz(from.timeZone) }) : defaultDate;
-  const time = from ? formatTime(from.start, from.timeZone) : "";
+  const date = from ? format(from.start, "yyyy-MM-dd", { in: tz(practiceTimeZone) }) : defaultDate;
+  const time = from ? formatTime(from.start, practiceTimeZone) : "";
   return {
     patient: null,
     practitionerId: practitionerIds.length === 1 ? (practitionerIds[0] ?? "") : "",
     medicalServiceId: medicalService?.id ?? "",
     durationMinutes: medicalService ? String(medicalService.durationMinutes) : "",
-    start: from && { start: from.start, roomName: from.roomName, timeZone: from.timeZone },
+    start: from && { start: from.start, roomName: from.roomName },
     freeFrom: defaultDate,
     date,
     time,
@@ -100,12 +94,12 @@ export function bookingRequestOf(values: BookingValues) {
   return bookingInputSchema.safeParse({ ...partialInputOf(values), start: values.start?.start });
 }
 
-export function overbookingRequestOf(values: BookingValues, timeZone: string) {
+export function overbookingRequestOf(values: BookingValues) {
   return overbookingInputSchema.safeParse({
     ...partialInputOf(values),
     start:
       isWholeDate(values.date) && isWholeTime(values.time)
-        ? instantOf(values.date, values.time, timeZone)
+        ? instantOf(values.date, values.time, practiceTimeZone)
         : undefined,
     roomId: values.roomId || null,
   });
@@ -187,7 +181,7 @@ export function keepsOfferedStarts(changedField: string): boolean {
 export function showsWeekOfStarts(form: {
   fixed: boolean;
   start: PickedStart | null;
-  offeredStarts: readonly OfferedStart[] | null;
+  offeredStarts: readonly PickedStart[] | null;
 }): boolean {
   if (!form.fixed) {
     return true;

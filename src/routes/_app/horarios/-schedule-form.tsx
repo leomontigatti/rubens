@@ -12,6 +12,7 @@ import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
 import type { ActionResult, RefusalReason } from "#/routes/_app/horarios/-shared.tsx";
+import { practiceTimeZone } from "#/lib/dates.ts";
 
 type FieldName = keyof ScheduleInput | keyof ScheduleChange;
 
@@ -141,10 +142,7 @@ export function ScheduleForm(props: {
             startsRow
             required
             placeholder="Elegí un consultorio"
-            options={props.rooms.map((room) => ({
-              value: room.id,
-              label: `${room.name} · ${room.officeName}`,
-            }))}
+            options={props.rooms.map((room) => ({ value: room.id, label: room.name }))}
           />
         )}
       </form.AppField>
@@ -166,7 +164,7 @@ export function offeredRooms(rooms: RoomOption[], schedule: Schedule): RoomOptio
   if (rooms.some((room) => room.id === schedule.roomId)) {
     return rooms;
   }
-  const own = { id: schedule.roomId, name: schedule.roomName, officeName: schedule.officeName };
+  const own = { id: schedule.roomId, name: schedule.roomName };
   return [own, ...rooms];
 }
 
@@ -201,7 +199,7 @@ export function EditableSchedule(props: {
   if ("reason" in found) {
     return <RefusalAlert reason={found.reason} />;
   }
-  const state = scheduleState(found.schedule, today(found.schedule.timeZone));
+  const state = scheduleState(found.schedule, today(practiceTimeZone));
   if (!mayChange(found.practitioner, state.ended)) {
     return <RefusalAlert reason="forbidden" />;
   }

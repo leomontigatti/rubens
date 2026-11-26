@@ -1,3 +1,4 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { and, asc, eq, gt, inArray, ne, or } from "drizzle-orm";
@@ -5,15 +6,12 @@ import { and, asc, eq, gt, inArray, ne, or } from "drizzle-orm";
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { occurrencesDuring } from "#/lib/availability.ts";
-import { findCrowding } from "#/lib/room-space.ts";
 import {
   findCollision,
-  sameClock,
   scheduleChangeSchema,
   scheduleDeleteSchema,
   scheduleEndSchema,
   scheduleInputSchema,
-  sharedDates,
   shiftDate,
   shortTime,
   today,
@@ -25,7 +23,6 @@ import type {
   ScheduleInput,
   WeeklySlot,
 } from "#/lib/schedules.ts";
-import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
 import { settlingToReschedule } from "#/organization/change-messages.ts";
@@ -38,8 +35,8 @@ import { appointment, office, practitioner, room, schedule } from "#/organizatio
 // Practitioners' weekly schedules. Everyone reads them; an admin changes
 // anyone's and a practitioner their own (the object requires one of the two
 // roles, and `findPractitioner` decides whose). Saving one checks that the
-// room never holds more practitioners at once than its capacity, through
-// schedules or future appointments, and the practitioner is never in two
+// room never holds two practitioners at once, through schedules or future
+// appointments, and the practitioner is never in two
 // schedules at once (ADR-0003). The check and the write run in one
 // synchronous transaction, so no other call interleaves (ADR-0008). Every
 // change is written to the audit log, about no patient.
@@ -48,8 +45,6 @@ export interface Schedule {
   id: string;
   roomId: string;
   roomName: string;
-  officeName: string;
-  timeZone: string;
   weekdays: number[];
   startTime: string;
   endTime: string;
@@ -61,7 +56,6 @@ export interface Schedule {
 export interface RoomOption {
   id: string;
   name: string;
-  officeName: string;
 }
 
 /** The schedule a save collides with, and on which weekday. */
@@ -88,10 +82,8 @@ type Refusal =
   | "notFound"
   | "practitionerInactive"
   | "roomInactive"
-  | "officeInactive"
   | "dateInPast"
-  | "alreadyStarted"
-  | "otherTimeZone";
+  | "alreadyStarted";
 
 type CollisionRefusal =
   | { ok: false; reason: "roomFull" | "practitionerBusy"; collision: Collision }
@@ -112,8 +104,6 @@ const scheduleColumns = {
   practitionerId: schedule.practitionerId,
   roomId: schedule.roomId,
   roomName: room.name,
-  officeName: office.name,
-  timeZone: office.timeZone,
   weekdays: schedule.weekdays,
   startTime: schedule.startTime,
   endTime: schedule.endTime,
@@ -127,8 +117,7 @@ function selectSchedules(writer: Writer) {
   return writer
     .select(scheduleColumns)
     .from(schedule)
-    .innerJoin(room, eq(room.id, schedule.roomId))
-    .innerJoin(office, eq(office.id, room.officeId));
+    .innerJoin(room, eq(room.id, schedule.roomId));
 }
 
 function toSchedule(row: ScheduleRow): Schedule {
@@ -136,8 +125,6 @@ function toSchedule(row: ScheduleRow): Schedule {
     id: row.id,
     roomId: row.roomId,
     roomName: row.roomName,
-    officeName: row.officeName,
-    timeZone: row.timeZone,
     weekdays: row.weekdays,
     startTime: shortTime(row.startTime),
     endTime: shortTime(row.endTime),
@@ -171,11 +158,11 @@ export function getPractitionerSchedules(
     .orderBy(asc(schedule.firstDate), asc(schedule.startTime))
     .all();
   const rooms = database
-    .select({ id: room.id, name: room.name, officeName: office.name })
+    .select({ id: room.id, name: room.name })
     .from(room)
     .innerJoin(office, eq(office.id, room.officeId))
     .where(and(eq(room.active, true), eq(office.active, true)))
-    .orderBy(asc(office.name), asc(room.name))
+    .orderBy(asc(room.name))
     .all();
   return {
     ok: true,
@@ -214,22 +201,12 @@ function checkCandidate(
   replacing: string | null,
 ): { ok: true } | { ok: false; reason: Refusal } | CollisionRefusal {
   const target = writer
-    .select({
-      name: room.name,
-      active: room.active,
-      capacity: room.capacity,
-      officeActive: office.active,
-      timeZone: office.timeZone,
-    })
+    .select({ name: room.name, active: room.active })
     .from(room)
-    .innerJoin(office, eq(office.id, room.officeId))
     .where(eq(room.id, candidate.roomId))
     .get();
   if (!target) {
     return notFound;
-  }
-  if (!target.officeActive) {
-    return { ok: false, reason: "officeInactive" };
   }
   if (!target.active) {
     return { ok: false, reason: "roomInactive" };
@@ -252,22 +229,8 @@ function checkCandidate(
     )
     .all();
 
-  // The collision check compares local times, which only means one moment within
-  // one clock, so a practitioner works on a single clock at a time.
-  const abroad = others.some((row) => {
-    const shared = sharedDates(row, candidate);
-    return (
-      row.practitionerId === candidate.practitionerId &&
-      shared !== null &&
-      !sameClock(row.timeZone, target.timeZone, shared, today(target.timeZone))
-    );
-  });
-  if (abroad) {
-    return { ok: false, reason: "otherTimeZone" };
-  }
-
   const inRoom = others.filter((row) => row.roomId === candidate.roomId);
-  const roomClash = findCollision(candidate, inRoom, target.capacity);
+  const roomClash = findCollision(candidate, inRoom);
   if (roomClash) {
     return {
       ok: false,
@@ -275,14 +238,13 @@ function checkCandidate(
       collision: describeCollision(roomClash.schedule, roomClash.weekday),
     };
   }
-  const crowded = findCrowdedAppointment(writer, candidate, inRoom, target);
+  const crowded = findHoldingAppointment(writer, candidate, target.name);
   if (crowded) {
     return { ok: false, reason: "roomFull", appointment: crowded };
   }
   const ownClash = findCollision(
     candidate,
     others.filter((row) => row.practitionerId === candidate.practitionerId),
-    1,
   );
   if (ownClash) {
     return {
@@ -295,19 +257,16 @@ function checkCandidate(
 }
 
 /**
- * Another practitioner's future active appointment in the room that, with the
- * room's schedules and appointments, leaves no space for `candidate`; `null`
- * when there is none. `roomSchedules` excludes the one being replaced.
+ * Another practitioner's future active appointment in the room during one of
+ * `candidate`'s occurrences; `null` when there is none.
  */
-function findCrowdedAppointment(
+function findHoldingAppointment(
   writer: Writer,
   candidate: Candidate,
-  roomSchedules: readonly ScheduleRow[],
-  target: { name: string; capacity: number; timeZone: string },
+  roomName: string,
 ): AppointmentCollision | null {
-  const appointments = writer
+  const held = writer
     .select({
-      practitionerId: appointment.practitionerId,
       practitionerName: practitioner.displayName,
       startsAt: appointment.startsAt,
       endsAt: appointment.endsAt,
@@ -317,48 +276,30 @@ function findCrowdedAppointment(
     .where(
       and(
         eq(appointment.roomId, candidate.roomId),
+        ne(appointment.practitionerId, candidate.practitionerId),
         inArray(appointment.status, [...activeAppointmentStatuses]),
         gt(appointment.endsAt, Date.now()),
       ),
     )
+    .orderBy(asc(appointment.startsAt))
     .all()
-    .map(({ startsAt, endsAt, ...rest }) => ({
-      ...rest,
-      during: { start: new Date(startsAt), end: new Date(endsAt) },
-    }));
-  const presences = (span: TimeRange) => [
-    ...roomSchedules.flatMap((row) =>
-      occurrencesDuring(row, span).map((occurrence) => ({
-        practitionerId: row.practitionerId,
-        ...occurrence,
-      })),
-    ),
-    ...appointments.map(({ practitionerId, during }) => ({ practitionerId, ...during })),
-  ];
-  const slot = { ...candidate, timeZone: target.timeZone };
-  for (const held of appointments) {
-    if (held.practitionerId === candidate.practitionerId) {
-      continue;
-    }
-    for (const occurrence of occurrencesDuring(slot, held.during)) {
-      const span = {
-        start: occurrence.start > held.during.start ? occurrence.start : held.during.start,
-        end: occurrence.end < held.during.end ? occurrence.end : held.during.end,
-      };
-      if (findCrowding(span, candidate.practitionerId, presences(span), target.capacity)) {
-        const local = (instant: Date, pattern: string) =>
-          format(instant, pattern, { in: tz(target.timeZone) });
-        return {
-          practitionerName: held.practitionerName,
-          roomName: target.name,
-          date: local(held.during.start, "yyyy-MM-dd"),
-          startTime: local(held.during.start, "HH:mm"),
-          endTime: local(held.during.end, "HH:mm"),
-        };
-      }
-    }
+    .find(
+      ({ startsAt, endsAt }) =>
+        occurrencesDuring(candidate, { start: new Date(startsAt), end: new Date(endsAt) }).length >
+        0,
+    );
+  if (!held) {
+    return null;
   }
-  return null;
+  const local = (instant: number, pattern: string) =>
+    format(new Date(instant), pattern, { in: tz(practiceTimeZone) });
+  return {
+    practitionerName: held.practitionerName,
+    roomName,
+    date: local(held.startsAt, "yyyy-MM-dd"),
+    startTime: local(held.startsAt, "HH:mm"),
+    endTime: local(held.endsAt, "HH:mm"),
+  };
 }
 
 function insertSchedule(writer: Writer, acting: Acting, candidate: Candidate) {
@@ -430,7 +371,7 @@ export function createSchedule(
 
 /**
  * The schedule and its practitioner, when `acting` may change it. Past weeks
- * are judged by today's date in the schedule's office's zone.
+ * are judged by today's date in the practice's zone.
  */
 function findEditable(writer: Writer, acting: Acting, scheduleId: string) {
   const found = selectSchedules(writer).where(eq(schedule.id, scheduleId)).get();
@@ -444,7 +385,7 @@ function findEditable(writer: Writer, acting: Acting, scheduleId: string) {
   if (!owner.canEdit) {
     return forbidden;
   }
-  return { ok: true as const, found, owner, today: today(found.timeZone) };
+  return { ok: true as const, found, owner, today: today(practiceTimeZone) };
 }
 
 /**

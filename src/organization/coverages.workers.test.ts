@@ -82,60 +82,52 @@ async function coverageHistory(organization: OrganizationStub, patientId: string
     .reverse();
 }
 
-describe("a patient's coverages", () => {
+describe("a patient's coverage", () => {
   it("lists none for a new patient, who is private", async () => {
     const { coverages } = await patientWithInsurers();
 
     expect(await coverages()).toEqual([]);
   });
 
-  it("lets receptionists, admins and practitioners add coverages, the first one primary", async () => {
-    const { receptionist, practitioner, osde, apross, add, coverages } =
+  it("lets receptionists, admins and practitioners add the patient's one coverage", async () => {
+    const { organization, receptionist, practitioner, osde, apross, add, coverages } =
       await patientWithInsurers();
 
-    const first = await add(receptionist, { plan: " 310 " });
-    await add(adminCaller, { insurerId: apross, memberNumber: "456" });
-    await add(practitioner, { insurerId: apross, memberNumber: "789" });
+    const added = await add(receptionist, { plan: " 310 " });
 
-    expect(first).toMatchObject({
+    expect(added).toMatchObject({
       insurerId: osde,
       insurerName: "OSDE",
       insurerKind: "prepaga",
+      insurerActive: true,
       plan: "310",
       memberNumber: "123",
-      primary: true,
     });
-    expect(
-      (await coverages()).map(({ insurerName, memberNumber, primary }) => ({
-        insurerName,
-        memberNumber,
-        primary,
-      })),
-    ).toEqual([
-      { insurerName: "OSDE", memberNumber: "123", primary: true },
-      { insurerName: "Apross", memberNumber: "456", primary: false },
-      { insurerName: "Apross", memberNumber: "789", primary: false },
-    ]);
+    expect(await coverages()).toEqual([added]);
+
+    for (const caller of [adminCaller, practitioner]) {
+      await organization.removeCoverage(receptionist, { coverageId: (await coverages())[0]!.id });
+      await add(caller, { insurerId: apross });
+    }
+    expect((await coverages()).map((row) => row.insurerName)).toEqual(["Apross"]);
   });
 
-  it("moves the primary flag to a coverage added as primary or made primary", async () => {
-    const { organization, receptionist, apross, add, coverages } = await patientWithInsurers();
+  it("refuses a second coverage to a patient who has one", async () => {
+    const { organization, receptionist, patientId, apross, add, coverages } =
+      await patientWithInsurers();
     const first = await add(receptionist);
-    const second = await add(receptionist, { insurerId: apross, primary: true });
 
-    expect((await coverages()).filter((row) => row.primary).map((row) => row.id)).toEqual([
-      second.id,
-    ]);
-
-    expect(await organization.makeCoveragePrimary(receptionist, { coverageId: first.id })).toEqual({
-      ok: true,
-    });
-    expect((await coverages()).filter((row) => row.primary).map((row) => row.id)).toEqual([
-      first.id,
-    ]);
+    expect(
+      await organization.addCoverage(receptionist, {
+        patientId,
+        insurerId: apross,
+        memberNumber: "456",
+      }),
+    ).toEqual({ ok: false, reason: "hasCoverage" });
+    expect((await coverages()).map((row) => row.id)).toEqual([first.id]);
   });
 
-  it("keeps at most one primary coverage per patient in storage", async () => {
+  it("keeps at most one coverage per patient in storage", async () => {
     const { organization, receptionist, patientId, apross, add, coverages } =
       await patientWithInsurers();
     const first = await add(receptionist);
@@ -145,14 +137,14 @@ describe("a patient's coverages", () => {
       inStorage(organization, (database) =>
         database
           .insert(coverage)
-          .values({ patientId, insurerId: apross, memberNumber: "456", primary: true })
+          .values({ patientId, insurerId: apross, memberNumber: "456" })
           .run(),
       ),
     ).rejects.toThrow();
     expect((await coverages()).map((row) => row.id)).toEqual([first.id]);
   });
 
-  it("edits a coverage's insurer, plan and member number", async () => {
+  it("edits the coverage's insurer, plan and member number", async () => {
     const { organization, receptionist, practitioner, apross, add } = await patientWithInsurers();
     const added = await add(receptionist, { plan: "310" });
 
@@ -165,49 +157,26 @@ describe("a patient's coverages", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      coverage: { insurerName: "Apross", plan: null, memberNumber: "999", primary: true },
+      coverage: { insurerName: "Apross", plan: null, memberNumber: "999" },
     });
   });
 
-  it("removes a coverage, handing the primary flag to the oldest one left", async () => {
-    const { organization, receptionist, apross, add, coverages } = await patientWithInsurers();
-    const first = await add(receptionist);
-    const second = await add(receptionist, { insurerId: apross });
-    await add(receptionist, { memberNumber: "777" });
+  it("removes the coverage, leaving the patient private", async () => {
+    const { organization, receptionist, add, coverages } = await patientWithInsurers();
+    const added = await add(receptionist);
 
-    expect(await organization.removeCoverage(receptionist, { coverageId: first.id })).toEqual({
+    expect(await organization.removeCoverage(receptionist, { coverageId: added.id })).toEqual({
       ok: true,
     });
 
-    const left = await coverages();
-    expect(left).toHaveLength(2);
-    expect(left.map(({ id, primary }) => ({ id, primary }))[0]).toEqual({
-      id: second.id,
-      primary: true,
-    });
+    expect(await coverages()).toEqual([]);
   });
 
-  it("offers no deactivated insurer, and keeps it on the coverages that have it", async () => {
+  it("offers no deactivated insurer, and keeps it on the coverage that has it", async () => {
     const { organization, receptionist, patientId, osde, apross, add, coverages } =
       await patientWithInsurers();
     const added = await add(receptionist);
     await organization.setInsurerActive(adminCaller, { id: osde, active: false });
-
-    expect(
-      await organization.addCoverage(receptionist, {
-        patientId,
-        insurerId: osde,
-        memberNumber: "1",
-      }),
-    ).toEqual({ ok: false, reason: "insurerInactive" });
-    const other = await add(receptionist, { insurerId: apross });
-    expect(
-      await organization.updateCoverage(receptionist, {
-        coverageId: other.id,
-        insurerId: osde,
-        memberNumber: "1",
-      }),
-    ).toEqual({ ok: false, reason: "insurerInactive" });
 
     // The coverage that already has it keeps it, and can still be edited.
     expect(
@@ -218,11 +187,36 @@ describe("a patient's coverages", () => {
         memberNumber: "123",
       }),
     ).toMatchObject({ ok: true, coverage: { insurerName: "OSDE", insurerActive: false } });
-    expect((await coverages()).map((row) => row.insurerName)).toEqual(["OSDE", "Apross"]);
+    expect((await coverages()).map((row) => row.insurerName)).toEqual(["OSDE"]);
+
+    await organization.updateCoverage(receptionist, {
+      coverageId: added.id,
+      insurerId: apross,
+      memberNumber: "123",
+    });
+    expect(
+      await organization.updateCoverage(receptionist, {
+        coverageId: added.id,
+        insurerId: osde,
+        memberNumber: "1",
+      }),
+    ).toEqual({ ok: false, reason: "insurerInactive" });
+    expect(await coverages()).toMatchObject([{ insurerName: "Apross", memberNumber: "123" }]);
+
+    await organization.removeCoverage(receptionist, { coverageId: added.id });
+    expect(
+      await organization.addCoverage(receptionist, {
+        patientId,
+        insurerId: osde,
+        memberNumber: "1",
+      }),
+    ).toEqual({ ok: false, reason: "insurerInactive" });
+    expect(await coverages()).toEqual([]);
   });
 
   it("refuses coverage calls to a caller who is not a member", async () => {
-    const { organization, receptionist, patientId, osde, add } = await patientWithInsurers();
+    const { organization, receptionist, patientId, osde, add, coverages } =
+      await patientWithInsurers();
     const added = await add(receptionist);
     const stranger = { userId: "user-stranger" };
 
@@ -234,15 +228,15 @@ describe("a patient's coverages", () => {
         insurerId: osde,
         memberNumber: "1",
       }),
-      await organization.makeCoveragePrimary(stranger, { coverageId: added.id }),
       await organization.removeCoverage(stranger, { coverageId: added.id }),
     ]) {
       expect(result).toEqual({ ok: false, reason: "unauthenticated" });
     }
+    expect(await coverages()).toEqual([added]);
   });
 
   it("answers notFound for what is not there", async () => {
-    const { organization, receptionist, patientId, osde } = await patientWithInsurers();
+    const { organization, receptionist, patientId, osde, coverages } = await patientWithInsurers();
 
     for (const result of [
       await organization.listCoverages(receptionist, { patientId: missing }),
@@ -261,45 +255,32 @@ describe("a patient's coverages", () => {
         insurerId: osde,
         memberNumber: "1",
       }),
-      await organization.makeCoveragePrimary(receptionist, { coverageId: missing }),
       await organization.removeCoverage(receptionist, { coverageId: missing }),
     ]) {
       expect(result).toEqual({ ok: false, reason: "notFound" });
     }
+    expect(await coverages()).toEqual([]);
   });
 
   it("writes each coverage change to the patient's history, in order", async () => {
     const { organization, receptionist, practitioner, patientId, osde, apross, add } =
       await patientWithInsurers();
     const first = await add(receptionist, { plan: "310" });
-    const second = await add(adminCaller, { insurerId: apross, memberNumber: "456" });
     await organization.updateCoverage(practitioner, {
       coverageId: first.id,
       insurerId: osde,
       plan: "410",
       memberNumber: "123",
     });
-    await organization.makeCoveragePrimary(receptionist, { coverageId: second.id });
-    await organization.removeCoverage(receptionist, { coverageId: second.id });
+    await organization.removeCoverage(receptionist, { coverageId: first.id });
+    await add(adminCaller, { insurerId: apross, memberNumber: "456" });
 
     expect(await coverageHistory(organization, patientId)).toEqual([
       {
         action: "create",
         userId: receptionist.userId,
         before: null,
-        after: {
-          insurerId: osde,
-          insurer: "OSDE",
-          plan: "310",
-          memberNumber: "123",
-          primary: true,
-        },
-      },
-      {
-        action: "create",
-        userId: adminCaller.userId,
-        before: null,
-        after: { insurerId: apross, insurer: "Apross", memberNumber: "456", primary: false },
+        after: { insurerId: osde, insurer: "OSDE", plan: "310", memberNumber: "123" },
       },
       {
         action: "update",
@@ -308,28 +289,16 @@ describe("a patient's coverages", () => {
         after: { plan: "410" },
       },
       {
-        action: "update",
-        userId: receptionist.userId,
-        before: { primary: true },
-        after: { primary: false },
-      },
-      {
-        action: "update",
-        userId: receptionist.userId,
-        before: { primary: false },
-        after: { primary: true },
-      },
-      {
         action: "delete",
         userId: receptionist.userId,
-        before: { insurerId: apross, insurer: "Apross", memberNumber: "456", primary: true },
+        before: { insurerId: osde, insurer: "OSDE", plan: "410", memberNumber: "123" },
         after: null,
       },
       {
-        action: "update",
-        userId: receptionist.userId,
-        before: { primary: false },
-        after: { primary: true },
+        action: "create",
+        userId: adminCaller.userId,
+        before: null,
+        after: { insurerId: apross, insurer: "Apross", memberNumber: "456" },
       },
     ]);
   });

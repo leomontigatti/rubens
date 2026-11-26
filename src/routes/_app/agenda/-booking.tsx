@@ -12,7 +12,7 @@ import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { receptionNoteMaxLength } from "#/lib/appointments.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import {
   bookingFieldNames,
   bookingRequestOf,
@@ -27,7 +27,6 @@ import type {
   BookingStart,
   BookingValues,
   BookingWarning,
-  OfferedStart,
   PickedStart,
 } from "#/lib/booking-draft.ts";
 import { getMedicalServices } from "#/server/medical-services.functions.ts";
@@ -38,8 +37,8 @@ import { PatientPicker } from "#/routes/_app/agenda/-patient-picker.tsx";
 import { formatDateTime, formatTime } from "#/lib/dates.ts";
 
 // Booking a patient on a page of its own, from either entry: a free cell
-// clicked on the calendar, which fixes the time and the room, and the
-// practitioner unless several are free there, or "Nuevo turno", which picks
+// clicked on the calendar, which fixes the time, the room and the
+// practitioner free there, or "Nuevo turno", which picks
 // the practitioner, the medical service and then a free time for that
 // duration. An overbooking takes a typed date and time instead, and a room
 // when it falls outside the practitioner's schedules.
@@ -59,7 +58,6 @@ const refusalMessages = {
   timeOff: "El profesional no atiende a esa hora: tiene una ausencia cargada.",
   closed: "La sede está cerrada a esa hora.",
   roomInactive: "Ese consultorio está archivado.",
-  officeInactive: "La sede de ese consultorio está archivada.",
 };
 
 type RefusalReason = keyof typeof refusalMessages;
@@ -93,21 +91,20 @@ const overbookingMessages = { ...fieldMessages, start: "Ingresá la fecha y la h
  * Why the room has no space: who holds it at that time. None when the
  * appointment that took it was gone by the time the server looked again.
  */
-export function roomFullMessage(occupants: readonly RoomOccupant[], timeZone: string): string {
+export function roomFullMessage(occupants: readonly RoomOccupant[]): string {
   if (occupants.length === 0) {
     return "El consultorio se ocupó a esa hora mientras guardabas. Probá de nuevo.";
   }
   const held = occupants.map(
     (occupant) =>
-      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${formatTime(occupant.start, timeZone)} a ${formatTime(occupant.end, timeZone)})`,
+      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${formatTime(occupant.start, practiceTimeZone)} a ${formatTime(occupant.end, practiceTimeZone)})`,
   );
   return `Ese consultorio no tiene lugar a esa hora. Lo ocupan: ${held.join(", ")}.`;
 }
 
-/** Where an overbooking can go: the office's rooms, its local times read in its zone. */
+/** Where an overbooking can go: the office's rooms. */
 export interface OverbookingOffice {
   rooms: { id: string; name: string }[];
-  timeZone: string;
 }
 
 type BookingRefusal =
@@ -117,7 +114,7 @@ type BookingRefusal =
 /** What the last attempt answered: warnings to confirm past, the free times left, or a refusal. */
 interface Answer {
   warnings: BookingWarning[] | null;
-  freshStarts: OfferedStart[] | null;
+  freshStarts: PickedStart[] | null;
   refusal: FieldProblem | null;
 }
 
@@ -150,8 +147,7 @@ function roomFullProblem(
   office: OverbookingOffice | null,
 ): FieldProblem {
   // A booking's refusals hold no zone; its office is the default one.
-  const timeZone = office?.timeZone ?? defaultTimeZone;
-  return { field: office ? "roomId" : "start", message: roomFullMessage(occupants, timeZone) };
+  return { field: office ? "roomId" : "start", message: roomFullMessage(occupants) };
 }
 
 /** An overbooking's start is typed in its time. */
@@ -171,7 +167,7 @@ export function durationMessage(typed: string): string {
 function requestOf(values: BookingValues, office: OverbookingOffice | null) {
   const duration = { durationMinutes: durationMessage(values.durationMinutes) };
   if (office) {
-    const parsed = overbookingRequestOf(values, office.timeZone);
+    const parsed = overbookingRequestOf(values);
     const messages = messageIn({ ...overbookingMessages, ...duration });
     return parsed.success
       ? { overbooking: true as const, data: parsed.data }
@@ -320,15 +316,13 @@ function WhoAndWhen(params: {
   form: BookingForm;
   props: BookingPageProps;
   ask: boolean;
-  freshStarts: OfferedStart[] | null;
+  freshStarts: PickedStart[] | null;
 }) {
   const { form, props } = params;
   const fixed = props.from !== null;
   return (
     <>
-      {params.ask && (
-        <PractitionerField form={form} practitioners={props.practitioners} fixed={fixed} />
-      )}
+      {params.ask && <PractitionerField form={form} practitioners={props.practitioners} />}
       <TypeAndDuration form={form} />
       {props.overbooking ? (
         <OverbookingFields form={form} rooms={props.overbooking.rooms} />
@@ -339,11 +333,10 @@ function WhoAndWhen(params: {
   );
 }
 
-/** Whom to book for, among several; a new one drops the medical service, and a start not fixed. */
+/** Whom to book for, among several; a new one drops the medical service and the start. */
 function PractitionerField(props: {
   form: BookingForm;
   practitioners: { id: string; displayName: string }[];
-  fixed: boolean;
 }) {
   const { form } = props;
   return (
@@ -353,9 +346,7 @@ function PractitionerField(props: {
         onChange: () => {
           form.setFieldValue("medicalServiceId", "");
           form.setFieldValue("durationMinutes", "");
-          if (!props.fixed) {
-            form.setFieldValue("start", null);
-          }
+          form.setFieldValue("start", null);
         },
       }}
     >
@@ -438,7 +429,7 @@ function StartField(props: {
   form: BookingForm;
   fixed: boolean;
   /** The free times left that day, after the one picked stopped being free. */
-  freshStarts: OfferedStart[] | null;
+  freshStarts: PickedStart[] | null;
 }) {
   const { form, fixed } = props;
   const query = useStore(form.store, (state) => freeStartsQueryOf(state.values));
@@ -506,7 +497,7 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
   return (
     <p className="text-sm">
       <span className="text-muted-foreground">Turno:</span>{" "}
-      <span className="font-medium">{formatDateTime(start.start, start.timeZone)}</span>,{" "}
+      <span className="font-medium">{formatDateTime(start.start, practiceTimeZone)}</span>,{" "}
       {start.roomName}
     </p>
   );
@@ -514,7 +505,7 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
 
 /** The free times left that day, once the one picked stopped being free. */
 function FreshStarts(props: {
-  starts: OfferedStart[] | null;
+  starts: PickedStart[] | null;
   picked: PickedStart | null;
   onPick: (start: PickedStart) => void;
 }) {
@@ -550,8 +541,8 @@ export function PatientWarnings(props: {
           <ul className="list-disc pl-5">
             {props.warnings.map((warning) => (
               <li key={+warning.start}>
-                {formatTime(warning.start, warning.timeZone)} a{" "}
-                {formatTime(warning.end, warning.timeZone)} con {warning.practitionerName}
+                {formatTime(warning.start, practiceTimeZone)} a{" "}
+                {formatTime(warning.end, practiceTimeZone)} con {warning.practitionerName}
                 {warning.kind === "overlap" && ", a la misma hora"}
               </li>
             ))}

@@ -15,9 +15,10 @@ them are in [ADR-0003](../adr/0003-scheduling-and-clinical-records.md).
 
 ## Scope
 
-underthing serves one business today, a dental practice. The organization and its
-first admin are created by a script; there is no public sign-up. The data model
-stays multi-organization.
+underthing serves one business today, a dental practice. The organization, its one
+office and its first admin are created by a script; there is no public sign-up, and
+nothing adds a second office or archives the first. The data model stays
+multi-organization.
 
 Staff book in the app. Patients cancel and reschedule by WhatsApp, through the
 assistant, and book there from its second release

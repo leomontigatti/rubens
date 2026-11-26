@@ -16,6 +16,7 @@ import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
 import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
+import { practiceTimeZone } from "#/lib/dates.ts";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
@@ -88,11 +89,13 @@ function NoSchedules(props: { practitionerId: string; canEdit: boolean; rooms: R
         title="Sin horarios"
         description={
           isAdmin
-            ? "Todavía no tiene horarios. Empezá agregando un consultorio activo en Sedes."
+            ? "Todavía no tiene horarios. Empezá agregando un consultorio activo en Consultorios."
             : "Todavía no tiene horarios, y antes hace falta un consultorio activo."
         }
       >
-        {isAdmin && <EmptyStateLink link={<Link to="/sedes" />}>Ir a Sedes</EmptyStateLink>}
+        {isAdmin && (
+          <EmptyStateLink link={<Link to="/consultorios" />}>Ir a Consultorios</EmptyStateLink>
+        )}
       </EmptyState>
     );
   }
@@ -118,7 +121,7 @@ function NoSchedules(props: { practitionerId: string; canEdit: boolean; rooms: R
 
 function ScheduleItem(props: { schedule: Schedule; canEdit: boolean }) {
   const { schedule } = props;
-  const state = scheduleState(schedule, today(schedule.timeZone));
+  const state = scheduleState(schedule, today(practiceTimeZone));
 
   return (
     <li>
@@ -143,9 +146,7 @@ function ScheduleSummary(props: { schedule: Schedule; ended: boolean; children: 
         <span className="font-medium">
           {weekdaysLabel(schedule.weekdays)} · {schedule.startTime} a {schedule.endTime}
         </span>
-        <span className="text-muted-foreground text-sm">
-          {schedule.roomName} · {schedule.officeName}
-        </span>
+        <span className="text-muted-foreground text-sm">{schedule.roomName}</span>
         <span className="text-muted-foreground text-sm">
           {validityLabel(schedule)}
           {props.ended && " · Terminado"}

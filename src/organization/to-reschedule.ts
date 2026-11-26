@@ -5,12 +5,13 @@ import { actsForEveryone } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { outsideWorkingTime, outsideWorkingTimeWithin } from "#/lib/availability.ts";
 import type { OutsideWorkingTime, WorkingTime } from "#/lib/availability.ts";
-import { defaultTimeZone, placeReferenceSchema } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
+import { placeReferenceSchema } from "#/lib/offices.ts";
 import type { PlaceReference } from "#/lib/offices.ts";
 import { patientName, patientReferenceSchema } from "#/lib/patients.ts";
 import type { PatientReference } from "#/lib/patients.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
-import { shiftDate, today } from "#/lib/schedules.ts";
+import { today } from "#/lib/schedules.ts";
 import { memberReferenceSchema } from "#/lib/staff.ts";
 import type { MemberReference } from "#/lib/staff.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -53,10 +54,7 @@ export interface ToRescheduleEntry {
   status: AppointmentStatus;
   medicalServiceName: string;
   color: PractitionerColor;
-  officeName: string;
   roomName: string;
-  /** The office's zone, to show the appointment in local time. */
-  timeZone: string;
   reason: ToRescheduleReason;
 }
 
@@ -65,7 +63,6 @@ export type ToRescheduleReason =
   | OutsideWorkingTime
   | "practitionerInactive"
   | "patientInactive"
-  | "officeInactive"
   | "roomInactive";
 
 /** Where an appointment sits or a schedule runs. */
@@ -96,12 +93,9 @@ function upcomingAppointments(writer: Writer, acting: Acting) {
       medicalServiceName: medicalService.name,
       color: practitioner.color,
       officeId: office.id,
-      officeActive: office.active,
-      officeName: office.name,
       roomId: room.id,
       roomActive: room.active,
       roomName: room.name,
-      timeZone: office.timeZone,
     })
     .from(appointment)
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
@@ -134,7 +128,6 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
       practitionerId: schedule.practitionerId,
       officeId: office.id,
       roomId: room.id,
-      timeZone: office.timeZone,
       weekdays: schedule.weekdays,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
@@ -147,11 +140,7 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
     .where(
       and(
         inArray(schedule.practitionerId, boundAsOne(practitionerIds)),
-        // An office in another zone than the default one may still be on yesterday.
-        or(
-          isNull(schedule.lastDate),
-          gte(schedule.lastDate, shiftDate(today(defaultTimeZone), -1)),
-        ),
+        or(isNull(schedule.lastDate), gte(schedule.lastDate, today(practiceTimeZone))),
       ),
     )
     .all();
@@ -165,11 +154,11 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
     .where(and(inArray(timeOff.practitionerId, boundAsOne(practitionerIds)), meets(timeOff, reach)))
     .all();
   const closures = writer
-    .select({ officeId: closure.officeId, startsAt: closure.startsAt, endsAt: closure.endsAt })
+    .select({ startsAt: closure.startsAt, endsAt: closure.endsAt })
     .from(closure)
     .where(meets(closure, reach))
     .all()
-    .map((row) => ({ officeId: row.officeId, during: asRange(row) }));
+    .map(asRange);
   const byPractitioner = new Map<string, PractitionerWorkingTime>();
   return (practitionerId: string): PractitionerWorkingTime => {
     let found = byPractitioner.get(practitionerId);
@@ -207,7 +196,6 @@ function upcomingWhere(writer: Writer, which: SQL | undefined) {
       practitionerActive: member.active,
       patientActive: patient.active,
       officeId: office.id,
-      officeActive: office.active,
       roomActive: room.active,
     })
     .from(appointment)
@@ -262,13 +250,7 @@ type OutsideCheck = PractitionerWorkingTime["outside"];
 /** What decides whether an appointment is on the list. */
 type ListedBy = Pick<
   Upcoming,
-  | "practitionerActive"
-  | "patientActive"
-  | "officeActive"
-  | "roomActive"
-  | "overbooking"
-  | "during"
-  | "officeId"
+  "practitionerActive" | "patientActive" | "roomActive" | "overbooking" | "during" | "officeId"
 >;
 
 /** Why the appointment is on the list; `null` when it is not. */
@@ -278,9 +260,6 @@ function reasonFor(row: ListedBy, outside: OutsideCheck): ToRescheduleReason | n
   }
   if (!row.patientActive) {
     return "patientInactive";
-  }
-  if (!row.officeActive) {
-    return "officeInactive";
   }
   if (!row.roomActive) {
     return "roomInactive";
@@ -323,9 +302,7 @@ function findToReschedule(writer: Writer, acting: Acting): ToRescheduleEntry[] {
         status: row.status,
         medicalServiceName: row.medicalServiceName,
         color: row.color,
-        officeName: row.officeName,
         roomName: row.roomName,
-        timeZone: row.timeZone,
         reason,
       },
     ];
@@ -427,9 +404,4 @@ function countForPlace(
 /** The appointments deactivating the room would send to the list. */
 export function countRoomUpcoming(writer: Writer, acting: Acting, input: PlaceReference) {
   return countForPlace(writer, acting, input, (id) => (where) => where.roomId === id);
-}
-
-/** The appointments deactivating the office would send to the list. */
-export function countOfficeUpcoming(writer: Writer, acting: Acting, input: PlaceReference) {
-  return countForPlace(writer, acting, input, (id) => (where) => where.officeId === id);
 }

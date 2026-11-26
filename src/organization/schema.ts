@@ -5,7 +5,6 @@ import type { Role } from "#/lib/access.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 import { insurerKinds } from "#/lib/coverages.ts";
 import { notificationKinds } from "#/lib/notifications.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
 
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
@@ -85,7 +84,6 @@ export const office = sqliteTable("office", {
   id: id(),
   name: text("name").notNull(),
   address: text("address").notNull(),
-  timeZone: text("time_zone").notNull().default(defaultTimeZone),
   active: flag("active").notNull().default(true),
   ...timestamps,
 });
@@ -98,18 +96,14 @@ export const room = sqliteTable(
       .notNull()
       .references(() => office.id),
     name: text("name").notNull(),
-    capacity: integer("capacity").notNull().default(1),
     active: flag("active").notNull().default(true),
     ...timestamps,
   },
-  (table) => [
-    index("room_office_id_idx").on(table.officeId),
-    check("room_capacity_check", sql`${table.capacity} >= 1`),
-  ],
+  (table) => [index("room_office_id_idx").on(table.officeId)],
 );
 
 // A set of weekdays with times and validity dates (ADR-0003): the times are
-// wall-clock times in the room's office's time zone, the dates local dates there.
+// wall-clock times in the practice's time zone, the dates local dates there.
 export const schedule = sqliteTable(
   "schedule",
   {
@@ -160,12 +154,11 @@ export const timeOff = sqliteTable(
   ],
 );
 
-/** A closure (ui: "Cierre") of one office, or of the whole organization when `officeId` is null. */
+/** A closure (ui: "Cierre") of the whole organization: every room in it is closed. */
 export const closure = sqliteTable(
   "closure",
   {
     id: id(),
-    officeId: text("office_id").references(() => office.id),
     startsAt: instant("starts_at").notNull(),
     endsAt: instant("ends_at").notNull(),
     /** The last answer, on saving, to whether the patients it sent to the "to reschedule" list were told by WhatsApp; true while nobody was asked. */
@@ -173,7 +166,7 @@ export const closure = sqliteTable(
     ...timestamps,
   },
   (table) => [
-    index("closure_office_id_idx").on(table.officeId, table.startsAt),
+    index("closure_starts_at_idx").on(table.startsAt),
     check("closure_span_check", sql`${table.startsAt} < ${table.endsAt}`),
   ],
 );
@@ -268,7 +261,7 @@ export const insurer = sqliteTable(
   ],
 );
 
-/** A patient's membership of an insurer (ui: "Cobertura"). */
+/** A patient's membership of an insurer (ui: "Cobertura"); a patient has at most one. */
 export const coverage = sqliteTable(
   "coverage",
   {
@@ -281,16 +274,11 @@ export const coverage = sqliteTable(
       .references(() => insurer.id),
     plan: text("plan"),
     memberNumber: text("member_number").notNull(),
-    primary: flag("primary").notNull().default(false),
     ...timestamps,
   },
-  (table) => [
-    index("coverage_patient_id_idx").on(table.patientId),
-    // At most one primary coverage per patient; the object moves the flag.
-    uniqueIndex("coverage_primary_unique")
-      .on(table.patientId)
-      .where(sql`${table.primary}`),
-  ],
+  // At most one coverage per patient; the object refuses a second before it
+  // reaches this index.
+  (table) => [uniqueIndex("coverage_patient_unique").on(table.patientId)],
 );
 
 /**

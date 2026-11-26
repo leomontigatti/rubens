@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import type { WhatsappMessageStatus } from "#/lib/whatsapp-messages.ts";
 
 import {
-  addOffice,
   adminCaller,
   expectOk,
   fakeMeta,
@@ -17,7 +16,7 @@ import { conversation, whatsappMessage } from "#/organization/whatsapp-schema.ts
 // The WhatsApp messages Meta bills the organization for this month, as the
 // WhatsApp settings show them (#294): the templates delivered, by category,
 // and the other messages delivered, the service messages. The month is the
-// organization's, in its first office's zone. Sending a message takes Meta
+// practice's, in its zone. Sending a message takes Meta
 // and an approved template, so a test writes the outgoing rows as the
 // sending code stores them, and Meta's statuses arrive through the webhook's method.
 
@@ -102,7 +101,6 @@ afterEach(() => {
 describe("the month's WhatsApp messages", () => {
   it("are none in a month with no message", async () => {
     vi.setSystemTime(new Date("2099-03-15T12:00:00Z"));
-    await addOffice(organization, "Centro");
     await received(Date.parse("2099-03-14T12:00:00Z"));
 
     expect(await monthMessages()).toEqual({
@@ -112,17 +110,15 @@ describe("the month's WhatsApp messages", () => {
     });
   });
 
-  it("count the month in the first office's zone, across its first midnight", async () => {
-    // 00:30 of February 1st in Madrid, still January 31st in UTC and in Buenos Aires.
-    vi.setSystemTime(new Date("2099-01-31T23:30:00Z"));
-    await addOffice(organization, "Madrid", "Europe/Madrid");
-    await addOffice(organization, "Córdoba");
-    // 23:50 of January 31st in Madrid: last month.
-    await sent("template", Date.parse("2099-01-31T22:50:00Z"), "read");
-    await sent("text", Date.parse("2099-01-31T22:55:00Z"), "delivered");
-    // 00:10 of February 1st in Madrid: this month.
-    await sent("template", Date.parse("2099-01-31T23:10:00Z"), "delivered");
-    await sent("text", Date.parse("2099-01-31T23:15:00Z"), "read");
+  it("count the month in the practice's zone, across its midnight", async () => {
+    // 00:30 of February 1st in Buenos Aires, already February in UTC too.
+    vi.setSystemTime(new Date("2099-02-01T03:30:00Z"));
+    // 23:50 of January 31st in Buenos Aires, February in UTC: last month.
+    await sent("template", Date.parse("2099-02-01T02:50:00Z"), "read");
+    await sent("text", Date.parse("2099-02-01T02:55:00Z"), "delivered");
+    // 00:10 of February 1st in Buenos Aires: this month.
+    await sent("template", Date.parse("2099-02-01T03:10:00Z"), "delivered");
+    await sent("text", Date.parse("2099-02-01T03:15:00Z"), "read");
 
     expect(await monthMessages()).toEqual({
       month: "2099-02",
@@ -133,7 +129,6 @@ describe("the month's WhatsApp messages", () => {
 
   it("count only what Meta delivered, and nothing the patients sent", async () => {
     vi.setSystemTime(new Date("2099-03-15T12:00:00Z"));
-    await addOffice(organization, "Centro");
     const earlier = Date.parse("2099-03-10T12:00:00Z");
     await received(earlier);
     await sent("template", earlier, "delivered");

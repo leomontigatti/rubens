@@ -4,6 +4,8 @@ import { es } from "date-fns/locale";
 
 // How the app writes a date or a time a person or the assistant reads.
 
+export const practiceTimeZone = "America/Argentina/Buenos_Aires";
+
 type Instant = Date | number;
 
 const inZone = (timeZone: string) => ({ in: tz(timeZone), locale: es });

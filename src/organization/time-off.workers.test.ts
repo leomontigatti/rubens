@@ -11,7 +11,7 @@ import {
 } from "#/organization/organization.test-support.ts";
 import { timeOff } from "#/organization/schema.ts";
 
-// Time off is read in the organization's default zone, Buenos Aires (UTC-3).
+// Time off is read in the practice's zone, Buenos Aires (UTC-3).
 
 type Caller = typeof adminCaller;
 

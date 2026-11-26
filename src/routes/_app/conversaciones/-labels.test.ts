@@ -186,13 +186,13 @@ describe("the chat's days", () => {
     expect(dayLabel(Date.parse("2025-11-03T12:00:00Z"), now)).toBe("Lunes 3 de noviembre de 2025");
   });
 
-  it("counts days in the offices' zone, not in UTC", () => {
+  it("counts days in the practice's zone, not in UTC", () => {
     // 23:00 on the 9th in Buenos Aires, already the 10th in UTC.
     expect(dayLabel(Date.parse("2026-11-10T02:00:00Z"), now)).toBe("Ayer");
     expect(messageClock(Date.parse("2026-11-10T02:00:00Z"))).toBe("23:00");
   });
 
-  it("finds yesterday in the offices' zone when the browser's zone changes its clocks", () => {
+  it("finds yesterday in the practice's zone when the browser's zone changes its clocks", () => {
     const browserZone = process.env.TZ;
     process.env.TZ = "America/New_York";
     try {

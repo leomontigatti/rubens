@@ -9,7 +9,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
 import type { ToRescheduleEntry, ToRescheduleReason } from "#/organization/to-reschedule.ts";
-import { formatDateTime } from "#/lib/dates.ts";
+import { formatDateTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
 // that time off, a closure or a schedule change left outside working time, of
@@ -38,7 +38,6 @@ const reasonLabels: Record<ToRescheduleReason, string> = {
   outsideSchedules: "Fuera de los horarios del profesional",
   practitionerInactive: "El profesional está archivado",
   patientInactive: "El paciente está archivado",
-  officeInactive: "La sede está archivada",
   roomInactive: "El consultorio está archivado",
 };
 
@@ -47,7 +46,6 @@ const blockedReasons: ToRescheduleReason[] = ["practitionerInactive", "patientIn
 
 /** What else an administrator can do for an appointment in a deactivated place. */
 const placeRemedies: Partial<Record<ToRescheduleReason, string>> = {
-  officeInactive: "restaurar la sede",
   roomInactive: "restaurar el consultorio",
 };
 
@@ -101,11 +99,10 @@ function EntryRow({ entry }: { entry: ToRescheduleEntry }) {
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
         <p className="font-medium">
-          {formatDateTime(entry.start, entry.timeZone)} · {entry.patientName}
+          {formatDateTime(entry.start, practiceTimeZone)} · {entry.patientName}
         </p>
         <p className="text-muted-foreground">
-          {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.officeName},{" "}
-          {entry.roomName}
+          {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.roomName}
         </p>
         <p className="text-muted-foreground">{reasonLabels[entry.reason]}</p>
         {note && <p className="text-muted-foreground">{note}</p>}

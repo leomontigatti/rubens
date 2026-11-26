@@ -1,7 +1,7 @@
 import { asc, desc, eq } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { present } from "#/lib/present.ts";
 import {
   timeOffDeleteSchema,
@@ -30,7 +30,7 @@ import { member, practitioner, timeOff } from "#/organization/schema.ts";
 // practitioner their own (the object requires one of the two roles, and
 // `findPractitioner` decides whose). Time off may overlap other time off, and
 // it changes no record of past work, so it can always be edited or deleted.
-// It is read in the organization's default zone. Every change is written to
+// It is read in the practice's zone. Every change is written to
 // the audit log, about no patient.
 
 export interface TimeOff {
@@ -56,9 +56,9 @@ function mayEdit(acting: Acting, userId: string): boolean {
   );
 }
 
-/** An entry as the stored span, in the organization's default zone. */
+/** An entry as the stored span, in the practice's zone. */
 function spanOf(entry: RangeEntry) {
-  const { start, end } = toTimeRange(entry, defaultTimeZone);
+  const { start, end } = toTimeRange(entry, practiceTimeZone);
   return { startsAt: +start, endsAt: +end };
 }
 
@@ -94,7 +94,7 @@ export function listTimeOff(
         practitionerName: owner.displayName,
         entry: toRangeEntry(
           { start: new Date(row.startsAt), end: new Date(row.endsAt) },
-          defaultTimeZone,
+          practiceTimeZone,
         ),
         canEdit: mayEdit(acting, owner.userId),
       };

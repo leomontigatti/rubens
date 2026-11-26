@@ -39,14 +39,13 @@ import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
  */
 export const assistantActing: Acting = { userId: assistantUserId, roles: ["receptionist"] };
 
-/** The change as the patient reads it: the appointment, the practitioner, the date and the time. */
+/** The change as the patient reads it: the appointment, the practitioner, the date and the time, never the office. */
 function stated(kind: ProposalKind, upcoming: Upcoming) {
   return {
     kind,
     medicalService: upcoming.medicalService,
     practitioner: upcoming.practitioner,
     ...whenOf(upcoming),
-    office: upcoming.office,
   };
 }
 
@@ -65,7 +64,7 @@ function latestProposal(database: Database, conversationId: string) {
 
 /** A move's new time as the patient reads it, beside the appointment's facts. */
 function statedMove(slot: Slot) {
-  return { newDate: slot.date, newTime: slot.time, newOffice: slot.office };
+  return { newDate: slot.date, newTime: slot.time };
 }
 
 /** Makes the proposal's change through the appointment's own function; the sandbox replays its accepted ones with it. */
@@ -75,14 +74,13 @@ export function applyChange(
 ) {
   const { appointmentId } = latest;
   if (latest.kind === "move") {
-    const { newDate, newTime, newOffice } = latest.statement;
+    const { newDate, newTime } = latest.statement;
     return movePatientAppointment(database, assistantActing, {
       appointmentId,
       stated: {
         slotId: new Date(latest.startsAt ?? 0).toISOString(),
         date: newDate,
         time: newTime,
-        office: newOffice,
       },
     });
   }
@@ -238,7 +236,7 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
     if (!viewed || !current) {
       return { ok: false, reason: "notFound" };
     }
-    // Moved, or its practitioner or office changed, since it was proposed.
+    // Moved, or its practitioner changed, since it was proposed.
     const asNow = Object.entries(stated(latest.kind, current));
     if (asNow.some(([key, value]) => latest.statement[key] !== value)) {
       return { ok: false, reason: "changed" };

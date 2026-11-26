@@ -1,3 +1,4 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { and, asc, eq, inArray, ne, or } from "drizzle-orm";
 
 import { actsForEveryone } from "#/lib/access.ts";
@@ -49,7 +50,7 @@ import { appointment, office, room } from "#/organization/schema.ts";
 // undo. Every staff role may act (the object's requirement); on whose
 // appointments is decided here, as for booking. Each change reads the
 // appointment, checks and writes in one synchronous transaction (ADR-0008),
-// so the overlap and capacity rules hold until the write, and audits it about
+// so the overlap and room rules hold until the write, and audits it about
 // the appointment's patient.
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
@@ -61,8 +62,8 @@ export type AppointmentRecord =
   | {
       ok: true;
       appointment: DayAppointment;
-      /** Its office's zone, and the rooms it can move to: the active ones and its own. */
-      office: { timeZone: string; rooms: { id: string; name: string }[] };
+      /** The rooms it can move to: the active ones and its own. */
+      office: { rooms: { id: string; name: string }[] };
     }
   | { ok: false; reason: "invalidInput" | "notFound" };
 
@@ -70,8 +71,7 @@ export type AppointmentUpdateResult =
   | { ok: true }
   | { ok: false; reason: "invalidInput" }
   | PractitionerRefusal
-  | RoomRefusal
-  | { ok: false; reason: "otherOffice" };
+  | RoomRefusal;
 
 export type RescheduleResult =
   | { ok: true }
@@ -114,7 +114,6 @@ function findPlaced(writer: Writer, appointmentId: string) {
       cancellationReason: appointment.cancellationReason,
       receptionNote: appointment.receptionNote,
       officeId: office.id,
-      timeZone: office.timeZone,
     })
     .from(appointment)
     .innerJoin(room, eq(room.id, appointment.roomId))
@@ -170,23 +169,20 @@ export function getAppointment(
   return {
     ok: true,
     appointment: toDayAppointment(booked, { roles: acting.roles, own }, new Date()),
-    office: { timeZone: booked.timeZone, rooms },
+    office: { rooms },
   };
 }
 
-/** Moves the appointment to `roomId`, another of its office at the same time, and audits it. */
+/** Moves the appointment to `roomId`, at the same time, and audits it. */
 function moveToRoom(
   writer: Writer,
   acting: Acting,
   placed: Placed,
   roomId: string,
-): { ok: true } | RoomRefusal | { ok: false; reason: "otherOffice" } {
+): { ok: true } | RoomRefusal {
   const space = checkRoomSpace(writer, roomId, placed.practitionerId, placed.during);
   if (!space.ok) {
     return space;
-  }
-  if (space.officeId !== placed.officeId) {
-    return { ok: false, reason: "otherOffice" };
   }
   writer.update(appointment).set({ roomId }).where(eq(appointment.id, placed.id)).run();
   recordAudit(writer, acting.userId, {
@@ -493,7 +489,11 @@ export function undoAppointmentStatus(
     if (!placed) {
       return notFound;
     }
-    const decided = decideUndo(placed, statusActorOf(tx, acting, placed), new Date());
+    const decided = decideUndo(
+      { ...placed, timeZone: practiceTimeZone },
+      statusActorOf(tx, acting, placed),
+      new Date(),
+    );
     if (!decided.ok) {
       return decided;
     }

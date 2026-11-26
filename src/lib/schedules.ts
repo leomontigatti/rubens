@@ -1,4 +1,4 @@
-import { tz, tzOffset } from "@date-fns/tz";
+import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
@@ -117,43 +117,13 @@ export function sharedDates(a: Dates, b: Dates): Dates | null {
   return lastDate === null || firstDate <= lastDate ? { firstDate, lastDate } : null;
 }
 
-const dayMs = 24 * 60 * 60 * 1000;
-
-/**
- * Whether two time zones show the same clock every week of `dates` from
- * `today`, or from the first date if later, for a year at most, so their local
- * times mean the same moments: two names for one clock, as Argentina's
- * provinces are, count as one. Past dates never collide again.
- */
-export function sameClock(zoneA: string, zoneB: string, dates: Dates, today: string): boolean {
-  if (zoneA === zoneB) {
-    return true;
-  }
-  // Milliseconds, not date strings: a date past year 9999 no longer sorts as one.
-  const from = Math.max(utcMidnight(dates.firstDate).getTime(), utcMidnight(today).getTime());
-  const yearOn = from + 371 * dayMs;
-  const until =
-    dates.lastDate === null ? yearOn : Math.min(utcMidnight(dates.lastDate).getTime(), yearOn);
-  if (until < from) {
-    return true;
-  }
-  const moments = [until];
-  for (let moment = from; moment < until; moment += 7 * dayMs) {
-    moments.push(moment);
-  }
-  return moments.every((moment) => {
-    const date = new Date(moment);
-    return tzOffset(zoneA, date) === tzOffset(zoneB, date);
-  });
-}
-
 function coversTime(slot: WeeklySlot, time: string): boolean {
   return shortTime(slot.startTime) <= time && time < shortTime(slot.endTime);
 }
 
 /**
- * One of `others` that, with `candidate`, puts more than `capacity` schedules
- * at the same moment, and the weekday of that moment; `null` when none does.
+ * One of `others` present at the same moment as `candidate`, and the weekday
+ * of that moment; `null` when none is.
  *
  * Ranges are half-open, so schedules that only touch never collide. For each
  * weekday, the schedules are boxes of dates by times, and the busiest moment
@@ -164,7 +134,6 @@ function coversTime(slot: WeeklySlot, time: string): boolean {
 export function findCollision<T extends WeeklySlot>(
   candidate: WeeklySlot,
   others: readonly T[],
-  capacity: number,
 ): { schedule: T; weekday: number } | null {
   for (const weekday of candidate.weekdays) {
     const sameDay = others.filter((other) => other.weekdays.includes(weekday));
@@ -182,14 +151,10 @@ export function findCollision<T extends WeeklySlot>(
       .filter((time) => coversTime(candidate, time));
     for (const date of dates) {
       for (const time of times) {
-        const present = sameDay.filter(
+        const schedule = sameDay.find(
           (other) => coversDate(other, date) && coversTime(other, time),
         );
-        if (present.length + 1 > capacity) {
-          const [schedule] = present;
-          if (schedule === undefined) {
-            throw new Error("A room's capacity is at least 1, so a collision has another schedule");
-          }
+        if (schedule) {
           return { schedule, weekday };
         }
       }

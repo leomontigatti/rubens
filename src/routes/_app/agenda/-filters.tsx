@@ -20,7 +20,7 @@ function filterGroups(week: CalendarWeek, roomChoices: RoomChoice[]): FilterGrou
       icon: BuildingIcon,
       required: true,
       value: week.room.id,
-      options: roomOptions(week.room, week.office.name, roomChoices),
+      options: roomOptions(week.room, roomChoices),
     },
     {
       id: "profesional",

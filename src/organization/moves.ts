@@ -5,7 +5,7 @@ import { and, count, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { moveRefusal } from "#/lib/proposals.ts";
 import type { MoveRefusal } from "#/lib/proposals.ts";
-import { formatDay, formatTime } from "#/lib/dates.ts";
+import { practiceTimeZone, formatDay, formatTime } from "#/lib/dates.ts";
 import { present } from "#/lib/present.ts";
 
 import { rescheduleAppointment } from "#/organization/appointment-changes.ts";
@@ -17,7 +17,7 @@ import { proposal } from "#/organization/whatsapp-schema.ts";
 
 // A patient's own move of an appointment (docs/domain/assistant.md
 // § Cancelling and moving): the free times of the same practitioner and
-// medical service, at any office where the practitioner works, over the next
+// medical service, in any room where the practitioner works, over the next
 // 3 weeks, from availability, never an overbooking; allowed until the medical
 // service's cutoff and once per appointment. The move itself is a proposal
 // (`proposals.ts`) accepted through the app's own reschedule.
@@ -33,7 +33,6 @@ export interface Slot {
   slotId: string;
   date: string;
   time: string;
-  office: string;
 }
 
 /** The appointment as a move reads it: its time, its practitioner's grid and its medical service's cutoff. */
@@ -104,17 +103,16 @@ function patientBusyAt(writer: Writer, moving: MoveFacts, window: { start: Date;
 /**
  * Every free time the appointment can move to from `now`, of its duration,
  * but for its own start and a time its patient is busy at, earliest first,
- * each with its local start (`YYYY-MM-DDTHH:MM`) in its office's zone.
+ * each with its local start (`YYYY-MM-DDTHH:MM`) in the practice's zone.
  */
 function allSlots(writer: Writer, moving: MoveFacts, now: number) {
   const durationMs = moving.endsAt - moving.startsAt;
   const window = { start: new Date(now), end: new Date(now + moveWindowMs) };
-  const { free, schedules } = findFreeTimes(
+  const { free } = findFreeTimes(
     writer,
     { id: moving.practitionerId, gridMinutes: moving.gridMinutes },
     { window, durationMinutes: durationMs / 60_000, excludeAppointmentId: moving.id },
   );
-  const rooms = new Map(schedules.map((row) => [row.roomId, row]));
   const patientBusy = patientBusyAt(writer, moving, {
     start: window.start,
     end: new Date(+window.end + durationMs),
@@ -122,18 +120,16 @@ function allSlots(writer: Writer, moving: MoveFacts, now: number) {
   return free
     .filter(({ start }) => +start !== moving.startsAt)
     .filter(({ start }) => !patientBusy(start, new Date(+start + durationMs)))
-    .map(({ start, roomId }) => {
-      const where = present(
-        rooms.get(roomId),
-        "A free time is in the room of one of its schedules",
-      );
+    .map(({ start }) => {
       const slot: Slot = {
         slotId: start.toISOString(),
-        date: formatDay(start, where.timeZone),
-        time: formatTime(start, where.timeZone),
-        office: where.officeName,
+        date: formatDay(start, practiceTimeZone),
+        time: formatTime(start, practiceTimeZone),
       };
-      return { slot, localStart: format(start, "yyyy-MM-dd'T'HH:mm", { in: tz(where.timeZone) }) };
+      return {
+        slot,
+        localStart: format(start, "yyyy-MM-dd'T'HH:mm", { in: tz(practiceTimeZone) }),
+      };
     });
 }
 
@@ -185,8 +181,7 @@ function asTaken<T extends { ok: false; reason: string }>(refusal: T) {
 
 /**
  * Moves the appointment to the free time `stated`, as the patient's own move,
- * while it is still free and reads as they were told (date, time and
- * office): the app's reschedule then checks it again in the same
+ * while it is still free and reads as they were told (date and time): the app's reschedule then checks it again in the same
  * transaction. Their other appointments that day do not hold it, since they
  * picked the time.
  */

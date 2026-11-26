@@ -13,6 +13,9 @@ Amended 2026-11-07: Rubens moves to Workers Paid, this ADR's named fallback (#14
 [Workers Paid](#amended-2026-11-07-workers-paid) below; the sentences it makes false are
 marked.
 
+Amended 2026-11-26 (LEO-8): offices have no time zone; every local time is read in
+America/Argentina/Buenos_Aires.
+
 Rubens moves from one VPS (Node, Postgres, Coolify) to Cloudflare Workers on the free
 plan (Workers Paid since the 2026-11-07 amendment). An organization's data (offices,
 rooms, practitioners, schedules, patients, appointments, clinical records, the audit

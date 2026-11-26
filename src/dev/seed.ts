@@ -1,4 +1,4 @@
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { today } from "#/lib/schedules.ts";
 
 import type { Organization } from "#/organization/organization.ts";
@@ -31,6 +31,7 @@ export async function seedDevOrganization(
   const setUp = await organization.setUp({
     organizationId,
     name: devOrganizationName,
+    office: devOffice,
     admin: devPeople.admin,
   });
   if (!setUp.ok) {
@@ -46,10 +47,13 @@ export async function seedDevOrganization(
       await organization.addMember(admin, { ...devPeople[role], roles: [role] }),
     );
   }
-  const office = accepted("createOffice", await organization.createOffice(admin, devOffice));
+  const [office] = accepted("listOffices", await organization.listOffices(admin)).offices;
+  if (!office) {
+    throw new Error("dev seed: setUp left no office");
+  }
   const { room } = accepted(
     "createRoom",
-    await organization.createRoom(admin, { ...devRoom, officeId: office.office.id }),
+    await organization.createRoom(admin, { ...devRoom, officeId: office.id }),
   );
   const [practitioner] = accepted(
     "listSchedulePractitioners",
@@ -89,7 +93,7 @@ export async function seedDevOrganization(
       practitionerId: practitioner.id,
       roomId: room.id,
       weekdays: [1, 2, 3, 4, 5, 6, 7],
-      firstDate: today(defaultTimeZone),
+      firstDate: today(practiceTimeZone),
       lastDate: null,
     }),
   );
@@ -127,7 +131,7 @@ export async function seedDevOrganization(
   if (options.qa) {
     await seedQaData(organization, {
       admin,
-      officeId: office.office.id,
+      officeId: office.id,
       juanId: practitioner.id,
       devConsultId: medicalService.id,
       devPatientIds,

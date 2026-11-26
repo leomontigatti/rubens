@@ -108,7 +108,6 @@ describe("registering a patient", () => {
         userName: "Miembro receptionist",
         before: null,
         after: { firstName: "Juan", lastName: "Pérez", phone: "+5493515551234" },
-        timeZones: null,
       },
     ]);
   });
@@ -416,7 +415,6 @@ describe("the patient list", () => {
       patientId: covered.id,
       insurerId: created.insurer.id,
       memberNumber: "123",
-      primary: true,
     });
 
     const listed = await organization.listPatients(receptionist, { includeInactive: false });

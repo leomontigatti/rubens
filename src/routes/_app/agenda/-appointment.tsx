@@ -11,7 +11,7 @@ import {
 import type { DayAppointment } from "#/organization/appointments.ts";
 
 import { StatusSection } from "#/routes/_app/agenda/-appointment-status.tsx";
-import { formatTime } from "#/lib/dates.ts";
+import { formatTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // An appointment clicked on the calendar: what it is and its status, the
 // status changes, its room and reception note, and the links to editing them,
@@ -23,9 +23,8 @@ export interface PickedAppointment {
   practitioner: { id: string; displayName: string };
 }
 
-/** The calendar viewed: its room's office zone, and what an overbooking's page opens on. */
+/** The calendar viewed: what an overbooking's page opens on. */
 export interface ViewedCalendar {
-  timeZone: string;
   roomId: string;
   date: string;
 }
@@ -59,14 +58,14 @@ function AppointmentDetails(props: {
   onClose: () => void;
 }) {
   const { appointment, practitioner } = props.picked;
-  const { timeZone } = props.viewed;
   return (
     <>
       <DialogHeader>
         <DialogTitle>{appointment.patientName}</DialogTitle>
         <DialogDescription>
-          {formatTime(appointment.start, timeZone)} a {formatTime(appointment.end, timeZone)} con{" "}
-          {practitioner.displayName} · {appointment.medicalServiceName}
+          {formatTime(appointment.start, practiceTimeZone)} a{" "}
+          {formatTime(appointment.end, practiceTimeZone)} con {practitioner.displayName} ·{" "}
+          {appointment.medicalServiceName}
           {appointment.overbooking && " · Sobreturno"}
         </DialogDescription>
       </DialogHeader>

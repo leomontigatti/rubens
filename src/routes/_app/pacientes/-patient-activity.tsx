@@ -23,7 +23,7 @@ import { appointmentStatusLabels, cancellationText } from "#/lib/appointment-sta
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { assistantUserId } from "#/lib/audit-fields.ts";
 import { formatDateTime } from "#/lib/dates.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { historyChanges, historyTitle } from "#/lib/patients.ts";
 import type { PatientAppointment } from "#/organization/appointments.ts";
 import type { HistoryEntry } from "#/organization/patient-history.ts";
@@ -131,7 +131,7 @@ const statusIcons: Partial<Record<AppointmentStatus, LucideIcon>> = {
 function AppointmentLine({ appointment }: { appointment: PatientAppointment }) {
   const Icon = statusIcons[appointment.status] ?? CalendarClockIcon;
   const details = [
-    `${appointment.officeName}, ${appointment.roomName}`,
+    appointment.roomName,
     appointment.overbooking ? "Sobreturno" : null,
     cancellationText(appointment),
   ].filter(Boolean);
@@ -146,7 +146,7 @@ function AppointmentLine({ appointment }: { appointment: PatientAppointment }) {
             {appointment.practitionerName} · {appointment.medicalServiceName}
           </TraceTitle>
           <TraceDescription>
-            {formatDateTime(appointment.start, appointment.timeZone)} ·{" "}
+            {formatDateTime(appointment.start, practiceTimeZone)} ·{" "}
             {appointmentStatusLabels[appointment.status]}
           </TraceDescription>
         </TraceLine>
@@ -182,7 +182,7 @@ function ChangeLine(props: { entry: HistoryEntry; names: Record<string, string> 
           </TraceIcon>
           <TraceTitle>{historyTitle(entry)}</TraceTitle>
           <TraceDescription>
-            {formatDateTime(entry.createdAt, defaultTimeZone)} · {authorOf(entry)}
+            {formatDateTime(entry.createdAt, practiceTimeZone)} · {authorOf(entry)}
           </TraceDescription>
         </TraceLine>
       </TraceCollapsibleTrigger>

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { RefusalMessage } from "#/components/admin-form.tsx";
 import type { getAppointmentRecord } from "#/server/appointments.functions.ts";
 import type { AppointmentRecord } from "#/organization/appointment-changes.ts";
-import { formatDateTime } from "#/lib/dates.ts";
+import { formatDateTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // What an appointment's pages share: `Editar turno`, `Reprogramar turno` and
 // `Cancelar turno`, each opened from its dialog on the calendar or from
@@ -35,7 +35,7 @@ export function AppointmentPage(props: {
 }
 
 /** Who and when, under each page's title: `María Fernández, 02/11/2026 09:00 con Laura Gómez`. */
-export function appointmentSummary({ appointment, office }: LoadedAppointment): string {
-  const when = formatDateTime(appointment.start, office.timeZone);
+export function appointmentSummary({ appointment }: LoadedAppointment): string {
+  const when = formatDateTime(appointment.start, practiceTimeZone);
   return `${appointment.patientName}, ${when} con ${appointment.practitionerName} · ${appointment.medicalServiceName}`;
 }

@@ -28,7 +28,6 @@ export const statusRefusalMessages = {
   timeTaken: "Ese horario ya se ocupó con otro turno: no se puede volver atrás.",
   roomFull: "El consultorio ya no tiene lugar a esa hora: no se puede volver atrás.",
   roomInactive: "El consultorio del turno está archivado: no se puede volver atrás.",
-  officeInactive: "La sede del turno está archivada: no se puede volver atrás.",
 };
 
 export function StatusSection(props: { appointment: DayAppointment; onDone: () => void }) {

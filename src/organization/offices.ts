@@ -3,35 +3,28 @@ import { and, asc, eq } from "drizzle-orm";
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import {
   activeChangeSchema,
-  defaultTimeZone,
-  officeInputSchema,
   officeUpdateSchema,
   roomInputSchema,
   roomUpdateSchema,
 } from "#/lib/offices.ts";
-import type {
-  ActiveChange,
-  OfficeInput,
-  OfficeUpdate,
-  RoomInput,
-  RoomUpdate,
-} from "#/lib/offices.ts";
+import type { ActiveChange, OfficeUpdate, RoomInput, RoomUpdate } from "#/lib/offices.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import type { Database, Writer } from "#/organization/database.ts";
+import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { office, room } from "#/organization/schema.ts";
 
-// The organization's offices and their rooms. Everyone reads them; only an
-// admin changes them (the object's requirement). Nothing is deleted: a
-// deactivated office or room drops out of the default lists and can be
-// reactivated. Every change is written to the audit log, about no patient.
+// The organization's one office, which its setup creates
+// (`src/organization/members.ts`), and its rooms. Everyone reads them; only an
+// admin changes them (the object's requirement). Nothing adds or archives an
+// office. Nothing is deleted: a deactivated room drops out of the default
+// lists and can be reactivated. Every change is written to the audit log,
+// about no patient.
 
 const officeColumns = {
   id: office.id,
   name: office.name,
   address: office.address,
-  timeZone: office.timeZone,
   active: office.active,
 };
 
@@ -39,25 +32,13 @@ const roomColumns = {
   id: room.id,
   officeId: room.officeId,
   name: room.name,
-  capacity: room.capacity,
   active: room.active,
 };
-
-/** The zone the organization reads time in: its first office's, or the default before it has one. */
-export function organizationTimeZone(database: Writer): string {
-  const first = database
-    .select({ timeZone: office.timeZone })
-    .from(office)
-    .orderBy(asc(office.createdAt))
-    .get();
-  return first?.timeZone ?? defaultTimeZone;
-}
 
 export interface Office {
   id: string;
   name: string;
   address: string;
-  timeZone: string;
   active: boolean;
 }
 
@@ -65,53 +46,34 @@ export interface Room {
   id: string;
   officeId: string;
   name: string;
-  capacity: number;
   active: boolean;
 }
 
-type Refusal = "invalidInput" | "notFound" | "officeInactive";
+type Refusal = "invalidInput" | "notFound";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; reason: Refusal };
 
 const invalidInput = { ok: false, reason: "invalidInput" } as const;
 const notFound = { ok: false, reason: "notFound" } as const;
-const officeInactive = { ok: false, reason: "officeInactive" } as const;
 
 export interface ListOptions {
   includeInactive: boolean;
 }
 
-/**
- * The offices, and `onlyInactive`: the default list shows none, yet some
- * exist, all inactive.
- */
-export function listOffices(
-  database: Database,
-  options: ListOptions,
-): { ok: true; offices: Office[]; onlyInactive: boolean } {
-  const offices = database
-    .select(officeColumns)
-    .from(office)
-    .where(options.includeInactive ? undefined : eq(office.active, true))
-    .orderBy(asc(office.name))
-    .all();
-  const onlyInactive =
-    !options.includeInactive &&
-    offices.length === 0 &&
-    database.select({ id: office.id }).from(office).limit(1).get() !== undefined;
-  return { ok: true, offices, onlyInactive };
+export function listOffices(database: Database): { ok: true; offices: Office[] } {
+  const offices = database.select(officeColumns).from(office).orderBy(asc(office.name)).all();
+  return { ok: true, offices };
 }
 
-/** An office and its rooms, with `onlyInactive` as `listOffices` says, for its rooms. */
+/**
+ * The organization's office and its rooms, and `onlyInactive`: the default
+ * room list shows none, yet some exist, all inactive.
+ */
 export function getOffice(
   database: Database,
-  input: { officeId: string } & ListOptions,
+  input: ListOptions,
 ): Result<{ office: Office; rooms: Room[]; onlyInactive: boolean }> {
-  const found = database
-    .select(officeColumns)
-    .from(office)
-    .where(eq(office.id, input.officeId))
-    .get();
+  const found = database.select(officeColumns).from(office).orderBy(asc(office.name)).get();
   if (!found) {
     return notFound;
   }
@@ -133,29 +95,6 @@ export function getOffice(
       .limit(1)
       .get() !== undefined;
   return { ok: true, office: found, rooms, onlyInactive };
-}
-
-export function createOffice(
-  database: Database,
-  acting: Acting,
-  input: OfficeInput,
-): Result<{ office: Office }> {
-  const parsed = officeInputSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidInput;
-  }
-  return database.transaction((tx) => {
-    const created = tx.insert(office).values(parsed.data).returning(officeColumns).get();
-    recordAudit(tx, acting.userId, {
-      action: "create",
-      entityType: "office",
-      entityId: created.id,
-      patientId: null,
-      before: null,
-      after: createdFields(parsed.data),
-    });
-    return { ok: true as const, office: created };
-  });
 }
 
 export function updateOffice(
@@ -193,14 +132,6 @@ export function updateOffice(
   });
 }
 
-export function setOfficeActive(
-  database: Database,
-  acting: Acting,
-  input: ActiveChange,
-): Result<object> {
-  return setActive(database, acting, input, "office");
-}
-
 export function createRoom(
   database: Database,
   acting: Acting,
@@ -212,17 +143,12 @@ export function createRoom(
   }
   return database.transaction((tx) => {
     const parent = tx
-      .select({ active: office.active })
+      .select({ id: office.id })
       .from(office)
       .where(eq(office.id, parsed.data.officeId))
       .get();
     if (!parent) {
       return notFound;
-    }
-    // A deactivated office keeps its rooms as they were, reactivating one
-    // included, but gets no new ones.
-    if (!parent.active) {
-      return officeInactive;
     }
     const created = tx.insert(room).values(parsed.data).returning(roomColumns).get();
     recordAudit(tx, acting.userId, {
@@ -272,37 +198,27 @@ export function updateRoom(
   });
 }
 
+/** Deactivates or reactivates a room; one already in that state changes nothing. */
 export function setRoomActive(
   database: Database,
   acting: Acting,
   input: ActiveChange,
-): Result<object> {
-  return setActive(database, acting, input, "room");
-}
-
-/** Deactivates or reactivates an office or a room; one already in that state changes nothing. */
-function setActive(
-  database: Database,
-  acting: Acting,
-  input: ActiveChange,
-  entityType: "office" | "room",
 ): Result<object> {
   const parsed = activeChangeSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
   const { id, active } = parsed.data;
-  const table = entityType === "office" ? office : room;
-  return database.transaction((tx: Writer) => {
-    const current = tx.select({ active: table.active }).from(table).where(eq(table.id, id)).get();
+  return database.transaction((tx) => {
+    const current = tx.select({ active: room.active }).from(room).where(eq(room.id, id)).get();
     if (!current) {
       return notFound;
     }
     if (current.active !== active) {
-      tx.update(table).set({ active }).where(eq(table.id, id)).run();
+      tx.update(room).set({ active }).where(eq(room.id, id)).run();
       recordAudit(tx, acting.userId, {
         action: active ? "reactivate" : "deactivate",
-        entityType,
+        entityType: "room",
         entityId: id,
         patientId: null,
         before: { active: !active },

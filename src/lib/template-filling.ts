@@ -1,5 +1,5 @@
 import { isOneOf } from "#/lib/is-one-of.ts";
-import { formatDay, formatTime } from "#/lib/dates.ts";
+import { formatDay, formatTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // Filling a WhatsApp template from an appointment
 // (`docs/operations/whatsapp-templates.md`): the values underthing puts in each
@@ -14,7 +14,6 @@ const templateVariableNames = [
   "profesional",
   "fecha",
   "hora",
-  "sede",
   "domicilio",
   "prestacion",
   // The address's name before `domicilio`, which a template Meta approved
@@ -29,8 +28,6 @@ export interface TemplateAppointment {
   /** The practitioner, as the practitioner's rules name them. */
   practitionerName: string;
   start: Date;
-  timeZone: string;
-  officeName: string;
   officeAddress: string;
   medicalServiceName: string;
   /** The organization's name, which the text names instead of a sign-off. */
@@ -41,21 +38,18 @@ export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = 
   patient: { firstName: "Lucía", chosenName: null },
   practitionerName: "la Dra. Sofía Méndez",
   start: new Date("2026-11-12T13:30:00Z"),
-  timeZone: "America/Argentina/Buenos_Aires",
-  officeName: "Sede Centro",
   officeAddress: "Av. Colón 1234, Córdoba",
   medicalServiceName: "Limpieza",
 };
 
 export function templateValues(appointment: TemplateAppointment): Record<TemplateVariable, string> {
-  const { patient, start, timeZone } = appointment;
+  const { patient, start } = appointment;
   return {
     paciente: patient.chosenName ?? patient.firstName,
     organizacion: appointment.organizationName,
     profesional: appointment.practitionerName,
-    fecha: formatDay(start, timeZone),
-    hora: formatTime(start, timeZone),
-    sede: appointment.officeName,
+    fecha: formatDay(start, practiceTimeZone),
+    hora: formatTime(start, practiceTimeZone),
     domicilio: appointment.officeAddress,
     prestacion: afterPossessive(appointment.medicalServiceName),
     direccion: appointment.officeAddress,

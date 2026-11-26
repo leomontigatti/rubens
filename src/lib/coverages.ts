@@ -29,16 +29,10 @@ const coverageFields = z.object({
   memberNumber: z.string().trim().min(1).max(100),
 });
 
-/**
- * A coverage's fields, shared by the form and the services. The patient's
- * first coverage is primary whatever `primary` says.
- */
-export const coverageInputSchema = coverageFields.extend({
-  patientId: z.uuid(),
-  primary: z.boolean().default(false),
-});
+/** A coverage's fields, shared by the form and the services. */
+export const coverageInputSchema = coverageFields.extend({ patientId: z.uuid() });
 
-/** An edit to a coverage's fields. The primary flag moves on its own. */
+/** An edit to a coverage's fields. */
 export const coverageUpdateSchema = coverageFields.extend({ coverageId: z.uuid() });
 
 export const coverageIdSchema = z.object({ coverageId: z.uuid() });

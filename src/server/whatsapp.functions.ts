@@ -4,7 +4,6 @@ import type { SandboxStart, SandboxTurnInput } from "#/lib/assistant-sandbox.ts"
 import type { CommunicationRulesInput } from "#/lib/communication-rules.ts";
 import type { ReturnTimeInput } from "#/lib/conversation-holds.ts";
 import type { HandoffContactsInput } from "#/lib/handoff-contacts.ts";
-import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 import type { SignupCompletion } from "#/lib/whatsapp.ts";
 import type {
   TemplateCreate,
@@ -81,13 +80,6 @@ export const saveReturnTime = createServerFn({ method: "POST" })
   .validator((data: ReturnTimeInput) => data)
   .handler(({ data }) =>
     withOrganization((organization, caller) => organization.saveReturnTime(caller, data)),
-  );
-
-// How many hours before the window closes a handoff's reminders go.
-export const saveHandoffReminders = createServerFn({ method: "POST" })
-  .validator((data: HandoffRemindersInput) => data)
-  .handler(({ data }) =>
-    withOrganization((organization, caller) => organization.saveHandoffReminders(caller, data)),
   );
 
 export const getSandboxScenarios = createServerFn({ method: "GET" }).handler(() =>

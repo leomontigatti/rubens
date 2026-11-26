@@ -754,6 +754,7 @@ describe("refusals", () => {
     await other.setUp({
       organizationId: "other",
       name: "Otra",
+      office: { name: "Otra sede", address: "Otra calle 1" },
       admin: { userId: adminCaller.userId, name: "Ana Admin", email: "ana@example.com" },
     });
 
@@ -781,6 +782,7 @@ describe("setting an organization up", () => {
     const result = await fresh.setUpWithAccount({
       organizationId: "consultorios-belgrano",
       name: "Consultorios Belgrano",
+      office: { name: "Sede Belgrano", address: "Cabildo 2000" },
       admin: { name: "Ana Gómez", email: "Ana@Example.com", password: startingPassword },
     });
 
@@ -805,6 +807,15 @@ describe("setting an organization up", () => {
         mustChangePassword: true,
       },
     });
+    const admin = { userId: fakeAccounts.lastUserId! };
+    await fresh.changePassword(admin, {
+      currentPassword: startingPassword,
+      newPassword: "a-new-password",
+    });
+    expect(await fresh.listOffices(admin)).toMatchObject({
+      ok: true,
+      offices: [{ name: "Sede Belgrano", address: "Cabildo 2000" }],
+    });
   });
 
   it("changes nothing, and creates no user, when the organization is already set up", async () => {
@@ -814,6 +825,7 @@ describe("setting an organization up", () => {
       await organization.setUpWithAccount({
         organizationId,
         name: "Otra",
+        office: { name: "Otra sede", address: "Otra calle 1" },
         admin: { name: "Otro", email: "otro@example.com", password: startingPassword },
       }),
     ).toEqual({ ok: false, reason: "alreadySetUp" });

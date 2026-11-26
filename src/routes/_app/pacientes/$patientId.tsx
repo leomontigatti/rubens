@@ -68,9 +68,9 @@ import {
 } from "#/routes/_app/pacientes/-patient-whatsapp.tsx";
 
 /**
- * The page's tabs: the patient's own data, in two, then what hangs off them;
- * `Coberturas` and `Responsables` only once there is one (`Acciones` adds the
- * first).
+ * The page's tabs: the patient's own data, in two, then what hangs off them:
+ * `Cobertura`, the one they have or `Particular`, and `Responsables` only once
+ * there is one (`Acciones` adds the first).
  */
 const sections = ["datos", "contacto", "coberturas", "responsables", "actividad"] as const;
 type Section = (typeof sections)[number];
@@ -124,11 +124,16 @@ function PatientPage({ patient }: { patient: Patient }) {
   const page = useFormPage({ to: "/pacientes" });
   const { save, form } = usePatientEdit(patient, page);
   const consent = useWhatsappConsent(patient.id);
-  const record = usePatientRecord(patient, viewer.roles.includes("admin"), consent);
   const lists = {
     coverages: loaded.coverages.ok ? loaded.coverages.coverages : [],
     guardians: loaded.guardians.ok ? loaded.guardians.guardians : [],
   };
+  const record = usePatientRecord(
+    patient,
+    viewer.roles.includes("admin"),
+    consent,
+    lists.coverages.length > 0,
+  );
   const tabs = usePatientTabs(lists);
   const details = loaded.details.ok ? loaded.details : null;
   useProblemTab(page, patientRefusals(save), tabs.setSection);
@@ -205,14 +210,12 @@ interface PatientLists {
  * The open tab. The URL picks the one a page opens on (a coverage's or
  * guardian's pages come back to theirs); a click switches it here, since a
  * navigation would ask before discarding an unsaved edit. A tab gone, such as
- * `Coberturas` after the last one is removed, opens `Datos generales`.
+ * `Responsables` after the last one is removed, opens `Datos generales`.
  */
 function usePatientTabs(lists: PatientLists) {
   const { seccion = "datos" } = Route.useSearch();
   const [chosen, setSection] = useState<Section>(seccion);
-  const gone =
-    (chosen === "coberturas" && lists.coverages.length === 0) ||
-    (chosen === "responsables" && lists.guardians.length === 0);
+  const gone = chosen === "responsables" && lists.guardians.length === 0;
   const section = gone ? "datos" : chosen;
   const formTab: PatientFieldTab = section === "contacto" ? "contacto" : "datos";
   return { section, setSection, formTab };
@@ -243,7 +246,7 @@ function PatientAlerts(props: {
 
 /**
  * The tabs: the form, `children`, across `Datos generales` and `Contacto`;
- * `Coberturas` and `Responsables` once there is one; `Actividad`.
+ * `Cobertura`; `Responsables` once there is one; `Actividad`.
  */
 function PatientTabs(props: {
   patient: Patient;
@@ -262,7 +265,7 @@ function PatientTabs(props: {
       <TabsList className="w-full">
         <TabsTrigger value="datos">Datos generales</TabsTrigger>
         <TabsTrigger value="contacto">Contacto</TabsTrigger>
-        <CountedTab value="coberturas" label="Coberturas" count={lists.coverages.length} />
+        <TabsTrigger value="coberturas">Cobertura</TabsTrigger>
         <CountedTab value="responsables" label="Responsables" count={lists.guardians.length} />
         <TabsTrigger value="actividad">Actividad</TabsTrigger>
       </TabsList>
@@ -316,7 +319,8 @@ function useProblemTab(
 
 /**
  * The patient's header: their state and what else to notice beside the name,
- * and `Acciones` with the creates for their coverages and guardians, then, for
+ * and `Acciones` with the creates for their coverage, while they have none, and
+ * their guardians, then, for
  * an admin, the archive; and, while they are archived, the alert that says so,
  * with `Restaurar` for an admin only.
  */
@@ -324,17 +328,20 @@ function usePatientRecord(
   patient: Patient,
   isAdmin: boolean,
   consent: ReturnType<typeof useWhatsappConsent>,
+  covered: boolean,
 ): RecordHeader {
   const toggle = consent.action;
   const queryClient = useQueryClient();
   const patientId = patient.id;
   const items = (
     <>
-      <DropdownMenuItem
-        render={<Link to="/pacientes/$patientId/coberturas/nueva" params={{ patientId }} />}
-      >
-        Agregar cobertura
-      </DropdownMenuItem>
+      {!covered && (
+        <DropdownMenuItem
+          render={<Link to="/pacientes/$patientId/coberturas/nueva" params={{ patientId }} />}
+        >
+          Agregar cobertura
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem
         render={<Link to="/pacientes/$patientId/responsables/nuevo" params={{ patientId }} />}
       >

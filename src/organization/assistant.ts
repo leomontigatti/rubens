@@ -1,6 +1,7 @@
 import { and, asc, eq, isNotNull, lte, min } from "drizzle-orm";
 
 import { isOneOf } from "#/lib/is-one-of.ts";
+import { present } from "#/lib/present.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { mediaTypes } from "#/lib/whatsapp-messages.ts";
 import { reactionType } from "#/lib/reactions.ts";
@@ -36,7 +37,7 @@ import {
 import { deliverReply, maySend, says } from "#/organization/turn-replies.ts";
 import { settleTurn } from "#/organization/turn-settling.ts";
 import { organizationName } from "#/organization/members.ts";
-import { organizationTimeZone } from "#/organization/offices.ts";
+import { office } from "#/organization/schema.ts";
 import { conversation } from "#/organization/whatsapp-schema.ts";
 import type { Job, JobServices } from "#/organization/jobs.ts";
 
@@ -127,7 +128,6 @@ function turnTools(
             medicalService: found.medicalService,
             practitioner: found.practitioner,
             ...whenOf(found),
-            office: found.office,
             address: found.address,
           },
         };
@@ -173,9 +173,13 @@ export interface TurnMode {
 
 const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run() };
 
-/** The organization's name, and the zone its first office reads time in. */
+/** The organization's name and the address of its office. */
 function promptSetting(database: Database) {
-  return { organizationName: organizationName(database), timeZone: organizationTimeZone(database) };
+  const practice = present(
+    database.select({ address: office.address }).from(office).get(),
+    "The organization's setup created its office",
+  );
+  return { organizationName: organizationName(database), address: practice.address };
 }
 
 /**
