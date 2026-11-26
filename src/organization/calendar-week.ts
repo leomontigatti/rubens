@@ -20,7 +20,7 @@ import type { TimeRange } from "#/lib/time-ranges.ts";
 
 import { selectDayAppointments, toDayAppointment } from "#/organization/appointments.ts";
 import type { DayAppointment } from "#/organization/appointments.ts";
-import { asRange, findBlocking, findFreeTimes, meets } from "#/organization/availability.ts";
+import { findFreeTimes, meets } from "#/organization/availability.ts";
 import { findCalendarOpening } from "#/organization/calendar-opening.ts";
 import type { Writer } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
@@ -38,24 +38,10 @@ import {
 // Monday to Sunday in the practice's zone, narrowed to a practitioner or a
 // medical service. Its free cells are those a matching practitioner `acting`
 // books for can be booked from. A practitioner who does not book for everyone
-// gets other practitioners' appointments as busy blocks, with only when and
-// whose, and only those that meet their own working hours in the room.
+// gets only their own appointments.
 
 /** An appointment drawn in full: the viewer's own, or any for reception and admins. */
-export type CalendarAppointment = DayAppointment & { kind: "appointment" };
-
-/** Another practitioner's active appointment, as a practitioner sees it: only when and whose. */
-export interface BusyBlock {
-  kind: "busy";
-  /** The appointment's id, numbered after the first part; it says nothing about its patient. */
-  id: string;
-  /** The part of the appointment inside the viewer's working hours. */
-  start: Date;
-  end: Date;
-  practitionerName: string;
-}
-
-type CalendarCard = CalendarAppointment | BusyBlock;
+export type CalendarAppointment = DayAppointment;
 
 export interface CalendarDay {
   date: string;
@@ -63,7 +49,7 @@ export interface CalendarDay {
   schedules: TimeRange[];
   /** A free start per practitioner free from it, on the 30-minute cells. */
   freeStarts: { start: Date; practitionerId: string }[];
-  cards: CalendarCard[];
+  cards: CalendarAppointment[];
 }
 
 interface CalendarPractitioner {
@@ -95,8 +81,6 @@ export interface RoomChoice {
 type Query = z.output<typeof calendarWeekQuerySchema>;
 
 const daysInWeek = 7;
-
-const activeStatuses: readonly string[] = activeAppointmentStatuses;
 
 /**
  * The calendar leaves out cancelled and no-show appointments unless asked
@@ -324,75 +308,8 @@ function findFreeCells(
 }
 
 /**
- * `acting`'s own working hours in the room that week: their schedules'
- * occurrences there, less their time off and the office's and organization's
- * closures. None for one who is not one of the room's practitioners.
- */
-function findOwnHours(
-  writer: Writer,
-  acting: Acting,
-  options: { schedules: readonly RoomSchedule[]; window: TimeRange; room: FoundRoom },
-): TimeRange[] {
-  const own = options.schedules.filter((row) => row.userId === acting.userId);
-  const [first] = own;
-  if (!first) {
-    return [];
-  }
-  const { timeOff, closures } = findBlocking(writer, first.practitionerId, options.window, [
-    options.room.officeId,
-  ]);
-  const blocked = [...timeOff, ...closures.map((one) => one.during)];
-  return mergeTouching(
-    own
-      .flatMap((row) => occurrencesDuring(row, options.window))
-      .flatMap((hours) => subtract(hours, blocked)),
-  );
-}
-
-/** `ranges` in time order, with those that touch joined: back-to-back schedules are one stretch. */
-function mergeTouching(ranges: readonly TimeRange[]): TimeRange[] {
-  const merged: TimeRange[] = [];
-  for (const range of [...ranges].sort((a, b) => +a.start - +b.start)) {
-    const last = merged.at(-1);
-    if (last && +range.start <= +last.end) {
-      last.end = range.end > last.end ? range.end : last.end;
-    } else {
-      merged.push({ ...range });
-    }
-  }
-  return merged;
-}
-
-/** What of `range` none of `cuts` covers, as the ranges left. */
-function subtract(range: TimeRange, cuts: readonly TimeRange[]): TimeRange[] {
-  let left = [range];
-  for (const cut of cuts) {
-    left = left.flatMap((piece) =>
-      [
-        { start: piece.start, end: cut.start < piece.end ? cut.start : piece.end },
-        { start: cut.end > piece.start ? cut.end : piece.start, end: piece.end },
-      ].filter((part) => part.start < part.end && (part.end <= cut.start || part.start >= cut.end)),
-    );
-  }
-  return left;
-}
-
-/** The parts of `range` inside `hours`, in time order. */
-function clipToHours(range: TimeRange, hours: readonly TimeRange[]): TimeRange[] {
-  return hours
-    .filter((one) => one.start < range.end && range.start < one.end)
-    .map((one) => ({
-      start: one.start > range.start ? one.start : range.start,
-      end: one.end < range.end ? one.end : range.end,
-    }))
-    .sort((a, b) => +a.start - +b.start);
-}
-
-/**
- * The room's appointments that week, in time order: in full for whoever
- * books for everyone and for their own practitioner, as busy blocks for any
- * other practitioner: only active ones, cut to `ownHours`, their working hours
- * in the room.
+ * The room's appointments that week `acting` sees, in time order: all of them
+ * for whoever books for everyone, else their own.
  */
 function findCards(
   writer: Writer,
@@ -400,12 +317,11 @@ function findCards(
   options: {
     roomId: string;
     week: TimeRange;
-    ownHours: readonly TimeRange[];
     practitionerId: string | null;
     medicalServiceId: string | null;
     includeCancelledAndNoShow: boolean;
   },
-): CalendarCard[] {
+): CalendarAppointment[] {
   const rows = selectDayAppointments(writer)
     .where(
       and(
@@ -423,23 +339,11 @@ function findCards(
     .orderBy(asc(appointment.startsAt), asc(appointment.endsAt), asc(appointment.id))
     .all();
   const now = new Date();
-  return rows.flatMap((booked): CalendarCard[] => {
+  return rows.flatMap((booked) => {
     const own = booked.practitionerUserId === acting.userId;
-    if (actsForEveryone(acting) || own) {
-      return [
-        { kind: "appointment", ...toDayAppointment(booked, { roles: acting.roles, own }, now) },
-      ];
-    }
-    if (!activeStatuses.includes(booked.status)) {
-      return [];
-    }
-    return clipToHours(asRange(booked), options.ownHours).map((part, index): BusyBlock => ({
-      kind: "busy",
-      // Time off can split an appointment; the first part keeps its id.
-      id: index === 0 ? booked.id : `${booked.id}-${index}`,
-      ...part,
-      practitionerName: booked.practitionerName,
-    }));
+    return actsForEveryone(acting) || own
+      ? [toDayAppointment(booked, { roles: acting.roles, own }, now)]
+      : [];
   });
 }
 
@@ -449,7 +353,7 @@ function splitByDay(
   parts: {
     schedules: readonly RoomSchedule[];
     freeStarts: CalendarDay["freeStarts"];
-    cards: CalendarCard[];
+    cards: CalendarAppointment[];
   },
 ): CalendarDay[] {
   return dates.map((date) => {
@@ -504,7 +408,6 @@ function buildWeek(writer: Writer, acting: Acting, found: FoundRoom, query: Quer
   const cards = findCards(writer, acting, {
     roomId: found.id,
     week: window,
-    ownHours: findOwnHours(writer, acting, { schedules, window, room: found }),
     practitionerId: filter.practitionerId,
     medicalServiceId: filter.medicalServiceId,
     includeCancelledAndNoShow: query.includeCancelledAndNoShow,

@@ -40,10 +40,10 @@ holds two practitioners at once, for appointments as for schedules.
 
 Practitioners can share a room, but never at once: while one practitioner holds
 an appointment there, no other practitioner can book, overbook or move an
-appointment into that time, and their cells there turn grey. Only the
-appointment's own practitioner can add an overbooking over it, or reception on
-their behalf. The database enforces it (`appointment_room_overlap`), so two
-bookings racing for a shared room's time cannot both win.
+appointment into that time. Only the appointment's own practitioner can add an
+overbooking over it, or reception on their behalf. The database enforces it
+(`appointment_room_overlap`), so two bookings racing for a room's time cannot
+both win.
 
 Booking warns, without blocking, when the patient already has an appointment that
 overlaps, or one the same day with another practitioner: back-to-back visits with
@@ -186,11 +186,9 @@ role: it is not drawn unless asked for, and then faded in its own lane, and
 opening it allows an undo.
 
 A practitioner sees their own appointments in full and books only for
-themself. Other practitioners' appointments in the room show as grey
-blocks across the day's width (two that overlap share it) with their time and practitioner (`09:30 Pablo
-Ríos`), nothing about the patient, and
-cut to the practitioner's own working hours in the room: the
-server sends no others. A block covers its cells, white ones included.
+themself. Other practitioners' appointments are not shown, and the server sends
+none: a room holds one practitioner at a time, so none falls within the
+practitioner's own hours in the room.
 
 ## Patient history
 

@@ -30,6 +30,11 @@ Amended 2026-11-26 (LEO-8): offices have no time zone. Every local time is read 
 fixed zone, America/Argentina/Buenos_Aires, so where the rules below say the office's
 zone, read that one.
 
+Amended 2026-11-26 (LEO-9): rooms have no capacity. A room holds one practitioner at a
+time, so where the rules below check room capacity when a schedule is saved, the save
+checks that no other practitioner holds the room then, by a schedule or a future
+appointment there.
+
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,
 Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
 
