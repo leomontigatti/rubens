@@ -3,28 +3,23 @@ import { and, asc, eq } from "drizzle-orm";
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import {
   activeChangeSchema,
-  officeInputSchema,
   officeUpdateSchema,
   roomInputSchema,
   roomUpdateSchema,
 } from "#/lib/offices.ts";
-import type {
-  ActiveChange,
-  OfficeInput,
-  OfficeUpdate,
-  RoomInput,
-  RoomUpdate,
-} from "#/lib/offices.ts";
+import type { ActiveChange, OfficeUpdate, RoomInput, RoomUpdate } from "#/lib/offices.ts";
 
 import { recordAudit } from "#/organization/audit.ts";
-import type { Database, Writer } from "#/organization/database.ts";
+import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { office, room } from "#/organization/schema.ts";
 
-// The organization's offices and their rooms. Everyone reads them; only an
-// admin changes them (the object's requirement). Nothing is deleted: a
-// deactivated office or room drops out of the default lists and can be
-// reactivated. Every change is written to the audit log, about no patient.
+// The organization's one office, which its setup creates
+// (`src/organization/members.ts`), and its rooms. Everyone reads them; only an
+// admin changes them (the object's requirement). Nothing adds or archives an
+// office. Nothing is deleted: a deactivated room drops out of the default
+// lists and can be reactivated. Every change is written to the audit log,
+// about no patient.
 
 const officeColumns = {
   id: office.id,
@@ -120,29 +115,6 @@ export function getOffice(
   return { ok: true, office: found, rooms, onlyInactive };
 }
 
-export function createOffice(
-  database: Database,
-  acting: Acting,
-  input: OfficeInput,
-): Result<{ office: Office }> {
-  const parsed = officeInputSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidInput;
-  }
-  return database.transaction((tx) => {
-    const created = tx.insert(office).values(parsed.data).returning(officeColumns).get();
-    recordAudit(tx, acting.userId, {
-      action: "create",
-      entityType: "office",
-      entityId: created.id,
-      patientId: null,
-      before: null,
-      after: createdFields(parsed.data),
-    });
-    return { ok: true as const, office: created };
-  });
-}
-
 export function updateOffice(
   database: Database,
   acting: Acting,
@@ -176,14 +148,6 @@ export function updateOffice(
     }
     return { ok: true as const, office: updated };
   });
-}
-
-export function setOfficeActive(
-  database: Database,
-  acting: Acting,
-  input: ActiveChange,
-): Result<object> {
-  return setActive(database, acting, input, "office");
 }
 
 export function createRoom(
@@ -257,37 +221,27 @@ export function updateRoom(
   });
 }
 
+/** Deactivates or reactivates a room; one already in that state changes nothing. */
 export function setRoomActive(
   database: Database,
   acting: Acting,
   input: ActiveChange,
-): Result<object> {
-  return setActive(database, acting, input, "room");
-}
-
-/** Deactivates or reactivates an office or a room; one already in that state changes nothing. */
-function setActive(
-  database: Database,
-  acting: Acting,
-  input: ActiveChange,
-  entityType: "office" | "room",
 ): Result<object> {
   const parsed = activeChangeSchema.safeParse(input);
   if (!parsed.success) {
     return invalidInput;
   }
   const { id, active } = parsed.data;
-  const table = entityType === "office" ? office : room;
-  return database.transaction((tx: Writer) => {
-    const current = tx.select({ active: table.active }).from(table).where(eq(table.id, id)).get();
+  return database.transaction((tx) => {
+    const current = tx.select({ active: room.active }).from(room).where(eq(room.id, id)).get();
     if (!current) {
       return notFound;
     }
     if (current.active !== active) {
-      tx.update(table).set({ active }).where(eq(table.id, id)).run();
+      tx.update(room).set({ active }).where(eq(room.id, id)).run();
       recordAudit(tx, acting.userId, {
         action: active ? "reactivate" : "deactivate",
-        entityType,
+        entityType: "room",
         entityId: id,
         patientId: null,
         before: { active: !active },

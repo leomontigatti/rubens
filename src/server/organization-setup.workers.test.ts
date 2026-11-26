@@ -13,12 +13,17 @@ vi.mock(import("#/organization/accounts.ts"), async (original) => ({
 
 const bindings: WorkerEnv = { ...env, SETUP_SECRET: "the-setup-secret" };
 
-function setupRequest(organizationName: string, authorization = "Bearer the-setup-secret") {
+function setupRequest(
+  organizationName: string,
+  authorization = "Bearer the-setup-secret",
+  office: { name: string; address?: string } = { name: "Sede Belgrano", address: "Cabildo 2000" },
+) {
   return new Request("https://underthing.test/api/setup", {
     method: "POST",
     headers: { authorization, "content-type": "application/json" },
     body: JSON.stringify({
       organizationName,
+      office,
       adminName: "Ana Gómez",
       adminEmail: "ana@example.com",
       password: "starting-password",
@@ -56,6 +61,17 @@ describe("the setup endpoint", () => {
     ];
 
     expect(responses.map((response) => response.status)).toEqual([401, 401, 404]);
+    expect(fakeAccounts.calls).toEqual([]);
+  });
+
+  it("refuses a request without the office's name and address, and creates no user", async () => {
+    const response = await handleSetupRequest(
+      setupRequest("Otra", undefined, { name: "Sede Otra" }),
+      bindings,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, reason: "invalidInput" });
     expect(fakeAccounts.calls).toEqual([]);
   });
 

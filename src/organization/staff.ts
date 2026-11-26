@@ -7,6 +7,7 @@ import {
   minPasswordLength,
   passwordChangeSchema,
 } from "#/lib/password-change.ts";
+import type { OfficeInput } from "#/lib/offices.ts";
 import type { PractitionerColor } from "#/lib/practitioner-colors.ts";
 import { present } from "#/lib/present.ts";
 import {
@@ -529,6 +530,7 @@ export async function setUpWithAccount(
   input: {
     organizationId: string;
     name: string;
+    office: OfficeInput;
     admin: { name: string; email: string; password: string };
   },
 ) {
@@ -557,6 +559,7 @@ export async function setUpWithAccount(
     const setUp = setUpOrganization(database, {
       organizationId: input.organizationId,
       name: input.name,
+      office: input.office,
       admin: { userId: created.userId, ...person, email, mustChangePassword: true },
     });
     if (!setUp.ok) {

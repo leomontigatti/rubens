@@ -12,7 +12,7 @@ import {
   setUpTestOrganization,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
-import { auditLog } from "#/organization/schema.ts";
+import { auditLog, office } from "#/organization/schema.ts";
 
 // The object reaches Clerk only through its accounts adapter, faked here: each
 // test reads what the adapter was asked to do.
@@ -754,6 +754,7 @@ describe("refusals", () => {
     await other.setUp({
       organizationId: "other",
       name: "Otra",
+      office: { name: "Otra sede", address: "Otra calle 1" },
       admin: { userId: adminCaller.userId, name: "Ana Admin", email: "ana@example.com" },
     });
 
@@ -781,6 +782,7 @@ describe("setting an organization up", () => {
     const result = await fresh.setUpWithAccount({
       organizationId: "consultorios-belgrano",
       name: "Consultorios Belgrano",
+      office: { name: "Sede Belgrano", address: "Cabildo 2000" },
       admin: { name: "Ana Gómez", email: "Ana@Example.com", password: startingPassword },
     });
 
@@ -805,6 +807,11 @@ describe("setting an organization up", () => {
         mustChangePassword: true,
       },
     });
+    expect(
+      await inStorage(fresh, (database) =>
+        database.select({ name: office.name, address: office.address }).from(office).all(),
+      ),
+    ).toEqual([{ name: "Sede Belgrano", address: "Cabildo 2000" }]);
   });
 
   it("changes nothing, and creates no user, when the organization is already set up", async () => {
@@ -814,6 +821,7 @@ describe("setting an organization up", () => {
       await organization.setUpWithAccount({
         organizationId,
         name: "Otra",
+        office: { name: "Otra sede", address: "Otra calle 1" },
         admin: { name: "Otro", email: "otro@example.com", password: startingPassword },
       }),
     ).toEqual({ ok: false, reason: "alreadySetUp" });

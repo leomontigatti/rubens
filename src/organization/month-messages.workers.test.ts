@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import type { WhatsappMessageStatus } from "#/lib/whatsapp-messages.ts";
 
 import {
-  addOffice,
   adminCaller,
   expectOk,
   fakeMeta,
@@ -102,7 +101,6 @@ afterEach(() => {
 describe("the month's WhatsApp messages", () => {
   it("are none in a month with no message", async () => {
     vi.setSystemTime(new Date("2099-03-15T12:00:00Z"));
-    await addOffice(organization, "Centro");
     await received(Date.parse("2099-03-14T12:00:00Z"));
 
     expect(await monthMessages()).toEqual({
@@ -131,7 +129,6 @@ describe("the month's WhatsApp messages", () => {
 
   it("count only what Meta delivered, and nothing the patients sent", async () => {
     vi.setSystemTime(new Date("2099-03-15T12:00:00Z"));
-    await addOffice(organization, "Centro");
     const earlier = Date.parse("2099-03-10T12:00:00Z");
     await received(earlier);
     await sent("template", earlier, "delivered");

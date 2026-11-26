@@ -1,7 +1,7 @@
 import process from "node:process";
 import { parseArgs } from "node:util";
 
-// Creates an organization and its first admin: there is no public sign-up, so
+// Creates an organization, its office and its first admin: there is no public sign-up, so
 // this is how a business comes to exist. It posts to the Worker's setup
 // endpoint (`src/server/organization-setup.ts`) with SETUP_SECRET, and the
 // organization's object creates the admin in Clerk and in its member table.
@@ -10,20 +10,22 @@ import { parseArgs } from "node:util";
 // The password is a starting one: the admin must replace it at first sign-in.
 
 const usage =
-  'usage: pnpm setup:organization --url <worker url> --organization "<name>" --name "<admin name>" --email <admin email> --password <starting password>';
+  'usage: pnpm setup:organization --url <worker url> --organization "<name>" --office "<office name>" --address "<office address>" --name "<admin name>" --email <admin email> --password <starting password>';
 
 const { values } = parseArgs({
   options: {
     url: { type: "string" },
     organization: { type: "string" },
+    office: { type: "string" },
+    address: { type: "string" },
     name: { type: "string" },
     email: { type: "string" },
     password: { type: "string" },
   },
 });
 
-const { url, organization, name, email, password } = values;
-if (!url || !organization || !name || !email || !password) {
+const { url, organization, office, address, name, email, password } = values;
+if (!url || !organization || !office || !address || !name || !email || !password) {
   console.error(usage);
   process.exit(1);
 }
@@ -39,6 +41,7 @@ const response = await fetch(new URL("/api/setup", url), {
   headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
   body: JSON.stringify({
     organizationName: organization,
+    office: { name: office, address },
     adminName: name,
     adminEmail: email,
     password,

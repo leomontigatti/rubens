@@ -121,15 +121,16 @@ From a clean checkout of the commit to deploy, with `pnpm install` done:
    and prints the Worker's URL.
 3. **Set the secrets** (above): `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` on the
    first deploy, and `SETUP_SECRET` when an organization is to be created.
-4. **Create the organization** and its first admin:
+4. **Create the organization**, its office and its first admin:
 
    ```sh
    SETUP_SECRET=<the value set above> pnpm setup:organization --url https://<worker url> \
-     --organization "<name>" --name "<admin name>" --email <admin email> \
-     --password <starting password>
+     --organization "<name>" --office "<office name>" --address "<office address>" \
+     --name "<admin name>" --email <admin email> --password <starting password>
    ```
 
-   The admin is created in Clerk and in the organization's member table, and must
+   The office is created with the organization. The admin is created in Clerk and in
+   the organization's member table, and must
    replace the starting password at first sign-in. A second run for the same
    organization changes nothing and says so. Then
    `pnpm exec wrangler secret delete SETUP_SECRET`.

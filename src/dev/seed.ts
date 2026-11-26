@@ -31,6 +31,7 @@ export async function seedDevOrganization(
   const setUp = await organization.setUp({
     organizationId,
     name: devOrganizationName,
+    office: devOffice,
     admin: devPeople.admin,
   });
   if (!setUp.ok) {
@@ -46,10 +47,16 @@ export async function seedDevOrganization(
       await organization.addMember(admin, { ...devPeople[role], roles: [role] }),
     );
   }
-  const office = accepted("createOffice", await organization.createOffice(admin, devOffice));
+  const [office] = accepted(
+    "listOffices",
+    await organization.listOffices(admin, { includeInactive: false }),
+  ).offices;
+  if (!office) {
+    throw new Error("dev seed: setUp left no office");
+  }
   const { room } = accepted(
     "createRoom",
-    await organization.createRoom(admin, { ...devRoom, officeId: office.office.id }),
+    await organization.createRoom(admin, { ...devRoom, officeId: office.id }),
   );
   const [practitioner] = accepted(
     "listSchedulePractitioners",
@@ -127,7 +134,7 @@ export async function seedDevOrganization(
   if (options.qa) {
     await seedQaData(organization, {
       admin,
-      officeId: office.office.id,
+      officeId: office.id,
       juanId: practitioner.id,
       devConsultId: medicalService.id,
       devPatientIds,
