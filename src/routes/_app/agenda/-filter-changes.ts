@@ -20,22 +20,12 @@ interface FilterWeek {
 
 export type CalendarFilterId = "consultorio" | "profesional" | "prestacion";
 
-/** The active rooms under their office, and the viewed room, which may be deactivated since. */
-export function roomOptions(
-  viewed: { id: string; name: string },
-  officeName: string,
-  roomChoices: RoomChoice[],
-) {
-  const options = roomChoices.flatMap((choice) =>
-    choice.rooms.map((room) => ({
-      value: room.id,
-      label: room.name,
-      section: choice.officeName,
-    })),
-  );
+/** The active rooms, and the viewed room, which may be deactivated since. */
+export function roomOptions(viewed: RoomChoice, roomChoices: RoomChoice[]) {
+  const options = roomChoices.map((room) => ({ value: room.id, label: room.name }));
   return options.some((option) => option.value === viewed.id)
     ? options
-    : [{ value: viewed.id, label: viewed.name, section: officeName }, ...options];
+    : [{ value: viewed.id, label: viewed.name }, ...options];
 }
 
 /** The chosen practitioner's medical services, or everyone's named with their practitioner. */

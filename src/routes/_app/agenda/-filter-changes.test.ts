@@ -68,19 +68,22 @@ describe("the calendar's medical service options", () => {
 
 describe("the calendar's room options", () => {
   const roomChoices = [
-    { officeId: "centro", officeName: "Centro", rooms: [{ id: "uno", name: "Uno" }] },
+    { id: "uno", name: "Uno" },
+    { id: "dos", name: "Dos" },
   ];
 
-  it("list the rooms under their office", () => {
-    expect(roomOptions({ id: "uno", name: "Uno" }, "Centro", roomChoices)).toEqual([
-      { value: "uno", label: "Uno", section: "Centro" },
+  it("list the rooms with no office heading", () => {
+    expect(roomOptions({ id: "uno", name: "Uno" }, roomChoices)).toEqual([
+      { value: "uno", label: "Uno" },
+      { value: "dos", label: "Dos" },
     ]);
   });
 
   it("keep a deactivated room being viewed, which the choices leave out", () => {
-    expect(roomOptions({ id: "viejo", name: "Viejo" }, "Norte", roomChoices)).toEqual([
-      { value: "viejo", label: "Viejo", section: "Norte" },
-      { value: "uno", label: "Uno", section: "Centro" },
+    expect(roomOptions({ id: "viejo", name: "Viejo" }, roomChoices)).toEqual([
+      { value: "viejo", label: "Viejo" },
+      { value: "uno", label: "Uno" },
+      { value: "dos", label: "Dos" },
     ]);
   });
 });

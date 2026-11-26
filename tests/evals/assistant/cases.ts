@@ -96,30 +96,30 @@ export type Case = {
 
 const reminder: HistoryMessage = {
   role: "assistant",
-  text: "Hola Lucía, te recordamos tu turno de Sesión de kinesiología con Lic. Paula Ríos el jueves 12/11 a las 16:30 en Sede Centro (Av. Colón 1234). ¿Confirmás tu asistencia? Respondé este mensaje.",
+  text: "Hola Lucía, te recordamos tu turno de Sesión de kinesiología con Lic. Paula Ríos el jueves 12/11 a las 16:30 en Av. Colón 1234. ¿Confirmás tu asistencia? Respondé este mensaje.",
 };
 
 // Asks nothing: it says the appointment was booked.
 const bookingConfirmation: HistoryMessage = {
   role: "assistant",
-  text: "Hola Lucía, tu turno de Sesión de kinesiología con Lic. Paula Ríos quedó reservado para el jueves 12/11 a las 16:30 en Sede Centro (Av. Colón 1234).",
+  text: "Hola Lucía, tu turno de Sesión de kinesiología con Lic. Paula Ríos quedó reservado para el jueves 12/11 a las 16:30 en Av. Colón 1234.",
 };
 
 const offeredSlots: HistoryMessage = {
   role: "assistant",
-  text: "Tengo estos horarios con Lic. Paula Ríos: lunes 16/11 a las 9:00 en Sede Centro, martes 17/11 a las 10:30 en Sede Norte o jueves 19/11 a las 17:00 en Sede Centro. ¿Cuál te queda mejor?",
+  text: "Tengo estos horarios con Lic. Paula Ríos: lunes 16/11 a las 9:00, martes 17/11 a las 10:30 o jueves 19/11 a las 17:00. ¿Cuál te queda mejor?",
 };
 
 const moveProposal: HistoryMessage = {
   role: "assistant",
-  text: "Te propongo mover tu Sesión de kinesiología con Lic. Paula Ríos del jueves 12/11 a las 16:30 al martes 17/11 a las 10:30 en Sede Norte (Av. Rafael Núñez 4500). ¿Lo confirmo?",
+  text: "Te propongo mover tu Sesión de kinesiología con Lic. Paula Ríos del jueves 12/11 a las 16:30 al martes 17/11 a las 10:30. ¿Lo confirmo?",
 };
 
 // The same move, named as a person would inside the conversation that offered
 // it: only what changes (#393).
 const shortMoveProposal: HistoryMessage = {
   role: "assistant",
-  text: "Perfecto, te lo paso al martes 17/11 a las 10:30 en Sede Norte. ¿Te parece bien?",
+  text: "Perfecto, te lo paso al martes 17/11 a las 10:30. ¿Te parece bien?",
 };
 
 // A move to Tuesday the assistant proposed, still waiting on the patient.
@@ -242,7 +242,7 @@ export const cases: Case[] = [
   {
     id: "move-pick-slot",
     description:
-      "Moving: the picked time becomes a proposal naming what changes, the office included, not yet accepted (#393)",
+      "Moving: the picked time becomes a proposal naming what changes, no office, not yet accepted (#393)",
     number: "onePatient",
     history: [
       reminder,
@@ -299,7 +299,7 @@ export const cases: Case[] = [
       { role: "patient", text: "el de Tomás" },
       {
         role: "assistant",
-        text: "Para pasar el control de Tomás del miércoles 11/11, tengo el miércoles 18/11 a las 11:00 en Sede Norte con Dr. Martín Sosa. ¿Te sirve?",
+        text: "Para pasar el control de Tomás del miércoles 11/11, tengo el miércoles 18/11 a las 11:00 con Dr. Martín Sosa. ¿Te sirve?",
       },
     ],
     patient: ["el 18 a las 11 me viene bien"],
@@ -376,7 +376,7 @@ export const cases: Case[] = [
       { role: "patient", text: "y se puede estacionar ahí?" },
       {
         role: "assistant",
-        text: "*Rita Paz*\nHola Lucía, sí, hay estacionamiento en la esquina. Y el martes 17/11 a las 10:30 en Sede Norte sigue libre.",
+        text: "*Rita Paz*\nHola Lucía, sí, hay estacionamiento en la esquina. Y el martes 17/11 a las 10:30 sigue libre.",
         byStaff: true,
       },
     ],
@@ -404,12 +404,12 @@ export const cases: Case[] = [
       { role: "patient", text: "hola, qué turnos tengo?" },
       {
         role: "assistant",
-        text: "Hola Lucía! Tenés Sesión de kinesiología el jueves 12/11 a las 16:30 y Consulta odontológica el viernes 13/11 a las 11:00, los dos en Sede Centro.",
+        text: "Hola Lucía! Tenés Sesión de kinesiología el jueves 12/11 a las 16:30 y Consulta odontológica el viernes 13/11 a las 11:00.",
       },
       { role: "patient", text: "uno de los dos lo puedo pasar para la semana que viene?" },
       {
         role: "assistant",
-        text: "Para la kinesiología tengo el lunes 16/11 a las 9:00 en Sede Centro, el martes 17/11 a las 10:30 en Sede Norte o el jueves 19/11 a las 17:00 en Sede Centro. Para la odontológica, el viernes 20/11 a las 11:00 en Sede Centro. ¿Cuál te queda mejor?",
+        text: "Para la kinesiología tengo el lunes 16/11 a las 9:00, el martes 17/11 a las 10:30 o el jueves 19/11 a las 17:00. Para la odontológica, el viernes 20/11 a las 11:00. ¿Cuál te queda mejor?",
       },
     ],
     patient: ["el lunes a las 9"],
@@ -520,15 +520,15 @@ export const cases: Case[] = [
   },
   {
     id: "where",
-    description: "Where: the office and its address",
+    description: "Where: the practice's address, naming no office",
     number: "onePatient",
     history: [],
     patient: ["dónde queda el consultorio? es la primera vez que voy"],
     expect: {
-      calls: [{ name: "get_appointment", args: { appointmentId: "apt-101" } }],
       handoff: noHandoff,
       judgement: plain,
       replyMatches: [/Col[oó]n 1234/],
+      replyAvoids: [/\bsede\b/i],
     },
   },
   {

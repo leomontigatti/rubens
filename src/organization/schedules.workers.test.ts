@@ -74,7 +74,7 @@ async function world() {
 }
 
 describe("creating a schedule", () => {
-  it("stores the weekly fields with the room and office it holds, and audits it", async () => {
+  it("stores the weekly fields with the room it holds, naming no office, and audits it", async () => {
     const { organization, room, mondayMorning, create, schedulesOf } = await world();
 
     const result = await create(
@@ -83,11 +83,12 @@ describe("creating a schedule", () => {
     );
 
     expect(result).toMatchObject({ ok: true });
-    expect(await schedulesOf()).toEqual([
+    const schedules = await schedulesOf();
+    expect(schedules[0]).not.toHaveProperty("officeName");
+    expect(schedules).toEqual([
       expect.objectContaining({
         roomId: room.id,
         roomName: "Consultorio 1",
-        officeName: "Sede Centro",
         weekdays: [1, 3],
         startTime: "09:00",
         endTime: "13:00",

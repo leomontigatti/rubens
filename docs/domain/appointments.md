@@ -153,7 +153,7 @@ free time.
 
 The calendar is one week of one room, Monday to Sunday, in the practice's
 zone, with the previous and next week and a date to jump to. It is filtered in
-this order: the room, required, from the active rooms grouped by office; then a
+this order: the room, required, from the active rooms by name; then a
 practitioner, optional; then a medical service, optional, from the chosen practitioner's active ones or all of them, which
 implies its practitioner. The practitioners to filter by are those with a
 schedule or an active appointment in the room that week, and, for reception and

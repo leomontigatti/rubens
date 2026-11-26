@@ -14,7 +14,6 @@ const templateVariableNames = [
   "profesional",
   "fecha",
   "hora",
-  "sede",
   "domicilio",
   "prestacion",
   // The address's name before `domicilio`, which a template Meta approved
@@ -29,7 +28,6 @@ export interface TemplateAppointment {
   /** The practitioner, as the practitioner's rules name them. */
   practitionerName: string;
   start: Date;
-  officeName: string;
   officeAddress: string;
   medicalServiceName: string;
   /** The organization's name, which the text names instead of a sign-off. */
@@ -40,7 +38,6 @@ export const sampleAppointment: Omit<TemplateAppointment, "organizationName"> = 
   patient: { firstName: "Lucía", chosenName: null },
   practitionerName: "la Dra. Sofía Méndez",
   start: new Date("2026-11-12T13:30:00Z"),
-  officeName: "Sede Centro",
   officeAddress: "Av. Colón 1234, Córdoba",
   medicalServiceName: "Limpieza",
 };
@@ -53,7 +50,6 @@ export function templateValues(appointment: TemplateAppointment): Record<Templat
     profesional: appointment.practitionerName,
     fecha: formatDay(start, practiceTimeZone),
     hora: formatTime(start, practiceTimeZone),
-    sede: appointment.officeName,
     domicilio: appointment.officeAddress,
     prestacion: afterPossessive(appointment.medicalServiceName),
     direccion: appointment.officeAddress,

@@ -39,7 +39,6 @@ const appointmentVariables = [
   "profesional",
   "fecha",
   "hora",
-  "sede",
   "domicilio",
   "prestacion",
 ] as const satisfies readonly TemplateVariable[];

@@ -49,6 +49,16 @@ describe("the template rules check", () => {
     });
   });
 
+  it("refuses the office's name, which no template fills, and passes its address", () => {
+    expect(checkTemplateBody(own, "Hola {{paciente}}, te esperamos en {{domicilio}}.").ok).toBe(
+      true,
+    );
+    expect(checkTemplateBody(own, "Hola {{paciente}}, te esperamos en {{sede}}.")).toEqual({
+      ok: false,
+      problems: [{ kind: "unknownVariable", variable: "sede" }],
+    });
+  });
+
   it("refuses a variable whose name is not lowercase letters and underscores", () => {
     expect(checkTemplateBody(own, "Hola {{ paciente }}, nos vemos.")).toEqual({
       ok: false,

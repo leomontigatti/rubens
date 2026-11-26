@@ -85,11 +85,10 @@ export interface CalendarWeek {
   days: CalendarDay[];
 }
 
-/** The active rooms of each active office, by name: the room picker's choices. */
+/** An active room, the room picker's choices listing them by name. */
 export interface RoomChoice {
-  officeId: string;
-  officeName: string;
-  rooms: { id: string; name: string }[];
+  id: string;
+  name: string;
 }
 
 type Query = z.output<typeof calendarWeekQuerySchema>;
@@ -109,25 +108,13 @@ function shownOnCalendar(includeCancelledAndNoShow: boolean) {
 }
 
 function listRoomChoices(writer: Writer): RoomChoice[] {
-  const rows = writer
-    .select({ officeId: office.id, officeName: office.name, id: room.id, name: room.name })
+  return writer
+    .select({ id: room.id, name: room.name })
     .from(room)
     .innerJoin(office, and(eq(office.id, room.officeId), eq(office.active, true)))
     .where(eq(room.active, true))
-    .orderBy(asc(office.name), asc(office.id), asc(room.name))
+    .orderBy(asc(room.name), asc(room.id))
     .all();
-  const choices: RoomChoice[] = [];
-  let current: string | null = null;
-  let rooms: RoomChoice["rooms"] = [];
-  for (const { officeId, officeName, id, name } of rows) {
-    if (officeId !== current) {
-      rooms = [];
-      choices.push({ officeId, officeName, rooms });
-      current = officeId;
-    }
-    rooms.push({ id, name });
-  }
-  return choices;
 }
 
 /** The room's schedules that meet the dates, with their practitioner and member. */
@@ -543,7 +530,7 @@ function resolveView(
   if (query.roomId !== undefined) {
     return { roomId: query.roomId, practitionerId: query.practitionerId };
   }
-  const roomIds = roomChoices.flatMap((choice) => choice.rooms.map((one) => one.id));
+  const roomIds = roomChoices.map((one) => one.id);
   const opening = findCalendarOpening(writer, acting, query.date, roomIds);
   const filtered = query.practitionerId !== undefined || query.medicalServiceId !== undefined;
   return {

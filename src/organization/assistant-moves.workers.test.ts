@@ -64,7 +64,6 @@ function slot(day: number, time: string) {
     slotId: start.toISOString(),
     date: `lunes ${day} de enero`,
     time,
-    office: "Sede Centro",
   };
 }
 
@@ -248,6 +247,21 @@ describe("the free times offered", () => {
   });
 });
 
+describe("where the practice is", () => {
+  it("is in the turn's facts, with no office named, for a patient asking where it is", async () => {
+    await writes("dónde queda el consultorio?");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", notClinical);
+      return `Estamos en ${world.office.address}.`;
+    });
+    await turn();
+
+    const { system } = scriptedModel.turns[0]!;
+    expect(system).toContain(world.office.address);
+    expect(system).not.toContain(world.office.name);
+  });
+});
+
 describe("moving on the patient's yes", () => {
   it("moves the appointment to the time picked, frees the old one, and tells nobody it was moved by the practice", async () => {
     const accepted = await patientMoves(slot(12, "10:00").slotId);
@@ -260,10 +274,8 @@ describe("moving on the patient's yes", () => {
         practitioner: "Juan Gómez",
         date: "lunes 5 de enero",
         time: "09:00",
-        office: "Sede Centro",
         newDate: "lunes 12 de enero",
         newTime: "10:00",
-        newOffice: "Sede Centro",
       },
     });
     expect(+(await world.appointmentOf(appointmentId)).start).toBe(+at("13:00", "2099-01-12"));
