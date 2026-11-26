@@ -12,8 +12,8 @@ A code says which tracker holds an issue:
 | `LEO-N` | Capy    | the `tools.issue.*` calls below                                          |
 | `#N`    | GitHub  | `gh` ([GitHub issues during the pilot](#github-issues-during-the-pilot)) |
 
-- **New issues go to Capy**, except a PRD that needs slicing (below). An open GitHub issue is worked from GitHub until it closes, and
-  moves to Capy only as a deferral ([Closing an issue](#closing-an-issue)).
+- **New issues go to Capy**, a PRD and its tickets included. An open GitHub issue is worked
+  from GitHub until it closes, and moves to Capy only as a deferral ([Closing an issue](#closing-an-issue)).
 - **`LEO-N` is the issue, `RUBE-N` is a thread.** Capy numbers issues across the whole
   organization, so the code after `LEO-12` may belong to another project: pass
   `project: "this"` to every list.
@@ -21,18 +21,21 @@ A code says which tracker holds an issue:
   machine has too. Each returns `{ text }`; a create's text opens with the new code
   (`LEO-12 created · Todo · …`), and every read's first lines list the organization's states
   and labels.
-- **`implement-spec` waits for stage two.** It reads a PRD's sub-issues with `gh`, so a PRD
-  that needs slicing is filed on GitHub with its tickets, or waits. A PRD one session builds is
-  filed here.
 
 The operations:
 
 - **Create**: `tools.issue.create({ title, description, priority, labels: [...] })`. Pass a long
   body as a string the program read from a file
   (`(await tools.capy.read({ path })).content`), so the text never reaches a shell.
-- **Read**: `tools.issue.read({ issue: "LEO-N" })` returns the fields, the description, the
-  sub-issues, the relations and the timeline with every comment, newest first. A closed issue's
-  status says how it closed: `Done` or `Canceled`.
+- **Read**: `tools.issue.read({ issue: "LEO-N" })` is one read for the body and the comments:
+  it returns the fields, the description, the sub-issues, the relations and the timeline with
+  every comment, newest first. A closed issue's status says how it closed: `Done` or `Canceled`.
+- **A PRD's sub-issues**, each with its state:
+  `tools.issue.read({ parent: "<PRD>", status: "all" })`, one line per ticket
+  (`LEO-9 · Todo · high · blocked · …`).
+- **An issue's open blockers**: the `Blocked by:` list of its own read, one line per blocker
+  with that blocker's state. The open ones are those in neither `Done` nor `Canceled`; an issue
+  with none has no such list.
 - **Find**: `tools.issue.read({ project: "this", search: "<words>", status: "all" })` matches
   titles; add `search_in: "all"` for descriptions and comments.
 - **Comment**: `tools.issue.comment({ issue, body })`. Capy signs a comment with its thread,
@@ -156,7 +159,9 @@ a map or its tickets carry: a map is not triaged, and the PRD it ends in is.
 Closing means a decision was made. It does not mean code changed.
 
 A merged PR closes no Capy issue. The PR body's closing line is `Closes LEO-N`, one line per
-issue, and the thread closes each issue it names by hand once the PR has merged.
+issue, and the thread closes each issue it names by hand once the PR has merged. A PRD PR's
+body carries one for each sub-issue, on its checkbox (`- [ ] Closes LEO-N <title>`), and one
+for the PRD; closing the PRD closes none of its sub-issues.
 
 | Outcome             | How to close                                                                   | Closing comment                                    |
 | ------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------- |
@@ -186,8 +191,7 @@ The `to-spec` and `to-tickets` skills use this section.
   implemented: `tools.issue.create({ title, description, parent: "<PRD>", priority, labels })`,
   each with the PRD's priority and type plus `ready-for-agent` ([Labels](#labels)). Check first
   that the PRD has none yet (`tools.issue.read({ parent: "<PRD>", status: "all" })` answers
-  `No issues match.`), and publish no slice before the user approves the slicing. During the
-  pilot a PRD with tickets lives on GitHub ([Conventions](#conventions)).
+  `No issues match.`), and publish no slice before the user approves the slicing.
 - **Blocking** is Capy's native relation: `blocked_by: ["<other>"]` on the create, or
   `tools.issue.update({ issue: "<ticket>", blocked_by: ["<other>"] })`. A "Blocked by LEO-N" line
   in the description is for the reader; it does not block anything.
@@ -242,7 +246,7 @@ read them.
 
 ## GitHub issues during the pilot
 
-The open `#N` issues, and a PRD filed with tickets for `implement-spec`, follow every rule
+The open `#N` issues follow every rule
 above with GitHub's commands and labels. The label list is
 [`.github/labels.json`](../../.github/labels.json), pushed with `pnpm labels:sync` and held
 to by `pnpm check:labels` ([scripts.md](../operations/scripts.md)). It changes only for a
