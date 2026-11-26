@@ -37,6 +37,8 @@ export function fakeObject(evaluationCase: Case): FakeObject {
   const knownTimes = new Set<string>();
   let latest: Proposal | Booking | undefined = evaluationCase.liveProposal;
   let proposals = 0;
+  // The turn stored a proposal: a booking it made the patient has not read yet.
+  let proposedThisTurn = false;
 
   const appointment = (id: unknown): Appointment | undefined =>
     appointments.find((each) => each.appointmentId === id);
@@ -143,6 +145,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
         knownTimes.add(slot.time);
       }
       proposals += 1;
+      proposedThisTurn = true;
       latest = { kind, appointmentId: target.appointmentId, slotId: args.slotId as string };
       return { ok: true, proposalId: `prop-${proposals}`, proposal: describe(latest, target) };
     },
@@ -153,6 +156,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
       if (!slot) return { ok: false, reason: "notFree" };
       knownTimes.add(slot.time);
       const { patientId = null, newPatient } = forWhom;
+      proposedThisTurn = true;
       latest = { kind: "book", patientId, newPatient, slotId: slot.slotId };
       const patient = patients.find((each) => each.patientId === patientId);
       const alreadyBooked = (patient?.appointments ?? [])
@@ -167,6 +171,7 @@ export function fakeObject(evaluationCase: Case): FakeObject {
     },
     accept_proposal: () => {
       if (!latest) return { ok: false, reason: "no_live_proposal" };
+      if (latest.kind === "book" && proposedThisTurn) return { ok: false, reason: "not_shown_yet" };
       if ((latest.kind === "move" || latest.kind === "book") && evaluationCase.slotTaken)
         return { ok: false, reason: "slot_taken" };
       if (latest.kind === "book") return { ok: true, applied: describeBooking(latest) };

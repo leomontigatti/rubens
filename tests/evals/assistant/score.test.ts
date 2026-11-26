@@ -92,7 +92,7 @@ describe("score", () => {
   it("does not count a booking proposal the object refused", () => {
     const result = turn("book-known-patient-picks-time", "Te reservo el miércoles.", (tools) => {
       tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
-      tools.run("propose_booking", { slotId: "book-r9" });
+      tools.run("propose_booking", { slotId: "book-r2", patientId: "pat-unknown" });
     });
 
     expect(result.toolChoice.reason).toBe('missing propose_booking({"slotId":"book-r2"})');
@@ -437,5 +437,12 @@ describe("score", () => {
     const tools = fakeObject(findCase("move-slot-taken"));
 
     expect(tools.run("accept_proposal", {})).toEqual({ ok: false, reason: "slot_taken" });
+  });
+
+  it("refuses accepting a booking in the turn that proposed it, as the object does", () => {
+    const tools = fakeObject(findCase("book-known-patient-picks-time"));
+    tools.run("propose_booking", { slotId: "book-r2" });
+
+    expect(tools.run("accept_proposal", {})).toEqual({ ok: false, reason: "not_shown_yet" });
   });
 });

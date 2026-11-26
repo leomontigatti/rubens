@@ -468,12 +468,12 @@ export const proposal = sqliteTable(
     conversationId: text("conversation_id")
       .notNull()
       .references(() => conversation.id),
-    /** The appointment it changes; none for a booking. */
+    /** The appointment it changes, or the one a booking made once accepted. */
     appointmentId: text("appointment_id").references(() => appointment.id),
     kind: text("kind", { enum: proposalKinds }).notNull(),
     /** What the patient was told: the change and the appointment's facts, compared again on the yes. */
     statement: text("statement", { mode: "json" }).$type<Record<string, string>>().notNull(),
-    /** A booking's patient, medical service, practitioner and room; none for another kind. */
+    /** A booking's patient (for a person the practice did not know, the one it registered once accepted), medical service, practitioner and room; none for another kind. */
     patientId: text("patient_id").references(() => patient.id),
     medicalServiceId: text("medical_service_id").references(() => medicalService.id),
     practitionerId: text("practitioner_id").references(() => practitioner.id),

@@ -108,4 +108,19 @@ describe("the medical services the assistant lists", () => {
       medicalServices: [{ name: "Consulta", practitioners: ["Juan Gómez"] }],
     });
   });
+
+  it("leave out those of a member who no longer holds the practitioner role", async () => {
+    await offers(world.juan.practitionerId, "Consulta");
+    await offers(world.lucia.practitionerId, "Control");
+    expectOk(
+      await world.organization.updateMember(adminCaller, {
+        memberId: world.lucia.caller.userId,
+        roles: ["receptionist"],
+      }),
+    );
+
+    expect(await medicalServicesListed()).toEqual({
+      medicalServices: [{ name: "Consulta", practitioners: ["Juan Gómez"] }],
+    });
+  });
 });

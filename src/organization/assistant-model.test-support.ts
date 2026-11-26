@@ -31,7 +31,7 @@ type Tokens = Omit<ModelUsage, "model">;
  * A turn as a script sees it: the request, a way to call one of its tools,
  * and one to end a call to the model that used `tokens` of the real model.
  */
-interface ScriptedTurn extends ModelTurn {
+export interface ScriptedTurn extends ModelTurn {
   call(name: AssistantToolName, args?: Record<string, unknown>): ToolResult;
   uses(tokens: Tokens): void;
 }

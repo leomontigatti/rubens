@@ -17,7 +17,8 @@ import {
   scriptedModel,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { patient } from "#/organization/schema.ts";
+import type { ScriptedTurn } from "#/organization/organization.test-support.ts";
+import { appointment, patient } from "#/organization/schema.ts";
 import { outboxMessage, proposal } from "#/organization/whatsapp-schema.ts";
 
 // The assistant's sandbox (docs/domain/assistant.md § Trying it): an admin
@@ -65,25 +66,60 @@ const fromJson = (text: string) => z.json().parse(JSON.parse(text));
 /** The free times find_free_times returns, by the id a proposal takes. */
 const freeTimes = z.object({ slots: z.array(z.object({ slotId: z.string() })) });
 
+/** The free times find_free_times returns, by what the patient reads. */
+const moveTimes = z.object({
+  slots: z.array(z.looseObject({ slotId: z.string(), time: z.string() })),
+});
+
 /** The free times find_booking_times returns, by the id a booking proposal takes. */
 const bookingTimes = z.object({
   slots: z.array(z.looseObject({ slotId: z.string(), date: z.string(), time: z.string() })),
 });
 
-/** A sandbox turn that finds Monday 5 January at 10:00, proposes it with `args` and accepts it on the same message. */
-function booksMondayAtTen(args: Record<string, unknown>) {
+/** Finds Monday 5 January at 10:00 for a new appointment, as a sandbox turn's model does. */
+function mondayAtTen(turn: ScriptedTurn) {
+  const found = bookingTimes.parse(
+    turn.call("find_booking_times", { medicalService: "Consulta", from: "2099-01-05" }),
+  );
+  return found.slots.find((one) => one.date === "lunes 5 de enero" && one.time === "10:00")?.slotId;
+}
+
+/**
+ * Two sandbox turns from `state`: the first, on `text`, proposes Monday 5
+ * January at 10:00 with `args`; the second accepts it on the patient's yes.
+ */
+async function booksMondayAtTen(state: SandboxState, text: string, args: Record<string, unknown>) {
   scriptedModel.script((turn) => {
     turn.call("judge_messages", { ...notClinical, booking: true });
-    const found = bookingTimes.parse(
-      turn.call("find_booking_times", { medicalService: "Consulta", from: "2099-01-05" }),
-    );
-    const offered = found.slots.find(
-      (one) => one.date === "lunes 5 de enero" && one.time === "10:00",
-    );
-    turn.call("propose_booking", { ...args, slotId: offered?.slotId });
-    turn.call("accept_proposal");
-    return "Listo, te reservé la consulta con Juan Gómez el lunes 5 de enero a las 10:00.";
+    turn.call("propose_booking", { ...args, slotId: mondayAtTen(turn) });
+    return "Te reservo la consulta con Juan Gómez el lunes 5 de enero a las 10:00. Te parece bien?";
   });
+  const proposed = await playPatient(state, text);
+  scriptedModel.script((turn) => {
+    turn.call("judge_messages", { ...notClinical, booking: true });
+    turn.call("accept_proposal");
+    return "Listo, te reservé la consulta.";
+  });
+  return { proposed, booked: await playPatient(proposed.sandbox, "sí") };
+}
+
+/** What list_patients returns: each patient's id and upcoming appointments. */
+const listing = z.object({
+  patients: z.array(
+    z.looseObject({
+      patientId: z.string(),
+      firstName: z.string(),
+      upcomingAppointments: z.array(z.looseObject({ appointmentId: z.string(), time: z.string() })),
+    }),
+  ),
+});
+
+/** The appointment at 10:00 that list_patients lists. */
+function bookedAtTen(listed: unknown) {
+  return listing
+    .parse(listed)
+    .patients.flatMap((one) => one.upcomingAppointments)
+    .find((one) => one.time === "10:00")?.appointmentId;
 }
 
 /** The next sandbox turn's list_patients, from `state`. */
@@ -97,9 +133,13 @@ async function listedAfter(state: SandboxState) {
   return { played: await playPatient(state, "¿qué turnos tengo?"), listed };
 }
 
-/** Every patient and proposal the object stores. */
-function storedPatientsAndProposals() {
+/** Every appointment, patient and proposal the object stores: the real agenda and who is on it. */
+function stored() {
   return inStorage(world.organization, (database) => ({
+    appointments: database
+      .select({ id: appointment.id, startsAt: appointment.startsAt, status: appointment.status })
+      .from(appointment)
+      .all(),
     patients: database.select({ firstName: patient.firstName }).from(patient).all(),
     proposals: database.select({ id: proposal.id }).from(proposal).all(),
   }));
@@ -270,16 +310,22 @@ describe("a sandbox conversation", () => {
 
   it("books for the number's patient and keeps the booking in its next turns, leaving no appointment, proposal or message behind", async () => {
     const queuedBefore = await outbox();
-    const storedBefore = await storedPatientsAndProposals();
-    booksMondayAtTen({});
+    const storedBefore = await stored();
 
-    const booked = await playPatient(await startSandbox(), "quiero otro turno el lunes a las 10");
+    const { proposed, booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero otro turno el lunes a las 10",
+      {},
+    );
     const { played, listed } = await listedAfter(booked.sandbox);
 
-    expect(toolCalls(booked).map((call) => [call.name, call.result])).toEqual([
+    expect(toolCalls(proposed).map((call) => [call.name, call.result])).toEqual([
       ["judge_messages", { ok: true }],
       ["find_booking_times", expect.objectContaining({ ok: true })],
       ["propose_booking", expect.objectContaining({ ok: true })],
+    ]);
+    expect(toolCalls(booked).map((call) => [call.name, call.result])).toEqual([
+      ["judge_messages", { ok: true }],
       ["accept_proposal", expect.objectContaining({ ok: true })],
     ]);
     expect(played.sandbox.proposals).toEqual([
@@ -297,18 +343,101 @@ describe("a sandbox conversation", () => {
         },
       ],
     });
-    expect(await storedPatientsAndProposals()).toEqual(storedBefore);
+    expect(await stored()).toEqual(storedBefore);
     expect(await outbox()).toEqual(queuedBefore);
     expect(fakeMeta.requests).toEqual([]);
   });
 
-  it("registers a person the practice does not know only in the sandbox, and keeps their booking in its next turns", async () => {
-    const storedBefore = await storedPatientsAndProposals();
-    booksMondayAtTen({ newPatientName: { firstName: "Tomás", lastName: "Ruiz" } });
+  it("refuses to accept a booking in the turn that proposed it", async () => {
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      turn.call("propose_booking", { slotId: mondayAtTen(turn) });
+      turn.call("accept_proposal");
+      return "Listo, te reservé la consulta.";
+    });
 
-    const booked = await playPatient(
+    const played = await playPatient(await startSandbox(), "quiero otro turno el lunes a las 10");
+
+    expect(toolCalls(played).at(-1)).toEqual({
+      name: "accept_proposal",
+      args: {},
+      result: { ok: false, reason: "notShownYet" },
+    });
+    expect(played.sandbox.proposals).toEqual([
+      expect.objectContaining({ kind: "book", acceptedAt: null }),
+    ]);
+  });
+
+  it("cancels an appointment it booked, in a later turn", async () => {
+    const storedBefore = await stored();
+    const { booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero otro turno el lunes a las 10",
+      {},
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      const newAppointment = bookedAtTen(turn.call("list_patients"));
+      turn.call("propose_change", { appointmentId: newAppointment, kind: "cancel" });
+      turn.call("accept_proposal");
+      return "Listo, cancelé el turno de las 10:00.";
+    });
+
+    const cancelled = await playPatient(booked.sandbox, "mejor cancelá el de las 10");
+    const { listed } = await listedAfter(cancelled.sandbox);
+
+    expect(toolCalls(cancelled)).toMatchObject([
+      { name: "judge_messages", result: { ok: true } },
+      { name: "list_patients" },
+      { name: "propose_change", result: { ok: true } },
+      { name: "accept_proposal", result: { ok: true } },
+    ]);
+    expect(listed).toMatchObject({ patients: [{ upcomingAppointments: [{ appointmentId }] }] });
+    expect(await stored()).toEqual(storedBefore);
+  });
+
+  it("moves an appointment it booked, in a later turn", async () => {
+    const storedBefore = await stored();
+    const { booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero otro turno el lunes a las 10",
+      {},
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      const newAppointment = bookedAtTen(turn.call("list_patients"));
+      const found = moveTimes.parse(
+        turn.call("find_free_times", { appointmentId: newAppointment }),
+      );
+      const slotId = found.slots.find((one) => one.time === "10:30")?.slotId;
+      turn.call("propose_change", { appointmentId: newAppointment, kind: "move", slotId });
+      turn.call("accept_proposal");
+      return "Listo, te lo pasé a las 10:30.";
+    });
+
+    const moved = await playPatient(booked.sandbox, "pasá el de las 10 a las 10:30");
+    const { listed } = await listedAfter(moved.sandbox);
+
+    expect(toolCalls(moved)).toMatchObject([
+      { name: "judge_messages", result: { ok: true } },
+      { name: "list_patients" },
+      { name: "find_free_times", result: { ok: true } },
+      { name: "propose_change", result: { ok: true } },
+      { name: "accept_proposal", result: { ok: true } },
+    ]);
+    expect(listed).toMatchObject({
+      patients: [{ upcomingAppointments: [{ appointmentId }, { time: "10:30" }] }],
+    });
+    expect(await stored()).toEqual(storedBefore);
+  });
+
+  it("registers a person the practice does not know only in the sandbox, and keeps their booking in its next turns", async () => {
+    const storedBefore = await stored();
+
+    const { booked } = await booksMondayAtTen(
       await startSandbox(),
       "quiero un turno para mi hijo Tomás Ruiz",
+      { newPatientName: { firstName: "Tomás", lastName: "Ruiz" } },
     );
     const { played, listed } = await listedAfter(booked.sandbox);
 
@@ -327,7 +456,58 @@ describe("a sandbox conversation", () => {
         }),
       ]),
     });
-    expect(await storedPatientsAndProposals()).toEqual(storedBefore);
+    expect(await stored()).toEqual(storedBefore);
+  });
+
+  it("books again for a person it registered, in a later turn", async () => {
+    const storedBefore = await stored();
+    const { booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero un turno para mi hijo Tomás Ruiz",
+      { newPatientName: { firstName: "Tomás", lastName: "Ruiz" } },
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      const tomas = listing
+        .parse(turn.call("list_patients"))
+        .patients.find((one) => one.firstName === "Tomás");
+      const found = bookingTimes.parse(
+        turn.call("find_booking_times", { medicalService: "Consulta", from: "2099-01-05" }),
+      );
+      const slotId = found.slots.find((one) => one.time === "10:30")?.slotId;
+      turn.call("propose_booking", { patientId: tomas?.patientId, slotId });
+      return "Te reservo otra consulta para Tomás el lunes 5 de enero a las 10:30. Te parece bien?";
+    });
+    const proposed = await playPatient(booked.sandbox, "y otro para Tomás a las 10:30");
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      turn.call("accept_proposal");
+      return "Listo, te reservé la consulta.";
+    });
+
+    const again = await playPatient(proposed.sandbox, "sí");
+    const { listed } = await listedAfter(again.sandbox);
+
+    expect(toolCalls(proposed).at(-1)).toMatchObject({
+      name: "propose_booking",
+      result: { ok: true },
+    });
+    expect(toolCalls(again).at(-1)).toMatchObject({
+      name: "accept_proposal",
+      result: { ok: true },
+    });
+    expect(listed).toMatchObject({
+      patients: expect.arrayContaining([
+        expect.objectContaining({
+          firstName: "Tomás",
+          upcomingAppointments: [
+            expect.objectContaining({ time: "10:00" }),
+            expect.objectContaining({ time: "10:30" }),
+          ],
+        }),
+      ]),
+    });
+    expect(await stored()).toEqual(storedBefore);
   });
 
   it("no longer holds a move it accepted once the new time is booked for real, and says so", async () => {

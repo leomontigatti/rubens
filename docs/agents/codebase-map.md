@@ -79,8 +79,8 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
   is told; `turn-replies.ts` sends its reply, after the clinical check; `turn-retries.ts`
   retries a turn the model could not read, then hands it off; `assistant-usage.ts` records
   the tokens of each model run and the audio of each voice note transcribed;
-  `assistant-sandbox.ts` runs the same turn for the settings' sandbox, inside
-  transactions it rolls back), and the
+  `assistant-sandbox.ts` runs the same turn for the settings' sandbox, from a scenario
+  `assistant-sandbox-scenarios.ts` starts, inside transactions it rolls back), and the
   object's `alarm()` is set to the earliest due item. Payload
   contents are never logged.
 - **A message sent to Meta**: through `send()` in `src/organization/sending.ts`, which checks

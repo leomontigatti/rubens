@@ -1,6 +1,6 @@
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 import { assistantToolSchemas } from "#/lib/assistant.ts";
@@ -9,7 +9,8 @@ import { present } from "#/lib/present.ts";
 
 import { findFreeTimes } from "#/organization/availability.ts";
 import type { Database } from "#/organization/database.ts";
-import { medicalService, member, practitioner } from "#/organization/schema.ts";
+import { listSchedulePractitioners } from "#/organization/practitioners.ts";
+import { medicalService, practitioner } from "#/organization/schema.ts";
 
 // The free times the patient assistant offers for a new appointment
 // (docs/domain/assistant.md § For patients): from the same availability staff
@@ -23,8 +24,15 @@ const bookingWindowMs = 60 * 24 * 60 * 60_000;
 /** How many times one call returns: the few nearest to what the patient prefers. */
 const timesPerCall = 5;
 
-/** The medical service rows `which` picks, of active practitioners. */
-function offering(database: Database, which: SQL | undefined) {
+/**
+ * The medical service rows `which` picks, by name and practitioner, of the
+ * practitioners who practise: those the schedules screen lists. Patients can
+ * book those `bookable` keeps.
+ */
+export function offering(database: Database, which: SQL | undefined) {
+  const practising = new Set(
+    listSchedulePractitioners(database).practitioners.map((one) => one.id),
+  );
   return database
     .select({
       id: medicalService.id,
@@ -38,12 +46,18 @@ function offering(database: Database, which: SQL | undefined) {
     })
     .from(medicalService)
     .innerJoin(practitioner, eq(practitioner.id, medicalService.practitionerId))
-    .innerJoin(member, eq(member.userId, practitioner.memberId))
-    .where(and(which, eq(member.active, true)))
-    .all();
+    .where(which)
+    .orderBy(asc(medicalService.name), asc(practitioner.displayName))
+    .all()
+    .filter((row) => practising.has(row.practitionerId));
 }
 
 type Offering = ReturnType<typeof offering>[number];
+
+/** A medical service patients can book by WhatsApp: active, with the switch on. */
+export function bookable(row: Offering) {
+  return row.active && row.whatsappBooking;
+}
 
 /** The free times of the medical service `row` from `now` over the window, each in its room. */
 function freeTimesOf(database: Database, row: Offering, now: number) {
@@ -90,13 +104,13 @@ export function findBookingTimes(database: Database, args: unknown) {
   if (active.length === 0) {
     return { ok: false, reason: "archived" } as const;
   }
-  const bookable = active.filter((row) => row.whatsappBooking);
-  if (bookable.length === 0) {
+  const offered = active.filter(bookable);
+  if (offered.length === 0) {
     return { ok: false, reason: "whatsappBookingOff" } as const;
   }
   const now = Date.now();
   // A date reads as the start of its day: "2099-01-19" sorts before "2099-01-19T09:00".
-  const times = bookable
+  const times = offered
     .flatMap((row) =>
       freeTimesOf(database, row, now).map(({ start, slotId, room, date, time }) => ({
         start,
@@ -121,9 +135,7 @@ export function findBookingTimes(database: Database, args: unknown) {
  */
 export function bookingSlotFor(database: Database, slotId: string) {
   const [medicalServiceId = ""] = slotId.split("@");
-  const row = offering(database, eq(medicalService.id, medicalServiceId)).find(
-    (one) => one.active && one.whatsappBooking,
-  );
+  const row = offering(database, eq(medicalService.id, medicalServiceId)).find(bookable);
   const free = row && freeTimesOf(database, row, Date.now()).find((one) => one.slotId === slotId);
   if (!row || !free) {
     return { ok: false, reason: "notFree" } as const;

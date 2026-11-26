@@ -170,8 +170,18 @@ describe("the free times offered for a new appointment", () => {
   it("start from the preferred day and time, so asking again from a later one shows other times", async () => {
     await offers(world.juan.practitionerId);
 
+    const first = await bookingTimesAsked({ medicalService: "Consulta", from: "2099-01-05" });
     const found = await bookingTimesAsked({ medicalService: "Consulta", from: "2099-01-12T10:00" });
 
+    expect(first).toMatchObject({
+      slots: [
+        time("Juan Gómez", "Consultorio 1", "lunes 5 de enero", "09:00"),
+        time("Juan Gómez", "Consultorio 1", "lunes 5 de enero", "09:30"),
+        time("Juan Gómez", "Consultorio 1", "lunes 5 de enero", "10:00"),
+        time("Juan Gómez", "Consultorio 1", "lunes 5 de enero", "10:30"),
+        time("Juan Gómez", "Consultorio 1", "lunes 12 de enero", "09:00"),
+      ],
+    });
     expect(found).toMatchObject({
       slots: [
         time("Juan Gómez", "Consultorio 1", "lunes 12 de enero", "10:00"),
@@ -237,6 +247,21 @@ describe("a medical service the assistant finds no times for", () => {
     expect(await bookingTimesAsked({ medicalService: "Consulta", from: "2099-01-05" })).toEqual({
       ok: false,
       reason: "archived",
+    });
+  });
+
+  it("is one only a member who no longer holds the practitioner role offers", async () => {
+    await offers(world.juan.practitionerId);
+    expectOk(
+      await world.organization.updateMember(adminCaller, {
+        memberId: world.juan.caller.userId,
+        roles: ["receptionist"],
+      }),
+    );
+
+    expect(await bookingTimesAsked({ medicalService: "Consulta", from: "2099-01-05" })).toEqual({
+      ok: false,
+      reason: "notFound",
     });
   });
 

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { z } from "zod";
 
 import { eq } from "drizzle-orm";
 
 import {
+  acceptsProposal,
   adminCaller,
   afterTheWait,
   at,
@@ -11,13 +11,16 @@ import {
   expectOk,
   fakeMeta,
   inStorage,
+  offeredBookingSlot,
   patientWrites,
+  proposesBooking,
   scriptedModel,
   setUpBookingWorld,
+  storedProposals,
   submitTemplate,
   templateNamed,
 } from "#/organization/organization.test-support.ts";
-import { outboxMessage, proposal } from "#/organization/whatsapp-schema.ts";
+import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 
 // A patient the number stands for alone booking a new appointment in the
 // conversation (docs/domain/assistant.md § For patients), through the
@@ -43,68 +46,24 @@ vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
 
 const martinaPhone = "+5491155550000";
 
-const notClinical = { healthQuestion: false, emergency: false };
-
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 let medicalServiceId: string;
 let martinaId: string;
 
-function writes(text: string) {
-  return patientWrites(world.organization, text, martinaPhone);
+function offeredSlot(date: string, time: string) {
+  return offeredBookingSlot(world.organization, martinaPhone, { date, time });
 }
 
-function turn() {
-  return afterTheWait(world.organization);
-}
-
-/** What find_booking_times returns: the free times offered. */
-const bookingTimes = z.looseObject({
-  slots: z.array(z.looseObject({ slotId: z.string(), date: z.string(), time: z.string() })),
-});
-
-/** Runs a turn that asks for times from Monday 5 January, and returns the slotId offered for `time` on `date`. */
-async function offeredSlot(date: string, time: string) {
-  await writes("quiero un turno para una consulta");
-  let found: unknown;
-  scriptedModel.script((one) => {
-    one.call("judge_messages", notClinical);
-    found = one.call("find_booking_times", { medicalService: "Consulta", from: "2099-01-05" });
-    return "Tengo estos horarios.";
+/** Proposes `slotId` for `patientId`, or for the one patient the number stands for when none is named. */
+function proposes(slotId: string, patientId?: string) {
+  return proposesBooking(world.organization, martinaPhone, {
+    slotId,
+    ...(patientId !== undefined && { patientId }),
   });
-  await turn();
-  const offered = bookingTimes
-    .parse(found)
-    .slots.find((one) => one.date === date && one.time === time);
-  if (!offered) {
-    throw new Error(`${date} ${time} was not offered`);
-  }
-  return offered.slotId;
 }
 
-/** Runs a turn that proposes booking `slotId` for `patientId`, and returns what propose_booking gave. */
-async function proposes(slotId: string, patientId = martinaId) {
-  await writes("el lunes 5 a las 10");
-  let proposed: unknown;
-  scriptedModel.script((one) => {
-    one.call("judge_messages", notClinical);
-    proposed = one.call("propose_booking", { patientId, slotId });
-    return "Te reservo la consulta con Juan Gómez el lunes 5 de enero a las 10:00. Te parece bien?";
-  });
-  await turn();
-  return proposed;
-}
-
-/** Runs a turn on the patient's yes, and returns what accept_proposal gave. */
-async function accepts() {
-  await writes("sí");
-  let accepted: unknown;
-  scriptedModel.script((one) => {
-    one.call("judge_messages", notClinical);
-    accepted = one.call("accept_proposal");
-    return "Listo, te reservé el turno.";
-  });
-  await turn();
-  return accepted;
+function accepts() {
+  return acceptsProposal(world.organization, martinaPhone);
 }
 
 async function martinasUpcoming() {
@@ -113,23 +72,8 @@ async function martinasUpcoming() {
   ).upcoming;
 }
 
-function storedProposals() {
-  return inStorage(world.organization, (database) =>
-    database
-      .select({
-        kind: proposal.kind,
-        appointmentId: proposal.appointmentId,
-        patientId: proposal.patientId,
-        medicalServiceId: proposal.medicalServiceId,
-        practitionerId: proposal.practitionerId,
-        roomId: proposal.roomId,
-        startsAt: proposal.startsAt,
-        endsAt: proposal.endsAt,
-        acceptedAt: proposal.acceptedAt,
-      })
-      .from(proposal)
-      .all(),
-  );
+function stored() {
+  return storedProposals(world.organization);
 }
 
 beforeEach(async () => {
@@ -166,7 +110,7 @@ describe("proposing a booking", () => {
       },
       alreadyBooked: [],
     });
-    expect(await storedProposals()).toEqual([
+    expect(await stored()).toEqual([
       {
         kind: "book",
         appointmentId: null,
@@ -186,7 +130,7 @@ describe("proposing a booking", () => {
     const proposed = await proposes(medicalServiceId + "@2099-01-04T18:00:00.000Z");
 
     expect(proposed).toEqual({ ok: false, reason: "notFree" });
-    expect(await storedProposals()).toEqual([]);
+    expect(await stored()).toEqual([]);
   });
 
   it("refuses a patient the number does not stand for", async () => {
@@ -194,7 +138,7 @@ describe("proposing a booking", () => {
     const slotId = await offeredSlot("lunes 5 de enero", "10:00");
 
     expect(await proposes(slotId, tomas.id)).toEqual({ ok: false, reason: "notFound" });
-    expect(await storedProposals()).toEqual([]);
+    expect(await stored()).toEqual([]);
   });
 
   it("tells of the patient's other appointments that day, overlapping or not, before the yes", async () => {
@@ -279,7 +223,7 @@ describe("booking on the patient's yes", () => {
     expect(await auditEntriesFor(world.organization, appointmentId)).toMatchObject([
       { action: "create", userId: "assistant", patientId: martinaId },
     ]);
-    expect(await storedProposals()).toMatchObject([{ acceptedAt: expect.any(Number) }]);
+    expect(await stored()).toMatchObject([{ acceptedAt: expect.any(Number), appointmentId }]);
     const queued = await inStorage(world.organization, (database) =>
       database
         .select({ templateId: outboxMessage.templateId, dueAt: outboxMessage.dueAt })
@@ -316,6 +260,23 @@ describe("booking on the patient's yes", () => {
     expect(others.notifications.filter((one) => one.kind === "appointmentBooked")).toEqual([]);
   });
 
+  it("refuses to book a proposal made in the same turn, before the patient could read it", async () => {
+    const slotId = await offeredSlot("lunes 5 de enero", "10:00");
+    await patientWrites(world.organization, "el lunes 5 a las 10", martinaPhone);
+    let accepted: unknown;
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      one.call("propose_booking", { slotId });
+      accepted = one.call("accept_proposal");
+      return "Listo, te reservé el turno.";
+    });
+    await afterTheWait(world.organization);
+
+    expect(accepted).toEqual({ ok: false, reason: "notShownYet" });
+    expect(await martinasUpcoming()).toEqual([]);
+    expect(await stored()).toMatchObject([{ acceptedAt: null }]);
+  });
+
   it("fails a time booked by someone else since the proposal, and books nothing", async () => {
     await proposes(await offeredSlot("lunes 5 de enero", "10:00"));
     const tomas = await world.addPatient("Tomás", "+5493515550002");
@@ -329,7 +290,7 @@ describe("booking on the patient's yes", () => {
 
     expect(await accepts()).toEqual({ ok: false, reason: "timeTaken" });
     expect(await martinasUpcoming()).toEqual([]);
-    expect(await storedProposals()).toMatchObject([{ acceptedAt: null }]);
+    expect(await stored()).toMatchObject([{ acceptedAt: null }]);
   });
 
   it("books only the latest proposal, and none once it expired", async () => {
@@ -338,6 +299,7 @@ describe("booking on the patient's yes", () => {
     vi.setSystemTime(Date.now() + 61 * 60_000);
 
     expect(await accepts()).toEqual({ ok: false, reason: "expired" });
+    expect(await stored()).toMatchObject([{ acceptedAt: null }, { acceptedAt: null }]);
 
     await proposes(await offeredSlot("lunes 5 de enero", "10:00"));
     await proposes(await offeredSlot("lunes 5 de enero", "10:30"));

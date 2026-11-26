@@ -41,9 +41,11 @@ In the first release:
   does not know yet: an active medical service patients
   can book by WhatsApp, with any practitioner who offers it or the one the patient
   names, at a time from availability up to 60 days ahead. The assistant asks for
-  the medical service when the patient does not say it, and for a preferred day
-  and time before offering any, then offers the few nearest to it; `ninguno me
-  sirve` gets others. Overbookings are never offered. A medical service with its
+  the medical service when the patient does not say it, for a preferred day
+  and time before offering any, and, when several practitioners offer it and
+  the patient names none, whether they prefer one; then it offers the few
+  nearest to it, and `ninguno me sirve` gets others, from later than the last
+  one offered. Overbookings are never offered. A medical service with its
   switch off, or one the practice does not offer, is handed to reception
   ([appointments.md](./appointments.md#medical-services)). The booking is a
   proposal the patient accepts ([Proposals](#proposals)), made under the rules of
@@ -147,7 +149,9 @@ it is made, or when the conversation window closes, whichever comes first. Accep
 rules, so it can still fail, for example when the time was taken meanwhile; the
 assistant then says so and offers others.
 
-An explicit request is its own acceptance: `cancelalo`, `sí, voy`. An ambiguous
+An explicit request is its own acceptance: `cancelalo`, `sí, voy`. A booking is
+not: it is accepted only in a later turn than the one that proposed it, so the
+yes accepts what the patient read. An ambiguous
 one gets one plain question back: `no voy a poder` is asked whether to cancel or
 to move the appointment.
 
@@ -435,7 +439,8 @@ The WhatsApp settings have a place to try the assistant before patients meet it.
 - **Sandbox** (first release): staff play the patient against the real assistant,
   with its real tools and the real agenda, starting from a scenario, booking
   included: a person the practice does not know is registered only inside the
-  turn. It shows what
+  turn, and a later turn can move, cancel or book again what an earlier one
+  booked. It shows what
   the turn did, the proposals, whether the clinical or code checks would hold a reply, and for whom, the
   window's countdown and the number of messages. It runs the organization's real
   object methods with their writes discarded (the conversation lives in the page,

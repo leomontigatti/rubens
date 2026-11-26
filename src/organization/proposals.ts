@@ -1,12 +1,9 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { assistantToolSchemas } from "#/lib/assistant.ts";
-import { assistantUserId } from "#/lib/audit-fields.ts";
 import { formatDay, formatTime, practiceTimeZone } from "#/lib/dates.ts";
 import { patientInputSchema } from "#/lib/patients.ts";
 import { splitPhone } from "#/lib/phones.ts";
-import { proposalExpiresAt } from "#/lib/proposals.ts";
-import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { present } from "#/lib/present.ts";
 import type { MoveRefusal, ProposalKind } from "#/lib/proposals.ts";
 
@@ -18,7 +15,6 @@ import { findPatientWarnings } from "#/organization/appointment-placement.ts";
 import { bookAppointment } from "#/organization/appointments.ts";
 import { bookingSlotFor } from "#/organization/booking-times.ts";
 import type { Database } from "#/organization/database.ts";
-import type { Acting } from "#/organization/members.ts";
 import { notifyBooking, notifyCancellation } from "#/organization/notifications.ts";
 import { registerPatient } from "#/organization/patients.ts";
 import {
@@ -29,8 +25,15 @@ import {
 } from "#/organization/moves.ts";
 import type { Slot } from "#/organization/moves.ts";
 import { answeredMeanwhile } from "#/organization/turn-retries.ts";
-import { isHeld, lastIncomingAt, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
-import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
+import {
+  assistantActing,
+  latestProposal,
+  phoneOf,
+  storeProposal,
+} from "#/organization/proposal-store.ts";
+import type { ProposalTurn, Stored } from "#/organization/proposal-store.ts";
+import { isHeld, patientsReachedAt } from "#/organization/whatsapp-messages.ts";
+import { proposal } from "#/organization/whatsapp-schema.ts";
 
 // Proposals (docs/domain/assistant.md § Proposals, ADR-0006 § The model
 // interprets): the patient assistant's only way to change or book an
@@ -38,13 +41,6 @@ import { conversation, proposal } from "#/organization/whatsapp-schema.ts";
 // conversation's latest, before it expires and while the appointment is as
 // stated, runs the appointment's own change functions, or the app's own
 // booking, so their rules hold and the change can still fail.
-
-/**
- * The assistant as the change functions see it: it acts for every
- * practitioner, as reception does, on the appointments of the number's
- * patients only, which the turn's tools already narrowed.
- */
-export const assistantActing: Acting = { userId: assistantUserId, roles: ["receptionist"] };
 
 /** The change as the patient reads it: the appointment, the practitioner, the date and the time, never the office. */
 function stated(kind: ProposalKind, upcoming: Upcoming) {
@@ -54,19 +50,6 @@ function stated(kind: ProposalKind, upcoming: Upcoming) {
     practitioner: upcoming.practitioner,
     ...whenOf(upcoming),
   };
-}
-
-/** The conversation's latest proposal, the only one that can be accepted. */
-function latestProposal(database: Database, conversationId: string) {
-  return (
-    database
-      .select()
-      .from(proposal)
-      .where(eq(proposal.conversationId, conversationId))
-      // Insertion order breaks a tie: two proposals of a turn can share a millisecond.
-      .orderBy(desc(proposal.createdAt), desc(sql`${proposal}.rowid`))
-      .get()
-  );
 }
 
 /** A move's new time as the patient reads it, beside the appointment's facts. */
@@ -85,14 +68,13 @@ function statedBooking(slot: {
   return { kind: "book", medicalService, practitioner, date, time };
 }
 
-type Stored = NonNullable<ReturnType<typeof latestProposal>>;
-
 /**
  * Books the proposal's appointment while its time is still one
  * find_booking_times offers, in the room and as the patient was told it: the
  * app's booking then checks it again in the same transaction. The patient was
  * told of their other appointments that day before the proposal, so they do
- * not hold it.
+ * not hold it. An accepted proposal names the appointment it booked, which a
+ * replay in the sandbox books again under the same id.
  */
 function book(database: Database, latest: Stored, patientId: string) {
   const { medicalServiceId, startsAt, endsAt } = latest;
@@ -118,7 +100,7 @@ function book(database: Database, latest: Stored, patientId: string) {
       durationMinutes: (endsAt - startsAt) / 60_000,
       confirmWarnings: true,
     },
-    { inConversation: true },
+    { inConversation: true, appointmentId: latest.appointmentId ?? undefined },
   );
   if (!booked.ok) {
     return {
@@ -126,7 +108,7 @@ function book(database: Database, latest: Stored, patientId: string) {
       reason: booked.reason === "notFree" ? "timeTaken" : booked.reason,
     } as const;
   }
-  return { ok: true, appointmentId: booked.appointment.id } as const;
+  return { ok: true, appointmentId: booked.appointment.id, patientId } as const;
 }
 
 /**
@@ -136,9 +118,9 @@ function book(database: Database, latest: Stored, patientId: string) {
  */
 export function applyChange(database: Database, latest: Stored) {
   if (latest.kind === "book") {
-    return latest.patientId === null
-      ? registerAndBook(database, latest, phoneOf(database, latest.conversationId))
-      : book(database, latest, latest.patientId);
+    return latest.statement.newPatient === undefined
+      ? book(database, latest, present(latest.patientId, "A booking names its patient"))
+      : registerAndBook(database, latest, phoneOf(database, latest.conversationId));
   }
   const appointmentId = present(latest.appointmentId, "A change proposal names its appointment");
   if (latest.kind === "move") {
@@ -155,25 +137,6 @@ export function applyChange(database: Database, latest: Stored) {
   return latest.kind === "confirm"
     ? changeAppointmentStatus(database, assistantActing, { appointmentId, status: "confirmed" })
     : cancelAppointment(database, assistantActing, { appointmentId, cancelledBy: "patient" });
-}
-
-/**
- * The turn a proposal tool runs in: its conversation, its view of the
- * number's upcoming appointments, and where it records the appointment of a
- * move a rule refused, which underthing hands off, why, and the changes it
- * made, which that handoff's notification states.
- */
-interface ProposalTurn {
-  conversationId: string;
-  /** The patient's messages the turn reads as new, and the patients the number stands for. */
-  read: { unjudged: { id: string }[]; patients: { id: string }[] };
-  appointments: Upcoming[];
-  recorded: {
-    ruleRefused: string | null;
-    refusal: HandoffDetail["refused"];
-    applied: HandoffDetail["applied"];
-    proposed: boolean;
-  };
 }
 
 const moveRefusals: string[] = ["pastCutoff", "moveUsed"] satisfies MoveRefusal[];
@@ -227,44 +190,27 @@ function proposeChange(database: Database, turn: ProposalTurn, args: unknown) {
   if (!upcoming) {
     return { ok: false, reason: "notFound" };
   }
-  let move: Slot | null = null;
-  if (kind === "move") {
-    const found = slotId === undefined ? null : slotFor(database, appointmentId, slotId);
-    if (!found) {
-      return { ok: false, reason: "invalidInput" };
+  return database.transaction(() => {
+    let move: Slot | null = null;
+    if (kind === "move") {
+      const found = slotId === undefined ? null : slotFor(database, appointmentId, slotId);
+      if (!found) {
+        return { ok: false, reason: "invalidInput" };
+      }
+      if (!found.ok) {
+        return refused(database, turn, appointmentId, found.reason);
+      }
+      move = found.slot;
     }
-    if (!found.ok) {
-      return refused(database, turn, appointmentId, found.reason);
-    }
-    move = found.slot;
-  }
-  const statement = { ...stated(kind, upcoming), ...(move && statedMove(move)) };
-  storeProposal(database, turn, {
-    appointmentId,
-    kind,
-    statement,
-    startsAt: move && Date.parse(move.slotId),
+    const statement = { ...stated(kind, upcoming), ...(move && statedMove(move)) };
+    storeProposal(database, turn, {
+      appointmentId,
+      kind,
+      statement,
+      startsAt: move && Date.parse(move.slotId),
+    });
+    return { ok: true, proposal: statement };
   });
-  return { ok: true, proposal: statement };
-}
-
-/** Stores a proposal as the conversation's latest, which the turn's reply states. */
-function storeProposal(
-  database: Database,
-  turn: ProposalTurn,
-  values: Omit<typeof proposal.$inferInsert, "conversationId" | "expiresAt">,
-) {
-  const now = Date.now();
-  database
-    .insert(proposal)
-    .values({
-      ...values,
-      conversationId: turn.conversationId,
-      expiresAt: proposalExpiresAt(now, lastIncomingAt(database, turn.conversationId)),
-      createdAt: now,
-    })
-    .run();
-  turn.recorded.proposed = true;
 }
 
 /**
@@ -322,36 +268,39 @@ function proposeBooking(database: Database, turn: ProposalTurn, args: unknown) {
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
-  const forWhom = bookedFor(database, turn, parsed.data);
-  if (!forWhom.ok) {
-    return forWhom;
-  }
-  const { patientId } = forWhom;
-  const found = bookingSlotFor(database, parsed.data.slotId);
-  if (!found.ok) {
-    return found;
-  }
-  const { slot } = found;
-  const statement = { ...statedBooking(slot), ...forWhom.stated };
-  storeProposal(database, turn, {
-    kind: "book",
-    statement,
-    patientId,
-    medicalServiceId: slot.medicalServiceId,
-    practitionerId: slot.practitionerId,
-    roomId: slot.roomId,
-    startsAt: +slot.start,
-    endsAt: +slot.end,
+  const { data } = parsed;
+  return database.transaction(() => {
+    const forWhom = bookedFor(database, turn, data);
+    if (!forWhom.ok) {
+      return forWhom;
+    }
+    const { patientId } = forWhom;
+    const found = bookingSlotFor(database, data.slotId);
+    if (!found.ok) {
+      return found;
+    }
+    const { slot } = found;
+    const statement = { ...statedBooking(slot), ...forWhom.stated };
+    storeProposal(database, turn, {
+      kind: "book",
+      statement,
+      patientId,
+      medicalServiceId: slot.medicalServiceId,
+      practitionerId: slot.practitionerId,
+      roomId: slot.roomId,
+      startsAt: +slot.start,
+      endsAt: +slot.end,
+    });
+    const warnings =
+      patientId === null ? [] : findPatientWarnings(database, patientId, slot, undefined);
+    const alreadyBooked = warnings.map((one) => ({
+      date: formatDay(one.start, practiceTimeZone),
+      time: formatTime(one.start, practiceTimeZone),
+      practitioner: one.practitionerName,
+      overlaps: one.kind === "overlap",
+    }));
+    return { ok: true, proposal: statement, alreadyBooked };
   });
-  const warnings =
-    patientId === null ? [] : findPatientWarnings(database, patientId, slot, undefined);
-  const alreadyBooked = warnings.map((one) => ({
-    date: formatDay(one.start, practiceTimeZone),
-    time: formatTime(one.start, practiceTimeZone),
-    practitioner: one.practitionerName,
-    overlaps: one.kind === "overlap",
-  }));
-  return { ok: true, proposal: statement, alreadyBooked };
 }
 
 /** Why the conversation's latest proposal cannot be accepted at `now`, or `null` when it can. */
@@ -376,17 +325,6 @@ function appointmentNow(database: Database, conversationId: string, appointmentI
   );
 }
 
-function phoneOf(database: Database, conversationId: string) {
-  return present(
-    database
-      .select({ phone: conversation.phone })
-      .from(conversation)
-      .where(eq(conversation.id, conversationId))
-      .get(),
-    "A proposal's conversation is stored",
-  ).phone;
-}
-
 /** Accepts the conversation's latest proposal in one transaction: books it, or makes its change. */
 function acceptLatest(database: Database, turn: ProposalTurn) {
   return database.transaction(() => {
@@ -396,9 +334,13 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
     if (refusal || !latest) {
       return { ok: false, reason: refusal };
     }
-    return latest.kind === "book"
-      ? acceptBooking(database, turn, latest, now)
-      : acceptChange(database, turn, latest, now);
+    if (latest.kind !== "book") {
+      return acceptChange(database, turn, latest, now);
+    }
+    // The turn's own proposal is the latest: the patient has not read it yet.
+    return turn.recorded.proposed
+      ? { ok: false, reason: "notShownYet" }
+      : acceptBooking(database, turn, latest, now);
   });
 }
 
@@ -423,12 +365,12 @@ function registerAndBook(database: Database, latest: Stored, phone: string) {
   }
   try {
     return database.transaction((tx) => {
-      const registered = registerPatient(tx, assistantActing, {
-        firstName,
-        lastName,
-        phone: splitPhone(phone),
-        confirmDuplicates: true,
-      });
+      const registered = registerPatient(
+        tx,
+        assistantActing,
+        { firstName, lastName, phone: splitPhone(phone), confirmDuplicates: true },
+        { patientId: latest.patientId ?? undefined },
+      );
       if (!registered.ok) {
         throw new RefusedBooking({ ok: false, reason: "invalidInput" } as const);
       }
@@ -449,15 +391,17 @@ function registerAndBook(database: Database, latest: Stored, phone: string) {
 /**
  * Books the accepted proposal while the conversation's number still stands
  * for its patient, or registers the person it is for, tells its
- * practitioner, and adds the appointment to the turn's view.
+ * practitioner, and adds the appointment, and the patient it registered, to
+ * the turn's view.
  */
 function acceptBooking(database: Database, turn: ProposalTurn, latest: Stored, now: number) {
   const phone = phoneOf(database, turn.conversationId);
-  const { patientId } = latest;
+  const registers = latest.statement.newPatient !== undefined;
   let booked: ReturnType<typeof book>;
-  if (patientId === null) {
+  if (registers) {
     booked = registerAndBook(database, latest, phone);
   } else {
+    const patientId = present(latest.patientId, "A booking names its patient");
     const reached = patientsReachedAt(database, phone)
       .all()
       .some((one) => one.id === patientId);
@@ -469,13 +413,26 @@ function acceptBooking(database: Database, turn: ProposalTurn, latest: Stored, n
   if (!booked.ok) {
     return booked;
   }
-  database.update(proposal).set({ acceptedAt: now }).where(eq(proposal.id, latest.id)).run();
+  database
+    .update(proposal)
+    .set({ acceptedAt: now, appointmentId: booked.appointmentId, patientId: booked.patientId })
+    .where(eq(proposal.id, latest.id))
+    .run();
   const { date, time } = latest.statement;
   if (date === undefined || time === undefined) {
     throw new Error("A proposal states the appointment's date and time");
   }
   turn.recorded.applied.push({ kind: "book", date, time });
   notifyBooking(database, booked.appointmentId);
+  if (registers) {
+    // As patientsOf reads them: a patient just registered has no chosen name.
+    const firstName = present(
+      latest.statement.firstName,
+      "A new patient's booking states their name",
+    );
+    turn.read.patients.push({ id: booked.patientId, firstName });
+    turn.read.patients.sort((a, b) => a.id.localeCompare(b.id));
+  }
   turn.appointments.push(
     present(
       upcomingAppointments(database, phone, now).find((one) => one.id === booked.appointmentId),

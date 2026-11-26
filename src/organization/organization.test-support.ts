@@ -15,6 +15,7 @@ import type { Organization } from "#/organization/organization.ts";
 import { auditLog, member } from "#/organization/schema.ts";
 import { modelUsage, transcriptionUsage } from "#/organization/assistant-usage-schema.ts";
 import { fakeMeta } from "#/organization/graph-api.test-support.ts";
+import { proposal } from "#/organization/whatsapp-schema.ts";
 import type { WorkerEnv } from "#/server/caller.ts";
 import { whatsappDirectoryName } from "#/server/whatsapp-directory.ts";
 
@@ -587,6 +588,26 @@ class FakeAccounts implements Accounts {
   }
 }
 
+/** Every proposal stored. */
+export function storedProposals(organization: OrganizationStub) {
+  return inStorage(organization, (database) =>
+    database
+      .select({
+        kind: proposal.kind,
+        appointmentId: proposal.appointmentId,
+        patientId: proposal.patientId,
+        medicalServiceId: proposal.medicalServiceId,
+        practitionerId: proposal.practitionerId,
+        roomId: proposal.roomId,
+        startsAt: proposal.startsAt,
+        endsAt: proposal.endsAt,
+        acceptedAt: proposal.acceptedAt,
+      })
+      .from(proposal)
+      .all(),
+  );
+}
+
 /**
  * The accounts a test installs in place of Clerk's, with
  * `vi.mock(import("#/organization/accounts.ts"), …)` returning it from
@@ -613,3 +634,10 @@ export {
   scriptedModel,
   scriptedTranscriber,
 } from "#/organization/assistant-model.test-support.ts";
+export type { ScriptedTurn } from "#/organization/assistant-model.test-support.ts";
+
+export {
+  acceptsProposal,
+  offeredBookingSlot,
+  proposesBooking,
+} from "#/organization/assistant-booking.test-support.ts";

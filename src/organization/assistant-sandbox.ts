@@ -1,18 +1,12 @@
-import { and, asc, count, desc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray } from "drizzle-orm";
 
-import {
-  isFull,
-  sandboxModelCallsPerHour,
-  sandboxStartSchema,
-  sandboxTurnSchema,
-} from "#/lib/assistant-sandbox.ts";
-import type { SandboxStart, SandboxState, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
+import { isFull, sandboxModelCallsPerHour, sandboxTurnSchema } from "#/lib/assistant-sandbox.ts";
+import type { SandboxState, SandboxTurnInput } from "#/lib/assistant-sandbox.ts";
 import { windowClosesAt } from "#/lib/conversation-window.ts";
 import { phoneSpellings } from "#/lib/phones.ts";
 import { present } from "#/lib/present.ts";
 import { checkReply } from "#/lib/reply-checks.ts";
 import { splitReply } from "#/lib/reply-pacing.ts";
-import { fillTemplate, templateValues } from "#/lib/template-filling.ts";
 
 import { judgeTurn } from "#/organization/assistant.ts";
 import { readConversation } from "#/organization/turn-reading.ts";
@@ -22,19 +16,10 @@ import { upcomingAppointments } from "#/organization/assistant-appointments.ts";
 import { maxModelCalls } from "#/organization/assistant-model.ts";
 import type { AssistantModel, AssistantTool } from "#/organization/assistant-model.ts";
 import type { Database } from "#/organization/database.ts";
-import { organizationName } from "#/organization/members.ts";
 import { answeredMessage } from "#/organization/handoffs.ts";
-import { upcomingStatuses } from "#/organization/template-messages.ts";
 import { applyChange } from "#/organization/proposals.ts";
-import {
-  appointment,
-  guardian,
-  medicalService,
-  office,
-  patient,
-  practitioner,
-  room,
-} from "#/organization/schema.ts";
+import { reminderTemplate, scenarioOf } from "#/organization/assistant-sandbox-scenarios.ts";
+import { appointment } from "#/organization/schema.ts";
 import {
   handoffReplyText,
   checkThatHolds,
@@ -47,14 +32,11 @@ import {
 import {
   conversation,
   handoff,
-  medicalServiceTemplate,
   outboxMessage,
   proposal,
-  template,
   whatsappMessage,
 } from "#/organization/whatsapp-schema.ts";
 import { modelUsage } from "#/organization/assistant-usage-schema.ts";
-import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 
 // The assistant's sandbox (docs/domain/assistant.md § Trying it): an admin
 // plays the patient against the real assistant, with its real tools on the
@@ -68,140 +50,6 @@ import { approvedVersion } from "#/organization/whatsapp-templates.ts";
 // outside those transactions, as sandbox use, and an hour's are limited.
 
 const hourMs = 60 * 60_000;
-
-/** The scenarios to start from: the upcoming appointments, soonest first, this many. */
-const scenarioCount = 50;
-
-/** The appointment and the patient a scenario starts from, with the number that reaches them. */
-function scenarioRows(database: Database) {
-  return database
-    .select({
-      appointmentId: appointment.id,
-      startsAt: appointment.startsAt,
-      firstName: patient.firstName,
-      lastName: patient.lastName,
-      chosenName: patient.chosenName,
-      phone: patient.phone,
-      guardianPhone: guardian.phone,
-      practitionerName: practitioner.displayName,
-      officeAddress: office.address,
-      medicalServiceName: medicalService.name,
-      medicalServiceId: appointment.medicalServiceId,
-    })
-    .from(appointment)
-    .innerJoin(patient, eq(patient.id, appointment.patientId))
-    .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
-    .innerJoin(room, eq(room.id, appointment.roomId))
-    .innerJoin(office, eq(office.id, room.officeId))
-    .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
-    .leftJoin(guardian, and(eq(guardian.patientId, patient.id), eq(guardian.messageContact, true)))
-    .$dynamic();
-}
-
-/** An appointment a scenario can start from or go on with: booked or confirmed, and not begun. */
-function isUpcoming() {
-  return and(inArray(appointment.status, upcomingStatuses), gt(appointment.startsAt, Date.now()));
-}
-
-/** The upcoming appointment `appointmentId` with the number its patient is reached at, or `null`. */
-function scenarioOf(database: Database, appointmentId: string) {
-  const found = scenarioRows(database)
-    .where(and(eq(appointment.id, appointmentId), isUpcoming()))
-    .get();
-  const phone = found && (found.guardianPhone ?? found.phone);
-  return found && phone ? { ...found, phone } : null;
-}
-
-/** The upcoming appointments a sandbox can start from: those whose patient WhatsApp reaches. */
-export function listSandboxScenarios(database: Database) {
-  const rows = scenarioRows(database)
-    .where(and(inArray(appointment.status, upcomingStatuses), gt(appointment.startsAt, Date.now())))
-    .orderBy(asc(appointment.startsAt), asc(appointment.id))
-    .limit(scenarioCount)
-    .all();
-  return {
-    ok: true as const,
-    scenarios: rows
-      .filter((row) => (row.guardianPhone ?? row.phone) !== null)
-      .map((row) => ({
-        appointmentId: row.appointmentId,
-        startsAt: row.startsAt,
-        patient: `${row.chosenName ?? row.firstName} ${row.lastName}`,
-        practitioner: row.practitionerName,
-      })),
-  };
-}
-
-/** What the sandbox's reminder says when the organization has no template timed before an appointment. */
-const fallbackReminder =
-  "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}}. Respondé este mensaje para confirmar que venís.";
-
-/**
- * The template the scenario's reminder is: the furthest before the
- * appointment its medical service picks, else the organization's furthest;
- * `null` when it has none timed before an appointment.
- */
-function reminderTemplate(database: Database, medicalServiceId: string) {
-  const timedBefore = database
-    .select({ id: template.id, draft: template.draft, picked: medicalServiceTemplate.templateId })
-    .from(template)
-    .leftJoin(
-      medicalServiceTemplate,
-      and(
-        eq(medicalServiceTemplate.templateId, template.id),
-        eq(medicalServiceTemplate.medicalServiceId, medicalServiceId),
-      ),
-    )
-    .where(eq(template.timing, "before"))
-    .orderBy(desc(template.timingHours))
-    .all();
-  return timedBefore.find((one) => one.picked !== null) ?? timedBefore[0] ?? null;
-}
-
-/** The reminder the scenario starts from, as the patient read it: the approved template, or its draft. */
-function reminderOf(database: Database, scenario: NonNullable<ReturnType<typeof scenarioOf>>) {
-  const reminder = reminderTemplate(database, scenario.medicalServiceId);
-  const body =
-    (reminder && (approvedVersion(database, reminder.id)?.body ?? reminder.draft)) ??
-    fallbackReminder;
-  const values = templateValues({
-    patient: scenario,
-    practitionerName: scenario.practitionerName,
-    start: new Date(scenario.startsAt),
-    officeAddress: scenario.officeAddress,
-    medicalServiceName: scenario.medicalServiceName,
-    organizationName: organizationName(database),
-  });
-  return { templateId: reminder?.id ?? null, text: fillTemplate(body.trim(), values).text };
-}
-
-/** A sandbox conversation for `appointmentId`, its reminder just sent. */
-export function startSandbox(database: Database, input: SandboxStart) {
-  const parsed = sandboxStartSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, reason: "invalidInput" } as const;
-  }
-  const scenario = scenarioOf(database, parsed.data.appointmentId);
-  if (!scenario) {
-    return { ok: false, reason: "notFound" } as const;
-  }
-  const sandbox: SandboxState = {
-    conversationId: crypto.randomUUID(),
-    appointmentId: scenario.appointmentId,
-    messages: [
-      {
-        direction: "outgoing",
-        text: reminderOf(database, scenario).text,
-        sentAt: Date.now(),
-        judgement: null,
-      },
-    ],
-    misunderstandings: 0,
-    proposals: [],
-    handoffs: [],
-  };
-  return { ok: true, sandbox } as const;
-}
 
 /**
  * The sandbox turns the object is running now, each held against the hour's
@@ -346,9 +194,11 @@ class SandboxRun {
         .run();
     }
     // The sandbox's own changes hold in its later steps: made again, by the same
-    // functions, whose rules run again. One they refuse now (its new time was
-    // booked meanwhile, its cutoff passed, reception confirmed it for real) is
-    // no longer accepted (#257).
+    // functions, whose rules run again, a booking under the appointment and
+    // patient ids its first acceptance minted, so later steps can act on them.
+    // One they refuse now (its new time was booked meanwhile, its cutoff
+    // passed, reception confirmed it for real) is no longer accepted (#257),
+    // and a booking no longer made names no appointment or registered patient.
     const accepted = state.proposals.filter((kept) => kept.acceptedAt !== null);
     const stillMade = new Set(
       accepted
@@ -360,10 +210,17 @@ class SandboxRun {
         .map((kept) => kept.id),
     );
     for (const kept of state.proposals) {
-      const acceptedAt = stillMade.has(kept.id) ? kept.acceptedAt : null;
+      const made = stillMade.has(kept.id);
+      const unbooked = !made && kept.kind === "book";
       database
         .insert(proposal)
-        .values({ ...kept, acceptedAt, conversationId })
+        .values({
+          ...kept,
+          acceptedAt: made ? kept.acceptedAt : null,
+          ...(unbooked && { appointmentId: null }),
+          ...(unbooked && kept.statement.newPatient !== undefined && { patientId: null }),
+          conversationId,
+        })
         .run();
     }
     for (const kept of state.handoffs) {

@@ -44,7 +44,10 @@ async function world() {
     whatsappBooking: true,
     ...overrides,
   });
-  async function created(caller: typeof adminCaller = adminCaller, input = firstVisit()) {
+  async function created(
+    caller: typeof adminCaller = adminCaller,
+    input: MedicalServiceInput = firstVisit(),
+  ) {
     const result = await organization.createMedicalService(caller, input);
     if (!result.ok) {
       throw new Error(`createMedicalService refused: ${result.reason}`);
@@ -161,7 +164,8 @@ describe("managing medical services", () => {
 
   it("lets patients book a medical service by WhatsApp until an editor switches it off", async () => {
     const { organization, juan, ana, firstVisit, created, servicesOf } = await world();
-    const service = await created();
+    const { whatsappBooking: _, ...unswitched } = firstVisit();
+    const service = await created(adminCaller, unswitched);
     const othersService = await created(
       adminCaller,
       firstVisit({ practitionerId: ana.practitionerId, name: "Control", durationMinutes: 20 }),

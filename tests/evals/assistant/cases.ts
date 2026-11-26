@@ -499,13 +499,29 @@ export const cases: Case[] = [
         text: "Hola Lucía, te avisamos que tu turno de Sesión de kinesiología del jueves 12/11 a las 16:30 fue cancelado por el consultorio. Disculpá las molestias.",
       },
     ],
-    patient: ["uh, y me pueden dar otro?"],
+    patient: ["uh, y me pueden dar otro? la semana que viene a la tarde"],
     expect: {
       calls: [{ name: "find_booking_times", args: { medicalService: "Sesión de kinesiología" } }],
       forbidden: ["propose_change", "accept_proposal"],
       handoff: false,
       judgement: plain,
       told: "reply",
+    },
+  },
+  {
+    id: "new-time-after-organization-cancelled-asks-service",
+    description:
+      "A new time for an appointment the organization cancelled, when the conversation does not say its medical service: it asks which one",
+    number: "cancelledByOrganization",
+    history: [],
+    patient: ["hola, me cancelaron el turno, me pueden dar otro?"],
+    expect: {
+      forbidden: ["find_booking_times", "propose_change", "propose_booking", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "reply",
+      replyMatches: [/qu[eé]|cu[aá]l/i],
+      replyAvoids: [anyTime],
     },
   },
   {
@@ -522,6 +538,46 @@ export const cases: Case[] = [
       told: "reply",
       replyMatches: [/d[ií]a|cu[aá]ndo|horario/i],
       replyAvoids: [anyTime],
+    },
+  },
+  {
+    id: "book-asks-practitioner-preference",
+    description:
+      "Booking a medical service several practitioners offer, with no practitioner named: it asks whether the patient prefers one before offering times",
+    number: "onePatient",
+    history: [],
+    patient: ["hola, quiero un turno de consulta odontológica para el jueves a la mañana"],
+    expect: {
+      forbidden: ["find_booking_times", "propose_change", "propose_booking", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "reply",
+      replyMatches: [/prefer|alg[uú]n|profesional|M[ée]ndez|Luna/i],
+      replyAvoids: [anyTime],
+    },
+  },
+  {
+    id: "book-none-of-the-times-suits",
+    description:
+      "Booking: when none of the times offered suits the patient, it looks again from later than the last one offered",
+    number: "onePatient",
+    history: [
+      { role: "patient", text: "hola, quiero un turno de consulta odontológica, el que sea" },
+      { role: "assistant", text: "Dale. ¿Qué día y horario te queda mejor?" },
+      { role: "patient", text: "el miércoles 11 a la mañana, con cualquiera" },
+      {
+        role: "assistant",
+        text: "Tengo con Od. Carla Méndez el miércoles 11/11 a las 9:30 o a las 11:00. ¿Cuál te queda mejor?",
+      },
+    ],
+    patient: ["ninguno me sirve"],
+    expect: {
+      calls: [{ name: "find_booking_times", args: { medicalService: "Consulta odontológica" } }],
+      forbidden: ["propose_change", "propose_booking", "accept_proposal"],
+      handoff: noHandoff,
+      judgement: plain,
+      told: "reply",
+      replyAvoids: [/9[:.]30|11[:.]00/],
     },
   },
   {
