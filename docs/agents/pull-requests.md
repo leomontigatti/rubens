@@ -17,6 +17,8 @@ same check (`pr-title`) on every PR.
 ## PRD PRs
 
 One PR carries every sub-issue of a PRD. Its body lists each sub-issue as a checkbox with its own
-closing keyword (`- [ ] Closes #N <title>`), so that GitHub closes the sub-issue on merge. The PR
+closing line, in the form [issue-tracker.md](./issue-tracker.md#closing-an-issue) gives
+(`- [ ] Closes LEO-N <title>`, closed by the thread after the merge; `- [ ] Closes #N <title>` for
+a PRD still on GitHub, which GitHub closes on merge). The PR
 is a **draft** until the chain has landed and been reviewed. The session ticks each box when its
 slice lands on the branch, so the body is the progress record.
