@@ -12,7 +12,6 @@ const appointment: TemplateAppointment = {
   patient: { firstName: "Martina", chosenName: null },
   practitionerName: "Dr. Juan Gómez",
   start: new Date("2099-01-05T12:05:00Z"),
-  timeZone: "America/Argentina/Buenos_Aires",
   officeName: "Sede Centro",
   officeAddress: "Av. Colón 100",
   medicalServiceName: "Extracción dental",
@@ -20,7 +19,7 @@ const appointment: TemplateAppointment = {
 };
 
 describe("an appointment's template values", () => {
-  it("names the patient, the organization, the practitioner, the day, the time in the office's zone, the office and the medical service, lowercased to follow `tu`", () => {
+  it("names the patient, the organization, the practitioner, the day, the time in the practice's zone, the office and the medical service, lowercased to follow `tu`", () => {
     expect(templateValues(appointment)).toEqual({
       paciente: "Martina",
       organizacion: "Consultorios Prueba",
@@ -40,12 +39,10 @@ describe("an appointment's template values", () => {
     expect(templateValues(chosen).paciente).toBe("Tina");
   });
 
-  it("reads the day and the time in the office's zone, not in UTC", () => {
+  it("reads the day and the time in the practice's zone, not in UTC", () => {
     const late = { ...appointment, start: new Date("2099-01-06T01:30:00Z") };
-    const madrid = { ...appointment, timeZone: "Europe/Madrid" };
 
     expect(templateValues(late)).toMatchObject({ fecha: "lunes 5 de enero", hora: "22:30" });
-    expect(templateValues(madrid)).toMatchObject({ fecha: "lunes 5 de enero", hora: "13:05" });
   });
 });
 
@@ -64,7 +61,7 @@ describe("filling a template", () => {
     });
   });
 
-  it("fills the practitioner, date, time and office from the sample appointment, the time in its office's zone", () => {
+  it("fills the practitioner, date, time and office from the sample appointment, the time in the practice's zone", () => {
     const body =
       "Tu turno con {{profesional}} es el {{fecha}} a las {{hora}} en {{sede}} ({{domicilio}}).";
 
@@ -94,7 +91,7 @@ describe("the sample appointment", () => {
     expect(values.filter(([, value]) => !value)).toEqual([]);
   });
 
-  it("fills a body as the template preview shows it, the time read in the office's zone", () => {
+  it("fills a body as the template preview shows it, the time read in the practice's zone", () => {
     expect(
       fillSample(
         "  Hola {{paciente}}, te esperamos el {{fecha}} a las {{hora}}.\n",

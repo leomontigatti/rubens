@@ -11,7 +11,7 @@ import {
   WhatsappReplyButton,
 } from "#/components/whatsapp-bubble.tsx";
 import { formatDateTime, formatDay, formatTime } from "#/lib/dates.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { fillSample, sampleAppointment } from "#/lib/template-filling.ts";
 import { mentionsSendTime } from "#/lib/template-timing.ts";
 import {
@@ -39,9 +39,9 @@ export type TemplateVersion = Extract<
   { ok: true }
 >["templates"][number]["versions"][number];
 
-const { patient, start, timeZone } = sampleAppointment;
+const { patient, start } = sampleAppointment;
 
-const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${formatDay(start, timeZone)} a las ${formatTime(start, timeZone)}.`;
+const sampleNote = `Con un turno de ejemplo: ${patient.firstName}, el ${formatDay(start, practiceTimeZone)} a las ${formatTime(start, practiceTimeZone)}.`;
 
 /**
  * The body being written for template `templateId` (`null` for a new one), as
@@ -157,7 +157,7 @@ export function TemplateVersions({
 
 function VersionItem(props: { version: TemplateVersion; organizationName: string }) {
   const { version } = props;
-  const sent = `Enviada el ${formatDateTime(version.submittedAt, defaultTimeZone)}`;
+  const sent = `Enviada el ${formatDateTime(version.submittedAt, practiceTimeZone)}`;
   return (
     <li className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">

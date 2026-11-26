@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { messagingLimitLabels } from "#/lib/whatsapp.ts";
 import type { ConnectionState, NumberHoldReason } from "#/lib/whatsapp.ts";
 import { connectWhatsapp, disconnectWhatsapp } from "#/server/whatsapp.functions.ts";
@@ -196,7 +196,7 @@ function HoldNotice({ hold }: { hold: NonNullable<Settings["hold"]> }) {
   const until =
     hold.until === null
       ? "hasta que Meta lo levante"
-      : `hasta el ${formatDateTime(hold.until, defaultTimeZone)}`;
+      : `hasta el ${formatDateTime(hold.until, practiceTimeZone)}`;
   return (
     <Alert variant="warning">
       <AlertTitle>{holdTitles[hold.reason]}</AlertTitle>

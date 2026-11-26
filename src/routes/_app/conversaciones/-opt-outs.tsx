@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "#/components/ui/button.tsx";
 import { Spinner } from "#/components/ui/spinner.tsx";
 import { formatDateTime } from "#/lib/dates.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import type { ShownOptOut } from "#/organization/opt-out-holds.ts";
 import { submitOptOutDecision } from "#/server/patients.functions.ts";
 
@@ -81,7 +81,7 @@ export function OptOutRows({ optOuts }: { optOuts: ShownOptOut[] }) {
         (one) =>
           one.decision && (
             <p key={one.patient.id} className="text-muted-foreground text-xs">
-              {`${one.decision.by} decidió ${one.decision.kept ? "seguir enviando" : "dejar de enviar"} a ${one.patient.name} · ${formatDateTime(one.decision.at, defaultTimeZone)}`}
+              {`${one.decision.by} decidió ${one.decision.kept ? "seguir enviando" : "dejar de enviar"} a ${one.patient.name} · ${formatDateTime(one.decision.at, practiceTimeZone)}`}
             </p>
           ),
       )}

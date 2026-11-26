@@ -1,5 +1,5 @@
 import type { modelRunPurposes } from "#/lib/assistant.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { today } from "#/lib/schedules.ts";
 
 import type { ModelUsage } from "#/organization/assistant-model.ts";
@@ -26,7 +26,7 @@ export function recordModelUsage(database: Database, run: ModelRun) {
   database.transaction((tx) =>
     tx
       .insert(modelUsage)
-      .values({ ...run, day: today(defaultTimeZone) })
+      .values({ ...run, day: today(practiceTimeZone) })
       .run(),
   );
 }
@@ -38,7 +38,7 @@ export function recordTranscription(
 ) {
   tx.insert(transcriptionUsage)
     .values({
-      day: today(defaultTimeZone),
+      day: today(practiceTimeZone),
       model: run.model,
       sandbox: run.sandbox,
       audioMs: Math.round(run.seconds * 1000),

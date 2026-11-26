@@ -100,7 +100,7 @@ describe("a handoff's notification", () => {
 });
 
 describe("a cancellation's notification", () => {
-  it("names the patient, the day and time in the office's zone, and the practitioner", () => {
+  it("names the patient, the day and time in the practice's zone, and the practitioner", () => {
     const cancelled: NotificationFacts = {
       ...facts,
       kind: "appointmentCancelled",
@@ -110,7 +110,6 @@ describe("a cancellation's notification", () => {
         practitioner: "Juan Prueba",
         // Thursday 12 November 2026, 13:00 UTC: 10:00 in Buenos Aires.
         startsAt: Date.UTC(2026, 10, 12, 13, 0),
-        timeZone: "America/Argentina/Buenos_Aires",
       },
     };
 

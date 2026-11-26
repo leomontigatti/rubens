@@ -12,7 +12,6 @@ import type { ActionResult } from "#/routes/_app/sedes/-shared.tsx";
 const fieldMessages: Record<keyof OfficeInput, string> = {
   name: "Ingresá el nombre de la sede.",
   address: "Ingresá el domicilio de la sede.",
-  timeZone: "La zona horaria no es válida. Usá un nombre como America/Argentina/Buenos_Aires.",
 };
 
 export function OfficeForm(props: {
@@ -31,11 +30,9 @@ export function OfficeForm(props: {
   const action = useAction();
 
   const form = useAppForm({
-    // The time zone has no field: a new office takes Argentina's, a saved one keeps its own.
     defaultValues: {
       name: initial.name,
       address: initial.address,
-      timeZone: initial.timeZone,
     },
     onSubmit: async ({ value }) => {
       const input = officeInputSchema.safeParse(value);

@@ -2,7 +2,6 @@
 // here belongs to a real person or practice.
 
 export const now = "2026-11-09T10:00:00-03:00";
-export const timeZone = "America/Argentina/Cordoba";
 
 export const organization = {
   name: "Consultorio Ejemplo",

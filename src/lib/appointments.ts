@@ -75,7 +75,7 @@ export interface WarningConfirmation {
 
 /**
  * What the calendar shows (docs/domain/appointments.md § Calendar): a room's
- * week, Monday to Sunday, around a local date in the room's office's zone,
+ * week, Monday to Sunday, around a local date in the practice's zone,
  * narrowed to a practitioner or a medical service, which implies its
  * practitioner. With no room, the first active one.
  */

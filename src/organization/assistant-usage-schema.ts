@@ -18,7 +18,7 @@ export const modelUsage = sqliteTable(
   "model_usage",
   {
     id: id(),
-    /** The local date of the run, in the organization's zone. */
+    /** The local date of the run, in the practice's zone. */
     day: text("day").notNull(),
     model: text("model").notNull(),
     purpose: text("purpose", { enum: modelRunPurposes }).notNull(),
@@ -39,7 +39,7 @@ export const transcriptionUsage = sqliteTable(
   "transcription_usage",
   {
     id: id(),
-    /** The local date of the transcription, in the organization's zone. */
+    /** The local date of the transcription, in the practice's zone. */
     day: text("day").notNull(),
     model: text("model").notNull(),
     sandbox: flag("sandbox").notNull(),

@@ -1,4 +1,4 @@
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { shiftDate, today, weekdayOf } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
 
@@ -69,7 +69,7 @@ export async function seedQaData(
       practitionerId: laura.id,
       roomId: room.id,
       weekdays: [1, 2, 3, 4, 5],
-      firstDate: today(defaultTimeZone),
+      firstDate: today(practiceTimeZone),
       lastDate: null,
     }),
   );
@@ -237,7 +237,7 @@ function qaStarts(firstDate: string, earliest: number) {
       const works = practitioner === "juan" || weekdayOf(date) <= 5;
       for (const [index, time] of qaDayStarts[practitioner].entries()) {
         const skipped = (index * 2 + day) % 5 === 0;
-        if (works && !skipped && +instantOf(date, time, defaultTimeZone) >= earliest) {
+        if (works && !skipped && +instantOf(date, time, practiceTimeZone) >= earliest) {
           starts.push({ day, date, time, practitioner, index });
         }
       }
@@ -285,7 +285,7 @@ async function bookWeek(
     patientIds: readonly string[];
   },
 ) {
-  for (const planned of planQaWeek(today(defaultTimeZone), Date.now() + leadMs)) {
+  for (const planned of planQaWeek(today(practiceTimeZone), Date.now() + leadMs)) {
     const medicalService = plan.medicalServices[planned.medicalService];
     const patientId = plan.patientIds[planned.patientIndex % plan.patientIds.length];
     if (patientId === undefined) {
@@ -299,7 +299,7 @@ async function bookWeek(
         patientId,
         practitionerId: plan.practitionerIds[planned.practitioner],
         medicalServiceId: medicalService.id,
-        start: instantOf(planned.date, planned.time, defaultTimeZone),
+        start: instantOf(planned.date, planned.time, practiceTimeZone),
         durationMinutes: medicalService.durationMinutes,
         receptionNote: planned.receptionNote,
         confirmWarnings: true,
@@ -342,7 +342,7 @@ async function addTimeOffAndClosure(
   admin: Caller,
   lauraId: string,
 ) {
-  let date = shiftDate(today(defaultTimeZone), 4);
+  let date = shiftDate(today(practiceTimeZone), 4);
   while (weekdayOf(date) > 5) {
     date = shiftDate(date, 1);
   }
@@ -363,7 +363,7 @@ async function addTimeOffAndClosure(
   } else {
     accepted("createTimeOff", first);
   }
-  const closed = shiftDate(today(defaultTimeZone), 21);
+  const closed = shiftDate(today(practiceTimeZone), 21);
   accepted(
     "createClosure",
     await organization.createClosure(admin, {

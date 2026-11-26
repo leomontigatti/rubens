@@ -327,7 +327,7 @@ reminded about 6 hours before the close, and about 2 hours before it the reminde
 also goes to every other member who may answer it (for one to the practitioner,
 only practitioners who keep clinical records). An admin can move these times, but none
 can fall after the close. A reminder that falls between 21:00 and 08:00 in the
-organization's time zone (its first office's) waits until 08:00, and does not go when the window closes first: a reply after the close goes
+practice's zone, `America/Argentina/Buenos_Aires`, waits until 08:00, and does not go when the window closes first: a reply after the close goes
 through the reopen template. These hours are fixed; offices have no opening hours.
 The notification when a handoff opens always goes at once. A handoff made after the close, for a reply that could not
 go out in time, has no countdown and tells the patient nothing: its recipient is
@@ -434,7 +434,7 @@ Each organization pays for what its assistant uses. Meta bills the organization
 directly for its WhatsApp messages, per message delivered: each template by its
 category, and each other message the organization sends (a service message) past the
 number's 1,000 free ones of the month. The WhatsApp settings count both for the
-month, in the organization's zone, without prices, which are Meta's and change; every
+month, in the practice's zone, without prices, which are Meta's and change; every
 template counts as utility, since the outbox sends only a utility version. underthing records the rest per organization:
 voice transcription and the model's replies, sandbox use and the template review
 (`Revisar` on a template's page) included; no screen shows

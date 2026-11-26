@@ -85,7 +85,7 @@ function localDate(instant: Date, timeZone: string): string {
 
 /**
  * Whether the last status change can be undone at `now`: once, on the local
- * day of the change in the office's zone, by a role allowed to make it. An
+ * day of the change in the practice's zone, by a role allowed to make it. An
  * undo clears the previous status, so a second one finds nothing to undo.
  */
 export function decideUndo(

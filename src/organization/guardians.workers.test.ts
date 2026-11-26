@@ -369,7 +369,7 @@ describe("minors", () => {
     return { minor: found.patient.minor, incompletePatient: found.patient.incompletePatient };
   }
 
-  it("is a minor until their 18th birthday in the organization's time zone", async () => {
+  it("is a minor until their 18th birthday in the practice's time zone", async () => {
     // 23:59 of the eve in Buenos Aires (UTC-3), then midnight of the birthday.
     expect(await minorOn("2026-10-28T02:59:00Z", "2008-10-28")).toMatchObject({ minor: true });
     expect(await minorOn("2026-10-28T03:00:00Z", "2008-10-28")).toMatchObject({ minor: false });

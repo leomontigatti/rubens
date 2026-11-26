@@ -12,7 +12,7 @@ import type { TimeRange } from "#/lib/time-ranges.ts";
 import type { BusyBlock, CalendarAppointment, CalendarDay } from "#/organization/calendar-week.ts";
 
 import { StatusIcon } from "#/routes/_app/agenda/-status.tsx";
-import { formatLocalDate, formatTime } from "#/lib/dates.ts";
+import { formatLocalDate, formatTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // The calendar's pieces (docs/domain/appointments.md § Calendar): the time
 // axis, and a day's column of 30-minute cells, white and bookable where free,
@@ -49,7 +49,7 @@ function offsetOf(instant: Date, view: TimeRange) {
 }
 
 /** The time axis at the calendar's left: each row's start, on its line. */
-export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
+export function TimeAxis(props: { view: TimeRange }) {
   const { view } = props;
   return (
     <div className="w-14 shrink-0 border-r">
@@ -61,7 +61,7 @@ export function TimeAxis(props: { view: TimeRange; timeZone: string }) {
             className="text-muted-foreground bg-background absolute top-(--top) right-2 -translate-y-1/2 px-0.5 text-xs tabular-nums"
             style={{ "--top": px(row.top) }}
           >
-            {formatTime(row.start, props.timeZone)}
+            {formatTime(row.start, practiceTimeZone)}
           </span>
         ))}
       </div>
@@ -94,11 +94,10 @@ export function DayColumn(props: {
   title: ReactNode;
   day: CalendarDay;
   view: TimeRange;
-  timeZone: string;
   onPick: (cell: PickedCell) => void;
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
-  const { day, view, timeZone } = props;
+  const { day, view } = props;
   const appointments = day.cards.filter((card) => card.kind === "appointment");
   const byId = new Map(appointments.map((card) => [card.id, card]));
   const placed = layoutDay(view, day.freeStarts, appointments);
@@ -128,7 +127,7 @@ export function DayColumn(props: {
                   "--left": laneLeft({ lane, lanes }),
                   "--width": laneWidth({ lane, lanes }),
                 }}
-                aria-label={`Dar turno el ${dateLabel} a las ${formatTime(start, timeZone)}`}
+                aria-label={`Dar turno el ${dateLabel} a las ${formatTime(start, practiceTimeZone)}`}
                 onClick={() =>
                   props.onPick({ start, practitionerIds: free.map((one) => one.practitionerId) })
                 }
@@ -138,9 +137,7 @@ export function DayColumn(props: {
         ))}
         {busy.flatMap((block) => {
           const card = busyById.get(block.id);
-          return card
-            ? [<BusyCard key={block.id} block={block} busy={card} timeZone={timeZone} />]
-            : [];
+          return card ? [<BusyCard key={block.id} block={block} busy={card} />] : [];
         })}
         {placed.cards.flatMap((block) => {
           const appointment = byId.get(block.id);
@@ -150,7 +147,6 @@ export function DayColumn(props: {
                   key={block.id}
                   block={block}
                   appointment={appointment}
-                  timeZone={timeZone}
                   onOpen={props.onOpen}
                 />,
               ]
@@ -171,7 +167,6 @@ const activeStatuses: readonly string[] = activeAppointmentStatuses;
 function AppointmentCard(props: {
   block: PlacedBlock;
   appointment: CalendarAppointment;
-  timeZone: string;
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
   const { block, appointment: card } = props;
@@ -192,7 +187,7 @@ function AppointmentCard(props: {
     >
       <div className={cn("w-1 shrink-0", practitionerColorClasses[card.color])} />
       <div className="flex min-w-0 flex-1 flex-col items-start px-1.5 py-0.5">
-        <CardHeading appointment={card} timeZone={props.timeZone} onOpen={props.onOpen} />
+        <CardHeading appointment={card} onOpen={props.onOpen} />
         <span className="text-muted-foreground max-w-full truncate">
           {card.medicalServiceName} · {card.practitionerName}
         </span>
@@ -204,7 +199,6 @@ function AppointmentCard(props: {
 /** The button that opens the appointment: its status, overbooking mark, time and patient. */
 function CardHeading(props: {
   appointment: CalendarAppointment;
-  timeZone: string;
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
   const { appointment: card } = props;
@@ -218,7 +212,7 @@ function CardHeading(props: {
       <StatusIcon status={card.status} />
       {card.overbooking && <ZapIcon role="img" aria-label="Sobreturno" />}
       <span className="truncate">
-        {formatTime(card.start, props.timeZone)} {card.patientName}
+        {formatTime(card.start, practiceTimeZone)} {card.patientName}
       </span>
     </Button>
   );
@@ -228,7 +222,7 @@ function CardHeading(props: {
  * Another practitioner's appointment, as a practitioner sees it: a grey block,
  * the column's width unless two overlap, with its time and practitioner and nothing about the patient.
  */
-function BusyCard(props: { block: PlacedBlock; busy: BusyBlock; timeZone: string }) {
+function BusyCard(props: { block: PlacedBlock; busy: BusyBlock }) {
   const { block, busy } = props;
   return (
     <div
@@ -240,7 +234,7 @@ function BusyCard(props: { block: PlacedBlock; busy: BusyBlock; timeZone: string
         "--width": laneWidth(block),
       }}
     >
-      {formatTime(busy.start, props.timeZone)} {busy.practitionerName}
+      {formatTime(busy.start, practiceTimeZone)} {busy.practitionerName}
     </div>
   );
 }

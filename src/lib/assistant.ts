@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 import type { FormOfAddress } from "#/lib/communication-rules.ts";
-import { formatPromptNow } from "#/lib/dates.ts";
+import { formatPromptNow, practiceTimeZone } from "#/lib/dates.ts";
 import type { HandoffReason } from "#/lib/handoffs.ts";
 
 // The patient assistant's words to the model: its system prompt and its tools'
@@ -170,7 +170,6 @@ const handoffTopics: Record<HandoffReason, string> = {
 export interface PromptContext {
   organizationName: string;
   now: Date;
-  timeZone: string;
   formOfAddress: FormOfAddress;
   /** The organization's tone text; empty when it set none. */
   tone: string;
@@ -229,7 +228,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
   const tone = context.tone ? `\nThe practice describes its tone as: ${context.tone}\n` : "";
   return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina. You answer patients about appointments they already have.
 
-Now: ${formatPromptNow(context.now, context.timeZone)} (${context.timeZone}). Write in Argentine Spanish, addressing the patient as "${context.formOfAddress}", short and warm, as the practice's receptionist would. No emojis, no opening "¿" or "¡". At most three short paragraphs. Do not sign off.
+Now: ${formatPromptNow(context.now, practiceTimeZone)} (${practiceTimeZone}). Write in Argentine Spanish, addressing the patient as "${context.formOfAddress}", short and warm, as the practice's receptionist would. No emojis, no opening "¿" or "¡". At most three short paragraphs. Do not sign off.
 ${tone}
 What you can do, only through your tools:
 ${capabilities.join("\n")}

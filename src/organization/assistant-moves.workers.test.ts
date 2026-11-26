@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod";
 
 import {
-  addOffice,
-  addRoom,
   adminCaller,
   answeringNotice,
   afterTheWait,
@@ -302,48 +300,6 @@ describe("moving on the patient's yes", () => {
     expect(await patientMoves(slot(12, "10:00").slotId)).toMatchObject({ ok: true });
 
     expect(await queuedMoveMessages()).toEqual([]);
-  });
-
-  it("fails a yes once the time no longer reads as the patient was told, though it is still free", async () => {
-    // Juan also works Tuesdays at a second office, from 08:00 to 12:00.
-    const norte = await addOffice(world.organization, "Sede Norte");
-    const norteRoom = await addRoom(world.organization, norte.id, "Consultorio 1");
-    await world.addSchedule({
-      practitionerId: world.juan.practitionerId,
-      roomId: norteRoom.id,
-      weekdays: [2],
-      startTime: "08:00",
-      endTime: "12:00",
-    });
-    await writes("puede ser el martes 13 a las 10?");
-    const tuesdayTen = new Date("2099-01-13T13:00:00Z").toISOString();
-    scriptedModel.script((one) => {
-      one.call("judge_messages", notClinical);
-      one.call("propose_change", { appointmentId, kind: "move", slotId: tuesdayTen });
-      return "Te lo paso al martes 13 de enero a las 10:00 en Sede Norte. Confirmás?";
-    });
-    await turn();
-    // The second office's zone is corrected: the same instant is now 08:00 there.
-    expectOk(
-      await world.organization.updateOffice(adminCaller, {
-        officeId: norte.id,
-        name: "Sede Norte",
-        address: "Av. Colón 100",
-        timeZone: "America/Bogota",
-      }),
-    );
-
-    await writes("sí");
-    let accepted: unknown;
-    scriptedModel.script((one) => {
-      one.call("judge_messages", notClinical);
-      accepted = one.call("accept_proposal");
-      return "No lo pude mover.";
-    });
-    await turn();
-
-    expect(accepted).toEqual({ ok: false, reason: "timeTaken" });
-    expect(+(await world.appointmentOf(appointmentId)).start).toBe(+at("12:00"));
   });
 
   it("fails a time booked by someone else since the offer, and offers the others", async () => {

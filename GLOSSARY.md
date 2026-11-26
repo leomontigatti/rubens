@@ -45,8 +45,8 @@ also the admin.
 ## Places
 
 **`office`** — ui: "Sede"
-A physical location of the business, with its own IANA time zone. Its times are
-derived from that zone; instants are stored in UTC.
+A physical location of the business. Every time the app reads or shows is in
+one zone, `America/Argentina/Buenos_Aires`; instants are stored in UTC.
 _Avoid_: branch, clinic, site
 
 **`room`** — ui: "Consultorio"

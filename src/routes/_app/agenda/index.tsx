@@ -11,7 +11,7 @@ import { isLocalDate } from "#/components/date-time-text.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { mondayOf } from "#/lib/appointments.ts";
 import { visibleWeekHours } from "#/lib/calendar-layout.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { formatLocalDate } from "#/lib/dates.ts";
 import { shiftDate, today, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import { getCalendarWeekView } from "#/server/appointments.functions.ts";
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/_app/agenda/")({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
-    const date = deps.fecha ?? today(defaultTimeZone);
+    const date = deps.fecha ?? today(practiceTimeZone);
     const calendar = await getCalendarWeekView({
       data: {
         roomId: deps.consultorio,
@@ -181,7 +181,7 @@ function Calendar(props: {
       <AppointmentDialog
         picked={picked}
         onClose={() => setPicked(null)}
-        viewed={{ timeZone: week.office.timeZone, roomId: week.room.id, date: search.fecha }}
+        viewed={{ roomId: week.room.id, date: search.fecha }}
       />
     </div>
   );
@@ -247,10 +247,9 @@ function WeekGrid(props: {
   onOpen: (appointment: CalendarAppointment) => void;
 }) {
   const { week } = props;
-  const { timeZone } = week.office;
   const views = visibleWeekHours(
     week.days.map((day) => ({ date: day.date, ranges: [...day.schedules, ...day.cards] })),
-    timeZone,
+    practiceTimeZone,
   );
   const [firstView] = views;
   if (!firstView) {
@@ -262,7 +261,7 @@ function WeekGrid(props: {
   return (
     <ClientOnly fallback={<WeekGridFrame view={firstView} />}>
       <div className="flex overflow-x-auto rounded-xl border">
-        <TimeAxis view={firstView} timeZone={timeZone} />
+        <TimeAxis view={firstView} />
         {week.days.flatMap((day, index) => {
           const view = views[index];
           return view
@@ -272,7 +271,6 @@ function WeekGrid(props: {
                   title={`${weekdayLabels[weekdayOf(day.date)]} ${formatLocalDate(day.date).slice(0, 5)}`}
                   day={day}
                   view={view}
-                  timeZone={timeZone}
                   onPick={props.onPick}
                   onOpen={props.onOpen}
                 />,

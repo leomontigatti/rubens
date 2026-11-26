@@ -1,4 +1,4 @@
-import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { splitPhone } from "#/lib/phones.ts";
 
@@ -20,7 +20,7 @@ import type { Caller } from "#/organization/members.ts";
 // from the window's close, it reminds its recipients, then every other member
 // who may answer it, by the object's alarm. Meta is faked at its HTTP
 // boundary and the model scripted at its port; the clock is moved by hand,
-// from 18:00 in the office's zone (Buenos Aires, UTC-3).
+// from 18:00 in the practice's zone (Buenos Aires, UTC-3).
 
 vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   const actual = await original();
@@ -172,7 +172,7 @@ describe("a team of more members than one insert can bind", () => {
   });
 });
 
-describe("a reminder outside 08:00 to 21:00 in the office's zone", () => {
+describe("a reminder outside 08:00 to 21:00 in the practice's zone", () => {
   it("waits until 08:00", async () => {
     // Martina wrote at 09:00, so the window closes at 09:00 the next day: the
     // recipient's reminder falls at 03:00 and the others' at 07:00.
@@ -200,29 +200,6 @@ describe("a reminder outside 08:00 to 21:00 in the office's zone", () => {
     await alarmAt(closesAt - 60_000);
     expect(await remindersOf(world.juan.caller)).toEqual([closesAt]);
     expect(await remindersOf(world.receptionist)).toEqual([]);
-  });
-});
-
-describe("a change to the office's zone", () => {
-  it("sets the alarm for a reminder it moves into the hours", async () => {
-    // At 02:30 in Buenos Aires the window closes, so the others' reminder, at
-    // 00:30, does not go; in Tokyo it falls at 12:30.
-    const closesAt = await handedToJuan({ hoursAgo: 15.5, forPractitioner: false });
-    await alarmAt(closesAt - 6 * hourMs);
-
-    expectOk(
-      await world.organization.updateOffice(adminCaller, {
-        officeId: world.office.id,
-        name: "Sede Centro",
-        address: "Cabildo 1",
-        timeZone: "Asia/Tokyo",
-      }),
-    );
-
-    const alarm = await runInDurableObject(world.organization, (_instance, state) =>
-      state.storage.getAlarm(),
-    );
-    expect(alarm).toBe(closesAt - 2 * hourMs);
   });
 });
 

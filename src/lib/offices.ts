@@ -1,35 +1,15 @@
 import * as z from "zod";
 
-export const defaultTimeZone = "America/Argentina/Buenos_Aires";
-
-function isIanaTimeZone(value: string): boolean {
-  if (/^[+-]/.test(value)) {
-    return false;
-  }
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value });
-    return true;
-  } catch (error) {
-    if (error instanceof RangeError) {
-      return false;
-    }
-    throw error;
-  }
-}
-
 const name = z.string().trim().min(1).max(200);
-const timeZone = z.string().trim().refine(isIanaTimeZone);
 const capacity = z.int().min(1).max(100);
 
 export const officeInputSchema = z.object({
   name,
   address: z.string().trim().min(1).max(500),
-  timeZone: timeZone.default(defaultTimeZone),
 });
 
 export const officeUpdateSchema = officeInputSchema.extend({
   officeId: z.uuid(),
-  timeZone: timeZone.optional(),
 });
 
 export const roomInputSchema = z.object({

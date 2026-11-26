@@ -6,8 +6,8 @@ import { formatLocalDate } from "#/lib/dates.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 
 // How time off and closures are entered and stored: an entry is whole local
-// days or a local start and end, in an office's zone or the organization's
-// default one; the stored time range is the half-open span of instants.
+// days or a local start and end, in the practice's zone; the stored time range
+// is the half-open span of instants.
 
 const localDate = z.iso.date();
 const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/);

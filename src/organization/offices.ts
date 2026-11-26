@@ -3,7 +3,6 @@ import { and, asc, eq } from "drizzle-orm";
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
 import {
   activeChangeSchema,
-  defaultTimeZone,
   officeInputSchema,
   officeUpdateSchema,
   roomInputSchema,
@@ -31,7 +30,6 @@ const officeColumns = {
   id: office.id,
   name: office.name,
   address: office.address,
-  timeZone: office.timeZone,
   active: office.active,
 };
 
@@ -43,21 +41,10 @@ const roomColumns = {
   active: room.active,
 };
 
-/** The zone the organization reads time in: its first office's, or the default before it has one. */
-export function organizationTimeZone(database: Writer): string {
-  const first = database
-    .select({ timeZone: office.timeZone })
-    .from(office)
-    .orderBy(asc(office.createdAt))
-    .get();
-  return first?.timeZone ?? defaultTimeZone;
-}
-
 export interface Office {
   id: string;
   name: string;
   address: string;
-  timeZone: string;
   active: boolean;
 }
 

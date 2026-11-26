@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, inArray, max, ne, or } from "drizzle-orm";
 import * as z from "zod";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import {
   isMinor,
   patientActiveChangeSchema,
@@ -62,7 +62,7 @@ export interface Patient {
   active: boolean;
   /** No birth date yet (ui: "Incompleto"). */
   incompletePatient: boolean;
-  /** Under 18 today in the organization's time zone; never with no birth date. */
+  /** Under 18 today in the practice's time zone; never with no birth date. */
   minor: boolean;
 }
 
@@ -119,7 +119,7 @@ export function toPatient<Row extends PatientRow>(row: Row) {
   return {
     ...row,
     incompletePatient: row.birthDate === null,
-    minor: isMinor(row.birthDate, today(defaultTimeZone)),
+    minor: isMinor(row.birthDate, today(practiceTimeZone)),
   };
 }
 

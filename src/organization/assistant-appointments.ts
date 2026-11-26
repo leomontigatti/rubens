@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 
-import { formatDay, formatTime } from "#/lib/dates.ts";
+import { practiceTimeZone, formatDay, formatTime } from "#/lib/dates.ts";
 
 import type { Database } from "#/organization/database.ts";
 import { upcomingStatuses } from "#/organization/template-messages.ts";
@@ -26,7 +26,6 @@ export function upcomingAppointments(database: Database, phone: string, now: num
       specialty: practitioner.specialty,
       office: office.name,
       address: office.address,
-      timeZone: office.timeZone,
     })
     .from(appointment)
     .innerJoin(medicalService, eq(medicalService.id, appointment.medicalServiceId))
@@ -46,11 +45,11 @@ export function upcomingAppointments(database: Database, phone: string, now: num
 
 export type Upcoming = ReturnType<typeof upcomingAppointments>[number];
 
-/** The day and the time of `upcoming` as the templates write them, in its office's zone. */
+/** The day and the time of `upcoming` as the templates write them, in the practice's zone. */
 export function whenOf(upcoming: Upcoming) {
   const start = new Date(upcoming.startsAt);
   return {
-    date: formatDay(start, upcoming.timeZone),
-    time: formatTime(start, upcoming.timeZone),
+    date: formatDay(start, practiceTimeZone),
+    time: formatTime(start, practiceTimeZone),
   };
 }

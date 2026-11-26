@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { windowClosesAt } from "#/lib/conversation-window.ts";
-import { withinHours } from "#/lib/dates.ts";
+import { practiceTimeZone, withinHours } from "#/lib/dates.ts";
 import { defaultHandoffReminders, handoffRemindersSchema } from "#/lib/handoffs.ts";
 import type { HandoffRemindersInput } from "#/lib/handoffs.ts";
 
@@ -11,7 +11,6 @@ import type { Database, Writer } from "#/organization/database.ts";
 import { answerersOf } from "#/organization/conversation-access.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notify } from "#/organization/notifications.ts";
-import { organizationTimeZone } from "#/organization/offices.ts";
 import { member } from "#/organization/schema.ts";
 import { handoff, handoffRecipient, inboxSettings } from "#/organization/whatsapp-schema.ts";
 import { lastIncomingAt } from "#/organization/whatsapp-messages.ts";
@@ -24,7 +23,7 @@ import type { Job } from "#/organization/jobs.ts";
 // for one to the practitioner only practitioners who keep clinical records. Each
 // reminder goes once per close, by the object's alarm, and none after the
 // close. The admin sets both times in the WhatsApp settings. A reminder that
-// falls between 21:00 and 08:00 in the organization's zone, hours fixed for
+// falls between 21:00 and 08:00 in the practice's zone, hours fixed for
 // now, waits for 08:00, and does not go when the window closes first.
 
 const hourMs = 60 * 60_000;
@@ -98,20 +97,18 @@ function wentFor(remindedFor: number | null, closesAt: number) {
   return remindedFor !== null && remindedFor >= closesAt;
 }
 
-interface Timing {
-  hours: ReturnType<typeof handoffReminders>;
-  timeZone: string;
-}
-
 /** When a reminder planned at `at` goes, held to 08:00–21:00; `null` when that is not before the close. */
-function duringReminderHours(at: number, closesAt: number, timeZone: string) {
-  const held = withinHours(at, timeZone, reminderHours);
+function duringReminderHours(at: number, closesAt: number) {
+  const held = withinHours(at, practiceTimeZone, reminderHours);
   return held < closesAt ? held : null;
 }
 
 /** The reminders of `one` still to go before its window closes at `closesAt`. */
-function countdownOf(one: CountingHandoff, closesAt: number, timing: Timing): Countdown {
-  const { hours, timeZone } = timing;
+function countdownOf(
+  one: CountingHandoff,
+  closesAt: number,
+  hours: ReturnType<typeof handoffReminders>,
+): Countdown {
   const recipientsAt = closesAt - hours.recipientHours * hourMs;
   const othersAt = closesAt - hours.othersHours * hourMs;
   const recipientsDone = wentFor(one.remindedFor, closesAt) || recipientsAt <= one.createdAt;
@@ -121,17 +118,15 @@ function countdownOf(one: CountingHandoff, closesAt: number, timing: Timing): Co
     conversationId: one.conversationId,
     forPractitioner: one.forPractitioner,
     closesAt,
-    recipientsAt: recipientsDone ? null : duringReminderHours(recipientsAt, closesAt, timeZone),
-    othersAt: othersDone
-      ? null
-      : duringReminderHours(Math.max(othersAt, one.createdAt), closesAt, timeZone),
+    recipientsAt: recipientsDone ? null : duringReminderHours(recipientsAt, closesAt),
+    othersAt: othersDone ? null : duringReminderHours(Math.max(othersAt, one.createdAt), closesAt),
     othersOnly: othersAt <= one.createdAt,
   };
 }
 
 /** The open handoffs that count down, each with its reminders still to go before the window closes. */
 function countdowns(database: Writer, now: number): Countdown[] {
-  const timing = { hours: handoffReminders(database), timeZone: organizationTimeZone(database) };
+  const hours = handoffReminders(database);
   const open = database
     .select({
       id: handoff.id,
@@ -146,7 +141,7 @@ function countdowns(database: Writer, now: number): Countdown[] {
     .all();
   return open.flatMap((one) => {
     const closesAt = windowClosesAt(lastIncomingAt(database, one.conversationId));
-    return closesAt !== null && closesAt > now ? [countdownOf(one, closesAt, timing)] : [];
+    return closesAt !== null && closesAt > now ? [countdownOf(one, closesAt, hours)] : [];
   });
 }
 

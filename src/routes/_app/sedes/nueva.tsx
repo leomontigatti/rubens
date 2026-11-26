@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { defaultTimeZone } from "#/lib/offices.ts";
 import { addOffice } from "#/server/offices.functions.ts";
 
 import { OfficeForm } from "#/routes/_app/sedes/-office-form.tsx";
@@ -13,7 +12,7 @@ export const Route = createFileRoute("/_app/sedes/nueva")({
   component: NewOffice,
 });
 
-const newOffice = { name: "", address: "", timeZone: defaultTimeZone };
+const newOffice = { name: "", address: "" };
 
 function NewOffice() {
   const { viewer } = Route.useRouteContext();

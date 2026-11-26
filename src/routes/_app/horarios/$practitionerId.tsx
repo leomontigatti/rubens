@@ -16,6 +16,7 @@ import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
 import { PageCrumbs } from "#/components/app-breadcrumbs.tsx";
+import { practiceTimeZone } from "#/lib/dates.ts";
 
 export const Route = createFileRoute("/_app/horarios/$practitionerId")({
   loader: ({ params }) => getSchedules({ data: { practitionerId: params.practitionerId } }),
@@ -118,7 +119,7 @@ function NoSchedules(props: { practitionerId: string; canEdit: boolean; rooms: R
 
 function ScheduleItem(props: { schedule: Schedule; canEdit: boolean }) {
   const { schedule } = props;
-  const state = scheduleState(schedule, today(schedule.timeZone));
+  const state = scheduleState(schedule, today(practiceTimeZone));
 
   return (
     <li>

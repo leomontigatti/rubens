@@ -36,7 +36,6 @@ import {
 import { deliverReply, maySend, says } from "#/organization/turn-replies.ts";
 import { settleTurn } from "#/organization/turn-settling.ts";
 import { organizationName } from "#/organization/members.ts";
-import { organizationTimeZone } from "#/organization/offices.ts";
 import { conversation } from "#/organization/whatsapp-schema.ts";
 import type { Job, JobServices } from "#/organization/jobs.ts";
 
@@ -173,9 +172,9 @@ export interface TurnMode {
 
 const forPatients: TurnMode = { sandbox: false, step: (_name, _args, run) => run() };
 
-/** The organization's name, and the zone its first office reads time in. */
+/** The organization's name. */
 function promptSetting(database: Database) {
-  return { organizationName: organizationName(database), timeZone: organizationTimeZone(database) };
+  return { organizationName: organizationName(database) };
 }
 
 /**

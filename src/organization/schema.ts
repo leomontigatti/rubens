@@ -5,7 +5,6 @@ import type { Role } from "#/lib/access.ts";
 import { appointmentCancellers, appointmentStatuses } from "#/lib/appointments.ts";
 import { insurerKinds } from "#/lib/coverages.ts";
 import { notificationKinds } from "#/lib/notifications.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
 import { practitionerColors } from "#/lib/practitioner-colors.ts";
 
 import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts";
@@ -85,7 +84,6 @@ export const office = sqliteTable("office", {
   id: id(),
   name: text("name").notNull(),
   address: text("address").notNull(),
-  timeZone: text("time_zone").notNull().default(defaultTimeZone),
   active: flag("active").notNull().default(true),
   ...timestamps,
 });
@@ -109,7 +107,7 @@ export const room = sqliteTable(
 );
 
 // A set of weekdays with times and validity dates (ADR-0003): the times are
-// wall-clock times in the room's office's time zone, the dates local dates there.
+// wall-clock times in the practice's time zone, the dates local dates there.
 export const schedule = sqliteTable(
   "schedule",
   {

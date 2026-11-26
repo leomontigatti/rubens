@@ -1,3 +1,4 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
@@ -206,7 +207,6 @@ function cancelledAppointment(row: {
   cancelledId: string | null;
   cancelledStartsAt: number | null;
   cancelledRoomId: string | null;
-  cancelledTimeZone: string | null;
   cancelledPractitioner: string | null;
   cancelledFirstName: string | null;
   cancelledLastName: string | null;
@@ -215,7 +215,6 @@ function cancelledAppointment(row: {
   if (
     row.cancelledId === null ||
     row.cancelledStartsAt === null ||
-    row.cancelledTimeZone === null ||
     row.cancelledRoomId === null ||
     row.cancelledPractitioner === null ||
     row.cancelledFirstName === null ||
@@ -232,9 +231,8 @@ function cancelledAppointment(row: {
     }),
     practitioner: row.cancelledPractitioner,
     startsAt: row.cancelledStartsAt,
-    timeZone: row.cancelledTimeZone,
     roomId: row.cancelledRoomId,
-    date: today(row.cancelledTimeZone, new Date(row.cancelledStartsAt)),
+    date: today(practiceTimeZone, new Date(row.cancelledStartsAt)),
   };
 }
 
@@ -277,7 +275,6 @@ export function listNotifications(database: Database, acting: Acting) {
       cancelledId: appointment.id,
       cancelledStartsAt: appointment.startsAt,
       cancelledRoomId: appointment.roomId,
-      cancelledTimeZone: office.timeZone,
       cancelledPractitioner: practitioner.displayName,
       cancelledFirstName: cancelledPatient.firstName,
       cancelledLastName: cancelledPatient.lastName,
@@ -329,7 +326,6 @@ export function listNotifications(database: Database, acting: Acting) {
         cancelledId,
         cancelledStartsAt,
         cancelledRoomId,
-        cancelledTimeZone,
         cancelledPractitioner,
         cancelledFirstName,
         cancelledLastName,
@@ -369,7 +365,6 @@ export function listNotifications(database: Database, acting: Acting) {
           cancelledId,
           cancelledStartsAt,
           cancelledRoomId,
-          cancelledTimeZone,
           cancelledPractitioner,
           cancelledFirstName,
           cancelledLastName,

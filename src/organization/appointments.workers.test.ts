@@ -5,7 +5,6 @@ import type { BookingInput, OverbookingInput, WarningConfirmation } from "#/lib/
 import type { RangeEntry } from "#/lib/time-ranges.ts";
 
 import {
-  addOffice,
   addRoom,
   addStaff,
   adminCaller,
@@ -16,7 +15,7 @@ import {
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { appointment, member, office as officeTable } from "#/organization/schema.ts";
+import { appointment, member } from "#/organization/schema.ts";
 
 // The office is in Buenos Aires (UTC-3), so 09:00 there is 12:00Z. 2099-01-05
 // is a Monday; Juan works there from 09:00 to 11:00 in "Consultorio 1",
@@ -139,42 +138,7 @@ describe("booking an appointment", () => {
       start: at("12:30"),
       officeName: "Sede Centro",
       roomName: "Consultorio 1",
-      timeZone: "America/Argentina/Buenos_Aires",
     });
-  });
-
-  it("offers the free starts of the refused start's day in its office's zone, not the default one", async () => {
-    const w = await world();
-    // Auckland is UTC+13 in January: its 14:00 to 18:00 on Tuesday the 6th
-    // runs from 22:00 on Monday the 5th to 02:00 on the 6th in Buenos Aires.
-    const auckland = await addOffice(w.organization, "Sede Auckland", "Pacific/Auckland");
-    const room = await addRoom(w.organization, auckland.id, "Consultorio A");
-    const pablo = await addStaff(w.organization, "Pablo Ruiz");
-    await w.addSchedule({
-      practitionerId: pablo.practitionerId,
-      roomId: room.id,
-      weekdays: [1, 2, 3, 4, 5, 6, 7],
-      startTime: "14:00",
-      endTime: "18:00",
-    });
-    const service = await w.addMedicalService(pablo.practitionerId);
-    const pabloBooking = (patientId: string) => ({
-      patientId,
-      practitionerId: pablo.practitionerId,
-      medicalServiceId: service.id,
-      start: at("01:00", "2099-01-06"),
-      durationMinutes: 30,
-    });
-    await w.book(pabloBooking(w.maria.id));
-
-    const refused = await w.tryBook(pabloBooking(w.pedro.id));
-
-    const offered = !refused.ok && "freeStarts" in refused ? refused.freeStarts : [];
-    expect(offered.map((free) => free.start.toISOString())).toEqual(
-      ["01:30", "02:00", "02:30", "03:00", "03:30", "04:00", "04:30"].map((time) =>
-        at(time, "2099-01-06").toISOString(),
-      ),
-    );
   });
 
   it("books a free time in the room of the schedule it falls in, with the reception note", async () => {
@@ -335,7 +299,6 @@ describe("the patient warning", () => {
           start: at("12:00"),
           end: at("12:30"),
           practitionerName: "Lucía Díaz",
-          timeZone: "America/Argentina/Buenos_Aires",
         },
       ],
     });
@@ -764,7 +727,6 @@ describe("a patient's appointments", () => {
       medicalServiceName: "Consulta",
       officeName: "Sede Centro",
       roomName: "Consultorio 2",
-      timeZone: "America/Argentina/Buenos_Aires",
     });
   });
 
@@ -813,18 +775,9 @@ describe("a patient's appointments", () => {
 });
 
 describe("an appointment in the patient's change history", () => {
-  it("comes with its office's zone and the names of its practitioner, medical service and room", async () => {
+  it("comes with the names of its practitioner, medical service and room", async () => {
     const w = await world();
     await w.book(w.bookingOf());
-    // Another office's zone shows the history reads the appointment's own office.
-    const north = await addOffice(w.organization, "Sede Norte");
-    await inStorage(w.organization, (database) =>
-      database
-        .update(officeTable)
-        .set({ timeZone: "America/Lima" })
-        .where(eq(officeTable.id, north.id))
-        .run(),
-    );
 
     const result = await w.organization.getPatientHistory(adminCaller, { patientId: w.maria.id });
     if (!result.ok) {
@@ -833,10 +786,6 @@ describe("an appointment in the patient's change history", () => {
 
     expect(result.entries.find((entry) => entry.entityType === "appointment")).toMatchObject({
       action: "create",
-      timeZones: {
-        before: "America/Argentina/Buenos_Aires",
-        after: "America/Argentina/Buenos_Aires",
-      },
       after: { start: "2099-01-05T12:00:00.000Z" },
     });
     expect(result.names).toEqual({
@@ -868,11 +817,6 @@ describe("an appointment in the patient's change history", () => {
       expect(entry.appointment).toEqual({
         startsAt: new Date(String(entry.after?.start)).getTime(),
         practitioner: "Juan Gómez",
-        timeZone: "America/Argentina/Buenos_Aires",
-      });
-      expect(entry.timeZones).toEqual({
-        before: "America/Argentina/Buenos_Aires",
-        after: "America/Argentina/Buenos_Aires",
       });
     }
     // About a hundred bookings, past the default 5 seconds on a loaded run.

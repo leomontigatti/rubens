@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 import { RefusalMessage } from "#/components/admin-form.tsx";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { today } from "#/lib/schedules.ts";
 import { getCalendarWeekView } from "#/server/appointments.functions.ts";
 import { getAvailabilityPractitioners } from "#/server/availability.functions.ts";
@@ -32,7 +32,7 @@ const refusalMessages = {
 };
 
 export async function loadBooking(search: BookingSearch) {
-  const date = search.fecha ?? today(defaultTimeZone);
+  const date = search.fecha ?? today(practiceTimeZone);
   const [calendar, practitioners] = await Promise.all([
     getCalendarWeekView({
       data: {
@@ -80,7 +80,6 @@ function bookingStartOf(inicio: string | undefined, week: Week, overbooking: boo
   return {
     start: new Date(inicio),
     roomName: week.room.name,
-    timeZone: week.office.timeZone,
     medicalService: overbooking ? null : medicalService,
   };
 }
@@ -107,7 +106,7 @@ export function BookingRoute({
       from={bookingStartOf(search.inicio, week, overbooking)}
       practitioners={chosenPractitioners(loaded.practitioners, search.profesionales)}
       defaultDate={search.fecha}
-      overbooking={overbooking ? { rooms: office.rooms, timeZone: office.timeZone } : null}
+      overbooking={overbooking ? { rooms: office.rooms } : null}
     />
   );
 }

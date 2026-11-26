@@ -12,6 +12,7 @@ import type { RoomOption, Schedule } from "#/organization/schedules.ts";
 
 import { RefusalAlert, useAction } from "#/routes/_app/horarios/-shared.tsx";
 import type { ActionResult, RefusalReason } from "#/routes/_app/horarios/-shared.tsx";
+import { practiceTimeZone } from "#/lib/dates.ts";
 
 type FieldName = keyof ScheduleInput | keyof ScheduleChange;
 
@@ -201,7 +202,7 @@ export function EditableSchedule(props: {
   if ("reason" in found) {
     return <RefusalAlert reason={found.reason} />;
   }
-  const state = scheduleState(found.schedule, today(found.schedule.timeZone));
+  const state = scheduleState(found.schedule, today(practiceTimeZone));
   if (!mayChange(found.practitioner, state.ended)) {
     return <RefusalAlert reason="forbidden" />;
   }

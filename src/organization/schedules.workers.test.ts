@@ -88,7 +88,6 @@ describe("creating a schedule", () => {
         roomId: room.id,
         roomName: "Consultorio 1",
         officeName: "Sede Centro",
-        timeZone: zone,
         weekdays: [1, 3],
         startTime: "09:00",
         endTime: "13:00",
@@ -364,35 +363,6 @@ describe("practitioner overlap", () => {
         mondayMorning({ roomId: elsewhere.id, startTime: "14:00", endTime: "18:00" }),
       ),
     ).toMatchObject({ ok: true });
-  });
-
-  it("refuses one practitioner in two time zones at once, and accepts them in turn", async () => {
-    const { organization, mondayMorning, create } = await world();
-    const madrid = await addOffice(organization, "Sede Madrid", "Europe/Madrid");
-    const abroad = await addRoom(organization, madrid.id, "Consultorio 2");
-    await create(adminCaller, mondayMorning({ lastDate: "2099-02-23" }));
-    // Tuesdays never meet Mondays, yet the zones alone refuse the dates in common.
-    const tuesday = { roomId: abroad.id, weekdays: [2] };
-
-    expect(await create(adminCaller, mondayMorning(tuesday))).toEqual({
-      ok: false,
-      reason: "otherTimeZone",
-    });
-    expect(
-      await create(adminCaller, mondayMorning({ ...tuesday, firstDate: "2099-02-24" })),
-    ).toMatchObject({ ok: true });
-  });
-
-  it("compares the clocks over the dates two schedules share, not from the new one's start", async () => {
-    const { organization, mondayMorning, create } = await world();
-    // San Luis kept a clock of its own in 2009, and has kept Buenos Aires' since.
-    const office = await addOffice(organization, "Sede San Luis", "America/Argentina/San_Luis");
-    const sanLuis = await addRoom(organization, office.id, "Consultorio 2");
-    await create(adminCaller, mondayMorning({ roomId: sanLuis.id, weekdays: [2] }));
-
-    expect(await create(adminCaller, mondayMorning({ firstDate: "2009-01-05" }))).toMatchObject({
-      ok: true,
-    });
   });
 });
 

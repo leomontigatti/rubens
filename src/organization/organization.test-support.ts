@@ -157,12 +157,11 @@ export async function addStaff(
   return { caller: { userId }, practitionerId: practitionerId ?? "" };
 }
 
-/** Adds an office, as the first admin, in `timeZone` or the default one. */
-export async function addOffice(organization: OrganizationStub, name: string, timeZone?: string) {
+/** Adds an office, as the first admin. */
+export async function addOffice(organization: OrganizationStub, name: string) {
   const created = await organization.createOffice(adminCaller, {
     name,
     address: "Av. Colón 100",
-    timeZone,
   });
   if (!created.ok) {
     throw new Error(`createOffice refused: ${created.reason}`);

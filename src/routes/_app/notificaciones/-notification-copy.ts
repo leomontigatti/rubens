@@ -2,7 +2,7 @@ import { formatDateTime, formatDay, formatShortDay, formatTime } from "#/lib/dat
 import { handoffReasonLabel } from "#/lib/handoff-copy.ts";
 import type { HandoffDetail, HandoffReason } from "#/lib/handoffs.ts";
 import type { NotificationKind } from "#/lib/notifications.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { formatPhone } from "#/lib/phones.ts";
 import { messagingLimitLabels } from "#/lib/whatsapp.ts";
 import { rejectionText } from "#/lib/whatsapp-template-copy.ts";
@@ -10,7 +10,7 @@ import { rejectionText } from "#/lib/whatsapp-template-copy.ts";
 // What a notification says, from what the object kept of the event
 // (`src/organization/notifications.ts`): its title, what it means and what
 // to do, and how many messages wait. Times read in Buenos Aires, the
-// organization's default zone, since a warning about the number is about no office.
+// practice's zone, since a warning about the number is about no office.
 
 export interface NotificationFacts {
   kind: NotificationKind;
@@ -46,8 +46,6 @@ export interface NotificationFacts {
     patient: string;
     practitioner: string;
     startsAt: number;
-    /** Its office's zone, which its time reads in. */
-    timeZone: string;
   } | null;
 }
 
@@ -59,11 +57,11 @@ const categoryLabels: Record<string, string> = {
 const resubmit = "Enviá una versión nueva desde su página en Plantillas.";
 
 export function localTime(instant: number) {
-  return formatDateTime(instant, defaultTimeZone);
+  return formatDateTime(instant, practiceTimeZone);
 }
 
 function day(instant: number) {
-  return `${formatDay(instant, defaultTimeZone)} a las ${formatTime(instant, defaultTimeZone)}`;
+  return `${formatDay(instant, practiceTimeZone)} a las ${formatTime(instant, practiceTimeZone)}`;
 }
 
 function template(facts: NotificationFacts) {
@@ -179,8 +177,8 @@ function cancelledTitle(appointment: NotificationFacts["appointment"]) {
   if (!appointment) {
     return "Un paciente canceló su turno";
   }
-  const { patient, practitioner, startsAt, timeZone } = appointment;
-  const when = `${formatShortDay(startsAt, timeZone)} ${formatTime(startsAt, timeZone)}`;
+  const { patient, practitioner, startsAt } = appointment;
+  const when = `${formatShortDay(startsAt, practiceTimeZone)} ${formatTime(startsAt, practiceTimeZone)}`;
   return `${patient} canceló su turno del ${when} con ${practitioner}`;
 }
 

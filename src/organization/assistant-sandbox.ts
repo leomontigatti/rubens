@@ -86,7 +86,6 @@ function scenarioRows(database: Database) {
       practitionerName: practitioner.displayName,
       officeName: office.name,
       officeAddress: office.address,
-      timeZone: office.timeZone,
       medicalServiceName: medicalService.name,
       medicalServiceId: appointment.medicalServiceId,
     })
@@ -128,7 +127,6 @@ export function listSandboxScenarios(database: Database) {
       .map((row) => ({
         appointmentId: row.appointmentId,
         startsAt: row.startsAt,
-        timeZone: row.timeZone,
         patient: `${row.chosenName ?? row.firstName} ${row.lastName}`,
         practitioner: row.practitionerName,
       })),
@@ -171,7 +169,6 @@ function reminderOf(database: Database, scenario: NonNullable<ReturnType<typeof 
     patient: scenario,
     practitionerName: scenario.practitionerName,
     start: new Date(scenario.startsAt),
-    timeZone: scenario.timeZone,
     officeName: scenario.officeName,
     officeAddress: scenario.officeAddress,
     medicalServiceName: scenario.medicalServiceName,

@@ -54,9 +54,9 @@ const fieldMessages = {
 type SaveResult = Awaited<ReturnType<typeof saveAppointment>>;
 
 /** What a refusal says, under the room when it is about the room. */
-function refusalOf(result: Exclude<SaveResult, { ok: true }>, timeZone: string): FieldProblem {
+function refusalOf(result: Exclude<SaveResult, { ok: true }>): FieldProblem {
   if (result.reason === "roomFull") {
-    return { field: "roomId", message: roomFullMessage(result.occupants, timeZone) };
+    return { field: "roomId", message: roomFullMessage(result.occupants) };
   }
   return {
     field: roomRefusals.includes(result.reason) ? "roomId" : "",
@@ -103,7 +103,7 @@ function AppointmentForm({ loaded }: { loaded: LoadedAppointment }) {
       if (result.ok) {
         page.leave();
       } else {
-        setRefusal(refusalOf(result, office.timeZone));
+        setRefusal(refusalOf(result));
       }
     },
   });

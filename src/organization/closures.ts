@@ -1,7 +1,7 @@
 import { asc, desc, eq } from "drizzle-orm";
 
 import { changedFields, createdFields } from "#/lib/audit-fields.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import {
   closureDeleteSchema,
   closureInputSchema,
@@ -24,9 +24,8 @@ import type { Acting } from "#/organization/members.ts";
 import { closure, office } from "#/organization/schema.ts";
 
 // Closures of one office or the whole organization. Everyone reads them; only
-// admins change them (the object's requirement). An office's closure is read
-// in that office's zone, the organization's in its default zone. Closures may
-// overlap, and they change no record of past work, so they can always be
+// admins change them (the object's requirement). Both are read in the
+// practice's zone. Closures may overlap, and they change no record of past work, so they can always be
 // edited or deleted. Every change is written to the audit log, about no patient.
 
 export interface Closure {
@@ -60,7 +59,6 @@ export function listClosures(
       id: closure.id,
       officeId: closure.officeId,
       officeName: office.name,
-      timeZone: office.timeZone,
       startsAt: closure.startsAt,
       endsAt: closure.endsAt,
     })
@@ -82,7 +80,7 @@ export function listClosures(
       officeName: row.officeName,
       entry: toRangeEntry(
         { start: new Date(row.startsAt), end: new Date(row.endsAt) },
-        row.timeZone ?? defaultTimeZone,
+        practiceTimeZone,
       ),
     })),
     offices,
@@ -91,23 +89,17 @@ export function listClosures(
 }
 
 /**
- * A closure of `officeId` over `entry`, as stored: read in the office's zone,
- * or `undefined` when the office is missing.
+ * A closure of `officeId` over `entry`, as stored, or `undefined` when the
+ * office is missing.
  */
 function closureOf(writer: Writer, officeId: string | null, entry: RangeEntry) {
-  let timeZone = defaultTimeZone;
-  if (officeId !== null) {
-    const found = writer
-      .select({ timeZone: office.timeZone })
-      .from(office)
-      .where(eq(office.id, officeId))
-      .get();
-    if (!found) {
-      return undefined;
-    }
-    timeZone = found.timeZone;
+  if (
+    officeId !== null &&
+    !writer.select({ id: office.id }).from(office).where(eq(office.id, officeId)).get()
+  ) {
+    return undefined;
   }
-  const { start, end } = toTimeRange(entry, timeZone);
+  const { start, end } = toTimeRange(entry, practiceTimeZone);
   return { officeId, startsAt: +start, endsAt: +end };
 }
 

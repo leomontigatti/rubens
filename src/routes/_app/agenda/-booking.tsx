@@ -12,7 +12,7 @@ import { serverAnswer, shownPath } from "#/components/save-failure.ts";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { receptionNoteMaxLength } from "#/lib/appointments.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import {
   bookingFieldNames,
   bookingRequestOf,
@@ -93,13 +93,13 @@ const overbookingMessages = { ...fieldMessages, start: "Ingresá la fecha y la h
  * Why the room has no space: who holds it at that time. None when the
  * appointment that took it was gone by the time the server looked again.
  */
-export function roomFullMessage(occupants: readonly RoomOccupant[], timeZone: string): string {
+export function roomFullMessage(occupants: readonly RoomOccupant[]): string {
   if (occupants.length === 0) {
     return "El consultorio se ocupó a esa hora mientras guardabas. Probá de nuevo.";
   }
   const held = occupants.map(
     (occupant) =>
-      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${formatTime(occupant.start, timeZone)} a ${formatTime(occupant.end, timeZone)})`,
+      `${occupant.practitionerName} (${occupant.kind === "schedule" ? "horario" : "turno"} de ${formatTime(occupant.start, practiceTimeZone)} a ${formatTime(occupant.end, practiceTimeZone)})`,
   );
   return `Ese consultorio no tiene lugar a esa hora. Lo ocupan: ${held.join(", ")}.`;
 }
@@ -107,7 +107,6 @@ export function roomFullMessage(occupants: readonly RoomOccupant[], timeZone: st
 /** Where an overbooking can go: the office's rooms, its local times read in its zone. */
 export interface OverbookingOffice {
   rooms: { id: string; name: string }[];
-  timeZone: string;
 }
 
 type BookingRefusal =
@@ -150,8 +149,7 @@ function roomFullProblem(
   office: OverbookingOffice | null,
 ): FieldProblem {
   // A booking's refusals hold no zone; its office is the default one.
-  const timeZone = office?.timeZone ?? defaultTimeZone;
-  return { field: office ? "roomId" : "start", message: roomFullMessage(occupants, timeZone) };
+  return { field: office ? "roomId" : "start", message: roomFullMessage(occupants) };
 }
 
 /** An overbooking's start is typed in its time. */
@@ -171,7 +169,7 @@ export function durationMessage(typed: string): string {
 function requestOf(values: BookingValues, office: OverbookingOffice | null) {
   const duration = { durationMinutes: durationMessage(values.durationMinutes) };
   if (office) {
-    const parsed = overbookingRequestOf(values, office.timeZone);
+    const parsed = overbookingRequestOf(values);
     const messages = messageIn({ ...overbookingMessages, ...duration });
     return parsed.success
       ? { overbooking: true as const, data: parsed.data }
@@ -506,7 +504,7 @@ function PickedSummary({ start }: { start: PickedStart | null }) {
   return (
     <p className="text-sm">
       <span className="text-muted-foreground">Turno:</span>{" "}
-      <span className="font-medium">{formatDateTime(start.start, start.timeZone)}</span>,{" "}
+      <span className="font-medium">{formatDateTime(start.start, practiceTimeZone)}</span>,{" "}
       {start.roomName}
     </p>
   );
@@ -550,8 +548,8 @@ export function PatientWarnings(props: {
           <ul className="list-disc pl-5">
             {props.warnings.map((warning) => (
               <li key={+warning.start}>
-                {formatTime(warning.start, warning.timeZone)} a{" "}
-                {formatTime(warning.end, warning.timeZone)} con {warning.practitionerName}
+                {formatTime(warning.start, practiceTimeZone)} a{" "}
+                {formatTime(warning.end, practiceTimeZone)} con {warning.practitionerName}
                 {warning.kind === "overlap" && ", a la misma hora"}
               </li>
             ))}

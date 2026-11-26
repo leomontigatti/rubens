@@ -1,3 +1,4 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { and, count, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { today } from "#/lib/schedules.ts";
@@ -5,7 +6,6 @@ import { instantOf } from "#/lib/time-ranges.ts";
 import type { TemplateCategory } from "#/lib/whatsapp-templates.ts";
 
 import type { Writer } from "#/organization/database.ts";
-import { organizationTimeZone } from "#/organization/offices.ts";
 import { whatsappMessage } from "#/organization/whatsapp-schema.ts";
 
 // The organization's WhatsApp messages Meta bills it for this month (#294),
@@ -28,12 +28,11 @@ function nextMonthStart(month: string) {
   return number === 12 ? `${year + 1}-01-01` : `${year}-${String(number + 1).padStart(2, "0")}-01`;
 }
 
-/** This month's delivered messages, in the organization's zone: the templates by category, and the rest. */
+/** This month's delivered messages, in the practice's zone: the templates by category, and the rest. */
 export function monthMessages(database: Writer) {
-  const timeZone = organizationTimeZone(database);
-  const month = today(timeZone).slice(0, "yyyy-MM".length);
-  const from = instantOf(`${month}-01`, "00:00", timeZone).getTime();
-  const until = instantOf(nextMonthStart(month), "00:00", timeZone).getTime();
+  const month = today(practiceTimeZone).slice(0, "yyyy-MM".length);
+  const from = instantOf(`${month}-01`, "00:00", practiceTimeZone).getTime();
+  const until = instantOf(nextMonthStart(month), "00:00", practiceTimeZone).getTime();
   const isTemplate = sql<number>`${whatsappMessage.type} = 'template'`.mapWith(Boolean);
   const counted = database
     .select({ isTemplate, delivered: count() })

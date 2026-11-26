@@ -195,7 +195,8 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   `src/organization/whatsapp-messages.ts` is, or, for a list only held in memory (a
   turn's messages, a webhook's statuses), `boundAsOne` in `src/organization/database.ts`.
 - **Instants are integers**, Unix milliseconds in UTC; a span is `[start, end)`.
-  Local times are derived from the office's IANA time zone, never stored bare.
+  Local times are derived from the practice's zone, `practiceTimeZone` in
+  `src/lib/dates.ts`, never stored bare.
 - **Clinical note versions are append-only** (ADR-0005). Editing a note adds a
   version. No update or delete of a note version or the audit log, and no delete of
   any clinical data, except an admin deleting voided content: a voided file's content

@@ -1,4 +1,4 @@
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { today } from "#/lib/schedules.ts";
 
 import type { Organization } from "#/organization/organization.ts";
@@ -89,7 +89,7 @@ export async function seedDevOrganization(
       practitionerId: practitioner.id,
       roomId: room.id,
       weekdays: [1, 2, 3, 4, 5, 6, 7],
-      firstDate: today(defaultTimeZone),
+      firstDate: today(practiceTimeZone),
       lastDate: null,
     }),
   );

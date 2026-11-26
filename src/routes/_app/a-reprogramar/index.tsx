@@ -9,7 +9,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { practitionerColorClasses } from "#/lib/practitioner-colors.ts";
 import { getToReschedule } from "#/server/appointments.functions.ts";
 import type { ToRescheduleEntry, ToRescheduleReason } from "#/organization/to-reschedule.ts";
-import { formatDateTime } from "#/lib/dates.ts";
+import { formatDateTime, practiceTimeZone } from "#/lib/dates.ts";
 
 // The "to reschedule" list (ui: "Turnos a reprogramar"): future appointments
 // that time off, a closure or a schedule change left outside working time, of
@@ -101,7 +101,7 @@ function EntryRow({ entry }: { entry: ToRescheduleEntry }) {
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
         <p className="font-medium">
-          {formatDateTime(entry.start, entry.timeZone)} · {entry.patientName}
+          {formatDateTime(entry.start, practiceTimeZone)} · {entry.patientName}
         </p>
         <p className="text-muted-foreground">
           {entry.practitioner.displayName} · {entry.medicalServiceName} · {entry.officeName},{" "}

@@ -1,3 +1,4 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { and, asc, eq, inArray, ne, or } from "drizzle-orm";
 
 import { actsForEveryone } from "#/lib/access.ts";
@@ -61,8 +62,8 @@ export type AppointmentRecord =
   | {
       ok: true;
       appointment: DayAppointment;
-      /** Its office's zone, and the rooms it can move to: the active ones and its own. */
-      office: { timeZone: string; rooms: { id: string; name: string }[] };
+      /** The rooms it can move to: the active ones and its own. */
+      office: { rooms: { id: string; name: string }[] };
     }
   | { ok: false; reason: "invalidInput" | "notFound" };
 
@@ -114,7 +115,6 @@ function findPlaced(writer: Writer, appointmentId: string) {
       cancellationReason: appointment.cancellationReason,
       receptionNote: appointment.receptionNote,
       officeId: office.id,
-      timeZone: office.timeZone,
     })
     .from(appointment)
     .innerJoin(room, eq(room.id, appointment.roomId))
@@ -170,7 +170,7 @@ export function getAppointment(
   return {
     ok: true,
     appointment: toDayAppointment(booked, { roles: acting.roles, own }, new Date()),
-    office: { timeZone: booked.timeZone, rooms },
+    office: { rooms },
   };
 }
 
@@ -493,7 +493,11 @@ export function undoAppointmentStatus(
     if (!placed) {
       return notFound;
     }
-    const decided = decideUndo(placed, statusActorOf(tx, acting, placed), new Date());
+    const decided = decideUndo(
+      { ...placed, timeZone: practiceTimeZone },
+      statusActorOf(tx, acting, placed),
+      new Date(),
+    );
     if (!decided.ok) {
       return decided;
     }

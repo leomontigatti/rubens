@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 
 import { actsForEveryone } from "#/lib/access.ts";
 import { decideUndo, statusActionsFor } from "#/lib/appointment-statuses.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import type { StatusAction, StatusActor } from "#/lib/appointment-statuses.ts";
 import { bookingInputSchema, overbookingInputSchema } from "#/lib/appointments.ts";
 import type {
@@ -263,7 +264,6 @@ export function selectDayAppointments(writer: Writer) {
       roomId: appointment.roomId,
       roomName: room.name,
       officeId: office.id,
-      timeZone: office.timeZone,
       receptionNote: appointment.receptionNote,
     })
     .from(appointment)
@@ -284,7 +284,7 @@ export function toDayAppointment(
 ): DayAppointment {
   const start = new Date(booked.startsAt);
   const undo = decideUndo(
-    { ...booked, statusChangedAt: new Date(booked.statusChangedAt) },
+    { ...booked, statusChangedAt: new Date(booked.statusChangedAt), timeZone: practiceTimeZone },
     viewer,
     now,
   );
@@ -321,8 +321,6 @@ export interface PatientAppointment {
   medicalServiceName: string;
   officeName: string;
   roomName: string;
-  /** The office's zone, to show the times in local time. */
-  timeZone: string;
   cancelledBy: "patient" | "business" | null;
   cancellationReason: string | null;
 }
@@ -355,7 +353,6 @@ export function listPatientAppointments(
       medicalServiceName: medicalService.name,
       officeName: office.name,
       roomName: room.name,
-      timeZone: office.timeZone,
       cancelledBy: appointment.cancelledBy,
       cancellationReason: appointment.cancellationReason,
     })

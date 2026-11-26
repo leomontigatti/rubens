@@ -258,7 +258,6 @@ describe("the calendar week of a room", () => {
     expect(week.room).toEqual({ id: w.shared.id, name: "Consultorio doble" });
     expect(week.office).toMatchObject({
       id: w.office.id,
-      timeZone: "America/Argentina/Buenos_Aires",
     });
     expect(week.days.map((day) => day.date)).toEqual([
       "2099-01-05",

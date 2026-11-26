@@ -2,7 +2,7 @@ import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
-import { formatLocalDate, formatTime } from "#/lib/dates.ts";
+import { formatLocalDate, formatTime, practiceTimeZone } from "#/lib/dates.ts";
 import { shiftDate, shortTime, weekdayLabels, weekdayOf } from "#/lib/schedules.ts";
 import type { WeeklySlot } from "#/lib/schedules.ts";
 import { instantOf } from "#/lib/time-ranges.ts";
@@ -10,12 +10,11 @@ import type { TimeRange } from "#/lib/time-ranges.ts";
 
 // A practitioner's free start times, computed from their schedules minus
 // everything that blocks them (docs/domain/scheduling.md § Availability). Pure:
-// every local time is read in its office's zone, never the process's.
+// every local time is read in the practice's zone, never the process's.
 
 export interface AvailabilitySchedule extends WeeklySlot {
   officeId: string;
   roomId: string;
-  timeZone: string;
 }
 
 /** A closure of one office, or of the whole organization when `officeId` is null. */
@@ -53,7 +52,7 @@ function onceTheDatesParse(payload: z.core.ParsePayload): boolean {
 
 /**
  * What the free-times screen asks for: a practitioner, local dates in the
- * organization's default zone (both inclusive) and a duration in minutes.
+ * practice's zone (both inclusive) and a duration in minutes.
  */
 export const availabilityQuerySchema = z
   .object({
@@ -160,15 +159,12 @@ function appliesOn(schedule: WeeklySlot, date: string): boolean {
   );
 }
 
-export function occurrencesDuring(
-  schedule: WeeklySlot & { timeZone: string },
-  span: TimeRange,
-): TimeRange[] {
-  return datesIn(span, schedule.timeZone)
+export function occurrencesDuring(schedule: WeeklySlot, span: TimeRange): TimeRange[] {
+  return datesIn(span, practiceTimeZone)
     .filter((date) => appliesOn(schedule, date))
     .map((date) => ({
-      start: instantOf(date, shortTime(schedule.startTime), schedule.timeZone),
-      end: instantOf(date, shortTime(schedule.endTime), schedule.timeZone),
+      start: instantOf(date, shortTime(schedule.startTime), practiceTimeZone),
+      end: instantOf(date, shortTime(schedule.endTime), practiceTimeZone),
     }))
     .filter((occurrence) => intersects(occurrence, span));
 }
@@ -224,11 +220,11 @@ export function outsideWorkingTime(
 export function outsideWorkingTimeWithin(workingTime: WorkingTime, reach: TimeRange) {
   const occurrences = workingTime.schedules.map((schedule) => ({
     officeId: schedule.officeId,
-    during: datesIn(reach, schedule.timeZone)
+    during: datesIn(reach, practiceTimeZone)
       .filter((date) => appliesOn(schedule, date))
       .map((date) => ({
-        start: +instantOf(date, shortTime(schedule.startTime), schedule.timeZone),
-        end: +instantOf(date, shortTime(schedule.endTime), schedule.timeZone),
+        start: +instantOf(date, shortTime(schedule.startTime), practiceTimeZone),
+        end: +instantOf(date, shortTime(schedule.endTime), practiceTimeZone),
       })),
   }));
   return (span: TimeRange, officeId: string): OutsideWorkingTime | null => {
@@ -254,11 +250,11 @@ function gridSpans(
 ): TimeRange[] {
   const startMinutes = minutesOf(schedule.startTime);
   const endMinutes = minutesOf(schedule.endTime);
-  const occurrenceEnd = instantOf(date, timeOf(endMinutes), schedule.timeZone);
+  const occurrenceEnd = instantOf(date, timeOf(endMinutes), practiceTimeZone);
   const spans: TimeRange[] = [];
   let point = Math.ceil(startMinutes / gridMinutes) * gridMinutes;
   for (; point < endMinutes; point += gridMinutes) {
-    const start = instantOf(date, timeOf(point), schedule.timeZone);
+    const start = instantOf(date, timeOf(point), practiceTimeZone);
     const end = new Date(+start + durationMinutes * minute);
     if (end > occurrenceEnd) {
       break;
@@ -270,7 +266,7 @@ function gridSpans(
 
 /**
  * The free starts inside the window, in time order. A start is free when it
- * lies on the grid counted from local midnight in its office's zone, the
+ * lies on the grid counted from local midnight in the practice's zone, the
  * whole duration fits inside one occurrence of a schedule, and that span meets
  * no time off, closure or busy range, nor another practitioner's appointment
  * in the schedule's room.
@@ -293,7 +289,7 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
         span.start >= window.start &&
         span.start < window.end &&
         !blocked.some((range) => intersects(range, span));
-      return datesIn(window, schedule.timeZone)
+      return datesIn(window, practiceTimeZone)
         .filter((date) => appliesOn(schedule, date))
         .flatMap((date) => gridSpans(schedule, date, input.gridMinutes, input.durationMinutes))
         .filter(isFree)
@@ -304,20 +300,19 @@ export function findFreeStarts(input: AvailabilityInput): FreeStart[] {
 
 interface PlacedStart {
   start: Date;
-  timeZone: string;
   officeName: string;
   roomName: string;
 }
 
 /**
- * Free starts under the local date each falls on in its office's zone, dates
+ * Free starts under the local date each falls on in the practice's zone, dates
  * in order, each start with its local `HH:MM`: "Lunes 05/01/2099", "09:00".
  */
 export function freeStartsByDay<T extends PlacedStart>(starts: readonly T[]) {
   const days = new Map<string, (T & { time: string })[]>();
   for (const free of starts) {
-    const date = format(free.start, "yyyy-MM-dd", { in: tz(free.timeZone) });
-    const time = formatTime(free.start, free.timeZone);
+    const date = format(free.start, "yyyy-MM-dd", { in: tz(practiceTimeZone) });
+    const time = formatTime(free.start, practiceTimeZone);
     const day = days.get(date) ?? [];
     day.push({ ...free, time });
     days.set(date, day);

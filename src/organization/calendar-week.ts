@@ -1,3 +1,4 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
@@ -34,7 +35,7 @@ import {
 } from "#/organization/schema.ts";
 
 // The calendar (docs/domain/appointments.md § Calendar): one room's week,
-// Monday to Sunday in its office's zone, narrowed to a practitioner or a
+// Monday to Sunday in the practice's zone, narrowed to a practitioner or a
 // medical service. Its free cells are those a matching practitioner `acting`
 // books for can be booked from. A practitioner who does not book for everyone
 // gets other practitioners' appointments as busy blocks, with only when and
@@ -74,7 +75,7 @@ interface CalendarPractitioner {
 export interface CalendarWeek {
   room: { id: string; name: string };
   /** The room's office, with its active rooms, where a move or an overbooking can go. */
-  office: { id: string; name: string; timeZone: string; rooms: { id: string; name: string }[] };
+  office: { id: string; name: string; rooms: { id: string; name: string }[] };
   /** The practitioners with a schedule or an appointment in the room that week. */
   practitioners: CalendarPractitioner[];
   /** Their active medical services. */
@@ -259,7 +260,6 @@ function findRoom(writer: Writer, roomId: string) {
       name: room.name,
       officeId: office.id,
       officeName: office.name,
-      timeZone: office.timeZone,
     })
     .from(room)
     .innerJoin(office, eq(office.id, room.officeId))
@@ -308,7 +308,7 @@ function findFreeCells(
 ): CalendarDay["freeStarts"] {
   const { window, room: found, durationMinutes = cellMinutes } = options;
   const onCellGrid = (start: Date) =>
-    Number(format(start, "m", { in: tz(found.timeZone) })) % cellMinutes === 0;
+    Number(format(start, "m", { in: tz(practiceTimeZone) })) % cellMinutes === 0;
   return practitioners
     .filter((one) => booksFor(acting, one))
     .flatMap((row) =>
@@ -344,9 +344,7 @@ function findOwnHours(
   const blocked = [...timeOff, ...closures.map((one) => one.during)];
   return mergeTouching(
     own
-      .flatMap((row) =>
-        occurrencesDuring({ ...row, timeZone: options.room.timeZone }, options.window),
-      )
+      .flatMap((row) => occurrencesDuring(row, options.window))
       .flatMap((hours) => subtract(hours, blocked)),
   );
 }
@@ -448,7 +446,6 @@ function findCards(
 /** The week's free starts, cards and schedules, split by local day. */
 function splitByDay(
   dates: readonly string[],
-  timeZone: string,
   parts: {
     schedules: readonly RoomSchedule[];
     freeStarts: CalendarDay["freeStarts"];
@@ -456,13 +453,13 @@ function splitByDay(
   },
 ): CalendarDay[] {
   return dates.map((date) => {
-    const range = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
+    const range = toTimeRange({ kind: "days", firstDate: date, lastDate: date }, practiceTimeZone);
     const within = (instant: Date) => range.start <= instant && instant < range.end;
     // A card across midnight is on both days; the layout clips it to each.
     return {
       date,
       schedules: parts.schedules
-        .flatMap((row) => occurrencesDuring({ ...row, timeZone }, range))
+        .flatMap((row) => occurrencesDuring(row, range))
         .filter((occurrence) => within(occurrence.start)),
       freeStarts: parts.freeStarts.filter((free) => within(free.start)),
       cards: parts.cards.filter((card) => card.start < range.end && card.end > range.start),
@@ -475,7 +472,7 @@ function buildWeek(writer: Writer, acting: Acting, found: FoundRoom, query: Quer
   const monday = mondayOf(query.date);
   const dates = Array.from({ length: daysInWeek }, (_, offset) => shiftDate(monday, offset));
   const bounds = { firstDate: monday, lastDate: shiftDate(monday, daysInWeek - 1) };
-  const window = toTimeRange({ kind: "days", ...bounds }, found.timeZone);
+  const window = toTimeRange({ kind: "days", ...bounds }, practiceTimeZone);
   const schedules = selectRoomSchedules(writer, found.id, bounds);
   const present = practitionersOf(schedules);
   const practitioners = listPractitioners(writer, acting, {
@@ -523,13 +520,12 @@ function buildWeek(writer: Writer, acting: Acting, found: FoundRoom, query: Quer
     office: {
       id: found.officeId,
       name: found.officeName,
-      timeZone: found.timeZone,
       rooms: officeRooms,
     },
     practitioners,
     medicalServices,
     filter: { practitionerId: filter.practitionerId, medicalServiceId: filter.medicalServiceId },
-    days: splitByDay(dates, found.timeZone, {
+    days: splitByDay(dates, {
       schedules: schedules.filter(viewed),
       freeStarts,
       cards,

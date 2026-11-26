@@ -53,8 +53,8 @@ A finding in one of these areas is the user's call unless the issue already sett
 Where this codebase gets hurt, for the correctness brief:
 
 two appointments that overlap without being an overbooking, or one outside its schedule or inside a closure;
-an instant stored or shown in the wrong time zone, or a local time stored without its office's
-zone; an organization id taken from the request instead of the verified session, or an object
+an instant stored or shown in another zone than the practice's, or a local time stored as an
+instant without it; an organization id taken from the request instead of the verified session, or an object
 reached by another organization's name; an object method that skips `as()` or states a weaker
 requirement than the server function it replaced; an `await` between a check and the write it
 guards inside the object, which lets another event in; a server function reachable by a user who

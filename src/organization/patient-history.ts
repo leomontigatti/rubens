@@ -1,7 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import type { AuditValues } from "#/lib/audit-fields.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
 
 import type { AuditAction } from "#/organization/audit.ts";
 import { selectDayAppointments } from "#/organization/appointments.ts";
@@ -12,7 +11,6 @@ import {
   auditLog,
   medicalService,
   member,
-  office,
   practitioner,
   room,
 } from "#/organization/schema.ts";
@@ -27,14 +25,6 @@ export interface HistoryAppointment {
   startsAt: number;
   /** The practitioner, by the name patients read. */
   practitioner: string;
-  /** Its office's zone, which `startsAt` reads in. */
-  timeZone: string;
-}
-
-/** The zones an appointment entry's times are shown in, one per side. */
-export interface HistoryTimeZones {
-  before: string;
-  after: string;
 }
 
 export interface HistoryEntry {
@@ -48,8 +38,6 @@ export interface HistoryEntry {
   after: AuditValues | null;
   /** Unix milliseconds. */
   createdAt: number;
-  /** An appointment entry's zones, to show each side's times in; `null` for other entries. */
-  timeZones: HistoryTimeZones | null;
   /** An appointment entry's appointment; `null` for other entries. */
   appointment: HistoryAppointment | null;
 }
@@ -110,29 +98,15 @@ function appointmentContext(database: Database, patientId: string, entries: read
       .all(),
   );
   const rooms = whereIn(idsOf("roomId"), (ids) =>
-    database
-      .select({ id: room.id, name: room.name, timeZone: office.timeZone })
-      .from(room)
-      .innerJoin(office, eq(office.id, room.officeId))
-      .where(inArray(room.id, ids))
-      .all(),
+    database.select({ id: room.id, name: room.name }).from(room).where(inArray(room.id, ids)).all(),
   );
   const current = new Map(
     appointments.map((row) => [
       row.id,
-      { startsAt: row.startsAt, practitioner: row.practitionerName, timeZone: row.timeZone },
+      { startsAt: row.startsAt, practitioner: row.practitionerName },
     ]),
   );
-  const roomZones = new Map(rooms.map((row) => [row.id, row.timeZone]));
   return {
-    timeZonesOf: (entry: EntryRow): HistoryTimeZones | null => {
-      if (entry.entityType !== "appointment") {
-        return null;
-      }
-      const zone = current.get(entry.entityId)?.timeZone ?? defaultTimeZone;
-      const zoneOf = (values: AuditValues | null) => roomZones.get(String(values?.roomId)) ?? zone;
-      return { before: zoneOf(entry.before), after: zoneOf(entry.after) };
-    },
     appointmentOf: (entry: EntryRow): HistoryAppointment | null =>
       entry.entityType === "appointment" ? (current.get(entry.entityId) ?? null) : null,
     names: Object.fromEntries(
@@ -180,13 +154,12 @@ export function getPatientHistory(
     // Insertion order breaks a tie: two entries can share a millisecond.
     .orderBy(desc(auditLog.createdAt), desc(sql`${auditLog}.rowid`))
     .all();
-  const { timeZonesOf, appointmentOf, names } = appointmentContext(database, patientId.data, rows);
+  const { appointmentOf, names } = appointmentContext(database, patientId.data, rows);
   return {
     ok: true,
     entries: rows.map(({ entityId, ...row }) => ({
       ...row,
       action: row.action as AuditAction,
-      timeZones: timeZonesOf({ ...row, entityId }),
       appointment: appointmentOf({ ...row, entityId }),
     })),
     names,

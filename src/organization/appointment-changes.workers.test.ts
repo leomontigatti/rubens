@@ -6,7 +6,6 @@ import type {
   StatusChangeInput,
   WarningConfirmation,
 } from "#/lib/appointments.ts";
-import { historyChanges } from "#/lib/patients.ts";
 
 import {
   addOffice,
@@ -18,7 +17,7 @@ import {
   inStorage,
   setUpBookingWorld,
 } from "#/organization/organization.test-support.ts";
-import { office as officeTable, practitioner, room as roomTable } from "#/organization/schema.ts";
+import { practitioner, room as roomTable } from "#/organization/schema.ts";
 
 vi.mock(import("#/organization/accounts.ts"), async (original) => ({
   ...(await original()),
@@ -129,7 +128,7 @@ async function world() {
 }
 
 describe("reading one appointment", () => {
-  it("draws it as the calendar does, with its office's zone and rooms", async () => {
+  it("draws it as the calendar does, with its office's rooms", async () => {
     const w = await world();
     const id = await w.bookJuan(at("12:00"), w.maria.id, "Trae estudios");
 
@@ -146,7 +145,6 @@ describe("reading one appointment", () => {
         actions: expect.arrayContaining(["confirmed", "cancelled"]),
       },
       office: {
-        timeZone: "America/Argentina/Buenos_Aires",
         rooms: [
           { id: w.room.id, name: "Consultorio 1" },
           { id: w.otherRoom.id, name: "Consultorio 2" },
@@ -431,46 +429,6 @@ describe("rescheduling", () => {
         roomId: w.otherRoom.id,
       }),
     ).toMatchObject({ ok: false, reason: "roomFull" });
-  });
-
-  it("shows each side of a move to another office's zone in the patient's history", async () => {
-    const w = await rescheduleWorld();
-    const id = await w.bookJuan();
-    expect(await w.reschedule({ appointmentId: id, start: at("17:00") })).toEqual({ ok: true });
-    // A practitioner's schedules share one zone, so the other zone is set
-    // straight on the office: 17:00Z is 12:00 in Lima (UTC-5).
-    const northRoomRow = await inStorage(w.organization, (database) =>
-      database.select().from(roomTable).where(eq(roomTable.id, w.northRoom.id)).get(),
-    );
-    await inStorage(w.organization, (database) =>
-      database
-        .update(officeTable)
-        .set({ timeZone: "America/Lima" })
-        .where(eq(officeTable.id, northRoomRow!.officeId))
-        .run(),
-    );
-
-    const result = await w.organization.getPatientHistory(adminCaller, { patientId: w.maria.id });
-    if (!result.ok) {
-      throw new Error(`getPatientHistory refused: ${result.reason}`);
-    }
-
-    const move = result.entries.find((entry) => entry.action === "update");
-    expect(move!.timeZones).toEqual({
-      before: "America/Argentina/Buenos_Aires",
-      after: "America/Lima",
-    });
-    expect(historyChanges(move!, result.names)).toEqual([
-      { field: "Inicio", before: "05/01/2099 09:00", after: "05/01/2099 12:00" },
-      { field: "Fin", before: "05/01/2099 09:30", after: "05/01/2099 12:30" },
-      { field: "Consultorio", before: "Consultorio 1", after: "Norte 1" },
-    ]);
-    // Titled by the appointment as it is now, in its office's zone (#173).
-    expect(move!.appointment).toEqual({
-      startsAt: new Date(at("17:00")).getTime(),
-      practitioner: "Juan Gómez",
-      timeZone: "America/Lima",
-    });
   });
 
   it("refuses the appointment of a deactivated patient, or practitioner", async () => {

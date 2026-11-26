@@ -108,7 +108,6 @@ describe("free times for stored data", () => {
         start: new Date("2099-01-05T12:00:00Z"),
         officeName: "Sede Centro",
         roomName: "Consultorio 1",
-        timeZone: "America/Argentina/Buenos_Aires",
       },
       expect.objectContaining({ start: new Date("2099-01-05T12:20:00Z") }),
       expect.objectContaining({ start: new Date("2099-01-05T12:40:00Z") }),
@@ -167,16 +166,6 @@ describe("free times for stored data", () => {
       "2099-01-06T17:00:00.000Z",
       "2099-01-06T17:30:00.000Z",
     ]);
-  });
-
-  it("reads each office's schedule in its own zone", async () => {
-    const { organization, addSchedule, freeStarts } = await world();
-    const madrid = await addOffice(organization, "Sede Madrid", "Europe/Madrid");
-    const madridRoom = await addRoom(organization, madrid.id, "Consultorio 2");
-    // 18:00 in Madrid (UTC+1) is 14:00 in Buenos Aires, inside 2099-01-05 there.
-    await addSchedule({ roomId: madridRoom.id, startTime: "18:00", endTime: "18:30" });
-
-    expect(await freeStarts()).toEqual(["2099-01-05T17:00:00.000Z"]);
   });
 
   it("covers every day from the first to the last date", async () => {

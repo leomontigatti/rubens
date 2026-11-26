@@ -12,8 +12,7 @@ import {
 } from "#/organization/organization.test-support.ts";
 import { closure } from "#/organization/schema.ts";
 
-// An office's closure is read in its office's zone; Madrid (UTC+1 in January)
-// tells it apart from the organization's default, Buenos Aires (UTC-3).
+// Every closure is read in the practice's zone, Buenos Aires (UTC-3).
 
 const holiday: RangeEntry = { kind: "days", firstDate: "2099-01-06", lastDate: "2099-01-06" };
 const fridayAfternoon: RangeEntry = {
@@ -22,15 +21,15 @@ const fridayAfternoon: RangeEntry = {
   end: "2099-01-10T00:00",
 };
 
-/** Madrid's 2099-01-06, as instants. */
-const madridHoliday = {
-  startsAt: Date.parse("2099-01-05T23:00:00Z"),
-  endsAt: Date.parse("2099-01-06T23:00:00Z"),
+/** 2099-01-06, as instants. */
+const holidayInstants = {
+  startsAt: Date.parse("2099-01-06T03:00:00Z"),
+  endsAt: Date.parse("2099-01-07T03:00:00Z"),
 };
 
 async function world() {
   const { organization } = await setUpTestOrganization();
-  const madrid = await addOffice(organization, "Sede Madrid", "Europe/Madrid");
+  const norte = await addOffice(organization, "Sede Norte");
 
   async function createdId(officeId: string | null, entry: RangeEntry) {
     const result = await organization.createClosure(adminCaller, { officeId, entry });
@@ -56,18 +55,18 @@ async function world() {
         .all(),
     );
 
-  return { organization, madrid, createdId, list, stored };
+  return { organization, norte, createdId, list, stored };
 }
 
 describe("creating a closure", () => {
-  it("reads an office's whole days in the office's zone, audited", async () => {
-    const { organization, madrid, createdId, list, stored } = await world();
+  it("reads an office's whole days in the practice's zone, audited", async () => {
+    const { organization, norte, createdId, list, stored } = await world();
 
-    const id = await createdId(madrid.id, holiday);
+    const id = await createdId(norte.id, holiday);
 
-    expect(await stored()).toEqual([{ officeId: madrid.id, ...madridHoliday }]);
+    expect(await stored()).toEqual([{ officeId: norte.id, ...holidayInstants }]);
     expect((await list()).closures).toEqual([
-      expect.objectContaining({ officeId: madrid.id, officeName: "Sede Madrid", entry: holiday }),
+      expect.objectContaining({ officeId: norte.id, officeName: "Sede Norte", entry: holiday }),
     ]);
     expect(await auditEntriesFor(organization, id)).toEqual([
       {
@@ -76,12 +75,12 @@ describe("creating a closure", () => {
         userId: adminCaller.userId,
         patientId: null,
         before: null,
-        after: { officeId: madrid.id, ...madridHoliday },
+        after: { officeId: norte.id, ...holidayInstants },
       },
     ]);
   });
 
-  it("reads the whole organization's closure in the organization's default zone", async () => {
+  it("reads the whole organization's closure in the practice's zone", async () => {
     const { createdId, list, stored } = await world();
 
     await createdId(null, fridayAfternoon);
@@ -99,12 +98,12 @@ describe("creating a closure", () => {
   });
 
   it("allows closures that overlap", async () => {
-    const { organization, madrid, createdId } = await world();
+    const { organization, norte, createdId } = await world();
     await createdId(null, holiday);
 
     for (let time = 0; time < 2; time += 1) {
       expect(
-        await organization.createClosure(adminCaller, { officeId: madrid.id, entry: holiday }),
+        await organization.createClosure(adminCaller, { officeId: norte.id, entry: holiday }),
       ).toMatchObject({ ok: true });
     }
   });
@@ -134,10 +133,10 @@ describe("creating a closure", () => {
 
 describe("who changes closures", () => {
   it("refuses everyone but admins, who all still read them", async () => {
-    const { organization, madrid, createdId, list, stored } = await world();
+    const { organization, norte, createdId, list, stored } = await world();
     const juan = await addStaff(organization, "Juan Gómez");
     const rosa = await addStaff(organization, "Rosa Paz", ["receptionist"]);
-    const id = await createdId(madrid.id, holiday);
+    const id = await createdId(norte.id, holiday);
     const forbidden = { ok: false, reason: "forbidden" };
 
     for (const { caller } of [juan, rosa]) {
@@ -156,41 +155,37 @@ describe("who changes closures", () => {
 });
 
 describe("editing and deleting a closure", () => {
-  it("moves it to another office and range, read in the new office's zone, audited", async () => {
-    const { organization, madrid, createdId, stored } = await world();
+  it("moves it to another office, audited", async () => {
+    const { organization, norte, createdId, stored } = await world();
     const id = await createdId(null, holiday);
 
     expect(
       await organization.updateClosure(adminCaller, {
         closureId: id,
-        officeId: madrid.id,
+        officeId: norte.id,
         entry: holiday,
       }),
     ).toEqual({ ok: true });
-    expect(await stored()).toEqual([{ officeId: madrid.id, ...madridHoliday }]);
+    expect(await stored()).toEqual([{ officeId: norte.id, ...holidayInstants }]);
     expect((await auditEntriesFor(organization, id)).at(-1)).toEqual({
       action: "update",
       entityType: "closure",
       userId: adminCaller.userId,
       patientId: null,
-      before: {
-        officeId: null,
-        startsAt: Date.parse("2099-01-06T03:00:00Z"),
-        endsAt: Date.parse("2099-01-07T03:00:00Z"),
-      },
-      after: { officeId: madrid.id, ...madridHoliday },
+      before: { officeId: null },
+      after: { officeId: norte.id },
     });
   });
 
   it("deletes it, audited", async () => {
-    const { organization, madrid, createdId, stored } = await world();
-    const id = await createdId(madrid.id, holiday);
+    const { organization, norte, createdId, stored } = await world();
+    const id = await createdId(norte.id, holiday);
 
     expect(await organization.deleteClosure(adminCaller, { closureId: id })).toEqual({ ok: true });
     expect(await stored()).toEqual([]);
     expect((await auditEntriesFor(organization, id)).at(-1)).toMatchObject({
       action: "delete",
-      before: { officeId: madrid.id, ...madridHoliday },
+      before: { officeId: norte.id, ...holidayInstants },
       after: null,
     });
   });

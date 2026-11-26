@@ -10,7 +10,7 @@ import {
   workingHours as devWorkingHours,
 } from "#/dev/world.ts";
 import type { DevRole } from "#/dev/world.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { shiftDate, today, weekdayOf } from "#/lib/schedules.ts";
 
 // What the dev seed holds and the specs act on, made-up data only: the dev
@@ -51,8 +51,8 @@ export const fullName = (patient: { firstName: string; lastName: string }) =>
  */
 export const workingHours = devWorkingHours;
 
-/** A local date of next week, by ISO weekday (1 is Monday), in the office's zone. */
+/** A local date of next week, by ISO weekday (1 is Monday), in the practice's zone. */
 export function nextWeek(weekday: number): string {
-  const now = today(defaultTimeZone);
+  const now = today(practiceTimeZone);
   return shiftDate(now, 7 - weekdayOf(now) + weekday);
 }

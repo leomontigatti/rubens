@@ -26,6 +26,10 @@ checked and the appointment inserted in one synchronous transaction, and RLS and
 become checks in the object's code. The hosting country was confirmed with counsel on
 2026-11-05: the United States is accepted.
 
+Amended 2026-11-26 (LEO-8): offices have no time zone. Every local time is read in one
+fixed zone, America/Argentina/Buenos_Aires, so where the rules below say the office's
+zone, read that one.
+
 Names follow FHIR where one fits (Location, Practitioner, PractitionerRole,
 Schedule, Slot, Appointment, Encounter, Patient) without running a FHIR server.
 

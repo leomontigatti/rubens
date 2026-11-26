@@ -1,10 +1,10 @@
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { coveringSchedule, occurrencesDuring } from "#/lib/availability.ts";
-import { present } from "#/lib/present.ts";
 import { findCrowding } from "#/lib/room-space.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
 import type { TimeRange } from "#/lib/time-ranges.ts";
@@ -51,8 +51,6 @@ interface PatientWarning {
   start: Date;
   end: Date;
   practitionerName: string;
-  /** The zone of the appointment's office, to show it in local time. */
-  timeZone: string;
 }
 
 type WarningRefusal = { ok: false; reason: "patientWarning"; warnings: PatientWarning[] };
@@ -61,7 +59,7 @@ export type NewPlacement =
   | { kind: "freeStart"; span: TimeRange }
   | { kind: "overbooking"; span: TimeRange; pickedRoomId: string | null };
 
-type Placed = { ok: true; roomId: string; timeZone: string };
+type Placed = { ok: true; roomId: string };
 
 /** A start that is not free, with the free starts its day has left for that duration. */
 type NotFree = { ok: false; reason: "notFree"; freeStarts: AvailableStart[] };
@@ -74,7 +72,7 @@ export type PlacementRefusal<Kind extends NewPlacement["kind"]> = Kind extends "
 const intersects = (a: TimeRange, b: TimeRange) => a.start < b.end && b.start < a.end;
 
 /** Every practitioner in the room during `span`, through a schedule or an active appointment. */
-function findPresences(writer: Writer, roomId: string, span: TimeRange, timeZone: string) {
+function findPresences(writer: Writer, roomId: string, span: TimeRange) {
   const schedules = writer
     .select({
       practitionerId: schedule.practitionerId,
@@ -108,7 +106,7 @@ function findPresences(writer: Writer, roomId: string, span: TimeRange, timeZone
     .all();
   return [
     ...schedules.flatMap(({ practitionerId, practitionerName, ...slot }) =>
-      occurrencesDuring({ ...slot, timeZone }, span).map((occurrence) => ({
+      occurrencesDuring(slot, span).map((occurrence) => ({
         practitionerId,
         practitionerName,
         kind: "schedule" as const,
@@ -133,14 +131,13 @@ export function checkRoomSpace(
   roomId: string,
   practitionerId: string,
   span: TimeRange,
-): { ok: true; officeId: string; timeZone: string } | RoomRefusal {
+): { ok: true; officeId: string } | RoomRefusal {
   const target = writer
     .select({
       officeId: room.officeId,
       active: room.active,
       capacity: room.capacity,
       officeActive: office.active,
-      timeZone: office.timeZone,
     })
     .from(room)
     .innerJoin(office, eq(office.id, room.officeId))
@@ -155,7 +152,7 @@ export function checkRoomSpace(
   if (!target.active) {
     return { ok: false, reason: "roomInactive" };
   }
-  const presences = findPresences(writer, roomId, span, target.timeZone);
+  const presences = findPresences(writer, roomId, span);
   // Another practitioner's appointment holds the room whatever its capacity.
   const held = presences.filter(
     (presence) =>
@@ -171,12 +168,12 @@ export function checkRoomSpace(
       .sort((a, b) => +a.start - +b.start || a.practitionerName.localeCompare(b.practitionerName));
     return { ok: false, reason: "roomFull", occupants };
   }
-  return { ok: true, officeId: target.officeId, timeZone: target.timeZone };
+  return { ok: true, officeId: target.officeId };
 }
 
-function localDay(instant: Date, timeZone: string): TimeRange {
-  const date = format(instant, "yyyy-MM-dd", { in: tz(timeZone) });
-  return toTimeRange({ kind: "days", firstDate: date, lastDate: date }, timeZone);
+function localDay(instant: Date): TimeRange {
+  const date = format(instant, "yyyy-MM-dd", { in: tz(practiceTimeZone) });
+  return toTimeRange({ kind: "days", firstDate: date, lastDate: date }, practiceTimeZone);
 }
 
 /**
@@ -187,7 +184,6 @@ function findPatientWarnings(
   writer: Writer,
   patientId: string,
   span: TimeRange,
-  timeZone: string,
   excludeId: string | undefined,
 ): PatientWarning[] {
   const rows = writer
@@ -195,7 +191,6 @@ function findPatientWarnings(
       startsAt: appointment.startsAt,
       endsAt: appointment.endsAt,
       practitionerName: practitioner.displayName,
-      timeZone: office.timeZone,
     })
     .from(appointment)
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
@@ -205,19 +200,18 @@ function findPatientWarnings(
       and(
         eq(appointment.patientId, patientId),
         inArray(appointment.status, [...activeAppointmentStatuses]),
-        meets(appointment, localDay(span.start, timeZone)),
+        meets(appointment, localDay(span.start)),
         excludeId === undefined ? undefined : ne(appointment.id, excludeId),
       ),
     )
     .orderBy(asc(appointment.startsAt))
     .all();
-  return rows.map(({ startsAt, endsAt, practitionerName, timeZone: zone }) => {
+  return rows.map(({ startsAt, endsAt, practitionerName }) => {
     const during = asRange({ startsAt, endsAt });
     return {
       kind: intersects(during, span) ? "overlap" : "sameDay",
       ...during,
       practitionerName,
-      timeZone: zone,
     };
   });
 }
@@ -233,7 +227,7 @@ function placeFreeStart(
   excludeAppointmentId: string | undefined,
 ): Placed | NotFree {
   const durationMinutes = (+span.end - +span.start) / 60_000;
-  const { free, schedules } = findFreeTimes(writer, bookable, {
+  const { free } = findFreeTimes(writer, bookable, {
     window: { start: span.start, end: new Date(+span.start + 1) },
     durationMinutes,
     excludeAppointmentId,
@@ -246,11 +240,7 @@ function placeFreeStart(
     });
     return { ok: false, reason: "notFree", freeStarts };
   }
-  const { timeZone } = present(
-    schedules.find((row) => row.roomId === slot.roomId),
-    "A free time is in the room of one of the schedules it came from",
-  );
-  return { ok: true, roomId: slot.roomId, timeZone };
+  return { ok: true, roomId: slot.roomId };
 }
 
 /**
@@ -282,7 +272,7 @@ function placeOverbooking(
   if (blocking.closures.length > 0) {
     return { ok: false, reason: "closed" };
   }
-  return { ok: true, roomId, timeZone: space.timeZone };
+  return { ok: true, roomId };
 }
 
 /**
@@ -317,7 +307,7 @@ export function placeAtTime(
   }
   const warnings = confirmWarnings
     ? []
-    : findPatientWarnings(writer, patientId, span, where.timeZone, excludeAppointmentId);
+    : findPatientWarnings(writer, patientId, span, excludeAppointmentId);
   if (warnings.length > 0) {
     return { ok: false, reason: "patientWarning", warnings };
   }

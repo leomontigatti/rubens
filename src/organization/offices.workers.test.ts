@@ -38,42 +38,17 @@ async function officeNames(organization: OrganizationStub, includeInactive: bool
 }
 
 describe("offices", () => {
-  it("creates an office, in Buenos Aires unless told otherwise", async () => {
+  it("creates an office", async () => {
     const { organization } = await setUpTestOrganization();
 
     const created = await newOffice(organization);
-    const elsewhere = await newOffice(organization, {
-      ...centro,
-      name: "Sede Sur",
-      timeZone: "America/Cordoba",
-    });
+    await newOffice(organization, { ...centro, name: "Sede Sur" });
 
-    expect(created).toMatchObject({
-      ...centro,
-      timeZone: "America/Argentina/Buenos_Aires",
-      active: true,
-    });
-    expect(elsewhere.timeZone).toBe("America/Cordoba");
+    expect(created).toMatchObject({ ...centro, active: true });
     expect((await officeNames(organization, false)).map((office) => office.name)).toEqual([
       "Sede Centro",
       "Sede Sur",
     ]);
-  });
-
-  it("refuses a time zone that is not an IANA zone", async () => {
-    const { organization } = await setUpTestOrganization();
-
-    expect(
-      await organization.createOffice(adminCaller, { ...centro, timeZone: "Buenos Aires" }),
-    ).toEqual({ ok: false, reason: "invalidInput" });
-  });
-
-  it("refuses an offset such as -03:00, which Intl accepts but which follows no daylight-saving rules", async () => {
-    const { organization } = await setUpTestOrganization();
-
-    expect(await organization.createOffice(adminCaller, { ...centro, timeZone: "-03:00" })).toEqual(
-      { ok: false, reason: "invalidInput" },
-    );
   });
 
   it("edits an office", async () => {
@@ -84,26 +59,12 @@ describe("offices", () => {
       officeId: created.id,
       name: "Sede Norte",
       address: "Cabildo 1",
-      timeZone: "UTC",
     });
 
     expect(result).toMatchObject({
       ok: true,
-      office: { name: "Sede Norte", address: "Cabildo 1", timeZone: "UTC" },
+      office: { name: "Sede Norte", address: "Cabildo 1" },
     });
-  });
-
-  it("keeps the time zone when an edit leaves it out", async () => {
-    const { organization } = await setUpTestOrganization();
-    const created = await newOffice(organization, { ...centro, timeZone: "UTC" });
-
-    const result = await organization.updateOffice(adminCaller, {
-      officeId: created.id,
-      name: "Sede Norte",
-      address: "Cabildo 1",
-    });
-
-    expect(result).toMatchObject({ ok: true, office: { name: "Sede Norte", timeZone: "UTC" } });
   });
 
   it("drops a deactivated office from the default list, shows it on request, and reactivates it", async () => {
@@ -336,7 +297,7 @@ describe("auditing offices and rooms", () => {
         ...about,
         action: "create",
         before: null,
-        after: { ...centro, timeZone: "America/Argentina/Buenos_Aires" },
+        after: centro,
       },
       {
         ...about,

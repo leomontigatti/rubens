@@ -7,7 +7,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from "#/components/u
 import { Button } from "#/components/ui/button.tsx";
 import { DropdownMenuItem } from "#/components/ui/dropdown-menu.tsx";
 import { formatDateTime } from "#/lib/dates.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { changeWhatsappConsent } from "#/server/patients.functions.ts";
 import type { Patient } from "#/organization/patients.ts";
 
@@ -81,7 +81,7 @@ export function WhatsappAlert(props: {
     <Alert variant="warning">
       <AlertTitle>Pidió no recibir más mensajes</AlertTitle>
       <AlertDescription>
-        {`El ${formatDateTime(props.optOutPendingSince, defaultTimeZone)} su número respondió algo que parece un pedido de baja. Sus recordatorios y avisos quedan en espera hasta que decidas.`}
+        {`El ${formatDateTime(props.optOutPendingSince, practiceTimeZone)} su número respondió algo que parece un pedido de baja. Sus recordatorios y avisos quedan en espera hasta que decidas.`}
       </AlertDescription>
       <AlertAction>
         <Button

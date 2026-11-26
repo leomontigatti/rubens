@@ -11,7 +11,7 @@ import type {
   AvailabilitySchedule,
   FreeStart,
 } from "#/lib/availability.ts";
-import { defaultTimeZone } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
 import { present } from "#/lib/present.ts";
 import { shiftDate } from "#/lib/schedules.ts";
 import { toTimeRange } from "#/lib/time-ranges.ts";
@@ -35,7 +35,7 @@ import {
 // A practitioner's free times (ui: "Disponibilidad"): the stored schedules,
 // time off and closures, handed to the pure module in `#/lib/availability.ts`.
 // Reception and admins read anyone's; a practitioner reads their own. The
-// dates asked for are read in the organization's default zone. Schedules in a
+// dates asked for are read in the practice's zone. Schedules in a
 // deactivated room or office offer nothing. The practitioner's active
 // appointments are busy, and so is a room another practitioner's active
 // appointment holds.
@@ -44,8 +44,6 @@ export interface AvailableStart {
   start: Date;
   officeName: string;
   roomName: string;
-  /** The office's zone, to show the start in local time. */
-  timeZone: string;
 }
 
 type Refusal = "forbidden" | "invalidInput" | "notFound";
@@ -202,13 +200,12 @@ export function findFreeTimes(
   const reach = { start: window.start, end: new Date(+window.end + durationMinutes * 60_000) };
   // An office in another zone than the default one sees the window a day
   // earlier or later, so the dates are widened by a day each way.
-  const firstDate = shiftDate(localDate(window.start, defaultTimeZone), -1);
-  const lastDate = shiftDate(localDate(reach.end, defaultTimeZone), 1);
+  const firstDate = shiftDate(localDate(window.start, practiceTimeZone), -1);
+  const lastDate = shiftDate(localDate(reach.end, practiceTimeZone), 1);
   const schedules = writer
     .select({
       officeId: office.id,
       officeName: office.name,
-      timeZone: office.timeZone,
       roomId: room.id,
       roomName: room.name,
       weekdays: schedule.weekdays,
@@ -261,17 +258,13 @@ export function freeStartsOfDay(
   instant: Date,
   options: { durationMinutes: number; excludeAppointmentId?: string },
 ): AvailableStart[] {
-  const date = localDate(instant, defaultTimeZone);
+  const date = localDate(instant, practiceTimeZone);
   const window = toTimeRange(
     { kind: "days", firstDate: shiftDate(date, -1), lastDate: shiftDate(date, 1) },
-    defaultTimeZone,
+    practiceTimeZone,
   );
   const { free, schedules } = findFreeTimes(writer, owner, { window, ...options });
-  const zones = new Map(schedules.map((row) => [row.roomId, row.timeZone]));
-  const sameDay = free.filter(({ start, roomId }) => {
-    const zone = present(zones.get(roomId), "A free time is in the room of one of its schedules");
-    return localDate(start, zone) === localDate(instant, zone);
-  });
+  const sameDay = free.filter(({ start }) => localDate(start, practiceTimeZone) === date);
   return toAvailableStarts(sameDay, schedules);
 }
 
@@ -287,7 +280,6 @@ function toAvailableStarts(
       start,
       officeName: where.officeName,
       roomName: where.roomName,
-      timeZone: where.timeZone,
     };
   });
 }
@@ -314,7 +306,7 @@ export function getAvailability(
   if (!actsForEveryone(acting) && !found.canEdit) {
     return { ok: false, reason: "forbidden" };
   }
-  const window = toTimeRange({ kind: "days", firstDate, lastDate }, defaultTimeZone);
+  const window = toTimeRange({ kind: "days", firstDate, lastDate }, practiceTimeZone);
   const { free, schedules } = findFreeTimes(writer, found, {
     window,
     durationMinutes,

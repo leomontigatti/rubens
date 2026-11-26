@@ -5,7 +5,7 @@ import { and, count, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { activeAppointmentStatuses } from "#/lib/appointments.ts";
 import { moveRefusal } from "#/lib/proposals.ts";
 import type { MoveRefusal } from "#/lib/proposals.ts";
-import { formatDay, formatTime } from "#/lib/dates.ts";
+import { practiceTimeZone, formatDay, formatTime } from "#/lib/dates.ts";
 import { present } from "#/lib/present.ts";
 
 import { rescheduleAppointment } from "#/organization/appointment-changes.ts";
@@ -104,7 +104,7 @@ function patientBusyAt(writer: Writer, moving: MoveFacts, window: { start: Date;
 /**
  * Every free time the appointment can move to from `now`, of its duration,
  * but for its own start and a time its patient is busy at, earliest first,
- * each with its local start (`YYYY-MM-DDTHH:MM`) in its office's zone.
+ * each with its local start (`YYYY-MM-DDTHH:MM`) in the practice's zone.
  */
 function allSlots(writer: Writer, moving: MoveFacts, now: number) {
   const durationMs = moving.endsAt - moving.startsAt;
@@ -129,11 +129,14 @@ function allSlots(writer: Writer, moving: MoveFacts, now: number) {
       );
       const slot: Slot = {
         slotId: start.toISOString(),
-        date: formatDay(start, where.timeZone),
-        time: formatTime(start, where.timeZone),
+        date: formatDay(start, practiceTimeZone),
+        time: formatTime(start, practiceTimeZone),
         office: where.officeName,
       };
-      return { slot, localStart: format(start, "yyyy-MM-dd'T'HH:mm", { in: tz(where.timeZone) }) };
+      return {
+        slot,
+        localStart: format(start, "yyyy-MM-dd'T'HH:mm", { in: tz(practiceTimeZone) }),
+      };
     });
 }
 

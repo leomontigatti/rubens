@@ -1,4 +1,4 @@
-import { tz, tzOffset } from "@date-fns/tz";
+import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
 import * as z from "zod";
 
@@ -115,36 +115,6 @@ export function sharedDates(a: Dates, b: Dates): Dates | null {
       ? b.lastDate
       : a.lastDate;
   return lastDate === null || firstDate <= lastDate ? { firstDate, lastDate } : null;
-}
-
-const dayMs = 24 * 60 * 60 * 1000;
-
-/**
- * Whether two time zones show the same clock every week of `dates` from
- * `today`, or from the first date if later, for a year at most, so their local
- * times mean the same moments: two names for one clock, as Argentina's
- * provinces are, count as one. Past dates never collide again.
- */
-export function sameClock(zoneA: string, zoneB: string, dates: Dates, today: string): boolean {
-  if (zoneA === zoneB) {
-    return true;
-  }
-  // Milliseconds, not date strings: a date past year 9999 no longer sorts as one.
-  const from = Math.max(utcMidnight(dates.firstDate).getTime(), utcMidnight(today).getTime());
-  const yearOn = from + 371 * dayMs;
-  const until =
-    dates.lastDate === null ? yearOn : Math.min(utcMidnight(dates.lastDate).getTime(), yearOn);
-  if (until < from) {
-    return true;
-  }
-  const moments = [until];
-  for (let moment = from; moment < until; moment += 7 * dayMs) {
-    moments.push(moment);
-  }
-  return moments.every((moment) => {
-    const date = new Date(moment);
-    return tzOffset(zoneA, date) === tzOffset(zoneB, date);
-  });
 }
 
 function coversTime(slot: WeeklySlot, time: string): boolean {

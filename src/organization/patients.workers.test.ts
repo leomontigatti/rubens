@@ -108,7 +108,6 @@ describe("registering a patient", () => {
         userName: "Miembro receptionist",
         before: null,
         after: { firstName: "Juan", lastName: "Pérez", phone: "+5493515551234" },
-        timeZones: null,
       },
     ]);
   });

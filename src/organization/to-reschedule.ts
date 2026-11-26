@@ -5,7 +5,8 @@ import { actsForEveryone } from "#/lib/access.ts";
 import type { AppointmentStatus } from "#/lib/appointments.ts";
 import { outsideWorkingTime, outsideWorkingTimeWithin } from "#/lib/availability.ts";
 import type { OutsideWorkingTime, WorkingTime } from "#/lib/availability.ts";
-import { defaultTimeZone, placeReferenceSchema } from "#/lib/offices.ts";
+import { practiceTimeZone } from "#/lib/dates.ts";
+import { placeReferenceSchema } from "#/lib/offices.ts";
 import type { PlaceReference } from "#/lib/offices.ts";
 import { patientName, patientReferenceSchema } from "#/lib/patients.ts";
 import type { PatientReference } from "#/lib/patients.ts";
@@ -55,8 +56,6 @@ export interface ToRescheduleEntry {
   color: PractitionerColor;
   officeName: string;
   roomName: string;
-  /** The office's zone, to show the appointment in local time. */
-  timeZone: string;
   reason: ToRescheduleReason;
 }
 
@@ -101,7 +100,6 @@ function upcomingAppointments(writer: Writer, acting: Acting) {
       roomId: room.id,
       roomActive: room.active,
       roomName: room.name,
-      timeZone: office.timeZone,
     })
     .from(appointment)
     .innerJoin(practitioner, eq(practitioner.id, appointment.practitionerId))
@@ -134,7 +132,6 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
       practitionerId: schedule.practitionerId,
       officeId: office.id,
       roomId: room.id,
-      timeZone: office.timeZone,
       weekdays: schedule.weekdays,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
@@ -150,7 +147,7 @@ function workingTimeOf(writer: Writer, practitionerIds: string[], reach: TimeRan
         // An office in another zone than the default one may still be on yesterday.
         or(
           isNull(schedule.lastDate),
-          gte(schedule.lastDate, shiftDate(today(defaultTimeZone), -1)),
+          gte(schedule.lastDate, shiftDate(today(practiceTimeZone), -1)),
         ),
       ),
     )
@@ -325,7 +322,6 @@ function findToReschedule(writer: Writer, acting: Acting): ToRescheduleEntry[] {
         color: row.color,
         officeName: row.officeName,
         roomName: row.roomName,
-        timeZone: row.timeZone,
         reason,
       },
     ];
