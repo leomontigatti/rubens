@@ -132,6 +132,7 @@ export function unintelligibleTurn(rules: CommunicationRules) {
     handOff: null,
     ruleRefused: null,
     refusal: null,
+    bookingUnavailable: null,
     applied: [],
     proposed: false,
     rules,

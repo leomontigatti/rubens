@@ -619,6 +619,55 @@ describe("a booking the assistant cannot make", () => {
     expect(fakeMeta.textsSent()).toEqual([]);
   });
 
+  it("hands a medical service find_booking_times refuses to reception though the model does not hand it off, and tells the patient nothing", async () => {
+    expectOk(
+      await world.organization.createMedicalService(adminCaller, {
+        practitionerId: world.juan.practitionerId,
+        name: "Ortodoncia",
+        durationMinutes: 30,
+        whatsappBooking: false,
+      }),
+    );
+    await world.addPatient("Martina", martinaPhone);
+    await writes("quiero un turno de ortodoncia");
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, booking: true });
+      one.call("find_booking_times", { medicalService: "Ortodoncia", from: "2099-01-05" });
+      return "Ortodoncia no se puede pedir por WhatsApp, llamá a recepción.";
+    });
+
+    await turn();
+
+    expect(await openHandoffs()).toMatchObject([
+      { reason: "bookingUnavailable", forPractitioner: false, recipients: ["Ana Admin"] },
+    ]);
+    expect(await adminsHandoffNotifications()).toMatchObject([
+      { reason: "bookingUnavailable", detail: { medicalService: "Ortodoncia" } },
+    ]);
+    expect(fakeMeta.textsSent()).toEqual([]);
+  });
+
+  it("hands a medical service the practice does not have to reception though the model does not hand it off", async () => {
+    await world.addPatient("Martina", martinaPhone);
+    await writes("quiero un turno de blanqueamiento");
+    let found: unknown;
+    scriptedModel.script((one) => {
+      one.call("judge_messages", { ...notClinical, booking: true });
+      found = one.call("find_booking_times", {
+        medicalService: "Blanqueamiento",
+        from: "2099-01-05",
+      });
+      return "";
+    });
+
+    await turn();
+
+    expect(found).toEqual({ ok: false, reason: "notFound" });
+    expect(await adminsHandoffNotifications()).toMatchObject([
+      { reason: "bookingUnavailable", detail: { medicalService: "Blanqueamiento" } },
+    ]);
+  });
+
   it("hands a medical service the practice does not offer to reception, named as the patient asked for it", async () => {
     await world.addPatient("Martina", martinaPhone);
     await writes("hacen blanqueamiento?");

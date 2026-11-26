@@ -102,6 +102,19 @@ describe("score", () => {
     expect(searchFrom("2026-11-12")).toBe(true);
   });
 
+  it("does not count a search from a date or time that does not exist", () => {
+    const searchFrom = (from: string) =>
+      turn("book-none-of-the-times-suits", "Tengo el jueves 12/11 a las 10:00.", (tools) => {
+        tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+        tools.run("find_booking_times", { medicalService: "Consulta odontológica", from });
+      }).toolChoice.pass;
+
+    expect(searchFrom("2026-11-11T25:00")).toBe(false);
+    expect(searchFrom("2026-11-11T11:60")).toBe(false);
+    expect(searchFrom("2026-11-31")).toBe(false);
+    expect(searchFrom("2026-11-11T11:30x")).toBe(false);
+  });
+
   it("does not count a booking proposal the object refused", () => {
     const result = turn("book-known-patient-picks-time", "Te reservo el miércoles.", (tools) => {
       tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
@@ -264,6 +277,16 @@ describe("score", () => {
     // The code opens the refusal's handoff though the model called no hand_off.
     expect(refusedOnly.handoff).toEqual({ pass: true, reason: "ok" });
     expect(movedToo.handoff).toEqual({ pass: true, reason: "ok" });
+  });
+
+  it("counts the handoff the code opens for a medical service find_booking_times refused, and tells the patient nothing", () => {
+    const result = turn("book-service-switched-off", "", (tools) => {
+      tools.run("judge_messages", { healthQuestion: false, emergency: false, booking: true });
+      tools.run("find_booking_times", { medicalService: "Ortodoncia", from: "2026-11-12" });
+    });
+
+    expect(result.handoff).toEqual({ pass: true, reason: "ok" });
+    expect(result.reply.pass).toBe(true);
   });
 
   it("leaves a repeat during a handoff to the practitioner to underthing's sentence", () => {

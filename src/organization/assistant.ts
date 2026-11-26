@@ -75,6 +75,8 @@ interface Recorded {
   ruleRefused: string | null;
   /** Why, as the handoff's notification says it. */
   refusal: HandoffDetail["refused"];
+  /** The medical service find_booking_times refused to book, which underthing hands off. */
+  bookingUnavailable: string | null;
   /** The changes the turn's accepted proposals made. */
   applied: HandoffDetail["applied"];
   /** The model stored a proposal, which its reply states. */
@@ -139,7 +141,22 @@ function turnTools(
       name: "list_medical_services",
       run: () => ({ medicalServices: bookableMedicalServices(database) }),
     },
-    { name: "find_booking_times", run: (args) => findBookingTimes(database, args) },
+    {
+      name: "find_booking_times",
+      run: (args) => {
+        const found = findBookingTimes(database, args);
+        const asked = assistantToolSchemas.find_booking_times.inputSchema.safeParse(args);
+        // A practitioner named who does not offer it is no reason: the practice may.
+        const unbookable =
+          !found.ok &&
+          found.reason !== "invalidInput" &&
+          !(found.reason === "notFound" && asked.data?.practitioner !== undefined);
+        if (unbookable && asked.success) {
+          recorded.bookingUnavailable = asked.data.medicalService;
+        }
+        return found;
+      },
+    },
     {
       name: "judge_messages",
       run: (args) => {
@@ -205,6 +222,7 @@ export async function judgeTurn(
     handOff: null,
     ruleRefused: null,
     refusal: null,
+    bookingUnavailable: null,
     applied: [],
     proposed: false,
   };
@@ -243,6 +261,7 @@ export async function judgeTurn(
     handOff: recorded.handOff,
     ruleRefused: recorded.ruleRefused,
     refusal: recorded.refusal,
+    bookingUnavailable: recorded.bookingUnavailable,
     applied: recorded.applied,
     proposed: recorded.proposed,
     rules,
@@ -446,6 +465,7 @@ async function judgeWithoutMedia(
     const rules = currentCommunicationRules(database);
     const nothingElse = {
       ...{ reply: "", handOff: null, ruleRefused: null, refusal: null, applied: [] },
+      bookingUnavailable: null,
       ...{ proposed: false, rules },
     };
     const onlyMedia = {

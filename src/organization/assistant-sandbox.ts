@@ -202,11 +202,11 @@ class SandboxRun {
         })
         .run();
     }
-    this.#replayProposals();
+    const unlessLost = this.#replayProposals();
     for (const kept of state.handoffs) {
       database
         .insert(handoff)
-        .values({ ...kept, conversationId })
+        .values({ ...kept, appointmentId: unlessLost(kept.appointmentId), conversationId })
         .run();
     }
   }
@@ -219,7 +219,8 @@ class SandboxRun {
    * passed, reception confirmed it for real) is no longer accepted (#257). A
    * booking no longer made names no appointment or patient it minted, and a
    * proposal about one of those is not made either and can no longer be
-   * accepted.
+   * accepted. Returns how an id reads now: none once its booking is lost, for
+   * the handoffs about it.
    */
   #replayProposals() {
     const { database, state } = this;
@@ -258,6 +259,7 @@ class SandboxRun {
         })
         .run();
     }
+    return unlessLost;
   }
 
   /** What the open transaction holds of the sandbox conversation. */

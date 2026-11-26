@@ -56,9 +56,18 @@ function matches(call: ToolCall, expected: ExpectedCall): boolean {
   return Object.entries(expected.args ?? {}).every(([key, value]) => {
     const actual = call.args[key];
     return value instanceof LaterThan
-      ? typeof actual === "string" && actual > value.laterThan
+      ? typeof actual === "string" && isLocalDateTime(actual) && actual > value.laterThan
       : isDeepStrictEqual(actual, value);
   });
+}
+
+// A local date, or date and time, that exists on the calendar and the clock:
+// "2026-11-11T25:00" sorts after "2026-11-11T11:00" but is no time.
+function isLocalDateTime(text: string): boolean {
+  const [, date, time = "00:00"] = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?$/.exec(text) ?? [];
+  if (!date) return false;
+  const read = new Date(`${date}T${time}:00Z`);
+  return !Number.isNaN(+read) && read.toISOString().startsWith(`${date}T${time}`);
 }
 
 function describeCall(expected: ExpectedCall): string {
@@ -100,14 +109,36 @@ function scoreAvailability(evaluationCase: Case, turn: Turn): Check {
 const practitionerReasons = new Set(["clinical", "emergency", "followUpAnswer", "heldReply"]);
 const ruleRefusals = new Set(["past_cutoff", "move_already_used"]);
 
+const bookingRefusals = new Set(["whatsappBookingOff", "archived", "notFound"]);
+
 const failedWith = (call: ToolCall, reasons: Set<string>) =>
   (call.result as { ok?: boolean; reason?: string }).ok === false &&
   reasons.has(String((call.result as { reason?: string }).reason));
 
+// What the code hands off itself, without a hand_off, as `receptionReason`
+// (`src/organization/turn-handoffs.ts`) orders them: a move a rule refused, then
+// a medical service find_booking_times refused, unless only the named
+// practitioner does not offer it.
+function refusedReason(turn: Turn) {
+  const ruleRefused = turn.calls.some(
+    (call) =>
+      (call.name === "find_free_times" || call.name === "propose_change") &&
+      failedWith(call, ruleRefusals),
+  );
+  if (ruleRefused) return "rule_refused";
+  const bookingRefused = turn.calls.some(
+    (call) =>
+      call.name === "find_booking_times" &&
+      failedWith(call, bookingRefusals) &&
+      !(failedWith(call, new Set(["notFound"])) && call.args.practitioner),
+  );
+  return bookingRefused ? "booking_unavailable" : null;
+}
+
 // Which handoff the turn opens, as `settleTurn` (`src/organization/turn-settling.ts`)
 // decides it: an emergency, or a health question with the appointment that
 // treats it (`treatedBy`), to the practitioner; any other health question,
-// hand_off or move a rule refused, to reception. None of a kind already open,
+// hand_off, move a rule refused or booking find_booking_times refused, to reception. None of a kind already open,
 // and no health question alone beside an open handoff to the practitioner.
 // The turn keeps the last hand_off and the last judgement, as the code does.
 // The reason, in the model's words, of the handoff the code opens with no
@@ -119,12 +150,7 @@ function judgedReason(evaluationCase: Case, turn: Turn) {
     .flatMap((patient) => patient.appointments)
     .some((appointment) => appointment.appointmentId === judged?.treatedBy);
   if (judged?.healthQuestion === true && treated) return "clinical";
-  const refused = turn.calls.some(
-    (call) =>
-      (call.name === "find_free_times" || call.name === "propose_change") &&
-      failedWith(call, ruleRefusals),
-  );
-  return refused ? "rule_refused" : "clinical";
+  return refusedReason(turn) ?? "clinical";
 }
 
 function lastArgs(turn: Turn, name: ToolCall["name"]) {
@@ -147,11 +173,7 @@ function opensHandoff(
     .some((appointment) => appointment.appointmentId === judged?.treatedBy);
   const emergency = judged?.emergency === true || handOff?.reason === "emergency";
   if (emergency || (health && treated)) return practitionerOpen ? null : "practitioner";
-  const refused = turn.calls.some(
-    (call) =>
-      (call.name === "find_free_times" || call.name === "propose_change") &&
-      failedWith(call, ruleRefusals),
-  );
+  const refused = refusedReason(turn) !== null;
   // A health question alone beside a practitioner's handoff is theirs already.
   const otherReason = refused || (handOff !== undefined && handOff.reason !== "clinical");
   if (health && !otherReason && practitionerOpen) return null;

@@ -548,6 +548,34 @@ describe("a sandbox conversation", () => {
     ]);
   });
 
+  it("goes on once an appointment it booked, which a handoff is about, loses its time for real", async () => {
+    const { booked } = await booksMondayAtTen(
+      await startSandbox(),
+      "quiero otro turno el lunes a las 10",
+      {},
+    );
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", notClinical);
+      const newAppointment = bookedAtTen(turn.call("list_patients"));
+      turn.call("hand_off", { reason: "patient_asked", appointmentId: newAppointment });
+      return "";
+    });
+    const handedOff = await playPatient(
+      booked.sandbox,
+      "quiero hablar con alguien por el de las 10",
+    );
+    await bookTenForReal();
+
+    const { played } = await listedAfter(handedOff.sandbox);
+
+    expect(handedOff.sandbox.handoffs).toMatchObject([
+      { reason: "patientAsked", appointmentId: expect.any(String) },
+    ]);
+    expect(played.sandbox.handoffs).toMatchObject([
+      { reason: "patientAsked", appointmentId: null },
+    ]);
+  });
+
   it("goes on once the first booking of a person it registered, booked again since, loses its time for real", async () => {
     const { booked } = await booksMondayAtTen(
       await startSandbox(),
@@ -807,6 +835,21 @@ describe("a sandbox conversation", () => {
       "Ya se lo pasé, te va a responder por acá.",
     ]);
     expect(played.sandbox.handoffs).toHaveLength(1);
+  });
+
+  it("hands off a medical service find_booking_times refuses, though the model does not", async () => {
+    scriptedModel.script((turn) => {
+      turn.call("judge_messages", { ...notClinical, booking: true });
+      turn.call("find_booking_times", { medicalService: "Blanqueamiento", from: "2099-01-05" });
+      return "";
+    });
+
+    const played = await playPatient(await startSandbox(), "quiero un turno de blanqueamiento");
+
+    expect(played.sandbox.handoffs).toMatchObject([
+      { reason: "bookingUnavailable", forPractitioner: false },
+    ]);
+    expect(played.turn.replies).toEqual([]);
   });
 
   it("counts the window from the patient's last message", async () => {
