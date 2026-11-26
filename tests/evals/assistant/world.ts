@@ -10,6 +10,14 @@ export const organization = {
   address: "Av. Colón 1234, Córdoba",
 };
 
+// What list_medical_services returns: the medical services patients can book
+// by WhatsApp, each with the practitioners who offer it.
+export const medicalServices = [
+  { name: "Consulta odontológica", practitioners: ["Od. Carla Méndez"] },
+  { name: "Control pediátrico", practitioners: ["Dr. Martín Sosa"] },
+  { name: "Sesión de kinesiología", practitioners: ["Lic. Paula Ríos"] },
+];
+
 export type Slot = { slotId: string; date: string; time: string };
 
 export type Appointment = {

@@ -62,6 +62,11 @@ export const assistantToolSchemas = {
       appointmentId: z.string().describe("The appointmentId list_patients returned"),
     }),
   },
+  list_medical_services: {
+    description:
+      "The medical services patients can book here, each with the practitioners who offer it. Holds no prices and no insurers.",
+    inputSchema: z.object({}),
+  },
   judge_messages: {
     description: "Records the judgement of the patient's new messages. Call it once every turn.",
     inputSchema: z.object({
@@ -202,6 +207,7 @@ function openHandoffRule(context: PromptContext) {
 export function assistantSystemPrompt(context: PromptContext): string {
   const capabilities = [
     "- Say when and with whom an appointment is, and where the practice is.",
+    "- Say which medical services the practice offers and which practitioners offer each (list_medical_services).",
     "- Confirm, cancel or move an appointment, through a proposal.",
     "- Hand the conversation to a person at the practice (hand_off).",
   ];
@@ -209,6 +215,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     `Every turn, call judge_messages exactly once, about the patient's new messages, which follow the line "${newMessagesMark}" in the patient's last message: healthQuestion, treatedBy and emergency (a risk to life or health right now). A symptom given only as the reason for a request you can handle, such as moving an appointment because of the pain, is not a health question: do the request and do not hand it off. You only judge; underthing decides who answers a health question.`,
     "The number may stand for several patients. Call list_patients first. If it lists more than one patient and the patient has not said which one, ask which one before telling or doing anything about an appointment.",
     "Never state a date, time, address, practitioner or availability that a tool did not return, but for the practice's address above. Never name an office or a room.",
+    "When asked what the practice offers or who works there, call list_medical_services and answer only from it. You do not know prices, what a patient pays, or which insurers the practice or a practitioner accepts: asked about them, do not guess: say plainly that you do not know it, and hand off with reason patient_asked so that a person at the practice answers it.",
     'Hand off (hand_off) when: the patient asks for a person or to be contacted (patient_asked); they want a new time for an appointment the practice cancelled (organization_cancelled); a rule refuses the move they want (rule_refused); a health question (clinical); an emergency (emergency). Pass the appointmentId when it is about one appointment. Do what you can of the rest in the same turn, such as confirming. A person answers what you hand off, and underthing sends the patient its own message about it, or none: your reply says nothing of what you hand off. Do not answer it, do not tell the patient you passed it on or why a rule refused it, never ask whether they want a person (hand off instead), and never send them to another professional ("consultá con tu odontólogo"). If the same turn made a change, your reply states only that change, such as "Listo, te pasé el turno del jueves al viernes 10:00".',
     "When the patient answers the practice's follow-up and plainly says they are well, only thank them. Any other answer to it is for the practitioner: judge it with followUpAnswer other.",
     "When the patient asks the practice to stop writing to them, judge it with optOut true. underthing then tells them, and a person stops the messages.",
@@ -228,7 +235,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     ...openHandoffRule(context),
   ];
   const tone = context.tone ? `\nThe practice describes its tone as: ${context.tone}\n` : "";
-  return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina, at ${context.address}. You answer patients about appointments they already have.
+  return `You are the WhatsApp assistant of ${context.organizationName}, a health practice in Argentina, at ${context.address}. You answer patients about appointments they already have and about the practice's medical services.
 
 Now: ${formatPromptNow(context.now, practiceTimeZone)} (${practiceTimeZone}). Write in Argentine Spanish, addressing the patient as "${context.formOfAddress}", short and warm, as the practice's receptionist would. No emojis, no opening "¿" or "¡". At most three short paragraphs. Do not sign off.
 ${tone}

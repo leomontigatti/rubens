@@ -37,14 +37,19 @@ In the first release:
   until then ([patients.md](./patients.md#whatsapp-consent)). It is not a
   handoff, unless the reply is a health question too, or the number reaches no
   patient by the time the turn settles.
+- **Information**: which medical services the practice offers and who offers
+  each, by the name patients read. It lists the active medical services patients
+  can book by WhatsApp ([appointments.md](./appointments.md)), of active
+  practitioners, and answers only from the organization's data. Prices, what a
+  patient pays and the insurers are not in the first release: asked about them,
+  it says it does not know and hands the conversation to a person.
 
 In the second release:
 
-- **Information.** Medical services, their duration and price, the insurers each
-  practitioner accepts, which practitioner works when (from their schedules: the
-  practice has no opening hours), and
-  availability. It answers only from the organization's data. What the data does
-  not say, it does not guess: it says it does not know and offers a person.
+- **More information.** Each medical service's duration and price, the insurers
+  each practitioner accepts, and which practitioner works when (from their
+  schedules: the practice has no opening hours). What the data does not say, it
+  does not guess: it says it does not know and offers a person.
 - **Booking.** A patient can book any active medical service of any practitioner,
   at a time from availability. The assistant asks for a preferred day and time
   before offering any, and offers the few nearest to it. Overbookings are never

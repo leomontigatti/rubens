@@ -8,6 +8,7 @@ import { reactionType } from "#/lib/reactions.ts";
 import type { MediaType } from "#/lib/whatsapp-messages.ts";
 import { assistantSystemPrompt, assistantToolSchemas } from "#/lib/assistant.ts";
 
+import { bookableMedicalServices } from "#/organization/assistant-information.ts";
 import { upcomingAppointments, whenOf } from "#/organization/assistant-appointments.ts";
 import type { Upcoming } from "#/organization/assistant-appointments.ts";
 import type { AssistantModel, AssistantTool, ToolResult } from "#/organization/assistant-model.ts";
@@ -132,6 +133,10 @@ function turnTools(
           },
         };
       },
+    },
+    {
+      name: "list_medical_services",
+      run: () => ({ medicalServices: bookableMedicalServices(database) }),
     },
     {
       name: "judge_messages",
