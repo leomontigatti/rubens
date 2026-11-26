@@ -94,6 +94,12 @@ export const assistantToolSchemas = {
         .describe(
           "True when the patient asks the practice to stop sending them messages, or not to write to them again",
         ),
+      booking: z
+        .boolean()
+        .default(false)
+        .describe(
+          "True when the patient asks for a new appointment, or the new messages carry on booking one",
+        ),
       followUpAnswer: z
         .enum(["plainlyGood", "other"])
         .optional()
@@ -148,9 +154,20 @@ export const assistantToolSchemas = {
   },
   propose_booking: {
     description:
-      "Stores a proposal to book a new appointment for one of the number's patients, at a time find_booking_times returned, and returns what it stores, with that patient's other appointments that day. It replaces any earlier proposal. Nothing is booked until accept_proposal.",
+      "Stores a proposal to book a new appointment, at a time find_booking_times returned, for one of the number's patients or for a person the practice does not know yet, who is registered when it is accepted. Returns what it stores, with that patient's other appointments that day. It replaces any earlier proposal. Nothing is booked until accept_proposal. Refuses without a patient when the number stands for several (patientNotChosen) or for none (nameNeeded).",
     inputSchema: z.object({
-      patientId: z.string().describe("The patientId list_patients returned"),
+      patientId: z
+        .string()
+        .optional()
+        .describe(
+          "The patientId list_patients returned; may be omitted when the number stands for one patient only",
+        ),
+      newPatientName: z
+        .object({ firstName: z.string(), lastName: z.string() })
+        .optional()
+        .describe(
+          "In place of patientId: the name the person gave, for someone list_patients does not hold",
+        ),
       slotId: z.string().describe("The slotId find_booking_times returned"),
     }),
   },
@@ -244,6 +261,7 @@ export function assistantSystemPrompt(context: PromptContext): string {
     "If accept_proposal fails, say plainly that the change was not made.",
     "Free times come only from find_free_times, to move an appointment, and from find_booking_times, for a new one. When the patient wants another time, including in answer to a message from the practice that moved their appointment or asks them to pick another time, call find_free_times and offer some of its times.",
     "When the patient picks a free time, propose the move or the booking and ask them to confirm it; accept it only on their yes in a later message.",
+    "A new appointment is for the patient the number stands for alone. When it stands for several, ask which of them it is for, unless the patient said so. When it stands for none, or the appointment is for someone list_patients does not hold, ask for that person's first and last name and propose it with newPatientName. Judge every message about booking a new appointment with booking true.",
     'A proposal of a new appointment names the medical service, the practitioner, the day and the time, as in "Te reservo la consulta con Juan Gómez el martes 24 a las 10:30. Te parece bien?". When propose_booking returns alreadyBooked, say in the same message that the patient already has those appointments that day, before asking them to confirm.',
     `A proposal reads as a person's reply, not a form: name only what changes. For a move, that is the new day and time, as in "Perfecto, te lo paso al martes 24 a las 10:30. Te parece bien?". Do not repeat the practitioner, the medical service or the appointment's current day and time: the stored proposal holds them. But the patient's yes must never accept something they were not shown, so always: (a) state it in full (the medical service or practitioner, the appointment's current day and time, and the new day and time) when the conversation has not said which appointment it is, or when a line "${longPauseNote}", or a message a person at the practice wrote (it follows the line "${staffReplyNote}"), comes after the last message from you, or automated one from the practice such as a reminder (not one a person wrote), that named the appointment or offered its times; (b) name the appointment's current day and time when the patient has several upcoming appointments and the conversation is not only about one; (c) name the patient when the number stands for several patients. Those note lines are underthing's, not messages: they never stand between a message and the one right after it.`,
     "If accepting fails because the time was taken, say so and offer other times from find_free_times, or from find_booking_times for a new appointment.",

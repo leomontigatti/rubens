@@ -54,9 +54,7 @@ In the second release:
   at a time from availability. The assistant asks for a preferred day and time
   before offering any, and offers the few nearest to it. Overbookings are never
   offered. A medical service that requires approval books a request instead
-  ([appointments.md](./appointments.md#requests)). An unknown number can book: the
-  patient is registered as incomplete, with the name they give and the number, and
-  their WhatsApp consent recorded as given to the assistant. The assistant's reply
+  ([appointments.md](./appointments.md#requests)). The assistant's reply
   confirms the booking, so it gets no booking template
   ([messages.md](./messages.md#the-organizations-templates)).
 
@@ -77,7 +75,12 @@ replies in text only, never with a voice note.
 The patient is identified by the WhatsApp number. A number is the contact of
 every patient whose messages go to it, the patient's own or a guardian's
 ([patients.md](./patients.md#guardians)), so it can stand for several patients;
-the assistant asks which one before acting. The assistant never tells a number
+the assistant asks which one before acting, and a booking for no chosen one is
+refused. A number that stands for nobody books once it gives a name, and a known
+number can book for a person the practice does not know: either is registered
+as an incomplete patient with that number, their WhatsApp consent given to the
+assistant ([patients.md](./patients.md#registering)). A number of no patient is
+otherwise handed off. The assistant never tells a number
 anything about a patient who is not theirs, and never anything clinical.
 
 Each turn judges only what it can see, and underthing decides who answers. The
@@ -324,8 +327,8 @@ new requests it can handle (confirming, cancelling, moving, booking, when and wh
 what the open handoff is about, and does not answer that topic again: asked
 about it, the patient gets `Ya se lo pasé, te va a responder por acá.`, fixed
 and after the assistant's reply to anything else in the same turn; a number of
-no patient or misunderstood is handed off whatever it writes, so it never gets
-it. A patient with nothing booked is not handed off for it: the assistant books
+no patient that is not booking, or misunderstood, is handed off whatever it
+writes, so it never gets it. A patient with nothing booked is not handed off for it: the assistant books
 for them. A second handoff
 of the kind already open, to the practitioner or to reception, is not opened. It
 stays silent while a person holds the conversation.

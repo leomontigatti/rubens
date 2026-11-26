@@ -122,7 +122,13 @@ export function allUnintelligible(messages: { type: string; text: string | null 
 export function unintelligibleTurn(rules: CommunicationRules) {
   return {
     reply: "",
-    judgement: { healthQuestion: false, emergency: false, understood: false, optOut: false },
+    judgement: {
+      healthQuestion: false,
+      emergency: false,
+      understood: false,
+      optOut: false,
+      booking: false,
+    },
     handOff: null,
     ruleRefused: null,
     refusal: null,

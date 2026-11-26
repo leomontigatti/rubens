@@ -170,8 +170,9 @@ export const unansweredReasons = [
 
 /**
  * Why a turn that needs no practitioner and was not refused is handed off, if it is: a
- * second misunderstanding, a number of no patient. A patient with nothing
- * booked is answered: the assistant books for them. An opt-out
+ * second misunderstanding, a number of no patient that is not booking. A
+ * patient with nothing booked is answered, and so is a number of no patient
+ * asking for an appointment: the assistant books for them. An opt-out
  * reaching here comes from a number that reaches nobody now, its contact moved
  * while the model ran, so there is no consent to turn off.
  */
@@ -180,7 +181,8 @@ function unansweredReason(turn: TurnToSort): (typeof unansweredReasons)[number] 
   if (!judgement.understood && turn.read.misunderstandings >= 1) {
     return turn.unintelligible ? "voiceUnintelligible" : "misunderstoodTwice";
   }
-  return turn.read.patients.length === 0 || judgement.optOut ? "unknownNumber" : null;
+  const unknown = turn.read.patients.length === 0 && !judgement.booking;
+  return unknown || judgement.optOut ? "unknownNumber" : null;
 }
 
 /**

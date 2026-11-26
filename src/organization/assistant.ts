@@ -441,6 +441,7 @@ async function judgeWithoutMedia(
       emergency: false,
       understood: true,
       optOut: false,
+      booking: false,
     };
     const rules = currentCommunicationRules(database);
     const nothingElse = {

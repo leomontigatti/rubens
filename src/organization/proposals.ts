@@ -3,6 +3,8 @@ import { desc, eq, sql } from "drizzle-orm";
 import { assistantToolSchemas } from "#/lib/assistant.ts";
 import { assistantUserId } from "#/lib/audit-fields.ts";
 import { formatDay, formatTime, practiceTimeZone } from "#/lib/dates.ts";
+import { patientInputSchema } from "#/lib/patients.ts";
+import { splitPhone } from "#/lib/phones.ts";
 import { proposalExpiresAt } from "#/lib/proposals.ts";
 import type { HandoffDetail } from "#/lib/handoffs.ts";
 import { present } from "#/lib/present.ts";
@@ -18,6 +20,7 @@ import { bookingSlotFor } from "#/organization/booking-times.ts";
 import type { Database } from "#/organization/database.ts";
 import type { Acting } from "#/organization/members.ts";
 import { notifyBooking, notifyCancellation } from "#/organization/notifications.ts";
+import { registerPatient } from "#/organization/patients.ts";
 import {
   cutoffHoursOf,
   freeTimesFor,
@@ -91,17 +94,17 @@ type Stored = NonNullable<ReturnType<typeof latestProposal>>;
  * told of their other appointments that day before the proposal, so they do
  * not hold it.
  */
-function book(database: Database, latest: Stored) {
-  const { patientId, medicalServiceId, startsAt, endsAt } = latest;
-  if (patientId === null || medicalServiceId === null || startsAt === null || endsAt === null) {
-    throw new Error("A booking proposal states its patient, medical service and span");
+function book(database: Database, latest: Stored, patientId: string) {
+  const { medicalServiceId, startsAt, endsAt } = latest;
+  if (medicalServiceId === null || startsAt === null || endsAt === null) {
+    throw new Error("A booking proposal states its medical service and span");
   }
   const found = bookingSlotFor(database, `${medicalServiceId}@${new Date(startsAt).toISOString()}`);
   if (!found.ok || found.slot.roomId !== latest.roomId || +found.slot.end !== endsAt) {
     return { ok: false, reason: "timeTaken" } as const;
   }
   const { slot } = found;
-  if (JSON.stringify(statedBooking(slot)) !== JSON.stringify(latest.statement)) {
+  if (Object.entries(statedBooking(slot)).some(([key, value]) => latest.statement[key] !== value)) {
     return { ok: false, reason: "changed" } as const;
   }
   const booked = bookAppointment(
@@ -129,7 +132,10 @@ function book(database: Database, latest: Stored) {
 /** Makes the proposal's change through the appointment's own function, or books it; the sandbox replays its accepted ones with it. */
 export function applyChange(database: Database, latest: Stored) {
   if (latest.kind === "book") {
-    return book(database, latest);
+    // A person the practice did not know is registered only as the conversation books.
+    return latest.patientId === null
+      ? ({ ok: false, reason: "notFound" } as const)
+      : book(database, latest, latest.patientId);
   }
   const appointmentId = present(latest.appointmentId, "A change proposal names its appointment");
   if (latest.kind === "move") {
@@ -259,25 +265,71 @@ function storeProposal(
 }
 
 /**
- * Stores the booking the model proposed, for one of the number's patients at
- * a time find_booking_times offers, with that patient's other appointments
- * that day, which the patient is told of before they say yes.
+ * Who a booking is for: the patient named, the number's one patient when none
+ * is, or a person the practice does not know, by the name they gave, whose
+ * registration the statement holds until the yes. A number of several
+ * patients names one; a number of none gives a name.
+ */
+function bookedFor(
+  database: Database,
+  turn: ProposalTurn,
+  { patientId, newPatientName }: { patientId?: string; newPatientName?: NewPatientName },
+):
+  | { ok: true; patientId: string | null; stated: Record<string, string> }
+  | { ok: false; reason: string } {
+  if (newPatientName) {
+    if (patientId !== undefined) {
+      return { ok: false, reason: "invalidInput" };
+    }
+    const parsed = patientInputSchema.safeParse({
+      ...newPatientName,
+      phone: splitPhone(phoneOf(database, turn.conversationId)),
+    });
+    if (!parsed.success) {
+      return { ok: false, reason: "invalidInput" };
+    }
+    const { firstName, lastName } = parsed.data;
+    return {
+      ok: true,
+      patientId: null,
+      stated: { newPatient: `${firstName} ${lastName}`, firstName, lastName },
+    };
+  }
+  const { patients } = turn.read;
+  const chosen = patientId ?? (patients.length === 1 ? patients[0]?.id : undefined);
+  if (chosen === undefined) {
+    return { ok: false, reason: patients.length === 0 ? "nameNeeded" : "patientNotChosen" };
+  }
+  if (!patients.some((one) => one.id === chosen)) {
+    return { ok: false, reason: "notFound" };
+  }
+  return { ok: true, patientId: chosen, stated: {} };
+}
+
+type NewPatientName = { firstName: string; lastName: string };
+
+/**
+ * Stores the booking the model proposed, for one of the number's patients or
+ * a person the practice does not know, at a time find_booking_times offers,
+ * with the patient's other appointments that day, which they are told of
+ * before they say yes.
  */
 function proposeBooking(database: Database, turn: ProposalTurn, args: unknown) {
   const parsed = assistantToolSchemas.propose_booking.inputSchema.safeParse(args);
   if (!parsed.success) {
     return { ok: false, reason: "invalidInput" };
   }
-  const { patientId, slotId } = parsed.data;
-  if (!turn.read.patients.some((one) => one.id === patientId)) {
-    return { ok: false, reason: "notFound" };
+  const forWhom = bookedFor(database, turn, parsed.data);
+  if (!forWhom.ok) {
+    return forWhom;
   }
-  const found = bookingSlotFor(database, slotId);
+  const { patientId } = forWhom;
+  const found = bookingSlotFor(database, parsed.data.slotId);
   if (!found.ok) {
     return found;
   }
   const { slot } = found;
-  const statement = statedBooking(slot);
+  const statement = { ...statedBooking(slot), ...forWhom.stated };
   storeProposal(database, turn, {
     kind: "book",
     statement,
@@ -288,7 +340,9 @@ function proposeBooking(database: Database, turn: ProposalTurn, args: unknown) {
     startsAt: +slot.start,
     endsAt: +slot.end,
   });
-  const alreadyBooked = findPatientWarnings(database, patientId, slot, undefined).map((one) => ({
+  const warnings =
+    patientId === null ? [] : findPatientWarnings(database, patientId, slot, undefined);
+  const alreadyBooked = warnings.map((one) => ({
     date: formatDay(one.start, practiceTimeZone),
     time: formatTime(one.start, practiceTimeZone),
     practitioner: one.practitionerName,
@@ -345,20 +399,70 @@ function acceptLatest(database: Database, turn: ProposalTurn) {
   });
 }
 
+/** A booking refused after its patient was registered: thrown to roll the registration back. */
+class RefusedBooking extends Error {
+  constructor(readonly refusal: Extract<ReturnType<typeof book>, { ok: false }>) {
+    super(`The booking was refused: ${refusal.reason}`);
+  }
+}
+
+/**
+ * Registers the person the practice did not know as an incomplete patient
+ * reached at the conversation's number, their WhatsApp consent given to the
+ * assistant, and books them, in one transaction: a refused booking registers
+ * nobody. Only a matching document blocks a registration, and the assistant
+ * has none, so the duplicate check's warnings are confirmed.
+ */
+function registerAndBook(database: Database, latest: Stored, phone: string) {
+  const { firstName, lastName } = latest.statement;
+  if (firstName === undefined || lastName === undefined) {
+    throw new Error("A booking for a new patient states their name");
+  }
+  try {
+    return database.transaction((tx) => {
+      const registered = registerPatient(tx, assistantActing, {
+        firstName,
+        lastName,
+        phone: splitPhone(phone),
+        confirmDuplicates: true,
+      });
+      if (!registered.ok) {
+        throw new RefusedBooking({ ok: false, reason: "invalidInput" } as const);
+      }
+      const booked = book(tx, latest, registered.patient.id);
+      if (!booked.ok) {
+        throw new RefusedBooking(booked);
+      }
+      return booked;
+    });
+  } catch (error) {
+    if (error instanceof RefusedBooking) {
+      return error.refusal;
+    }
+    throw error;
+  }
+}
+
 /**
  * Books the accepted proposal while the conversation's number still stands
- * for its patient, tells its practitioner, and adds the appointment to the
- * turn's view.
+ * for its patient, or registers the person it is for, tells its
+ * practitioner, and adds the appointment to the turn's view.
  */
 function acceptBooking(database: Database, turn: ProposalTurn, latest: Stored, now: number) {
   const phone = phoneOf(database, turn.conversationId);
-  const reached = patientsReachedAt(database, phone)
-    .all()
-    .some((one) => one.id === latest.patientId);
-  if (!reached) {
-    return { ok: false, reason: "notFound" };
+  const { patientId } = latest;
+  let booked: ReturnType<typeof book>;
+  if (patientId === null) {
+    booked = registerAndBook(database, latest, phone);
+  } else {
+    const reached = patientsReachedAt(database, phone)
+      .all()
+      .some((one) => one.id === patientId);
+    if (!reached) {
+      return { ok: false, reason: "notFound" };
+    }
+    booked = book(database, latest, patientId);
   }
-  const booked = book(database, latest);
   if (!booked.ok) {
     return booked;
   }
