@@ -84,7 +84,6 @@ function scenarioRows(database: Database) {
       phone: patient.phone,
       guardianPhone: guardian.phone,
       practitionerName: practitioner.displayName,
-      officeName: office.name,
       officeAddress: office.address,
       medicalServiceName: medicalService.name,
       medicalServiceId: appointment.medicalServiceId,
@@ -135,7 +134,7 @@ export function listSandboxScenarios(database: Database) {
 
 /** What the sandbox's reminder says when the organization has no template timed before an appointment. */
 const fallbackReminder =
-  "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}} en {{sede}}. Respondé este mensaje para confirmar que venís.";
+  "Hola {{paciente}}, te escribimos de {{organizacion}} para recordarte tu turno con {{profesional}} del {{fecha}} a las {{hora}}. Respondé este mensaje para confirmar que venís.";
 
 /**
  * The template the scenario's reminder is: the furthest before the
@@ -169,7 +168,6 @@ function reminderOf(database: Database, scenario: NonNullable<ReturnType<typeof 
     patient: scenario,
     practitionerName: scenario.practitionerName,
     start: new Date(scenario.startsAt),
-    officeName: scenario.officeName,
     officeAddress: scenario.officeAddress,
     medicalServiceName: scenario.medicalServiceName,
     organizationName: organizationName(database),

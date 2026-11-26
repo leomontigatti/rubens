@@ -28,6 +28,8 @@ In the first release:
 - **Cancelling and moving** an appointment the patient already has
   ([below](#cancelling-and-moving)).
 - **Simple questions about an existing appointment**: when, where, with whom.
+  Where is the practice's address, the one office's, which the assistant knows
+  in every turn; it never names the office or a room.
 - **Asking to stop**: a reply that looks like an opt-out gets a fixed answer that
   the team is told, and reaches reception and the admins as a notification, one
   per patient of the number who still accepts WhatsApp, for a person to turn
@@ -39,8 +41,8 @@ In the first release:
 In the second release:
 
 - **Information.** Medical services, their duration and price, the insurers each
-  practitioner accepts, the offices and their addresses, which practitioner works
-  where and when (from their schedules: offices have no opening hours), and
+  practitioner accepts, which practitioner works when (from their schedules: the
+  practice has no opening hours), and
   availability. It answers only from the organization's data. What the data does
   not say, it does not guess: it says it does not know and offers a person.
 - **Booking.** A patient can book any active medical service of any practitioner,
@@ -87,7 +89,7 @@ practitioner, whatever the model said of it.
 ## Cancelling and moving
 
 Rescheduling happens only in the conversation. The assistant offers the free
-times of the same practitioner and medical service, at any office where the
+times of the same practitioner and medical service, in any room where the
 practitioner works, over the next few weeks, and moves the appointment on the
 patient's yes, freeing the old time.
 
@@ -109,10 +111,10 @@ patient's yes, freeing the old time.
 
 The assistant changes nothing on its own judgment. Every change is a proposal,
 which the patient or the practitioner accepts. The stored proposal holds every
-fact (the appointment, the practitioner, the date, the time and the office), so
-what a `sí` accepts is exact. The message that states it reads as a person's: it
-names what changes (for a move, the new day and time, and the office when it is
-another one) and whatever the conversation has not established yet, not every
+fact (the appointment, the practitioner, the date and the time; never the office,
+which is the same for every appointment), so what a `sí` accepts is exact. The
+message that states it reads as a person's: it names what changes (for a move,
+the new day and time) and whatever the conversation has not established yet, not every
 fact again. A `sí` must never accept something the patient was not shown, so the
 message also names:
 

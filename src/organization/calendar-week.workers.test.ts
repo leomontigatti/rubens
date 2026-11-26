@@ -451,7 +451,7 @@ describe("the calendar week of a room", () => {
     ]);
   });
 
-  it("lists the active rooms by office and opens on the first one when none is asked for", async () => {
+  it("lists the active rooms by name and opens on the first one when none is asked for", async () => {
     const w = await world();
     expectOk(
       await w.organization.setRoomActive(adminCaller, { id: w.otherRoom.id, active: false }),
@@ -462,14 +462,8 @@ describe("the calendar week of a room", () => {
     ).toMatchObject({
       ok: true,
       roomChoices: [
-        {
-          officeId: w.office.id,
-          officeName: "Sede Centro",
-          rooms: [
-            { id: w.room.id, name: "Consultorio 1" },
-            { id: w.shared.id, name: "Consultorio 3" },
-          ],
-        },
+        { id: w.room.id, name: "Consultorio 1" },
+        { id: w.shared.id, name: "Consultorio 3" },
       ],
       week: { room: { id: w.room.id } },
     });

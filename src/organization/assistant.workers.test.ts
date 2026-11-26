@@ -241,7 +241,7 @@ describe("the assistant's pace", () => {
     scriptedModel.script((turn) => {
       turn.call("judge_messages", notClinical);
       turn.call("propose_change", { appointmentId, kind: "confirm" });
-      return "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.\n\nMe decís que sí?";
+      return "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez.\n\nMe decís que sí?";
     });
 
     await afterTheWait();
@@ -249,7 +249,7 @@ describe("the assistant's pace", () => {
     expect(textsToMeta()).toEqual([
       {
         to: "5491155550000",
-        text: "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.\n\nMe decís que sí?",
+        text: "Te confirmo el turno del lunes 5 de enero a las 09:00 con Juan Gómez.\n\nMe decís que sí?",
       },
     ]);
   });
@@ -407,7 +407,7 @@ describe("the assistant's pace", () => {
 });
 
 describe("answering when, where and with whom", () => {
-  it("replies with the appointment's date, time, practitioner and office, through the Graph API", async () => {
+  it("replies with the appointment's date, time, practitioner and address, through the Graph API", async () => {
     const { appointmentId } = await bookPatient("Martina", martinaPhone);
     await patientWrites("cuándo tengo el turno?");
     let details: unknown;
@@ -415,7 +415,7 @@ describe("answering when, where and with whom", () => {
       turn.call("judge_messages", notClinical);
       turn.call("list_patients");
       details = turn.call("get_appointment", { appointmentId });
-      return "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.";
+      return "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez.";
     });
 
     await afterTheWait();
@@ -427,14 +427,13 @@ describe("answering when, where and with whom", () => {
         practitioner: "Juan Gómez",
         date: "lunes 5 de enero",
         time: "09:00",
-        office: "Sede Centro",
         address: world.office.address,
       },
     });
     expect(textsToMeta()).toEqual([
       {
         to: "5491155550000",
-        text: "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez en Sede Centro.",
+        text: "Tu turno es el lunes 5 de enero a las 09:00 con Juan Gómez.",
       },
     ]);
     expect((await storedFlags()).at(-1)).toEqual({
@@ -1327,7 +1326,6 @@ describe("confirming and cancelling through proposals", () => {
       practitioner: "Juan Gómez",
       date: "lunes 5 de enero",
       time: "09:00",
-      office: "Sede Centro",
     };
     expect(proposed).toEqual({ ok: true, proposal: stated });
     expect(accepted).toEqual({ ok: true, applied: stated });

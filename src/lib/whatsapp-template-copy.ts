@@ -30,7 +30,6 @@ export const variableLabels: Record<TemplateVariable, string> = {
   profesional: "Profesional",
   fecha: "Fecha",
   hora: "Hora",
-  sede: "Sede",
   domicilio: "Domicilio",
   prestacion: "Prestación",
   direccion: "Domicilio",
