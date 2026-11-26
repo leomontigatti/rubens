@@ -101,7 +101,8 @@ A status set by mistake can be undone the same day. The audit log keeps both
 changes; a busy front desk will make mistakes, and forbidding the undo only
 breeds workarounds. Undoing a cancellation or a no-show brings the appointment back
 only if no other practitioner holds its room then and the practitioner has no other
-regular appointment at that time; an overbooking of theirs does not stop it.
+regular appointment at that time. An overbooking on either side does not stop it:
+neither theirs at that time nor the restored appointment being one.
 
 ## Rescheduling
 
