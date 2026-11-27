@@ -86,7 +86,8 @@ docs/adr/              decisions; docs/agents/ operative rules; docs/domain/ the
 - **A message sent to Meta**: through `send()` in `src/organization/sending.ts`, which checks
   that it may go (`reach()`), calls Meta, holds the number on a limit and stores the message;
   the sender passes its own writes for that transaction and maps each refusal to its policy.
-  Nothing else calls `sendText` or `sendTemplate`.
+  Nothing else calls `sendText` or `sendTemplate`: `no-restricted-properties` in
+  `vite.config.ts` rejects them outside `sending.ts`.
 - **A pure rule** (availability, formatting, state transitions): a module in `src/lib/`
   or beside its feature, tested without a database or React.
 

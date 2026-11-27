@@ -12,7 +12,7 @@ protection, so changing the list is a human step in the repo settings.
 
 - `checks` (`ci.yml`): secrets scan over the PR's commits, `pnpm check:worker-types`, `pnpm check`,
   `pnpm check:labels`, `pnpm check:comment-language`, `pnpm check:file-tokens`,
-  `pnpm check:type-assertions`, `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm check:dupes`, `pnpm test:unit`, `pnpm test:workers`
+  `pnpm check:type-assertions`, `pnpm check:migrations`, `pnpm check:dependency-audit`, `pnpm check:fallow`, `pnpm check:dupes`, `pnpm test:unit`, `pnpm test:workers`
   and `pnpm build`. No database service: `test:workers` runs the organization object in
   Miniflare.
 - `actions-gate` (`ci.yml`): zizmor and actionlint over `.github/workflows/`, and zizmor
@@ -45,7 +45,7 @@ current `main`.
 1. **Fetch `origin/main`** with full history, once, for every step below that
    compares against it. Never `--depth=1`: fallow needs the merge base.
 2. **Classify the diff.** A diff made only of `*.md` files and `docs/` is
-   docs-only: steps 9 to 12 skip on it, except `test:unit`, which reads
+   docs-only: steps 11 to 15 skip on it, except `test:unit`, which reads
    `GLOSSARY.md` and the tracked Markdown. The job still reports, so the required
    context passes. An empty diff counts as code, and a rename counts its old path.
    The skip is per step, not a `paths:` filter on the workflow, because a required
@@ -70,15 +70,17 @@ current `main`.
    estimated-token ceiling.
 9. **`pnpm check:type-assertions`**: the type-assertion ratchet, whose allowlist
    only falls ([coding-standards.md](../agents/coding-standards.md#type-assertions)).
-10. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
+10. **`pnpm check:migrations`**: every migration on `origin/main` is unchanged and
+    the journal only appends ([coding-standards.md](../agents/coding-standards.md#underthing-rules)).
+11. **`pnpm check:dependency-audit`**: fails only on high and critical advisories this
     branch introduces, compared with `origin/main`.
-11. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
+12. **`pnpm check:fallow`**: dead code, unused dependencies and duplication this
     branch introduces ([fallow.md](../agents/fallow.md)). Exit 2 (fallow could not
     run) fails the job too.
-12. **`pnpm check:dupes`**: the whole codebase's duplicated lines against the 3%
+13. **`pnpm check:dupes`**: the whole codebase's duplicated lines against the 3%
     ceiling ([fallow.md](../agents/fallow.md#the-gate)).
-13. **`pnpm test:unit`** and **`pnpm test:workers`**.
-14. **`pnpm build`**: the production build a deploy ships
+14. **`pnpm test:unit`** and **`pnpm test:workers`**.
+15. **`pnpm build`**: the production build a deploy ships
     ([infrastructure.md](./infrastructure.md#deploy)).
 
 ## What `e2e` does, in order

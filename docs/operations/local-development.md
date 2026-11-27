@@ -69,7 +69,7 @@ has not run when it starts.
 3. Restart `pnpm dev`, or run `pnpm test:workers`, to apply it.
 
 A migration on `main` has run in deployed objects: never edit it; a schema change adds
-a new one.
+a new one. `pnpm check:migrations` fails a commit that edits one.
 
 ## Tests
 
@@ -91,7 +91,8 @@ a new one.
 3. `pnpm typecheck` over the whole project;
 4. `pnpm check:fallow`, against `origin/main` ([fallow.md](../agents/fallow.md));
 5. the whole-tree checks CI also runs, each a few seconds at most: `pnpm check:comment-language`,
-   `pnpm check:labels`, `pnpm check:file-tokens` and `pnpm check:type-assertions`.
+   `pnpm check:labels`, `pnpm check:file-tokens`, `pnpm check:type-assertions` and
+   `pnpm check:migrations`.
 
 Any failure stops the commit. To check that the hook is installed in this clone:
 

@@ -70,6 +70,11 @@ Scripts that call `scripts/*.ts` run under `tsx`.
   the listed files, and on a disable comment for the rule; it fails closed when it
   cannot read `origin/main`'s list or parse a file. `--write` rewrites the list from
   the tree, to lower an entry, and refuses a file it cannot parse. CI runs it.
+- `check:migrations`: migrations on `main` are frozen. Fails when a `.sql` under
+  `src/organization/migrations/` on `origin/main` is edited or deleted in what is
+  staged, or when `meta/_journal.json` does anything but append entries, each with the
+  next `idx` and a later `when`; it fails closed when `origin/main` is
+  missing. The pre-commit hook and CI run it.
 
 ## Repository
 

@@ -178,7 +178,8 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   one `Job` value (`src/organization/jobs.ts`) in the runtime's `jobs` list. The
   area function is synchronous and makes its writes, its checks and its audit entry
   (`recordAudit()`) in one `database.transaction`, with no `await` inside (a write
-  outside one is missed by the alarm): an object runs one event at a time,
+  outside one is missed by the alarm; the lint rule `object/no-await-in-transaction`
+  rejects an async callback, an `await` or a callback not written inline there): an object runs one event at a time,
   so a check and the write it guards cannot be raced (double booking, ADR-0003).
   The one exception is a call to an outside service (Clerk, Meta), which cannot sit
   inside a synchronous transaction: the area function checks, awaits the call, then
@@ -211,6 +212,8 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   generated from it (`pnpm organization:generate`) into `src/organization/migrations/`,
   which every object applies on start. A migration on `main` has run in deployed
   objects: it is never edited, and a schema change adds a new one.
+  `pnpm check:migrations` (pre-commit and CI) fails when a `.sql` on `origin/main`
+  changes or the journal does more than append.
 
 ## React
 

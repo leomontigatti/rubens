@@ -38,8 +38,10 @@ case "$(git branch --show-current)" in
 esac
 # Whole-tree checks CI's `checks` job runs, each a few seconds at most, so a commit
 # catches what would otherwise fail only after a push. CI still runs them all. The
-# type-assertion ratchet reads origin/main's allowlist and fails closed without it.
+# type-assertion ratchet reads origin/main's allowlist, and the migrations check
+# origin/main's migrations; both fail closed without it.
 pnpm check:comment-language
 pnpm check:labels
 pnpm check:file-tokens
 pnpm check:type-assertions
+pnpm check:migrations

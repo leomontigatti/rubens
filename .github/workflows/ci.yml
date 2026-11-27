@@ -2,8 +2,8 @@
 # request, and nothing pushes to `main` directly. Two gates, both meant to be
 # required on `main` (branch protection is a repo setting, not a file here, so
 # renaming a job does not update it):
-#   - checks      : secrets scan, format/lint/typecheck, label, comment-language and
-#                   file-size checks, dependency audit, fallow, unit tests, the
+#   - checks      : secrets scan, format/lint/typecheck, label, comment-language,
+#                   file-size and frozen-migration checks, dependency audit, fallow, unit tests, the
 #                   Workers tests, and the production build. On a diff of only
 #                   Markdown and docs/, the steps from the dependency audit on skip,
 #                   except test:unit. No database service: the Workers tests run
@@ -124,6 +124,9 @@ jobs:
       # entry rises above origin/main's, and the lint override names exactly the
       # listed files (docs/agents/coding-standards.md § Type assertions).
       - run: pnpm check:type-assertions
+      # Migrations on main are never edited: every `.sql` on origin/main is unchanged
+      # and the journal only appends (docs/agents/coding-standards.md § underthing rules).
+      - run: pnpm check:migrations
       # Dependency hygiene: `pnpm audit --prod` over this branch's tree and over
       # main's, failing only on the high and critical advisories the branch
       # introduces. Auditing the whole tree would redden every open PR the day a CVE
