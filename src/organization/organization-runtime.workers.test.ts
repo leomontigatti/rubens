@@ -162,5 +162,10 @@ describe("with a booking confirmation queued", () => {
     );
     expect(rejected).toEqual([]);
     expect(await alarmOf(world.organization)).toBe(Date.now() + 60_000);
+    // A call that writes meanwhile keeps that wait.
+    expectOk(
+      await world.organization.createRoom(adminCaller, { officeId: world.office.id, name: "Box" }),
+    );
+    expect(await alarmOf(world.organization)).toBe(Date.now() + 60_000);
   });
 });

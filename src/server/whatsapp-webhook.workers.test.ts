@@ -460,6 +460,16 @@ describe("Meta's WhatsApp webhook", () => {
     expect(await rejectedIssues(organization)).toEqual([{ issues: ["message_template_id"] }]);
   });
 
+  it("keeps apart a change about the account with no value it reads, for the account's organization", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const body = accountChange("account_update", null);
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["value"] }]);
+  });
+
   it("stores a call's messages beside a change in no shape it reads, for no number", async () => {
     const { organizationId, organization } = await setUpTestOrganization();
     const payload = metaPayload();

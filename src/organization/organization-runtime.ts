@@ -75,6 +75,8 @@ export abstract class OrganizationRuntime extends DurableObject {
   protected readonly whatsapp: WhatsappCloud;
   /** The organization's number, connected through Embedded Signup (`src/organization/whatsapp-connection.ts`). */
   protected readonly number: WhatsappNumber;
+  /** Until when the alarm waits after its last run failed, whoever sets it meanwhile; 0 after one that did not. */
+  #failedUntil = 0;
   /** How many transactions the object has opened: a call that changed it wrote. */
   #transactionsOpened = 0;
   /** The patient assistant's model (`src/organization/assistant-model.ts`). */
@@ -143,12 +145,11 @@ export abstract class OrganizationRuntime extends DurableObject {
    */
   override async alarm() {
     const failures = await this.#runJobs();
-    if (failures.length === 0) {
-      await this.#armAlarm();
-      return;
+    this.#failedUntil = failures.length > 0 ? Date.now() + afterFailureMs : 0;
+    await this.#armAlarm();
+    if (failures.length > 0) {
+      throw failures[0];
     }
-    await this.#armAlarm(Date.now() + afterFailureMs);
-    throw failures[0];
   }
 
   /** Runs every job, each whatever the ones before it did; returns what those that threw threw. */
@@ -170,13 +171,13 @@ export abstract class OrganizationRuntime extends DurableObject {
   }
 
   /**
-   * Sets the alarm to the earliest due item, no earlier than `notBefore`, or
+   * Sets the alarm to the earliest due item, no earlier than `#failedUntil`, or
    * clears it when nothing waits on time.
    */
-  async #armAlarm(notBefore: number | null = null) {
+  async #armAlarm() {
     const services = this.#jobServices();
     const due = jobs.map((job) => job.nextDue(this.database, services)).filter((at) => at !== null);
-    const next = due.length > 0 ? Math.max(Math.min(...due), notBefore ?? 0) : null;
+    const next = due.length > 0 ? Math.max(Math.min(...due), this.#failedUntil) : null;
     if (next === null) {
       await this.ctx.storage.deleteAlarm();
     } else {

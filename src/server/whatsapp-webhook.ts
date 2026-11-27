@@ -56,6 +56,9 @@ const metaStatus = z.looseObject({
 
 const metaChange = z.object({ field: z.string(), value: z.looseObject({}) });
 
+/** A change's field, read on its own, so a change about the account that does not read still routes. */
+const metaChangeField = z.looseObject({ field: z.string() });
+
 /** The number a `messages` change is for, read on its own, so a change that does not read still routes. */
 const metaChangeNumber = z.looseObject({
   value: z.looseObject({ metadata: z.looseObject({ phone_number_id: z.string() }) }),
@@ -331,6 +334,11 @@ function routeOf(
     phoneNumberId ? find.forNumber(phoneNumberId) : null;
   const change = metaChange.safeParse(raw);
   const phoneNumberId = metaChangeNumber.safeParse(raw).data?.value.metadata.phone_number_id;
+  const accountLookup = async () => (accountId ? find.forAccount(accountId) : null);
+  const field = metaChangeField.safeParse(raw).data?.field;
+  if (!change.success && field !== undefined && accountChangeShapes.has(field)) {
+    return { lookup: accountLookup, events: noEvents(), rejected: [rejectedOf(raw, change.error)] };
+  }
   if (!change.success) {
     return {
       lookup: forNumber(phoneNumberId),
@@ -341,13 +349,16 @@ function routeOf(
   if (change.data.field === "messages") {
     return { lookup: forNumber(phoneNumberId), ...messageEventsOf(change.data.value) };
   }
-  const lookup = async () => (accountId ? find.forAccount(accountId) : null);
   const shape = accountChangeShapes.get(change.data.field)?.safeParse(change.data.value);
   if (shape?.success === false) {
-    return { lookup, events: noEvents(), rejected: [rejectedOf(change.data.value, shape.error)] };
+    return {
+      lookup: accountLookup,
+      events: noEvents(),
+      rejected: [rejectedOf(change.data.value, shape.error)],
+    };
   }
   const events = accountEventsOf(change.data);
-  return events && { lookup, events, rejected: [] };
+  return events && { lookup: accountLookup, events, rejected: [] };
 }
 
 function isEmpty(events: WhatsappEvents) {
@@ -460,29 +471,32 @@ async function storeByOrganization(payload: MetaPayload, env: WorkerEnv) {
   let stored = true;
   for (const [organizationId, organizationEvents] of events) {
     const organization = organizationObject(env, organizationId);
-    const results = [];
-    if (!isEmpty(organizationEvents)) {
-      results.push(await organization.storeWhatsappEvents(organizationEvents));
-    }
+    // What it could not read first: refused, the events wait for Meta's retry
+    // too, so that retry stores nothing twice nor out of order.
     const unread = rejected.get(organizationId) ?? [];
+    let result: { ok: true } | { ok: false; reason: string } = { ok: true };
     if (unread.length > 0) {
       log.warn("whatsapp-webhook", "kept elements in a shape underthing does not read", {
         organizationId,
         ...rejectedFields(unread),
       });
-      results.push(await organization.storeRejectedWebhookEvents(unread));
+      result = await organization.storeRejectedWebhookEvents(unread);
     }
-    if (results.some((result) => !result.ok)) {
+    if (result.ok && !isEmpty(organizationEvents)) {
+      result = await organization.storeWhatsappEvents(organizationEvents);
+    }
+    if (!result.ok) {
       // A mapping to an object no organization was set up in, or no key to
       // seal what it could not read: Meta retries the call, for up to 7 days,
       // while that is corrected.
       log.error("whatsapp-webhook", "the organization could not store the call", {
         organizationId,
-        reasons: results.flatMap((result) => (result.ok ? [] : [result.reason])).join(","),
+        reason: result.reason,
       });
       stored = false;
     }
   }
+
   return stored;
 }
 

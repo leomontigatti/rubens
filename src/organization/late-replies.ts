@@ -465,7 +465,7 @@ async function settleLateReplies(database: Database, cloud: WhatsappCloud) {
   for (const one of waitingReplies(database)) {
     await settleLateReply(database, cloud, one).catch((error: unknown) => failures.push(error));
   }
-  // One that throws keeps none after it from settling, and the alarm fails as it did.
+  // One that throws keeps none after it from settling; the alarm then fails as it did.
   if (failures.length > 0) {
     throw failures[0];
   }

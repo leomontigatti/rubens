@@ -111,12 +111,23 @@ const anthropicRequest = { timeout: 30_000, maxRetries: 1 };
 const turnDeadlineMs = 4 * 60_000;
 const singleCallDeadlineMs = 60_000;
 
-/** An abort controller that fires once `ms` have passed. */
-function abortingAfter(ms: number) {
-  const controller = new AbortController();
+/**
+ * Runs `call` with an abort controller that fires once `ms` have passed, and
+ * fails when it fired: a call cut short can still end as if it had finished,
+ * with the text streamed so far, which is not the model's whole answer.
+ */
+async function withinDeadline<T>(
+  ms: number,
+  call: (abortController: AbortController) => Promise<T>,
+) {
+  const abortController = new AbortController();
   const deadline = AbortSignal.timeout(ms);
-  deadline.addEventListener("abort", () => controller.abort(deadline.reason), { once: true });
-  return controller;
+  deadline.addEventListener("abort", () => abortController.abort(deadline.reason), { once: true });
+  const result = await call(abortController);
+  if (abortController.signal.aborted) {
+    throw new DOMException("The model did not answer in time", "TimeoutError");
+  }
+  return result;
 }
 
 /** Reports each call's tokens to `recordUsage`: TanStack AI's hook runs once per call. */
@@ -143,47 +154,53 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
   return {
     missingSetting: () => (env.ANTHROPIC_API_KEY ? null : "missingApiKey"),
     async runTurn({ conversationId, system, messages, tools, recordUsage }) {
-      const { text } = await chat({
-        adapter: adapter(),
-        threadId: conversationId,
-        systemPrompts: [system],
-        messages,
-        tools: tools.map((tool): AnyTool =>
-          toolDefinition({ name: tool.name, ...assistantToolSchemas[tool.name] }).server((args) =>
-            tool.run(args),
+      const { text } = await withinDeadline(turnDeadlineMs, (abortController) =>
+        chat({
+          adapter: adapter(),
+          threadId: conversationId,
+          systemPrompts: [system],
+          messages,
+          tools: tools.map((tool): AnyTool =>
+            toolDefinition({ name: tool.name, ...assistantToolSchemas[tool.name] }).server((args) =>
+              tool.run(args),
+            ),
           ),
-        ),
-        agentLoopStrategy: maxIterations(maxModelCalls),
-        toolExecution: "sequential",
-        middleware: [usageOf(recordUsage)],
-        abortController: abortingAfter(turnDeadlineMs),
-        stream: false,
-      });
+          agentLoopStrategy: maxIterations(maxModelCalls),
+          toolExecution: "sequential",
+          middleware: [usageOf(recordUsage)],
+          abortController,
+          stream: false,
+        }),
+      );
       return { reply: text };
     },
     checkReply({ conversationId, reply, patients, recordUsage }) {
-      return chat({
-        adapter: adapter(),
-        threadId: conversationId,
-        systemPrompts: [clinicalCheckPrompt(patients)],
-        messages: [{ role: "user", content: `<reply>\n${reply}\n</reply>` }],
-        outputSchema: clinicalCheckSchema,
-        middleware: [usageOf(recordUsage)],
-        abortController: abortingAfter(singleCallDeadlineMs),
-        stream: false,
-      });
+      return withinDeadline(singleCallDeadlineMs, (abortController) =>
+        chat({
+          adapter: adapter(),
+          threadId: conversationId,
+          systemPrompts: [clinicalCheckPrompt(patients)],
+          messages: [{ role: "user", content: `<reply>\n${reply}\n</reply>` }],
+          outputSchema: clinicalCheckSchema,
+          middleware: [usageOf(recordUsage)],
+          abortController,
+          stream: false,
+        }),
+      );
     },
     reviewTemplate({ body, formOfAddress, tone, recordUsage }) {
-      return chat({
-        adapter: adapter(),
-        threadId: `template-review-${crypto.randomUUID()}`,
-        systemPrompts: [templateReviewPrompt({ formOfAddress, tone })],
-        messages: [{ role: "user", content: `<template>\n${body}\n</template>` }],
-        outputSchema: templateReviewSchema,
-        middleware: [usageOf(recordUsage)],
-        abortController: abortingAfter(singleCallDeadlineMs),
-        stream: false,
-      });
+      return withinDeadline(singleCallDeadlineMs, (abortController) =>
+        chat({
+          adapter: adapter(),
+          threadId: `template-review-${crypto.randomUUID()}`,
+          systemPrompts: [templateReviewPrompt({ formOfAddress, tone })],
+          messages: [{ role: "user", content: `<template>\n${body}\n</template>` }],
+          outputSchema: templateReviewSchema,
+          middleware: [usageOf(recordUsage)],
+          abortController,
+          stream: false,
+        }),
+      );
     },
   };
 }
