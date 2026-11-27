@@ -1,30 +1,28 @@
 # Dependency updates
 
-The npm packages are bumped by a weekly T3 scheduled task, not by Dependabot: a bump often needs
+The npm packages are bumped by a weekly Capy automation, not by Dependabot: a bump often needs
 an edit beside it (an override, a skill copy, a code fix), and Dependabot can only bump. This file
-is the task's procedure; the T3 task's prompt only points here, so the procedure is reviewed like
+is the automation's procedure; its prompt only points here, so the procedure is reviewed like
 code. Dependabot still bumps the action pins ([ci.md](../operations/ci.md#pins)).
 
-## The scheduled task
+## The automation
 
-- **Where:** T3 on the user's own machine, project `rubens`, every Monday at 10:00 local time. It runs only
-  while that machine and T3 are up; a missed week is caught up by the next run, since every run
-  updates to the newest versions.
-- **What it does:** the task is bound to no thread, so T3 starts each run in a new thread, and
-  `t3.json`'s `defaultThreadEnvMode: worktree` gives that thread its own worktree and branch,
-  set up by the `t3.json` setup script. That thread is the run. Its prompt in T3:
+- **Where:** the Capy automation "Dependency update" in project `rubens`, every Wednesday at
+  09:00 America/Cordoba. A missed week is caught up by the next run, since every run updates to
+  the newest versions.
+- **What it does:** each run starts a new Capy thread on a cloud machine, set up by the project's
+  Setup. That thread is the run. Its prompt:
 
   > Update the npm dependencies by docs/agents/dependency-updates.md § The run. This run is
-  > unattended: there is no user to ask, so make every call yourself and leave the merge to the
-  > user.
+  > unattended: there is no user to ask, so make every call yourself.
 
 ## The run
 
-The thread runs these in its own worktree. It does not call the `implement` skill as a whole:
+The thread runs these in its own checkout. It does not call the `implement` skill as a whole:
 there are no seams to test first, only the steps below.
 
 0. **Start from `origin/main`**: `git fetch origin && git merge --ff-only origin/main`, then
-   `pnpm install --frozen-lockfile`. The worktree T3 makes can start from a commit behind
+   `pnpm install --frozen-lockfile`. The machine's checkout can start from a commit behind
    `origin/main`; the install brings `node_modules` level with the lockfile the merge brought in.
 1. **Update within each range**: `pnpm update`. That moves every caret range and every transitive
    dependency, and never crosses a major (on `0.x`, never a minor). `minimumReleaseAge` in

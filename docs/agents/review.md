@@ -34,7 +34,6 @@ full glossary: ^GLOSSARY\.md$
 quiet: ^\.fallowrc\.json$
 quiet: ^\.vite-hooks/
 quiet: ^\.github/(dependabot\.yml|pull_request_template\.md)$
-quiet: ^t3\.json$
 quiet: ^components\.json$
 quiet: ^assets/
 quiet: ^\.env\.example$

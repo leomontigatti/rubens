@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { planStop } from "./dev-stop.ts";
 
-const ROOT = "/home/poto/.t3/worktrees/rubens/t3code-aaaa";
+const ROOT = "/home/dev/worktrees/rubens/feat-aaaa";
 
 describe("planStop", () => {
   it("stops the listener that runs from this worktree", () => {

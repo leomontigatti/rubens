@@ -1,6 +1,6 @@
 # Dependabot version updates for the action pins only: minor and patch, one grouped
 # PR a week. A pin never needs a code fix beside it, which is what Dependabot cannot
-# write. The npm packages are bumped by a weekly T3 scheduled task instead
+# write. The npm packages are bumped by a weekly Capy automation instead
 # (docs/agents/dependency-updates.md), and a major stays a hand-written issue.
 #
 # `cooldown` keeps a release out of a PR until it is seven days old, zizmor's
