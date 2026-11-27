@@ -461,23 +461,32 @@ function reopenAgain(database: Database, waiting: Waiting) {
  * without an answer is not delivered.
  */
 async function settleLateReplies(database: Database, cloud: WhatsappCloud) {
+  const failures: unknown[] = [];
   for (const one of waitingReplies(database)) {
-    const now = Date.now();
-    const lastIncoming = lastIncomingAt(database, one.conversationId);
-    if (isWindowOpen(lastIncoming, now)) {
-      if (reach(database, cloud).ok) {
-        await deliver(database, cloud, one);
-      }
-      continue;
+    await settleLateReply(database, cloud, one).catch((error: unknown) => failures.push(error));
+  }
+  // One that throws keeps none after it from settling; the alarm then fails as it did.
+  if (failures.length > 0) {
+    throw failures[0];
+  }
+}
+
+async function settleLateReply(database: Database, cloud: WhatsappCloud, one: Waiting) {
+  const now = Date.now();
+  const lastIncoming = lastIncomingAt(database, one.conversationId);
+  if (isWindowOpen(lastIncoming, now)) {
+    if (reach(database, cloud).ok) {
+      await deliver(database, cloud, one);
     }
-    if (missedWindow(one, lastIncoming)) {
-      reopenAgain(database, one);
-      continue;
-    }
-    const endsAt = chanceEndsAt(one);
-    if (endsAt !== null && endsAt <= now) {
-      notDelivered(database, one, "replyNotDelivered");
-    }
+    return;
+  }
+  if (missedWindow(one, lastIncoming)) {
+    reopenAgain(database, one);
+    return;
+  }
+  const endsAt = chanceEndsAt(one);
+  if (endsAt !== null && endsAt <= now) {
+    notDelivered(database, one, "replyNotDelivered");
   }
 }
 

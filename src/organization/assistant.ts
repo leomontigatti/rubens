@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull, lte, min } from "drizzle-orm";
+import { and, asc, eq, isNotNull, lte, min, or } from "drizzle-orm";
 
 import { isOneOf } from "#/lib/is-one-of.ts";
 import { present } from "#/lib/present.ts";
@@ -38,6 +38,7 @@ import {
 } from "#/organization/voice-notes.ts";
 import { deliverReply, maySend, says } from "#/organization/turn-replies.ts";
 import { settleTurn } from "#/organization/turn-settling.ts";
+import { claimTurn, releaseTurn, settleLostTurn } from "#/organization/turn-claims.ts";
 import { organizationName } from "#/organization/members.ts";
 import { office } from "#/organization/schema.ts";
 import { conversation } from "#/organization/whatsapp-schema.ts";
@@ -55,16 +56,23 @@ import type { Job, JobServices } from "#/organization/jobs.ts";
 // its transcript (`voice-notes.ts`), and one nobody could understand does
 // not reach it. Nothing here logs a patient's words or data.
 
-/** When the next turn is due, or `null` when none waits or the model cannot run. */
+/**
+ * When the next turn is due, or a running turn's claim lapses; `null` when
+ * neither waits or the model cannot run.
+ */
 function nextTurnAlarm(database: Database, { assistant }: JobServices): number | null {
   if (assistant.missingSetting()) {
     return null;
   }
   const next = database
-    .select({ dueAt: min(conversation.assistantDueAt) })
+    .select({
+      dueAt: min(conversation.assistantDueAt),
+      lapsesAt: min(conversation.turnClaimedUntil),
+    })
     .from(conversation)
     .get();
-  return next?.dueAt ?? null;
+  const times = [next?.dueAt, next?.lapsesAt].filter((at) => typeof at === "number");
+  return times.length > 0 ? Math.min(...times) : null;
 }
 
 /** What the model recorded in a turn through its tools. */
@@ -317,9 +325,29 @@ async function readTranscribed(
 }
 
 /**
- * Runs the turn of `conversationId`: judges the patient's new messages and
- * settles them, and returns the delivery of its reply, which sends it when
- * underthing allows it, or `null` when the turn says nothing.
+ * Runs the turn of `conversationId` once it is claimed (`turn-claims.ts`),
+ * releasing the claim once it settles: a turn its alarm lost before that
+ * is settled from its lapsed claim.
+ */
+async function claimAndRunTurn(
+  database: Database,
+  cloud: WhatsappCloud,
+  ports: { model: AssistantModel; transcriber: Transcriber },
+  conversationId: string,
+): Promise<(() => Promise<void>) | null> {
+  settleLostTurn(database, conversationId);
+  if (!claimTurn(database, conversationId)) {
+    return null;
+  }
+  const delivery = await runTurn(database, cloud, ports, conversationId);
+  releaseTurn(database, conversationId);
+  return delivery;
+}
+
+/**
+ * Runs the claimed turn of `conversationId`: judges the patient's new
+ * messages and settles them, and returns the delivery of its reply, which
+ * sends it when underthing allows it, or `null` when the turn says nothing.
  */
 async function runTurn(
   database: Database,
@@ -328,18 +356,6 @@ async function runTurn(
   conversationId: string,
 ): Promise<(() => Promise<void>) | null> {
   const { model } = ports;
-  // Claimed only while still due, then cleared before the model runs: a
-  // message that arrived during an earlier turn of the batch restarted the
-  // wait, and one that arrives during this one sets a new wait.
-  const claimed = database
-    .update(conversation)
-    .set({ assistantDueAt: null })
-    .where(and(eq(conversation.id, conversationId), lte(conversation.assistantDueAt, Date.now())))
-    .returning({ id: conversation.id })
-    .get();
-  if (!claimed) {
-    return null;
-  }
   const read = await readTranscribed(database, cloud, ports.transcriber, conversationId);
   if (!read) {
     // Nothing waits, as once the patient took back the only reaction a failed turn left.
@@ -495,17 +511,18 @@ async function runDueTurns(database: Database, services: JobServices) {
   if (ports.model.missingSetting()) {
     return;
   }
+  const now = Date.now();
   const due = database
     .select({ id: conversation.id })
     .from(conversation)
-    .where(lte(conversation.assistantDueAt, Date.now()))
+    .where(or(lte(conversation.assistantDueAt, now), lte(conversation.turnClaimedUntil, now)))
     .orderBy(asc(conversation.assistantDueAt))
     .all();
   const deliveries: Promise<void>[] = [];
   const failures: unknown[] = [];
   try {
     for (const { id } of due) {
-      const deliver = await runTurn(database, cloud, ports, id);
+      const deliver = await claimAndRunTurn(database, cloud, ports, id);
       if (deliver) {
         deliveries.push(deliver().catch((error: unknown) => void failures.push(error)));
       }

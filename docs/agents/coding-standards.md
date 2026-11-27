@@ -207,7 +207,8 @@ These come from [ADR-0008](../adr/0008-cloudflare-workers-one-object-per-organiz
   clinical text stay out of logs and error messages. Ids are enough to find a
   record.
 - **The object's schema is `src/organization/schema.ts`**, with its WhatsApp tables in
-  `whatsapp-schema.ts`, and its migrations are
+  `whatsapp-schema.ts`, the assistant's usage in `assistant-usage-schema.ts` and the
+  webhook's rejected elements in `webhook-schema.ts`, and its migrations are
   generated from it (`pnpm organization:generate`) into `src/organization/migrations/`,
   which every object applies on start. A migration on `main` has run in deployed
   objects: it is never edited, and a schema change adds a new one.

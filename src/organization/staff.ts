@@ -475,7 +475,17 @@ export async function setStartingPassword(
   if (refusal) {
     return { ok: false as const, reason: refusal };
   }
-  const set = await accounts.setPassword(memberId, password);
+  // Held before Clerk is asked: a call that fails or times out may still have
+  // set the password the admin knows. Marked again after anything but a refusal,
+  // over a change of their own the member made meanwhile.
+  markPasswordChange(database, memberId, true);
+  let set: Awaited<ReturnType<Accounts["setPassword"]>>;
+  try {
+    set = await accounts.setPassword(memberId, password);
+  } catch (error) {
+    markPasswordChange(database, memberId, true);
+    throw error;
+  }
   if (!set.ok) {
     return set;
   }

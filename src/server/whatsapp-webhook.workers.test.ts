@@ -11,6 +11,7 @@ import {
   whatsappDirectory,
 } from "#/organization/organization.test-support.ts";
 import type { OrganizationStub } from "#/organization/organization.test-support.ts";
+import { rejectedWebhookEvent } from "#/organization/webhook-schema.ts";
 import {
   whatsappConnection,
   whatsappMessage,
@@ -195,6 +196,13 @@ function accountChange(field: string, value: unknown, accountId = businessAccoun
   });
 }
 
+/** Where the shape broke of each element the organization kept as unreadable. */
+function rejectedIssues(organization: OrganizationStub) {
+  return inStorage(organization, (database) =>
+    database.select({ issues: rejectedWebhookEvent.issues }).from(rejectedWebhookEvent).all(),
+  );
+}
+
 async function notificationsOf(organization: OrganizationStub) {
   const listed = await organization.listNotifications(adminCaller);
   if (!listed.ok) {
@@ -360,6 +368,123 @@ describe("Meta's WhatsApp webhook", () => {
 
     expect(responses.map((response) => response.status)).toEqual([401, 401]);
     expect(await storedMessages(organization)).toEqual([]);
+  });
+
+  it("stores a call's other messages when one is in a shape underthing does not read, keeping that one apart", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    payload.entry[0]!.changes[0]!.value.messages.push({
+      from: "+54 9 351 444-0001",
+      id: "wamid.unreadable",
+      timestamp: "4071240001",
+      type: "text",
+      text: { body: "Quería cambiar el turno" },
+    });
+
+    const response = await handleWhatsappWebhook(
+      post(JSON.stringify(payload)),
+      bindingsFor(organizationId),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      {
+        whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE",
+        text: "Hola, quería confirmar el turno",
+      },
+    ]);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["from"] }]);
+  });
+
+  it("stores a call's other changes when one does not read at all, keeping it apart for its number", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    const unreadable = {
+      field: "messages",
+      value: { metadata: { phone_number_id: phoneNumberId }, statuses: "not a list" },
+    };
+    const body = JSON.stringify({
+      ...payload,
+      entry: [{ ...payload.entry[0], changes: [unreadable, ...payload.entry[0]!.changes] }],
+    });
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["statuses"] }]);
+  });
+
+  it("stores a change's messages beside its statuses when those are not a list, keeping them apart", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    Object.assign(payload.entry[0]!.changes[0]!.value, { statuses: "not a list" });
+
+    const response = await handleWhatsappWebhook(
+      post(JSON.stringify(payload)),
+      bindingsFor(organizationId),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["statuses"] }]);
+  });
+
+  it("stores a call's other entries beside one in no shape it reads", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    const body = JSON.stringify({ ...payload, entry: [{ changes: "none" }, ...payload.entry] });
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
+  });
+
+  it("keeps apart a change about the account in a shape it does not read, for the account's organization", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const body = accountChange("message_template_status_update", {
+      event: "APPROVED",
+      message_template_id: "not digits",
+    });
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["message_template_id"] }]);
+  });
+
+  it("keeps apart a change about the account with no value it reads, for the account's organization", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const body = accountChange("account_update", null);
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["value"] }]);
+  });
+
+  it("stores a call's messages beside a change in no shape it reads, for no number", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    const body = JSON.stringify({
+      ...payload,
+      entry: [{ ...payload.entry[0], changes: [42, ...payload.entry[0]!.changes] }],
+    });
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
+    expect(await rejectedIssues(organization)).toEqual([]);
   });
 
   it("answers 200 and drops a call for a phone number id no organization has", async () => {

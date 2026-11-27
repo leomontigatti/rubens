@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { fakeMetaFetch, fakesMeta } from "#/dev/fake-meta.ts";
+import { errorClass, log } from "#/lib/log.ts";
 import { fakeModel, fakesModel } from "#/dev/fake-model.ts";
 import { accountsFor } from "#/organization/accounts.ts";
 import { assistantTurnsJob } from "#/organization/assistant.ts";
@@ -13,6 +14,7 @@ import type { Accounts } from "#/organization/accounts.ts";
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import { organizationCipher } from "#/organization/encryption.ts";
+import type { OrganizationCipher } from "#/organization/encryption.ts";
 import {
   configuredWhatsappSettings,
   metaSignupFor,
@@ -22,6 +24,7 @@ import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Job, JobServices } from "#/organization/jobs.ts";
 import { optOutRemindersJob } from "#/organization/opt-out-holds.ts";
 import { outboxJob } from "#/organization/outbox.ts";
+import { rejectedWebhookEventsJob } from "#/organization/rejected-webhook-events.ts";
 import { authorize } from "#/organization/members.ts";
 import type { Acting, Caller, Refusal, Requirement } from "#/organization/members.ts";
 import type { EmailsInFlight } from "#/organization/staff.ts";
@@ -45,7 +48,11 @@ const jobs: readonly Job[] = [
   // After the turns, which can open handoffs and hold patients for an opt-out.
   handoffRemindersJob,
   optOutRemindersJob,
+  rejectedWebhookEventsJob,
 ];
+
+/** The least the alarm waits after a job threw. */
+const afterFailureMs = 60_000;
 
 /**
  * What the organization's object runs on, under its RPC methods
@@ -68,12 +75,16 @@ export abstract class OrganizationRuntime extends DurableObject {
   protected readonly whatsapp: WhatsappCloud;
   /** The organization's number, connected through Embedded Signup (`src/organization/whatsapp-connection.ts`). */
   protected readonly number: WhatsappNumber;
+  /** Until when the alarm waits after its last run failed, whoever sets it meanwhile; 0 after one that did not. */
+  #failedUntil = 0;
   /** How many transactions the object has opened: a call that changed it wrote. */
   #transactionsOpened = 0;
   /** The patient assistant's model (`src/organization/assistant-model.ts`). */
   protected readonly assistant: AssistantModel;
   /** What transcribes patients' voice notes (`src/organization/transcription.ts`). */
   protected readonly transcriber: Transcriber;
+  /** The organization's cipher (`src/organization/encryption.ts`), or `null` while the Worker has no key. */
+  protected readonly cipher: (organizationId: string) => Promise<OrganizationCipher | null>;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
@@ -81,6 +92,8 @@ export abstract class OrganizationRuntime extends DurableObject {
     this.accounts = accountsFor(env);
     this.assistant = fakesModel(env) ? fakeModel : assistantModelFor(env);
     this.transcriber = transcriberFor(env);
+    this.cipher = (organizationId) =>
+      organizationCipher(env.ORGANIZATION_ENCRYPTION_KEY, organizationId);
     const directory = env.WHATSAPP_DIRECTORY.get(
       env.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
     );
@@ -91,8 +104,7 @@ export abstract class OrganizationRuntime extends DurableObject {
         claim: (entry) => directory.claim(entry),
         release: (organizationId) => directory.release(organizationId),
       },
-      cipher: (organizationId) =>
-        organizationCipher(env.ORGANIZATION_ENCRYPTION_KEY, organizationId),
+      cipher: this.cipher,
     });
     this.whatsapp = whatsappCloudFor(
       {
@@ -124,20 +136,48 @@ export abstract class OrganizationRuntime extends DurableObject {
     return authorized.ok ? this.armingOnWrite(() => work(authorized.acting)) : authorized;
   }
 
-  /** Runs every job, in the order of `jobs`, then sets the alarm for the next item. */
+  /**
+   * Runs every job, in the order of `jobs`, then sets the alarm for the next
+   * item. A job that throws keeps none after it from running nor the alarm
+   * from being set, and the alarm then fails as the first did, so the
+   * platform retries it; its own alarm waits at least `afterFailureMs`, so an
+   * item that throws each time it runs does not run again at once.
+   */
   override async alarm() {
-    const services = this.#jobServices();
-    for (const job of jobs) {
-      await job.run(this.database, services);
-    }
+    const failures = await this.#runJobs();
+    this.#failedUntil = failures.length > 0 ? Date.now() + afterFailureMs : 0;
     await this.#armAlarm();
+    if (failures.length > 0) {
+      throw failures[0];
+    }
   }
 
-  /** Sets the alarm to the earliest due item, or clears it when nothing waits on time. */
+  /** Runs every job, each whatever the ones before it did; returns what those that threw threw. */
+  async #runJobs() {
+    const services = this.#jobServices();
+    const failures: unknown[] = [];
+    for (const job of jobs) {
+      try {
+        await job.run(this.database, services);
+      } catch (error) {
+        log.error("organization-alarm", "a job failed", {
+          job: job.name,
+          error: errorClass(error),
+        });
+        failures.push(error);
+      }
+    }
+    return failures;
+  }
+
+  /**
+   * Sets the alarm to the earliest due item, no earlier than `#failedUntil`, or
+   * clears it when nothing waits on time.
+   */
   async #armAlarm() {
     const services = this.#jobServices();
     const due = jobs.map((job) => job.nextDue(this.database, services)).filter((at) => at !== null);
-    const next = due.length > 0 ? Math.min(...due) : null;
+    const next = due.length > 0 ? Math.max(Math.min(...due), this.#failedUntil) : null;
     if (next === null) {
       await this.ctx.storage.deleteAlarm();
     } else {

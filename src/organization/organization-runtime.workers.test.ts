@@ -1,6 +1,7 @@
-import { runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { rejectedWebhookEvent } from "#/organization/webhook-schema.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 import {
   adminCaller,
@@ -8,6 +9,8 @@ import {
   expectOk,
   fakeMeta,
   inStorage,
+  patientWrites,
+  scriptedModel,
   setUpBookingWorld,
   submitTemplate,
   templateNamed,
@@ -28,7 +31,13 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   };
 });
 
+vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
+  ...(await original()),
+  assistantModelFor: () => scriptedModel,
+}));
+
 const hourMs = 60 * 60_000;
+const dayMs = 24 * hourMs;
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 
@@ -49,11 +58,13 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2098-12-01T12:00:00Z"));
   fakeMeta.reset();
+  scriptedModel.reset();
   world = await setUpBookingWorld();
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("with a booking confirmation queued", () => {
@@ -131,5 +142,30 @@ describe("with a booking confirmation queued", () => {
     release();
     expect((await edit).ok).toBe(false);
     expect(await alarmOf(world.organization)).toBe(dueAt);
+  });
+  it("runs the jobs after one that throws, sets the alarm no sooner than a minute on, then fails as it did", async () => {
+    await world.organization.storeRejectedWebhookEvents([{ element: "{}", issues: ["from"] }]);
+    vi.setSystemTime(Date.now() + 30 * dayMs);
+    await patientWrites(world.organization, "hola", "+5491155550000", Date.now());
+    vi.setSystemTime(Date.now() + 60_000);
+    // The assistant's job throws as it starts; the retention job, the last, deletes the element.
+    vi.spyOn(scriptedModel, "missingSetting").mockImplementationOnce(() => {
+      throw new Error("The model could not be reached");
+    });
+
+    await expect(runDurableObjectAlarm(world.organization)).rejects.toThrow(
+      "The model could not be reached",
+    );
+
+    const rejected = await inStorage(world.organization, (database) =>
+      database.select().from(rejectedWebhookEvent).all(),
+    );
+    expect(rejected).toEqual([]);
+    expect(await alarmOf(world.organization)).toBe(Date.now() + 60_000);
+    // A call that writes meanwhile keeps that wait.
+    expectOk(
+      await world.organization.createRoom(adminCaller, { officeId: world.office.id, name: "Box" }),
+    );
+    expect(await alarmOf(world.organization)).toBe(Date.now() + 60_000);
   });
 });

@@ -5,6 +5,7 @@ import { isOneOf } from "#/lib/is-one-of.ts";
 import { whatsappMessageStatuses } from "#/lib/whatsapp-messages.ts";
 import type {
   IncomingWhatsappMessage,
+  RejectedWebhookElement,
   WhatsappEvents,
   WhatsappNumberEvent,
   WhatsappStatusUpdate,
@@ -26,7 +27,10 @@ import { isSignedByMeta } from "#/server/whatsapp-signature.ts";
 //
 // Meta's payload is read in Meta's own vocabulary
 // (https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components),
-// and only the fields stored: the rest of a message is kept as it came.
+// and only the fields stored: the rest of a message is kept as it came. Each
+// change, and each message and status in it, is read on its own, so one whose
+// shape drifted drops none of its siblings: it goes to its organization's
+// rejected elements (`src/organization/rejected-webhook-events.ts`).
 
 const metaMessage = z.looseObject({
   /** The sender's WhatsApp id: their number in digits, without the `+`. */
@@ -50,13 +54,14 @@ const metaStatus = z.looseObject({
   timestamp: z.coerce.number().int(),
 });
 
-const metaChange = z.object({
-  field: z.string(),
-  value: z.looseObject({
-    metadata: z.object({ phone_number_id: z.string() }).optional(),
-    messages: z.array(metaMessage).optional(),
-    statuses: z.array(metaStatus).optional(),
-  }),
+const metaChange = z.object({ field: z.string(), value: z.looseObject({}) });
+
+/** A change's field, read on its own, so a change about the account that does not read still routes. */
+const metaChangeField = z.looseObject({ field: z.string() });
+
+/** The number a `messages` change is for, read on its own, so a change that does not read still routes. */
+const metaChangeNumber = z.looseObject({
+  value: z.looseObject({ metadata: z.looseObject({ phone_number_id: z.string() }) }),
 });
 
 /** A `message_template_status_update` change's value. */
@@ -94,10 +99,20 @@ const metaQualityUpdate = z.looseObject({
   max_daily_conversations_per_business: z.string().optional(),
 });
 
+/** The shape each change about the account is read in, by its field. */
+const accountChangeShapes = new Map<string, z.ZodType>([
+  ["message_template_status_update", metaTemplateStatus],
+  ["template_category_update", metaCategoryUpdate],
+  ["account_update", metaAccountUpdate],
+  ["phone_number_quality_update", metaQualityUpdate],
+]);
+
+// The entry's id is the WhatsApp Business account's.
+const metaEntry = z.object({ id: z.string().optional(), changes: z.array(z.unknown()) });
+
 const metaWebhook = z.object({
   object: z.literal("whatsapp_business_account"),
-  // The entry's id is the WhatsApp Business account's.
-  entry: z.array(z.object({ id: z.string().optional(), changes: z.array(metaChange) })),
+  entry: z.array(z.unknown()),
 });
 
 type MetaMessage = z.infer<typeof metaMessage>;
@@ -187,15 +202,48 @@ const noEvents = (): WhatsappEvents => ({
   numberEvents: [],
 });
 
-/** A `messages` change's messages and statuses. A status underthing does not store (such as `deleted`) is skipped. */
-function messageEventsOf(value: MetaChange["value"]): WhatsappEvents {
+/** `element` as Meta sent it, with where `error` found its shape broke: keys and indexes, no values. */
+function rejectedOf(element: unknown, error: z.ZodError): RejectedWebhookElement {
   return {
+    element: JSON.stringify(element),
+    issues: error.issues.map((issue) => issue.path.map(String).join(".")),
+  };
+}
+
+/**
+ * A `messages` change's messages and statuses, each read on its own: one in a
+ * shape underthing does not read is rejected, and its siblings stored, and so
+ * is a list of them that is not a list. A status underthing does not store
+ * (such as `deleted`) is skipped.
+ */
+function messageEventsOf(value: MetaChange["value"]) {
+  const rejected: RejectedWebhookElement[] = [];
+  function read<T>(schema: z.ZodType<T>, key: "messages" | "statuses") {
+    if (value[key] === undefined) {
+      return [];
+    }
+    const elements = z.array(z.unknown()).safeParse(value[key]);
+    if (!elements.success) {
+      rejected.push({ element: JSON.stringify(value[key]), issues: [key] });
+      return [];
+    }
+    return elements.data.flatMap((element) => {
+      const parsed = schema.safeParse(element);
+      if (!parsed.success) {
+        rejected.push(rejectedOf(element, parsed.error));
+        return [];
+      }
+      return [parsed.data];
+    });
+  }
+  const events: WhatsappEvents = {
     ...noEvents(),
-    messages: (value.messages ?? []).map(incomingOf),
-    statuses: (value.statuses ?? []).flatMap(({ id, status, timestamp }) =>
+    messages: read(metaMessage, "messages").map(incomingOf),
+    statuses: read(metaStatus, "statuses").flatMap(({ id, status, timestamp }) =>
       isKnownStatus(status) ? [{ whatsappId: id, status, at: timestamp * 1000 }] : [],
     ),
   };
+  return { events, rejected };
 }
 
 /** A completed move of a template to another category; a warning of one to come is not stored. */
@@ -269,27 +317,48 @@ function accountEventsOf(change: MetaChange): WhatsappEvents | null {
 }
 
 /**
- * A change's events, with the lookup of whose they are, run when the call's
- * changes are read one by one: the number's organization for a `messages`
- * change, the account's for the others. `null` for a change underthing does
+ * A change's events and the elements of it underthing could not read, with
+ * the lookup of whose they are, run when the call's changes are read one by
+ * one: the number's organization for a `messages` change, the account's for
+ * the others. A change about the account in a shape underthing does not read
+ * is one rejected element, and so is a change that does not read at all, for
+ * the number it names when it names one. `null` for a change underthing does
  * not store.
  */
 function routeOf(
   find: ReturnType<typeof organizationFinder>,
   accountId: string | undefined,
-  change: MetaChange,
+  raw: unknown,
 ) {
-  if (change.field === "messages") {
-    const phoneNumberId = change.value.metadata?.phone_number_id;
-    const lookup = async () => (phoneNumberId ? find.forNumber(phoneNumberId) : null);
-    return { lookup, events: messageEventsOf(change.value) };
+  const forNumber = (phoneNumberId: string | undefined) => async () =>
+    phoneNumberId ? find.forNumber(phoneNumberId) : null;
+  const change = metaChange.safeParse(raw);
+  const phoneNumberId = metaChangeNumber.safeParse(raw).data?.value.metadata.phone_number_id;
+  const accountLookup = async () => (accountId ? find.forAccount(accountId) : null);
+  const field = metaChangeField.safeParse(raw).data?.field;
+  if (!change.success && field !== undefined && accountChangeShapes.has(field)) {
+    return { lookup: accountLookup, events: noEvents(), rejected: [rejectedOf(raw, change.error)] };
   }
-  const events = accountEventsOf(change);
-  if (!events) {
-    return null;
+  if (!change.success) {
+    return {
+      lookup: forNumber(phoneNumberId),
+      events: noEvents(),
+      rejected: [rejectedOf(raw, change.error)],
+    };
   }
-  const lookup = async () => (accountId ? find.forAccount(accountId) : null);
-  return { lookup, events };
+  if (change.data.field === "messages") {
+    return { lookup: forNumber(phoneNumberId), ...messageEventsOf(change.data.value) };
+  }
+  const shape = accountChangeShapes.get(change.data.field)?.safeParse(change.data.value);
+  if (shape?.success === false) {
+    return {
+      lookup: accountLookup,
+      events: noEvents(),
+      rejected: [rejectedOf(change.data.value, shape.error)],
+    };
+  }
+  const events = accountEventsOf(change.data);
+  return events && { lookup: accountLookup, events, rejected: [] };
 }
 
 function isEmpty(events: WhatsappEvents) {
@@ -321,25 +390,43 @@ function addEvents(
 }
 
 /**
- * The events of a call, by the organization each is for, and how many
- * changes were for a number or an account no organization has.
+ * The events of a call and the elements it could not read, by the
+ * organization each is for; how many changes were for a number or an account
+ * no organization has, and the elements among them it could not read.
  */
 async function eventsByOrganization(payload: MetaPayload, env: WorkerEnv) {
   const find = organizationFinder(env);
-  const routes = payload.entry.flatMap((entry) =>
-    entry.changes.map((change) => routeOf(find, entry.id, change)),
-  );
+  const unroutable: RejectedWebhookElement[] = [];
+  const routes = payload.entry.flatMap((raw) => {
+    const entry = metaEntry.safeParse(raw);
+    if (!entry.success) {
+      unroutable.push(rejectedOf(raw, entry.error));
+      return [];
+    }
+    return entry.data.changes.map((change) => routeOf(find, entry.data.id, change));
+  });
   const events = new Map<string, WhatsappEvents>();
+  const rejected = new Map<string, RejectedWebhookElement[]>();
   let unknown = 0;
   for (const route of routes) {
     const organizationId = route && (await route.lookup());
     if (organizationId) {
       addEvents(events, organizationId, route.events);
+      rejected.set(organizationId, [...(rejected.get(organizationId) ?? []), ...route.rejected]);
     } else if (route) {
       unknown += 1;
+      unroutable.push(...route.rejected);
     }
   }
-  return { events, unknown };
+  return { events, rejected, unknown, unroutable };
+}
+
+/** What a log line says of rejected elements: how many, and where their shapes broke. */
+function rejectedFields(rejected: RejectedWebhookElement[]) {
+  return {
+    elements: rejected.length,
+    issues: [...new Set(rejected.flatMap((one) => one.issues))].join(","),
+  };
 }
 
 /**
@@ -361,6 +448,56 @@ async function answerHandshake(url: URL, verifyToken: string): Promise<Response>
     return new Response(null, { status: 403 });
   }
   return new Response(challenge, { headers: { "content-type": "text/plain" } });
+}
+
+/**
+ * Stores a call's events and the elements it could not read in each
+ * organization's object; says whether every organization stored them.
+ */
+async function storeByOrganization(payload: MetaPayload, env: WorkerEnv) {
+  const { events, rejected, unknown, unroutable } = await eventsByOrganization(payload, env);
+  if (unknown > 0) {
+    log.warn("whatsapp-webhook", "dropped changes for a number or account no organization has", {
+      changes: unknown,
+    });
+  }
+  if (unroutable.length > 0) {
+    log.warn(
+      "whatsapp-webhook",
+      "dropped elements in a shape underthing does not read, for no organization",
+      rejectedFields(unroutable),
+    );
+  }
+  let stored = true;
+  for (const [organizationId, organizationEvents] of events) {
+    const organization = organizationObject(env, organizationId);
+    // What it could not read first: refused, the events wait for Meta's retry
+    // too, so that retry stores nothing twice nor out of order.
+    const unread = rejected.get(organizationId) ?? [];
+    let result: { ok: true } | { ok: false; reason: string } = { ok: true };
+    if (unread.length > 0) {
+      log.warn("whatsapp-webhook", "kept elements in a shape underthing does not read", {
+        organizationId,
+        ...rejectedFields(unread),
+      });
+      result = await organization.storeRejectedWebhookEvents(unread);
+    }
+    if (result.ok && !isEmpty(organizationEvents)) {
+      result = await organization.storeWhatsappEvents(organizationEvents);
+    }
+    if (!result.ok) {
+      // A mapping to an object no organization was set up in, or no key to
+      // seal what it could not read: Meta retries the call, for up to 7 days,
+      // while that is corrected.
+      log.error("whatsapp-webhook", "the organization could not store the call", {
+        organizationId,
+        reason: result.reason,
+      });
+      stored = false;
+    }
+  }
+
+  return stored;
 }
 
 /**
@@ -394,29 +531,7 @@ export async function handleWhatsappWebhook(request: Request, env: WorkerEnv): P
     log.warn("whatsapp-webhook", "a signed call in a shape underthing does not read was dropped");
     return new Response(null, { status: 200 });
   }
-  const { events, unknown } = await eventsByOrganization(parsed.data, env);
-  if (unknown > 0) {
-    log.warn("whatsapp-webhook", "dropped changes for a number or account no organization has", {
-      changes: unknown,
-    });
-  }
-  let stored = true;
-  for (const [organizationId, organizationEvents] of events) {
-    if (isEmpty(organizationEvents)) {
-      continue;
-    }
-    const result = await organizationObject(env, organizationId).storeWhatsappEvents(
-      organizationEvents,
-    );
-    if (!result.ok) {
-      // A mapping to an object no organization was set up in: Meta retries
-      // the call, for up to 7 days, while the mapping is corrected.
-      log.error("whatsapp-webhook", "the organization is not set up", { organizationId });
-      stored = false;
-    }
-  }
-  if (!stored) {
-    return new Response(null, { status: 500 });
-  }
-  return new Response(null, { status: 200 });
+  return (await storeByOrganization(parsed.data, env))
+    ? new Response(null, { status: 200 })
+    : new Response(null, { status: 500 });
 }

@@ -220,7 +220,8 @@ not open it. Inside the window the assistant and staff write freely; outside it,
 underthing can send only an approved template ([messages.md](./messages.md#to-patients)).
 
 When the model is unavailable, an incoming message is kept and retried while the
-window is open. If it still cannot be read, it is handed to reception well before
+window is open; so is one whose turn was lost before it settled, to a deploy or an
+eviction. If it still cannot be read, it is handed to reception well before
 the window closes, and no longer retried. A message a person answers first, by
 replying or by closing its handoff, is no longer retried either. No code reads it
 in the model's place, and nothing is sent to the patient while it is unread.

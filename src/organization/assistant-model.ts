@@ -95,6 +95,41 @@ export interface AssistantModel {
 /** A turn's model calls: enough for a lookup or two, the judgement and the reply. */
 export const maxModelCalls = 8;
 
+/**
+ * Each request to Anthropic's API waits up to 30 seconds for its answer to
+ * start, and is retried once; the SDK's defaults are ten minutes and two
+ * retries.
+ */
+const anthropicRequest = { timeout: 30_000, maxRetries: 1 };
+
+/**
+ * How long a turn, a clinical check or a template review may take in all,
+ * its streamed answers, retries and their waits included: the alarm judges
+ * turns one at a time, so one that hangs would hold every other and outlast
+ * its claim (`turn-claims.ts`).
+ */
+const turnDeadlineMs = 4 * 60_000;
+const singleCallDeadlineMs = 60_000;
+
+/**
+ * Runs `call` with an abort controller that fires once `ms` have passed, and
+ * fails when it fired: a call cut short can still end as if it had finished,
+ * with the text streamed so far, which is not the model's whole answer.
+ */
+async function withinDeadline<T>(
+  ms: number,
+  call: (abortController: AbortController) => Promise<T>,
+) {
+  const abortController = new AbortController();
+  const deadline = AbortSignal.timeout(ms);
+  deadline.addEventListener("abort", () => abortController.abort(deadline.reason), { once: true });
+  const result = await call(abortController);
+  if (abortController.signal.aborted) {
+    throw new DOMException("The model did not answer in time", "TimeoutError");
+  }
+  return result;
+}
+
 /** Reports each call's tokens to `recordUsage`: TanStack AI's hook runs once per call. */
 function usageOf(recordUsage: RecordUsage): ChatMiddleware {
   return {
@@ -114,49 +149,58 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
     if (!apiKey) {
       throw new Error("The assistant has no Anthropic API key: check missingSetting() first");
     }
-    return createAnthropicChat(assistantModelId, apiKey);
+    return createAnthropicChat(assistantModelId, apiKey, anthropicRequest);
   };
   return {
     missingSetting: () => (env.ANTHROPIC_API_KEY ? null : "missingApiKey"),
     async runTurn({ conversationId, system, messages, tools, recordUsage }) {
-      const { text } = await chat({
-        adapter: adapter(),
-        threadId: conversationId,
-        systemPrompts: [system],
-        messages,
-        tools: tools.map((tool): AnyTool =>
-          toolDefinition({ name: tool.name, ...assistantToolSchemas[tool.name] }).server((args) =>
-            tool.run(args),
+      const { text } = await withinDeadline(turnDeadlineMs, (abortController) =>
+        chat({
+          adapter: adapter(),
+          threadId: conversationId,
+          systemPrompts: [system],
+          messages,
+          tools: tools.map((tool): AnyTool =>
+            toolDefinition({ name: tool.name, ...assistantToolSchemas[tool.name] }).server((args) =>
+              tool.run(args),
+            ),
           ),
-        ),
-        agentLoopStrategy: maxIterations(maxModelCalls),
-        toolExecution: "sequential",
-        middleware: [usageOf(recordUsage)],
-        stream: false,
-      });
+          agentLoopStrategy: maxIterations(maxModelCalls),
+          toolExecution: "sequential",
+          middleware: [usageOf(recordUsage)],
+          abortController,
+          stream: false,
+        }),
+      );
       return { reply: text };
     },
     checkReply({ conversationId, reply, patients, recordUsage }) {
-      return chat({
-        adapter: adapter(),
-        threadId: conversationId,
-        systemPrompts: [clinicalCheckPrompt(patients)],
-        messages: [{ role: "user", content: `<reply>\n${reply}\n</reply>` }],
-        outputSchema: clinicalCheckSchema,
-        middleware: [usageOf(recordUsage)],
-        stream: false,
-      });
+      return withinDeadline(singleCallDeadlineMs, (abortController) =>
+        chat({
+          adapter: adapter(),
+          threadId: conversationId,
+          systemPrompts: [clinicalCheckPrompt(patients)],
+          messages: [{ role: "user", content: `<reply>\n${reply}\n</reply>` }],
+          outputSchema: clinicalCheckSchema,
+          middleware: [usageOf(recordUsage)],
+          abortController,
+          stream: false,
+        }),
+      );
     },
     reviewTemplate({ body, formOfAddress, tone, recordUsage }) {
-      return chat({
-        adapter: adapter(),
-        threadId: `template-review-${crypto.randomUUID()}`,
-        systemPrompts: [templateReviewPrompt({ formOfAddress, tone })],
-        messages: [{ role: "user", content: `<template>\n${body}\n</template>` }],
-        outputSchema: templateReviewSchema,
-        middleware: [usageOf(recordUsage)],
-        stream: false,
-      });
+      return withinDeadline(singleCallDeadlineMs, (abortController) =>
+        chat({
+          adapter: adapter(),
+          threadId: `template-review-${crypto.randomUUID()}`,
+          systemPrompts: [templateReviewPrompt({ formOfAddress, tone })],
+          messages: [{ role: "user", content: `<template>\n${body}\n</template>` }],
+          outputSchema: templateReviewSchema,
+          middleware: [usageOf(recordUsage)],
+          abortController,
+          stream: false,
+        }),
+      );
     },
   };
 }

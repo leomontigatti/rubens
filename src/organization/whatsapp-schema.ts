@@ -56,6 +56,13 @@ export const conversation = sqliteTable("conversation", {
    */
   assistantDueAt: instant("assistant_due_at"),
   /**
+   * Until when a running turn holds the conversation's messages
+   * (`src/organization/assistant.ts`): set as the turn claims its wait, cleared
+   * once it settles. One past this time was lost mid-way, to an eviction, a
+   * deploy or a throw, and counts as a failed turn.
+   */
+  turnClaimedUntil: instant("turn_claimed_until"),
+  /**
    * How many of the patient's turns in a row the assistant misunderstood
    * (assistant.md § Handoff): the second hands the conversation off.
    */

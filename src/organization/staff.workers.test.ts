@@ -640,6 +640,26 @@ describe("passwords", () => {
     });
   });
 
+  it("still holds a member whose starting password Clerk may have set though the call failed", async () => {
+    const created = await newMember(["receptionist"]);
+    await replaceStartingPassword(created.userId);
+    fakeAccounts.failNext("setPassword");
+
+    await inObject(organization, (instance) =>
+      expect(
+        instance.setStartingPassword(adminCaller, {
+          memberId: created.memberId,
+          password: "another-start",
+        }),
+      ).rejects.toThrow("Clerk is unreachable"),
+    );
+
+    expect(await organization.listStaff(created)).toEqual({
+      ok: false,
+      reason: "mustChangePassword",
+    });
+  });
+
   it("refuses a starting password that is too short", async () => {
     const created = await newMember(["receptionist"]);
 

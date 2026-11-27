@@ -79,17 +79,38 @@ function refusalOf(error: unknown): "emailTaken" | PasswordRefusal | undefined {
   return undefined;
 }
 
+/** How long Clerk has to answer a call: its Backend API client sets no timeout of its own. */
+const clerkTimeoutMs = 15_000;
+
+/** `call`, or a failure once Clerk has not answered within `clerkTimeoutMs`. */
+async function answeredInTime<T>(call: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new DOMException("Clerk did not answer in time", "TimeoutError")),
+      clerkTimeoutMs,
+    );
+  });
+  try {
+    return await Promise.race([call, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function clerkAccounts(secretKey: string): Accounts {
   const users = createClerkClient({ secretKey }).users;
   return {
     async createUser({ name, email, password, metadata }) {
       try {
-        const user = await users.createUser({
-          emailAddress: [email],
-          password,
-          firstName: name,
-          publicMetadata: { ...metadata },
-        });
+        const user = await answeredInTime(
+          users.createUser({
+            emailAddress: [email],
+            password,
+            firstName: name,
+            publicMetadata: { ...metadata },
+          }),
+        );
         return { ok: true, userId: user.id };
       } catch (error) {
         const reason = refusalOf(error);
@@ -100,11 +121,11 @@ function clerkAccounts(secretKey: string): Accounts {
       }
     },
     async updateMetadata(userId, metadata) {
-      await users.updateUserMetadata(userId, { publicMetadata: { ...metadata } });
+      await answeredInTime(users.updateUserMetadata(userId, { publicMetadata: { ...metadata } }));
     },
     async setPassword(userId, password) {
       try {
-        await users.updateUser(userId, { password, signOutOfOtherSessions: false });
+        await answeredInTime(users.updateUser(userId, { password, signOutOfOtherSessions: false }));
         return { ok: true };
       } catch (error) {
         const reason = refusalOf(error);
@@ -116,7 +137,7 @@ function clerkAccounts(secretKey: string): Accounts {
     },
     async verifyPassword(userId, password) {
       try {
-        const { verified } = await users.verifyPassword({ userId, password });
+        const { verified } = await answeredInTime(users.verifyPassword({ userId, password }));
         return verified;
       } catch (error) {
         // A wrong password answers 422; anything else is a failure.
@@ -127,18 +148,18 @@ function clerkAccounts(secretKey: string): Accounts {
       }
     },
     async findUserByEmail(email) {
-      const { data } = await users.getUserList({ emailAddress: [email], limit: 1 });
+      const { data } = await answeredInTime(users.getUserList({ emailAddress: [email], limit: 1 }));
       const user = data[0];
       return user ? { userId: user.id, metadata: user.publicMetadata } : undefined;
     },
     async deleteUser(userId) {
-      await users.deleteUser(userId);
+      await answeredInTime(users.deleteUser(userId));
     },
     async ban(userId) {
-      await users.banUser(userId);
+      await answeredInTime(users.banUser(userId));
     },
     async unban(userId) {
-      await users.unbanUser(userId);
+      await answeredInTime(users.unbanUser(userId));
     },
   };
 }

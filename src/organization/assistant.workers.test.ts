@@ -1,4 +1,9 @@
-import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import {
+  abortAllDurableObjects,
+  env,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from "cloudflare:test";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { z } from "zod";
@@ -1134,6 +1139,82 @@ describe("a message the model could not read", () => {
     expect(await judgementsShown()).toEqual(["notForPractitioner"]);
     expect(textsToMeta()).toEqual([]);
     expect(await scheduledAlarm()).toBeNull();
+  });
+
+  /** How long a turn holds its conversation's messages, as `assistant.ts` claims them. */
+  const claimMs = 15 * minuteMs;
+
+  /**
+   * Loses the turn the alarm is running now, as an eviction or a deploy does:
+   * the object is aborted while the model writes, before the turn settles.
+   * Returns when the turn's claim lapses.
+   */
+  async function turnLostMidway() {
+    scriptedModel.script(() => new Promise<string>(() => {}));
+    const alarm = runDurableObjectAlarm(world.organization).catch((error: unknown) => error);
+    await scriptedModel.turnsStarted(world.organization, 1);
+    const lapsesAt = Date.now() + claimMs;
+    await abortAllDurableObjects();
+    expect(await alarm).toBeInstanceOf(Error);
+    // A stub to an aborted object is broken; a new one reaches the object as it starts again.
+    world.organization = env.ORGANIZATION.get(world.organization.id);
+    return lapsesAt;
+  }
+
+  it("retries a turn lost mid-way a minute after its claim lapses, and answers", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    vi.setSystemTime(Date.now() + 10_000);
+    const lapsesAt = await turnLostMidway();
+
+    const ranAt = await runAlarmsUntil(lapsesAt + minuteMs);
+
+    expect(ranAt.slice(-2)).toEqual([lapsesAt, lapsesAt + minuteMs]);
+    expect(scriptedModel.turns).toHaveLength(2);
+    expect(await judgementsShown()).toEqual(["notForPractitioner"]);
+    expect(textsToMeta().map((sent) => sent.text)).toEqual(["Hola, en qué te puedo ayudar?"]);
+    expect(await scheduledAlarm()).toBeNull();
+  });
+
+  it("hands a turn lost mid-way to reception once its claim lapses past the hand-off time", async () => {
+    await bookPatient("Martina", martinaPhone);
+    const sentAt = Date.now();
+    await patientWrites("me duele la muela");
+    vi.setSystemTime(sentAt + 18 * hourMs - minuteMs);
+    const lapsesAt = await turnLostMidway();
+
+    await runAlarmsUntil(sentAt + 24 * hourMs);
+
+    expect(await openHandoffs()).toEqual([
+      expect.objectContaining({
+        reason: "modelUnavailable",
+        forPractitioner: false,
+        createdAt: lapsesAt,
+      }),
+    ]);
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect(await judgementsShown()).toEqual(["notForPractitioner"]);
+    expect(textsToMeta()).toEqual([]);
+    expect(await scheduledAlarm()).toBeNull();
+  });
+
+  it("reads a lost turn's messages in the turn a newer message set, before the claim lapses", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    vi.setSystemTime(Date.now() + 10_000);
+    const lapsesAt = await turnLostMidway();
+    vi.setSystemTime(lapsesAt - 30_000);
+    await patientWrites("sigo acá");
+
+    const ranAt = await runAlarmsUntil(lapsesAt + minuteMs);
+
+    expect(ranAt).toHaveLength(1);
+    expect(ranAt[0]).toBeLessThan(lapsesAt);
+    expect(scriptedModel.turns[1]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: "[new messages]\nhola\nsigo acá",
+    });
+    expect(await judgementsShown()).toEqual(["notForPractitioner", "notForPractitioner"]);
   });
 });
 
