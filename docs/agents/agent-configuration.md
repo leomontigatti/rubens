@@ -49,8 +49,13 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
 
 Hooks are configuration, so they run in a headless Claude Code or Codex session too. A Capy
 thread runs none of them and does their work itself ([validation.md](./validation.md#hooks-inside-the-session)).
-The project's two:
+The project's three:
 
+- **`PreToolUse` on `Bash`**: `block-hook-bypass.py` refuses, with exit 2, a command that would
+  skip the pre-commit hook: `--no-verify` on a git command, `git commit -n`, `core.hooksPath`
+  through git, and `HUSKY=0`, `VP_GIT_HOOKS=0` or `VITE_GIT_HOOKS=0`. It splits the command
+  as the shell would, so a quoted commit message that names a flag passes. Its cases are in
+  `scripts/block-hook-bypass.test.ts`.
 - **`PostToolUse` on `Write|Edit`**: `format-edited-file.sh` runs `vp fmt` on each file the
   tool just wrote, silently, for the extensions Oxfmt formats.
 - **`Stop`**: `stop-typecheck-lint.sh` runs `vp check --no-fmt` (lint and type check),
@@ -65,9 +70,9 @@ The project's two:
 `SKIP_STOP_CHECKS` set to any value is the local bypass. The `Stop` gate keeps blocking while
 the failure persists; Claude Code force-closes the turn after 8 consecutive blocks.
 
-The shared hooks, wired at user level, add a `SessionStart` warning when a tool in the shared
-list or in `.agents/required-tools` is missing from PATH, and refuse `pkill -f`, whose pattern
-matches the agent's own Bash call; `pnpm dev:stop` stops this worktree's dev server instead.
+The shared workflow wires no hooks since agent-workflow#159, so nothing refuses `pkill -f`,
+whose pattern matches the agent's own Bash call; `pnpm dev:stop` stops this worktree's dev
+server instead.
 
 ## The agent shell's PATH
 

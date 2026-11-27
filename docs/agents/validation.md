@@ -122,7 +122,9 @@ reading the last two by exit code as [fallow.md](./fallow.md) says. Like the `St
 runs them only when the working tree changed a TypeScript or JavaScript file, a
 `package.json` or a `tsconfig`, and skips the two fallow gates on a `prototype/*` branch.
 
-Where they do run, they run three of these checks for you:
+Where they do run, they refuse a command that skips the pre-commit hook
+([agent-configuration.md](./agent-configuration.md#session-hooks)), and run three of these
+checks for you:
 
 - every file the agent writes is formatted;
 - the end of a turn is blocked while `pnpm check`'s lint or type check is red, or
@@ -132,10 +134,6 @@ Where they do run, they run three of these checks for you:
 - before those, the end of a turn is blocked with one line when `pnpm-lock.yaml` is
   newer than the installed dependencies: run `pnpm install --frozen-lockfile`, not a
   lint fix.
-
-The shared workflow's hooks, installed at user level and run in the same harnesses, add one
-more: `pkill -f` is refused, in favour of `pnpm dev:stop`
-([verification.md](./verification.md#cleanup)).
 
 The `Stop` hook is a backstop, not a substitute for running `pnpm check` yourself.
 `SKIP_STOP_CHECKS=1` turns it off for local work, never to get a red branch
