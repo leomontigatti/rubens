@@ -46,4 +46,4 @@ jobs:
       # Pinned like every other action, to a release tag's commit: a branch in the
       # comment fails zizmor once the branch moves. Dependabot proposes each new
       # tag, which is how a change to the shared rules arrives.
-      - uses: leomontigatti/agent-workflow/actions/review-record@26d0d4ddd743de3b976b389e9226bb7e4e88b2a5 # v1.4.0
+      - uses: leomontigatti/agent-workflow/actions/review-record@4250de9a419d697c916a008970841ecab7cac8df # v1.5.0
