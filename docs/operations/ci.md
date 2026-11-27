@@ -106,7 +106,7 @@ non-zero when one failed. After a force-push, check the run id it reports agains
 ## Pins
 
 Every external tool is pinned to an exact version, and every action to a commit SHA
-with its tag in a comment. The npm packages are bumped by a weekly T3 scheduled task,
+with its tag in a comment. The npm packages are bumped by a weekly Capy automation,
 minor and patch within each package's major, with the `vite` and `vitest` overrides
 moved beside `vite-plus` and the dependency skills copied again
 ([dependency-updates.md](../agents/dependency-updates.md)). Dependabot opens weekly
@@ -153,7 +153,7 @@ fallow and the audit compare against `origin/main`; fetch it first
 
 Required on every machine that commits. The pre-commit hook only warns and skips when the
 binary is absent, and the repo is public, so CI catches a leak only after it is pushed.
-`.agents/required-tools` lists it, so a session without it is warned at its start. Use the
+Use the
 version `GITLEAKS_VERSION` names in `ci.yml`:
 
 ```sh

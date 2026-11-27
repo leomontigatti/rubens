@@ -1,14 +1,14 @@
 # Workflows
 
-How work flows in a local session here: where it starts, what a recommendation
+How work flows in a session here: where it starts, what a recommendation
 needs behind it, and when a doc changes. The rules for branches, worktrees, PRs and
 investigating before editing are the shared `implement` skill's `THREADS.md`; how a
 rendered change is checked is [verification.md](./verification.md).
 
 ## Where work starts
 
-Implementation happens in a local T3 Code session. A session has a browser, the
-dev database and a human to ask. Three entry points, by how much is still unknown:
+Implementation happens in a Capy thread, on a cloud machine or on the user's laptop. A
+session has a browser, the dev database and a human to ask. Three entry points, by how much is still unknown:
 
 - **Small and clear** (a bug, a UI tweak, a one-slice feature): say it in the
   thread, or write an issue with what to build and its acceptance criteria. A
@@ -42,8 +42,9 @@ PR is ready to merge. Stop only if the seams are unclear.
 
 ## Worktrees here
 
-Beyond `THREADS.md`: the `t3.json` setup script installs dependencies before the
-agent starts; a worktree needs no `.env`
+Beyond `THREADS.md`: on a cloud machine the project's Setup installs dependencies before
+the agent starts, and a new worktree on the laptop needs `pnpm install --frozen-lockfile`
+first; a worktree needs no `.env`
 ([local-development.md](../operations/local-development.md)). A worktree's own dev port
 comes on its first `pnpm dev`
 ([local-development.md](../operations/local-development.md#one-port-per-worktree)); its state stays
