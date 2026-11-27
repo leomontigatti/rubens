@@ -12,7 +12,7 @@ The rename covers the Worker's name (and so its `workers.dev` URL), page titles,
 sign-in and app-shell text, the package name, the docs that name the product, and the
 code identifiers that carried the old name (the dev sign-in cookie, the session-change
 storage key). The ADRs before this one say "Rubens" as they were written; read it as
-underthing. The repository and its T3 project are still `rubens`, and their rename is a
+underthing. The repository is still `rubens`, and its rename is a
 separate follow-up: `underthing` is already the business site's repository. The Durable
 Object class, `Organization`, never carried the name, so no migration is needed.
 

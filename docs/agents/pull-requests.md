@@ -4,7 +4,7 @@ What underthing adds to the shared `pr` and `babysit-pr` skills, which hold the 
 title rule, the one-way doors, stacking and the babysit loop.
 
 PRs are squash-merged, so the title becomes the commit subject. Title, subject and body are
-English. Check a title with `pnpm check:pr-title "<title>"` before `gh pr create`; CI runs the
+English. Check a title with `pnpm check:pr-title "<title>"` before opening the PR with Capy's PR tool, never `gh pr create`; CI runs the
 same check (`pr-title`) on every PR.
 
 ## Base branch

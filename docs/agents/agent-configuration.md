@@ -5,8 +5,7 @@ session delegates.
 
 ## The shared workflow and what stays here
 
-The skills, the agent briefs (`reviewer`, `research`, `implementer`), their harness wrappers and
-the project-independent hooks live once, in `leomontigatti/agent-workflow`, installed at user
+The skills and the agent briefs (`reviewer`, `research`, `implementer`) live once, in `leomontigatti/agent-workflow`, installed at user
 level through `~/.agents/workflow` by its `install.sh`. Which model each role runs on is that
 repo's `agents/models.md`. This repo keeps only its own facts, in the files the shared
 `contract.md` lists, and the wiring a harness reads from the project:
@@ -15,7 +14,6 @@ repo's `agents/models.md`. This repo keeps only its own facts, in the files the 
 | --------------------- | ---------------------------------------------- | -------------------------------------------- | ---------------------- |
 | Repo instructions     | `AGENTS.md`                                    | `AGENTS.md` directly (no `CLAUDE.md`)        | `AGENTS.md` directly   |
 | Project hooks         | `.agents/hooks/*.sh`                           | the `hooks` block of `.claude/settings.json` | `.codex/hooks.json`    |
-| Tools on PATH         | `.agents/required-tools`                       | the shared `check-tool-path` hook            | the same hook          |
 | Permissions, launcher | `.claude/settings.json`, `.claude/launch.json` | directly                                     | none                   |
 
 - **`AGENTS.md` is the only instructions file.** There is no `CLAUDE.md`: Claude Code reads
@@ -65,22 +63,9 @@ The project's two:
 `SKIP_STOP_CHECKS` set to any value is the local bypass. The `Stop` gate keeps blocking while
 the failure persists; Claude Code force-closes the turn after 8 consecutive blocks.
 
-The shared hooks, wired at user level, add a `SessionStart` warning when a tool in the shared
-list or in `.agents/required-tools` is missing from PATH, and refuse `pkill -f`, whose pattern
-matches the agent's own Bash call; `pnpm dev:stop` stops this worktree's dev server instead.
-
-## The agent shell's PATH
-
-T3 Code, and the Claude Code and Codex sessions it starts, inherit PATH from the desktop login
-session. That session reads `~/.profile`, not `~/.bashrc`, so a tool directory added only in
-`~/.bashrc` is on PATH in a terminal and missing in an agent's shell. This machine needs fnm's
-default Node directory (`node` and `pnpm`) and pnpm's global bin directory (`playwright-cli`)
-there, both in `~/.profile`. `gitleaks` needs no entry: `/usr/local/bin`, where
-[ci.md](../operations/ci.md#installing-gitleaks-locally) installs it, and `~/.local/bin`, which
-the default `~/.profile` adds, are both on that PATH. A change takes effect at the next login.
-
-When the `SessionStart` warning fires, the fix is that profile line, made by the user. A session
-does not prefix its commands with `export PATH=…`: that hides the cause from the next session.
+The shared workflow wires no hooks since agent-workflow#159, so nothing refuses `pkill -f`,
+whose pattern matches the agent's own Bash call; `pnpm dev:stop` stops this worktree's dev
+server instead.
 
 ## Delegating to subagents
 

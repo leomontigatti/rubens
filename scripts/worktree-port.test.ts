@@ -8,17 +8,17 @@ import { choosePort, devPort, parseEnvPort, renderEnvLocal } from "./worktree-po
 
 describe("choosePort", () => {
   it("is stable for the same worktree", () => {
-    const first = choosePort("t3-a", new Set());
+    const first = choosePort("feat-a", new Set());
 
-    expect(choosePort("t3-a", new Set())).toBe(first);
+    expect(choosePort("feat-a", new Set())).toBe(first);
     expect(first).toBeGreaterThanOrEqual(5200);
     expect(first).toBeLessThan(6000);
   });
 
   it("steps past a port another worktree already claims", () => {
-    const taken = choosePort("t3-a", new Set());
+    const taken = choosePort("feat-a", new Set());
 
-    expect(choosePort("t3-a", new Set([taken]))).toBe(taken === 5999 ? 5200 : taken + 1);
+    expect(choosePort("feat-a", new Set([taken]))).toBe(taken === 5999 ? 5200 : taken + 1);
   });
 });
 

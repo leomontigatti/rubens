@@ -32,12 +32,12 @@ When the launch fails, check in this order:
   browser suite (`pnpm test:e2e`) always runs on the dev sign-in.
 - **Port in use**: `pnpm dev:stop` stops this worktree's own server; a port held by another
   worktree's server is that thread's, so leave it.
-- **`node`, `pnpm` or `playwright-cli` not found**: the `SessionStart` warning names it; the fix
-  is the user's ([the agent shell's PATH](./agent-configuration.md#the-agent-shells-path)).
+- **`node`, `pnpm` or `playwright-cli` not found**: the machine's setup is missing a tool; stop
+  and tell the user.
 
 ## Drive
 
-Drive with the Playwright CLI, `playwright-cli`, in a T3 thread too. It is installed globally with
+Drive with the Playwright CLI, `playwright-cli`. It is installed globally with
 a headless Chromium. Its scratch files go to `.playwright-cli/`, which is gitignored.
 
 - The design width is 1440 × 900; check the touched screen at 1280 too when it has a table or a
@@ -58,9 +58,6 @@ a headless Chromium. Its scratch files go to `.playwright-cli/`, which is gitign
 
 Quote any URL with a query string so the shell does not expand it. If `playwright-cli` is
 missing, stop and tell the user.
-
-T3's preview tools are for a quick look at a page, as the shared `implement` skill's `PREVIEW.md`
-says; a click made through `preview_evaluate` proves nothing about the path.
 
 ## Evidence
 
@@ -94,8 +91,7 @@ How the shared `prototype` skill's UI branch runs here.
 
 - `pnpm dev:stop` stops this worktree's dev server, found by its port and working directory.
   Never `pkill -f`.
-- Close every preview tab you opened with `t3_preview_close`, and every `playwright-cli` session
-  with `playwright-cli -s=<name> close`, since a session left open holds a Chromium.
+- Close every `playwright-cli` session with `playwright-cli -s=<name> close`, since a session left open holds a Chromium.
 
 ## Feature map
 
