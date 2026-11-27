@@ -4,17 +4,17 @@ Routes to the repo's conventions; each rule lives in the file a route names. The
 first section applies to every task; a line in the second applies when its leading
 word matches the task.
 
-The skills, agent briefs and shared hooks are the shared workflow in
+The skills and agent briefs are the shared workflow in
 `leomontigatti/agent-workflow`, installed at `~/.agents/workflow`; every harness loads them
 from the user's home ([agent-configuration.md](docs/agents/agent-configuration.md)), and on a
 Capy machine the project's Setup installs them. "Use the X skill" means read its `SKILL.md`
 and follow it in full, whatever the harness: `~/.agents/skills/X/` for a shared skill,
 `.agents/skills/X/` for one of this repo's own. This repo keeps only its own facts, in the contract files the shared
 `contract.md` lists: this file, [GLOSSARY.md](GLOSSARY.md), [docs/adr/](docs/adr/README.md),
-`t3.json`, `.agents/required-tools`, and under `docs/agents/`:
+and under `docs/agents/`:
 [validation.md](docs/agents/validation.md), [verification.md](docs/agents/verification.md),
 [review.md](docs/agents/review.md), [issue-tracker.md](docs/agents/issue-tracker.md),
-[pull-requests.md](docs/agents/pull-requests.md), [t3-dependencies.md](docs/agents/t3-dependencies.md),
+[pull-requests.md](docs/agents/pull-requests.md),
 [tdd-db.md](docs/agents/tdd-db.md), [tdd-frontend.md](docs/agents/tdd-frontend.md),
 [housekeeping.md](docs/agents/housekeeping.md) and [research.md](docs/agents/research.md).
 
@@ -68,5 +68,3 @@ and follow it in full, whatever the harness: `~/.agents/skills/X/` for a shared 
   [agent-configuration.md](docs/agents/agent-configuration.md).
 - **Local dev server, sign-in and the object's schema**: [local-development.md](docs/operations/local-development.md).
 - **Production infrastructure**: [infrastructure.md](docs/operations/infrastructure.md).
-- **T3 Code dependencies** (what this project assumes about T3 beyond the shared
-  workflow; read by the `t3-update-review` skill): [t3-dependencies.md](docs/agents/t3-dependencies.md).
