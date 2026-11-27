@@ -11,6 +11,7 @@ import type { SignupCompletion } from "#/lib/whatsapp.ts";
 import type {
   ConversationReference,
   MessageReference,
+  RejectedWebhookElement,
   WhatsappEvents,
 } from "#/lib/whatsapp-messages.ts";
 import type {
@@ -44,6 +45,7 @@ import type { Caller } from "#/organization/members.ts";
 import { OrganizationRuntime } from "#/organization/organization-runtime.ts";
 import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
 import { storeWhatsappEvents } from "#/organization/whatsapp-messages.ts";
+import { sealRejected, storeRejected } from "#/organization/rejected-webhook-events.ts";
 import { getWhatsappSettings } from "#/organization/whatsapp.ts";
 import { createTemplate, deleteTemplate, editTemplate } from "#/organization/templates.ts";
 import { reviewTemplate } from "#/organization/template-review.ts";
@@ -69,6 +71,20 @@ export abstract class OrganizationWhatsapp extends OrganizationRuntime {
       return { ok: false, reason: "notSetUp" } as const;
     }
     return this.armingOnWrite(() => storeWhatsappEvents(this.database, events));
+  }
+
+  /**
+   * The elements of Meta's webhook call the Worker could not read
+   * (`src/organization/rejected-webhook-events.ts`), refused as
+   * `storeWhatsappEvents` refuses.
+   */
+  async storeRejectedWebhookEvents(rejected: RejectedWebhookElement[]) {
+    const organizationId = organizationIdIn(this.database);
+    if (!organizationId) {
+      return { ok: false, reason: "notSetUp" } as const;
+    }
+    const sealed = await sealRejected(() => this.cipher(organizationId), rejected);
+    return this.armingOnWrite(() => storeRejected(this.database, sealed));
   }
 
   /** The open handoffs the member sees in the inbox (`src/organization/handoff-inbox.ts`). */

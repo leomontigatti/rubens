@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { fakeMetaFetch, fakesMeta } from "#/dev/fake-meta.ts";
+import { errorClass, log } from "#/lib/log.ts";
 import { fakeModel, fakesModel } from "#/dev/fake-model.ts";
 import { accountsFor } from "#/organization/accounts.ts";
 import { assistantTurnsJob } from "#/organization/assistant.ts";
@@ -13,6 +14,7 @@ import type { Accounts } from "#/organization/accounts.ts";
 import { migrateDatabase, openDatabase } from "#/organization/database.ts";
 import type { Database } from "#/organization/database.ts";
 import { organizationCipher } from "#/organization/encryption.ts";
+import type { OrganizationCipher } from "#/organization/encryption.ts";
 import {
   configuredWhatsappSettings,
   metaSignupFor,
@@ -22,6 +24,7 @@ import type { WhatsappCloud } from "#/organization/graph-api.ts";
 import type { Job, JobServices } from "#/organization/jobs.ts";
 import { optOutRemindersJob } from "#/organization/opt-out-holds.ts";
 import { outboxJob } from "#/organization/outbox.ts";
+import { rejectedWebhookEventsJob } from "#/organization/rejected-webhook-events.ts";
 import { authorize } from "#/organization/members.ts";
 import type { Acting, Caller, Refusal, Requirement } from "#/organization/members.ts";
 import type { EmailsInFlight } from "#/organization/staff.ts";
@@ -45,6 +48,7 @@ const jobs: readonly Job[] = [
   // After the turns, which can open handoffs and hold patients for an opt-out.
   handoffRemindersJob,
   optOutRemindersJob,
+  rejectedWebhookEventsJob,
 ];
 
 /**
@@ -74,6 +78,8 @@ export abstract class OrganizationRuntime extends DurableObject {
   protected readonly assistant: AssistantModel;
   /** What transcribes patients' voice notes (`src/organization/transcription.ts`). */
   protected readonly transcriber: Transcriber;
+  /** The organization's cipher (`src/organization/encryption.ts`), or `null` while the Worker has no key. */
+  protected readonly cipher: (organizationId: string) => Promise<OrganizationCipher | null>;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
@@ -81,6 +87,8 @@ export abstract class OrganizationRuntime extends DurableObject {
     this.accounts = accountsFor(env);
     this.assistant = fakesModel(env) ? fakeModel : assistantModelFor(env);
     this.transcriber = transcriberFor(env);
+    this.cipher = (organizationId) =>
+      organizationCipher(env.ORGANIZATION_ENCRYPTION_KEY, organizationId);
     const directory = env.WHATSAPP_DIRECTORY.get(
       env.WHATSAPP_DIRECTORY.idFromName(whatsappDirectoryName),
     );
@@ -91,8 +99,7 @@ export abstract class OrganizationRuntime extends DurableObject {
         claim: (entry) => directory.claim(entry),
         release: (organizationId) => directory.release(organizationId),
       },
-      cipher: (organizationId) =>
-        organizationCipher(env.ORGANIZATION_ENCRYPTION_KEY, organizationId),
+      cipher: this.cipher,
     });
     this.whatsapp = whatsappCloudFor(
       {
@@ -124,13 +131,33 @@ export abstract class OrganizationRuntime extends DurableObject {
     return authorized.ok ? this.armingOnWrite(() => work(authorized.acting)) : authorized;
   }
 
-  /** Runs every job, in the order of `jobs`, then sets the alarm for the next item. */
+  /**
+   * Runs every job, in the order of `jobs`, then sets the alarm for the next
+   * item. A job that throws keeps none after it from running nor the alarm
+   * from being set; the alarm then fails as the first did, so the platform
+   * retries it.
+   */
   override async alarm() {
     const services = this.#jobServices();
-    for (const job of jobs) {
-      await job.run(this.database, services);
+    const failures: unknown[] = [];
+    try {
+      for (const job of jobs) {
+        try {
+          await job.run(this.database, services);
+        } catch (error) {
+          log.error("organization-alarm", "a job failed", {
+            job: job.name,
+            error: errorClass(error),
+          });
+          failures.push(error);
+        }
+      }
+    } finally {
+      await this.#armAlarm();
     }
-    await this.#armAlarm();
+    if (failures.length > 0) {
+      throw failures[0];
+    }
   }
 
   /** Sets the alarm to the earliest due item, or clears it when nothing waits on time. */

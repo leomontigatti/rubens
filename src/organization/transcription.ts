@@ -23,6 +23,9 @@ export interface Transcriber {
   transcribe(audio: ArrayBuffer, mimeType: string): Promise<Transcript>;
 }
 
+/** A voice note's transcription on Workers AI, bounded, as the model's calls are (`assistant-model.ts`). */
+const transcriptionTimeoutMs = 60_000;
+
 export function transcriberFor(env: { AI?: Ai }): Transcriber {
   return {
     async transcribe(audio, mimeType) {
@@ -37,6 +40,7 @@ export function transcriberFor(env: { AI?: Ai }): Transcriber {
         threadId: crypto.randomUUID(),
         audio: new Blob([audio], { type: mimeType }),
         language: "es",
+        timeout: transcriptionTimeoutMs,
       });
       // Whisper reports the audio's length; its last segment's end stands in when it does not.
       const seconds = result.duration ?? result.segments?.at(-1)?.end ?? 0;

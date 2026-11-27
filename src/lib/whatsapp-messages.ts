@@ -63,6 +63,16 @@ export interface WhatsappEvents {
   numberEvents: WhatsappNumberEvent[];
 }
 
+/**
+ * An element of a signed webhook call underthing could not read, a message or
+ * a status, as Meta sent it (JSON), and where its shape broke: Zod's issue
+ * paths, keys and indexes with no values.
+ */
+export interface RejectedWebhookElement {
+  element: string;
+  issues: string[];
+}
+
 export const conversationReferenceSchema = z.object({ conversationId: z.uuid() });
 
 export type ConversationReference = z.input<typeof conversationReferenceSchema>;

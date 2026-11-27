@@ -10,6 +10,7 @@ export default defineConfig({
     "./src/organization/schema.ts",
     "./src/organization/whatsapp-schema.ts",
     "./src/organization/assistant-usage-schema.ts",
+    "./src/organization/webhook-schema.ts",
   ],
   out: "./src/organization/migrations",
 });

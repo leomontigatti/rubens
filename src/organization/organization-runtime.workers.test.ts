@@ -1,6 +1,9 @@
-import { runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { assistantTurnsJob } from "#/organization/assistant.ts";
+import { optOutRemindersJob } from "#/organization/opt-out-holds.ts";
+import { outboxJob } from "#/organization/outbox.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 import {
   adminCaller,
@@ -54,6 +57,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("with a booking confirmation queued", () => {
@@ -130,6 +134,20 @@ describe("with a booking confirmation queued", () => {
 
     release();
     expect((await edit).ok).toBe(false);
+    expect(await alarmOf(world.organization)).toBe(dueAt);
+  });
+  it("runs the jobs after one that throws, sets the alarm again, then fails as it did", async () => {
+    // The outbox runs first, and throws before it sends the confirmation, still due.
+    vi.spyOn(outboxJob, "run").mockRejectedValueOnce(new Error("The outbox could not run"));
+    const turns = vi.spyOn(assistantTurnsJob, "run");
+    const optOutReminders = vi.spyOn(optOutRemindersJob, "run");
+
+    await expect(runDurableObjectAlarm(world.organization)).rejects.toThrow(
+      "The outbox could not run",
+    );
+
+    expect(turns).toHaveBeenCalledOnce();
+    expect(optOutReminders).toHaveBeenCalledOnce();
     expect(await alarmOf(world.organization)).toBe(dueAt);
   });
 });

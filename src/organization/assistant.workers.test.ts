@@ -18,7 +18,11 @@ import {
 } from "#/organization/organization.test-support.ts";
 import { longPauseNote } from "#/lib/assistant.ts";
 import { splitPhone } from "#/lib/phones.ts";
-import { whatsappMessage, whatsappNumberHold } from "#/organization/whatsapp-schema.ts";
+import {
+  conversation,
+  whatsappMessage,
+  whatsappNumberHold,
+} from "#/organization/whatsapp-schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
 // go to the fake Meta, and the model only through its port, scripted per test.
@@ -1134,6 +1138,77 @@ describe("a message the model could not read", () => {
     expect(await judgementsShown()).toEqual(["notForPractitioner"]);
     expect(textsToMeta()).toEqual([]);
     expect(await scheduledAlarm()).toBeNull();
+  });
+
+  /** How long a turn holds its conversation's messages, as `assistant.ts` claims them. */
+  const claimMs = 15 * minuteMs;
+
+  /**
+   * Leaves the conversation as a turn the isolate lost mid-way leaves it, its
+   * wait claimed now and nothing settled: an eviction, a deploy, or a throw
+   * out of the alarm. Returns when the claim lapses.
+   */
+  async function turnLostMidway() {
+    await inStorage(world.organization, (database) =>
+      database
+        .update(conversation)
+        .set({ assistantDueAt: null, turnClaimedUntil: Date.now() + claimMs })
+        .run(),
+    );
+    return Date.now() + claimMs;
+  }
+
+  it("retries a turn lost mid-way a minute after its claim lapses, and answers", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    vi.setSystemTime(Date.now() + 10_000);
+    const lapsesAt = await turnLostMidway();
+
+    const ranAt = await runAlarmsUntil(lapsesAt + minuteMs);
+
+    expect(ranAt.slice(-2)).toEqual([lapsesAt, lapsesAt + minuteMs]);
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect(await judgementsShown()).toEqual(["notForPractitioner"]);
+    expect(textsToMeta().map((sent) => sent.text)).toEqual(["Hola, en qué te puedo ayudar?"]);
+    expect(await scheduledAlarm()).toBeNull();
+  });
+
+  it("hands a turn lost mid-way to reception once its claim lapses past the hand-off time", async () => {
+    await bookPatient("Martina", martinaPhone);
+    const sentAt = Date.now();
+    await patientWrites("me duele la muela");
+    vi.setSystemTime(sentAt + 18 * hourMs - minuteMs);
+    const lapsesAt = await turnLostMidway();
+
+    await runAlarmsUntil(sentAt + 24 * hourMs);
+
+    expect(await openHandoffs()).toEqual([
+      expect.objectContaining({
+        reason: "modelUnavailable",
+        forPractitioner: false,
+        createdAt: lapsesAt,
+      }),
+    ]);
+    expect(scriptedModel.turns).toHaveLength(0);
+    expect(await judgementsShown()).toEqual(["notForPractitioner"]);
+    expect(textsToMeta()).toEqual([]);
+    expect(await scheduledAlarm()).toBeNull();
+  });
+
+  it("reads a lost turn's messages in the turn a newer message set, before the claim lapses", async () => {
+    await bookPatient("Martina", martinaPhone);
+    await patientWrites("hola");
+    vi.setSystemTime(Date.now() + 10_000);
+    const lapsesAt = await turnLostMidway();
+    vi.setSystemTime(lapsesAt - 30_000);
+    await patientWrites("sigo acá");
+
+    const ranAt = await runAlarmsUntil(lapsesAt + minuteMs);
+
+    expect(ranAt).toHaveLength(1);
+    expect(ranAt[0]).toBeLessThan(lapsesAt);
+    expect(scriptedModel.turns).toHaveLength(1);
+    expect(await judgementsShown()).toEqual(["notForPractitioner", "notForPractitioner"]);
   });
 });
 

@@ -95,6 +95,14 @@ export interface AssistantModel {
 /** A turn's model calls: enough for a lookup or two, the judgement and the reply. */
 export const maxModelCalls = 8;
 
+/**
+ * Each call to Anthropic's API, its retry included: bounded, so one that
+ * hangs cannot hold the alarm, which judges turns one at a time, past a
+ * turn's claim (`assistant.ts`). The SDK's defaults are ten minutes and two
+ * retries.
+ */
+const anthropicRequest = { timeout: 30_000, maxRetries: 1 };
+
 /** Reports each call's tokens to `recordUsage`: TanStack AI's hook runs once per call. */
 function usageOf(recordUsage: RecordUsage): ChatMiddleware {
   return {
@@ -114,7 +122,7 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
     if (!apiKey) {
       throw new Error("The assistant has no Anthropic API key: check missingSetting() first");
     }
-    return createAnthropicChat(assistantModelId, apiKey);
+    return createAnthropicChat(assistantModelId, apiKey, anthropicRequest);
   };
   return {
     missingSetting: () => (env.ANTHROPIC_API_KEY ? null : "missingApiKey"),

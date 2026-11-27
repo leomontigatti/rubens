@@ -16,7 +16,8 @@ import { flag, id, instant, timestamps } from "#/organization/schema-columns.ts"
 // local dates (`YYYY-MM-DD`) are text, read in an office's IANA zone.
 //
 // The WhatsApp tables are in `whatsapp-schema.ts`, the assistant's usage in
-// `assistant-usage-schema.ts`. After editing any of them,
+// `assistant-usage-schema.ts`, the webhook's rejected elements in
+// `webhook-schema.ts`. After editing any of them,
 // run `pnpm organization:generate`, which adds a
 // migration; a migration on `main` has run in deployed objects and is never edited.
 

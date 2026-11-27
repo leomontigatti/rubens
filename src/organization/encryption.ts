@@ -6,7 +6,7 @@
 // or as another kind of value, does not open.
 
 /** What a sealed value is, bound into it so it opens only as that. */
-export type SealedPurpose = "whatsappAccessToken" | "whatsappPin";
+export type SealedPurpose = "whatsappAccessToken" | "whatsappPin" | "rejectedWebhookEvent";
 
 export interface OrganizationCipher {
   seal(plaintext: string, purpose: SealedPurpose): Promise<string>;

@@ -154,12 +154,26 @@ export interface WhatsappCloud {
 /** What a boundary module calls instead of the global `fetch`, so its tests inject one. */
 export type Fetcher = typeof fetch;
 
+/** The global `fetch`, aborted when Meta sends no headers in 15 seconds: a media's body then streams at the browser's pace. */
+const metaFetch: Fetcher = async (input, init) => {
+  const answered = new AbortController();
+  const timer = setTimeout(
+    () => answered.abort(new DOMException("No answer", "TimeoutError")),
+    15_000,
+  );
+  try {
+    return await fetch(input, { ...init, signal: answered.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 /** Meta's codes for a token it no longer accepts: expired or invalidated (190), or a user who blocked the app (0). */
 const refusedTokenCodes = new Set([0, 190]);
 
 export function whatsappCloudFor(
   connection: CloudConnection,
-  fetcher: Fetcher = (input, init) => fetch(input, init),
+  fetcher: Fetcher = metaFetch,
 ): WhatsappCloud {
   /** Meta's answer to a call made with `token`, which is reported when Meta refused it. */
   async function answerOf(response: Response, token: string) {
@@ -410,10 +424,7 @@ export interface MetaSignup {
   subscribeApp(token: string, businessAccountId: string): Promise<MetaDone>;
 }
 
-export function metaSignupFor(
-  settings: SignupSettings,
-  fetcher: Fetcher = (input, init) => fetch(input, init),
-): MetaSignup {
+export function metaSignupFor(settings: SignupSettings, fetcher: Fetcher = metaFetch): MetaSignup {
   const graph = `https://graph.facebook.com/${graphApiVersion}`;
   const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
