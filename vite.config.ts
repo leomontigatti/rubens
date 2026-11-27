@@ -158,6 +158,17 @@ const vendoredSkills = [".agents/skills/**", ".claude/skills/**"];
 // Where a network call belongs, for the ban on the global `fetch` below.
 const fetchBan =
   "A network call goes through the module that owns its boundary, where tests inject a fetcher: Meta's Graph API through src/organization/graph-api.ts (whatsappCloudFor, metaSignupFor), typed with its Fetcher. A new external service gets a module of its own, added to this rule's override in vite.config.ts.";
+const fetchProperties = ["globalThis", "window", "self"].map((object) => ({
+  object,
+  property: "fetch",
+  message: fetchBan,
+}));
+// Only `send()` in src/organization/sending.ts reaches Meta's send calls.
+const sendProperties = ["sendText", "sendTemplate"].map((property) => ({
+  property,
+  message:
+    "A message reaches Meta only through send() in src/organization/sending.ts, which checks that it may go, holds the number on a limit and stores the message (docs/agents/codebase-map.md).",
+}));
 
 // The organization object's migrations are `.sql` files its generated index
 // imports (`src/organization/migrations/migrations.js`): each loads as its text.
@@ -199,6 +210,7 @@ export default defineConfig({
       "@shadcn/lint",
       "./scripts/oxlint-ui-plugin.mjs",
       "./scripts/oxlint-tests-plugin.mjs",
+      "./scripts/oxlint-object-plugin.mjs",
       "@nkzw/oxlint-config/quality/index.js",
     ],
     settings: {
@@ -230,6 +242,7 @@ export default defineConfig({
       "quality/no-reflect-apply": "error",
       "quality/no-reflect-get": "error",
       "quality/no-unknown-type-aliases": "error",
+      "object/no-await-in-transaction": "error",
       "ui/alert-structure": "error",
       "ui/create-names-thing": "error",
       "ui/no-bare-label": "error",
@@ -298,14 +311,7 @@ export default defineConfig({
       ],
       "no-console": "error",
       "no-restricted-globals": ["error", { name: "fetch", message: fetchBan }],
-      "no-restricted-properties": [
-        "error",
-        ...["globalThis", "window", "self"].map((object) => ({
-          object,
-          property: "fetch",
-          message: fetchBan,
-        })),
-      ],
+      "no-restricted-properties": ["error", ...fetchProperties, ...sendProperties],
     },
     overrides: [
       {
@@ -353,7 +359,14 @@ export default defineConfig({
         files: ["src/organization/graph-api.ts", "scripts/**"],
         rules: {
           "no-restricted-globals": "off",
-          "no-restricted-properties": "off",
+          "no-restricted-properties": ["error", ...sendProperties],
+        },
+      },
+      {
+        // The one place a message is sent to Meta.
+        files: ["src/organization/sending.ts"],
+        rules: {
+          "no-restricted-properties": ["error", ...fetchProperties],
         },
       },
       {

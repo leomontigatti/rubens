@@ -53,4 +53,5 @@ organization's data: the organization object's methods and the area modules in
   `appointmentOf`, `at`, `expectOk`, `inStorage`, `auditEntriesFor`, `fakeAccounts`, `fakeMeta`). Extend it before adding another support file
   ([coding-standards.md](./coding-standards.md#test-support-files)).
 - **A schema change** is `src/organization/schema.ts` (or `whatsapp-schema.ts`, `assistant-usage-schema.ts`) plus `pnpm organization:generate`, and the
-  generated SQL is read before it is committed. A migration on `main` is never edited.
+  generated SQL is read before it is committed. A migration on `main` is never edited
+  (`pnpm check:migrations`).
