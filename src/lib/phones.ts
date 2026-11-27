@@ -50,9 +50,26 @@ export function parsePhoneEntry(entry: PhoneEntry): PhoneResult {
     return { ok: false, reason: "invalidPhone" };
   }
   const parsed = parsePhoneNumberFromString(number, country);
-  return parsed?.isValid() && parsed.countryCallingCode === getCountryCallingCode(country)
-    ? { ok: true, phone: parsed.number }
+  const phone =
+    parsed?.isValid() && parsed.countryCallingCode === getCountryCallingCode(country)
+      ? parsed.number
+      : null;
+  return phone !== null && reopens(phone)
+    ? { ok: true, phone }
     : { ok: false, reason: "invalidPhone" };
+}
+
+/**
+ * Whether a phone, split into its field again, reads back as itself: a number
+ * valid only for the country picked can fail to, and would then block saving
+ * the record it belongs to.
+ */
+function reopens(phone: string): boolean {
+  const entry = splitPhone(phone);
+  const parsed = isSupportedCountry(entry.country)
+    ? parsePhoneNumberFromString(entry.number, entry.country)
+    : undefined;
+  return parsed?.isValid() === true && parsed.number === phone;
 }
 
 export const emptyPhoneEntry: PhoneEntry = { country: defaultRegion, number: "" };
@@ -63,13 +80,16 @@ export const emptyPhoneEntry: PhoneEntry = { country: defaultRegion, number: "" 
  */
 export function splitPhone(phone: string): PhoneEntry {
   const parsed = parsePhoneNumberFromString(phone);
-  if (!parsed?.country) {
+  const country = parsed?.country ?? parsed?.getPossibleCountries()[0];
+  if (!parsed || !country) {
     return { country: defaultRegion, number: phone.replace(/\D/g, "") };
   }
   const national = parsed.nationalNumber;
-  const number =
-    parsed.country === defaultRegion ? national.replace(/^9(?=\d{10}$)/, "") : national;
-  return { country: parsed.country, number };
+  if (country === defaultRegion) {
+    return { country, number: national.replace(/^9(?=\d{10}$)/, "") };
+  }
+  const readsBack = parsePhoneNumberFromString(national, country)?.number === parsed.number;
+  return { country, number: readsBack ? national : parsed.formatNational().replace(/\D/g, "") };
 }
 
 const argentineNumber = /^(?:11\d{8}|[23]\d{9})$/;

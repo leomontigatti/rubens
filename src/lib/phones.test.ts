@@ -1,6 +1,14 @@
+import fc from "fast-check";
+import { getCountries, parsePhoneNumberFromString } from "libphonenumber-js";
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatPhone, parsePhone, parsePhoneEntry, splitPhone } from "#/lib/phones.ts";
+import {
+  formatPhone,
+  parsePhone,
+  parsePhoneEntry,
+  phoneSpellings,
+  splitPhone,
+} from "#/lib/phones.ts";
 
 describe("parsePhone", () => {
   it.each([
@@ -96,6 +104,8 @@ describe("parsePhoneEntry", () => {
   it.each([
     ["ES", "12"],
     ["XX", "612345678"],
+    ["IM", "7676066122"],
+    ["BY", "08142331369"],
   ])("refuses a number of %s that cannot be valid there: %s", (country, number) => {
     expect(parsePhoneEntry({ country, number })).toEqual({ ok: false, reason: "invalidPhone" });
   });
@@ -122,10 +132,69 @@ describe("splitPhone", () => {
     expect(splitPhone("")).toEqual({ country: "AR", number: "" });
   });
 
-  it.each(["+5493515551234", "+34612345678", "+12025550123"])(
+  it.each(["+5493515551234", "+34612345678", "+12025550123", "+35811323", "+358990900"])(
     "gives back %s when the split is saved unchanged",
     (phone) => {
       expect(parsePhoneEntry(splitPhone(phone))).toEqual({ ok: true, phone });
     },
   );
+});
+
+describe("phone round trips", () => {
+  const digits = fc.string({
+    unit: fc.constantFrom(..."0123456789".split("")),
+    minLength: 4,
+    maxLength: 13,
+  });
+
+  const savedPhone = fc
+    .record({ country: fc.constantFrom(...getCountries()), number: digits })
+    .map(parsePhoneEntry)
+    .filter((result) => result.ok)
+    .map((result) => (result.ok ? result.phone : ""));
+
+  const argentinePhone = fc
+    .tuple(
+      fc.constantFrom("+54", "+549"),
+      fc.oneof(
+        digits.map((rest) => `11${rest}`.padEnd(10, "0").slice(0, 10)),
+        fc
+          .tuple(fc.constantFrom("2", "3"), digits)
+          .map(([area, rest]) => `${area}${rest}`.padEnd(10, "0").slice(0, 10)),
+      ),
+    )
+    .map(([prefix, national]) => `${prefix}${national}`)
+    .filter((phone) => parsePhoneNumberFromString(phone)?.isValid() === true);
+
+  // Catches a number valid only for the country picked, whose E.164 then reopens
+  // as Argentine digits, and a split that keeps or drops the wrong mobile 9.
+  it("reopens any phone the field saved and saves it back unchanged", () => {
+    fc.assert(
+      fc.property(savedPhone, (phone) => {
+        expect(parsePhoneEntry(splitPhone(phone))).toEqual({ ok: true, phone });
+      }),
+      { numRuns: 1000 },
+    );
+  });
+
+  // Catches a shown number that search reads as some other phone: the mobile's
+  // 9 or the area code lost between formatting and parsing.
+  it("finds an Argentine phone when searched as it is shown", () => {
+    fc.assert(
+      fc.property(argentinePhone, (phone) => {
+        const searched = parsePhone(formatPhone(phone));
+        expect(searched === null ? [] : phoneSpellings(searched)).toContain(phone);
+      }),
+    );
+  });
+
+  // Catches a spelling list that swaps the phone for its other spelling, which
+  // would hide a conversation stored as typed.
+  it("spells every phone at least as itself", () => {
+    fc.assert(
+      fc.property(fc.oneof(savedPhone, argentinePhone, fc.string()), (phone) => {
+        expect(phoneSpellings(phone)).toContain(phone);
+      }),
+    );
+  });
 });

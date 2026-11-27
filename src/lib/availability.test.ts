@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -13,6 +14,11 @@ import {
   outsideWorkingTimeWithin,
 } from "#/lib/availability.ts";
 import type { AvailabilityInput, AvailabilitySchedule } from "#/lib/availability.ts";
+import { formatTime, practiceTimeZone } from "#/lib/dates.ts";
+import { shiftDate, weekdayOf } from "#/lib/schedules.ts";
+import { instantOf } from "#/lib/time-ranges.ts";
+import type { TimeRange } from "#/lib/time-ranges.ts";
+import { clockTime, firstMonday, minutesOf, weeklySlot } from "#/test-support/weekly-slots.ts";
 
 // Buenos Aires is UTC-3 all year, so 09:00 there is 12:00Z. 2099-01-05 is a Monday.
 
@@ -431,5 +437,177 @@ describe("the query form's own check", () => {
     ["the duration", { ...complete, duracion: undefined }],
   ])("refuses a query missing %s", (_missing, search) => {
     expect(availabilitySearchProblem(search)).not.toBeNull();
+  });
+});
+
+describe("free starts and working time on any input", () => {
+  const minute = 60_000;
+  const step = 5 * minute;
+  const midnight = +instantOf(firstMonday, "00:00", practiceTimeZone);
+  const days = Array.from({ length: 19 }, (_, day) => shiftDate(firstMonday, day - 1));
+
+  const windows = fc
+    .tuple(fc.integer({ min: 0, max: 13 * 288 }), fc.integer({ min: 1, max: 3 * 288 }))
+    .map(([start, length]) => ({
+      start: new Date(midnight + start * step),
+      end: new Date(midnight + (start + length) * step),
+    }));
+  const rangeNear = (window: TimeRange) =>
+    fc
+      .tuple(
+        fc.integer({ min: -24, max: (+window.end - +window.start) / step + 24 }),
+        fc.integer({ min: 1, max: 120 }),
+      )
+      .map(([start, length]) => ({
+        start: new Date(+window.start + start * step),
+        end: new Date(+window.start + (start + length) * step),
+      }));
+  const rangesNear = (window: TimeRange) => fc.array(rangeNear(window), { maxLength: 3 });
+  const schedule = fc
+    .record({
+      slot: weeklySlot,
+      officeId: fc.constantFrom("office-a", "office-b"),
+      roomId: fc.constantFrom("room-1", "room-2"),
+    })
+    .map(({ slot, officeId, roomId }) => ({ ...slot, officeId, roomId }));
+  const inputs = windows.chain((window) =>
+    fc.record({
+      schedules: fc.array(schedule, { minLength: 1, maxLength: 3 }),
+      timeOff: rangesNear(window),
+      closures: rangesNear(window),
+      busy: rangesNear(window),
+      roomBusy: fc.array(
+        fc.record({ roomId: fc.constantFrom("room-1", "room-2"), during: rangeNear(window) }),
+        { maxLength: 3 },
+      ),
+      gridMinutes: fc.integer({ min: 5, max: 60 }),
+      durationMinutes: fc.integer({ min: 5, max: 180 }),
+      window: fc.constant(window),
+    }),
+  );
+
+  const meets = (a: TimeRange, b: TimeRange) => a.start < b.end && b.start < a.end;
+  const blockedFor = (input: AvailabilityInput, roomId: string) => [
+    ...input.timeOff,
+    ...input.closures,
+    ...input.busy,
+    ...input.roomBusy.filter((busy) => busy.roomId === roomId).map(({ during }) => during),
+  ];
+  const spanOf = (start: Date, input: AvailabilityInput) => ({
+    start,
+    end: new Date(+start + input.durationMinutes * minute),
+  });
+
+  // Catches a start off the grid or outside the window, a result out of time
+  // order, a span that meets something blocking it (a room's busy range read
+  // for the wrong room) or that a booking would refuse as outside working time,
+  // and a start offered in a room no schedule there covers.
+  it("offers only starts on the grid, in the window, in order, in a covering schedule's room and free for the whole duration", () => {
+    fc.assert(
+      fc.property(inputs, (input) => {
+        const starts = findFreeStarts(input);
+        starts.forEach((free, index) => {
+          const span = spanOf(free.start, input);
+          expect(minutesOf(formatTime(free.start, practiceTimeZone)) % input.gridMinutes).toBe(0);
+          expect(+free.start).toBeGreaterThanOrEqual(+input.window.start);
+          expect(+free.start).toBeLessThan(+input.window.end);
+          expect(+free.start).toBeGreaterThanOrEqual(+(starts[index - 1]?.start ?? 0));
+          expect(blockedFor(input, free.roomId).some((range) => meets(range, span))).toBe(false);
+          expect(outsideWorkingTime(span, free.officeId, input)).toBeNull();
+          const place = input.schedules.filter(
+            (slot) => slot.officeId === free.officeId && slot.roomId === free.roomId,
+          );
+          expect(coveringSchedule(place, span)).toBeDefined();
+        });
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  // Catches a free grid start that is never offered: the first grid point of
+  // an occurrence rounded the wrong way, a last start that still fits dropped,
+  // or a date of the window skipped.
+  it("offers every grid start that fits a schedule and meets nothing", () => {
+    fc.assert(
+      fc.property(inputs, (input) => {
+        const offered = new Set(
+          findFreeStarts(input).map((free) => `${+free.start} ${free.officeId} ${free.roomId}`),
+        );
+        for (const slot of input.schedules) {
+          for (const date of days) {
+            const applies =
+              slot.weekdays.includes(weekdayOf(date)) &&
+              slot.firstDate <= date &&
+              (slot.lastDate === null || date <= slot.lastDate);
+            if (!applies) {
+              continue;
+            }
+            const occurrenceEnd = instantOf(date, slot.endTime, practiceTimeZone);
+            for (let point = 0; point < 24 * 60; point += input.gridMinutes) {
+              const span = spanOf(instantOf(date, clockTime(point), practiceTimeZone), input);
+              const free =
+                point >= minutesOf(slot.startTime) &&
+                span.end <= occurrenceEnd &&
+                span.start >= input.window.start &&
+                span.start < input.window.end &&
+                !blockedFor(input, slot.roomId).some((range) => meets(range, span));
+              if (free) {
+                expect(offered).toContain(`${+span.start} ${slot.officeId} ${slot.roomId}`);
+              }
+            }
+          }
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  // Catches the fast path drifting from the one-span check: an occurrence
+  // that ends with the span counted as not covering it, or a date of the
+  // reach whose occurrences are left out.
+  it("judges every span inside the reach as the one-span check does", () => {
+    const cases = inputs.chain(({ window, ...input }) => {
+      const reached = days.filter(
+        (date) =>
+          instantOf(date, "00:00", practiceTimeZone) < window.end &&
+          instantOf(shiftDate(date, 1), "00:00", practiceTimeZone) > window.start,
+      );
+      const inReach = (date: string, from: number, to: number) => {
+        const start = Math.max(+instantOf(date, clockTime(from), practiceTimeZone), +window.start);
+        const end = Math.min(+instantOf(date, clockTime(to), practiceTimeZone), +window.end);
+        return start < end ? { start: new Date(start), end: new Date(end) } : window;
+      };
+      const anySpan = fc
+        .tuple(
+          fc.constantFrom(...reached),
+          fc.integer({ min: 0, max: 94 }),
+          fc.integer({ min: 1, max: 32 }),
+        )
+        .map(([date, quarter, length]) =>
+          inReach(date, quarter * 15, Math.min(quarter + length, 95) * 15),
+        );
+      const occurrenceTail = fc
+        .tuple(fc.constantFrom(...reached), fc.constantFrom(...input.schedules), fc.nat())
+        .map(([date, slot, seed]) => {
+          const from = minutesOf(slot.startTime);
+          const to = minutesOf(slot.endTime);
+          return inReach(date, from + (seed % ((to - from) / 15)) * 15, to);
+        });
+      const span = fc.oneof(anySpan, occurrenceTail);
+      return fc.record({
+        workingTime: fc.constant({ ...input, window }),
+        spans: fc.array(span, { minLength: 1, maxLength: 10 }),
+        officeId: fc.constantFrom("office-a", "office-b"),
+      });
+    });
+    fc.assert(
+      fc.property(cases, ({ workingTime, spans, officeId }) => {
+        const within = outsideWorkingTimeWithin(workingTime, workingTime.window);
+        for (const span of spans) {
+          expect(within(span, officeId)).toBe(outsideWorkingTime(span, officeId, workingTime));
+        }
+      }),
+      { numRuns: 300 },
+    );
   });
 });

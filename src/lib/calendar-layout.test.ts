@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -7,6 +8,7 @@ import {
   visibleHours,
   visibleWeekHours,
 } from "#/lib/calendar-layout.ts";
+import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 
 const day = { start: at("08:00"), end: at("20:00") };
 
@@ -252,5 +254,59 @@ describe("a day's cells and cards together", () => {
     const lanes = [...cards.map((card) => card.lane), cells[0]!.lane];
     expect(new Set(lanes).size).toBe(3);
     expect(cells[0]!.lanes).toBe(3);
+  });
+});
+
+describe("laying out any column", () => {
+  const minute = 60_000;
+  const blocks = fc.array(
+    fc
+      .tuple(fc.integer({ min: 0, max: 60 }), fc.integer({ min: 1, max: 16 }))
+      .map(([start, length]) => ({ start: start * 15 - 120, end: (start + length) * 15 - 120 })),
+    { maxLength: 10 },
+  );
+  const placedOf = (spans: { start: number; end: number }[]) =>
+    layoutColumn(
+      spans.map(({ start, end }, index) => ({
+        id: String(index),
+        start: new Date(+day.start + start * minute),
+        end: new Date(+day.start + end * minute),
+      })),
+      day,
+    );
+
+  // Catches a block inside the day left out, placed twice or clipped wrong, a
+  // lane reused while its block still runs, a lane count below the lanes used,
+  // and a chain of overlaps that splits into groups of different widths.
+  it("places every block in the day once, clipped to the day, on a lane of its own while it overlaps, with its whole chain's lane count", () => {
+    fc.assert(
+      fc.property(blocks, (spans) => {
+        const placed = placedOf(spans);
+        const inDay = spans.flatMap(({ start, end }, index) =>
+          start < 720 && end > 0 ? [String(index)] : [],
+        );
+        const byId = (a: string, b: string) => a.localeCompare(b);
+        expect(placed.map((block) => block.id).sort(byId)).toEqual(inDay.sort(byId));
+        const clipped = (block: PlacedBlock) => {
+          const { start, end } = spans[Number(block.id)] ?? { start: NaN, end: NaN };
+          return { start: Math.max(start, 0), end: Math.min(end, 720) };
+        };
+        const overlap = (a: PlacedBlock, b: PlacedBlock) =>
+          clipped(a).start < clipped(b).end && clipped(b).start < clipped(a).end;
+        for (const block of placed) {
+          const { start, end } = clipped(block);
+          expect([block.top, block.height]).toEqual([start, end - start]);
+          expect(block.lane).toBeGreaterThanOrEqual(0);
+          expect(block.lane).toBeLessThan(block.lanes);
+          for (const other of placed) {
+            if (other !== block && overlap(block, other)) {
+              expect(other.lane).not.toBe(block.lane);
+              expect(other.lanes).toBe(block.lanes);
+            }
+          }
+        }
+      }),
+      { numRuns: 500 },
+    );
   });
 });
