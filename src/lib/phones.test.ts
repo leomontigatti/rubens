@@ -105,6 +105,7 @@ describe("parsePhoneEntry", () => {
     ["ES", "12"],
     ["XX", "612345678"],
     ["IM", "7676066122"],
+    ["BY", "08142331369"],
   ])("refuses a number of %s that cannot be valid there: %s", (country, number) => {
     expect(parsePhoneEntry({ country, number })).toEqual({ ok: false, reason: "invalidPhone" });
   });
@@ -131,7 +132,7 @@ describe("splitPhone", () => {
     expect(splitPhone("")).toEqual({ country: "AR", number: "" });
   });
 
-  it.each(["+5493515551234", "+34612345678", "+12025550123", "+18005550123"])(
+  it.each(["+5493515551234", "+34612345678", "+12025550123", "+35811323", "+358990900"])(
     "gives back %s when the split is saved unchanged",
     (phone) => {
       expect(parsePhoneEntry(splitPhone(phone))).toEqual({ ok: true, phone });

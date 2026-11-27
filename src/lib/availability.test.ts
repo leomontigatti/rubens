@@ -499,9 +499,10 @@ describe("free starts and working time on any input", () => {
   });
 
   // Catches a start off the grid or outside the window, a result out of time
-  // order, and a span that meets something blocking it (a room's busy range
-  // read for the wrong room) or that a booking would refuse as outside working time.
-  it("offers only starts on the grid, in the window, in order and free for the whole duration", () => {
+  // order, a span that meets something blocking it (a room's busy range read
+  // for the wrong room) or that a booking would refuse as outside working time,
+  // and a start offered in a room no schedule there covers.
+  it("offers only starts on the grid, in the window, in order, in a covering schedule's room and free for the whole duration", () => {
     fc.assert(
       fc.property(inputs, (input) => {
         const starts = findFreeStarts(input);
@@ -513,6 +514,10 @@ describe("free starts and working time on any input", () => {
           expect(+free.start).toBeGreaterThanOrEqual(+(starts[index - 1]?.start ?? 0));
           expect(blockedFor(input, free.roomId).some((range) => meets(range, span))).toBe(false);
           expect(outsideWorkingTime(span, free.officeId, input)).toBeNull();
+          const place = input.schedules.filter(
+            (slot) => slot.officeId === free.officeId && slot.roomId === free.roomId,
+          );
+          expect(coveringSchedule(place, span)).toBeDefined();
         });
       }),
       { numRuns: 200 },

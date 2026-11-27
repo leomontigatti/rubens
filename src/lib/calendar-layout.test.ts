@@ -274,13 +274,11 @@ describe("laying out any column", () => {
       })),
       day,
     );
-  const overlap = (a: PlacedBlock, b: PlacedBlock) =>
-    a.top < b.top + b.height && b.top < a.top + a.height;
 
-  // Catches a block inside the day left out or placed twice, a lane reused
-  // while its block still runs, a lane count below the lanes used, and a chain
-  // of overlaps that splits into groups of different widths.
-  it("places every block in the day once, on a lane of its own while it overlaps, with its whole chain's lane count", () => {
+  // Catches a block inside the day left out, placed twice or clipped wrong, a
+  // lane reused while its block still runs, a lane count below the lanes used,
+  // and a chain of overlaps that splits into groups of different widths.
+  it("places every block in the day once, clipped to the day, on a lane of its own while it overlaps, with its whole chain's lane count", () => {
     fc.assert(
       fc.property(blocks, (spans) => {
         const placed = placedOf(spans);
@@ -289,7 +287,15 @@ describe("laying out any column", () => {
         );
         const byId = (a: string, b: string) => a.localeCompare(b);
         expect(placed.map((block) => block.id).sort(byId)).toEqual(inDay.sort(byId));
+        const clipped = (block: PlacedBlock) => {
+          const { start, end } = spans[Number(block.id)] ?? { start: NaN, end: NaN };
+          return { start: Math.max(start, 0), end: Math.min(end, 720) };
+        };
+        const overlap = (a: PlacedBlock, b: PlacedBlock) =>
+          clipped(a).start < clipped(b).end && clipped(b).start < clipped(a).end;
         for (const block of placed) {
+          const { start, end } = clipped(block);
+          expect([block.top, block.height]).toEqual([start, end - start]);
           expect(block.lane).toBeGreaterThanOrEqual(0);
           expect(block.lane).toBeLessThan(block.lanes);
           for (const other of placed) {
