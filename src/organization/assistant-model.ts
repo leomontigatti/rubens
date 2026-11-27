@@ -96,12 +96,28 @@ export interface AssistantModel {
 export const maxModelCalls = 8;
 
 /**
- * Each call to Anthropic's API, its retry included: bounded, so one that
- * hangs cannot hold the alarm, which judges turns one at a time, past a
- * turn's claim (`assistant.ts`). The SDK's defaults are ten minutes and two
+ * Each request to Anthropic's API waits up to 30 seconds for its answer to
+ * start, and is retried once; the SDK's defaults are ten minutes and two
  * retries.
  */
 const anthropicRequest = { timeout: 30_000, maxRetries: 1 };
+
+/**
+ * How long a turn, a clinical check or a template review may take in all,
+ * its streamed answers, retries and their waits included: the alarm judges
+ * turns one at a time, so one that hangs would hold every other and outlast
+ * its claim (`turn-claims.ts`).
+ */
+const turnDeadlineMs = 4 * 60_000;
+const singleCallDeadlineMs = 60_000;
+
+/** An abort controller that fires once `ms` have passed. */
+function abortingAfter(ms: number) {
+  const controller = new AbortController();
+  const deadline = AbortSignal.timeout(ms);
+  deadline.addEventListener("abort", () => controller.abort(deadline.reason), { once: true });
+  return controller;
+}
 
 /** Reports each call's tokens to `recordUsage`: TanStack AI's hook runs once per call. */
 function usageOf(recordUsage: RecordUsage): ChatMiddleware {
@@ -140,6 +156,7 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
         agentLoopStrategy: maxIterations(maxModelCalls),
         toolExecution: "sequential",
         middleware: [usageOf(recordUsage)],
+        abortController: abortingAfter(turnDeadlineMs),
         stream: false,
       });
       return { reply: text };
@@ -152,6 +169,7 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
         messages: [{ role: "user", content: `<reply>\n${reply}\n</reply>` }],
         outputSchema: clinicalCheckSchema,
         middleware: [usageOf(recordUsage)],
+        abortController: abortingAfter(singleCallDeadlineMs),
         stream: false,
       });
     },
@@ -163,6 +181,7 @@ export function assistantModelFor(env: { ANTHROPIC_API_KEY?: string }): Assistan
         messages: [{ role: "user", content: `<template>\n${body}\n</template>` }],
         outputSchema: templateReviewSchema,
         middleware: [usageOf(recordUsage)],
+        abortController: abortingAfter(singleCallDeadlineMs),
         stream: false,
       });
     },

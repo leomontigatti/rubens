@@ -1,9 +1,7 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { assistantTurnsJob } from "#/organization/assistant.ts";
-import { optOutRemindersJob } from "#/organization/opt-out-holds.ts";
-import { outboxJob } from "#/organization/outbox.ts";
+import { rejectedWebhookEvent } from "#/organization/webhook-schema.ts";
 import { outboxMessage } from "#/organization/whatsapp-schema.ts";
 import {
   adminCaller,
@@ -11,6 +9,8 @@ import {
   expectOk,
   fakeMeta,
   inStorage,
+  patientWrites,
+  scriptedModel,
   setUpBookingWorld,
   submitTemplate,
   templateNamed,
@@ -31,7 +31,13 @@ vi.mock(import("#/organization/graph-api.ts"), async (original) => {
   };
 });
 
+vi.mock(import("#/organization/assistant-model.ts"), async (original) => ({
+  ...(await original()),
+  assistantModelFor: () => scriptedModel,
+}));
+
 const hourMs = 60 * 60_000;
+const dayMs = 24 * hourMs;
 
 let world: Awaited<ReturnType<typeof setUpBookingWorld>>;
 
@@ -52,6 +58,7 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2098-12-01T12:00:00Z"));
   fakeMeta.reset();
+  scriptedModel.reset();
   world = await setUpBookingWorld();
 });
 
@@ -136,18 +143,24 @@ describe("with a booking confirmation queued", () => {
     expect((await edit).ok).toBe(false);
     expect(await alarmOf(world.organization)).toBe(dueAt);
   });
-  it("runs the jobs after one that throws, sets the alarm again, then fails as it did", async () => {
-    // The outbox runs first, and throws before it sends the confirmation, still due.
-    vi.spyOn(outboxJob, "run").mockRejectedValueOnce(new Error("The outbox could not run"));
-    const turns = vi.spyOn(assistantTurnsJob, "run");
-    const optOutReminders = vi.spyOn(optOutRemindersJob, "run");
+  it("runs the jobs after one that throws, sets the alarm no sooner than a minute on, then fails as it did", async () => {
+    await world.organization.storeRejectedWebhookEvents([{ element: "{}", issues: ["from"] }]);
+    vi.setSystemTime(Date.now() + 30 * dayMs);
+    await patientWrites(world.organization, "hola", "+5491155550000", Date.now());
+    vi.setSystemTime(Date.now() + 60_000);
+    // The assistant's job throws as it starts; the retention job, the last, deletes the element.
+    vi.spyOn(scriptedModel, "missingSetting").mockImplementationOnce(() => {
+      throw new Error("The model could not be reached");
+    });
 
     await expect(runDurableObjectAlarm(world.organization)).rejects.toThrow(
-      "The outbox could not run",
+      "The model could not be reached",
     );
 
-    expect(turns).toHaveBeenCalledOnce();
-    expect(optOutReminders).toHaveBeenCalledOnce();
-    expect(await alarmOf(world.organization)).toBe(dueAt);
+    const rejected = await inStorage(world.organization, (database) =>
+      database.select().from(rejectedWebhookEvent).all(),
+    );
+    expect(rejected).toEqual([]);
+    expect(await alarmOf(world.organization)).toBe(Date.now() + 60_000);
   });
 });

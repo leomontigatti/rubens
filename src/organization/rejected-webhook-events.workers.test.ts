@@ -55,7 +55,7 @@ describe("a webhook element the Worker could not read", () => {
     expect(await cipher?.open(row!.element, "rejectedWebhookEvent")).toBe(unreadable);
   });
 
-  it("is deleted 30 days after it was kept", async () => {
+  it("is kept for 30 days, then deleted", async () => {
     const { organization } = await setUpTestOrganization();
     const keptAt = Date.now();
     await organization.storeRejectedWebhookEvents([{ element: unreadable, issues: ["from"] }]);
@@ -63,6 +63,9 @@ describe("a webhook element the Worker could not read", () => {
       state.storage.getAlarm(),
     );
     expect(alarm).toBe(keptAt + 30 * dayMs);
+    vi.setSystemTime(keptAt + 30 * dayMs - 1);
+    await runDurableObjectAlarm(organization);
+    expect(await storedRejected(organization)).toHaveLength(1);
 
     vi.setSystemTime(keptAt + 30 * dayMs);
     await runDurableObjectAlarm(organization);
@@ -76,5 +79,6 @@ describe("a webhook element the Worker could not read", () => {
     expect(
       await organization.storeRejectedWebhookEvents([{ element: unreadable, issues: ["from"] }]),
     ).toEqual({ ok: false, reason: "notSetUp" });
+    expect(await storedRejected(organization)).toEqual([]);
   });
 });

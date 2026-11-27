@@ -6,6 +6,7 @@ import type { RejectedWebhookElement } from "#/lib/whatsapp-messages.ts";
 import type { Database } from "#/organization/database.ts";
 import type { OrganizationCipher } from "#/organization/encryption.ts";
 import type { Job } from "#/organization/jobs.ts";
+import { organizationIdIn } from "#/organization/whatsapp-connection.ts";
 import { rejectedWebhookEvent } from "#/organization/webhook-schema.ts";
 
 // The elements of Meta's webhook calls underthing could not read
@@ -21,38 +22,39 @@ const dayMs = 24 * 60 * 60_000;
 const retentionMs = 30 * dayMs;
 
 /**
- * `rejected` sealed for storing, or `null`, logged, when the Worker's key is
- * missing or not a key: an element is never stored in clear.
+ * Keeps `rejected` sealed, a row per statement in one transaction. Refused by
+ * an object no organization was set up in, and, logged, while the Worker's
+ * key is missing or not a key: an element is never stored in clear, and the
+ * refusal has Meta send the call again once the key is set.
  */
-export async function sealRejected(
-  cipherOf: () => Promise<OrganizationCipher | null>,
+export async function keepRejectedWebhookEvents(
+  database: Database,
+  cipherOf: (organizationId: string) => Promise<OrganizationCipher | null>,
   rejected: RejectedWebhookElement[],
 ) {
-  const cipher = await cipherOf().catch(() => null);
+  const organizationId = organizationIdIn(database);
+  if (!organizationId) {
+    return { ok: false, reason: "notSetUp" } as const;
+  }
+  const cipher = await cipherOf(organizationId).catch(() => null);
   if (!cipher) {
     log.error("rejected-webhook-events", "kept no rejected element: no usable encryption key", {
       elements: rejected.length,
     });
-    return null;
+    return { ok: false, reason: "noEncryptionKey" } as const;
   }
-  return Promise.all(
+  const sealed = await Promise.all(
     rejected.map(async ({ element, issues }) => ({
       element: await cipher.seal(element, "rejectedWebhookEvent"),
       issues,
     })),
   );
-}
-
-/** Stores the sealed elements in one transaction; says how many. */
-export function storeRejected(
-  database: Database,
-  sealed: Awaited<ReturnType<typeof sealRejected>>,
-) {
-  if (!sealed || sealed.length === 0) {
-    return { ok: true as const, stored: 0 };
-  }
-  database.transaction((tx) => tx.insert(rejectedWebhookEvent).values(sealed).run());
-  return { ok: true as const, stored: sealed.length };
+  database.transaction((tx) => {
+    for (const row of sealed) {
+      tx.insert(rejectedWebhookEvent).values(row).run();
+    }
+  });
+  return { ok: true, stored: sealed.length } as const;
 }
 
 export const rejectedWebhookEventsJob: Job = {
@@ -66,9 +68,11 @@ export const rejectedWebhookEventsJob: Job = {
     return at === null ? null : at + retentionMs;
   },
   run(database) {
-    database
-      .delete(rejectedWebhookEvent)
-      .where(lte(rejectedWebhookEvent.createdAt, Date.now() - retentionMs))
-      .run();
+    database.transaction((tx) =>
+      tx
+        .delete(rejectedWebhookEvent)
+        .where(lte(rejectedWebhookEvent.createdAt, Date.now() - retentionMs))
+        .run(),
+    );
   },
 };

@@ -30,6 +30,13 @@ function mediaUrl(url: string) {
   return url;
 }
 
+/**
+ * How long a media's download may take in all, its body included: longer than
+ * Meta's other calls, since its body streams to the member's browser at the
+ * browser's pace, or to a voice note's transcription.
+ */
+const mediaDeadlineMs = 5 * 60_000;
+
 /** The bytes at Meta's link `url`, all of them or the byte `range`; throws when the host fails. */
 export async function fromMediaHost(
   fetcher: Fetcher,
@@ -39,6 +46,7 @@ export async function fromMediaHost(
 ): Promise<MediaHostAnswer> {
   const response = await fetcher(mediaUrl(url), {
     headers: { authorization, ...(range && { range }) },
+    signal: AbortSignal.timeout(mediaDeadlineMs),
   });
   if (!response.ok || !response.body) {
     await response.body?.cancel();

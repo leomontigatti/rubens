@@ -154,19 +154,9 @@ export interface WhatsappCloud {
 /** What a boundary module calls instead of the global `fetch`, so its tests inject one. */
 export type Fetcher = typeof fetch;
 
-/** The global `fetch`, aborted when Meta sends no headers in 15 seconds: a media's body then streams at the browser's pace. */
-const metaFetch: Fetcher = async (input, init) => {
-  const answered = new AbortController();
-  const timer = setTimeout(
-    () => answered.abort(new DOMException("No answer", "TimeoutError")),
-    15_000,
-  );
-  try {
-    return await fetch(input, { ...init, signal: answered.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-};
+/** The global `fetch`, given up after 15 seconds unless the call sets its own deadline (`graph-api-media.ts`). */
+const metaFetch: Fetcher = (input, init) =>
+  fetch(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(15_000) });
 
 /** Meta's codes for a token it no longer accepts: expired or invalidated (190), or a user who blocked the app (0). */
 const refusedTokenCodes = new Set([0, 190]);

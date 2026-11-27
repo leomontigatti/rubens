@@ -71,7 +71,7 @@ function nextTurnAlarm(database: Database, { assistant }: JobServices): number |
     })
     .from(conversation)
     .get();
-  const times = [next?.dueAt ?? null, next?.lapsesAt ?? null].filter((at) => at !== null);
+  const times = [next?.dueAt, next?.lapsesAt].filter((at) => typeof at === "number");
   return times.length > 0 ? Math.min(...times) : null;
 }
 

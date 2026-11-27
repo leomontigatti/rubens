@@ -27,12 +27,14 @@ const turnClaimMs = 15 * 60_000;
  */
 export function claimTurn(database: Database, conversationId: string) {
   const now = Date.now();
-  const claimed = database
-    .update(conversation)
-    .set({ assistantDueAt: null, turnClaimedUntil: now + turnClaimMs })
-    .where(and(eq(conversation.id, conversationId), lte(conversation.assistantDueAt, now)))
-    .returning({ id: conversation.id })
-    .get();
+  const claimed = database.transaction((tx) =>
+    tx
+      .update(conversation)
+      .set({ assistantDueAt: null, turnClaimedUntil: now + turnClaimMs })
+      .where(and(eq(conversation.id, conversationId), lte(conversation.assistantDueAt, now)))
+      .returning({ id: conversation.id })
+      .get(),
+  );
   return claimed !== undefined;
 }
 
@@ -48,27 +50,35 @@ export function settleLostTurn(database: Database, conversationId: string) {
     .from(conversation)
     .where(and(eq(conversation.id, conversationId), lte(conversation.turnClaimedUntil, Date.now())))
     .get();
-  const claimedUntil = lapsed?.claimedUntil ?? null;
-  if (claimedUntil === null) {
+  if (typeof lapsed?.claimedUntil !== "number") {
     return;
   }
+  // Released only once its retry or handoff is stored: a throw before keeps the claim.
+  retryUnread(database, conversationId, lapsed.claimedUntil - turnClaimMs);
   releaseTurn(database, conversationId);
+}
+
+/** Retries or hands off the messages still unjudged of the lost turn that started at `startedAt`. */
+function retryUnread(database: Database, conversationId: string, startedAt: number) {
   const { unjudged } = readConversation(database, conversationId);
   if (unjudged.length === 0) {
     return;
   }
+  const answered = answeredMessage(database, conversationId, unjudged);
   retryOrHandOff(database, {
     conversationId,
     messageIds: unjudged.map((message) => message.id),
-    appointmentId: answeredMessage(database, conversationId, unjudged)?.appointmentId ?? null,
-    startedAt: claimedUntil - turnClaimMs,
+    appointmentId: answered?.appointmentId ?? null,
+    startedAt,
   });
 }
 
 export function releaseTurn(database: Database, conversationId: string) {
-  database
-    .update(conversation)
-    .set({ turnClaimedUntil: null })
-    .where(eq(conversation.id, conversationId))
-    .run();
+  database.transaction((tx) =>
+    tx
+      .update(conversation)
+      .set({ turnClaimedUntil: null })
+      .where(eq(conversation.id, conversationId))
+      .run(),
+  );
 }

@@ -411,8 +411,53 @@ describe("Meta's WhatsApp webhook", () => {
     const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
 
     expect(response.status).toBe(200);
-    expect(await storedMessages(organization)).toHaveLength(1);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
     expect(await rejectedIssues(organization)).toEqual([{ issues: ["statuses"] }]);
+  });
+
+  it("stores a change's messages beside its statuses when those are not a list, keeping them apart", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    Object.assign(payload.entry[0]!.changes[0]!.value, { statuses: "not a list" });
+
+    const response = await handleWhatsappWebhook(
+      post(JSON.stringify(payload)),
+      bindingsFor(organizationId),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["statuses"] }]);
+  });
+
+  it("stores a call's other entries beside one in no shape it reads", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const payload = metaPayload();
+    const body = JSON.stringify({ ...payload, entry: [{ changes: "none" }, ...payload.entry] });
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
+  });
+
+  it("keeps apart a change about the account in a shape it does not read, for the account's organization", async () => {
+    const { organizationId, organization } = await setUpTestOrganization();
+    const body = accountChange("message_template_status_update", {
+      event: "APPROVED",
+      message_template_id: "not digits",
+    });
+
+    const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
+
+    expect(response.status).toBe(200);
+    expect(await rejectedIssues(organization)).toEqual([{ issues: ["message_template_id"] }]);
   });
 
   it("stores a call's messages beside a change in no shape it reads, for no number", async () => {
@@ -426,7 +471,9 @@ describe("Meta's WhatsApp webhook", () => {
     const response = await handleWhatsappWebhook(post(body), bindingsFor(organizationId));
 
     expect(response.status).toBe(200);
-    expect(await storedMessages(organization)).toHaveLength(1);
+    expect(await storedMessages(organization)).toEqual([
+      expect.objectContaining({ whatsappId: "wamid.HBgNNTQ5MzUxNDQ0MDAwMBUCABIYFjNFQjBDMEE" }),
+    ]);
     expect(await rejectedIssues(organization)).toEqual([]);
   });
 

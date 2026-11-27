@@ -51,6 +51,9 @@ const jobs: readonly Job[] = [
   rejectedWebhookEventsJob,
 ];
 
+/** The least the alarm waits after a job threw. */
+const afterFailureMs = 60_000;
+
 /**
  * What the organization's object runs on, under its RPC methods
  * (`organization.ts`): its SQLite storage, migrated before any call; the
@@ -134,37 +137,46 @@ export abstract class OrganizationRuntime extends DurableObject {
   /**
    * Runs every job, in the order of `jobs`, then sets the alarm for the next
    * item. A job that throws keeps none after it from running nor the alarm
-   * from being set; the alarm then fails as the first did, so the platform
-   * retries it.
+   * from being set, and the alarm then fails as the first did, so the
+   * platform retries it; its own alarm waits at least `afterFailureMs`, so an
+   * item that throws each time it runs does not run again at once.
    */
   override async alarm() {
-    const services = this.#jobServices();
-    const failures: unknown[] = [];
-    try {
-      for (const job of jobs) {
-        try {
-          await job.run(this.database, services);
-        } catch (error) {
-          log.error("organization-alarm", "a job failed", {
-            job: job.name,
-            error: errorClass(error),
-          });
-          failures.push(error);
-        }
-      }
-    } finally {
+    const failures = await this.#runJobs();
+    if (failures.length === 0) {
       await this.#armAlarm();
+      return;
     }
-    if (failures.length > 0) {
-      throw failures[0];
-    }
+    await this.#armAlarm(Date.now() + afterFailureMs);
+    throw failures[0];
   }
 
-  /** Sets the alarm to the earliest due item, or clears it when nothing waits on time. */
-  async #armAlarm() {
+  /** Runs every job, each whatever the ones before it did; returns what those that threw threw. */
+  async #runJobs() {
+    const services = this.#jobServices();
+    const failures: unknown[] = [];
+    for (const job of jobs) {
+      try {
+        await job.run(this.database, services);
+      } catch (error) {
+        log.error("organization-alarm", "a job failed", {
+          job: job.name,
+          error: errorClass(error),
+        });
+        failures.push(error);
+      }
+    }
+    return failures;
+  }
+
+  /**
+   * Sets the alarm to the earliest due item, no earlier than `notBefore`, or
+   * clears it when nothing waits on time.
+   */
+  async #armAlarm(notBefore: number | null = null) {
     const services = this.#jobServices();
     const due = jobs.map((job) => job.nextDue(this.database, services)).filter((at) => at !== null);
-    const next = due.length > 0 ? Math.min(...due) : null;
+    const next = due.length > 0 ? Math.max(Math.min(...due), notBefore ?? 0) : null;
     if (next === null) {
       await this.ctx.storage.deleteAlarm();
     } else {

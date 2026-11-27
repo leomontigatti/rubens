@@ -1,4 +1,9 @@
-import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import {
+  abortAllDurableObjects,
+  env,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from "cloudflare:test";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { z } from "zod";
@@ -18,11 +23,7 @@ import {
 } from "#/organization/organization.test-support.ts";
 import { longPauseNote } from "#/lib/assistant.ts";
 import { splitPhone } from "#/lib/phones.ts";
-import {
-  conversation,
-  whatsappMessage,
-  whatsappNumberHold,
-} from "#/organization/whatsapp-schema.ts";
+import { whatsappMessage, whatsappNumberHold } from "#/organization/whatsapp-schema.ts";
 
 // The object reaches Meta only through its Graph API client, whose HTTP calls
 // go to the fake Meta, and the model only through its port, scripted per test.
@@ -1144,18 +1145,20 @@ describe("a message the model could not read", () => {
   const claimMs = 15 * minuteMs;
 
   /**
-   * Leaves the conversation as a turn the isolate lost mid-way leaves it, its
-   * wait claimed now and nothing settled: an eviction, a deploy, or a throw
-   * out of the alarm. Returns when the claim lapses.
+   * Loses the turn the alarm is running now, as an eviction or a deploy does:
+   * the object is aborted while the model writes, before the turn settles.
+   * Returns when the turn's claim lapses.
    */
   async function turnLostMidway() {
-    await inStorage(world.organization, (database) =>
-      database
-        .update(conversation)
-        .set({ assistantDueAt: null, turnClaimedUntil: Date.now() + claimMs })
-        .run(),
-    );
-    return Date.now() + claimMs;
+    scriptedModel.script(() => new Promise<string>(() => {}));
+    const alarm = runDurableObjectAlarm(world.organization).catch((error: unknown) => error);
+    await scriptedModel.turnsStarted(world.organization, 1);
+    const lapsesAt = Date.now() + claimMs;
+    await abortAllDurableObjects();
+    expect(await alarm).toBeInstanceOf(Error);
+    // A stub to an aborted object is broken; a new one reaches the object as it starts again.
+    world.organization = env.ORGANIZATION.get(world.organization.id);
+    return lapsesAt;
   }
 
   it("retries a turn lost mid-way a minute after its claim lapses, and answers", async () => {
@@ -1167,7 +1170,7 @@ describe("a message the model could not read", () => {
     const ranAt = await runAlarmsUntil(lapsesAt + minuteMs);
 
     expect(ranAt.slice(-2)).toEqual([lapsesAt, lapsesAt + minuteMs]);
-    expect(scriptedModel.turns).toHaveLength(1);
+    expect(scriptedModel.turns).toHaveLength(2);
     expect(await judgementsShown()).toEqual(["notForPractitioner"]);
     expect(textsToMeta().map((sent) => sent.text)).toEqual(["Hola, en qué te puedo ayudar?"]);
     expect(await scheduledAlarm()).toBeNull();
@@ -1189,7 +1192,7 @@ describe("a message the model could not read", () => {
         createdAt: lapsesAt,
       }),
     ]);
-    expect(scriptedModel.turns).toHaveLength(0);
+    expect(scriptedModel.turns).toHaveLength(1);
     expect(await judgementsShown()).toEqual(["notForPractitioner"]);
     expect(textsToMeta()).toEqual([]);
     expect(await scheduledAlarm()).toBeNull();
@@ -1207,7 +1210,10 @@ describe("a message the model could not read", () => {
 
     expect(ranAt).toHaveLength(1);
     expect(ranAt[0]).toBeLessThan(lapsesAt);
-    expect(scriptedModel.turns).toHaveLength(1);
+    expect(scriptedModel.turns[1]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: "[new messages]\nhola\nsigo acá",
+    });
     expect(await judgementsShown()).toEqual(["notForPractitioner", "notForPractitioner"]);
   });
 });
