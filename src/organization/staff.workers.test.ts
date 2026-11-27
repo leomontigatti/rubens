@@ -645,12 +645,14 @@ describe("passwords", () => {
     await replaceStartingPassword(created.userId);
     fakeAccounts.failNext("setPassword");
 
-    await expect(
-      organization.setStartingPassword(adminCaller, {
-        memberId: created.memberId,
-        password: "another-start",
-      }),
-    ).rejects.toThrow();
+    await inObject(organization, (instance) =>
+      expect(
+        instance.setStartingPassword(adminCaller, {
+          memberId: created.memberId,
+          password: "another-start",
+        }),
+      ).rejects.toThrow("Clerk is unreachable"),
+    );
 
     expect(await organization.listStaff(created)).toEqual({
       ok: false,
