@@ -1,12 +1,18 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
   appointmentCollisionLabel,
   collisionLabel,
+  findCollision,
   scheduleState,
   sharedDates,
+  shiftDate,
   validityLabel,
+  weekdayOf,
 } from "#/lib/schedules.ts";
+import type { WeeklySlot } from "#/lib/schedules.ts";
+import { firstMonday, minutesOf, weeklySlot } from "#/test-support/weekly-slots.ts";
 
 const open = { firstDate: "2026-11-02", lastDate: null };
 
@@ -82,5 +88,48 @@ describe("the dates two schedules share", () => {
     expect(sharedDates(ending, { firstDate: "2026-12-01", lastDate: null })).toBeNull();
     expect(sharedDates({ firstDate: "2026-12-01", lastDate: null }, ending)).toBeNull();
     expect(sharedDates(open, { firstDate: "2020-01-06", lastDate: null })).toEqual(open);
+  });
+});
+
+describe("findCollision", () => {
+  // Every date a slot below can cover, with a week to spare past the latest first date.
+  const dates = Array.from({ length: 42 }, (_, day) => shiftDate(firstMonday, day));
+
+  function collidesOn(a: WeeklySlot, b: WeeklySlot, weekday: number): boolean {
+    const sharesDate = dates.some(
+      (date) =>
+        weekdayOf(date) === weekday &&
+        [a, b].every(
+          (slot) =>
+            slot.weekdays.includes(weekday) &&
+            slot.firstDate <= date &&
+            (slot.lastDate === null || date <= slot.lastDate),
+        ),
+    );
+    const sharesMinute = Array.from({ length: 96 }, (_, quarter) => quarter * 15).some((minute) =>
+      [a, b].every(
+        (slot) => minutesOf(slot.startTime) <= minute && minute < minutesOf(slot.endTime),
+      ),
+    );
+    return sharesDate && sharesMinute;
+  }
+
+  // Catches a corner shortcut that misses a shared moment (a first date or
+  // start time left out of the corners), or that reports schedules that only
+  // touch, or a collision on a weekday where the other does not apply.
+  it("finds a collision exactly when some moment is shared, and names a schedule that shares one", () => {
+    fc.assert(
+      fc.property(weeklySlot, fc.array(weeklySlot, { maxLength: 4 }), (candidate, others) => {
+        const found = findCollision(candidate, others);
+        const exists = candidate.weekdays.some((weekday) =>
+          others.some((other) => collidesOn(candidate, other, weekday)),
+        );
+        expect(found !== null).toBe(exists);
+        if (found) {
+          expect(collidesOn(candidate, found.schedule, found.weekday)).toBe(true);
+        }
+      }),
+      { numRuns: 500 },
+    );
   });
 });

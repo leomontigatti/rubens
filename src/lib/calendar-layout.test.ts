@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -7,6 +8,7 @@ import {
   visibleHours,
   visibleWeekHours,
 } from "#/lib/calendar-layout.ts";
+import type { PlacedBlock } from "#/lib/calendar-layout.ts";
 
 const day = { start: at("08:00"), end: at("20:00") };
 
@@ -252,5 +254,53 @@ describe("a day's cells and cards together", () => {
     const lanes = [...cards.map((card) => card.lane), cells[0]!.lane];
     expect(new Set(lanes).size).toBe(3);
     expect(cells[0]!.lanes).toBe(3);
+  });
+});
+
+describe("laying out any column", () => {
+  const minute = 60_000;
+  const blocks = fc.array(
+    fc
+      .tuple(fc.integer({ min: 0, max: 60 }), fc.integer({ min: 1, max: 16 }))
+      .map(([start, length]) => ({ start: start * 15 - 120, end: (start + length) * 15 - 120 })),
+    { maxLength: 10 },
+  );
+  const placedOf = (spans: { start: number; end: number }[]) =>
+    layoutColumn(
+      spans.map(({ start, end }, index) => ({
+        id: String(index),
+        start: new Date(+day.start + start * minute),
+        end: new Date(+day.start + end * minute),
+      })),
+      day,
+    );
+  const overlap = (a: PlacedBlock, b: PlacedBlock) =>
+    a.top < b.top + b.height && b.top < a.top + a.height;
+
+  // Catches a block inside the day left out or placed twice, a lane reused
+  // while its block still runs, a lane count below the lanes used, and a chain
+  // of overlaps that splits into groups of different widths.
+  it("places every block in the day once, on a lane of its own while it overlaps, with its whole chain's lane count", () => {
+    fc.assert(
+      fc.property(blocks, (spans) => {
+        const placed = placedOf(spans);
+        const inDay = spans.flatMap(({ start, end }, index) =>
+          start < 720 && end > 0 ? [String(index)] : [],
+        );
+        const byId = (a: string, b: string) => a.localeCompare(b);
+        expect(placed.map((block) => block.id).sort(byId)).toEqual(inDay.sort(byId));
+        for (const block of placed) {
+          expect(block.lane).toBeGreaterThanOrEqual(0);
+          expect(block.lane).toBeLessThan(block.lanes);
+          for (const other of placed) {
+            if (other !== block && overlap(block, other)) {
+              expect(other.lane).not.toBe(block.lane);
+              expect(other.lanes).toBe(block.lanes);
+            }
+          }
+        }
+      }),
+      { numRuns: 500 },
+    );
   });
 });

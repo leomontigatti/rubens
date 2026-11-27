@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
 
 import { findCrowding } from "#/lib/room-space.ts";
@@ -38,5 +39,40 @@ describe("room space", () => {
       findCrowding({ start: at("12:00"), end: at("12:30") }, "juan", [juan, lucia]),
     ).toBeNull();
     expect(findCrowding(span, "juan", [juan, lucia])).toEqual([lucia]);
+  });
+});
+
+describe("room space against a minute-by-minute sweep", () => {
+  const minute = 60_000;
+  const range = fc
+    .tuple(fc.integer({ min: 0, max: 120 }), fc.integer({ min: 1, max: 60 }))
+    .map(([start, length]) => ({
+      start: new Date(+at("12:00") + start * minute),
+      end: new Date(+at("12:00") + (start + length) * minute),
+    }));
+  const presences = fc.array(
+    fc
+      .tuple(fc.constantFrom("juan", "lucia", "pedro"), range)
+      .map(([practitionerId, during]) => ({ practitionerId, ...during })),
+    { maxLength: 6 },
+  );
+
+  // Catches a sweep that skips a moment between break points (a presence that
+  // starts or ends inside another), counts a presence that only touches the
+  // span, or returns those present at a later moment than the first crowded one.
+  it("returns those present at the first minute another practitioner holds the room alone", () => {
+    fc.assert(
+      fc.property(range, presences, (span, all) => {
+        let crowded: typeof all | null = null;
+        for (let moment = +span.start; moment < +span.end && !crowded; moment += minute) {
+          const present = all.filter((one) => +one.start <= moment && moment < +one.end);
+          if (present.length > 0 && present.every((one) => one.practitionerId !== "juan")) {
+            crowded = present;
+          }
+        }
+        expect(findCrowding(span, "juan", all)).toEqual(crowded);
+      }),
+      { numRuns: 500 },
+    );
   });
 });

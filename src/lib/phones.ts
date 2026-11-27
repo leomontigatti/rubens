@@ -50,7 +50,9 @@ export function parsePhoneEntry(entry: PhoneEntry): PhoneResult {
     return { ok: false, reason: "invalidPhone" };
   }
   const parsed = parsePhoneNumberFromString(number, country);
-  return parsed?.isValid() && parsed.countryCallingCode === getCountryCallingCode(country)
+  return parsed?.isValid() &&
+    parsed.countryCallingCode === getCountryCallingCode(country) &&
+    parsePhoneNumberFromString(parsed.number)?.isValid()
     ? { ok: true, phone: parsed.number }
     : { ok: false, reason: "invalidPhone" };
 }
@@ -63,13 +65,13 @@ export const emptyPhoneEntry: PhoneEntry = { country: defaultRegion, number: "" 
  */
 export function splitPhone(phone: string): PhoneEntry {
   const parsed = parsePhoneNumberFromString(phone);
-  if (!parsed?.country) {
+  const country = parsed?.country ?? parsed?.getPossibleCountries()[0];
+  if (!parsed || !country) {
     return { country: defaultRegion, number: phone.replace(/\D/g, "") };
   }
   const national = parsed.nationalNumber;
-  const number =
-    parsed.country === defaultRegion ? national.replace(/^9(?=\d{10}$)/, "") : national;
-  return { country: parsed.country, number };
+  const number = country === defaultRegion ? national.replace(/^9(?=\d{10}$)/, "") : national;
+  return { country, number };
 }
 
 const argentineNumber = /^(?:11\d{8}|[23]\d{9})$/;
