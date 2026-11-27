@@ -479,12 +479,12 @@ export async function setStartingPassword(
   // or times out may still have set the password the admin knows. Marked again
   // after, over a change of their own the member made meanwhile.
   markPasswordChange(database, memberId, true);
-  const set = await accounts.setPassword(memberId, password);
-  if (!set.ok) {
-    return set;
+  try {
+    const set = await accounts.setPassword(memberId, password);
+    return set.ok ? { ok: true as const } : set;
+  } finally {
+    markPasswordChange(database, memberId, true);
   }
-  markPasswordChange(database, memberId, true);
-  return { ok: true as const };
 }
 
 function markPasswordChange(database: Database, memberId: string, mustChangePassword: boolean) {
