@@ -72,7 +72,7 @@ describe("the calendar's room options", () => {
     { id: "dos", name: "Dos" },
   ];
 
-  it("list the rooms with no office heading", () => {
+  it("list each active room once when the viewed room is among them", () => {
     expect(roomOptions({ id: "uno", name: "Uno" }, roomChoices)).toEqual([
       { value: "uno", label: "Uno" },
       { value: "dos", label: "Dos" },

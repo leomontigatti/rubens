@@ -86,9 +86,9 @@ describe("the sample appointment", () => {
     );
   });
 
-  it("leaves what is not a variable of any template as written, the office's name among them", () => {
-    expect(fillSample("Hola {{nombre}}, en {{sede}}.", "Consultorios Prueba")).toBe(
-      "Hola {{nombre}}, en {{sede}}.",
+  it("leaves a placeholder that is not a variable of any template as written", () => {
+    expect(fillSample("Hola {{nombre}}, nos vemos.", "Consultorios Prueba")).toBe(
+      "Hola {{nombre}}, nos vemos.",
     );
   });
 

@@ -818,7 +818,7 @@ describe("setting an organization up", () => {
     });
   });
 
-  it("changes nothing, and creates no user, when the organization is already set up", async () => {
+  it("refuses, and creates no user, when the organization is already set up", async () => {
     fakeAccounts.reset();
 
     expect(
