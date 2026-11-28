@@ -162,7 +162,7 @@ describe("managing medical services", () => {
     expect((await servicesOf(rita.caller, true)).canEdit).toBe(false);
   });
 
-  it("lets patients book a medical service by WhatsApp until an editor switches it off", async () => {
+  it("keeps WhatsApp booking on for a new medical service until its practitioner switches it off, on their own services only", async () => {
     const { organization, juan, ana, firstVisit, created, servicesOf } = await world();
     const { whatsappBooking: _, ...unswitched } = firstVisit();
     const service = await created(adminCaller, unswitched);

@@ -396,7 +396,7 @@ describe("the patient list", () => {
     expect(await list(1.5)).toEqual({ ok: false, reason: "invalidInput" });
   });
 
-  it("names a patient's primary insurer, in the list and in a search, and none for a private one", async () => {
+  it("names a patient's insurer, in the list and in a search, and none for a private one", async () => {
     const { organization, receptionist } = await registry();
     const covered = await register(organization, receptionist);
     await register(organization, receptionist, {
